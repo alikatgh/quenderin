@@ -1,0 +1,14 @@
+{
+  "name": "quenderin-poc",
+  "version": "0.0.1",
+  "type": "module",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "node-llama-cpp": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
