@@ -1,11 +1,5 @@
 # Quenderin
 
-> From intent → immutable, reviewable code.
-> A local, deterministic generator for developers who refuse to surrender their source.
-
----
-## What It Is
-
 Quenderin is **not** a framework, a platform, or a magic black box. It is a **local compiler-level toolchain** that:
 
 1.  Reads your existing schema (Prisma, Drizzle, SQL, or plain TypeScript).
