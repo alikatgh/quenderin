@@ -16,25 +16,35 @@ function question(prompt: string): Promise<string> {
   });
 }
 
-export async function interactiveSetup() {
-  console.log('\n⚡ Welcome to Quenderin!\n');
-  console.log('Let\'s get you set up in less than a minute...\n');
+export async function interactiveSetup(silent = false) {
+  if (!silent) {
+    console.log('\n⚡ Welcome to Quenderin!\n');
+    console.log('Let\'s get you set up in less than a minute...\n');
+  }
 
   // First, try auto-detection
-  console.log('🔍 Checking for installed LLMs...\n');
+  if (!silent) console.log('🔍 Checking for installed LLMs...\n');
   const detected = await autoDetectProvider();
 
   if (detected) {
-    console.log('✅ Found Ollama running locally!\n');
-    const useOllama = await question('Use Ollama? (Y/n): ');
+    if (!silent) {
+      console.log('✅ Found Ollama running locally!\n');
+      const useOllama = await question('Use Ollama? (Y/n): ');
 
-    if (!useOllama || useOllama.toLowerCase() === 'y' || useOllama.toLowerCase() === 'yes') {
+      if (!useOllama || useOllama.toLowerCase() === 'y' || useOllama.toLowerCase() === 'yes') {
+        saveConfig({ provider: 'auto' });
+        console.log('\n✅ Setup complete! Ollama is ready to use.\n');
+        console.log('Try it now:');
+        console.log('  quenderin add "Create a function to validate email addresses"\n');
+        rl.close();
+        return true;
+      }
+    } else {
+      // Silent mode - just use Ollama
       saveConfig({ provider: 'auto' });
-      console.log('\n✅ Setup complete! Ollama is ready to use.\n');
-      console.log('Try it now:');
-      console.log('  quenderin add "Create a function to validate email addresses"\n');
+      console.log('✅ Using Ollama\n');
       rl.close();
-      return;
+      return true;
     }
   }
 
@@ -50,21 +60,56 @@ export async function interactiveSetup() {
   switch (choice.trim()) {
     case '1':
       await setupOllama();
-      break;
+      rl.close();
+      return true;
     case '2':
       await setupOpenAI();
-      break;
+      rl.close();
+      return true;
     case '3':
       await setupOpenAICompatible();
-      break;
+      rl.close();
+      return true;
     case '4':
       console.log('\nℹ️  You can run setup again anytime with: quenderin setup\n');
-      break;
+      rl.close();
+      return false;
     default:
       console.log('\n❌ Invalid choice. Run "quenderin setup" to try again.\n');
+      rl.close();
+      return false;
+  }
+}
+
+// Quick one-line setup for auto mode
+export async function quickSetup(): Promise<boolean> {
+  // Try auto-detect first
+  const detected = await autoDetectProvider();
+  if (detected) {
+    saveConfig({ provider: 'auto' });
+    console.log('✅ Auto-detected Ollama!\n');
+    return true;
   }
 
-  rl.close();
+  // Ask for API key in one line
+  console.log('⚡ Quick setup - enter your OpenAI API key (or press Enter to run full setup):\n');
+  const apiKey = await question('API Key: ');
+
+  if (apiKey && apiKey.trim().length > 0) {
+    const config: QuenderinConfig = {
+      provider: 'openai' as const,
+      apiKey: apiKey.trim(),
+      modelName: 'gpt-4o-mini'
+    };
+    saveConfig(config);
+    const configPath = path.join(process.cwd(), 'quenderin.json');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log('\n✅ OpenAI configured! Using gpt-4o-mini\n');
+    return true;
+  }
+
+  // Run full interactive setup
+  return await interactiveSetup();
 }
 
 async function setupOllama() {

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { generateCodeSimple, testConnection } from './unified-generator.js';
-import { saveConfig } from './config.js';
+import { saveConfig, loadConfig } from './config.js';
 import { autoDetectProvider, OllamaProvider } from './providers.js';
-import { interactiveSetup } from './interactive-setup.js';
+import { interactiveSetup, quickSetup } from './interactive-setup.js';
 import fs from 'fs';
 import path from 'path';
+import readline from 'readline';
 
 const program = new Command();
 
@@ -152,7 +153,7 @@ program
     });
   });
 
-// Generate code command
+// Generate code command - auto-setup if needed
 program
   .command('add')
   .description('Generate code from a natural language prompt')
@@ -161,6 +162,19 @@ program
   .option('-t, --tokens <number>', 'Max tokens to generate', '2048')
   .action(async (prompt: string, options) => {
     try {
+      // Check if setup is needed
+      const config = loadConfig();
+      const hasConfig = config.provider || config.apiKey || fs.existsSync(path.join(process.cwd(), 'quenderin.json'));
+
+      if (!hasConfig) {
+        console.log('👋 First time using Quenderin? Let\'s get you started!\n');
+        const setupSuccess = await quickSetup();
+        if (!setupSuccess) {
+          console.log('\n⚠️  Setup cancelled. Run "quenderin setup" when ready.\n');
+          process.exit(0);
+        }
+      }
+
       const generatedCode = await generateCodeSimple(prompt, {
         maxTokens: parseInt(options.tokens)
       });
@@ -180,16 +194,74 @@ program
     } catch (e: any) {
       console.error('\n❌ Error:', e.message);
       console.error('\nTroubleshooting:');
-      console.error('  1. Make sure you have downloaded a model');
-      console.error('  2. Check models/ directory has a .gguf file');
-      console.error('  3. Run "quenderin model-info" to see available models\n');
+      console.error('  1. Run "quenderin setup" to configure your LLM');
+      console.error('  2. Or check your API key in quenderin.json\n');
       process.exit(1);
     }
   });
 
-// Show help if no command provided
+// Interactive chat mode
+program
+  .command('chat')
+  .description('Interactive mode - keep generating code in a conversation')
+  .action(async () => {
+    // Check if setup is needed
+    const config = loadConfig();
+    const hasConfig = config.provider || config.apiKey || fs.existsSync(path.join(process.cwd(), 'quenderin.json'));
+
+    if (!hasConfig) {
+      console.log('👋 First time using Quenderin? Let\'s get you started!\n');
+      const setupSuccess = await quickSetup();
+      if (!setupSuccess) {
+        console.log('\n⚠️  Setup cancelled. Run "quenderin setup" when ready.\n');
+        process.exit(0);
+      }
+    }
+
+    console.log('\n💬 Quenderin Chat Mode\n');
+    console.log('Type your prompts to generate code. Type "exit" or press Ctrl+C to quit.\n');
+    console.log('='.repeat(60) + '\n');
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    const ask = () => {
+      rl.question('📝 What code do you want to generate?\n> ', async (prompt) => {
+        if (!prompt || prompt.toLowerCase() === 'exit' || prompt.toLowerCase() === 'quit') {
+          console.log('\n👋 Happy coding!\n');
+          rl.close();
+          process.exit(0);
+        }
+
+        try {
+          console.log('\n🤖 Generating...\n');
+          const generatedCode = await generateCodeSimple(prompt);
+          console.log('='.repeat(60));
+          console.log(generatedCode);
+          console.log('='.repeat(60) + '\n');
+        } catch (e: any) {
+          console.error('❌ Error:', e.message, '\n');
+        }
+
+        ask(); // Continue the conversation
+      });
+    };
+
+    ask();
+  });
+
+// Default command - start interactive mode
 if (process.argv.length === 2) {
-  program.help();
+  console.log('\n⚡ Quenderin - Generate code from plain English\n');
+  console.log('Commands:');
+  console.log('  quenderin add "<prompt>"  - Generate code once');
+  console.log('  quenderin chat            - Interactive chat mode');
+  console.log('  quenderin setup           - Configure your LLM');
+  console.log('  quenderin --help          - Show all commands\n');
+  console.log('💡 Tip: Just run "quenderin chat" to start generating!\n');
+  process.exit(0);
 }
 
 program.parse(process.argv);
