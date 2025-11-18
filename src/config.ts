@@ -2,10 +2,19 @@ import fs from 'fs';
 import path from 'path';
 
 export interface QuenderinConfig {
+  // Provider settings
+  provider?: 'ollama' | 'openai' | 'auto' | 'gguf';
+  apiKey?: string;
+  modelName?: string;
+  baseURL?: string;
+
+  // Legacy GGUF settings
   modelPath?: string;
+  threads?: number;
+
+  // Generation settings
   maxTokens?: number;
   temperature?: number;
-  threads?: number;
   outputDir?: string;
 }
 

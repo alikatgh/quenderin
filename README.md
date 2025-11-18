@@ -1,31 +1,68 @@
 # Quenderin
 
-Quenderin is **not** a framework, a platform, or a magic black box. It is a **local compiler-level toolchain** that:
+**Local LLM-powered code generation toolchain** - Generate production-ready code from natural language prompts.
+
+## ⚡ Super Quick Start (2 minutes)
+
+```bash
+# 1. Install dependencies
+npm install && npm run build
+
+# 2. Run setup wizard
+node dist/index.js setup
+
+# 3. Generate code!
+node dist/index.js add "Create a function to validate email addresses"
+```
+
+The setup wizard will:
+- ✨ Auto-detect Ollama if installed (easiest option)
+- 🎯 Guide you through OpenAI API setup (1 minute)
+- 🔌 Support any OpenAI-compatible API (OpenRouter, LocalAI, etc.)
+- 📦 No model downloads required for cloud/Ollama options
+
+**See [SIMPLE-SETUP.md](SIMPLE-SETUP.md) for detailed options.**
+
+---
+
+## What is Quenderin?
+
+Quenderin is **not** a framework, a platform, or a magic black box. It is a **compiler-level toolchain** that:
 
 1.  Reads your existing schema (Prisma, Drizzle, SQL, or plain TypeScript).
 2.  Consumes natural-language prompts stored as version-controlled markdown.
 3.  Generates plain source files into a `.gitignore`-safe `src/gen/` directory.
-4.  Runs **entirely offline** using a pinned, local LLM to guarantee **bit-for-bit reproducibility.**
+4.  Supports **multiple LLM backends**: Ollama (local), OpenAI, or offline GGUF models.
 
 You are trading the time it takes to write tedious boilerplate for the time it takes to review a well-structured pull request.
 
 ---
+## LLM Provider Options
+
+| Provider | Setup Time | Cost | Best For |
+|----------|-----------|------|----------|
+| **Ollama** | 2 min | Free | Local development, no API keys |
+| **OpenAI** | 1 min | Pay per use | Production, best quality |
+| **OpenAI-compatible** | 1 min | Varies | OpenRouter, LocalAI, LM Studio |
+| **GGUF Models** | 15+ min | Free | Completely offline, full control |
+
 ## The Workflow
 
 ```bash
-# Install the CLI
-npm i -g quenderin
+# Initialize your project
+node dist/index.js init
 
-# Point to your schema and scaffold config
-quenderin init
+# Quick setup to connect LLM
+node dist/index.js setup
 
-# Describe a feature in plain english
-quenderin add "Stripe checkout with Apple Pay, EU VAT, and SCA"
-````
+# Generate code from natural language
+node dist/index.js add "Stripe checkout with Apple Pay, EU VAT, and SCA"
 
-The tool opens a pull request with small, atomic commits (e.g., `feat(gen): add types`, `feat(gen): add resolver`, `feat(gen): add tests`).
+# Save directly to file
+node dist/index.js add "Create auth middleware" -o src/gen/auth.ts
+```
 
-Approve → merge → ship. The generated code is ephemeral **by default**.
+The tool generates clean, production-ready code with comments and proper error handling.
 
 -----
 

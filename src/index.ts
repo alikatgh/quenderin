@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { generateCode } from './generator.js';
+import { generateCodeSimple, testConnection } from './unified-generator.js';
+import { saveConfig } from './config.js';
+import { autoDetectProvider, OllamaProvider } from './providers.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -87,11 +89,74 @@ src/gen/
     }
 
     console.log('\n📦 Next steps:');
-    console.log('1. Download a model (see models/README.md)');
-    console.log('2. Run: quenderin add "your feature description"');
-    console.log('\nQuick model download:');
-    console.log('  curl -L -o models/phi-3-mini.Q4_K_M.gguf \\');
-    console.log('    https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf\n');
+    console.log('  Run: quenderin setup');
+    console.log('  This will help you connect to an LLM in seconds!\n');
+  });
+
+// Super simple setup command
+program
+  .command('setup')
+  .description('Quick setup - connect to an LLM in seconds!')
+  .action(async () => {
+    console.log('\n⚡ Quenderin Quick Setup\n');
+    console.log('Looking for the easiest way to connect...\n');
+
+    // Try to auto-detect Ollama
+    const detected = await autoDetectProvider();
+
+    if (detected) {
+      console.log('\n✅ Perfect! You\'re all set!\n');
+      console.log('Try it now:');
+      console.log('  quenderin add "Create a function to validate email addresses"\n');
+
+      // Save config
+      saveConfig({ provider: 'auto' });
+      return;
+    }
+
+    // No provider found - show options
+    console.log('❌ No LLM found. Choose an option:\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('\n🚀 EASIEST: Install Ollama (2 minutes)\n');
+    console.log('  1. Visit: https://ollama.ai');
+    console.log('  2. Download and install for your OS');
+    console.log('  3. Run: ollama pull codellama');
+    console.log('  4. Done! Run: quenderin setup\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('\n💳 Use OpenAI API (1 minute)\n');
+    console.log('  Create quenderin.json:');
+    console.log('  {');
+    console.log('    "provider": "openai",');
+    console.log('    "apiKey": "sk-your-key-here",');
+    console.log('    "modelName": "gpt-4"');
+    console.log('  }\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('\n🔌 Use any OpenAI-compatible API\n');
+    console.log('  (OpenRouter, LocalAI, LM Studio, etc.)\n');
+    console.log('  Create quenderin.json:');
+    console.log('  {');
+    console.log('    "provider": "openai",');
+    console.log('    "apiKey": "your-key",');
+    console.log('    "baseURL": "https://your-api-url",');
+    console.log('    "modelName": "your-model"');
+    console.log('  }\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  });
+
+// Test connection command
+program
+  .command('test')
+  .description('Test LLM connection')
+  .action(async () => {
+    console.log('\n🔌 Testing LLM connection...\n');
+    const success = await testConnection();
+    if (success) {
+      console.log('\n✅ Ready to generate code!\n');
+      process.exit(0);
+    } else {
+      console.log('\n❌ Connection failed. Run: quenderin setup\n');
+      process.exit(1);
+    }
   });
 
 // Model info command
@@ -137,7 +202,7 @@ program
   .option('-t, --tokens <number>', 'Max tokens to generate', '2048')
   .action(async (prompt: string, options) => {
     try {
-      const generatedCode = await generateCode(prompt, {
+      const generatedCode = await generateCodeSimple(prompt, {
         maxTokens: parseInt(options.tokens)
       });
 
