@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+
+# Local models directory (models are large)
+models/
+
+# Generated code directory
+src/gen/
+
+# Build artifacts
+*.tsbuildinfo
