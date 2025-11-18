@@ -1,7 +1,28 @@
 {
-  "name": "quenderin-poc",
+  "name": "quenderin",
   "version": "0.0.1",
+  "description": "Local LLM-powered code generation toolchain",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "quenderin": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "llm",
+    "code-generation",
+    "local-ai",
+    "llama",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "commander": "^12.1.0",
     "node-llama-cpp": "^3.2.0"
@@ -10,5 +31,8 @@
     "@types/node": "^20.14.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
