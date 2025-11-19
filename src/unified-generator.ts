@@ -120,9 +120,10 @@ export async function generateCodeSimple(
 
     console.log('=== Generation Complete ===\n');
     return result.trim();
-  } catch (error: any) {
-    console.error('Error during generation:', error.message);
-    throw new Error(`Code generation failed: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error during generation:', message);
+    throw new Error(`Code generation failed: ${message}`);
   }
 }
 
@@ -134,8 +135,9 @@ export async function testConnection(config: SimpleGeneratorConfig = {}): Promis
     const provider = await initializeProvider(config);
     console.log(`✓ Successfully connected to ${provider.name}`);
     return true;
-  } catch (error: any) {
-    console.error(`✗ Connection failed: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`✗ Connection failed: ${message}`);
     return false;
   }
 }

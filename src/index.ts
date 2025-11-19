@@ -202,8 +202,9 @@ program
         console.log(generatedCode);
         console.log('\n' + '='.repeat(60) + '\n');
       }
-    } catch (e: any) {
-      console.error('\n❌ Error:', e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      console.error('\n❌ Error:', message);
       console.error('\nTroubleshooting:');
       console.error('  1. Run "quenderin setup" to configure your LLM');
       console.error('  2. Or check your API key in quenderin.json\n');
@@ -252,8 +253,9 @@ program
           console.log('='.repeat(60));
           console.log(generatedCode);
           console.log('='.repeat(60) + '\n');
-        } catch (e: any) {
-          console.error('❌ Error:', e.message, '\n');
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : 'Unknown error';
+          console.error('❌ Error:', message, '\n');
         }
 
         ask(); // Continue the conversation

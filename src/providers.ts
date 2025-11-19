@@ -4,6 +4,7 @@
  */
 
 import OpenAI from 'openai';
+import { OllamaTagsResponse } from './types.js';
 
 export interface LLMProvider {
   name: string;
@@ -30,12 +31,12 @@ export class OllamaProvider implements LLMProvider {
       const response = await fetch(`${this.baseURL.replace('/v1', '')}/api/tags`);
       if (!response.ok) return false;
 
-      const data: any = await response.json();
-      const hasModel = data.models?.some((m: any) => m.name.includes(this.modelName));
+      const data = (await response.json()) as OllamaTagsResponse;
+      const hasModel = data.models?.some((m) => m.name.includes(this.modelName));
 
       if (!hasModel) {
         console.log(`Model '${this.modelName}' not found. Available models:`,
-          data.models?.map((m: any) => m.name).join(', ') || 'none');
+          data.models?.map((m) => m.name).join(', ') || 'none');
       }
 
       return hasModel;

@@ -12,3 +12,14 @@ src/gen/
 
 # Build artifacts
 *.tsbuildinfo
+
+# Configuration files with sensitive data (API keys)
+quenderin.json
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Editor directories
+.vscode/
+.idea/
