@@ -33,8 +33,9 @@ export function loadConfig(): QuenderinConfig {
   try {
     const configContent = fs.readFileSync(configPath, 'utf-8');
     return JSON.parse(configContent);
-  } catch (error: any) {
-    console.warn(`Warning: Could not parse ${CONFIG_FILENAME}: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`Warning: Could not parse ${CONFIG_FILENAME}: ${message}`);
     return {};
   }
 }
@@ -48,8 +49,9 @@ export function saveConfig(config: QuenderinConfig): void {
   try {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     console.log(`Configuration saved to ${CONFIG_FILENAME}`);
-  } catch (error: any) {
-    console.error(`Error saving configuration: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error saving configuration: ${message}`);
     throw error;
   }
 }

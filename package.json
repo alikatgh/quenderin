@@ -12,7 +12,15 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prepublishOnly": "npm run lint && npm test && npm run build"
   },
   "keywords": [
     "llm",
@@ -23,10 +31,21 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alikatgh/quenderin"
+  },
+  "files": [
+    "dist",
+    "ui",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "commander": "^12.1.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
     "multer": "^2.0.2",
     "node-llama-cpp": "^3.2.0",
     "openai": "^4.20.1"
@@ -36,8 +55,15 @@
     "@types/express": "^5.0.5",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.14.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
