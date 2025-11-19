@@ -4,6 +4,7 @@ import { generateCodeSimple, testConnection } from './unified-generator.js';
 import { saveConfig, loadConfig } from './config.js';
 import { autoDetectProvider, OllamaProvider } from './providers.js';
 import { interactiveSetup, quickSetup } from './interactive-setup.js';
+import { startUIServer } from './ui-server.js';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
@@ -101,6 +102,16 @@ program
   .description('Interactive setup - connect to an LLM in seconds!')
   .action(async () => {
     await interactiveSetup();
+  });
+
+// UI setup command - drag and drop interface
+program
+  .command('ui')
+  .description('Open web UI for super simple drag-and-drop LLM setup')
+  .option('-p, --port <number>', 'Port to run the UI server on', '3777')
+  .action(async (options) => {
+    const port = parseInt(options.port);
+    await startUIServer(port);
   });
 
 // Test connection command
@@ -256,11 +267,12 @@ program
 if (process.argv.length === 2) {
   console.log('\n⚡ Quenderin - Generate code from plain English\n');
   console.log('Commands:');
+  console.log('  quenderin ui              - 🎨 Drag & drop web UI (super easy!)');
   console.log('  quenderin add "<prompt>"  - Generate code once');
   console.log('  quenderin chat            - Interactive chat mode');
   console.log('  quenderin setup           - Configure your LLM');
   console.log('  quenderin --help          - Show all commands\n');
-  console.log('💡 Tip: Just run "quenderin chat" to start generating!\n');
+  console.log('💡 Tip: Run "quenderin ui" for the easiest setup experience!\n');
   process.exit(0);
 }
 

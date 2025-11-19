@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quenderin - LLM Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            margin-bottom: 30px;
+        }
+
+        .drop-zone:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.drag-over {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.05);
+        }
+
+        .drop-zone-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .drop-zone-text {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .drop-zone-hint {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            color: #999;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 45%;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .button.secondary:hover {
+            background: #e0e0e0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .provider-fields {
+            display: none;
+        }
+
+        .provider-fields.active {
+            display: block;
+        }
+
+        .ollama-detected {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .quick-setup {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quick-setup-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+
+        .quick-setup-text {
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Quenderin Setup</h1>
+        <p class="subtitle">Super simple LLM connection in seconds</p>
+
+        <div id="message" class="message"></div>
+
+        <div id="ollamaDetected" class="ollama-detected hidden">
+            ✓ Ollama detected! Found models: <span id="ollamaModels"></span>
+        </div>
+
+        <!-- Drag and Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">📁</div>
+            <div class="drop-zone-text">Drag & Drop Config File</div>
+            <div class="drop-zone-hint">or click to browse (quenderin.json)</div>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+        </div>
+
+        <div class="divider">OR</div>
+
+        <!-- Quick Setup Form -->
+        <form id="setupForm">
+            <div class="quick-setup">
+                <div class="quick-setup-title">Quick Setup</div>
+                <div class="quick-setup-text">Just choose your provider and paste your API key</div>
+            </div>
+
+            <div class="form-group">
+                <label for="provider">Provider</label>
+                <select id="provider" name="provider">
+                    <option value="auto">Auto-detect (recommended)</option>
+                    <option value="ollama">Ollama (local)</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="openai-compatible">OpenAI-Compatible</option>
+                </select>
+            </div>
+
+            <!-- OpenAI Fields -->
+            <div id="openaiFields" class="provider-fields">
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="password" id="apiKey" name="apiKey" placeholder="sk-...">
+                    <div class="input-hint">Your OpenAI API key</div>
+                </div>
+                <div class="form-group">
+                    <label for="modelName">Model Name</label>
+                    <input type="text" id="modelName" name="modelName" placeholder="gpt-4" value="gpt-4">
+                </div>
+            </div>
+
+            <!-- OpenAI-Compatible Fields -->
+            <div id="compatibleFields" class="provider-fields">
+                <div class="form-group">
+                    <label for="baseURL">Base URL</label>
+                    <input type="text" id="baseURL" name="baseURL" placeholder="https://api.openai.com/v1">
+                    <div class="input-hint">API endpoint URL</div>
+                </div>
+                <div class="form-group">
+                    <label for="apiKeyCompat">API Key</label>
+                    <input type="password" id="apiKeyCompat" name="apiKeyCompat">
+                </div>
+                <div class="form-group">
+                    <label for="modelNameCompat">Model Name</label>
+                    <input type="text" id="modelNameCompat" name="modelNameCompat">
+                </div>
+            </div>
+
+            <!-- Ollama Fields -->
+            <div id="ollamaFields" class="provider-fields">
+                <div class="form-group">
+                    <label for="ollamaModel">Model Name</label>
+                    <input type="text" id="ollamaModel" name="ollamaModel" placeholder="codellama" value="codellama">
+                    <div class="input-hint">e.g., codellama, llama3, mistral</div>
+                </div>
+                <div class="form-group">
+                    <label for="ollamaURL">Base URL (optional)</label>
+                    <input type="text" id="ollamaURL" name="ollamaURL" placeholder="http://localhost:11434/v1">
+                </div>
+            </div>
+
+            <button type="submit" class="button">Save Configuration</button>
+            <button type="button" id="testBtn" class="button secondary">Test Connection</button>
+        </form>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
