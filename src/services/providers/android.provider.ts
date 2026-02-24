@@ -57,8 +57,56 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         });
     }
 
+    // Helper to get just the UI XML quickly without screenshot overhead
+    private async getUiHierarchyXml(): Promise<string> {
+        const uuid = crypto.randomUUID();
+        const xmlFileName = `window_dump_poll_${uuid}.xml`;
+        const xmlTempFile = path.join(os.tmpdir(), xmlFileName);
+
+        try {
+            await this.spawnAdb(['shell', 'uiautomator', 'dump', '/sdcard/window_dump.xml']);
+            await this.spawnAdb(['pull', '/sdcard/window_dump.xml', xmlTempFile]);
+            const xml = await fs.readFile(xmlTempFile, 'utf-8');
+            await fs.unlink(xmlTempFile).catch(() => { });
+            return xml;
+        } catch (e) {
+            return ""; // Fallback to empty string for bad reads
+        }
+    }
+
+    private async waitForUiIdle(): Promise<void> {
+        return new Promise(async (resolve) => {
+            let lastXml = "";
+            let stableCount = 0;
+            const maxPolls = 10; // Up to ~5 seconds (10 * 500ms)
+
+            for (let i = 0; i < maxPolls; i++) {
+                // Short wait between snapshots
+                await new Promise(res => setTimeout(res, 500));
+
+                const currentXml = await this.getUiHierarchyXml();
+
+                // Compare length/structure coarsely first, falling back to full string equality
+                if (currentXml && currentXml === lastXml) {
+                    stableCount++;
+                } else {
+                    stableCount = 0;
+                }
+
+                lastXml = currentXml;
+
+                // Two consecutive identical snapshots = UI has settled
+                if (stableCount >= 2) {
+                    break;
+                }
+            }
+            resolve();
+        });
+    }
+
     public async click(x: number, y: number): Promise<void> {
         await this.spawnAdb(['shell', 'input', 'tap', Math.round(x).toString(), Math.round(y).toString()]);
+        await this.waitForUiIdle();
     }
 
     public async type(text: string): Promise<void> {
@@ -69,6 +117,7 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
 
         // Safely passes text as an exact argument, no shell parsing
         await this.spawnAdb(['shell', 'input', 'text', text]);
+        await this.waitForUiIdle();
     }
 
     public async scroll(direction: 'up' | 'down'): Promise<void> {
@@ -86,6 +135,7 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         }
 
         await this.spawnAdb(['shell', 'input', 'swipe', Math.round(startX).toString(), Math.round(startY).toString(), Math.round(startX).toString(), Math.round(endY).toString(), '300']);
+        await this.waitForUiIdle();
     }
 
     public async pressKey(key: string): Promise<void> {
@@ -96,9 +146,13 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         if (key.toLowerCase() === 'home') code = '3';
 
         await this.spawnAdb(['shell', 'input', 'keyevent', code]);
+        await this.waitForUiIdle();
     }
 
     public async getScreenContext(): Promise<{ xml: string, screenshotPath: string }> {
+        // Ensure UI is totally idle before returning the primary visual context to the LLM agent
+        await this.waitForUiIdle();
+
         const uuid = crypto.randomUUID();
         const xmlFileName = `window_dump_${uuid}.xml`;
         const pngFileName = `screen_${uuid}.png`;

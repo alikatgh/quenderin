@@ -160,24 +160,23 @@ export class AgentService {
                     break;
                 }
 
+                // 6. Cache Pre-State
+                const preStateElements = [...state.elements];
+
                 // Execute action via ActionExecutor
-                const success = await this.actionExecutor.execute(actionObj, state.elements, emitter);
+                const success = await this.actionExecutor.execute(actionObj, preStateElements, emitter);
 
                 if (success) {
-                    if (actionType === 'click') {
-                        actionHistory.push(`[Success] Clicked element ${actionObj.id}`);
-                    } else if (actionType === 'input') {
-                        actionHistory.push(`[Success] Typed "${actionObj.text}" into element ${actionObj.id}`);
-                    } else if (actionType === 'swipe') {
-                        actionHistory.push(`[Success] Swiped ${actionObj.direction || 'down'}`);
-                    } else if (actionType === 'back') {
-                        actionHistory.push(`[Success] Pressed BACK`);
-                    } else if (actionType === 'home') {
-                        actionHistory.push(`[Success] Pressed HOME`);
-                    } else if (actionType === 'enter') {
-                        actionHistory.push(`[Success] Pressed ENTER`);
-                    }
+                    // 7. Re-verify the UI after settling
+                    const postState = await this.uiVerifier.waitForIdle(emitter);
+
+                    // 8. Generate actionable contextual feedback for LLM
+                    const verificationResult = await this.uiVerifier.verifyAction(actionObj, preStateElements, postState.elements);
+                    actionHistory.push(verificationResult);
+
                     expectedActionEffect = true;
+                    // Overwrite the current loop state with the newly grabbed post-state so step #2 doesn't double dip
+                    previousUiHash = postState.hash;
                 } else {
                     actionHistory.push(`[Failed] Failed to execute ${actionType}`);
                 }

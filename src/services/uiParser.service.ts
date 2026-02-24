@@ -2,17 +2,32 @@ import { XMLParser } from 'fast-xml-parser';
 import { UIElement } from '../types/index.js';
 
 export class UiParserService {
-    public parseUI(xmlContent: string): { elements: UIElement[], textRepresentation: string } {
-        const parser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: ""
-        });
+    private xmlParser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: ""
+    });
 
-        const parsed = parser.parse(xmlContent);
-        const elements: UIElement[] = [];
+    public parseUI(xmlContent: string): { elements: UIElement[], textRepresentation: string } {
+        const rawTree = this.parseRawTree(xmlContent);
+        const stateMap = this.buildStateMap(rawTree);
+        const textRepresentation = this.buildLLMPromptRepresentation(stateMap);
+
+        const elements = Array.from(stateMap.values());
+        return { elements, textRepresentation };
+    }
+
+    public parseRawTree(xmlContent: string): any {
+        return this.xmlParser.parse(xmlContent);
+    }
+
+    public buildStateMap(rawTree: any): Map<number, UIElement> {
+        const stateMap = new Map<number, UIElement>();
         let idCounter = 0;
 
-        function extractBounds(boundsString: string) {
+        const extractBounds = (boundsString: string) => {
+            if (!boundsString) {
+                return { center: { x: 0, y: 0 }, rect: { x: 0, y: 0, width: 0, height: 0 } };
+            }
             const match = boundsString.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
             if (match) {
                 const x1 = parseInt(match[1], 10);
@@ -24,18 +39,13 @@ export class UiParserService {
                         x: Math.round(x1 + (x2 - x1) / 2),
                         y: Math.round(y1 + (y2 - y1) / 2)
                     },
-                    rect: {
-                        x: x1,
-                        y: y1,
-                        width: x2 - x1,
-                        height: y2 - y1
-                    }
+                    rect: { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
                 };
             }
             return { center: { x: 0, y: 0 }, rect: { x: 0, y: 0, width: 0, height: 0 } };
-        }
+        };
 
-        function traverse(node: any) {
+        const traverse = (node: any) => {
             if (!node) return;
 
             if (node.node) {
@@ -49,8 +59,7 @@ export class UiParserService {
             const scrollable = node.scrollable === 'true';
             const focusable = node.focusable === 'true';
             const checkable = node.checkable === 'true';
-            const longClickable = node['long-clickable'] === 'true';
-            const enabled = node.enabled !== 'false'; // Defaults to true if missing
+            const enabled = node.enabled !== 'false';
             const visible = node.visible !== 'false' && node.displayed !== 'false';
 
             const text = node.text || '';
@@ -59,55 +68,56 @@ export class UiParserService {
             const resourceId = node['resource-id'] || '';
             const className = node.class || '';
 
-            const hasAction = clickable || scrollable || focusable || checkable || longClickable || className.includes('EditText');
-            const hasMeaningfulContent = text.length > 0 || contentDesc.length > 0;
-            const hasId = resourceId.length > 0;
+            const parsedBounds = extractBounds(bounds);
 
-            // Keep interactable nodes AND nodes with text, descriptions, or IDs (for layout context)
-            const shouldInclude = bounds && (hasAction || hasMeaningfulContent || hasId);
+            const element: UIElement = {
+                id: idCounter++,
+                text,
+                contentDesc,
+                className,
+                resourceId,
+                clickable,
+                scrollable,
+                focusable,
+                enabled,
+                visible,
+                bounds,
+                center: parsedBounds.center,
+                rect: parsedBounds.rect
+            };
 
-            if (shouldInclude) {
-                const parsedBounds = extractBounds(bounds);
-                elements.push({
-                    id: idCounter++,
-                    text,
-                    contentDesc,
-                    className,
-                    resourceId,
-                    clickable,
-                    scrollable,
-                    focusable,
-                    enabled,
-                    visible,
-                    bounds,
-                    center: parsedBounds.center,
-                    rect: parsedBounds.rect
-                });
-            }
+            stateMap.set(element.id, element);
+        };
+
+        if (rawTree && rawTree.hierarchy) {
+            traverse(rawTree.hierarchy);
         }
 
-        if (parsed && parsed.hierarchy) {
-            traverse(parsed.hierarchy);
-        }
-
-        const textRepresentation = this.formatElementsToSymbolicState(elements);
-        return { elements, textRepresentation };
+        return stateMap;
     }
 
-    public formatElementsToSymbolicState(elements: UIElement[]): string {
-        const symbolicNodes = elements.map(el => {
-            return {
+    public buildLLMPromptRepresentation(stateMap: Map<number, UIElement>): string {
+        const llmNodes: {
+            id: number;
+            text: string | null;
+            contentDescription: string | null;
+            bounds: [number, number, number, number] | null;
+            isInteractable: boolean;
+        }[] = [];
+
+        for (const el of stateMap.values()) {
+            const isClickableClass = el.className.includes('Button') || el.className.includes('EditText');
+            const isInteractable = el.clickable || el.scrollable || el.focusable || !!isClickableClass;
+
+            llmNodes.push({
                 id: el.id,
-                class: el.className.split('.').pop(),
-                ...(el.text ? { text: el.text } : {}),
-                ...(el.contentDesc ? { desc: el.contentDesc } : {}),
-                ...(el.resourceId ? { res: el.resourceId.split('/').pop() } : {}),
-                ...(el.clickable ? { clickable: true } : {}),
-                ...(el.scrollable ? { scrollable: true } : {}),
-                ...(el.focusable ? { focusable: true } : {}),
-                ...(!el.enabled ? { enabled: false } : {})
-            };
-        });
-        return JSON.stringify(symbolicNodes);
+                text: el.text.length > 0 ? el.text : null,
+                contentDescription: el.contentDesc.length > 0 ? el.contentDesc : null,
+                bounds: null,
+                isInteractable: isInteractable
+            });
+        }
+
+        return JSON.stringify(llmNodes);
     }
 }

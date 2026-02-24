@@ -44,6 +44,7 @@ export interface ILlmProvider extends EventEmitter {
 export interface AgentAction {
     action: 'click' | 'input' | 'scroll' | 'done';
     id?: number | string;
+    target_id?: number | string;
     x?: number;
     y?: number;
     text?: string;

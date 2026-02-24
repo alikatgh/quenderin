@@ -74,7 +74,8 @@ export class UiVerifier {
                     emitter.emit('status', `Found ${ocrElements.length} synthetic text nodes via OCR.`);
                     finalParsed.elements.push(...ocrElements);
                     // Regenerate the symbolic JSON text for the LLM
-                    finalParsed.textRepresentation = this.uiParserService.formatElementsToSymbolicState(finalParsed.elements);
+                    const stateMap = new Map(finalParsed.elements.map(el => [el.id, el]));
+                    finalParsed.textRepresentation = this.uiParserService.buildLLMPromptRepresentation(stateMap);
                 }
             } catch (err: any) {
                 emitter.emit('error', `Vision Fallback Error: ${err.message}`);
@@ -89,5 +90,41 @@ export class UiVerifier {
             hash,
             screenshotPath: finalScreenshotPath
         };
+    }
+
+    public async verifyAction(
+        actionObj: any,
+        preStateElements: UIElement[],
+        postStateElements: UIElement[]
+    ): Promise<string> {
+        const actionType = actionObj.action?.toLowerCase();
+        const targetIdRaw = actionObj.target_id !== undefined ? actionObj.target_id : actionObj.id;
+
+        // If it wasn't a targeted interaction, we just check for general state hashes in the agent loop
+        if (!targetIdRaw || (actionType !== 'click' && actionType !== 'input')) {
+            return actionType ? `[Success] Executed ${actionType}.` : '[Success] Action executed.';
+        }
+
+        const targetId = typeof targetIdRaw === 'string' ? parseInt(targetIdRaw, 10) : targetIdRaw;
+
+        // Find the node in the PRE state to know what we interacted with
+        const preNode = preStateElements.find(e => e.id === targetId);
+        if (!preNode) {
+            return `[Warning] Executed action on ID ${targetId}, but it was not found in the pre-action state.`;
+        }
+
+        // Check if the node STILL exists exactly in the POST state
+        // (By text, desc, and class, since IDs might shift on complete redraws)
+        const nodeStillExists = postStateElements.some(e =>
+            e.className === preNode.className &&
+            e.text === preNode.text &&
+            e.contentDesc === preNode.contentDesc
+        );
+
+        if (nodeStillExists) {
+            return `[Failed] Action on '${preNode.text || preNode.className}' did not dismiss or change it. It is still visible. You may need to scroll, or it may be disabled.`;
+        } else {
+            return `[Success] Action executed and UI changed. Element '${preNode.text || preNode.className}' is no longer in the same state.`;
+        }
     }
 }
