@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, AlertCircle, ArrowRight, Save, Mic } from 'lucide-react';
+import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Save, Mic, Download, CheckCircle2, BrainCircuit } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { Sidebar } from './components/Sidebar.js';
@@ -10,10 +10,21 @@ import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
 import { Docs } from './components/Docs.js';
 import { Metrics } from './components/Metrics.js';
 
-function WelcomeWizard({ onDismiss }: { onDismiss: () => void }) {
+function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void, downloadProgress: number }) {
   const [step, setStep] = useState(1);
   const [picovoiceKey, setPicovoiceKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isModelDownloading, setIsModelDownloading] = useState(false);
+
+  const handleDownloadModel = async () => {
+    setIsModelDownloading(true);
+    try {
+      await fetch('http://localhost:3000/api/models/download', { method: 'POST' });
+    } catch (e) {
+      console.error("Failed to sequence download routing from Wizard", e);
+      setIsModelDownloading(false);
+    }
+  };
 
   const handleFinish = async () => {
     setIsSaving(true);
@@ -58,18 +69,61 @@ function WelcomeWizard({ onDismiss }: { onDismiss: () => void }) {
 
           {step === 2 && (
             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-xl flex items-center justify-center mb-5 border border-orange-200 dark:border-orange-500/20 shadow-sm">
-                <AlertCircle className="w-6 h-6" />
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-5 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
+                <BrainCircuit className="w-6 h-6" />
               </div>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Install Neural Weights</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                Download your `.gguf` target model. To prevent absolute path errors, place it exactly inside the agent's safe environment block:
+                Quenderin needs its instruction-tuned offline LLaMA architecture to process your screen coordinates:
               </p>
-              <div className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl mb-6 flex flex-col gap-1 border border-zinc-200 dark:border-zinc-700/50">
-                <code className="text-xs text-orange-600 dark:text-orange-400 font-mono break-all font-semibold">wget https://.../llama-3-instruct-8b.Q4_K_M.gguf</code>
-                <code className="text-xs text-zinc-700 dark:text-zinc-300 font-mono break-all font-semibold pb-1">mv llama-3-instruct-8b.Q4_K_M.gguf ~/.quenderin/models/</code>
-              </div>
-              <button onClick={() => setStep(3)} className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group">
+
+              {downloadProgress === 100 ? (
+                <div className="animate-in fade-in duration-300 mb-6">
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">Weights Installed Successfully</p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The 4.7GB GGUF architecture is synchronized to disk.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : isModelDownloading || downloadProgress > 0 ? (
+                <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
+                  <div className="flex justify-between text-xs font-semibold mb-2">
+                    <span className="text-emerald-600 dark:text-emerald-400">Downloading Native Checkpoint...</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 mb-4 overflow-hidden border border-zinc-300 dark:border-zinc-600">
+                    <div
+                      className="bg-emerald-500 h-3 transition-all duration-300 ease-out"
+                      style={{ width: `${downloadProgress}%` }}
+                    ></div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className={`text-xs flex items-center gap-2 ${downloadProgress > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      {downloadProgress > 0 && <CheckCircle2 className="w-3.5 h-3.5" />} 1. Downloading Native Checkpoint...
+                    </p>
+                    <p className={`text-xs flex items-center gap-2 ${downloadProgress >= 99 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      {downloadProgress >= 99 && <CheckCircle2 className="w-3.5 h-3.5" />} 2. Saving to safe offline storage...
+                    </p>
+                    <p className={`text-xs flex items-center gap-2 ${downloadProgress === 100 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      {downloadProgress === 100 && <CheckCircle2 className="w-3.5 h-3.5" />} 3. Initializing Engine.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in duration-300 mb-6">
+                  <button onClick={handleDownloadModel} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <Download className="w-5 h-5" /> Download Brain Automatically (4.7GB)
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => setStep(3)}
+                disabled={downloadProgress < 100 && isModelDownloading}
+                className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Next: Enable Voice <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -165,10 +219,25 @@ function AppContent() {
     setShowOnboarding(false);
   };
 
+  const handleTriggerDownload = async () => {
+    try {
+      await fetch('http://localhost:3000/api/models/download', { method: 'POST' });
+    } catch (e) {
+      console.error("Failed to sequence download routing from parent", e);
+    }
+  };
+
   return (
     <>
-      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} />}
-      {requiredAction && <TroubleshooterGuide action={requiredAction} onResolved={clearRequiredAction} downloadProgress={downloadProgress} />}
+      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} downloadProgress={downloadProgress} />}
+      {requiredAction &&
+        <TroubleshooterGuide
+          action={requiredAction}
+          onResolved={clearRequiredAction}
+          downloadProgress={downloadProgress}
+          onTriggerDownload={handleTriggerDownload}
+        />
+      }
 
       <div className={`flex h-screen w-full bg-white dark:bg-[#18181b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-500 ${showOnboarding || !!requiredAction ? 'blur-md pointer-events-none opacity-50 scale-[0.98]' : ''}`}>
 

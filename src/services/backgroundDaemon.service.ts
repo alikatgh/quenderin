@@ -126,7 +126,7 @@ export class BackgroundDaemonService extends EventEmitter {
                 }
 
             } catch (err: any) {
-                if (!err.message.includes('adb: no devices/emulators found')) {
+                if (err.code !== 'ADB_MISSING' && !err.message.includes('Android Device Not Found') && !err.message.includes('adb: no devices/emulators found')) {
                     this.emit('error', `Background polling error: ${err.message.split('\n')[0]}`);
                 }
             }

@@ -21,15 +21,37 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
             proc.stderr.on('data', (data) => stderr += data.toString());
 
             proc.on('close', (code) => {
-                if (code === 0) {
+                const output = (stdout + stderr).toLowerCase();
+
+                // ADB doesn't always exit with > 0 when "no devices" occurs
+                if (code === 0 && !output.includes('error: no devices') && !output.includes('error: device unauthorized')) {
                     resolve(stdout.trim());
                 } else {
+                    let errCode = 'ADB_ERROR';
+                    let title = 'ADB Error';
+                    let message = 'An unknown ADB error occurred.';
+
+                    if (output.includes('no devices/emulators found') || output.includes('device offline')) {
+                        errCode = 'ADB_MISSING';
+                        title = 'Android Device Not Found';
+                        message = 'Ensure your emulator is running or Android device is connected via USB.';
+                    } else if (output.includes('unauthorized')) {
+                        errCode = 'ADB_UNAUTHORIZED';
+                        title = 'Device Unauthorized';
+                        message = 'Please check your Android device screen and authorize the USB debugging connection.';
+                    }
+
+                    // Emit user-friendly action required event
                     this.emit('action_required', {
-                        code: 'ADB_MISSING',
-                        title: 'Android Device Not Found',
-                        message: 'Ensure your emulator is running and ADB is authorized. Check USB debugging settings.'
+                        code: errCode,
+                        title,
+                        message
                     });
-                    reject(new Error(`ADB Command failed: adb ${args.join(' ')}\n${stderr}`));
+
+                    // Reject with a clean, user-friendly error instead of raw shell trace
+                    const error = new Error(title);
+                    (error as any).code = errCode;
+                    reject(error);
                 }
             });
         });

@@ -85,7 +85,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
     if (llmService) {
         app.post('/api/models/download', (req, res) => {
-            llmService.downloadDefaultModel().catch(e => console.error("Background model download failed:", e));
+            llmService.downloadModel().catch(e => console.error("Background model download failed:", e));
             res.json({ message: "Model download initiated." });
         });
     }

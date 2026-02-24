@@ -60,7 +60,13 @@ export class VoiceService extends EventEmitter {
         try {
             this.recorder.start();
         } catch (e: any) {
-            console.error('[VoiceService] Microphone access denied or in use:', e.message);
+            console.error('[VoiceService] Microphone access denied or hardware locked:', e.message);
+            this.emit('action_required', {
+                code: 'MIC_ACCESS_DENIED',
+                title: 'Microphone Unavailable',
+                message: 'Quenderin requires microphone access to hear wake words. Ensure no other application is locking the mic and your OS permissions allow access.'
+            });
+            this.shutdown();
             return;
         }
 

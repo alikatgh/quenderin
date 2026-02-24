@@ -30,8 +30,27 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             return this.initPromise;
         }
 
-        this.initPromise = (async () => {
+        const promise = (async () => {
             try {
+                // Safeguard check before crashing node-llama-cpp
+                if (!fs.existsSync(modelPath)) {
+                    const dir = path.dirname(modelPath);
+                    if (!fs.existsSync(dir)) {
+                        fs.mkdirSync(dir, { recursive: true });
+                    }
+                    this.emit('action_required', {
+                        code: 'MODEL_MISSING',
+                        title: 'AI Model Missing',
+                        message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
+                        autoTrigger: 'downloadModel'
+                    });
+
+                    // Return a rejected promise instead of throwing to prevent crashing the process
+                    const err = new Error("MODEL_MISSING");
+                    (err as any).code = "MODEL_MISSING";
+                    return Promise.reject(err);
+                }
+
                 const llama = await getLlama();
                 const model = await llama.loadModel({ modelPath });
                 const context = await model.createContext();
@@ -39,24 +58,31 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 this.contextInstance = context;
                 return { model, context };
             } catch (error: any) {
-                if (error.message && error.message.includes('ENOENT')) {
+                const isModelMissing = error?.code === "MODEL_MISSING" || error?.code === "ENOENT";
+
+                if (isModelMissing && error?.code !== "MODEL_MISSING") {
                     this.emit('action_required', {
                         code: 'MODEL_MISSING',
                         title: 'AI Model Missing',
-                        message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.'
+                        message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
+                        autoTrigger: 'downloadModel'
                     });
-                } else {
+                }
+
+                if (!isModelMissing) {
                     console.error("Failed to load LLaMA model:", error);
                 }
+
                 this.initPromise = null;
-                throw error;
+                return Promise.reject(error);
             }
         })();
 
-        return this.initPromise;
+        this.initPromise = promise;
+        return promise;
     }
 
-    public async downloadDefaultModel(): Promise<void> {
+    public async downloadModel(): Promise<void> {
         if (this.isDownloading) return;
         this.isDownloading = true;
 
