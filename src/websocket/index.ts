@@ -96,7 +96,14 @@ export class WebSocketManager {
                             const response = await this.llmService.generalChat(data.message);
                             ws.send(JSON.stringify({ type: 'chat_response', message: response }));
                         } catch (e: any) {
-                            if (!isActionRequiredError(e)) {
+                            if (isActionRequiredError(e)) {
+                                pushActionRequired({
+                                    code: e?.code || 'MODEL_MISSING',
+                                    title: 'AI Model Missing',
+                                    message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
+                                    autoTrigger: 'downloadModel'
+                                });
+                            } else {
                                 ws.send(JSON.stringify({ type: 'error', message: `Chat Error: ${e.message}` }));
                             }
                         }

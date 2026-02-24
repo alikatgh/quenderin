@@ -14,11 +14,10 @@ import { LlmService } from './services/llm.service.js';
 export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService): Express {
     const app = express();
 
-    // Global Middlewares
     app.use((req, res, next) => {
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
         );
         next();
     });
