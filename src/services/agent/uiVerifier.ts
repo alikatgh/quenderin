@@ -18,11 +18,12 @@ export class UiVerifier {
         return crypto.createHash('md5').update(hashContext).digest('hex');
     }
 
-    public async waitForIdle(emitter: AgentEventEmitter): Promise<{ elements: UIElement[], textRepresentation: string, hash: string }> {
+    public async waitForIdle(emitter: AgentEventEmitter): Promise<{ elements: UIElement[], textRepresentation: string, hash: string, screenshotPath: string }> {
         let isIdle = false;
         let finalParsed: { elements: UIElement[], textRepresentation: string } | null = null;
         let lastElementsLength = -1;
         let stableCount = 0;
+        let finalScreenshotPath = "";
 
         emitter.emit('status', "Waiting for UI to become idle...");
 
@@ -41,6 +42,8 @@ export class UiVerifier {
                 if (stableCount >= 2) {
                     isIdle = true;
                     finalParsed = parsed;
+                    // Always capture the final visual frame for the iteration, even if OCR is disabled
+                    finalScreenshotPath = await this.deviceService.screencap();
                 } else {
                     await new Promise(res => setTimeout(res, 500));
                 }
@@ -54,13 +57,12 @@ export class UiVerifier {
         if (finalParsed && finalParsed.elements.length < 5) {
             emitter.emit('status', "Few UI elements detected. Triggering Vision OCR Fallback...");
             try {
-                const screenshotPath = await this.deviceService.screencap();
                 // Find next available ID
                 const nextId = finalParsed.elements.length > 0
                     ? Math.max(...finalParsed.elements.map(e => e.id)) + 1
                     : 1000;
 
-                const ocrElements = await this.ocrService.extractTextElements(screenshotPath, nextId);
+                const ocrElements = await this.ocrService.extractTextElements(finalScreenshotPath, nextId);
 
                 if (ocrElements.length > 0) {
                     emitter.emit('status', `Found ${ocrElements.length} synthetic text nodes via OCR.`);
@@ -78,7 +80,8 @@ export class UiVerifier {
         return {
             elements: finalParsed!.elements,
             textRepresentation: finalParsed!.textRepresentation,
-            hash
+            hash,
+            screenshotPath: finalScreenshotPath
         };
     }
 }

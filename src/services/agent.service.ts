@@ -125,7 +125,8 @@ export class AgentService {
             const commandText = await this.llmProvider.generateAction(
                 step === 1 ? SYSTEM_PROMPT : "",
                 prompt,
-                { maxTokens: 150, temperature: 0.1 }
+                { maxTokens: 150, temperature: 0.1 },
+                state.screenshotPath
             );
             emitter.emit('decide', commandText);
 

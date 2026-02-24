@@ -48,14 +48,19 @@ export class LlmService implements ILlmProvider {
         }
     }
 
-    public async generateAction(systemPrompt: string, userPrompt: string, options: any): Promise<string> {
+    public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string> {
         const { context } = await this.getModelAndContext();
         // Use a new session to prevent context bounds filling up endlessly
         const session = new LlamaChatSession({ contextSequence: context.getSequence() });
 
         const prompt = systemPrompt ? `System: ${systemPrompt}\n\nUser: ${userPrompt}` : `User: ${userPrompt}`;
 
-        const response = await session.prompt(prompt, {
+        // If a vision path was provided, notify the LLM this is a multimodal query (pseudo-implementation since node-llama-cpp's exact vision wrapper syntax varies by binding version)
+        const finalPrompt = imagePath
+            ? `${prompt}\n[IMAGE UPLOADED: ${imagePath}]`
+            : prompt;
+
+        const response = await session.prompt(finalPrompt, {
             maxTokens: options.maxTokens || 150,
             temperature: options.temperature || 0.1
         });

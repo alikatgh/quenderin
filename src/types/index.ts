@@ -35,5 +35,5 @@ export interface IDeviceService {
 export interface ILlmProvider {
     generateCode(prompt: string): Promise<string>;
     generalChat(prompt: string): Promise<string>;
-    generateAction(systemPrompt: string, userPrompt: string, options: any): Promise<string>;
+    generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
 }
