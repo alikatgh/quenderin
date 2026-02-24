@@ -2,10 +2,11 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import { IDeviceService } from '../types/index.js';
 
 const execAsync = promisify(exec);
 
-export class AdbService {
+export class AdbService implements IDeviceService {
     public async execAdb(command: string): Promise<string> {
         try {
             const { stdout } = await execAsync(`adb ${command}`);

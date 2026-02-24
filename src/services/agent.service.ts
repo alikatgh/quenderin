@@ -1,14 +1,11 @@
-import { LlamaChatSession } from "node-llama-cpp";
 import { EventEmitter } from "events";
-import { LlmService } from "./llm.service.js";
-import { AdbService } from "./adb.service.js";
 import { UiParserService } from "./uiParser.service.js";
 import { OcrService } from "./ocr.service.js";
 import { MemoryService } from "./memory.service.js";
 import { PromptBuilder } from "./agent/promptBuilder.js";
 import { ActionExecutor } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
-import { AgentEvents, UIElement } from "../types/index.js";
+import { AgentEvents, UIElement, IDeviceService, ILlmProvider } from "../types/index.js";
 import { MetricsService, AgentMetrics } from "./metrics.service.js";
 
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
@@ -42,24 +39,20 @@ export class AgentService {
     private uiVerifier: UiVerifier;
 
     constructor(
-        private llmService: LlmService,
-        private adbService: AdbService,
+        private llmProvider: ILlmProvider,
+        private deviceService: IDeviceService,
         private uiParserService: UiParserService,
         private metricsService: MetricsService,
         private ocrService: OcrService,
         private memoryService: MemoryService
     ) {
         this.promptBuilder = new PromptBuilder(this.memoryService);
-        this.actionExecutor = new ActionExecutor(this.adbService);
-        this.uiVerifier = new UiVerifier(this.adbService, this.uiParserService, this.ocrService);
+        this.actionExecutor = new ActionExecutor(this.deviceService);
+        this.uiVerifier = new UiVerifier(this.deviceService, this.uiParserService, this.ocrService);
     }
 
     public async runAgentLoop(goal: string, maxSteps: number = 15, emitter: AgentEventEmitter = new AgentEventEmitter()): Promise<void> {
         emitter.emit('status', ` Starting Robust Agent Loop for goal: ${goal}`);
-
-        const { context } = await this.llmService.getModelAndContext();
-        // Use a new session to prevent context bounds filling up endlessly
-        const session = new LlamaChatSession({ contextSequence: context.getSequence() });
 
         let step = 0;
         let actionHistory: string[] = [];
@@ -96,12 +89,11 @@ export class AgentService {
             emitter.emit('status', " Deciding next action...");
 
             // 4. Generate LLM Action
-            const response = await session.prompt(step === 1 ? `System: ${SYSTEM_PROMPT}\n\nUser: ${prompt}` : `User: ${prompt}`, {
-                maxTokens: 150,
-                temperature: 0.1
-            });
-
-            const commandText = response.trim();
+            const commandText = await this.llmProvider.generateAction(
+                step === 1 ? SYSTEM_PROMPT : "",
+                prompt,
+                { maxTokens: 150, temperature: 0.1 }
+            );
             emitter.emit('decide', commandText);
 
             try {

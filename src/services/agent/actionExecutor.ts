@@ -1,9 +1,8 @@
-import { AdbService } from '../adb.service.js';
-import { AgentEvents, UIElement } from '../../types/index.js';
+import { AgentEvents, UIElement, IDeviceService } from '../../types/index.js';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class ActionExecutor {
-    constructor(private adbService: AdbService) { }
+    constructor(private deviceService: IDeviceService) { }
 
     public async execute(actionObj: any, elements: UIElement[], emitter: AgentEventEmitter): Promise<boolean> {
         const actionType = actionObj.action;
@@ -32,7 +31,7 @@ export class ActionExecutor {
                 }
 
                 emitter.emit('status', `Clicking dynamically on element ${targetId} at (${el.center.x}, ${el.center.y})`);
-                await this.adbService.tap(el.center.x, el.center.y);
+                await this.deviceService.tap(el.center.x, el.center.y);
                 return true;
             } else {
                 emitter.emit('error', `Element with id ${targetId} not found.`);
@@ -44,10 +43,10 @@ export class ActionExecutor {
             const el = elements.find(e => e.id === targetId);
             if (el) {
                 emitter.emit('status', `Typing into element ${targetId}`);
-                await this.adbService.tap(el.center.x, el.center.y);
+                await this.deviceService.tap(el.center.x, el.center.y);
                 // Simple delay for keyboard to appear
                 await new Promise(res => setTimeout(res, 500));
-                await this.adbService.typeText(text);
+                await this.deviceService.typeText(text);
                 return true;
             } else {
                 emitter.emit('error', `Element with id ${targetId} not found for input.`);
@@ -68,7 +67,7 @@ export class ActionExecutor {
                 endY = startY + (height * 0.3);
             }
 
-            await this.adbService.swipe(startX, startY, startX, endY, 300);
+            await this.deviceService.swipe(startX, startY, startX, endY, 300);
             return true;
         }
 

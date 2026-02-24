@@ -22,3 +22,18 @@ export interface AgentEvents {
     action: (msg: string) => void;
     done: () => void;
 }
+
+export interface IDeviceService {
+    dumpUI(): Promise<string>;
+    screencap(): Promise<string>;
+    tap(x: number, y: number): Promise<void>;
+    typeText(text: string, clearFirst?: boolean): Promise<void>;
+    swipe(x1: number, y1: number, x2: number, y2: number, durationMs?: number): Promise<void>;
+    keyevent(code: number): Promise<void>;
+}
+
+export interface ILlmProvider {
+    generateCode(prompt: string): Promise<string>;
+    generalChat(prompt: string): Promise<string>;
+    generateAction(systemPrompt: string, userPrompt: string, options: any): Promise<string>;
+}

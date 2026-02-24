@@ -1,12 +1,13 @@
 import { getLlama, LlamaModel, LlamaContext, LlamaChatSession } from "node-llama-cpp";
 import path from "path";
 import os from "os";
+import { ILlmProvider } from "../types/index.js";
 
 // Hard-coded path to the local, pinned model. This is key for determinism.
 // Pointing to a user directory allows the packaged Electron app to remain read-only.
 const modelPath = path.join(os.homedir(), ".quenderin", "models", "llama-3-instruct-8b.Q4_K_M.gguf");
 
-export class LlmService {
+export class LlmService implements ILlmProvider {
     private modelInstance: LlamaModel | null = null;
     private contextInstance: LlamaContext | null = null;
 
@@ -45,6 +46,21 @@ export class LlmService {
             console.error("Error during generation:", error);
             throw error;
         }
+    }
+
+    public async generateAction(systemPrompt: string, userPrompt: string, options: any): Promise<string> {
+        const { context } = await this.getModelAndContext();
+        // Use a new session to prevent context bounds filling up endlessly
+        const session = new LlamaChatSession({ contextSequence: context.getSequence() });
+
+        const prompt = systemPrompt ? `System: ${systemPrompt}\n\nUser: ${userPrompt}` : `User: ${userPrompt}`;
+
+        const response = await session.prompt(prompt, {
+            maxTokens: options.maxTokens || 150,
+            temperature: options.temperature || 0.1
+        });
+
+        return response.trim();
     }
 
     public async generalChat(userMsg: string): Promise<string> {

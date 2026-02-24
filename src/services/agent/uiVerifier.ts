@@ -1,13 +1,12 @@
-import { AdbService } from '../adb.service.js';
+import { IDeviceService, UIElement } from '../../types/index.js';
 import { UiParserService } from '../uiParser.service.js';
 import { OcrService } from '../ocr.service.js';
-import { UIElement } from '../../types/index.js';
 import crypto from 'crypto';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class UiVerifier {
     constructor(
-        private adbService: AdbService,
+        private deviceService: IDeviceService,
         private uiParserService: UiParserService,
         private ocrService: OcrService
     ) { }
@@ -29,7 +28,7 @@ export class UiVerifier {
 
         while (!isIdle) {
             try {
-                const xmlDump = await this.adbService.dumpUI();
+                const xmlDump = await this.deviceService.dumpUI();
                 const parsed = this.uiParserService.parseUI(xmlDump);
 
                 if (parsed.elements.length === lastElementsLength) {
@@ -55,7 +54,7 @@ export class UiVerifier {
         if (finalParsed && finalParsed.elements.length < 5) {
             emitter.emit('status', "Few UI elements detected. Triggering Vision OCR Fallback...");
             try {
-                const screenshotPath = await this.adbService.screencap();
+                const screenshotPath = await this.deviceService.screencap();
                 // Find next available ID
                 const nextId = finalParsed.elements.length > 0
                     ? Math.max(...finalParsed.elements.map(e => e.id)) + 1
