@@ -52,7 +52,12 @@ export function useAgentSocket() {
         };
 
         ws.onclose = () => {
-            setLogs((prev) => [...prev, { id: 'close', type: 'error', message: 'Connection to local Quenderin backend severed.', timestamp: '' }]);
+            setLogs((prev) => [...prev, {
+                id: 'close',
+                type: 'error',
+                message: "Connection to local Quenderin backend severed.\n\nTo restore connectivity:\n1. Open your terminal\n2. Navigate to your Quenderin project directory\n3. Start the backend server by running:\n   `npm run dev`\n\nOnce the server boots, refresh this page.",
+                timestamp: ''
+            }]);
             setStatus('idle');
         };
 
@@ -62,7 +67,10 @@ export function useAgentSocket() {
     const sendGoal = (goal: string) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
             setLogs(prev => [...prev, {
-                id: 'err', type: 'error', message: "Not connected to agent backend. Make sure your server is running via terminal.", timestamp: new Date().toLocaleTimeString()
+                id: 'err',
+                type: 'error',
+                message: "Not connected to agent backend.\n\nTo launch the autonomous agent:\n1. Open your terminal\n2. Navigate to the Quenderin project directory\n3. Start the core server using:\n   `npm run dev`\n\nEnsure no port conflicts exist on your local machine.",
+                timestamp: new Date().toLocaleTimeString()
             }]);
             return false;
         }
@@ -79,7 +87,10 @@ export function useAgentSocket() {
     const sendChatMessage = (msg: string) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
             setLogs(prev => [...prev, {
-                id: 'err', type: 'error', message: "Not connected to backend.", timestamp: new Date().toLocaleTimeString()
+                id: 'err',
+                type: 'error',
+                message: "Not connected to backend.\n\nTo access the local LLM:\n1. Open your terminal\n2. Navigate to the Quenderin project directory\n3. Start the server using:\n   `npm run dev`\n\nWait for the Llama 3 model to initialize before chatting.",
+                timestamp: new Date().toLocaleTimeString()
             }]);
             return false;
         }

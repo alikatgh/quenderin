@@ -94,7 +94,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView 
                                         <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">You</span>
                                         <User className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-500" />
                                     </div>
-                                    <div className="text-[16px] text-zinc-900 dark:text-zinc-100 leading-relaxed font-medium">
+                                    <div className="text-[16px] text-zinc-900 dark:text-zinc-100 leading-relaxed font-medium whitespace-pre-wrap">
                                         {logs[0]?.message.replace('Goal set: ', '')}
                                     </div>
                                 </div>
@@ -114,7 +114,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView 
                                                 {log.type === 'error' ? (
                                                     <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start gap-3 mt-4 mb-2 shadow-sm">
                                                         <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                                                        <div className="text-[14px] text-red-800 dark:text-red-300 font-medium leading-relaxed">
+                                                        <div className="text-[14px] text-red-800 dark:text-red-300 font-medium leading-relaxed whitespace-pre-wrap">
                                                             {log.message}
                                                         </div>
                                                     </div>

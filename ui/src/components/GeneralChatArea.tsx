@@ -107,7 +107,7 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend 
                                 if (log.type === 'error') {
                                     return (
                                         <div key={log.id} className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start gap-3 mt-4 mb-2 shadow-sm">
-                                            <div className="text-[14px] text-red-800 dark:text-red-300 font-medium leading-relaxed">
+                                            <div className="text-[14px] text-red-800 dark:text-red-300 font-medium leading-relaxed whitespace-pre-wrap">
                                                 {log.message}
                                             </div>
                                         </div>
