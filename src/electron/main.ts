@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import net from 'net';
 import { startDashboardServer } from '../server.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -8,11 +9,27 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-const PORT = 3000;
+let PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+async function findFreePort(startPort: number): Promise<number> {
+    return new Promise((resolve) => {
+        const s = net.createServer();
+        s.listen(startPort, () => {
+            const port = (s.address() as net.AddressInfo).port;
+            s.close(() => resolve(port));
+        });
+        s.on('error', () => {
+            resolve(findFreePort(startPort + 1));
+        });
+    });
+}
 
 async function bootstrap() {
+    // Determine dynamic port gracefully
+    PORT = await findFreePort(PORT);
+
     // 1. Boot internal Node.js backend (Adb, LLaMA, WebSockets, Express)
-    console.log("Booting Quenderin backend...");
+    console.log(`Booting Quenderin backend on port ${PORT}...`);
     await startDashboardServer(PORT, false); // false = don't open system browser
 
     // 2. Create the Electron Window
@@ -25,6 +42,7 @@ async function bootstrap() {
         backgroundColor: '#18181b', // Match dark mode default
         show: false, // Wait until ready to show to prevent flashing
         webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true
         }

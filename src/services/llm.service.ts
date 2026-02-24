@@ -4,21 +4,34 @@ import os from "os";
 import { ILlmProvider } from "../types/index.js";
 
 // Hard-coded path to the local, pinned model. This is key for determinism.
-// Pointing to a user directory allows the packaged Electron app to remain read-only.
-const modelPath = path.join(os.homedir(), ".quenderin", "models", "llama-3-instruct-8b.Q4_K_M.gguf");
+// Hard-coded path to the local, pinned model or overridden via generic env variables
+const modelPath = process.env.LLM_MODEL_PATH || path.join(os.homedir(), ".quenderin", "models", "llama-3-instruct-8b.Q4_K_M.gguf");
 
 export class LlmService implements ILlmProvider {
     private modelInstance: LlamaModel | null = null;
     private contextInstance: LlamaContext | null = null;
+    private initPromise: Promise<{ model: LlamaModel, context: LlamaContext }> | null = null;
 
     public async getModelAndContext() {
         if (this.modelInstance && this.contextInstance) {
             return { model: this.modelInstance, context: this.contextInstance };
         }
-        const llama = await getLlama();
-        this.modelInstance = await llama.loadModel({ modelPath });
-        this.contextInstance = await this.modelInstance.createContext();
-        return { model: this.modelInstance, context: this.contextInstance };
+
+        // Mutex lock to prevent multiple concurrent requests from crashing memory
+        if (this.initPromise) {
+            return this.initPromise;
+        }
+
+        this.initPromise = (async () => {
+            const llama = await getLlama();
+            const model = await llama.loadModel({ modelPath });
+            const context = await model.createContext();
+            this.modelInstance = model;
+            this.contextInstance = context;
+            return { model, context };
+        })();
+
+        return this.initPromise;
     }
 
     public async generateCode(userPrompt: string): Promise<string> {
