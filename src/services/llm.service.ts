@@ -38,17 +38,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     if (!fs.existsSync(dir)) {
                         fs.mkdirSync(dir, { recursive: true });
                     }
-                    this.emit('action_required', {
-                        code: 'MODEL_MISSING',
-                        title: 'AI Model Missing',
-                        message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
-                        autoTrigger: 'downloadModel'
-                    });
 
-                    // Return a rejected promise instead of throwing to prevent crashing the process
                     const err = new Error("MODEL_MISSING");
                     (err as any).code = "MODEL_MISSING";
-                    return Promise.reject(err);
+                    throw err; // Throw locally so exactly this function's catch block runs
                 }
 
                 const llama = await getLlama();
@@ -60,16 +53,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             } catch (error: any) {
                 const isModelMissing = error?.code === "MODEL_MISSING" || error?.code === "ENOENT";
 
-                if (isModelMissing && error?.code !== "MODEL_MISSING") {
+                if (isModelMissing) {
                     this.emit('action_required', {
                         code: 'MODEL_MISSING',
                         title: 'AI Model Missing',
                         message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
                         autoTrigger: 'downloadModel'
                     });
-                }
-
-                if (!isModelMissing) {
+                } else {
                     console.error("Failed to load LLaMA model:", error);
                 }
 

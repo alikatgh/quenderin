@@ -47,6 +47,10 @@ export class WebSocketManager {
             ws.on('message', async (message) => {
                 try {
                     const data = JSON.parse(message.toString());
+                    const isActionRequiredError = (e: any) => {
+                        return ['MODEL_MISSING', 'ADB_MISSING', 'ADB_UNAUTHORIZED', 'PICOVOICE_MISSING', 'DESKTOP_PERMISSIONS', 'ENOENT'].includes(e?.code);
+                    };
+
                     if (data.type === 'start') {
                         // Device ready check removed as IDeviceProvider abstracts this connection natively
                         ws.send(JSON.stringify({ type: 'status', message: `Initializing agent goal: ${data.goal}` }));
@@ -81,7 +85,9 @@ export class WebSocketManager {
                         try {
                             await this.agentService.runAgentLoop(data.goal, data.steps || 20, emitter);
                         } catch (e: any) {
-                            ws.send(JSON.stringify({ type: 'error', message: `Fatal Loop Error: ${e.message}` }));
+                            if (!isActionRequiredError(e)) {
+                                ws.send(JSON.stringify({ type: 'error', message: `Fatal Loop Error: ${e.message}` }));
+                            }
                         }
                     } else if (data.type === 'chat') {
                         // General Chat Flow
@@ -90,7 +96,9 @@ export class WebSocketManager {
                             const response = await this.llmService.generalChat(data.message);
                             ws.send(JSON.stringify({ type: 'chat_response', message: response }));
                         } catch (e: any) {
-                            ws.send(JSON.stringify({ type: 'error', message: `Chat Error: ${e.message}` }));
+                            if (!isActionRequiredError(e)) {
+                                ws.send(JSON.stringify({ type: 'error', message: `Chat Error: ${e.message}` }));
+                            }
                         }
                     }
                 } catch (err) {
