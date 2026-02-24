@@ -5,6 +5,9 @@ import { AdbService } from "./adb.service.js";
 import { UiParserService } from "./uiParser.service.js";
 import { OcrService } from "./ocr.service.js";
 import { MemoryService } from "./memory.service.js";
+import { PromptBuilder } from "./agent/promptBuilder.js";
+import { ActionExecutor } from "./agent/actionExecutor.js";
+import { UiVerifier } from "./agent/uiVerifier.js";
 import { AgentEvents, UIElement } from "../types/index.js";
 import { MetricsService, AgentMetrics } from "./metrics.service.js";
 
@@ -34,6 +37,10 @@ export declare interface AgentEventEmitter {
 export class AgentEventEmitter extends EventEmitter { }
 
 export class AgentService {
+    private promptBuilder: PromptBuilder;
+    private actionExecutor: ActionExecutor;
+    private uiVerifier: UiVerifier;
+
     constructor(
         private llmService: LlmService,
         private adbService: AdbService,
@@ -41,61 +48,14 @@ export class AgentService {
         private metricsService: MetricsService,
         private ocrService: OcrService,
         private memoryService: MemoryService
-    ) { }
-
-    private async waitForUiIdle(emitter: AgentEventEmitter): Promise<{ elements: UIElement[], textRepresentation: string }> {
-        emitter.emit('status', "⏳ Waiting for UI to become idle...");
-        let previousDump = "";
-        let retries = 0;
-        let finalParsed: { elements: UIElement[], textRepresentation: string } | null = null;
-
-        while (retries < 10) {
-            const xml = await this.adbService.dumpUI();
-            // A simple hash/length check to see if animations have settled
-            if (xml === previousDump && xml.length > 0) {
-                break; // UI is stable
-            }
-            previousDump = xml;
-            finalParsed = this.uiParserService.parseUI(xml);
-
-            // Poll every 500ms
-            await new Promise(r => setTimeout(r, 500));
-            retries++;
-        }
-
-        if (!finalParsed) {
-            const xml = await this.adbService.dumpUI();
-            finalParsed = this.uiParserService.parseUI(xml);
-        }
-
-        // Vision Fallback (OCR) integration
-        if (finalParsed && finalParsed.elements.length < 5) {
-            emitter.emit('status', "👁️ Few UI elements detected. Triggering Vision OCR Fallback...");
-            try {
-                const screenshotPath = await this.adbService.screencap();
-                // Find next available ID
-                const nextId = finalParsed.elements.length > 0
-                    ? Math.max(...finalParsed.elements.map(e => e.id)) + 1
-                    : 1000;
-
-                const ocrElements = await this.ocrService.extractTextElements(screenshotPath, nextId);
-
-                if (ocrElements.length > 0) {
-                    emitter.emit('status', `👁️ Found ${ocrElements.length} synthetic text nodes via OCR.`);
-                    finalParsed.elements.push(...ocrElements);
-                    // Regenerate the symbolic JSON text for the LLM
-                    finalParsed.textRepresentation = this.uiParserService.formatElementsToSymbolicState(finalParsed.elements);
-                }
-            } catch (err: any) {
-                emitter.emit('error', `Vision Fallback Error: ${err.message}`);
-            }
-        }
-
-        return finalParsed as { elements: UIElement[], textRepresentation: string };
+    ) {
+        this.promptBuilder = new PromptBuilder(this.memoryService);
+        this.actionExecutor = new ActionExecutor(this.adbService);
+        this.uiVerifier = new UiVerifier(this.adbService, this.uiParserService, this.ocrService);
     }
 
     public async runAgentLoop(goal: string, maxSteps: number = 15, emitter: AgentEventEmitter = new AgentEventEmitter()): Promise<void> {
-        emitter.emit('status', `🤖 Starting Robust Agent Loop for goal: ${goal}`);
+        emitter.emit('status', ` Starting Robust Agent Loop for goal: ${goal}`);
 
         const { context } = await this.llmService.getModelAndContext();
         // Use a new session to prevent context bounds filling up endlessly
@@ -105,53 +65,47 @@ export class AgentService {
         let actionHistory: string[] = [];
         let previousUiHash = "";
         let expectedActionEffect = false;
+        let isDone = false;
 
         const startTimeMs = Date.now();
         let totalRetries = 0;
 
-        // Trajectory Memory check
-        const pastMemory = await this.memoryService.findSimilarGoal(goal);
-        let memoryPromptAddition = "";
-        if (pastMemory) {
-            emitter.emit('status', "🧠 Found a successful past trajectory for this goal! Injecting into context.");
-            memoryPromptAddition = `\n\n[SYSTEM WARNING]: You have successfully solved a similar goal in the past. Your previous winning trajectory was:\n${pastMemory.actions.join('\n')}\nConsider following this known-good sequence.`;
-        }
-
-        while (step < maxSteps) {
+        while (step < maxSteps && !isDone) {
             step++;
             emitter.emit('status', `--- Step ${step} ---`);
 
-            // Event-Driven Idling
-            const { elements, textRepresentation } = await this.waitForUiIdle(emitter);
+            // 1. Verify and Gather UI State
+            const state = await this.uiVerifier.waitForIdle(emitter);
 
-            // Advanced Verifier (Self-Healing Loop)
-            if (expectedActionEffect && textRepresentation === previousUiHash) {
+            // 2. Self-Healing State Verification
+            if (expectedActionEffect && state.hash === previousUiHash) {
                 totalRetries++;
-                emitter.emit('error', "⚠️ Verifier: The UI did not change after the last action.");
+                emitter.emit('error', " Verifier: The UI did not change after the last action.");
                 actionHistory.push("[System Warning] The previous action had no effect on the UI. The button might be disabled, blocked, or a dead zone. Try a different strategy.");
             }
 
-            previousUiHash = textRepresentation;
+            previousUiHash = state.hash;
             expectedActionEffect = false;
 
-            emitter.emit('observe', elements);
-            emitter.emit('status', `👀 Observed ${elements.length} elements.`);
+            emitter.emit('observe', state.elements);
+            emitter.emit('status', ` Observed ${state.elements.length} elements.`);
 
-            const historyText = actionHistory.length > 0 ? `\n\nRecent Actions:\n${actionHistory.slice(-5).join('\n')}` : '';
-            const prompt = `Current UI State:\n${textRepresentation}${historyText}${memoryPromptAddition}\n\nUser Goal: ${goal}\n\nWhat is your next JSON action?`;
+            // 3. Build Prompt
+            const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory);
 
-            emitter.emit('status', "🧠 Deciding next action...");
+            emitter.emit('status', " Deciding next action...");
 
+            // 4. Generate LLM Action
             const response = await session.prompt(step === 1 ? `System: ${SYSTEM_PROMPT}\n\nUser: ${prompt}` : `User: ${prompt}`, {
                 maxTokens: 150,
-                temperature: 0.1 // Keep temperature low for structured JSON output
+                temperature: 0.1
             });
 
             const commandText = response.trim();
             emitter.emit('decide', commandText);
 
             try {
-                // Attempt to parse JSON robustly inside the text block
+                // 5. Parse and Execute Action
                 const jsonStart = commandText.indexOf('{');
                 const jsonEnd = commandText.lastIndexOf('}');
                 if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON object found in LLM response.");
@@ -159,20 +113,11 @@ export class AgentService {
                 const actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1));
                 const actionType = actionObj.action?.toLowerCase();
 
-                // Safety Sandboxing Check
-                const destructiveKeywords = ["delete", "pay", "buy", "purchase", "password"];
-                if (actionType === 'click' || actionType === 'input') {
-                    const el = elements.find(e => e.id === actionObj.id);
-                    if (el && destructiveKeywords.some(kw => el.text.toLowerCase().includes(kw) || el.contentDesc.toLowerCase().includes(kw))) {
-                        emitter.emit('error', `🛡️ Safety Block: Refusing to interact with potentially destructive element [${el.text}].`);
-                        throw new Error(`Safety Sandbox prevented interaction with element ${el.id}.`);
-                    }
-                }
-
                 if (actionType === 'done') {
-                    emitter.emit('status', `✅ Goal achieved successfully in ${step} steps.`);
+                    emitter.emit('status', ` Goal achieved successfully in ${step} steps.`);
                     emitter.emit('action', "DONE");
                     emitter.emit('done');
+
                     await this.metricsService.appendMetrics({
                         id: Date.now().toString(),
                         goal_text: goal,
@@ -182,70 +127,45 @@ export class AgentService {
                         total_retries: totalRetries,
                         timestamp: new Date().toISOString()
                     });
+
                     // Save successful trajectory
                     await this.memoryService.saveTrajectory(goal, actionHistory);
+                    isDone = true;
                     break;
-                } else if (actionType === 'click') {
-                    const targetId = actionObj.id;
-                    const el = elements.find(e => e.id === targetId);
-                    if (el) {
-                        emitter.emit('status', `👉 Clicking dynamically on element ${targetId} at (${el.center.x}, ${el.center.y})`);
-                        await this.adbService.tap(el.center.x, el.center.y);
-                        actionHistory.push(`[Success] Clicked element ${targetId} (${el.className})`);
-                        emitter.emit('action', `Clicked [${targetId}] ${el.className}`);
-                        expectedActionEffect = true;
-                    } else {
-                        throw new Error(`Element ID ${targetId} not found in current UI state.`);
+                }
+
+                // Execute action via ActionExecutor
+                const success = await this.actionExecutor.execute(actionObj, state.elements, emitter);
+
+                if (success) {
+                    if (actionType === 'click') {
+                        actionHistory.push(`[Success] Clicked element ${actionObj.id}`);
+                    } else if (actionType === 'input') {
+                        actionHistory.push(`[Success] Typed "${actionObj.text}" into element ${actionObj.id}`);
+                    } else if (actionType === 'swipe') {
+                        actionHistory.push(`[Success] Swiped ${actionObj.direction || 'down'}`);
+                    } else if (actionType === 'back') {
+                        actionHistory.push(`[Success] Pressed BACK`);
+                    } else if (actionType === 'home') {
+                        actionHistory.push(`[Success] Pressed HOME`);
+                    } else if (actionType === 'enter') {
+                        actionHistory.push(`[Success] Pressed ENTER`);
                     }
-                } else if (actionType === 'input') {
-                    const targetId = actionObj.id;
-                    const el = elements.find(e => e.id === targetId);
-                    if (el) {
-                        emitter.emit('status', `⌨️ Typing into element ${targetId}`);
-                        // Tap to focus first
-                        await this.adbService.tap(el.center.x, el.center.y);
-                        await new Promise(r => setTimeout(r, 500)); // Small wait for keyboard IME
-                        await this.adbService.typeText(actionObj.text || "");
-                        actionHistory.push(`[Success] Typed "${actionObj.text}" into element ${targetId}`);
-                        emitter.emit('action', `Typed into [${targetId}]`);
-                        expectedActionEffect = true;
-                    } else {
-                        throw new Error(`Element ID ${targetId} not found in current UI state.`);
-                    }
-                } else if (actionType === 'swipe') {
-                    await this.adbService.swipe(actionObj.x1, actionObj.y1, actionObj.x2, actionObj.y2);
-                    actionHistory.push(`[Success] Swiped from ${actionObj.x1},${actionObj.y1} to ${actionObj.x2},${actionObj.y2}`);
-                    emitter.emit('action', 'Swiped screen');
-                    expectedActionEffect = true;
-                } else if (actionType === 'back') {
-                    await this.adbService.keyevent(4);
-                    actionHistory.push(`[Success] Pressed BACK`);
-                    emitter.emit('action', 'Pressed BACK');
-                    expectedActionEffect = true;
-                } else if (actionType === 'home') {
-                    await this.adbService.keyevent(3);
-                    actionHistory.push(`[Success] Pressed HOME`);
-                    emitter.emit('action', 'Pressed HOME');
-                    expectedActionEffect = true;
-                } else if (actionType === 'enter') {
-                    await this.adbService.keyevent(66);
-                    actionHistory.push(`[Success] Pressed ENTER`);
-                    emitter.emit('action', 'Pressed ENTER');
                     expectedActionEffect = true;
                 } else {
-                    throw new Error(`Unknown action type: ${actionType}`);
+                    actionHistory.push(`[Failed] Failed to execute ${actionType}`);
                 }
 
             } catch (err: any) {
-                emitter.emit('error', `⚠️ Execution failed: ${err.message}. Retrying...`);
+                emitter.emit('error', ` Execution failed: ${err.message}. Retrying...`);
                 actionHistory.push(`[Failed] Action error: ${err.message}`);
                 // Small backoff before next step
                 await new Promise(r => setTimeout(r, 1000));
             }
         }
 
-        if (step >= maxSteps) {
-            emitter.emit('error', `❌ Maximum steps (${maxSteps}) reached. Goal incomplete.`);
+        if (step >= maxSteps && !isDone) {
+            emitter.emit('error', ` Maximum steps (${maxSteps}) reached. Goal incomplete.`);
             emitter.emit('done');
             await this.metricsService.appendMetrics({
                 id: Date.now().toString(),

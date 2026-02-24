@@ -35,9 +35,9 @@ Following this audit, the following robust features were immediately implemented
 
 ---
 
-## ⚡ Two Ways to Use
+##  Two Ways to Use
 
-### 1️⃣ Chat Mode (Recommended)
+### 1⃣ Chat Mode (Recommended)
 
 ```bash
 quenderin chat
@@ -46,18 +46,18 @@ quenderin chat
 Just keep asking for code. No need to type the command over and over.
 
 ```
-📝 What code do you want to generate?
+ What code do you want to generate?
 > Create a function to validate email addresses
 
-🤖 Generating...
+ Generating...
 [Your code appears here]
 
-📝 What code do you want to generate?
+ What code do you want to generate?
 > Now add password validation
 ...
 ```
 
-### 2️⃣ One-off Generation
+### 2⃣ One-off Generation
 
 ```bash
 quenderin add "Create a REST API endpoint"
@@ -66,7 +66,7 @@ quenderin add "Stripe checkout" -o src/checkout.ts
 
 ---
 
-## 🚀 First-Time Setup (Automatic)
+##  First-Time Setup (Automatic)
 
 The tool opens a pull request with small, atomic commits, or directly drives your Android simulator depending on the invoked command.
 
@@ -74,9 +74,9 @@ Approve → merge → ship.
 
 **If you don't:**
 ```
-⚡ Quick setup - enter your OpenAI API key:
+ Quick setup - enter your OpenAI API key:
 API Key: sk-your-key-here
-✅ OpenAI configured! Using gpt-4o-mini
+ OpenAI configured! Using gpt-4o-mini
 [Starts generating immediately]
 ```
 
@@ -100,7 +100,7 @@ This tool is built to answer the hard questions of code generation and agentic U
 
 ---
 
-## 📖 Examples
+##  Examples
 
 ```bash
 # Start interactive mode (easiest)
@@ -118,7 +118,7 @@ quenderin setup
 
 ---
 
-## 🛠️ All Commands
+##  All Commands
 
 ```bash
 quenderin chat         # Interactive chat mode
@@ -131,7 +131,7 @@ quenderin --help       # Show all options
 
 ---
 
-## 🎯 LLM Options
+##  LLM Options
 
 First run tries **auto-detect**. If that doesn't work, you choose:
 
@@ -143,7 +143,7 @@ First run tries **auto-detect**. If that doesn't work, you choose:
 
 ---
 
-## 💬 Philosophy
+##  Philosophy
 
 **Old way:**
 1. Read documentation
@@ -158,7 +158,7 @@ First run tries **auto-detect**. If that doesn't work, you choose:
 
 ---
 
-## 🔒 Privacy
+##  Privacy
 
 - **Local-first**: Works offline with Ollama
 - **No tracking**: Zero telemetry
@@ -167,7 +167,7 @@ First run tries **auto-detect**. If that doesn't work, you choose:
 
 ---
 
-## 💡 Why "Quenderin"?
+##  Why "Quenderin"?
 
 Because turning on the light should be this simple:
 
@@ -181,7 +181,7 @@ quenderin chat
 
 ---
 
-## 📚 Advanced
+##  Advanced
 
 For power users who want full control:
 
@@ -191,10 +191,10 @@ For power users who want full control:
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 MIT License. PRs welcome!
 
 ---
 
-**Stop configuring. Start coding.** ⚡
+**Stop configuring. Start coding.** 

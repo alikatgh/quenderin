@@ -180,4 +180,4 @@ By contributing to Quenderin, you agree that your contributions will be licensed
 
 ---
 
-Thank you for contributing to Quenderin! 🚀
+Thank you for contributing to Quenderin! 

@@ -52,9 +52,9 @@ program
 
 // Default command - start interactive mode
 if (process.argv.length === 2) {
-  console.log('\n⚡ Quenderin Agent - Autonomous Android API\n');
+  console.log('\n Quenderin Agent - Autonomous Android API\n');
   console.log('Commands:');
-  console.log('  quenderin dashboard       - 🎨 Open web UI for agent monitoring');
+  console.log('  quenderin dashboard       -  Open web UI for agent monitoring');
   console.log('  quenderin agent "<goal>"  - Run agent with a specific goal');
   console.log('  quenderin --help          - Show all commands\n');
   process.exit(0);

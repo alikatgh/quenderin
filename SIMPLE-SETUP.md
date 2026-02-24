@@ -1,4 +1,4 @@
-# Super Simple Setup ⚡
+# Super Simple Setup 
 
 Get code generation running in **under 2 minutes**!
 
@@ -16,9 +16,9 @@ node dist/index.js setup
 ```
 
 That's it! The setup will:
-- ✨ Auto-detect if you have Ollama installed
-- 🎯 Guide you to the easiest option for your system
-- ⚡ Get you generating code in seconds
+-  Auto-detect if you have Ollama installed
+-  Guide you to the easiest option for your system
+-  Get you generating code in seconds
 
 ## Three Easy Options
 
@@ -78,11 +78,11 @@ node dist/index.js test
 
 ## Why This is Simple
 
-✅ **No model downloads** if using Ollama or cloud APIs
-✅ **Auto-detection** finds the best available option
-✅ **Clear instructions** for each setup method
-✅ **Works immediately** after minimal config
-✅ **Multiple options** - choose what works for you
+ **No model downloads** if using Ollama or cloud APIs
+ **Auto-detection** finds the best available option
+ **Clear instructions** for each setup method
+ **Works immediately** after minimal config
+ **Multiple options** - choose what works for you
 
 ## Comparison
 
