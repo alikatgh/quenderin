@@ -159,7 +159,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 function AppContent() {
   const [goal, setGoal] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1280 : true);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics'>('general_chat');
   const [activeModel, setActiveModel] = useState<string>('Loading Model...');
@@ -290,7 +290,7 @@ function AppContent() {
               className={`flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors border ${isInspectorOpen ? 'bg-zinc-100 dark:bg-[#27272a] border-zinc-300 dark:border-[#3f3f46] text-zinc-900 dark:text-white' : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-[#27272a]'}`}
             >
               {isInspectorOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-              <span>Device Inspector</span>
+              <span className="hidden sm:inline">Device Inspector</span>
               {currentUI.length > 0 && <span className="flex w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.3)] dark:shadow-[0_0_6px_rgba(59,130,246,0.8)] ml-1"></span>}
             </button>
           </header>

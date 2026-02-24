@@ -115,7 +115,7 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend 
                                 }
                             })}
 
-                            {status === 'running' && logs[logs.length - 1].type === 'chat' && (
+                            {status === 'running' && chatLogs.length > 0 && chatLogs[chatLogs.length - 1].type === 'chat' && (
                                 <div className="flex gap-4 sm:gap-6">
                                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-100 border border-purple-200 text-purple-600 dark:bg-purple-500/10 dark:border-purple-500/20 dark:text-purple-400 flex flex-shrink-0 items-center justify-center mt-1">
                                         <Cpu className="w-5 h-5" />
