@@ -1,14 +1,50 @@
 {
   "name": "quenderin-poc",
+  "description": "An offline autonomous agent control",
   "version": "0.0.1",
+  "author": "Quenderin Team",
   "type": "module",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dashboard": "tsx src/index.ts dashboard",
+    "agent": "tsx src/index.ts agent",
+    "build:tsc": "tsc",
+    "start:app": "npm run build:tsc && electron .",
+    "package:mac": "npm run build:tsc && electron-builder --mac"
+  },
   "dependencies": {
     "commander": "^12.1.0",
-    "node-llama-cpp": "^3.2.0"
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "fast-xml-parser": "^5.3.7",
+    "node-llama-cpp": "^3.2.0",
+    "open": "^11.0.0",
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^20.14.2",
+    "@types/ws": "^8.18.1",
+    "electron": "^40.6.0",
+    "electron-builder": "^26.8.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.4.5"
+  },
+  "build": {
+    "appId": "com.quenderin.app",
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*",
+      "package.json"
+    ]
   }
 }

@@ -1,13 +1,37 @@
 # Quenderin
 
-Quenderin is **not** a framework, a platform, or a magic black box. It is a **local compiler-level toolchain** that:
+Quenderin is the pursuit of **Autonomous Computer Usage**. Think of it as autonomous driving, but for your desktop and mobile OS. 
 
-1.  Reads your existing schema (Prisma, Drizzle, SQL, or plain TypeScript).
-2.  Consumes natural-language prompts stored as version-controlled markdown.
-3.  Generates plain source files into a `.gitignore`-safe `src/gen/` directory.
-4.  Runs **entirely offline** using a pinned, local LLM to guarantee **bit-for-bit reproducibility.**
+The ultimate vision is for Quenderin to sit quietly, watching how you work and learning from your daily interactions. It operates as a voice-controlled assistant that takes over your tedious tasks—doing them faster and better. When it makes a mistake, you correct it, and it learns from that correction instantly.
 
-You are trading the time it takes to write tedious boilerplate for the time it takes to review a well-structured pull request.
+**The Quenderin Paradox:**
+This entire system infrastructure is explicitly and exclusively written by Google models. However, the agent itself runs **exclusively on local, offline models**, guaranteeing absolute data privacy and zero token costs for the end user.
+
+---
+
+## State of the Project: An Honest Audit
+
+Short answer: it’s a *decent* prototype/POC idea but **quite brittle** and likely to fail in real-world, complex apps unless you add lots of engineering around it.
+
+### Quick verdict
+* **Good for:** rapid prototyping, simple screens, controlled emulators, research experiments, and exploring LLM-driven UI planning ideas.
+* **Not great for:** robust automation, flaky UI flows, apps with custom views/graphics, production-level autonomous agents, or anything involving sensitive actions without strong safeguards.
+
+### Why it’s brittle / major failure modes
+1. **Coordinate brittle-ness:** Executing touches by raw coordinates breaks when screen sizes change or views move.
+2. **Timing & race conditions:** Dumping hierarchy, deciding, and executing can be too slow relative to UI changes (animations, stale nodes).
+3. **Lack of state verification:** If a TAP dismisses a dialog differently than expected, there's no robust way to detect divergence.
+4. **Incomplete perception:** The backend discards "non-interactable" nodes, removing crucial context (visibility, labels).
+5. **Custom rendering:** Many apps draw UI in canvases where view hierarchy is useless.
+6. **LLM limitations:** Local LLMs are not deterministic enough for optimal low-level control loops over long periods.
+
+### Implemented Architecture Improvements
+Following this audit, the following robust features were immediately implemented into the agent's core OS Loop:
+1. **View-Level Actions**: The Executor maps symbolic JSON `id` targets dynamically at runtime, avoiding stale coordinate clicks.
+2. **Rich Perception State**: Non-interactable nodes are explicitly kept to provide the LLM with surrounding textual and layout context. Output is compressed into strict JSON.
+3. **Event-driven idempotent primitives**: Fixed sleeps are gone. Replaced by `waitForUiIdle`, which actively polls the UI XML structure until animations settle.
+4. **Separation of Concerns**: The LLM acts purely as a Symbolic Planner (`{"action": "click", "id": X}`), while a deterministic node backend handles the platform execution, bounds lookups, and retries.
+5. **Safety Sandboxing**: A hardcoded keyword blocklist (e.g. "Pay", "Delete", "Password") prevents the LLM from interacting with potentially destructive or sensitive elements autonomously.
 
 ---
 ## The Workflow
@@ -23,22 +47,22 @@ quenderin init
 quenderin add "Stripe checkout with Apple Pay, EU VAT, and SCA"
 ````
 
-The tool opens a pull request with small, atomic commits (e.g., `feat(gen): add types`, `feat(gen): add resolver`, `feat(gen): add tests`).
+The tool opens a pull request with small, atomic commits, or directly drives your Android simulator depending on the invoked command.
 
-Approve → merge → ship. The generated code is ephemeral **by default**.
+Approve → merge → ship.
 
 -----
 
 ## Core Guarantees & Trade-offs
 
-This tool is built to answer the hard questions of code generation.
+This tool is built to answer the hard questions of code generation and agentic UI automation.
 
 | Promise | The Reality (How It Works) |
 |---|---|
 | **Deterministic Output** | The default LLM is a bundled 7B GGUF model, pinned to a specific SHA hash. Same schema + same prompt → identical output, forever. No drift. |
 | **Manageable Reviews** | PRs are automatically split into small, logical commits, with a hard limit of \~300 lines per PR. No 3,000-line monoliths. |
 | **Safe Manual Edits** | The "ejection problem" is solved via `quenderin freeze src/gen/checkout.ts`. This moves the file to `src/handwritten/`, rewrites all imports, and tells the generator to never touch it again. You are always in control. |
-| **No Context Explosion** | The CLI fails if local context exceeds a safe token budget. You guide context discovery with explicit `--include` and `--exclude` globs in your config. |
+| **No Context Explosion** | The UI parser compresses Android view hierarchies into text coordinates. For generation, you guide context discovery with explicit `--include` and `--exclude` globs in your config. |
 | **No Hidden Runtime** | Zero network calls after initial installation. Zero telemetry unless you explicitly opt-in. It runs on your machine, period. |
 
 -----

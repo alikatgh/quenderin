@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-white text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-300;
+        overflow: hidden;
+    }
+
+    .dark body {
+        @apply bg-[#18181b] text-zinc-100;
+    }
+}
+
+@layer utilities {
+    .claude-input-wrapper {
+        @apply relative flex items-end w-full max-w-3xl mx-auto bg-white dark:bg-[#27272a] border border-zinc-200 dark:border-[#3f3f46] rounded-xl transition-all duration-200 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-500 focus-within:border-zinc-400 dark:focus-within:border-zinc-400 focus-within:ring-1 focus-within:ring-zinc-400 dark:focus-within:ring-zinc-400;
+    }
+
+    .claude-textarea {
+        @apply w-full bg-transparent border-none resize-none py-3 pl-4 pr-12 text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 max-h-[200px] overflow-y-auto;
+    }
+
+    .markdown-body {
+        @apply text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-300;
+    }
+
+    .markdown-body strong {
+        @apply text-zinc-900 dark:text-zinc-100 font-semibold;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-zinc-300 dark:bg-zinc-700 rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-zinc-400 dark:bg-zinc-600;
+    }
+}
