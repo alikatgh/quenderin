@@ -9,14 +9,15 @@ interface SidebarProps {
     currentView: 'chat' | 'docs' | 'general_chat' | 'metrics';
     setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics') => void;
     onNewGoal: () => void;
+    activeModel?: string;
 }
 
-export function Sidebar({ isOpen, wsReady, logs, currentView, setCurrentView, onNewGoal }: SidebarProps) {
+export function Sidebar({ isOpen, wsReady, logs, currentView, setCurrentView, onNewGoal, activeModel = 'Loading...' }: SidebarProps) {
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
         <div
-            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#18181b] border-r border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col ${isOpen ? 'w-[260px] translate-x-0' : 'w-0 -translate-x-full overflow-hidden absolute xl:relative z-40 h-full shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none'}`}
+            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#18181b] border-r border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col absolute xl:relative z-40 h-full shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none ${isOpen ? 'w-[260px] translate-x-0' : 'w-0 -translate-x-full overflow-hidden'}`}
         >
             <div className="p-4 flex flex-col h-full min-w-[260px]">
                 {/* New Goal Button */}
@@ -43,7 +44,9 @@ export function Sidebar({ isOpen, wsReady, logs, currentView, setCurrentView, on
                         <div>
                             <p className="text-zinc-800 dark:text-zinc-200 font-medium leading-tight">Android ADB Daemon</p>
                             <p className="text-[11px] mt-1 opacity-80 font-mono">localhost:3000</p>
-                            <p className="text-[11px] opacity-80 font-mono mt-0.5">llama-3-instruct-8b</p>
+                            <p className="text-[11px] opacity-80 font-mono mt-0.5" title={activeModel}>
+                                {activeModel.length > 25 ? activeModel.substring(0, 25) + '...' : activeModel}
+                            </p>
                         </div>
                     </div>
                 </div>

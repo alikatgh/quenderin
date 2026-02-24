@@ -1,9 +1,16 @@
+import { EventEmitter } from 'events';
 import { IDeviceProvider } from '../../types/index.js';
+import screenshot from 'screenshot-desktop';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
+import * as crypto from 'crypto';
 
-export class DesktopProvider implements IDeviceProvider {
+export class DesktopProvider extends EventEmitter implements IDeviceProvider {
     private robot: any;
 
     constructor() {
+        super();
         try {
             // Lazy load robotjs. This requires the user to have build tools (make, python).
             // npm install robotjs
@@ -54,14 +61,16 @@ export class DesktopProvider implements IDeviceProvider {
     public async getScreenContext(): Promise<{ xml: string, screenshotPath: string }> {
         // Desktop OS does not have a global accessibility XML tree that we can rapidly dump like Android uiautomator.
         // We MUST rely on the Multimodal LLM to analyze the screenshot via OCR (built in Phase 7).
-        console.warn("DesktopProvider: XML dump is not supported natively. Falling back strictly to Vision/OCR loop.");
+        const xml = ""; // Silent fallback for VLM coordinate mapping
 
-        // We need to capture the screen. 
-        // For a true cross-platform library we might use `screenshot-desktop`.
-        // To prevent another compiling block, we ask the user to provide it.
-        const screenshotPath = "";
-        console.warn("DesktopProvider: Screenshot capturing requires a native library like 'screenshot-desktop'. Please implement it here.");
+        const uuid = crypto.randomUUID();
+        const pngTempFile = path.join(os.tmpdir(), `desktop_screen_${uuid}.png`);
 
-        return { xml: "", screenshotPath };
+        try {
+            await screenshot({ filename: pngTempFile, format: 'png' });
+            return { xml, screenshotPath: pngTempFile };
+        } catch (error) {
+            throw new Error("Unable to capture screen. Please ensure Quenderin has Screen Recording permissions in your OS settings.");
+        }
     }
 }

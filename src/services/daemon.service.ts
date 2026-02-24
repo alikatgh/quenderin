@@ -84,7 +84,9 @@ export class DaemonService extends EventEmitter {
                     this.emit('observation', observation);
                 }
             } catch (err: any) {
-                this.emit('error', `Daemon polling error: ${err.message}`);
+                if (!err.message.includes('adb: no devices/emulators found')) {
+                    this.emit('error', `Daemon polling error: ${err.message.split('\n')[0]}`);
+                }
             }
 
             // Wait until next tick

@@ -45,11 +45,11 @@ export function startDashboardServer(port: number = 3000, openBrowser: boolean =
         await voiceService.initialize(process.env.PICOVOICE_ACCESS_KEY || '');
 
         // 2. Setup Express
-        const app = createApp(metricsService, agentService);
+        const app = createApp(metricsService, agentService, llmService);
         const server = createServer(app);
 
         // 3. Initialize WebSockets
-        new WebSocketManager(server, agentService, deviceProvider, llmService);
+        new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
 
         // 4. Boot Server
         server.listen(port, async () => {

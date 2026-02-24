@@ -27,6 +27,11 @@ export class VoiceService extends EventEmitter {
 
             // Note: Porcupine requires a valid AccessKey from Picovoice Console
             if (!accessKey) {
+                this.emit('action_required', {
+                    code: 'PICOVOICE_MISSING',
+                    title: 'Voice Engine Unconfigured',
+                    message: 'Please provide a valid Picovoice Access Key to enable offline voice commands.'
+                });
                 console.warn('[VoiceService] Missing PICOVOICE_ACCESS_KEY. Voice control disabled.');
                 return;
             }

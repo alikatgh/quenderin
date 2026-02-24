@@ -1,13 +1,17 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
+import * as fs from 'fs/promises';
+import * as os from 'os';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
+import docsRoute from './routes/docs.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
+import { LlmService } from './services/llm.service.js';
 
-export function createApp(metricsService?: MetricsService, agentService?: AgentService): Express {
+export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService): Express {
     const app = express();
 
     // Global Middlewares
@@ -35,6 +39,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
     // Routes
     app.use('/', healthRoute);
+    app.use('/api/docs', docsRoute);
 
     if (metricsService) {
         app.get('/api/metrics', async (req, res) => {
@@ -57,6 +62,31 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const { manualAction } = req.body;
             agentService.resume(manualAction);
             res.json({ message: "Agent loop resumed.", manualAction });
+        });
+    }
+
+    app.post('/api/config/voice', async (req, res) => {
+        try {
+            const { key } = req.body;
+            if (!key || typeof key !== 'string') {
+                return res.status(400).json({ error: 'Valid key required' });
+            }
+
+            const envPath = path.join(os.homedir(), '.quenderin', '.env');
+            await fs.mkdir(path.dirname(envPath), { recursive: true });
+            await fs.appendFile(envPath, `\nPICOVOICE_ACCESS_KEY=${key}\n`);
+
+            res.json({ success: true, message: 'Voice key saved to config' });
+        } catch (error) {
+            console.error('Failed to save voice config:', error);
+            res.status(500).json({ error: 'Failed to save configuration' });
+        }
+    });
+
+    if (llmService) {
+        app.post('/api/models/download', (req, res) => {
+            llmService.downloadDefaultModel().catch(e => console.error("Background model download failed:", e));
+            res.json({ message: "Model download initiated." });
         });
     }
 

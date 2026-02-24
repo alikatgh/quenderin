@@ -3,6 +3,7 @@ import { Server } from 'http';
 import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
+import { VoiceService } from '../services/voice.service.js';
 
 export class WebSocketManager {
     private wss: WebSocketServer;
@@ -12,7 +13,8 @@ export class WebSocketManager {
         server: Server,
         private agentService: AgentService,
         private deviceProvider: IDeviceProvider,
-        private llmService: LlmService
+        private llmService: LlmService,
+        private voiceService: VoiceService
     ) {
         this.wss = new WebSocketServer({ server });
         this.setupConnection();
@@ -24,6 +26,23 @@ export class WebSocketManager {
             this.activeWs = ws;
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
+
+            const pushActionRequired = (payload: any) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'action_required', data: payload }));
+                }
+            };
+
+            const pushModelDownloadProgress = (payload: any) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'model_download_progress', data: payload }));
+                }
+            };
+
+            this.deviceProvider.on('action_required', pushActionRequired);
+            this.voiceService.on('action_required', pushActionRequired);
+            this.llmService.on('action_required', pushActionRequired);
+            this.llmService.on('model_download_progress', pushModelDownloadProgress);
 
             ws.on('message', async (message) => {
                 try {
@@ -57,6 +76,7 @@ export class WebSocketManager {
                         emitter.on('done', () => {
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'done' }));
                         });
+                        emitter.on('action_required', pushActionRequired);
 
                         try {
                             await this.agentService.runAgentLoop(data.goal, data.steps || 20, emitter);
@@ -80,6 +100,10 @@ export class WebSocketManager {
 
             ws.on('close', () => {
                 if (this.activeWs === ws) this.activeWs = null;
+                this.deviceProvider.off('action_required', pushActionRequired);
+                this.voiceService.off('action_required', pushActionRequired);
+                this.llmService.off('action_required', pushActionRequired);
+                this.llmService.off('model_download_progress', pushModelDownloadProgress);
             });
         });
     }

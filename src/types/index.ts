@@ -1,3 +1,5 @@
+import { EventEmitter } from 'events';
+
 export interface UIElement {
     id: number;
     text: string;
@@ -21,9 +23,11 @@ export interface AgentEvents {
     decide: (command: string) => void;
     action: (msg: string) => void;
     done: () => void;
+    action_required: (payload: { code: string, title: string, message: string }) => void;
+    model_download_progress: (payload: { progress: number }) => void;
 }
 
-export interface IDeviceProvider {
+export interface IDeviceProvider extends EventEmitter {
     click(x: number, y: number): Promise<void>;
     type(text: string): Promise<void>;
     scroll(direction: 'up' | 'down'): Promise<void>;
@@ -31,7 +35,7 @@ export interface IDeviceProvider {
     getScreenContext(): Promise<{ xml: string, screenshotPath: string }>;
 }
 
-export interface ILlmProvider {
+export interface ILlmProvider extends EventEmitter {
     generateCode(prompt: string): Promise<string>;
     generalChat(prompt: string): Promise<string>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;

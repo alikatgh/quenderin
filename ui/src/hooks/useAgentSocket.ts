@@ -5,6 +5,8 @@ export function useAgentSocket() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [status, setStatus] = useState<'idle' | 'running' | 'done'>('idle');
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
+    const [requiredAction, setRequiredAction] = useState<{ code: string, title: string, message: string } | null>(null);
+    const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const wsRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
@@ -43,6 +45,12 @@ export function useAgentSocket() {
                 } else if (data.type === 'done') {
                     entry.message = 'Goal reached successfully.';
                     setStatus('done');
+                } else if (data.type === 'action_required') {
+                    setRequiredAction(data.data);
+                    return; // Don't add to general logs, this is an interactive modal trigger
+                } else if (data.type === 'model_download_progress') {
+                    setDownloadProgress(data.data.progress);
+                    return;
                 }
 
                 setLogs((prev) => [...prev, entry]);
@@ -107,7 +115,14 @@ export function useAgentSocket() {
         setLogs([]);
         setStatus('idle');
         setCurrentUI([]);
+        setRequiredAction(null);
     };
 
-    return { wsReady: wsRef.current?.readyState === WebSocket.OPEN, logs, status, currentUI, sendGoal, sendChatMessage, resetSession };
+    const clearRequiredAction = () => setRequiredAction(null);
+
+    return {
+        wsReady: wsRef.current?.readyState === WebSocket.OPEN,
+        logs, status, currentUI, requiredAction, downloadProgress,
+        sendGoal, sendChatMessage, resetSession, clearRequiredAction
+    };
 }

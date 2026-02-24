@@ -1,95 +1,118 @@
-
-import { BookOpen, Sparkles, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, ArrowLeft, ChevronRight, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface DocsProps {
     onBack: () => void;
 }
 
+const MENU_ITEMS = [
+    { label: 'Introduction', file: 'README.md' },
+    { label: 'Quickstart', file: 'QUICKSTART.md' },
+    { label: 'Security', file: 'SECURITY.md' },
+    { label: 'Setup Guide', file: 'SETUP.md' }
+];
+
 export function Docs({ onBack }: DocsProps) {
+    const [activeFile, setActiveFile] = useState<string>('README.md');
+    const [markdownData, setMarkdownData] = useState<string>('');
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchMarkdown = async () => {
+            setIsLoading(true);
+            try {
+                const response = await fetch(`http://localhost:3000/api/docs/${activeFile}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch: ${response.status}`);
+                }
+                const text = await response.text();
+                if (isMounted) setMarkdownData(text);
+            } catch (err) {
+                console.error("Markdown fetch error:", err);
+                if (isMounted) setMarkdownData("### Page Not Found\n\nThe requested document could not be located in the repository.");
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+
+        fetchMarkdown();
+        return () => { isMounted = false; };
+    }, [activeFile]);
+
+    const activeItem = MENU_ITEMS.find(i => i.file === activeFile) || MENU_ITEMS[0];
+
     return (
-        <div className="flex-1 overflow-y-auto px-4 w-full">
-            <div className="max-w-[760px] mx-auto py-12 pb-32">
-                <button
-                    onClick={onBack}
-                    className="mb-8 flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" /> Back to Agent Console
-                </button>
-
-                <div className="flex items-center gap-3 mb-8">
-                    <BookOpen className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                    <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Quenderin Documentation</h1>
+        <div className="flex-1 w-full flex bg-white dark:bg-[#18181b] overflow-hidden">
+            {/* Left Sidebar Navigation */}
+            <aside className="hidden md:flex flex-col w-[250px] flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-[#18181b] overflow-y-auto">
+                <div className="p-4 pt-6 border-b border-zinc-200 dark:border-zinc-800">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors w-full px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+                    >
+                        <ArrowLeft className="w-4 h-4" /> Back to Agent
+                    </button>
                 </div>
 
-                <div className="space-y-12 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    <section>
-                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">The Quenderin Vision</h3>
-                        <p className="mb-4">
-                            Quenderin is the pursuit of <strong>Autonomous Computer Usage</strong>. Think of it as autonomous driving, but for your desktop and mobile OS. The vision is for Quenderin to sit quietly, watching how you work and learning from your daily interactions. Then, it takes over to do those exact tasks—only faster and better.
-                        </p>
-                        <p className="mb-4">
-                            It is designed to be an exclusive, voice-operated assistant that sits in front of you. When you intervene to correct it, Quenderin learns from that correction instantly.
-                        </p>
-                        <p className="mb-4 text-purple-700 dark:text-purple-300 font-medium">
-                            We must also acknowledge a core architectural irony: This entire Quenderin system has been and will be explicitly written using state-of-the-art Google models. However, the agent itself runs <strong>exclusively on offline local models</strong>, ensuring zero token costs and absolute data privacy for the end user.
-                        </p>
-                    </section>
+                <div className="p-4 space-y-1">
+                    <div className="text-xs font-bold tracking-wider text-zinc-400 uppercase mb-3 px-2 mt-4">Getting Started</div>
+                    {MENU_ITEMS.map((item) => (
+                        <button
+                            key={item.file}
+                            onClick={() => setActiveFile(item.file)}
+                            className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${activeFile === item.file
+                                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium shadow-sm border border-zinc-200 dark:border-zinc-700/50'
+                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300 border border-transparent'
+                                }`}
+                        >
+                            <FileText className={`w-4 h-4 ${activeFile === item.file ? 'text-blue-500' : 'text-zinc-400'}`} />
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+            </aside>
 
-                    <section>
-                        <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">How it works</h3>
-                        <p className="mb-4">
-                            Using ADB (Android Debug Bridge), Quenderin connects to a running emulator and dumps the current View Hierarchy (XML) into a parser. The backend filters this XML down to purely interactable nodes (buttons, lists, inputs), discarding everything else.
-                        </p>
-                        <p>
-                            A local LLM reads these parsed coordinates and decides the next sequence of inputs (<code className="bg-zinc-100 dark:bg-[#27272a] px-1 text-sm rounded text-pink-600 dark:text-pink-400">TAP</code>, <code className="bg-zinc-100 dark:bg-[#27272a] px-1 text-sm rounded text-pink-600 dark:text-pink-400">SWIPE</code>, <code className="bg-zinc-100 dark:bg-[#27272a] px-1 text-sm rounded text-pink-600 dark:text-pink-400">TEXT</code>) fully autonomously based on your original natural language goal. Finally, the backend executes those touches via `adb shell input` and repeats the loop.
-                        </p>
-                    </section>
+            {/* Right Pane Reader */}
+            <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#18181b] overflow-y-auto relative">
 
-                    <section>
-                        <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Compatible Offline Models</h3>
-                        <p className="mb-6">
-                            Because this system relies heavily on reading coordinates and outputting strict command sequences, your choice of offline model heavily influences performance. Here are all supported paradigms and their pros/cons for the end user:
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-zinc-50 dark:bg-[#27272a] p-5 rounded-2xl border border-zinc-200 dark:border-[#3f3f46]">
-                                <div className="font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Llama 3 (8B Instruct)</div>
-                                <p className="text-[14px] text-zinc-600 dark:text-zinc-400 mb-3 text-sm italic">The Current Standard</p>
-                                <ul className="text-[14px] pace-y-2 mb-2">
-                                    <li className="mb-1"><strong className="text-zinc-800 dark:text-zinc-200">Pros:</strong> Excellent reasoning, perfectly formats output JSON/Syntax, blazing fast inference on M-series Macs or modern GPUs.</li>
-                                    <li><strong className="text-zinc-800 dark:text-zinc-200">Cons:</strong> Requires ~5-6GB of system RAM to run comfortably alongside the Android emulator.</li>
-                                </ul>
-                            </div>
+                {/* Mobile Header (Hidden on Desktop) */}
+                <div className="md:hidden sticky top-0 bg-white/90 dark:bg-[#18181b]/90 backdrop-blur-md z-10 border-b border-zinc-200 dark:border-zinc-800 p-4 shrink-0">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400"
+                    >
+                        <ArrowLeft className="w-4 h-4" /> Back to Agent
+                    </button>
+                </div>
 
-                            <div className="bg-zinc-50 dark:bg-[#27272a] p-5 rounded-2xl border border-zinc-200 dark:border-[#3f3f46]">
-                                <div className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Mistral (v0.3 Instruct)</div>
-                                <p className="text-[14px] text-zinc-600 dark:text-zinc-400 mb-3 text-sm italic">The Speedy Alternative</p>
-                                <ul className="text-[14px] space-y-2 mb-2">
-                                    <li className="mb-1"><strong className="text-zinc-800 dark:text-zinc-200">Pros:</strong> Extremely low latency, highly capable at understanding UI elements and parsing XML tags rapidly.</li>
-                                    <li><strong className="text-zinc-800 dark:text-zinc-200">Cons:</strong> Can occasionally hallucinate tap coordinates if the UI hierarchy arrays get too dense or nested.</li>
-                                </ul>
-                            </div>
+                <div className="flex-1 w-full max-w-4xl mx-auto px-6 py-10 md:py-16">
+                    {/* Breadcrumbs */}
+                    <nav className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-8 font-medium">
+                        <BookOpen className="w-4 h-4" />
+                        <span>Quenderin Docs</span>
+                        <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />
+                        <span className="text-zinc-900 dark:text-zinc-200">{activeItem.label}</span>
+                    </nav>
 
-                            <div className="bg-zinc-50 dark:bg-[#27272a] p-5 rounded-2xl border border-zinc-200 dark:border-[#3f3f46] md:col-span-2">
-                                <div className="font-semibold text-purple-600 dark:text-purple-400 mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Phi-3 / Qwen (Smaller Models)</div>
-                                <p className="text-[14px] text-zinc-600 dark:text-zinc-400 mb-3 text-sm italic">The 10-20 Year Goal</p>
-                                <ul className="text-[14px] space-y-2 mb-2">
-                                    <li className="mb-1"><strong className="text-zinc-800 dark:text-zinc-200">Pros:</strong> Tiny footprint (1-3GB), instantaneous inference even on old or low-end hardware without a GPU. These models represent the future of fully democratic, cost-free AI on any device.</li>
-                                    <li><strong className="text-zinc-800 dark:text-zinc-200">Cons:</strong> Cannot hold context as long, often requires significantly more prompt engineering, and may get stuck in loops on complex spatial screens today.</li>
-                                </ul>
-                            </div>
+                    {isLoading ? (
+                        <div className="animate-pulse space-y-6 max-w-2xl">
+                            <div className="h-10 bg-zinc-200 dark:bg-zinc-800 rounded-lg w-3/4"></div>
+                            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-full"></div>
+                            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-5/6"></div>
+                            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-4/6"></div>
+                            <div className="h-32 bg-zinc-200 dark:bg-zinc-800 rounded-xl w-full mt-8"></div>
                         </div>
-                    </section>
-
-                    <section>
-                        <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-2">Prerequisites</h3>
-                        <ul className="list-disc pl-5 space-y-2 marker:text-zinc-400 dark:marker:text-zinc-500">
-                            <li>You must have an <strong>Android Emulator</strong> running natively on your system.</li>
-                            <li>Ensure the emulator screen is <strong>unlocked</strong> before sending a command.</li>
-                            <li>The dashboard server must be running via <code className="bg-zinc-100 dark:bg-[#27272a] px-1.5 py-0.5 rounded text-sm font-mono border border-zinc-200 dark:border-[#3f3f46]">npm run dashboard</code></li>
-                        </ul>
-                    </section>
+                    ) : (
+                        <div className="prose prose-zinc dark:prose-invert prose-blue max-w-none w-full animate-in fade-in duration-500 pb-32">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {markdownData}
+                            </ReactMarkdown>
+                        </div>
+                    )}
                 </div>
-
             </div>
         </div>
     );

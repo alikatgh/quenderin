@@ -24,6 +24,7 @@ export class UiVerifier {
         let lastElementsLength = -1;
         let stableCount = 0;
         let finalScreenshotPath = "";
+        let retries = 0;
 
         emitter.emit('status', "Waiting for UI to become idle...");
 
@@ -47,8 +48,13 @@ export class UiVerifier {
                 } else {
                     await new Promise(res => setTimeout(res, 500));
                 }
-            } catch (error) {
-                console.error("Error dumping UI:", error);
+            } catch (error: any) {
+                retries++;
+                console.error(`Status: Retrying UI connection (${retries}/3) - ${error.message.split('\n')[0]}`);
+                if (retries >= 3) {
+                    emitter.emit('error', `Fatal: Cannot connect to device. UI dump failed 3 times.`);
+                    throw new Error("Device disconnected or UI dump failed continuously. Aborting.");
+                }
                 await new Promise(res => setTimeout(res, 1000));
             }
         }

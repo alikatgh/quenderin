@@ -3,9 +3,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { EventEmitter } from 'events';
 import { IDeviceProvider } from '../../types/index.js';
 
-export class AndroidProvider implements IDeviceProvider {
+export class AndroidProvider extends EventEmitter implements IDeviceProvider {
+    constructor() {
+        super();
+    }
     // Helper to safely execute adb commands without a shell
     private async spawnAdb(args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
@@ -17,8 +21,16 @@ export class AndroidProvider implements IDeviceProvider {
             proc.stderr.on('data', (data) => stderr += data.toString());
 
             proc.on('close', (code) => {
-                if (code === 0) resolve(stdout.trim());
-                else reject(new Error(`ADB Command failed: adb ${args.join(' ')}\n${stderr}`));
+                if (code === 0) {
+                    resolve(stdout.trim());
+                } else {
+                    this.emit('action_required', {
+                        code: 'ADB_MISSING',
+                        title: 'Android Device Not Found',
+                        message: 'Ensure your emulator is running and ADB is authorized. Check USB debugging settings.'
+                    });
+                    reject(new Error(`ADB Command failed: adb ${args.join(' ')}\n${stderr}`));
+                }
             });
         });
     }

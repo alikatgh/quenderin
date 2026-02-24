@@ -126,7 +126,9 @@ export class BackgroundDaemonService extends EventEmitter {
                 }
 
             } catch (err: any) {
-                this.emit('error', `Background polling error: ${err.message}`);
+                if (!err.message.includes('adb: no devices/emulators found')) {
+                    this.emit('error', `Background polling error: ${err.message.split('\n')[0]}`);
+                }
             }
 
             // Wait until next tick

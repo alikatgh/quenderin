@@ -5,9 +5,10 @@ interface InspectorProps {
     isOpen: boolean;
     currentUI: UIElement[];
     logs: LogEntry[];
+    screenshotBase64?: string;
 }
 
-export function Inspector({ isOpen, currentUI, logs }: InspectorProps) {
+export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: InspectorProps) {
     let targetTap: { x: number, y: number } | null = null;
     const lastDecide = [...logs].reverse().find(l => l.type === 'decide');
     if (lastDecide && lastDecide.command?.startsWith('TAP')) {
@@ -17,9 +18,9 @@ export function Inspector({ isOpen, currentUI, logs }: InspectorProps) {
 
     return (
         <div
-            className={`flex-shrink-0 bg-white dark:bg-[#18181b] border-l border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col ${isOpen ? 'w-[380px] xl:w-[420px] translate-x-0' : 'w-0 translate-x-full overflow-hidden absolute right-0 z-40 h-full shadow-[-20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-none'}`}
+            className={`flex-shrink-0 bg-white dark:bg-[#18181b] border-l border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col absolute md:relative right-0 z-40 h-full shadow-[-20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-none ${isOpen ? 'w-full sm:w-[380px] xl:w-[420px] translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}
         >
-            <div className="h-full py-6 px-6 flex flex-col items-center min-w-[380px] xl:min-w-[420px]">
+            <div className="h-full py-6 px-6 flex flex-col items-center w-full sm:w-[380px] xl:w-[420px] overflow-y-auto overflow-x-hidden">
 
                 <div className="w-full flex items-center justify-between mb-8">
                     <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
@@ -28,7 +29,7 @@ export function Inspector({ isOpen, currentUI, logs }: InspectorProps) {
                     {currentUI.length > 0 && <span className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 px-2 py-0.5 rounded text-[11px] font-medium tracking-wide shadow-sm">{currentUI.length} Nodes</span>}
                 </div>
 
-                <div className="w-[300px] xl:w-[330px] h-[650px] xl:h-[700px] bg-zinc-900 dark:bg-black border-[5px] border-zinc-300 dark:border-[#27272a] rounded-[28px] relative overflow-hidden shadow-2xl flex-shrink-0 ring-1 ring-black/5 dark:ring-0">
+                <div className="w-[300px] xl:w-[330px] h-[650px] xl:h-[700px] scale-[0.85] sm:scale-100 origin-top bg-zinc-900 dark:bg-black border-[5px] border-zinc-300 dark:border-[#27272a] rounded-[28px] relative overflow-hidden shadow-2xl flex-shrink-0 ring-1 ring-black/5 dark:ring-0 transition-transform">
 
                     <div className="absolute top-0 w-full h-7 bg-zinc-900 dark:bg-black z-30 flex justify-center">
                         <div className="w-[90px] h-[20px] bg-zinc-300 dark:bg-[#18181b] rounded-b-xl border border-transparent"></div>
@@ -36,6 +37,14 @@ export function Inspector({ isOpen, currentUI, logs }: InspectorProps) {
 
                     <div className="absolute inset-0 bg-[#0e0e11] mt-7 mb-2 overflow-hidden relative">
                         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+                        {screenshotBase64 && (
+                            <img
+                                src={`data:image/png;base64,${screenshotBase64}`}
+                                alt="Live Device Screen"
+                                className="absolute inset-0 w-full h-full object-contain z-0 pointer-events-none opacity-80"
+                            />
+                        )}
 
                         {currentUI.length === 0 ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
