@@ -12,22 +12,34 @@ export interface AgentMetrics {
     timestamp: string;
 }
 
+export interface HabitLog {
+    id: string;
+    timestamp: string;
+    diff_score: number;
+    description: string;
+}
+
 export class MetricsService {
     private telemetryPath: string;
+    private habitsPath: string;
 
     constructor() {
         const homeDir = os.homedir();
         // Ensure the global .quenderin config directory exists
         const configDir = path.join(homeDir, '.quenderin');
         this.telemetryPath = path.join(configDir, 'telemetry.json');
+        this.habitsPath = path.join(configDir, 'habits.json');
 
-        // Initialize directory and file if they don't exist
+        // Initialize directory and files if they don't exist
         fs.mkdir(configDir, { recursive: true }).then(() => {
-            return fs.access(this.telemetryPath).catch(() => {
-                return fs.writeFile(this.telemetryPath, JSON.stringify([]), 'utf-8');
+            fs.access(this.telemetryPath).catch(() => {
+                fs.writeFile(this.telemetryPath, JSON.stringify([]), 'utf-8');
+            });
+            fs.access(this.habitsPath).catch(() => {
+                fs.writeFile(this.habitsPath, JSON.stringify([]), 'utf-8');
             });
         }).catch(err => {
-            console.error('Failed to initialize Quenderin telemetry store:', err);
+            console.error('Failed to initialize Quenderin metrics store:', err);
         });
     }
 
@@ -45,6 +57,26 @@ export class MetricsService {
     public async getMetrics(): Promise<AgentMetrics[]> {
         try {
             const data = await fs.readFile(this.telemetryPath, 'utf-8');
+            return JSON.parse(data);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    public async appendHabitLog(log: HabitLog): Promise<void> {
+        try {
+            const data = await fs.readFile(this.habitsPath, 'utf-8');
+            const records: HabitLog[] = JSON.parse(data);
+            records.push(log);
+            await fs.writeFile(this.habitsPath, JSON.stringify(records, null, 2), 'utf-8');
+        } catch (error) {
+            console.error('Failed to write habit log data:', error);
+        }
+    }
+
+    public async getHabits(): Promise<HabitLog[]> {
+        try {
+            const data = await fs.readFile(this.habitsPath, 'utf-8');
             return JSON.parse(data);
         } catch (error) {
             return [];

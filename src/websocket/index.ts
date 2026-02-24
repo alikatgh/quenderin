@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
-import { AdbService } from '../services/adb.service.js';
+import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 
 export class WebSocketManager {
@@ -11,7 +11,7 @@ export class WebSocketManager {
     constructor(
         server: Server,
         private agentService: AgentService,
-        private adbService: AdbService,
+        private deviceProvider: IDeviceProvider,
         private llmService: LlmService
     ) {
         this.wss = new WebSocketServer({ server });
@@ -29,12 +29,7 @@ export class WebSocketManager {
                 try {
                     const data = JSON.parse(message.toString());
                     if (data.type === 'start') {
-                        const deviceReady = await this.adbService.checkDevice();
-                        if (!deviceReady) {
-                            ws.send(JSON.stringify({ type: 'error', message: "No Android device/emulator found. Please start one and try again." }));
-                            return;
-                        }
-
+                        // Device ready check removed as IDeviceProvider abstracts this connection natively
                         ws.send(JSON.stringify({ type: 'status', message: `Initializing agent goal: ${data.goal}` }));
 
                         const emitter = new AgentEventEmitter();

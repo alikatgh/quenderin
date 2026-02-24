@@ -1,8 +1,8 @@
-import { AgentEvents, UIElement, IDeviceService } from '../../types/index.js';
+import { AgentEvents, UIElement, IDeviceProvider } from '../../types/index.js';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class ActionExecutor {
-    constructor(private deviceService: IDeviceService) { }
+    constructor(private deviceProvider: IDeviceProvider) { }
 
     public async execute(actionObj: any, elements: UIElement[], emitter: AgentEventEmitter): Promise<boolean> {
         const actionType = actionObj.action;
@@ -31,7 +31,7 @@ export class ActionExecutor {
                 }
 
                 emitter.emit('status', `Clicking dynamically on element ${targetId} at (${el.center.x}, ${el.center.y})`);
-                await this.deviceService.tap(el.center.x, el.center.y);
+                await this.deviceProvider.click(el.center.x, el.center.y);
                 return true;
             } else {
                 emitter.emit('error', `Element with id ${targetId} not found.`);
@@ -43,10 +43,10 @@ export class ActionExecutor {
             const el = elements.find(e => e.id === targetId);
             if (el) {
                 emitter.emit('status', `Typing into element ${targetId}`);
-                await this.deviceService.tap(el.center.x, el.center.y);
+                await this.deviceProvider.click(el.center.x, el.center.y);
                 // Simple delay for keyboard to appear
                 await new Promise(res => setTimeout(res, 500));
-                await this.deviceService.typeText(text);
+                await this.deviceProvider.type(text);
                 return true;
             } else {
                 emitter.emit('error', `Element with id ${targetId} not found for input.`);
@@ -55,19 +55,8 @@ export class ActionExecutor {
         } else if (actionType === 'scroll') {
             const direction = actionObj.direction || 'down';
             emitter.emit('status', `Scrolling ${direction}`);
-            const width = 1080;
-            const height = 2400; // Assuming standard resolution for now
-            const startX = width / 2;
-            const startY = height / 2;
 
-            let endY = startY;
-            if (direction === 'down') {
-                endY = startY - (height * 0.3);
-            } else if (direction === 'up') {
-                endY = startY + (height * 0.3);
-            }
-
-            await this.deviceService.swipe(startX, startY, startX, endY, 300);
+            await this.deviceProvider.scroll(direction);
             return true;
         }
 

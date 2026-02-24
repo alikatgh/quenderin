@@ -6,10 +6,17 @@ export class PromptBuilder {
     public async buildEnvironment(goal: string, textRepresentation: string, actionHistory: string[]): Promise<string> {
         let memoryPromptAddition = "";
 
-        // Trajectory Memory check
+        // 1. Trajectory Memory Check (Exact Goal Match)
         const pastMemory = await this.memoryService.findSimilarGoal(goal);
         if (pastMemory) {
-            memoryPromptAddition = `\n\n[SYSTEM WARNING]: You have successfully solved a similar goal in the past. Your previous winning trajectory was:\n${pastMemory.actions.join('\n')}\nConsider following this known-good sequence.`;
+            memoryPromptAddition += `\n\n[SYSTEM WARNING]: You have successfully solved a similar goal in the past. Your previous winning trajectory was:\n${pastMemory.actions.join('\n')}\nConsider following this known-good sequence.`;
+        }
+
+        // 2. Self-Correction RAG (Semantic UI Match)
+        const relevantCorrections = await this.memoryService.findRelevantCorrections(textRepresentation);
+        if (relevantCorrections && relevantCorrections.length > 0) {
+            const rules = relevantCorrections.map(c => `- ${c.correctionString}`).join('\n');
+            memoryPromptAddition += `\n\n[CRITICAL USER CORRECTIONS FOR THIS CONTEXT]:\nThe user has previously corrected you on a screen identical to this one. YOU MUST OBEY THESE RULES FOREVER:\n${rules}`;
         }
 
         const historyText = actionHistory.length > 0 ? `\n\nRecent Actions:\n${actionHistory.slice(-5).join('\n')}` : '';

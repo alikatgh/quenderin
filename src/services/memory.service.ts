@@ -1,6 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { pipeline, env } from '@xenova/transformers';
+
+// Setup Xenova for Node environment
+env.allowLocalModels = false;
+env.useBrowserCache = false;
 
 export interface TrajectoryEntry {
     goal: string;
@@ -8,21 +13,49 @@ export interface TrajectoryEntry {
     timestamp: string;
 }
 
+export interface CorrectionEntry {
+    id: string;
+    uiContextString: string;
+    correctionString: string;
+    embeddingVector: number[];
+    timestamp: string;
+}
+
 export class MemoryService {
     private memoryPath: string;
+    private correctionsPath: string;
+    private extractor: any = null;
 
     constructor() {
         const homeDir = os.homedir();
         const configDir = path.join(homeDir, '.quenderin');
         this.memoryPath = path.join(configDir, 'memory.json');
+        this.correctionsPath = path.join(configDir, 'corrections.json');
 
         fs.mkdir(configDir, { recursive: true }).then(() => {
-            return fs.access(this.memoryPath).catch(() => {
-                return fs.writeFile(this.memoryPath, JSON.stringify([]), 'utf-8');
+            fs.access(this.memoryPath).catch(() => {
+                fs.writeFile(this.memoryPath, JSON.stringify([]), 'utf-8');
+            });
+            fs.access(this.correctionsPath).catch(() => {
+                fs.writeFile(this.correctionsPath, JSON.stringify([]), 'utf-8');
             });
         }).catch(err => {
             console.error('Failed to initialize Quenderin memory store:', err);
         });
+    }
+
+    private async getExtractor() {
+        if (!this.extractor) {
+            console.log('\n[Memory RAG] Initializing local semantic embedding model (Xenova/all-MiniLM-L6-v2)...');
+            this.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+        }
+        return this.extractor;
+    }
+
+    private async embedText(text: string): Promise<number[]> {
+        const extractor = await this.getExtractor();
+        const output = await extractor(text, { pooling: 'mean', normalize: true });
+        return Array.from(output.data);
     }
 
     public async saveTrajectory(goal: string, actions: string[]): Promise<void> {
@@ -86,6 +119,71 @@ export class MemoryService {
             return match || null;
         } catch (error) {
             return null;
+        }
+    }
+
+    public async saveCorrection(uiContextString: string, correctionString: string): Promise<void> {
+        try {
+            const data = await fs.readFile(this.correctionsPath, 'utf-8');
+            const records: CorrectionEntry[] = JSON.parse(data);
+
+            const embeddingVector = await this.embedText(uiContextString + " " + correctionString);
+
+            records.push({
+                id: Date.now().toString(),
+                uiContextString,
+                correctionString,
+                embeddingVector,
+                timestamp: new Date().toISOString()
+            });
+
+            await fs.writeFile(this.correctionsPath, JSON.stringify(records, null, 2), 'utf-8');
+            console.log(`\n[Memory RAG] 🧠 Correction persistently saved to Vector Store!`);
+        } catch (error: any) {
+            console.error('[Memory RAG] Failed to write correction to vector store:', error.message);
+        }
+    }
+
+    private cosineSimilarity(a: number[], b: number[]): number {
+        let dotProduct = 0;
+        let normA = 0;
+        let normB = 0;
+        for (let i = 0; i < a.length; i++) {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        if (normA === 0 || normB === 0) return 0;
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    public async findRelevantCorrections(uiContextString: string, k: number = 3): Promise<CorrectionEntry[]> {
+        try {
+            const data = await fs.readFile(this.correctionsPath, 'utf-8');
+            const records: CorrectionEntry[] = JSON.parse(data);
+
+            if (records.length === 0) return [];
+
+            const targetVector = await this.embedText(uiContextString);
+
+            // Score all vectors
+            const scored = records.map(record => {
+                const score = this.cosineSimilarity(targetVector, record.embeddingVector);
+                return { record, score };
+            });
+
+            // Sort highest score first
+            scored.sort((a, b) => b.score - a.score);
+
+            // Filter by threshold (e.g. 0.70) and return top K
+            return scored
+                .filter(s => s.score >= 0.70)
+                .slice(0, k)
+                .map(s => s.record);
+
+        } catch (error: any) {
+            console.error('[Memory RAG] Failed to retrieve corrections:', error.message);
+            return [];
         }
     }
 }

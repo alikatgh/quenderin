@@ -1,4 +1,4 @@
-import { IDeviceService, UIElement } from '../../types/index.js';
+import { IDeviceProvider, UIElement } from '../../types/index.js';
 import { UiParserService } from '../uiParser.service.js';
 import { OcrService } from '../ocr.service.js';
 import crypto from 'crypto';
@@ -6,7 +6,7 @@ import { AgentEventEmitter } from '../agent.service.js';
 
 export class UiVerifier {
     constructor(
-        private deviceService: IDeviceService,
+        private deviceProvider: IDeviceProvider,
         private uiParserService: UiParserService,
         private ocrService: OcrService
     ) { }
@@ -29,8 +29,9 @@ export class UiVerifier {
 
         while (!isIdle) {
             try {
-                const xmlDump = await this.deviceService.dumpUI();
-                const parsed = this.uiParserService.parseUI(xmlDump);
+                // Fetch both XML and Screenshot natively via the Provider
+                const { xml, screenshotPath } = await this.deviceProvider.getScreenContext();
+                const parsed = this.uiParserService.parseUI(xml);
 
                 if (parsed.elements.length === lastElementsLength) {
                     stableCount++;
@@ -42,8 +43,7 @@ export class UiVerifier {
                 if (stableCount >= 2) {
                     isIdle = true;
                     finalParsed = parsed;
-                    // Always capture the final visual frame for the iteration, even if OCR is disabled
-                    finalScreenshotPath = await this.deviceService.screencap();
+                    finalScreenshotPath = screenshotPath;
                 } else {
                     await new Promise(res => setTimeout(res, 500));
                 }

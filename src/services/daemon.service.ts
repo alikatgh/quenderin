@@ -1,4 +1,4 @@
-import { IDeviceService, UIElement } from '../types/index.js';
+import { IDeviceProvider, UIElement } from '../types/index.js';
 import { UiParserService } from './uiParser.service.js';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
@@ -18,7 +18,7 @@ export class DaemonService extends EventEmitter {
     private lastHash = "";
 
     constructor(
-        private deviceService: IDeviceService,
+        private deviceProvider: IDeviceProvider,
         private uiParserService: UiParserService,
         options = { pollIntervalMs: 2000, logSizeLimit: 100 }
     ) {
@@ -53,15 +53,15 @@ export class DaemonService extends EventEmitter {
     private async pollLoop() {
         while (this.isRunning) {
             try {
-                const xmlDump = await this.deviceService.dumpUI();
+                const { xml } = await this.deviceProvider.getScreenContext();
 
                 // If there's no XML returned, just skip this tick
-                if (!xmlDump || xmlDump.length === 0) {
+                if (!xml || xml.length === 0) {
                     await new Promise(res => setTimeout(res, this.pollIntervalMs));
                     continue;
                 }
 
-                const parsed = this.uiParserService.parseUI(xmlDump);
+                const parsed = this.uiParserService.parseUI(xml);
                 const currentHash = this.hashUiState(parsed.elements);
 
                 // Only record meaningful state changes to prevent log bloat
@@ -72,7 +72,7 @@ export class DaemonService extends EventEmitter {
                         timestamp: new Date().toISOString(),
                         hash: currentHash,
                         elements: parsed.elements,
-                        xml: xmlDump
+                        xml: xml
                     };
 
                     this.observationLog.push(observation);

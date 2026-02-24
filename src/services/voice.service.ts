@@ -1,105 +1,192 @@
-import { Porcupine, BuiltinKeyword } from '@picovoice/porcupine-node';
 import { EventEmitter } from 'events';
+import { Porcupine, BuiltinKeyword } from '@picovoice/porcupine-node';
+import { PvRecorder } from '@picovoice/pvrecorder-node';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 
 export class VoiceService extends EventEmitter {
     private porcupine: Porcupine | null = null;
+    private recorder: PvRecorder | null = null;
     private isListening = false;
-    private modelPath: string;
+    private STATE = 'IDLE'; // IDLE | RECORDING | TRANSCRIBING
 
-    constructor(private picovoiceApiKey: string) {
+    // We enforce exactly 10 seconds of speech
+    private MAX_RECORDING_SAMPLES = 16000 * 10;
+    private audioBuffer: Int16Array = new Int16Array(this.MAX_RECORDING_SAMPLES);
+    private currentSampleIndex = 0;
+
+    constructor() {
         super();
-        this.modelPath = path.join(os.homedir(), '.quenderin', 'models', 'ggml-base.en.bin');
-
-        // Auto-create model dir if missing
-        const modelDir = path.dirname(this.modelPath);
-        if (!fs.existsSync(modelDir)) {
-            fs.mkdirSync(modelDir, { recursive: true });
-        }
     }
 
-    public async initialize() {
+    public async initialize(accessKey: string) {
         try {
-            // Initialize Wake Word Engine
-            if (!this.picovoiceApiKey || this.picovoiceApiKey === 'DEMO_KEY') {
-                this.emit('status', 'Warning: No Picovoice API Key provided. Voice wake word is disabled.');
+            console.log('[VoiceService] Initializing Porcupine Wake Word Engine...');
+
+            // Note: Porcupine requires a valid AccessKey from Picovoice Console
+            if (!accessKey) {
+                console.warn('[VoiceService] Missing PICOVOICE_ACCESS_KEY. Voice control disabled.');
                 return;
             }
 
             this.porcupine = new Porcupine(
-                this.picovoiceApiKey,
-                [BuiltinKeyword.COMPUTER],
+                accessKey,
+                [BuiltinKeyword.PORCUPINE], // "Porcupine" is the default built-in wake word
                 [0.5] // Sensitivity
             );
 
-            // Wait until Whisper base model exists. Production app would auto-download it via fetch() here.
-            if (!fs.existsSync(this.modelPath)) {
-                this.emit('error', `Whisper model not found at ${this.modelPath}. Please download ggml-base.en.bin.`);
-            } else {
-                this.emit('status', 'Voice Service initialized. Waiting for wake word "Computer".');
-            }
+            const frameLength = this.porcupine.frameLength;
+            this.recorder = new PvRecorder(-1, frameLength); // -1 is default mic
+            console.log('[VoiceService] Audio pipeline ready. Say "Porcupine" to wake.');
 
-        } catch (error: any) {
-            this.emit('error', `Failed to initialize VoiceService: ${error.message}`);
+            this.isListening = true;
+            this.audioLoop(); // Start hardware polling asynchronously
+
+        } catch (err: any) {
+            console.error('[VoiceService] Failed to initialize:', err.message);
         }
     }
 
-    // Connects to a raw audio stream (e.g. from node-record-lpcm16 or an Electron MediaStream)
-    public processAudioFrame(frame: Int16Array) {
-        if (!this.porcupine || this.isListening) return;
+    private async audioLoop() {
+        if (!this.recorder || !this.porcupine) return;
 
         try {
-            const keywordIndex = this.porcupine.process(frame);
-            if (keywordIndex === 0) {
-                this.emit('status', 'Wake word "Computer" detected! Waiting for command...');
-                this.emit('wake');
-                this.startRecordingCommand();
+            this.recorder.start();
+        } catch (e: any) {
+            console.error('[VoiceService] Microphone access denied or in use:', e.message);
+            return;
+        }
+
+        while (this.isListening) {
+            // Non-blocking read array
+            try {
+                const pcm = await this.recorder.read();
+
+                if (this.STATE === 'IDLE') {
+                    // 1. Wake Word Detection Phase
+                    const keywordIndex = this.porcupine.process(pcm);
+                    if (keywordIndex === 0) {
+                        console.log('\n[VoiceService] 🎙️  Wake word detected! Listening for 10 seconds...');
+                        this.STATE = 'RECORDING';
+                        this.currentSampleIndex = 0;
+                        this.emit('wake');
+                    }
+                } else if (this.STATE === 'RECORDING') {
+                    // 2. Audio Capture Phase
+                    // Copy hardware frame into our 10-second buffer
+                    if (this.currentSampleIndex + pcm.length < this.MAX_RECORDING_SAMPLES) {
+                        this.audioBuffer.set(pcm, this.currentSampleIndex);
+                        this.currentSampleIndex += pcm.length;
+                    } else {
+                        // Buffer full, end recording
+                        console.log('[VoiceService] Recording finished. Transcribing offline...');
+                        this.STATE = 'TRANSCRIBING';
+
+                        // We must yield the main thread while we do heavy I/O and ML inference
+                        setImmediate(() => this.processAudioBuffer());
+                    }
+                }
+            } catch (err: any) {
+                console.error('[VoiceService] Frame read error:', err.message);
             }
-        } catch (error: any) {
-            this.emit('error', `Wake word processing error: ${error.message}`);
         }
     }
 
-    private async startRecordingCommand() {
-        this.isListening = true;
-        // In a real implementation, this would buffer the next 5-10 seconds of mic input to a temp.wav file
-        const tempWavPath = path.join(os.tmpdir(), `quenderin-cmd-${Date.now()}.wav`);
+    private async processAudioBuffer() {
+        try {
+            // Trim actual recorded length if it ended early (though currently we force 10s)
+            const recordedFrames = this.audioBuffer.slice(0, this.currentSampleIndex);
 
-        this.emit('status', 'Recording audio command... (simulated)');
+            // whisper-node requires a physical .wav file on disk. 
+            // We must manually encode the PCM Int16 raw frames to standard WAV.
+            const wavPath = path.join(os.tmpdir(), `quenderin_voice_${crypto.randomUUID()}.wav`);
+            this.writeWavFile(wavPath, recordedFrames, 16000, 1);
 
-        // ... simulated recording delay ...
-        await new Promise(res => setTimeout(res, 3000));
+            // 3. Offline Transcription Phase
+            // Setup dynamic whisper import just like the old mock did to save memory until invoked
+            const whisperModule = await import('whisper-node');
+            const whisper = whisperModule.default || whisperModule.whisper;
 
-        // Pretend we wrote the buffer out to wav
-        if (fs.existsSync(tempWavPath)) {
-            try {
-                this.emit('status', 'Transcribing audio via local Whisper model...');
-                const transcriptOptions = {
-                    modelName: this.modelPath,
-                    language: "en"
-                };
+            const options = {
+                modelName: "tiny.en", // Using the smallest, fastest English-only model
+                whisperOptions: { word_timestamps: false }
+            };
 
-                // Lazily load whisper-node to prevent `make` crashes on startup for users without build tools
-                try {
-                    const { whisper } = await import('whisper-node');
-                    const transcripts = await whisper(tempWavPath, transcriptOptions);
-                    const finalCommand = transcripts.map((t: any) => t.speech).join(" ").trim();
+            const transcripts = await whisper(wavPath, options);
 
-                    if (finalCommand) {
-                        this.emit('command', finalCommand);
-                    }
-                } catch (importErr: any) {
-                    this.emit('error', `Whisper module is not compiled or available. Please install build tools. Error: ${importErr.message}`);
-                }
-            } catch (err: any) {
-                this.emit('error', `Failed to transcribe: ${err.message}`);
-            } finally {
-                fs.unlinkSync(tempWavPath);
+            // Clean up the temporary file
+            fs.unlinkSync(wavPath);
+
+            // whisper-node returns an array of objects: {start, end, speech}
+            let fullText = "";
+            for (const t of transcripts) {
+                fullText += " " + t.speech;
             }
+            const cleanText = fullText.trim();
+
+            if (cleanText.length > 0) {
+                console.log(`[VoiceService] Transcription: "${cleanText}"`);
+                this.emit('command', cleanText); // Pipe to AgentService!
+            } else {
+                console.log('[VoiceService] No speech detected.');
+            }
+
+        } catch (err: any) {
+            console.error('[VoiceService] Transcription Error:', err.message);
+        } finally {
+            // Return to IDLE 
+            this.STATE = 'IDLE';
+            console.log('[VoiceService] Returning to sleep state. Say "Porcupine" to wake.');
+        }
+    }
+
+    /**
+     * Helper to encode raw PCM 16-bit 16kHz audio array into a standard .wav file
+     */
+    private writeWavFile(filepath: string, pcmBuffer: Int16Array, sampleRate: number, numChannels: number) {
+        const byteRate = sampleRate * numChannels * 2;
+        const blockAlign = numChannels * 2;
+        const dataSize = pcmBuffer.length * 2;
+        const buffer = Buffer.alloc(44 + dataSize);
+
+        // RIFF chunk descriptor
+        buffer.write('RIFF', 0);
+        buffer.writeUInt32LE(36 + dataSize, 4);
+        buffer.write('WAVE', 8);
+
+        // FMT sub-chunk
+        buffer.write('fmt ', 12);
+        buffer.writeUInt32LE(16, 16); // Subchunk1Size (16 for PCM)
+        buffer.writeUInt16LE(1, 20); // AudioFormat (1 = PCM)
+        buffer.writeUInt16LE(numChannels, 22);
+        buffer.writeUInt32LE(sampleRate, 24);
+        buffer.writeUInt32LE(byteRate, 28);
+        buffer.writeUInt16LE(blockAlign, 32);
+        buffer.writeUInt16LE(16, 34); // BitsPerSample
+
+        // Data sub-chunk
+        buffer.write('data', 36);
+        buffer.writeUInt32LE(dataSize, 40);
+
+        // Write PCM data
+        let offset = 44;
+        for (let i = 0; i < pcmBuffer.length; i++) {
+            buffer.writeInt16LE(pcmBuffer[i], offset);
+            offset += 2;
         }
 
+        fs.writeFileSync(filepath, buffer);
+    }
+
+    public shutdown() {
         this.isListening = false;
+        if (this.recorder) {
+            this.recorder.stop();
+            this.recorder.release();
+        }
+        if (this.porcupine) this.porcupine.release();
+        console.log('[VoiceService] Hardware released.');
     }
 }

@@ -23,13 +23,12 @@ export interface AgentEvents {
     done: () => void;
 }
 
-export interface IDeviceService {
-    dumpUI(): Promise<string>;
-    screencap(): Promise<string>;
-    tap(x: number, y: number): Promise<void>;
-    typeText(text: string, clearFirst?: boolean): Promise<void>;
-    swipe(x1: number, y1: number, x2: number, y2: number, durationMs?: number): Promise<void>;
-    keyevent(code: number): Promise<void>;
+export interface IDeviceProvider {
+    click(x: number, y: number): Promise<void>;
+    type(text: string): Promise<void>;
+    scroll(direction: 'up' | 'down'): Promise<void>;
+    pressKey(key: string): Promise<void>;
+    getScreenContext(): Promise<{ xml: string, screenshotPath: string }>;
 }
 
 export interface ILlmProvider {

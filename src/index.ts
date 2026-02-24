@@ -3,7 +3,8 @@ import { Command } from 'commander';
 import { startDashboardServer } from './server.js';
 import { LlmService } from './services/llm.service.js';
 import { AgentService } from './services/agent.service.js';
-import { AdbService } from './services/adb.service.js';
+import { AndroidProvider } from './services/providers/android.provider.js';
+import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
@@ -26,13 +27,15 @@ program
   .option('-s, --steps <number>', 'Maximum allowed steps', '20')
   .action(async (goal: string, options) => {
     try {
-      const adbService = new AdbService();
+      const targetOS = process.env.TARGET_OS || 'android';
+      const deviceProvider = targetOS === 'desktop' ? new DesktopProvider() : new AndroidProvider();
+
       const uiParserService = new UiParserService();
       const llmService = new LlmService();
       const metricsService = new MetricsService();
       const ocrService = new OcrService();
       const memoryService = new MemoryService();
-      const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
+      const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
 
       await agentService.runAgentLoop(goal, parseInt(options.steps, 10));
     } catch (e: any) {
@@ -46,18 +49,19 @@ program
   .option('-p, --port <number>', 'Port for the web server', '3000')
   .action(async (options) => {
     try {
-      const adbService = new AdbService();
+      const targetOS = process.env.TARGET_OS || 'android';
+      const deviceProvider = targetOS === 'desktop' ? new DesktopProvider() : new AndroidProvider();
+
       const uiParserService = new UiParserService();
       const llmService = new LlmService();
       const metricsService = new MetricsService();
       const ocrService = new OcrService();
       const memoryService = new MemoryService();
 
-      const daemonService = new DaemonService(adbService, uiParserService);
-      const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
+      const daemonService = new DaemonService(deviceProvider, uiParserService);
+      const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
 
-      // We pass a dummy key here. A real implementation would load from process.env.PICOVOICE_API_KEY
-      const voiceService = new VoiceService('DEMO_KEY');
+      const voiceService = new VoiceService();
 
       // Start background observation
       daemonService.on('error', (err) => {
@@ -80,7 +84,7 @@ program
         console.log(`[Voice] ${err}`);
       });
 
-      await voiceService.initialize();
+      await voiceService.initialize(process.env.PICOVOICE_ACCESS_KEY || '');
 
       await startDashboardServer(parseInt(options.port, 10));
     } catch (e: any) {

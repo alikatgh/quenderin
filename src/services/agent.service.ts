@@ -5,7 +5,7 @@ import { MemoryService } from "./memory.service.js";
 import { PromptBuilder } from "./agent/promptBuilder.js";
 import { ActionExecutor } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
-import { AgentEvents, UIElement, IDeviceService, ILlmProvider } from "../types/index.js";
+import { AgentEvents, UIElement, IDeviceProvider, ILlmProvider } from "../types/index.js";
 import { MetricsService, AgentMetrics } from "./metrics.service.js";
 
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
@@ -54,15 +54,15 @@ export class AgentService {
 
     constructor(
         private llmProvider: ILlmProvider,
-        private deviceService: IDeviceService,
+        private deviceProvider: IDeviceProvider,
         private uiParserService: UiParserService,
         private metricsService: MetricsService,
         private ocrService: OcrService,
         private memoryService: MemoryService
     ) {
         this.promptBuilder = new PromptBuilder(this.memoryService);
-        this.actionExecutor = new ActionExecutor(this.deviceService);
-        this.uiVerifier = new UiVerifier(this.deviceService, this.uiParserService, this.ocrService);
+        this.actionExecutor = new ActionExecutor(this.deviceProvider);
+        this.uiVerifier = new UiVerifier(this.deviceProvider, this.uiParserService, this.ocrService);
     }
 
     public async runAgentLoop(goal: string, maxSteps: number = 15, emitter: AgentEventEmitter = new AgentEventEmitter()): Promise<void> {
