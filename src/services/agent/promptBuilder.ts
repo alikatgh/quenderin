@@ -21,7 +21,7 @@ export class PromptBuilder {
 
         const historyText = actionHistory.length > 0 ? `\n\nRecent Actions:\n${actionHistory.slice(-5).join('\n')}` : '';
 
-        const prompt = `Current UI State:\n${textRepresentation}${historyText}${memoryPromptAddition}\n\nUser Goal: ${goal}\n\nWhat is your next JSON action?`;
+        const prompt = `Current UI State:\n${textRepresentation}${historyText}${memoryPromptAddition}\n\nUser Goal: ${goal}\n\n[INSTRUCTION]: Determine the next step. If the UI State lacks XML structure (e.g., Desktop environment or raw screenshot), you MUST analyze the image visually to determine exact coordinates, outputting {"action": "click", "x": 450, "y": 800} instead of an id. \n\nWhat is your next JSON action?`;
 
         return prompt;
     }

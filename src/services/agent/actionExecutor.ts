@@ -1,10 +1,10 @@
-import { AgentEvents, UIElement, IDeviceProvider } from '../../types/index.js';
+import { AgentEvents, UIElement, IDeviceProvider, AgentAction } from '../../types/index.js';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class ActionExecutor {
     constructor(private deviceProvider: IDeviceProvider) { }
 
-    public async execute(actionObj: any, elements: UIElement[], emitter: AgentEventEmitter): Promise<boolean> {
+    public async execute(actionObj: AgentAction, elements: UIElement[], emitter: AgentEventEmitter): Promise<boolean> {
         const actionType = actionObj.action;
         emitter.emit('action', actionType);
 
@@ -15,6 +15,13 @@ export class ActionExecutor {
         }
 
         if (actionType === 'click') {
+            if (actionObj.x !== undefined && actionObj.y !== undefined) {
+                emitter.emit('status', `Warning: Coordinate-based action bypasses UI text safety blocklist. Relying on VLM alignment.`);
+                emitter.emit('status', `Clicking coordinate dynamically (${actionObj.x}, ${actionObj.y})`);
+                await this.deviceProvider.click(actionObj.x, actionObj.y);
+                return true;
+            }
+
             const targetId = actionObj.id;
             const el = elements.find(e => e.id === targetId);
             if (el) {
@@ -38,8 +45,18 @@ export class ActionExecutor {
                 return false;
             }
         } else if (actionType === 'input') {
+            const text = actionObj.text || '';
+
+            if (actionObj.x !== undefined && actionObj.y !== undefined) {
+                emitter.emit('status', `Warning: Coordinate-based action bypasses UI text safety blocklist. Relying on VLM alignment.`);
+                emitter.emit('status', `Typing at coordinate (${actionObj.x}, ${actionObj.y})`);
+                await this.deviceProvider.click(actionObj.x, actionObj.y);
+                await new Promise(res => setTimeout(res, 500));
+                await this.deviceProvider.type(text);
+                return true;
+            }
+
             const targetId = actionObj.id;
-            const text = actionObj.text;
             const el = elements.find(e => e.id === targetId);
             if (el) {
                 emitter.emit('status', `Typing into element ${targetId}`);
@@ -54,9 +71,15 @@ export class ActionExecutor {
             }
         } else if (actionType === 'scroll') {
             const direction = actionObj.direction || 'down';
+
+            if (direction === 'left' || direction === 'right') {
+                emitter.emit('error', `Horizontal scrolling (${direction}) is not currently supported by the device provider.`);
+                return false;
+            }
+
             emitter.emit('status', `Scrolling ${direction}`);
 
-            await this.deviceProvider.scroll(direction);
+            await this.deviceProvider.scroll(direction as 'up' | 'down');
             return true;
         }
 

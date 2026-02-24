@@ -36,3 +36,12 @@ export interface ILlmProvider {
     generalChat(prompt: string): Promise<string>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
 }
+
+export interface AgentAction {
+    action: 'click' | 'input' | 'scroll' | 'done';
+    id?: number | string;
+    x?: number;
+    y?: number;
+    text?: string;
+    direction?: 'up' | 'down' | 'left' | 'right';
+}
