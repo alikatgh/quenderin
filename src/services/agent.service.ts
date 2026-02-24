@@ -37,6 +37,20 @@ export class AgentService {
     private promptBuilder: PromptBuilder;
     private actionExecutor: ActionExecutor;
     private uiVerifier: UiVerifier;
+    private isPaused: boolean = false;
+    private pendingManualOverride: string | null = null;
+    private currentGoal: string = "";
+
+    public pause() {
+        this.isPaused = true;
+    }
+
+    public resume(manualAction?: string) {
+        if (manualAction) {
+            this.pendingManualOverride = manualAction;
+        }
+        this.isPaused = false;
+    }
 
     constructor(
         private llmProvider: ILlmProvider,
@@ -83,12 +97,31 @@ export class AgentService {
             emitter.emit('observe', state.elements);
             emitter.emit('status', ` Observed ${state.elements.length} elements.`);
 
-            // 3. Build Prompt
+            // 3. Pause Check (Human-in-the-Loop)
+            while (this.isPaused) {
+                emitter.emit('status', " Agent paused for manual human correction. Waiting for resume...");
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            // Did the human provide a manual override while we were paused?
+            if (this.pendingManualOverride) {
+                // 3b. Overwrite memory and skip the LLM
+                emitter.emit('status', ` Applying Human Override: ${this.pendingManualOverride}`);
+                actionHistory.push(`[Success] (MANUAL OVERRIDE) ${this.pendingManualOverride}`);
+
+                await this.memoryService.injectOverride(goal, actionHistory, this.pendingManualOverride);
+
+                this.pendingManualOverride = null;
+                expectedActionEffect = true;
+                continue; // Immediately jump to the next verify loop step
+            }
+
+            // 4. Build Prompt
             const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory);
 
             emitter.emit('status', " Deciding next action...");
 
-            // 4. Generate LLM Action
+            // 5. Generate LLM Action
             const commandText = await this.llmProvider.generateAction(
                 step === 1 ? SYSTEM_PROMPT : "",
                 prompt,
@@ -97,7 +130,7 @@ export class AgentService {
             emitter.emit('decide', commandText);
 
             try {
-                // 5. Parse and Execute Action
+                // 6. Parse and Execute Action
                 const jsonStart = commandText.indexOf('{');
                 const jsonEnd = commandText.lastIndexOf('}');
                 if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON object found in LLM response.");

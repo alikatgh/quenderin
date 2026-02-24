@@ -63,6 +63,20 @@ async function bootstrap() {
         }
     });
 
+    // Register 🚨 INTERVENTION HOTKEY 🚨
+    globalShortcut.register('CommandOrControl+Option+C', () => {
+        console.log("🛠️ Human Intervention Triggered via Hotkey (Cmd+Opt+C)");
+        // Ping the local Node server to halt the agent loop
+        fetch(`http://localhost:${PORT}/api/agent/intervene`, { method: 'POST' })
+            .catch(e => console.error("Failed to trigger intervention route:", e));
+
+        // Pop the UI up immediately so the user can interact
+        if (mainWindow && !mainWindow.isVisible()) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });

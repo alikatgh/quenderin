@@ -47,6 +47,32 @@ export class MemoryService {
         }
     }
 
+    public async injectOverride(goal: string, actionsHistory: string[], manualAction: string): Promise<void> {
+        try {
+            const data = await fs.readFile(this.memoryPath, 'utf-8');
+            let records: TrajectoryEntry[] = JSON.parse(data);
+
+            if (records.length > 50) {
+                records = records.slice(1);
+            }
+
+            // Clean the history of failures, then append the user's MANUAL correction as a success
+            const cleanedHistory = actionsHistory.filter(a => a.startsWith('[Success]'));
+            cleanedHistory.push(`[Success] (MANUAL OVERRIDE) ${manualAction}`);
+
+            records.push({
+                goal,
+                actions: cleanedHistory,
+                timestamp: new Date().toISOString()
+            });
+
+            await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
+            console.log(`\n🧠 Memory forcefully updated with Manual Override for goal: ${goal}`);
+        } catch (error) {
+            console.error('Failed to inject manual override memory:', error);
+        }
+    }
+
     public async findSimilarGoal(goal: string): Promise<TrajectoryEntry | null> {
         try {
             const data = await fs.readFile(this.memoryPath, 'utf-8');

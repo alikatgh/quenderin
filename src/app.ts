@@ -5,8 +5,9 @@ import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { MetricsService } from './services/metrics.service.js';
+import { AgentService } from './services/agent.service.js';
 
-export function createApp(metricsService?: MetricsService): Express {
+export function createApp(metricsService?: MetricsService, agentService?: AgentService): Express {
     const app = express();
 
     // Global Middlewares
@@ -30,6 +31,19 @@ export function createApp(metricsService?: MetricsService): Express {
             } catch (err) {
                 res.status(500).json({ error: 'Failed to fetch metrics' });
             }
+        });
+    }
+
+    if (agentService) {
+        app.post('/api/agent/intervene', (req, res) => {
+            agentService.pause();
+            res.json({ message: "Agent loop paused for manual intervention." });
+        });
+
+        app.post('/api/agent/resume', (req, res) => {
+            const { manualAction } = req.body;
+            agentService.resume(manualAction);
+            res.json({ message: "Agent loop resumed.", manualAction });
         });
     }
 

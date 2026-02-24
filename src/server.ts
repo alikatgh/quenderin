@@ -22,7 +22,7 @@ export function startDashboardServer(port: number = 3000, openBrowser: boolean =
         const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
 
         // 2. Setup Express
-        const app = createApp(metricsService);
+        const app = createApp(metricsService, agentService);
         const server = createServer(app);
 
         // 3. Initialize WebSockets
