@@ -9,6 +9,7 @@ import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
 import { DaemonService } from './services/daemon.service.js';
+import { VoiceService } from './services/voice.service.js';
 
 const program = new Command();
 
@@ -47,10 +48,31 @@ program
     try {
       const adbService = new AdbService();
       const uiParserService = new UiParserService();
+      const llmService = new LlmService();
+      const metricsService = new MetricsService();
+      const ocrService = new OcrService();
+      const memoryService = new MemoryService();
+
       const daemonService = new DaemonService(adbService, uiParserService);
+      const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
+
+      // We pass a dummy key here. A real implementation would load from process.env.PICOVOICE_API_KEY
+      const voiceService = new VoiceService('DEMO_KEY');
 
       // Start background observation
       daemonService.start();
+
+      // Listen for voice commands and pipe them directly into the Agent Loop
+      voiceService.on('command', async (transcribedGoal: string) => {
+        console.log(`\n🎙️ Voice Command Received: "${transcribedGoal}"`);
+        try {
+          await agentService.runAgentLoop(transcribedGoal, 20);
+        } catch (e: any) {
+          console.error("Agent failed during Voice Command execution:", e.message);
+        }
+      });
+
+      await voiceService.initialize();
 
       await startDashboardServer(parseInt(options.port, 10));
     } catch (e: any) {
