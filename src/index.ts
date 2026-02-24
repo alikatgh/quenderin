@@ -8,6 +8,7 @@ import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
+import { DaemonService } from './services/daemon.service.js';
 
 const program = new Command();
 
@@ -44,6 +45,13 @@ program
   .option('-p, --port <number>', 'Port for the web server', '3000')
   .action(async (options) => {
     try {
+      const adbService = new AdbService();
+      const uiParserService = new UiParserService();
+      const daemonService = new DaemonService(adbService, uiParserService);
+
+      // Start background observation
+      daemonService.start();
+
       await startDashboardServer(parseInt(options.port, 10));
     } catch (e: any) {
       console.error("Failed to start dashboard server:", e.message);
