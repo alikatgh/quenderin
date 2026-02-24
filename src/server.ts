@@ -10,26 +10,31 @@ import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
 
-export async function startDashboardServer(port: number = 3000) {
-    // 1. Dependency Injection / Initialize Services
-    const adbService = new AdbService();
-    const uiParserService = new UiParserService();
-    const llmService = new LlmService();
-    const metricsService = new MetricsService();
-    const ocrService = new OcrService();
-    const memoryService = new MemoryService();
-    const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
+export function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<void> {
+    return new Promise((resolve) => {
+        // 1. Dependency Injection / Initialize Services
+        const adbService = new AdbService();
+        const uiParserService = new UiParserService();
+        const llmService = new LlmService();
+        const metricsService = new MetricsService();
+        const ocrService = new OcrService();
+        const memoryService = new MemoryService();
+        const agentService = new AgentService(llmService, adbService, uiParserService, metricsService, ocrService, memoryService);
 
-    // 2. Setup Express
-    const app = createApp(metricsService);
-    const server = createServer(app);
+        // 2. Setup Express
+        const app = createApp(metricsService);
+        const server = createServer(app);
 
-    // 3. Initialize WebSockets
-    new WebSocketManager(server, agentService, adbService, llmService);
+        // 3. Initialize WebSockets
+        new WebSocketManager(server, agentService, adbService, llmService);
 
-    // 4. Boot Server
-    server.listen(port, async () => {
-        console.log(`\n Advanced Dashboard running at http://localhost:${port}`);
-        await open(`http://localhost:${port}`);
+        // 4. Boot Server
+        server.listen(port, async () => {
+            console.log(`\n Dashboard running at http://localhost:${port}`);
+            if (openBrowser) {
+                await open(`http://localhost:${port}`);
+            }
+            resolve();
+        });
     });
 }

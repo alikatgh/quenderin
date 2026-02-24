@@ -9,8 +9,8 @@
     "dashboard": "tsx src/index.ts dashboard",
     "agent": "tsx src/index.ts agent",
     "build:tsc": "tsc",
-    "start:app": "npm run build:tsc && electron .",
-    "package:mac": "npm run build:tsc && electron-builder --mac"
+    "electron:dev": "npm run build:tsc && electron .",
+    "electron:build": "npm run build:tsc && electron-builder --mac"
   },
   "dependencies": {
     "commander": "^12.1.0",
@@ -32,19 +32,5 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.4.5"
-  },
-  "build": {
-    "appId": "com.quenderin.app",
-    "mac": {
-      "category": "public.app-category.productivity"
-    },
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "public/**/*",
-      "package.json"
-    ]
   }
 }

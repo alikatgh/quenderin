@@ -1,0 +1,21 @@
+appId: com.quenderin.desktop
+productName: Quenderin
+directories:
+  output: release
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+files:
+  - dist/**/*
+  - node_modules/**/*
+  - ui/dist/**/*
+  - package.json
+asar: false
