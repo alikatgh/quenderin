@@ -60,6 +60,10 @@ program
       const voiceService = new VoiceService('DEMO_KEY');
 
       // Start background observation
+      daemonService.on('error', (err) => {
+        // Just log daemon errors as warnings so we don't crash the server if ADB isn't plugged in
+        console.log(`[Daemon] ${err}`);
+      });
       daemonService.start();
 
       // Listen for voice commands and pipe them directly into the Agent Loop
@@ -70,6 +74,10 @@ program
         } catch (e: any) {
           console.error("Agent failed during Voice Command execution:", e.message);
         }
+      });
+
+      voiceService.on('error', (err) => {
+        console.log(`[Voice] ${err}`);
       });
 
       await voiceService.initialize();

@@ -1,5 +1,4 @@
 import { Porcupine, BuiltinKeyword } from '@picovoice/porcupine-node';
-import { whisper } from 'whisper-node';
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
@@ -82,11 +81,17 @@ export class VoiceService extends EventEmitter {
                     language: "en"
                 };
 
-                const transcripts = await whisper(tempWavPath, transcriptOptions);
-                const finalCommand = transcripts.map(t => t.speech).join(" ").trim();
+                // Lazily load whisper-node to prevent `make` crashes on startup for users without build tools
+                try {
+                    const { whisper } = await import('whisper-node');
+                    const transcripts = await whisper(tempWavPath, transcriptOptions);
+                    const finalCommand = transcripts.map((t: any) => t.speech).join(" ").trim();
 
-                if (finalCommand) {
-                    this.emit('command', finalCommand);
+                    if (finalCommand) {
+                        this.emit('command', finalCommand);
+                    }
+                } catch (importErr: any) {
+                    this.emit('error', `Whisper module is not compiled or available. Please install build tools. Error: ${importErr.message}`);
                 }
             } catch (err: any) {
                 this.emit('error', `Failed to transcribe: ${err.message}`);
