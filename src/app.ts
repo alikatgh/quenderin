@@ -11,13 +11,26 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     const app = express();
 
     // Global Middlewares
+    app.use((req, res, next) => {
+        res.setHeader(
+            'Content-Security-Policy',
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+        );
+        next();
+    });
     app.use(cors());
     app.use(express.json());
 
     // Serve strictly static frontend relative to this file to support packaged ASARs
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const publicPath = path.join(__dirname, '..', '..', 'public');
+
+    // If running compiled from /dist/src/app.js we go up 2 levels. If running raw from /src/app.ts we go up 1 level.
+    const isCompiledMode = __filename.includes('/dist/') || __filename.includes('\\dist\\');
+    const publicPath = isCompiledMode
+        ? path.join(__dirname, '..', '..', 'public')
+        : path.join(__dirname, '..', 'public');
+
     app.use(express.static(publicPath));
 
     // Routes
