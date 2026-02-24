@@ -1,0 +1,72 @@
+import fs from 'fs';
+import path from 'path';
+
+export interface QuenderinConfig {
+  // Provider settings
+  provider?: 'ollama' | 'openai' | 'auto' | 'gguf';
+  apiKey?: string;
+  modelName?: string;
+  baseURL?: string;
+
+  // Legacy GGUF settings
+  modelPath?: string;
+  threads?: number;
+
+  // Generation settings
+  maxTokens?: number;
+  temperature?: number;
+  outputDir?: string;
+}
+
+const CONFIG_FILENAME = 'quenderin.json';
+
+/**
+ * Load configuration from quenderin.json if it exists
+ */
+export function loadConfig(): QuenderinConfig {
+  const configPath = path.join(process.cwd(), CONFIG_FILENAME);
+
+  if (!fs.existsSync(configPath)) {
+    return {};
+  }
+
+  try {
+    const configContent = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configContent);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`Warning: Could not parse ${CONFIG_FILENAME}: ${message}`);
+    return {};
+  }
+}
+
+/**
+ * Save configuration to quenderin.json
+ */
+export function saveConfig(config: QuenderinConfig): void {
+  const configPath = path.join(process.cwd(), CONFIG_FILENAME);
+
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    console.log(`Configuration saved to ${CONFIG_FILENAME}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error saving configuration: ${message}`);
+    throw error;
+  }
+}
+
+/**
+ * Create default configuration file
+ */
+export function createDefaultConfig(): QuenderinConfig {
+  const defaultConfig: QuenderinConfig = {
+    maxTokens: 2048,
+    temperature: 0.1,
+    threads: 4,
+    outputDir: 'src/gen'
+  };
+
+  saveConfig(defaultConfig);
+  return defaultConfig;
+}

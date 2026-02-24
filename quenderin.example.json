@@ -1,0 +1,7 @@
+{
+  "modelPath": "models/llama-3-instruct-8b.Q4_K_M.gguf",
+  "maxTokens": 2048,
+  "temperature": 0.1,
+  "threads": 4,
+  "outputDir": "src/gen"
+}
