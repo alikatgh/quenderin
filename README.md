@@ -1,8 +1,8 @@
 # Quenderin
 
-Quenderin is the pursuit of **Autonomous Computer Usage**. Think of it as autonomous driving, but for your desktop and mobile OS. 
+Quenderin is a proof-of-concept for **Offline, Autonomous Computer Usage**. Think of it as autonomous driving, but for your desktop and mobile OS.
 
-The ultimate vision is for Quenderin to sit quietly, watching how you work and learning from your daily interactions. It operates as a voice-controlled assistant that takes over your tedious tasks—doing them faster and better. When it makes a mistake, you correct it, and it learns from that correction instantly.
+The ultimate vision is for Quenderin to sit quietly, watching how you work and learning from your daily interactions. It operates as a voice-controlled assistant that takes over your tedious tasks—doing them faster and better, using local LLMs, screen parsing, and voice control to drive Android and Desktop interfaces autonomously.
 
 **The Quenderin Paradox:**
 This entire system infrastructure is explicitly and exclusively written by Google models. However, the agent itself runs **exclusively on local, offline models**, guaranteeing absolute data privacy and zero token costs for the end user.
@@ -35,166 +35,47 @@ Following this audit, the following robust features were immediately implemented
 
 ---
 
-##  Two Ways to Use
+## How it Works
 
-### 1⃣ Chat Mode (Recommended)
+Quenderin interacts with interfaces using three main components:
+1. **Perception**: Extracts the current screen context (e.g., via Android ADB view hierarchies).
+2. **LLM Inference**: Feeds the context into a locally-running GGUF LLM (powered by `node-llama-cpp`), which plans the next action in a concise JSON format.
+3. **Execution**: Translates the LLM's planned action into concrete UI inputs (e.g., adb shell input tap).
 
+**Privacy & Offline-First:**
+Quenderin runs **100% locally and offline**. It relies on an instruction-tuned LLaMA architecture (GGUF model) managed entirely on your local machine. There are no API keys required, no external network calls after initial model download, and zero telemetry.
+
+---
+
+## Setup and Usage
+
+Installation and setup are fully integrated into the local Dashboard's React setup wizard, which will seamlessly guide you through downloading the required LLM weights and configuring voice control access.
+
+### 1. Start the React Dashboard
+The primary way to use Quenderin is through its interactive frontend dashboard.
 ```bash
-quenderin chat
+npm install
+npm run dashboard
 ```
+Open your browser to `http://localhost:3000`. The Welcome Wizard will automatically start the setup process if this is your first time.
 
-Just keep asking for code. No need to type the command over and over.
-
-```
- What code do you want to generate?
-> Create a function to validate email addresses
-
- Generating...
-[Your code appears here]
-
- What code do you want to generate?
-> Now add password validation
-...
-```
-
-### 2⃣ One-off Generation
-
+### 2. Run the Autonomous Agent Directly
+If you want to run the agent backend standalone (for example, to execute a pre-determined task without the UI):
 ```bash
-quenderin add "Create a REST API endpoint"
-quenderin add "Stripe checkout" -o src/checkout.ts
+npm run agent
 ```
 
----
-
-##  First-Time Setup (Automatic)
-
-The tool opens a pull request with small, atomic commits, or directly drives your Android simulator depending on the invoked command.
-
-Approve → merge → ship.
-
-**If you don't:**
-```
- Quick setup - enter your OpenAI API key:
-API Key: sk-your-key-here
- OpenAI configured! Using gpt-4o-mini
-[Starts generating immediately]
-```
-
-**That's it.** One line. Then you're coding.
-
-This tool is built to answer the hard questions of code generation and agentic UI automation.
-
-| Promise | The Reality (How It Works) |
-|---|---|
-| **Deterministic Output** | The default LLM is a bundled 7B GGUF model, pinned to a specific SHA hash. Same schema + same prompt → identical output, forever. No drift. |
-| **Manageable Reviews** | PRs are automatically split into small, logical commits, with a hard limit of \~300 lines per PR. No 3,000-line monoliths. |
-| **Safe Manual Edits** | The "ejection problem" is solved via `quenderin freeze src/gen/checkout.ts`. This moves the file to `src/handwritten/`, rewrites all imports, and tells the generator to never touch it again. You are always in control. |
-| **No Context Explosion** | The UI parser compresses Android view hierarchies into text coordinates. For generation, you guide context discovery with explicit `--include` and `--exclude` globs in your config. |
-| **No Hidden Runtime** | Zero network calls after initial installation. Zero telemetry unless you explicitly opt-in. It runs on your machine, period. |
-
-- **Zero friction** - Auto-setup on first run
-- **Keep chatting** - Interactive mode for continuous generation
-- **Smart defaults** - Auto-detects Ollama or uses gpt-4o-mini
-- **Multiple LLMs** - Ollama (free), OpenAI (fast), or custom APIs
-- **Your files** - Plain code you control and version
-
----
-
-##  Examples
-
+### 3. Desktop Application (Electron)
+To run Quenderin as a standalone cross-platform desktop app:
 ```bash
-# Start interactive mode (easiest)
-quenderin chat
-
-# Generate once
-quenderin add "Create a function to parse CSV files"
-
-# Save to file
-quenderin add "User authentication middleware" -o src/auth.ts
-
-# Re-run setup anytime
-quenderin setup
+npm run electron:dev
 ```
+*(Or build the production macOS application with `npm run electron:build`)*
 
 ---
 
-##  All Commands
-
-```bash
-quenderin chat         # Interactive chat mode
-quenderin add "..."    # Generate code from prompt
-quenderin setup        # Configure or reconfigure LLM
-quenderin init         # Initialize project structure
-quenderin test         # Test LLM connection
-quenderin --help       # Show all options
-```
-
----
-
-##  LLM Options
-
-First run tries **auto-detect**. If that doesn't work, you choose:
-
-| Option | Setup | Cost | Best For |
-|--------|-------|------|----------|
-| **Ollama** | Auto-detected | Free | Privacy, offline use |
-| **OpenAI** | API key | $$ | Speed, quality |
-| **Custom API** | URL + key | Varies | OpenRouter, Groq, LocalAI |
-
----
-
-##  Philosophy
-
-**Old way:**
-1. Read documentation
-2. Learn the tool
-3. Configure everything
-4. Finally start
-
-**Quenderin:**
-1. Type `quenderin chat`
-2. Start talking
-3. Get code
-
----
-
-##  Privacy
-
-- **Local-first**: Works offline with Ollama
-- **No tracking**: Zero telemetry
-- **Your code**: Plain files you own
-- **Git-friendly**: Version control everything
-
----
-
-##  Why "Quenderin"?
-
-Because turning on the light should be this simple:
-
-```bash
-quenderin chat
-> Create a function to validate emails
-[Code appears]
-```
-
-**Just. That. Simple.**
-
----
-
-##  Advanced
-
-For power users who want full control:
-
-- [Detailed Setup Guide](SIMPLE-SETUP.md)
-- [Project Configuration](QUICKSTART.md)
-- [All Features](SETUP.md)
-
----
-
-##  Contributing
-
+## Contributing
 MIT License. PRs welcome!
 
 ---
-
-**Stop configuring. Start coding.** 
+**Stop configuring. Start automating.**
