@@ -16,7 +16,7 @@ export interface UIElement {
 
 export interface LogEntry {
     id: string;
-    type: 'status' | 'observe' | 'decide' | 'action' | 'error' | 'done' | 'chat' | 'chat_response';
+    type: 'status' | 'observe' | 'decide' | 'action' | 'error' | 'done' | 'chat' | 'chat_response' | 'log';
     message: string;
     timestamp: string;
     elements?: UIElement[];

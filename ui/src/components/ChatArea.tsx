@@ -109,7 +109,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView 
                                     <h4 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100 mb-4 mt-1">Agent Process Stream</h4>
 
                                     <div className="space-y-4">
-                                        {logs.slice(1).map((log) => (
+                                        {logs.slice(1).filter((l) => l.type !== 'chat' && l.type !== 'chat_response' && l.type !== 'log').map((log) => (
                                             <div key={log.id} className="animate-fade-in">
                                                 {log.type === 'error' ? (
                                                     <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start gap-3 mt-4 mb-2 shadow-sm">
@@ -121,14 +121,14 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView 
                                                 ) : (
                                                     <div className="flex items-start gap-3 w-full">
                                                         <div className="mt-[2px] opacity-70 flex-shrink-0">{getTypeIcon(log.type)}</div>
-                                                        <div className={`markdown-body w-full break-words min-w-0 ${log.type === 'done' ? 'text-zinc-900 dark:text-zinc-100 font-medium' : ''}`}>
+                                                        <div className={`markdown-body w-full break-words min-w-0 ${log.type === 'done' ? 'text-zinc-900 dark:text-zinc-100 font-medium' : 'text-zinc-700 dark:text-zinc-300'}`}>
                                                             {log.type === 'decide' ? (
                                                                 <div className="flex items-center flex-wrap gap-2 text-[14px] text-zinc-700 dark:text-zinc-300">
                                                                     <span>Plan generated:</span>
                                                                     <code className="bg-zinc-100 dark:bg-[#27272a] font-mono tracking-tight text-[13px] px-2 py-0.5 rounded border border-zinc-200 dark:border-[#3f3f46] shadow-sm">{log.command}</code>
                                                                 </div>
                                                             ) : (
-                                                                <span>{log.message}</span>
+                                                                <span>{log.message || "Working..."}</span>
                                                             )}
                                                         </div>
                                                     </div>

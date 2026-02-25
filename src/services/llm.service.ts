@@ -44,7 +44,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     throw err; // Throw locally so exactly this function's catch block runs
                 }
 
-                const llama = await getLlama();
+                // Ensure getLlama doesn't deadlock the single thread
+                const llama = await Promise.race([
+                    getLlama(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("getLlama timed out after 30s")), 30000))
+                ]) as any;
+
                 const model = await llama.loadModel({ modelPath });
                 const context = await model.createContext();
                 this.modelInstance = model;
