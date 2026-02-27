@@ -19,7 +19,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
   const handleDownloadModel = async () => {
     setIsModelDownloading(true);
     try {
-      await fetch('http://localhost:3000/api/models/download', { method: 'POST' });
+      await fetch('/api/models/download', { method: 'POST' });
     } catch (e) {
       console.error("Failed to sequence download routing from Wizard", e);
       setIsModelDownloading(false);
@@ -30,7 +30,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
     setIsSaving(true);
     try {
       if (picovoiceKey.trim()) {
-        await fetch('http://localhost:3000/api/config/voice', {
+        await fetch('/api/config/voice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key: picovoiceKey.trim() })
@@ -174,7 +174,7 @@ function AppContent() {
     const fetchHealth = async () => {
       try {
         // Fallback to exactly port 3000 mapped across the local Node backend
-        const res = await fetch('http://localhost:3000/health');
+        const res = await fetch('/health');
         if (res.ok) {
           const data = await res.json();
           if (data.activeModel) setActiveModel(data.activeModel);
@@ -221,7 +221,7 @@ function AppContent() {
 
   const handleTriggerDownload = async () => {
     try {
-      await fetch('http://localhost:3000/api/models/download', { method: 'POST' });
+      await fetch('/api/models/download', { method: 'POST' });
     } catch (e) {
       console.error("Failed to sequence download routing from parent", e);
     }

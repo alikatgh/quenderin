@@ -24,7 +24,7 @@ export function Docs({ onBack }: DocsProps) {
         const fetchMarkdown = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(`http://localhost:3000/api/docs/${activeFile}`);
+                const response = await fetch(`/api/docs/${activeFile}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch: ${response.status}`);
                 }
@@ -64,8 +64,8 @@ export function Docs({ onBack }: DocsProps) {
                             key={item.file}
                             onClick={() => setActiveFile(item.file)}
                             className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${activeFile === item.file
-                                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium shadow-sm border border-zinc-200 dark:border-zinc-700/50'
-                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300 border border-transparent'
+                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium shadow-sm border border-zinc-200 dark:border-zinc-700/50'
+                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300 border border-transparent'
                                 }`}
                         >
                             <FileText className={`w-4 h-4 ${activeFile === item.file ? 'text-blue-500' : 'text-zinc-400'}`} />

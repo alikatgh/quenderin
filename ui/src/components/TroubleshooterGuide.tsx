@@ -25,7 +25,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
         setIsSaving(true);
         try {
             if (picovoiceKey.trim()) {
-                await fetch('http://localhost:3000/api/config/voice', {
+                await fetch('/api/config/voice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: picovoiceKey.trim() })
