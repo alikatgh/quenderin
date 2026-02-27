@@ -86,7 +86,7 @@ export class WebSocketManager {
                             await this.agentService.runAgentLoop(data.goal, data.steps || 20, emitter);
                         } catch (e: any) {
                             if (!isActionRequiredError(e)) {
-                                ws.send(JSON.stringify({ type: 'error', message: `Fatal Loop Error: ${e.message}` }));
+                                ws.send(JSON.stringify({ type: 'error', message: `**Unexpected System Issue**\nThe agent engine encountered a critical issue. To restore functionality:\n1. Go to your terminal where Quenderin is running.\n2. Press \`Ctrl+C\` to stop the server.\n3. Type \`npm run dev\` and press Enter to restart it.` }));
                             }
                         }
                     } else if (data.type === 'chat') {
@@ -104,7 +104,7 @@ export class WebSocketManager {
                                     autoTrigger: 'downloadModel'
                                 });
                             } else {
-                                ws.send(JSON.stringify({ type: 'error', message: `Chat Error: ${e.message}` }));
+                                ws.send(JSON.stringify({ type: 'error', message: `**AI Processing Failed**\nThe local language model failed to generate a response. Re-initialize it:\n1. Check your computer's available RAM (needs at least ~5GB free).\n2. Restart the backend server (\`npm run dev\`).\n3. Try sending your message again.` }));
                             }
                         }
                     }

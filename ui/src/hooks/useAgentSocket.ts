@@ -63,7 +63,7 @@ export function useAgentSocket() {
             setLogs((prev) => [...prev, {
                 id: 'close',
                 type: 'error',
-                message: "Connection to local Quenderin backend severed.\n\nTo restore connectivity:\n1. Open your terminal\n2. Navigate to your Quenderin project directory\n3. Start the backend server by running:\n   `npm run dev`\n\nOnce the server boots, refresh this page.",
+                message: "**Server Disconnected**\nThe user interface lost connection to the Quenderin brain.\n**How to fix this:**\n1. Open your computer's terminal program.\n2. Navigate to your Quenderin project folder.\n3. Start the engine by typing `npm run dev` and pressing Enter.\n4. Once the terminal shows it's running, click \"Reconnect\" or refresh this page.",
                 timestamp: ''
             }]);
             setStatus('idle');
@@ -77,7 +77,7 @@ export function useAgentSocket() {
             setLogs(prev => [...prev, {
                 id: 'err',
                 type: 'error',
-                message: "Not connected to agent backend.\n\nTo launch the autonomous agent:\n1. Open your terminal\n2. Navigate to the Quenderin project directory\n3. Start the core server using:\n   `npm run dev`\n\nEnsure no port conflicts exist on your local machine.",
+                message: "**Engine Not Running**\nYou are trying to send a command, but the local engine isn't running.\n**How to fix this:**\n1. Open your terminal/command prompt.\n2. Go to the Quenderin directory.\n3. Type `npm run dev` and press Enter.\n4. Wait for the success message in the terminal, then try your request again.",
                 timestamp: new Date().toLocaleTimeString()
             }]);
             return false;
@@ -97,7 +97,7 @@ export function useAgentSocket() {
             setLogs(prev => [...prev, {
                 id: 'err',
                 type: 'error',
-                message: "Not connected to backend.\n\nTo access the local LLM:\n1. Open your terminal\n2. Navigate to the Quenderin project directory\n3. Start the server using:\n   `npm run dev`\n\nWait for the Llama 3 model to initialize before chatting.",
+                message: "**Engine Not Running**\nYou are trying to send a command, but the local engine isn't running.\n**How to fix this:**\n1. Open your terminal/command prompt.\n2. Go to the Quenderin directory.\n3. Type `npm run dev` and press Enter.\n4. Wait for the success message in the terminal, then try your request again.",
                 timestamp: new Date().toLocaleTimeString()
             }]);
             return false;

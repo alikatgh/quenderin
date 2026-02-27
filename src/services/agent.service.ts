@@ -87,7 +87,7 @@ export class AgentService {
             // 2. Self-Healing State Verification
             if (expectedActionEffect && state.hash === previousUiHash) {
                 totalRetries++;
-                emitter.emit('error', " Verifier: The UI did not change after the last action.");
+                emitter.emit('error', "**Action Unsuccessful: UI Did Not Respond**\nI tried to tap or swipe, but nothing happened. To help me:\n1. Check if the app is frozen or requires a special gesture.\n2. Navigate past any unexpected popups or alerts manually.\n3. Give me a new instruction on what to do next.");
                 actionHistory.push("[System Warning] The previous action had no effect on the UI. The button might be disabled, blocked, or a dead zone. Try a different strategy.");
             }
 
@@ -182,7 +182,7 @@ export class AgentService {
                 }
 
             } catch (err: any) {
-                emitter.emit('error', ` Execution failed: ${err.message}. Retrying...`);
+                emitter.emit('error', `**Command Execution Failed**\nI couldn't run the last command. Troubleshooting steps:\n1. Wait a moment; I am automatically retrying.\n2. If this persists, ensure your device hasn't disconnected.\n3. Check the terminal running \`npm run dev\` for more detailed connectivity issues.`);
                 actionHistory.push(`[Failed] Action error: ${err.message}`);
                 // Small backoff before next step
                 await new Promise(r => setTimeout(r, 1000));
@@ -190,7 +190,7 @@ export class AgentService {
         }
 
         if (step >= maxSteps && !isDone) {
-            emitter.emit('error', ` Maximum steps (${maxSteps}) reached. Goal incomplete.`);
+            emitter.emit('error', `**Task Too Complex (Timeout)**\nI took too many steps without reaching the goal. To fix this:\n1. Break your goal down into smaller, simpler instructions.\n2. Look at the device screen and guide me step-by-step.\n3. E.g., instead of "Book a flight," try "Open the travel app."`);
             emitter.emit('done');
             await this.metricsService.appendMetrics({
                 id: Date.now().toString(),

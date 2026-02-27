@@ -236,10 +236,33 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
             <div className="w-12 h-12 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center mb-5 border border-amber-200 dark:border-amber-500/20 shadow-sm">
                 <AlertTriangle className="w-6 h-6" />
             </div>
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Hold on a moment</h2>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Engine Recalibration Required</h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                {action.message} Quenderin encountered an unexpected state and needs a moment to recalibrate its spatial awareness.
+                Quenderin has encountered an unknown state block. Let's reset the environment:
             </p>
+            <div className="space-y-4 mb-8">
+                <div className="flex gap-3 text-sm items-start">
+                    <div className="mt-0.5"><AlertTriangle className="w-4 h-4 text-amber-500" /></div>
+                    <div>
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-200">1. Restart the App on Device</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Force close the app you are testing and reopen it.</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 text-sm items-start">
+                    <div className="mt-0.5"><RefreshCw className="w-4 h-4 text-amber-500" /></div>
+                    <div>
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-200">2. Restart Quenderin Engine</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Click the "Safely Restart Engine" button below to reboot the cognitive pipeline.</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 text-sm items-start">
+                    <div className="mt-0.5"><CheckCircle2 className="w-4 h-4 text-amber-500" /></div>
+                    <div>
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-200">3. Verify Connection</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Ensure the device is unlocked and on a stable screen.</p>
+                    </div>
+                </div>
+            </div>
             <button onClick={() => window.location.reload()} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <RefreshCw className="w-4 h-4" /> Safely Restart Engine
             </button>

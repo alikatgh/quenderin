@@ -52,7 +52,7 @@ export class UiVerifier {
                 retries++;
                 console.error(`Status: Retrying UI connection (${retries}/3) - ${error.message.split('\n')[0]}`);
                 if (retries >= 3) {
-                    emitter.emit('error', `Fatal: Cannot connect to device. UI dump failed 3 times.`);
+                    emitter.emit('error', `**Unable to Read Screen**\nQuenderin cannot analyze what is on your screen. To fix this:\n1. Open your phone's Settings > Developer Options.\n2. Scroll to "USB Debugging" and toggle it OFF, then back ON.\n3. Wait 5 seconds, clear this message, and try your request again.`);
                     throw new Error("Device disconnected or UI dump failed continuously. Aborting.");
                 }
                 await new Promise(res => setTimeout(res, 1000));
@@ -78,7 +78,7 @@ export class UiVerifier {
                     finalParsed.textRepresentation = this.uiParserService.buildLLMPromptRepresentation(stateMap);
                 }
             } catch (err: any) {
-                emitter.emit('error', `Vision Fallback Error: ${err.message}`);
+                emitter.emit('error', `**Screen Analysis Failed**\nThe vision model could not process the current screen. To fix this:\n1. Ensure the screen is not completely blank or showing a secure window (like a password screen).\n2. Navigate to a standard app screen manually.\n3. Ask me to proceed from here.`);
             }
         }
 
