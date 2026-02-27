@@ -9,7 +9,7 @@ export class BackgroundDaemonService extends EventEmitter {
     private isRunning = false;
     private pollIntervalMs = 3000; // 3 seconds per requirements
     private diffThreshold = 0.05;  // 5% minimum change to trigger LLM
-    private lastImageBuffer: Buffer | null = null;
+    private lastPngData: PNG | null = null;
     private lastDimensions: { width: number, height: number } | null = null;
 
     constructor(
@@ -48,16 +48,16 @@ export class BackgroundDaemonService extends EventEmitter {
             const currentPng = await this.parsePng(currentBuffer);
 
             // First run, or dimension mismatch (e.g. rotated screen/different monitor)
-            if (!this.lastImageBuffer || !this.lastDimensions ||
+            if (!this.lastPngData || !this.lastDimensions ||
                 this.lastDimensions.width !== currentPng.width ||
                 this.lastDimensions.height !== currentPng.height) {
 
-                this.lastImageBuffer = currentBuffer;
+                this.lastPngData = currentPng;
                 this.lastDimensions = { width: currentPng.width, height: currentPng.height };
                 return { diffRatio: 1.0, pngData: currentPng }; // 100% diff on first load
             }
 
-            const lastPng = await this.parsePng(this.lastImageBuffer);
+            const lastPng = this.lastPngData;
 
             const numDiffPixels = pixelmatch(
                 lastPng.data,
@@ -71,8 +71,8 @@ export class BackgroundDaemonService extends EventEmitter {
             const totalPixels = currentPng.width * currentPng.height;
             const diffRatio = numDiffPixels / totalPixels;
 
-            // Update state for next tick
-            this.lastImageBuffer = currentBuffer;
+            // Update state for next tick with parsed PNG to skip redundant parse calls
+            this.lastPngData = currentPng;
 
             return { diffRatio, pngData: currentPng };
         } catch (e: any) {

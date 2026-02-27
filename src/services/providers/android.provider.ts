@@ -41,13 +41,6 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
                         message = 'Please check your Android device screen and authorize the USB debugging connection.';
                     }
 
-                    // Emit user-friendly action required event
-                    this.emit('action_required', {
-                        code: errCode,
-                        title,
-                        message
-                    });
-
                     // Reject with a clean, user-friendly error instead of raw shell trace
                     const error = new Error(title);
                     (error as any).code = errCode;

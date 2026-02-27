@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import path from 'path';
+import fs from 'fs';
+import { LLM_MODEL_PATH } from '../constants.js';
 
 const router = Router();
 
 router.get('/health', (req, res) => {
-    const rawPath = process.env.LLM_MODEL_PATH || 'llama-3-instruct-8b.Q4_K_M.gguf';
-    const activeModel = path.basename(rawPath);
-    res.status(200).json({ status: 'OK', uptime: process.uptime(), activeModel });
+    const activeModel = path.basename(LLM_MODEL_PATH);
+    const isBrainInstalled = fs.existsSync(LLM_MODEL_PATH);
+    res.status(200).json({ status: 'OK', uptime: process.uptime(), activeModel, isBrainInstalled });
 });
 
 export default router;

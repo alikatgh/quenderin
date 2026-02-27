@@ -16,9 +16,10 @@ export interface UIElement {
 
 export interface LogEntry {
     id: string;
-    type: 'status' | 'observe' | 'decide' | 'action' | 'error' | 'done' | 'chat' | 'chat_response' | 'log';
+    type: 'status' | 'observe' | 'decide' | 'action' | 'error' | 'done' | 'chat' | 'chat_response' | 'chat_stream' | 'log';
     message: string;
     timestamp: string;
     elements?: UIElement[];
     command?: string;
+    isStreaming?: boolean;
 }

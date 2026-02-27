@@ -23,16 +23,16 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
             <div className="h-full py-6 px-6 flex flex-col items-center w-full sm:w-[380px] xl:w-[420px] overflow-y-auto overflow-x-hidden">
 
                 <div className="w-full flex items-center justify-between mb-8">
-                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                        <Smartphone className="w-4 h-4" /> Live Device View
+                    <h3 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                        <Smartphone className="w-3.5 h-3.5" /> Live Device View
                     </h3>
-                    {currentUI.length > 0 && <span className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 px-2 py-0.5 rounded text-[11px] font-medium tracking-wide shadow-sm">{currentUI.length} Nodes</span>}
+                    {currentUI.length > 0 && <span className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 px-2 py-0.5 rounded-lg text-[10px] font-bold tracking-wide shadow-sm">{currentUI.length} Nodes</span>}
                 </div>
 
-                <div className="w-[300px] xl:w-[330px] h-[650px] xl:h-[700px] scale-[0.85] sm:scale-100 origin-top bg-zinc-900 dark:bg-black border-[5px] border-zinc-300 dark:border-[#27272a] rounded-[28px] relative overflow-hidden shadow-2xl flex-shrink-0 ring-1 ring-black/5 dark:ring-0 transition-transform">
+                <div className="w-[300px] xl:w-[330px] h-[650px] xl:h-[700px] scale-[0.85] sm:scale-100 origin-top bg-zinc-900 dark:bg-black border-[6px] border-zinc-200 dark:border-[#27272a] rounded-[36px] relative overflow-hidden shadow-2xl flex-shrink-0 ring-1 ring-black/5 dark:ring-white/5 transition-all duration-500">
 
-                    <div className="absolute top-0 w-full h-7 bg-zinc-900 dark:bg-black z-30 flex justify-center">
-                        <div className="w-[90px] h-[20px] bg-zinc-300 dark:bg-[#18181b] rounded-b-xl border border-transparent"></div>
+                    <div className="absolute top-0 w-full h-8 bg-zinc-900 dark:bg-black z-30 flex justify-center">
+                        <div className="w-[100px] h-[22px] bg-zinc-200 dark:bg-[#18181b] rounded-b-2xl border border-transparent shadow-inner"></div>
                     </div>
 
                     <div className="absolute inset-0 bg-[#0e0e11] mt-7 mb-2 overflow-hidden relative">
@@ -47,9 +47,9 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                         )}
 
                         {currentUI.length === 0 ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
-                                <TerminalSquare className="w-6 h-6 mb-3 opacity-40" />
-                                <span className="text-[11px] uppercase tracking-widest font-mono font-semibold">Ready for Sync</span>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 animate-entrance">
+                                <TerminalSquare className="w-8 h-8 mb-4 opacity-20 text-blue-500" />
+                                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500/50">Waiting for Sync</span>
                             </div>
                         ) : (
                             currentUI.map(node => {
@@ -67,10 +67,10 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                                                 : 'border-zinc-800 hover:border-zinc-500 hover:bg-zinc-500/10 z-10'}`}
                                         style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
                                     >
-                                        <div className="absolute hidden group-hover:block bottom-[calc(100%+5px)] left-1/2 -translate-x-1/2 bg-zinc-800 dark:bg-[#27272a] border border-zinc-700 dark:border-[#3f3f46] px-2.5 py-1.5 rounded-lg text-[10px] whitespace-nowrap z-[100] shadow-xl font-mono text-zinc-200 dark:text-zinc-300 pointer-events-none">
-                                            <span className="opacity-70">{node.className.split('.').pop()}</span><br />
-                                            {node.text && <><span className="text-emerald-400 font-semibold">{`"${node.text}"`}</span><br /></>}
-                                            {node.contentDesc && <span className="text-blue-400">{`desc:"${node.contentDesc}"`}</span>}
+                                        <div className="absolute hidden group-hover:block bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-zinc-900 dark:bg-zinc-900 border border-white/10 px-3 py-2 rounded-xl text-[10px] whitespace-nowrap z-[100] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] font-mono text-zinc-300 pointer-events-none animate-entrance backdrop-blur-md">
+                                            <span className="opacity-50 text-[9px] font-bold uppercase tracking-wider">{node.className.split('.').pop()}</span><br />
+                                            {node.text && <><span className="text-blue-400 font-bold">{`"${node.text}"`}</span><br /></>}
+                                            {node.contentDesc && <span className="text-purple-400 font-medium">{`desc:"${node.contentDesc}"`}</span>}
                                         </div>
                                     </div>
                                 )

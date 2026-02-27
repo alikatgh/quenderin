@@ -15,7 +15,7 @@ export class UiVerifier {
         const hashContext = elements.map(el => {
             return `${el.className}-${el.resourceId}-${el.text}-${el.contentDesc}`;
         }).join('|');
-        return crypto.createHash('md5').update(hashContext).digest('hex');
+        return crypto.createHash('sha256').update(hashContext).digest('hex');
     }
 
     public async waitForIdle(emitter: AgentEventEmitter): Promise<{ elements: UIElement[], textRepresentation: string, hash: string, screenshotPath: string }> {
@@ -52,8 +52,7 @@ export class UiVerifier {
                 retries++;
                 console.error(`Status: Retrying UI connection (${retries}/3) - ${error.message.split('\n')[0]}`);
                 if (retries >= 3) {
-                    emitter.emit('error', `**Unable to Read Screen**\nQuenderin cannot analyze what is on your screen. To fix this:\n1. Open your phone's Settings > Developer Options.\n2. Scroll to "USB Debugging" and toggle it OFF, then back ON.\n3. Wait 5 seconds, clear this message, and try your request again.`);
-                    throw new Error("Device disconnected or UI dump failed continuously. Aborting.");
+                    throw error;
                 }
                 await new Promise(res => setTimeout(res, 1000));
             }

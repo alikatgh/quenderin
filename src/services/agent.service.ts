@@ -11,6 +11,7 @@ import { MetricsService, AgentMetrics } from "./metrics.service.js";
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
 You will be given the current UI state as a compact JSON list of elements, and a history of your past actions.
 You must reply with exactly ONE JSON object representing your next action. Do not wrap it in markdown block.
+If you cannot output JSON, you may use XML tags as a fallback: <action>click</action><id>45</id>
 
 Valid actions:
 {"action": "click", "id": <element_id>}
@@ -24,7 +25,13 @@ Valid actions:
 Example output:
 {"action": "click", "id": 45}
 
-Respond ONLY with valid JSON. Do not provide any conversational filler.`;
+Respond ONLY with valid JSON or XML. Do not provide any conversational filler.`;
+
+const INTENT_CLASSIFIER_PROMPT = `Classify the user's request into one of two categories: "ACTION" or "CHAT".
+- ACTION: The user wants you to interact with the Android device (e.g., "Open Settings", "Tap Search", "Find Spotify").
+- CHAT: The user is asking a general question, discussing files, or asking for knowledge (e.g., "What is the capital of France?", "Summarize this code", "Who wrote this?").
+
+Reply with exactly one word: ACTION or CHAT.`;
 
 export declare interface AgentEventEmitter {
     on<U extends keyof AgentEvents>(event: U, listener: AgentEvents[U]): this;
@@ -65,8 +72,11 @@ export class AgentService {
         this.uiVerifier = new UiVerifier(this.deviceProvider, this.uiParserService, this.ocrService);
     }
 
-    public async runAgentLoop(goal: string, maxSteps: number = 15, emitter: AgentEventEmitter = new AgentEventEmitter()): Promise<void> {
-        emitter.emit('status', ` Starting Robust Agent Loop for goal: ${goal}`);
+    public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = 15): Promise<void> {
+        console.log(`[AgentService] Starting mission: ${goal}`);
+        if (attachments.length > 0) {
+            console.log(`[AgentService] Context enriched with ${attachments.length} attachments.`);
+        }
 
         let step = 0;
         let actionHistory: string[] = [];
@@ -76,6 +86,32 @@ export class AgentService {
 
         const startTimeMs = Date.now();
         let totalRetries = 0;
+
+        // --- NEW: Phase 7 Intent Classification Bypass ---
+        emitter.emit('status', " Classifying intent...");
+        try {
+            const intentRaw = await this.llmProvider.generateAction(
+                INTENT_CLASSIFIER_PROMPT,
+                `User Request: "${goal}"`,
+                { maxTokens: 10, temperature: 0.1 }
+            );
+            const intent = intentRaw.trim().toUpperCase();
+
+            if (intent.includes("CHAT")) {
+                emitter.emit('status', " Processing as General Intelligence (Bypassing ADB)...");
+                const prompt = await this.promptBuilder.buildEnvironment(goal, "No active UI elements (Knowledge Mode)", [], "", attachments);
+                const response = await this.llmProvider.generateAction(
+                    "You are a helpful AI assistant. Answer the user's question directly and concisely based on the context provided. If you need to perform an action on the device, say so.",
+                    prompt,
+                    { maxTokens: 500, temperature: 0.7 }
+                );
+                emitter.emit('status', response);
+                emitter.emit('done');
+                return;
+            }
+        } catch (e) {
+            console.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
+        }
 
         while (step < maxSteps && !isDone) {
             step++;
@@ -116,8 +152,24 @@ export class AgentService {
                 continue; // Immediately jump to the next verify loop step
             }
 
+            // Before building prompt, get eye description (Autonomous Eye)
+            emitter.emit('status', " Processing visual context...");
+            let eyeDescription = "";
+            if (state.screenshotPath) {
+                try {
+                    eyeDescription = await this.llmProvider.generateAction(
+                        "Briefly describe the interactive elements visible on this screen in one sentence.",
+                        "",
+                        { maxTokens: 100, temperature: 0.1 },
+                        state.screenshotPath
+                    );
+                } catch (e) {
+                    console.error("Eye formulation failed", e);
+                }
+            }
+
             // 4. Build Prompt
-            const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory);
+            const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory, eyeDescription, attachments);
 
             emitter.emit('status', " Deciding next action...");
 
@@ -131,12 +183,36 @@ export class AgentService {
             emitter.emit('decide', commandText);
 
             try {
-                // 6. Parse and Execute Action
-                const jsonStart = commandText.indexOf('{');
-                const jsonEnd = commandText.lastIndexOf('}');
-                if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON object found in LLM response.");
+                // 6. Parse and Execute Action (Universal Tool Loop)
+                let actionObj: any = null;
+                try {
+                    const jsonStart = commandText.indexOf('{');
+                    const jsonEnd = commandText.lastIndexOf('}');
+                    if (jsonStart !== -1 && jsonEnd !== -1) {
+                        actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1));
+                    } else {
+                        throw new Error("No JSON object found.");
+                    }
+                } catch (jsonErr) {
+                    emitter.emit('status', " Applying XML parser fallback...");
+                    const extract = (tag: string) => {
+                        const match = commandText.match(new RegExp(`<${tag}>(.*?)</${tag}>`, 'i'));
+                        return match ? match[1] : undefined;
+                    };
+                    const action = extract('action');
+                    if (!action) throw new Error("Could not parse JSON or XML action from response.");
 
-                const actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1));
+                    actionObj = { action };
+                    const id = extract('id');
+                    if (id) actionObj.id = parseInt(id, 10);
+                    const text = extract('text');
+                    if (text) actionObj.text = text;
+                    const x = extract('x');
+                    if (x) actionObj.x = parseInt(x, 10);
+                    const y = extract('y');
+                    if (y) actionObj.y = parseInt(y, 10);
+                }
+
                 const actionType = actionObj.action?.toLowerCase();
 
                 if (actionType === 'done') {

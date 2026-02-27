@@ -46,7 +46,10 @@ export class MetricsService {
     public async appendMetrics(metrics: AgentMetrics): Promise<void> {
         try {
             const data = await fs.readFile(this.telemetryPath, 'utf-8');
-            const records: AgentMetrics[] = JSON.parse(data);
+            let records: AgentMetrics[] = JSON.parse(data);
+            if (records.length >= 1000) {
+                records = records.slice(-999);
+            }
             records.push(metrics);
             await fs.writeFile(this.telemetryPath, JSON.stringify(records, null, 2), 'utf-8');
         } catch (error) {
@@ -66,7 +69,10 @@ export class MetricsService {
     public async appendHabitLog(log: HabitLog): Promise<void> {
         try {
             const data = await fs.readFile(this.habitsPath, 'utf-8');
-            const records: HabitLog[] = JSON.parse(data);
+            let records: HabitLog[] = JSON.parse(data);
+            if (records.length >= 1000) {
+                records = records.slice(-999);
+            }
             records.push(log);
             await fs.writeFile(this.habitsPath, JSON.stringify(records, null, 2), 'utf-8');
         } catch (error) {

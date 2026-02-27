@@ -3,6 +3,7 @@
 # This is the most important line for your use case.
 /models/
 window_dump.xml
+off-grid-mobile/
 
 # --- Dependencies ---
 # Ignore the directory where npm installs packages.

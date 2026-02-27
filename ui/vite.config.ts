@@ -13,7 +13,14 @@ export default defineConfig({
             },
             '/ws': {
                 target: 'ws://localhost:3000',
-                ws: true
+                ws: true,
+                configure: (proxy, _options) => {
+                    proxy.on('error', (err: any, _req, _res) => {
+                        if (err.code !== 'ECONNRESET' && err.code !== 'EPIPE') {
+                            console.log('WebSocket proxy error:', err);
+                        }
+                    });
+                }
             },
             '/health': {
                 target: 'http://localhost:3000',

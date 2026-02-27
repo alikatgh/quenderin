@@ -7,6 +7,11 @@ export function useAgentSocket() {
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
     const [requiredAction, setRequiredAction] = useState<{ code: string, title: string, message: string } | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
+    const [settings, setSettings] = useState<{ contextSize: number, memorySafetyEnabled: boolean, themePreference: 'light' | 'dark' | 'system', privacyLockEnabled: boolean, privacyPassphrase: string }>(() => {
+        const saved = localStorage.getItem('quenderin_settings');
+        const defaultSettings = { contextSize: 2048, memorySafetyEnabled: true, themePreference: 'system' as const, privacyLockEnabled: false, privacyPassphrase: '' };
+        return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+    });
     const wsRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
@@ -26,6 +31,11 @@ export function useAgentSocket() {
                     timestamp: time
                 };
 
+                // Apply settings on initial connection
+                if (data.type === 'log' && data.message.includes('Connected')) {
+                    ws.send(JSON.stringify({ type: 'settings_update', ...settings }));
+                }
+
                 if (data.type === 'status') {
                     entry.message = data.message;
                 } else if (data.type === 'observe') {
@@ -37,9 +47,34 @@ export function useAgentSocket() {
                     entry.command = data.command;
                 } else if (data.type === 'action') {
                     entry.message = `Action successful: ${data.message}`;
+                } else if (data.type === 'chat_stream') {
+                    setLogs((prev) => {
+                        const newLogs = [...prev];
+                        const last = newLogs[newLogs.length - 1];
+                        if (last && last.type === 'chat_response' && last.isStreaming) {
+                            newLogs[newLogs.length - 1] = { ...last, message: last.message + data.text };
+                        } else {
+                            newLogs.push({ ...entry, type: 'chat_response', message: data.text, isStreaming: true });
+                        }
+                        return newLogs;
+                    });
+                    if (status !== 'running') setStatus('running');
+                    return;
                 } else if (data.type === 'chat_response') {
-                    entry.message = data.message;
+                    setLogs((prev) => {
+                        const newLogs = [...prev];
+                        const last = newLogs[newLogs.length - 1];
+                        if (last && last.type === 'chat_response' && last.isStreaming) {
+                            newLogs[newLogs.length - 1] = { ...last, message: data.message, isStreaming: false };
+                            return newLogs;
+                        } else {
+                            entry.message = data.message;
+                            entry.isStreaming = false;
+                            return [...newLogs, entry];
+                        }
+                    });
                     setStatus('done');
+                    return;
                 } else if (data.type === 'error') {
                     entry.message = data.message;
                     setStatus('done');
@@ -64,7 +99,7 @@ export function useAgentSocket() {
             setLogs((prev) => [...prev, {
                 id: 'close',
                 type: 'error',
-                message: "**Server Disconnected**\nThe user interface lost connection to the Quenderin brain.\n**How to fix this:**\n1. Open your computer's terminal program.\n2. Navigate to your Quenderin project folder.\n3. Start the engine by typing `npm run dev` and pressing Enter.\n4. Once the terminal shows it's running, click \"Reconnect\" or refresh this page.",
+                message: "**Connection Lost**\nThe interface lost connection to Quenderin.\n**How to fix this:**\n1. Check your computer window where Quenderin is running.\n2. If it closed, please restart the application.\n3. Once it's running again, click \"Reconnect\" or refresh this page.",
                 timestamp: ''
             }]);
             setStatus('idle');
@@ -73,12 +108,12 @@ export function useAgentSocket() {
         return () => ws.close();
     }, []);
 
-    const sendGoal = (goal: string) => {
+    const sendGoal = (goal: string, attachments: { name: string, content: string }[] = []) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
             setLogs(prev => [...prev, {
                 id: 'err',
                 type: 'error',
-                message: "**Engine Not Running**\nYou are trying to send a command, but the local engine isn't running.\n**How to fix this:**\n1. Open your terminal/command prompt.\n2. Go to the Quenderin directory.\n3. Type `npm run dev` and press Enter.\n4. Wait for the success message in the terminal, then try your request again.",
+                message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
                 timestamp: new Date().toLocaleTimeString()
             }]);
             return false;
@@ -86,19 +121,19 @@ export function useAgentSocket() {
 
         setStatus('running');
         setLogs([{
-            id: 'start', type: 'status', message: `Goal set: ${goal}`, timestamp: new Date().toLocaleTimeString()
+            id: 'start', type: 'status', message: `Goal set: ${goal}${attachments.length > 0 ? ` (with ${attachments.length} attachments)` : ''}`, timestamp: new Date().toLocaleTimeString()
         }]);
         setCurrentUI([]);
-        wsRef.current.send(JSON.stringify({ type: 'start', goal }));
+        wsRef.current.send(JSON.stringify({ type: 'start', goal, attachments }));
         return true;
     };
 
-    const sendChatMessage = (msg: string) => {
+    const sendChatMessage = (msg: string, attachments: { name: string, content: string }[] = []) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
             setLogs(prev => [...prev, {
                 id: 'err',
                 type: 'error',
-                message: "**Engine Not Running**\nYou are trying to send a command, but the local engine isn't running.\n**How to fix this:**\n1. Open your terminal/command prompt.\n2. Go to the Quenderin directory.\n3. Type `npm run dev` and press Enter.\n4. Wait for the success message in the terminal, then try your request again.",
+                message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
                 timestamp: new Date().toLocaleTimeString()
             }]);
             return false;
@@ -108,8 +143,20 @@ export function useAgentSocket() {
         setLogs(prev => [...prev, {
             id: Math.random().toString(36).substr(2, 9), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
         }]);
-        wsRef.current.send(JSON.stringify({ type: 'chat', message: msg }));
+        wsRef.current.send(JSON.stringify({ type: 'chat', message: msg, attachments }));
         return true;
+    };
+
+    const manualVoiceStart = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'manual_voice_start' }));
+        }
+    };
+
+    const manualVoiceStop = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'manual_voice_stop' }));
+        }
     };
 
     const resetSession = () => {
@@ -121,9 +168,18 @@ export function useAgentSocket() {
 
     const clearRequiredAction = () => setRequiredAction(null);
 
+    const updateSettings = (newSettings: typeof settings) => {
+        setSettings(newSettings);
+        localStorage.setItem('quenderin_settings', JSON.stringify(newSettings));
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'settings_update', ...newSettings }));
+        }
+    };
+
     return {
         wsReady: wsRef.current?.readyState === WebSocket.OPEN,
-        logs, status, currentUI, requiredAction, downloadProgress,
-        sendGoal, sendChatMessage, resetSession, clearRequiredAction
+        logs, status, currentUI, requiredAction, downloadProgress, settings,
+        sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings,
+        manualVoiceStart, manualVoiceStop
     };
 }

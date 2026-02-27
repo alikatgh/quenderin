@@ -30,13 +30,13 @@ export class DaemonService extends EventEmitter {
     public start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.emit('status', 'Daemon started observing device background state.');
+        this.emit('status', 'Started watching your device in the background.');
         this.pollLoop();
     }
 
     public stop() {
         this.isRunning = false;
-        this.emit('status', 'Daemon paused.');
+        this.emit('status', 'Paused.');
     }
 
     public getRecentObservations(): ObservationData[] {
@@ -47,7 +47,7 @@ export class DaemonService extends EventEmitter {
         const hashContext = elements.map(el => {
             return `${el.className}-${el.resourceId}-${el.text}-${el.contentDesc}`;
         }).join('|');
-        return crypto.createHash('md5').update(hashContext).digest('hex');
+        return crypto.createHash('sha256').update(hashContext).digest('hex');
     }
 
     private async pollLoop() {

@@ -7,54 +7,67 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 
 export class DesktopProvider extends EventEmitter implements IDeviceProvider {
-    private robot: any;
+    private robot: any = null;
+    private robotLoaded = false;
 
     constructor() {
         super();
+    }
+
+    /**
+     * Lazily import robotjs via ESM-compatible dynamic import.
+     * robotjs is optional — desktop mode is gracefully degraded if it isn't installed.
+     */
+    private async getRobot(): Promise<any> {
+        if (this.robotLoaded) return this.robot;
+        this.robotLoaded = true;
         try {
-            // Lazy load robotjs. This requires the user to have build tools (make, python).
-            // npm install robotjs
-            this.robot = require('robotjs');
-        } catch (e) {
-            console.warn("⚠️ DesktopProvider depends on 'robotjs'. It is currently not installed or failed to compile on this architecture. Run 'npm install robotjs'.");
+            // robotjs is a CJS module; Node ESM supports dynamic import() of CJS.
+            const mod = await import('robotjs');
+            this.robot = mod.default ?? mod;
+        } catch {
+            console.warn(
+                "[DesktopProvider] 'robotjs' is not installed or failed to compile. " +
+                "Run 'npm install robotjs' and ensure build tools (make, python) are available."
+            );
         }
+        return this.robot;
     }
 
     public async click(x: number, y: number): Promise<void> {
-        if (!this.robot) return;
-        this.robot.moveMouse(x, y);
-        this.robot.mouseClick();
+        const robot = await this.getRobot();
+        if (!robot) return;
+        robot.moveMouse(x, y);
+        robot.mouseClick();
     }
 
     public async type(text: string): Promise<void> {
-        if (!this.robot) return;
-        // Desktop doesn't have an exact "clear area" native primitive like Android "backspace 50 times"
-        // without knowing exactly what input is focused. We just type the string raw.
-        this.robot.typeString(text);
+        const robot = await this.getRobot();
+        if (!robot) return;
+        robot.typeString(text);
     }
 
     public async scroll(direction: 'up' | 'down'): Promise<void> {
-        if (!this.robot) return;
-        // Robot.js scrollMouse takes X and Y delta. 
-        // Emulate a standard scroll distance.
+        const robot = await this.getRobot();
+        if (!robot) return;
         if (direction === 'up') {
-            this.robot.scrollMouse(0, 50);
+            robot.scrollMouse(0, 50);
         } else {
-            this.robot.scrollMouse(0, -50);
+            robot.scrollMouse(0, -50);
         }
     }
 
     public async pressKey(key: string): Promise<void> {
-        if (!this.robot) return;
-        // Map generic key strings to robot.js specific strings
+        const robot = await this.getRobot();
+        if (!robot) return;
         let mappedKey = key.toLowerCase();
         if (mappedKey === 'back') mappedKey = 'escape';
-        if (mappedKey === 'home') mappedKey = 'command'; // Desktop equivalent of home is often OS menu
+        if (mappedKey === 'home') mappedKey = 'command';
 
         try {
-            this.robot.keyTap(mappedKey);
-        } catch (e) {
-            console.error(`DesktopProvider: Invalid key '${mappedKey}' passed to robotjs`);
+            robot.keyTap(mappedKey);
+        } catch {
+            console.error(`[DesktopProvider] Invalid key '${mappedKey}' passed to robotjs`);
         }
     }
 

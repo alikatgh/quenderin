@@ -12,8 +12,9 @@ async function createWindow() {
         height: 800,
         title: 'Quenderin',
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, '..', 'src', 'electron', 'preload.js')
         }
     });
 

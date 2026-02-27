@@ -37,7 +37,7 @@ export interface IDeviceProvider extends EventEmitter {
 
 export interface ILlmProvider extends EventEmitter {
     generateCode(prompt: string): Promise<string>;
-    generalChat(prompt: string): Promise<string>;
+    generalChat(prompt: string, onToken?: (token: string) => void): Promise<string>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
 }
 

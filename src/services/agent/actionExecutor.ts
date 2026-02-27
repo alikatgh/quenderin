@@ -61,12 +61,12 @@ export class ActionExecutor {
                         const centerY = el.center.y;
 
                         if (actionType === 'click') {
-                            emitter.emit('status', `Clicking dynamically on element ${targetId} at (${centerX}, ${centerY})`);
+                            emitter.emit('status', `Tapping target element...`);
                             await this.deviceProvider.click(centerX, centerY);
                             return true;
                         } else {
                             const text = actionObj.text || '';
-                            emitter.emit('status', `Typing into element ${targetId}`);
+                            emitter.emit('status', `Typing into element...`);
                             await this.deviceProvider.click(centerX, centerY);
                             await new Promise(res => setTimeout(res, 500));
                             await this.deviceProvider.type(text);
@@ -77,15 +77,15 @@ export class ActionExecutor {
                         return false;
                     }
                 } else if (actionObj.x !== undefined && actionObj.y !== undefined) {
-                    emitter.emit('status', `Warning: Coordinate-based action bypasses UI text safety blocklist. Relying on VLM alignment.`);
+                    emitter.emit('status', `Using spatial vision to locate target...`);
 
                     if (actionType === 'click') {
-                        emitter.emit('status', `Clicking coordinate dynamically (${actionObj.x}, ${actionObj.y})`);
+                        emitter.emit('status', `Tapping spatial coordinate...`);
                         await this.deviceProvider.click(actionObj.x, actionObj.y);
                         return true;
                     } else {
                         const text = actionObj.text || '';
-                        emitter.emit('status', `Typing at coordinate (${actionObj.x}, ${actionObj.y})`);
+                        emitter.emit('status', `Typing at spatial coordinate...`);
                         await this.deviceProvider.click(actionObj.x, actionObj.y);
                         await new Promise(res => setTimeout(res, 500));
                         await this.deviceProvider.type(text);

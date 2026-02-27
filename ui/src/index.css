@@ -4,22 +4,75 @@
 
 @layer base {
     body {
-        @apply bg-white text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-300;
+        @apply bg-[#fafafa] text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-500;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         overflow: hidden;
     }
 
     .dark body {
-        @apply bg-[#18181b] text-zinc-100;
+        @apply bg-[#09090b] text-zinc-100;
     }
+
+    code,
+    pre,
+    .font-mono {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+}
+
+@keyframes entrance {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-entrance {
+    animation: entrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--entrance-index, 0) * 50ms);
+    opacity: 0;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+.animate-shake {
+    animation: shake 0.2s ease-in-out 0s 2;
 }
 
 @layer utilities {
     .claude-input-wrapper {
-        @apply relative flex items-end w-full max-w-3xl mx-auto bg-white dark:bg-[#27272a] border border-zinc-200 dark:border-[#3f3f46] rounded-xl transition-all duration-200 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-500 focus-within:border-zinc-400 dark:focus-within:border-zinc-400 focus-within:ring-1 focus-within:ring-zinc-400 dark:focus-within:ring-zinc-400;
+        @apply relative flex items-end w-full max-w-3xl mx-auto bg-white dark:bg-[#121215] border border-zinc-200/60 dark:border-[#27272a] rounded-2xl transition-all duration-300 shadow-[0_2px_12px_#00000008] dark:shadow-[0_8px_30px_#00000066] hover:border-zinc-300 dark:hover:border-zinc-700 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-purple-500/10 dark:focus-within:ring-purple-500/5 focus-within:shadow-[0_12px_40px_#0000000f] dark:focus-within:shadow-[0_16px_48px_#00000099];
+    }
+
+    .premium-card {
+        @apply bg-white dark:bg-[#121215] border border-zinc-200/50 dark:border-[#27272a] rounded-2xl shadow-sm dark:shadow-[0_4px_20px_#0000004d];
+    }
+
+    .glass-effect {
+        @apply backdrop-blur-md bg-white/80 dark:bg-[#09090b]/80 border-b border-zinc-200/50 dark:border-[#27272a]/50;
     }
 
     .claude-textarea {
-        @apply w-full bg-transparent border-none resize-none py-3 pl-4 pr-12 text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 max-h-[200px] overflow-y-auto;
+        @apply w-full bg-transparent border-none resize-none py-4 pl-5 pr-14 text-[16px] leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 max-h-[250px] overflow-y-auto transition-[height];
     }
 
     .markdown-body {
@@ -41,10 +94,10 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        @apply bg-zinc-300 dark:bg-zinc-700 rounded-full;
+        @apply bg-zinc-300 dark:bg-zinc-800 rounded-full;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        @apply bg-zinc-400 dark:bg-zinc-600;
+        @apply bg-zinc-400 dark:bg-zinc-700;
     }
 }

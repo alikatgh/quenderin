@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
 import * as fs from 'fs/promises';
+import fsSync from 'fs';
 import * as os from 'os';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
@@ -10,18 +11,37 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
 import { LlmService } from './services/llm.service.js';
+import { MODEL_CATALOG, modelPath as getModelPath } from './constants.js';
 
 export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService): Express {
     const app = express();
 
+    const isAllowedLocalOrigin = (origin: string): boolean => {
+        if (origin === 'null') return true; // Some embedded/Electron contexts
+        try {
+            const parsed = new URL(origin);
+            return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
+        } catch {
+            return false;
+        }
+    };
+
     app.use((req, res, next) => {
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
         );
         next();
     });
-    app.use(cors());
+    // Restrict CORS to same-machine origins only — this is a local-only server
+    app.use(cors({
+        origin: (origin, callback) => {
+            // Allow requests with no origin (curl, Electron, server-to-server)
+            if (!origin) return callback(null, true);
+            if (isAllowedLocalOrigin(origin)) return callback(null, true);
+            callback(new Error(`CORS: origin '${origin}' is not allowed`));
+        }
+    }));
     app.use(express.json());
 
     // Serve strictly static frontend relative to this file to support packaged ASARs
@@ -64,30 +84,65 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         });
     }
 
-    app.post('/api/config/voice', async (req, res) => {
-        try {
-            const { key } = req.body;
-            if (!key || typeof key !== 'string') {
-                return res.status(400).json({ error: 'Valid key required' });
-            }
-
-            const envPath = path.join(os.homedir(), '.quenderin', '.env');
-            await fs.mkdir(path.dirname(envPath), { recursive: true });
-            await fs.appendFile(envPath, `\nPICOVOICE_ACCESS_KEY=${key}\n`);
-
-            res.json({ success: true, message: 'Voice key saved to config' });
-        } catch (error) {
-            console.error('Failed to save voice config:', error);
-            res.status(500).json({ error: 'Failed to save configuration' });
-        }
-    });
 
     if (llmService) {
+        app.get('/api/models/catalog', (_req, res) => {
+            const catalog = MODEL_CATALOG.map((m) => ({
+                ...m,
+                isDownloaded: fsSync.existsSync(getModelPath(m.id))
+            }));
+            res.json({ catalog });
+        });
+
         app.post('/api/models/download', (req, res) => {
-            llmService.downloadModel().catch(e => console.error("Background model download failed:", e));
-            res.json({ message: "Model download initiated." });
+            const modelId = req.body?.modelId as string | undefined;
+            llmService.downloadModel(modelId).catch(e => console.error("Background model download failed:", e));
+            res.json({ message: "Model download initiated.", modelId: modelId ?? 'llama3-8b' });
         });
     }
+
+    app.post('/api/voice/download', async (req, res) => {
+        try {
+            const voiceDir = path.join(os.homedir(), '.quenderin', 'models', 'voice');
+            const targetPath = path.join(voiceDir, 'vosk-model-small-en-us-0.15');
+
+            if (await fs.stat(targetPath).catch(() => null)) {
+                return res.json({ message: "Voice model already exists.", progress: 100 });
+            }
+
+            await fs.mkdir(voiceDir, { recursive: true });
+
+            // Fire and forget the download stream pipeline
+            const downloadAndExtract = async () => {
+                const url = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok || !response.body) throw new Error("Failed to download Vosk model");
+
+                    const { default: unzipper } = await import('unzipper');
+
+                    // Consume the Web Stream using Node's stream.Readable
+                    const { Readable } = await import('stream');
+                    const nodeStream = Readable.fromWeb(response.body as any);
+
+                    nodeStream
+                        .pipe(unzipper.Extract({ path: voiceDir }))
+                        .on('close', () => console.log('Voice model extracted.'))
+                        .on('error', (e) => console.error('Failed to extract voice model:', e));
+
+                } catch (e) {
+                    console.error("Voice download pipeline failed:", e);
+                }
+            };
+
+            downloadAndExtract();
+            res.json({ message: "Voice model download initiated." });
+
+        } catch (error) {
+            console.error('Failed to init voice download:', error);
+            res.status(500).json({ error: 'Failed to init download' });
+        }
+    });
 
     // Error Handling
     app.use(errorHandler);

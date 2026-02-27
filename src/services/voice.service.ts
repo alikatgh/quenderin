@@ -23,7 +23,7 @@ export class VoiceService extends EventEmitter {
 
     public async initialize(accessKey: string) {
         try {
-            console.log('[VoiceService] Initializing Porcupine Wake Word Engine...');
+            console.log('[Assistant] Prepping voice helper...');
 
             // Note: Porcupine requires a valid AccessKey from Picovoice Console
             if (!accessKey) {
@@ -32,19 +32,19 @@ export class VoiceService extends EventEmitter {
                     title: 'Voice Engine Unconfigured',
                     message: 'Please provide a valid Picovoice Access Key to enable offline voice commands.'
                 });
-                console.warn('[VoiceService] Missing PICOVOICE_ACCESS_KEY. Voice control disabled.');
+                console.warn('[Assistant] Voice Helper is sleeping (Missing Key).');
                 return;
             }
 
             this.porcupine = new Porcupine(
                 accessKey,
-                [BuiltinKeyword.PORCUPINE], // "Porcupine" is the default built-in wake word
+                [BuiltinKeyword.JARVIS], // Changing to "Jarvis" for a more "Unified Intelligence" feel
                 [0.5] // Sensitivity
             );
 
             const frameLength = this.porcupine.frameLength;
             this.recorder = new PvRecorder(-1, frameLength); // -1 is default mic
-            console.log('[VoiceService] Audio pipeline ready. Say "Porcupine" to wake.');
+            console.log('[Assistant] Ready to help. Say "Jarvis" or use the Record button.');
 
             this.isListening = true;
             this.audioLoop(); // Start hardware polling asynchronously
@@ -79,7 +79,7 @@ export class VoiceService extends EventEmitter {
                     // 1. Wake Word Detection Phase
                     const keywordIndex = this.porcupine.process(pcm);
                     if (keywordIndex === 0) {
-                        console.log('\n[VoiceService] 🎙️  Wake word detected! Listening for 10 seconds...');
+                        console.log('\n[Assistant] 🎙️ I\'m listening...');
                         this.STATE = 'RECORDING';
                         this.currentSampleIndex = 0;
                         this.emit('wake');
@@ -92,7 +92,7 @@ export class VoiceService extends EventEmitter {
                         this.currentSampleIndex += pcm.length;
                     } else {
                         // Buffer full, end recording
-                        console.log('[VoiceService] Recording finished. Transcribing offline...');
+                        console.log('[Assistant] Thinking about what you said...');
                         this.STATE = 'TRANSCRIBING';
 
                         // We must yield the main thread while we do heavy I/O and ML inference
@@ -103,6 +103,21 @@ export class VoiceService extends EventEmitter {
                 console.error('[VoiceService] Frame read error:', err.message);
             }
         }
+    }
+
+    public async manualCaptureStart() {
+        if (this.STATE !== 'IDLE') return;
+        console.log('[Assistant] 🎙️ Manual recording started...');
+        this.STATE = 'RECORDING';
+        this.currentSampleIndex = 0;
+        this.emit('wake');
+    }
+
+    public async manualCaptureStop() {
+        if (this.STATE !== 'RECORDING') return;
+        console.log('[Assistant] Processing manual recording...');
+        this.STATE = 'TRANSCRIBING';
+        setImmediate(() => this.processAudioBuffer());
     }
 
     private async processAudioBuffer() {
@@ -128,7 +143,7 @@ export class VoiceService extends EventEmitter {
             const transcripts = await whisper(wavPath, options);
 
             // Clean up the temporary file
-            fs.unlinkSync(wavPath);
+            await fs.promises.unlink(wavPath);
 
             // whisper-node returns an array of objects: {start, end, speech}
             let fullText = "";
@@ -138,10 +153,10 @@ export class VoiceService extends EventEmitter {
             const cleanText = fullText.trim();
 
             if (cleanText.length > 0) {
-                console.log(`[VoiceService] Transcription: "${cleanText}"`);
+                console.log(`[Assistant] I heard: "${cleanText}"`);
                 this.emit('command', cleanText); // Pipe to AgentService!
             } else {
-                console.log('[VoiceService] No speech detected.');
+                console.log('[Assistant] I didn\'t catch that.');
             }
 
         } catch (err: any) {
@@ -149,7 +164,7 @@ export class VoiceService extends EventEmitter {
         } finally {
             // Return to IDLE 
             this.STATE = 'IDLE';
-            console.log('[VoiceService] Returning to sleep state. Say "Porcupine" to wake.');
+            console.log('[Assistant] Going back to sleep. Say "Jarvis" if you need anything.');
         }
     }
 
