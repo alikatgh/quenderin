@@ -72,9 +72,9 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
               <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-5 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
                 <BrainCircuit className="w-6 h-6" />
               </div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Install Neural Weights</h2>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Download AI Brain</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                Quenderin needs its instruction-tuned offline LLaMA architecture to process your screen coordinates:
+                Quenderin needs its offline AI engine to understand your screen and act on your behalf:
               </p>
 
               {downloadProgress === 100 ? (
@@ -83,7 +83,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">Weights Installed Successfully</p>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The 4.7GB GGUF architecture is synchronized to disk.</p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The 4.7GB local AI engine is saved to your computer.</p>
                     </div>
                   </div>
                 </div>

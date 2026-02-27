@@ -127,14 +127,14 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                     <div className="mt-0.5"><BrainCircuit className="w-4 h-4 text-emerald-500" /></div>
                     <div>
                         <p className="font-semibold text-zinc-900 dark:text-zinc-200">1. Offline Intelligence</p>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Quenderin leverages a completely offline LLaMA architecture to process your screen coordinates privately.</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Quenderin uses a completely private, offline AI model to process your screen data securely.</p>
                     </div>
                 </div>
                 <div className="flex gap-3 text-sm items-start">
                     <div className="mt-0.5"><Download className="w-4 h-4 text-emerald-500" /></div>
                     <div>
                         <p className="font-semibold text-zinc-900 dark:text-zinc-200">2. Automatic Download</p>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">We will securely stream the instruction-tuned GGUF weights directly into your `~/.quenderin/models` directory.</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">We will download the AI files directly to your computer so it runs locally.</p>
                     </div>
                 </div>
                 <div className="flex gap-3 text-sm items-start">
@@ -152,7 +152,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                         <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                         <div>
                             <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">Weights Installed Successfully</p>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The 4.7GB GGUF architecture is synchronized to disk.</p>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">The 4.7GB AI engine is installed locally.</p>
                         </div>
                     </div>
                     <button onClick={() => window.location.reload()} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
