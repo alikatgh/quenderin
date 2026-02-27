@@ -90,52 +90,51 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        return new Promise((resolve, reject) => {
-            const downloadFile = (currentUrl: string) => {
-                https.get(currentUrl, (response) => {
-                    if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                        return downloadFile(response.headers.location);
+        try {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
+            }
+
+            if (!response.body) {
+                throw new Error("Readable stream not found in fetch response");
+            }
+
+            const totalBytes = Number(response.headers.get('content-length')) || 0;
+            let receivedBytes = 0;
+            const fileStream = fs.createWriteStream(dest);
+
+            const reader = response.body.getReader();
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                    break;
+                }
+
+                receivedBytes += value.length;
+                if (totalBytes > 0) {
+                    const progress = Math.round((receivedBytes / totalBytes) * 100);
+                    // Avoid spamming the event loop, only emit on percentage change
+                    if (progress % 1 === 0) {
+                        this.emit('model_download_progress', { progress });
                     }
+                }
 
-                    if (response.statusCode !== 200) {
-                        this.isDownloading = false;
-                        return reject(new Error(`Failed to download: ${response.statusCode}`));
-                    }
+                fileStream.write(value);
+            }
 
-                    const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
-                    let receivedBytes = 0;
-                    const fileStream = fs.createWriteStream(dest);
+            fileStream.end();
+            this.isDownloading = false;
 
-                    response.on('data', (chunk) => {
-                        receivedBytes += chunk.length;
-                        if (totalBytes > 0) {
-                            const progress = Math.round((receivedBytes / totalBytes) * 100);
-                            this.emit('model_download_progress', { progress });
-                        }
-                    });
-
-                    response.pipe(fileStream);
-
-                    fileStream.on('finish', () => {
-                        fileStream.close();
-                        this.isDownloading = false;
-                        resolve();
-                    });
-
-                    fileStream.on('error', (err) => {
-                        fs.unlink(dest, () => { }); // Handle local cleanup
-                        this.isDownloading = false;
-                        reject(err);
-                    });
-                }).on('error', (err) => {
-                    fs.unlink(dest, () => { });
-                    this.isDownloading = false;
-                    reject(err);
-                });
-            };
-
-            downloadFile(url);
-        });
+        } catch (error) {
+            console.error("Model download pipeline failed:", error);
+            fs.unlink(dest, () => { }); // Handle local cleanup
+            this.isDownloading = false;
+            throw error;
+        }
     }
 
     public async generateCode(userPrompt: string): Promise<string> {
