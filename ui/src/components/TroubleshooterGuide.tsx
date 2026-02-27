@@ -162,7 +162,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
             ) : downloadProgress > 0 ? (
                 <div className="animate-in fade-in duration-300">
                     <div className="flex justify-between text-xs font-semibold mb-2">
-                        <span className="text-emerald-600 dark:text-emerald-400">Downloading Native Checkpoint...</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Model (Llama 3)...</span>
                         <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-3 mb-2 overflow-hidden border border-zinc-200 dark:border-zinc-700">

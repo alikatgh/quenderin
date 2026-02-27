@@ -90,7 +90,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
               ) : isModelDownloading || downloadProgress > 0 ? (
                 <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
                   <div className="flex justify-between text-xs font-semibold mb-2">
-                    <span className="text-emerald-600 dark:text-emerald-400">Downloading Native Checkpoint...</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Model (Llama 3)...</span>
                     <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
                   </div>
                   <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 mb-4 overflow-hidden border border-zinc-300 dark:border-zinc-600">
@@ -101,7 +101,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                   </div>
                   <div className="space-y-2">
                     <p className={`text-xs flex items-center gap-2 ${downloadProgress > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {downloadProgress > 0 && <CheckCircle2 className="w-3.5 h-3.5" />} 1. Downloading Native Checkpoint...
+                      {downloadProgress > 0 && <CheckCircle2 className="w-3.5 h-3.5" />} 1. Downloading AI Model (Llama 3)...
                     </p>
                     <p className={`text-xs flex items-center gap-2 ${downloadProgress >= 99 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
                       {downloadProgress >= 99 && <CheckCircle2 className="w-3.5 h-3.5" />} 2. Saving to safe offline storage...
