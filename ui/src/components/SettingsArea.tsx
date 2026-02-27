@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
+import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface Settings {
     contextSize: number;
@@ -13,9 +13,10 @@ interface SettingsAreaProps {
     onBack: () => void;
     currentSettings: Settings;
     onSave: (newSettings: Settings) => void;
+    onReset: () => void;
 }
 
-export function SettingsArea({ onBack, currentSettings, onSave }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -44,13 +45,22 @@ export function SettingsArea({ onBack, currentSettings, onSave }: SettingsAreaPr
                         </button>
                         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">System Settings</h1>
                     </div>
-                    <button
-                        onClick={handleSave}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/10 active:scale-95"
-                    >
-                        {isSaved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                        {isSaved ? 'Settings Applied' : 'Apply Changes'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => { onReset(); setIsSaved(false); }}
+                            className="flex items-center gap-2 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-sm font-semibold rounded-xl transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Reset Defaults
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/10 active:scale-95"
+                        >
+                            {isSaved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                            {isSaved ? 'Settings Applied' : 'Apply Changes'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-8">

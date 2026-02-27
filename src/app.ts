@@ -12,6 +12,8 @@ import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
 import { LlmService } from './services/llm.service.js';
 import { MODEL_CATALOG, modelPath as getModelPath } from './constants.js';
+import { DEFAULT_PRESETS } from './services/presets.js';
+import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 
 export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService): Express {
     const app = express();
@@ -98,6 +100,16 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const modelId = req.body?.modelId as string | undefined;
             llmService.downloadModel(modelId).catch(e => console.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: modelId ?? 'llama3-8b' });
+        });
+
+        /** Presets catalog — returns all available personas */
+        app.get('/api/presets', (_req, res) => {
+            res.json({ presets: DEFAULT_PRESETS, activePresetId: llmService.getActivePresetId() });
+        });
+
+        /** Available tools catalog */
+        app.get('/api/tools', (_req, res) => {
+            res.json({ tools: AVAILABLE_TOOLS });
         });
     }
 

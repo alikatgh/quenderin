@@ -1,5 +1,13 @@
 import { EventEmitter } from 'events';
 
+/** Metadata about a generation run (tok/s, TTFT, etc.) */
+export interface GenerationMeta {
+    tokenCount: number;
+    durationMs: number;
+    tokensPerSecond: number;
+    timeToFirstTokenMs: number;
+}
+
 export interface UIElement {
     id: number;
     text: string;
@@ -37,7 +45,7 @@ export interface IDeviceProvider extends EventEmitter {
 
 export interface ILlmProvider extends EventEmitter {
     generateCode(prompt: string): Promise<string>;
-    generalChat(prompt: string, onToken?: (token: string) => void): Promise<string>;
+    generalChat(prompt: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
 }
 

@@ -14,7 +14,17 @@ interface GeneralChatAreaProps {
     onSend: (msg: string, attachments: { name: string, content: string }[]) => void;
     onVoiceStart: () => void;
     onVoiceStop: () => void;
+    activePresetId: string;
+    onSwitchPreset: (id: string) => void;
 }
+
+const PRESET_OPTIONS = [
+    { id: 'general', label: 'General', icon: '💬' },
+    { id: 'code-review', label: 'Code Review', icon: '🔍' },
+    { id: 'creative-writer', label: 'Writer', icon: '✍️' },
+    { id: 'tutor', label: 'Tutor', icon: '🎓' },
+    { id: 'summarizer', label: 'Summary', icon: '📄' },
+];
 
 function CodeBlock({ children, language, ...props }: any) {
     const [copied, setCopied] = useState(false);
@@ -65,7 +75,7 @@ function CodeBlock({ children, language, ...props }: any) {
 
 import { AnimatedEntrance } from './AnimatedEntrance.js';
 
-export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop }: GeneralChatAreaProps) {
+export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [messageQueue, setMessageQueue] = useState<string[]>([]);
@@ -152,6 +162,24 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
             <div className="flex-1 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40 pt-10">
 
+                    {/* Preset Switcher Bar */}
+                    <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-hide">
+                        {PRESET_OPTIONS.map((p) => (
+                            <button
+                                key={p.id}
+                                onClick={() => onSwitchPreset(p.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all border ${
+                                    activePresetId === p.id
+                                        ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-400 ring-1 ring-purple-500/20'
+                                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                }`}
+                            >
+                                <span>{p.icon}</span>
+                                <span>{p.label}</span>
+                            </button>
+                        ))}
+                    </div>
+
                     {chatLogs.length === 0 && (
                         <div className="mt-20 flex flex-col items-center animate-fade-in px-4">
                             <div className="w-16 h-16 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-[#3f3f46]">
@@ -235,6 +263,17 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                                                         {log.message}
                                                     </ReactMarkdown>
                                                 </div>
+                                                {!log.isStreaming && log.meta && (
+                                                    <div className="mt-3 flex items-center gap-3 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">
+                                                        <span>{log.meta.tokensPerSecond} tok/s</span>
+                                                        <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                                                        <span>{log.meta.tokenCount} tokens</span>
+                                                        <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                                                        <span>TTFT {log.meta.timeToFirstTokenMs}ms</span>
+                                                        <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                                                        <span>{(log.meta.durationMs / 1000).toFixed(1)}s total</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )

@@ -5,6 +5,7 @@ import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
 import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
+import { classifyIntent } from '../services/intentClassifier.js';
 import logger from '../utils/logger.js';
 
 /** Max length for user-supplied goal text (prevents DoS via mega-strings) */
@@ -137,12 +138,15 @@ export class WebSocketManager {
                             ws.send(JSON.stringify({ type: 'error', message: 'Message is required.' }));
                             return;
                         }
+
+                        // Classify intent so the UI can display routing info
+                        const intent = classifyIntent(message);
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
                         try {
-                            const response = await this.llmService.generalChat(message, (token) => {
+                            const result = await this.llmService.generalChat(message, (token) => {
                                 if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_stream', text: token }));
                             });
-                            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: response }));
+                            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: any) {
                             if (isActionRequiredError(e)) {
                                 if (e?.code !== 'OOM_PREVENTION') { // OOM_PREVENTION payload already sent by llmService
@@ -163,6 +167,15 @@ export class WebSocketManager {
                         const memorySafetyEnabled = data.memorySafetyEnabled === true;
                         this.llmService.updateSettings({ contextSize, memorySafetyEnabled });
                         logger.log(`[System] settings updated: contextSize=${contextSize}, memorySafety=${memorySafetyEnabled}`);
+                    } else if (data.type === 'preset_switch') {
+                        // Switch active preset (persona)
+                        const presetId = typeof data.presetId === 'string' ? data.presetId.slice(0, 50).trim() : '';
+                        if (presetId) {
+                            this.llmService.setPreset(presetId);
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'preset_changed', presetId }));
+                            }
+                        }
                     } else if (data.type === 'manual_voice_start') {
                         this.voiceService.manualCaptureStart();
                     } else if (data.type === 'manual_voice_stop') {

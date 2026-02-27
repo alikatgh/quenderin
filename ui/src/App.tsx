@@ -241,7 +241,7 @@ function AppContent() {
     fetchHealth();
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, manualVoiceStart, manualVoiceStop } = useAgentSocket();
+  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
 
@@ -387,6 +387,7 @@ function AppContent() {
               currentSettings={settings}
               onBack={() => setCurrentView('general_chat')}
               onSave={updateSettings}
+              onReset={resetSettings}
             />
           ) : currentView === 'metrics' ? (
             <Metrics onBack={() => setCurrentView('general_chat')} />
@@ -399,6 +400,8 @@ function AppContent() {
               onSend={handleSendChat}
               onVoiceStart={manualVoiceStart}
               onVoiceStop={manualVoiceStop}
+              activePresetId={activePresetId}
+              onSwitchPreset={switchPreset}
             />
           ) : (
             <ChatArea

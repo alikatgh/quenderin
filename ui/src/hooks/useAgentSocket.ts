@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { UIElement, LogEntry } from '../types/index.js';
 
+/** Default settings with safe defaults — used for merge on load and reset */
+export const DEFAULT_SETTINGS: AppSettings = {
+    contextSize: 2048,
+    memorySafetyEnabled: true,
+    themePreference: 'system',
+    privacyLockEnabled: false,
+    privacyPassphrase: '',
+};
+
+export interface AppSettings {
+    contextSize: number;
+    memorySafetyEnabled: boolean;
+    themePreference: 'light' | 'dark' | 'system';
+    privacyLockEnabled: boolean;
+    privacyPassphrase: string;
+}
+
 export function useAgentSocket() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [status, setStatus] = useState<'idle' | 'running' | 'done'>('idle');
@@ -8,10 +25,10 @@ export function useAgentSocket() {
     const [requiredAction, setRequiredAction] = useState<{ code: string, title: string, message: string } | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const [wsReady, setWsReady] = useState(false);
-    const [settings, setSettings] = useState<{ contextSize: number, memorySafetyEnabled: boolean, themePreference: 'light' | 'dark' | 'system', privacyLockEnabled: boolean, privacyPassphrase: string }>(() => {
+    const [activePresetId, setActivePresetId] = useState<string>('general');
+    const [settings, setSettings] = useState<AppSettings>(() => {
         const saved = localStorage.getItem('quenderin_settings');
-        const defaultSettings = { contextSize: 2048, memorySafetyEnabled: true, themePreference: 'system' as const, privacyLockEnabled: false, privacyPassphrase: '' };
-        return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+        return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
     });
     const wsRef = useRef<WebSocket | null>(null);
     // Keep a ref to settings so the onmessage handler always reads the latest value
@@ -71,11 +88,12 @@ export function useAgentSocket() {
                         const newLogs = [...prev];
                         const last = newLogs[newLogs.length - 1];
                         if (last && last.type === 'chat_response' && last.isStreaming) {
-                            newLogs[newLogs.length - 1] = { ...last, message: data.message, isStreaming: false };
+                            newLogs[newLogs.length - 1] = { ...last, message: data.message, isStreaming: false, meta: data.meta };
                             return newLogs;
                         } else {
                             entry.message = data.message;
                             entry.isStreaming = false;
+                            entry.meta = data.meta;
                             return [...newLogs, entry];
                         }
                     });
@@ -92,6 +110,9 @@ export function useAgentSocket() {
                     return; // Don't add to general logs, this is an interactive modal trigger
                 } else if (data.type === 'model_download_progress') {
                     setDownloadProgress(data.data.progress);
+                    return;
+                } else if (data.type === 'preset_changed') {
+                    setActivePresetId(data.presetId);
                     return;
                 }
 
@@ -183,10 +204,26 @@ export function useAgentSocket() {
         }
     };
 
+    const resetSettings = () => {
+        const fresh = { ...DEFAULT_SETTINGS };
+        setSettings(fresh);
+        localStorage.setItem('quenderin_settings', JSON.stringify(fresh));
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'settings_update', ...fresh }));
+        }
+    };
+
+    const switchPreset = (presetId: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'preset_switch', presetId }));
+        }
+        setActivePresetId(presetId);
+    };
+
     return {
         wsReady,
-        logs, status, currentUI, requiredAction, downloadProgress, settings,
-        sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings,
+        logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId,
+        sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
         manualVoiceStart, manualVoiceStop
     };
 }

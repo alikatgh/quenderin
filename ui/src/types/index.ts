@@ -1,3 +1,11 @@
+/** Metadata about a generation run (tok/s, TTFT, etc.) */
+export interface GenerationMeta {
+    tokenCount: number;
+    durationMs: number;
+    tokensPerSecond: number;
+    timeToFirstTokenMs: number;
+}
+
 export interface UIElement {
     id: number;
     text: string;
@@ -22,4 +30,5 @@ export interface LogEntry {
     elements?: UIElement[];
     command?: string;
     isStreaming?: boolean;
+    meta?: GenerationMeta;
 }
