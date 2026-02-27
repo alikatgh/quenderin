@@ -29,7 +29,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     app.use((req, res, next) => {
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
         );
         next();
     });

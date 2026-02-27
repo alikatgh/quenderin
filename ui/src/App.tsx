@@ -284,9 +284,11 @@ function AppContent() {
   };
 
   // Auto-open inspector when we get UI data
-  if (currentUI.length > 0 && !isInspectorOpen && status === 'running') {
-    setIsInspectorOpen(true);
-  }
+  useEffect(() => {
+    if (currentUI.length > 0 && !isInspectorOpen && status === 'running') {
+      setIsInspectorOpen(true);
+    }
+  }, [currentUI, isInspectorOpen, status]);
 
   const dismissOnboarding = () => {
     localStorage.setItem('quenderin_setup_complete', 'true');

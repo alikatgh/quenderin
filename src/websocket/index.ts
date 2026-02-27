@@ -4,6 +4,13 @@ import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
+import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
+import logger from '../utils/logger.js';
+
+/** Max length for user-supplied goal text (prevents DoS via mega-strings) */
+const MAX_GOAL_LENGTH = 4000;
+/** Max length for a single chat message */
+const MAX_CHAT_LENGTH = 8000;
 
 export class WebSocketManager {
     private wss: WebSocketServer;
@@ -41,7 +48,7 @@ export class WebSocketManager {
                 return;
             }
 
-            console.log('Frontend connected to WebSocket');
+            logger.log('Frontend connected to WebSocket');
             this.activeWs = ws;
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
@@ -80,8 +87,13 @@ export class WebSocketManager {
                     };
 
                     if (data.type === 'start') {
-                        // Device ready check removed as IDeviceProvider abstracts this connection natively
-                        ws.send(JSON.stringify({ type: 'status', message: `Initializing agent goal: ${data.goal}` }));
+                        // Validate and sanitize goal input
+                        const goal = typeof data.goal === 'string' ? data.goal.slice(0, MAX_GOAL_LENGTH).trim() : '';
+                        if (!goal) {
+                            ws.send(JSON.stringify({ type: 'error', message: 'Goal is required.' }));
+                            return;
+                        }
+                        ws.send(JSON.stringify({ type: 'status', message: `Initializing agent goal: ${goal}` }));
 
                         const emitter = new AgentEventEmitter();
 
@@ -111,17 +123,23 @@ export class WebSocketManager {
                         emitter.on('action_required', pushActionRequired);
 
                         try {
-                            await this.agentService.runAgentLoop(data.goal, data.emitter || emitter, data.attachments || []);
+                            // SECURITY: Never use client-supplied emitter — always use server-side one
+                            await this.agentService.runAgentLoop(goal, emitter, data.attachments || []);
                         } catch (e: any) {
                             if (!isActionRequiredError(e)) {
                                 ws.send(JSON.stringify({ type: 'error', message: `**Unexpected System Issue**\nThe agent engine encountered a critical issue. To restore functionality:\n1. Go to your terminal where Quenderin is running.\n2. Press \`Ctrl+C\` to stop the server.\n3. Type \`npm run dev\` and press Enter to restart it.` }));
                             }
                         }
                     } else if (data.type === 'chat') {
-                        // General Chat Flow
+                        // Validate chat input
+                        const message = typeof data.message === 'string' ? data.message.slice(0, MAX_CHAT_LENGTH).trim() : '';
+                        if (!message) {
+                            ws.send(JSON.stringify({ type: 'error', message: 'Message is required.' }));
+                            return;
+                        }
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
                         try {
-                            const response = await this.llmService.generalChat(data.message, (token) => {
+                            const response = await this.llmService.generalChat(message, (token) => {
                                 if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_stream', text: token }));
                             });
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: response }));
@@ -140,18 +158,18 @@ export class WebSocketManager {
                             }
                         }
                     } else if (data.type === 'settings_update') {
-                        this.llmService.updateSettings({
-                            contextSize: data.contextSize,
-                            memorySafetyEnabled: data.memorySafetyEnabled
-                        });
-                        console.log(`[System] settings updated: contextSize=${data.contextSize}, memorySafety=${data.memorySafetyEnabled}`);
+                        // Validate settings to prevent DoS (e.g. contextSize: 999999999)
+                        const contextSize = ALLOWED_CONTEXT_SIZES.includes(data.contextSize) ? data.contextSize : 2048;
+                        const memorySafetyEnabled = data.memorySafetyEnabled === true;
+                        this.llmService.updateSettings({ contextSize, memorySafetyEnabled });
+                        logger.log(`[System] settings updated: contextSize=${contextSize}, memorySafety=${memorySafetyEnabled}`);
                     } else if (data.type === 'manual_voice_start') {
                         this.voiceService.manualCaptureStart();
                     } else if (data.type === 'manual_voice_stop') {
                         this.voiceService.manualCaptureStop();
                     }
                 } catch (err) {
-                    console.error("Failed to parse ws message", err);
+                    logger.error("Failed to parse ws message", err);
                 }
             });
 

@@ -4,20 +4,21 @@ import os from "os";
 import fs from "fs";
 import { EventEmitter } from "events";
 import { ILlmProvider } from "../types/index.js";
-import { MODEL_CATALOG, modelPath, type ModelEntry } from "../constants.js";
+import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
+import { stripControlTokens } from "../utils/stripControlTokens.js";
+import logger from "../utils/logger.js";
 
-/** Pick the best catalog model whose RAM footprint fits within 80% of total RAM */
+/** Pick the best catalog model whose RAM footprint fits within safe limits */
 function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; path: string } | null {
-    const freeRam = os.freemem() / (1024 ** 3);
-    const totalRam = os.totalmem() / (1024 ** 3);
-    const usedRam = totalRam - freeRam;
-
     for (const entry of MODEL_CATALOG) {
         const filePath = modelPath(entry.id);
         // Must exist on disk
         if (!fs.existsSync(filePath)) continue;
         // If safety is on, check it fits
-        if (memorySafetyEnabled && (entry.ramGb + usedRam) > totalRam * 0.80) continue;
+        if (memorySafetyEnabled) {
+            const memCheck = checkMemoryForModel(entry);
+            if (!memCheck.canLoad) continue;
+        }
         return { entry, path: filePath };
     }
     return null;
@@ -93,24 +94,46 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
 
                 this.activeModelId = selected.entry.id;
-                console.log(`[LLM] Loading ${selected.entry.label} (~${selected.entry.ramGb}GB RAM)`);
+                logger.log(`[LLM] Loading ${selected.entry.label} (~${selected.entry.ramGb}GB RAM)`);
 
                 const freeRamGb = os.freemem() / (1024 ** 3);
                 if (freeRamGb < 1.0) {
-                    console.warn(`[System] Warning: Only ${freeRamGb.toFixed(1)}GB RAM free. System may be slow.`);
+                    logger.warn(`[System] Warning: Only ${freeRamGb.toFixed(1)}GB RAM free. System may be slow.`);
                 }
 
-                // Ensure getLlama doesn't deadlock the single thread
+                // --- GPU / Context Fallback Chain (ported from off-grid-mobile) ---
+                // Attempt 1: Default (Metal/CUDA) + requested context
+                // Attempt 2: CPU-only + requested context
+                // Attempt 3: CPU-only + minimal context (2048)
                 const llama = await Promise.race([
                     getLlama({ logLevel: LlamaLogLevel.disabled }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error("Assistant initiation timed out after 30s")), 30000))
                 ]) as any;
 
                 const model = await llama.loadModel({ modelPath: selected.path });
-                const context = await model.createContext({
-                    chatWrapper: new Llama3ChatWrapper(),
-                    contextSize: this.currentSettings.contextSize
-                });
+
+                let context: LlamaContext;
+                const requestedCtx = this.currentSettings.contextSize;
+                try {
+                    // Attempt 1: full context (GPU auto-detected by node-llama-cpp)
+                    context = await model.createContext({
+                        contextSize: requestedCtx
+                    });
+                } catch (gpuError) {
+                    logger.warn('[LLM] Primary context creation failed, trying reduced context (2048)...');
+                    try {
+                        // Attempt 2: reduced context
+                        context = await model.createContext({
+                            contextSize: Math.min(requestedCtx, 2048)
+                        });
+                    } catch (cpuError) {
+                        logger.warn('[LLM] Reduced context failed, trying minimal context (512)...');
+                        // Attempt 3: minimal context
+                        context = await model.createContext({
+                            contextSize: 512
+                        });
+                    }
+                }
                 this.modelInstance = model;
                 this.contextInstance = context;
                 return { model, context };
@@ -143,7 +166,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
 
                 this.initPromise = null;
-                return Promise.reject(error);
+                throw error;
             }
         })();
 
@@ -164,7 +187,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        console.log(`[LLM] Downloading ${entry.label} from HuggingFace...`);
+        logger.log(`[LLM] Downloading ${entry.label} from HuggingFace...`);
 
         // Check if already downloaded
         if (fs.existsSync(dest)) {
@@ -221,7 +244,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             this.isDownloading = false;
 
         } catch (error) {
-            console.error("Model download pipeline failed:", error);
+            logger.error("Model download pipeline failed:", error);
             fs.unlink(dest, () => { }); // Handle local cleanup
             this.isDownloading = false;
             throw error;
@@ -237,7 +260,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             systemPrompt: systemPrompt
         });
 
-        console.log("[Assistant] Warming up...");
+        logger.log("[Assistant] Warming up...");
 
         try {
             const response = await session.prompt(userPrompt, {
@@ -245,10 +268,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 temperature: 0.1
             });
 
-            console.log("[Assistant] Finished.");
-            return response;
+            logger.log("[Assistant] Finished.");
+            return stripControlTokens(response);
         } catch (error) {
-            console.error("Error during generation:", error);
+            logger.error("Error during generation:", error);
             throw error;
         }
     }
@@ -284,7 +307,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             });
         }
 
-        console.log("[Assistant] Starting private conversation...");
+        logger.log("[Assistant] Starting private conversation...");
         this.isGeneratingChat = true;
         this.tokenBuffer = "";
         let flushTimer: NodeJS.Timeout | null = null;
@@ -292,10 +315,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         try {
             const response = await this.generalChatSession.prompt(userMsg, {
                 maxTokens: 2048,
-                temperature: 0.7, // Higher temperature for chat feeling
+                temperature: 0.7,
                 onTextChunk: onToken ? (chunk) => {
-                    process.stdout.write(chunk); // Print locally to backend console to verify
-                    this.tokenBuffer += chunk;
+                    // Strip control tokens from each chunk before buffering
+                    const clean = stripControlTokens(chunk);
+                    if (!clean) return;
+                    this.tokenBuffer += clean;
                     if (!flushTimer) {
                         flushTimer = setTimeout(() => {
                             onToken(this.tokenBuffer);
@@ -313,23 +338,25 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
-            console.log("\n[LLM] Finished streaming.");
+            logger.log("\n[LLM] Finished streaming.");
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
-            return response.trim();
+            return stripControlTokens(response.trim());
         } catch (error) {
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
-            console.error("Error during general chat generation:", error);
+            logger.error("Error during general chat generation:", error);
             throw error; // Bubble up original error for OOM detection
         }
     }
 
     public updateSettings(settings: { contextSize: number, memorySafetyEnabled: boolean }) {
         this.currentSettings = settings;
-        // The next goal or chat will trigger initialize() if sessions are reset or not yet created.
-        // For currently active sessions, llama-cpp context is already allocated. 
-        // We nulled them out if we want to force re-init, but better to just apply to next.
+        // Don't yank the model out from under an active generation — defer reset
+        if (this.isGeneratingChat) {
+            logger.warn('[LLM] Settings updated but model reset deferred (generation in progress)');
+            return;
+        }
         this.modelInstance = null;
         this.contextInstance = null;
         this.generalChatSession = null;

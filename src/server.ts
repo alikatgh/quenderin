@@ -13,6 +13,7 @@ import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
+import { setHealthLlmService } from './routes/health.js';
 
 export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<void> {
     // 1. Dependency Injection / Initialize Services
@@ -30,6 +31,9 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
     const backgroundDaemon = new BackgroundDaemonService(deviceProvider, llmService, metricsService);
     const voiceService = new VoiceService();
+
+    // Wire LlmService into /health so it reports the real loaded model
+    setHealthLlmService(llmService);
 
     // Start background passive observation
     backgroundDaemon.on('error', (e) => console.log(`[Background Observer] ${e}`));

@@ -25,6 +25,10 @@ export class MemoryService {
     private memoryPath: string;
     private correctionsPath: string;
     private extractor: any = null;
+    /** Awaited by all read/write methods to ensure dirs/files exist */
+    private initPromise: Promise<void>;
+    /** Simple promise-based write mutex to prevent read-modify-write races */
+    private writeLock: Promise<void> = Promise.resolve();
 
     constructor() {
         const homeDir = os.homedir();
@@ -32,16 +36,37 @@ export class MemoryService {
         this.memoryPath = path.join(configDir, 'memory.json');
         this.correctionsPath = path.join(configDir, 'corrections.json');
 
-        fs.mkdir(configDir, { recursive: true }).then(() => {
-            fs.access(this.memoryPath).catch(() => {
-                fs.writeFile(this.memoryPath, JSON.stringify([]), 'utf-8');
-            });
-            fs.access(this.correctionsPath).catch(() => {
-                fs.writeFile(this.correctionsPath, JSON.stringify([]), 'utf-8');
-            });
-        }).catch(err => {
+        this.initPromise = this.initialize(configDir);
+    }
+
+    private async initialize(configDir: string): Promise<void> {
+        try {
+            await fs.mkdir(configDir, { recursive: true });
+            await fs.access(this.memoryPath).catch(() =>
+                fs.writeFile(this.memoryPath, JSON.stringify([]), 'utf-8')
+            );
+            await fs.access(this.correctionsPath).catch(() =>
+                fs.writeFile(this.correctionsPath, JSON.stringify([]), 'utf-8')
+            );
+        } catch (err) {
             console.error('Failed to initialize Quenderin memory store:', err);
-        });
+        }
+    }
+
+    /**
+     * Serialise all writes through a single promise chain.
+     * This prevents interleaved read-modify-write from dropping data.
+     */
+    private async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+        const prev = this.writeLock;
+        let releaseLock!: () => void;
+        this.writeLock = new Promise<void>(resolve => { releaseLock = resolve; });
+        await prev; // wait for any prior write to finish
+        try {
+            return await fn();
+        } finally {
+            releaseLock();
+        }
     }
 
     private async getExtractor() {
@@ -59,54 +84,60 @@ export class MemoryService {
     }
 
     public async saveTrajectory(goal: string, actions: string[]): Promise<void> {
-        try {
-            const data = await fs.readFile(this.memoryPath, 'utf-8');
-            let records: TrajectoryEntry[] = JSON.parse(data);
+        await this.initPromise;
+        await this.withWriteLock(async () => {
+            try {
+                const data = await fs.readFile(this.memoryPath, 'utf-8');
+                let records: TrajectoryEntry[] = JSON.parse(data);
 
-            // Limit memory to the last 50 successful trajectories to prevent bloating
-            if (records.length > 50) {
-                records = records.slice(1);
+                // Limit memory to the last 50 successful trajectories to prevent bloating
+                if (records.length > 50) {
+                    records = records.slice(1);
+                }
+
+                records.push({
+                    goal,
+                    actions: actions.filter(a => a.startsWith('[Success]')), // Only save successful steps
+                    timestamp: new Date().toISOString()
+                });
+
+                await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
+            } catch (error) {
+                console.error('Failed to write memory data:', error);
             }
-
-            records.push({
-                goal,
-                actions: actions.filter(a => a.startsWith('[Success]')), // Only save successful steps
-                timestamp: new Date().toISOString()
-            });
-
-            await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
-        } catch (error) {
-            console.error('Failed to write memory data:', error);
-        }
+        });
     }
 
     public async injectOverride(goal: string, actionsHistory: string[], manualAction: string): Promise<void> {
-        try {
-            const data = await fs.readFile(this.memoryPath, 'utf-8');
-            let records: TrajectoryEntry[] = JSON.parse(data);
+        await this.initPromise;
+        await this.withWriteLock(async () => {
+            try {
+                const data = await fs.readFile(this.memoryPath, 'utf-8');
+                let records: TrajectoryEntry[] = JSON.parse(data);
 
-            if (records.length > 50) {
-                records = records.slice(1);
+                if (records.length > 50) {
+                    records = records.slice(1);
+                }
+
+                const cleanedHistory = actionsHistory.filter(a => a.startsWith('[Success]'));
+                cleanedHistory.push(`[Success] (MANUAL OVERRIDE) ${manualAction}`);
+
+                records.push({
+                    goal,
+                    actions: cleanedHistory,
+                    timestamp: new Date().toISOString()
+                });
+
+                await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
+                console.log(`\n🧠 Memory forcefully updated with Manual Override for goal: ${goal}`);
+            } catch (error) {
+                console.error('Failed to inject manual override memory:', error);
             }
-
-            // Clean the history of failures, then append the user's MANUAL correction as a success
-            const cleanedHistory = actionsHistory.filter(a => a.startsWith('[Success]'));
-            cleanedHistory.push(`[Success] (MANUAL OVERRIDE) ${manualAction}`);
-
-            records.push({
-                goal,
-                actions: cleanedHistory,
-                timestamp: new Date().toISOString()
-            });
-
-            await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
-            console.log(`\n🧠 Memory forcefully updated with Manual Override for goal: ${goal}`);
-        } catch (error) {
-            console.error('Failed to inject manual override memory:', error);
-        }
+        });
     }
 
     public async findSimilarGoal(goal: string): Promise<TrajectoryEntry | null> {
+        await this.initPromise;
         try {
             const data = await fs.readFile(this.memoryPath, 'utf-8');
             const records: TrajectoryEntry[] = JSON.parse(data);
@@ -123,25 +154,28 @@ export class MemoryService {
     }
 
     public async saveCorrection(uiContextString: string, correctionString: string): Promise<void> {
-        try {
-            const data = await fs.readFile(this.correctionsPath, 'utf-8');
-            const records: CorrectionEntry[] = JSON.parse(data);
+        await this.initPromise;
+        await this.withWriteLock(async () => {
+            try {
+                const data = await fs.readFile(this.correctionsPath, 'utf-8');
+                const records: CorrectionEntry[] = JSON.parse(data);
 
-            const embeddingVector = await this.embedText(uiContextString + " " + correctionString);
+                const embeddingVector = await this.embedText(uiContextString + " " + correctionString);
 
-            records.push({
-                id: Date.now().toString(),
-                uiContextString,
-                correctionString,
-                embeddingVector,
-                timestamp: new Date().toISOString()
-            });
+                records.push({
+                    id: Date.now().toString(),
+                    uiContextString,
+                    correctionString,
+                    embeddingVector,
+                    timestamp: new Date().toISOString()
+                });
 
-            await fs.writeFile(this.correctionsPath, JSON.stringify(records, null, 2), 'utf-8');
-            console.log(`\n[Memory RAG] 🧠 Correction persistently saved to Vector Store!`);
-        } catch (error: any) {
-            console.error('[Memory RAG] Failed to write correction to vector store:', error.message);
-        }
+                await fs.writeFile(this.correctionsPath, JSON.stringify(records, null, 2), 'utf-8');
+                console.log(`\n[Memory RAG] 🧠 Correction persistently saved to Vector Store!`);
+            } catch (error: any) {
+                console.error('[Memory RAG] Failed to write correction to vector store:', error.message);
+            }
+        });
     }
 
     private cosineSimilarity(a: number[], b: number[]): number {
@@ -158,6 +192,7 @@ export class MemoryService {
     }
 
     public async findRelevantCorrections(uiContextString: string, k: number = 3): Promise<CorrectionEntry[]> {
+        await this.initPromise;
         try {
             const data = await fs.readFile(this.correctionsPath, 'utf-8');
             const records: CorrectionEntry[] = JSON.parse(data);

@@ -7,17 +7,23 @@ export function useAgentSocket() {
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
     const [requiredAction, setRequiredAction] = useState<{ code: string, title: string, message: string } | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
+    const [wsReady, setWsReady] = useState(false);
     const [settings, setSettings] = useState<{ contextSize: number, memorySafetyEnabled: boolean, themePreference: 'light' | 'dark' | 'system', privacyLockEnabled: boolean, privacyPassphrase: string }>(() => {
         const saved = localStorage.getItem('quenderin_settings');
         const defaultSettings = { contextSize: 2048, memorySafetyEnabled: true, themePreference: 'system' as const, privacyLockEnabled: false, privacyPassphrase: '' };
         return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
     });
     const wsRef = useRef<WebSocket | null>(null);
+    // Keep a ref to settings so the onmessage handler always reads the latest value
+    const settingsRef = useRef(settings);
+    useEffect(() => { settingsRef.current = settings; }, [settings]);
 
     useEffect(() => {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
         wsRef.current = ws;
+
+        ws.onopen = () => setWsReady(true);
 
         ws.onmessage = (event) => {
             try {
@@ -31,9 +37,9 @@ export function useAgentSocket() {
                     timestamp: time
                 };
 
-                // Apply settings on initial connection
+                // Apply settings on initial connection — use ref to avoid stale closure
                 if (data.type === 'log' && data.message.includes('Connected')) {
-                    ws.send(JSON.stringify({ type: 'settings_update', ...settings }));
+                    ws.send(JSON.stringify({ type: 'settings_update', ...settingsRef.current }));
                 }
 
                 if (data.type === 'status') {
@@ -96,6 +102,7 @@ export function useAgentSocket() {
         };
 
         ws.onclose = () => {
+            setWsReady(false);
             setLogs((prev) => [...prev, {
                 id: 'close',
                 type: 'error',
@@ -177,7 +184,7 @@ export function useAgentSocket() {
     };
 
     return {
-        wsReady: wsRef.current?.readyState === WebSocket.OPEN,
+        wsReady,
         logs, status, currentUI, requiredAction, downloadProgress, settings,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings,
         manualVoiceStart, manualVoiceStop
