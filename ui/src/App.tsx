@@ -388,6 +388,11 @@ function AppContent() {
               onBack={() => setCurrentView('general_chat')}
               onSave={updateSettings}
               onReset={resetSettings}
+              onThemeChange={(pref) => {
+                if (pref === 'dark') setDarkMode(true);
+                else if (pref === 'light') setDarkMode(false);
+                else setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+              }}
             />
           ) : currentView === 'metrics' ? (
             <Metrics onBack={() => setCurrentView('general_chat')} />

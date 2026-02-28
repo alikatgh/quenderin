@@ -14,9 +14,10 @@ interface SettingsAreaProps {
     currentSettings: Settings;
     onSave: (newSettings: Settings) => void;
     onReset: () => void;
+    onThemeChange?: (theme: 'light' | 'dark' | 'system') => void;
 }
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -181,7 +182,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset }: Setti
                             ].map((mode) => (
                                 <button
                                     key={mode.id}
-                                    onClick={() => setSettings({ ...settings, themePreference: mode.id as any })}
+                                    onClick={() => {
+                                        const pref = mode.id as 'light' | 'dark' | 'system';
+                                        setSettings({ ...settings, themePreference: pref });
+                                        onThemeChange?.(pref);
+                                    }}
                                     className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${settings.themePreference === mode.id
                                         ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-400 ring-2 ring-purple-500/20'
                                         : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
