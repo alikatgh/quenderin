@@ -76,6 +76,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
             }
 
             const summary = {
+                diagnosticsSchemaVersion: '1.0.0',
                 capturedAt: new Date().toISOString(),
                 client: {
                     readinessStage: readinessStage ?? 'unknown',

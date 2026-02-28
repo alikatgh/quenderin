@@ -9,6 +9,7 @@ import { getReadiness, getReadinessHistory } from '../services/readiness.service
 
 const router = Router();
 
+const DIAGNOSTICS_SCHEMA_VERSION = '1.0.0';
 const appVersion = process.env.npm_package_version ?? 'unknown';
 
 const resolveCommitSha = (): string => {
@@ -55,6 +56,7 @@ router.get('/diagnostics', (req, res) => {
 
     res.status(200).json({
         status: 'OK',
+        diagnosticsSchemaVersion: DIAGNOSTICS_SCHEMA_VERSION,
         capturedAt: new Date().toISOString(),
         buildInfo: {
             appVersion,
