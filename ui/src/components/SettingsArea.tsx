@@ -151,6 +151,21 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         }
     };
 
+    const handleCopyManualDiagnostics = async () => {
+        if (!manualDiagnosticsPayload) return;
+        try {
+            await navigator.clipboard.writeText(manualDiagnosticsPayload);
+            setDiagCopyFailed(false);
+            setManualDiagnosticsPayload(null);
+            setDiagCopied(true);
+            setTimeout(() => setDiagCopied(false), 1800);
+        } catch {
+            setDiagCopied(false);
+            setDiagCopyFailed(true);
+            setTimeout(() => setDiagCopyFailed(false), 2200);
+        }
+    };
+
     return (
         <div className="flex-1 overflow-y-auto bg-[#fafafa] dark:bg-[#09090b] animate-in fade-in duration-500">
             <div className="max-w-3xl mx-auto px-6 py-12">
@@ -272,6 +287,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                     Clipboard unavailable — copy manually
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={handleCopyManualDiagnostics}
+                                                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                                    >
+                                                        Copy now
+                                                    </button>
                                                     <button
                                                         onClick={() => downloadDiagnosticsJson(manualDiagnosticsPayload, lastDiagnosticsId)}
                                                         className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
