@@ -509,20 +509,20 @@ function AppContent() {
           )}
 
           {/* Top Header Navigation */}
-          <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-6 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-white/5 transition-all duration-300">
-            <div className="flex items-center gap-3">
+          <header className="h-[52px] flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/75 dark:bg-[#101012]/75 backdrop-blur-xl z-20 border-b border-zinc-200/60 dark:border-white/5 transition-all duration-300">
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setSidebarOpen(!isSidebarOpen)}
-                className="p-1.5 -ml-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-xl transition-all active:scale-95"
+                className="p-1.5 -ml-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-all active:scale-95"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <span className="font-bold text-zinc-900 dark:text-white text-[15px] pl-1 tracking-tight">Quenderin Agent</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-[14px] tracking-tight">Quenderin Agent</span>
             </div>
 
             <button
               onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-              className={`flex items-center gap-2 px-4 py-1.5 text-[12px] font-bold rounded-xl transition-all duration-300 border ${isInspectorOpen ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-purple-500/10' : 'border-zinc-200/50 dark:border-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 shadow-sm'}`}
+              className={`flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all duration-300 border ${isInspectorOpen ? 'bg-zinc-200/80 dark:bg-zinc-700/60 border-zinc-300/70 dark:border-zinc-600/70 text-zinc-900 dark:text-zinc-100' : 'border-zinc-200/70 dark:border-zinc-700/70 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5'}`}
             >
               {isInspectorOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
               <span className="hidden sm:inline">Device Inspector</span>
