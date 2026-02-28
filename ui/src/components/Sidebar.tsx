@@ -1,4 +1,4 @@
-import { Activity, TerminalSquare, Sparkles, BookOpen, Shield, BrainCircuit, Smartphone } from 'lucide-react';
+import { Activity, TerminalSquare, Sparkles, BookOpen, Shield, BrainCircuit, Smartphone, Search, SlidersHorizontal } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 
 interface SidebarProps {
@@ -20,7 +20,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
     return (
         <div
-            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#18181b] border-r border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 xl:sticky xl:top-0 xl:self-stretch xl:inset-auto z-40 shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none 
+            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#171717] border-r border-zinc-200 dark:border-[#2a2a2e] transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 xl:sticky xl:top-0 xl:self-stretch xl:inset-auto z-40 shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none 
             ${isOpen ? 'w-[260px] translate-x-0' : 'w-0 -translate-x-full overflow-hidden'}`}
         >
             <div className="p-4 flex flex-col h-full min-w-[260px]">
@@ -28,7 +28,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                 {/* New Goal Button */}
                 <button
                     onClick={onNewGoal}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-[#27272a] hover:bg-zinc-50 dark:hover:bg-[#323235] border border-zinc-200 dark:border-[#3f3f46] text-zinc-900 dark:text-zinc-100 text-sm font-semibold rounded-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm hover:shadow-md group"
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-[#232326] hover:bg-zinc-50 dark:hover:bg-[#2b2b2f] border border-zinc-200 dark:border-[#3a3a3f] text-zinc-900 dark:text-zinc-100 text-sm font-semibold rounded-lg transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-sm group"
                 >
                     <div className="flex items-center gap-2">
                         <TerminalSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -37,8 +37,26 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                     <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
                 </button>
 
+                {/* Utility strip (screenshot-inspired) */}
+                <div className="mt-3 space-y-1.5 px-1">
+                    <button
+                        onClick={() => setCurrentView('general_chat')}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-400 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                    >
+                        <Search className="w-3.5 h-3.5" />
+                        Search
+                    </button>
+                    <button
+                        onClick={() => setCurrentView('settings')}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-[12px] font-medium text-zinc-600 dark:text-zinc-400 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                    >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        Customize
+                    </button>
+                </div>
+
                 {/* Status — single merged card */}
-                <div className="mt-6 px-2">
+                <div className="mt-5 px-2">
                     <h3 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <Activity className="w-3 h-3" /> System Status
                     </h3>
@@ -68,7 +86,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                 <div className="mt-auto px-2 space-y-1">
                     <button
                         onClick={() => setCurrentView('general_chat')}
-                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-bold rounded-xl transition-all duration-200 ${currentView === 'general_chat' ? 'bg-zinc-200/80 dark:bg-[#3f3f46]/60 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-200 ${currentView === 'general_chat' ? 'bg-zinc-200/70 dark:bg-[#34343a]/70 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
                     >
                         <div className="mt-0.5"><Activity className={`w-4 h-4 ${currentView === 'general_chat' ? 'text-purple-600' : ''}`} /></div>
                         <div className="text-left leading-tight mt-0.5">
@@ -79,7 +97,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
                     <button
                         onClick={() => setCurrentView('chat')}
-                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-bold rounded-xl transition-all duration-200 ${currentView === 'chat' ? 'bg-zinc-200/80 dark:bg-[#3f3f46]/60 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-200 ${currentView === 'chat' ? 'bg-zinc-200/70 dark:bg-[#34343a]/70 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
                     >
                         <div className="mt-0.5"><Smartphone className={`w-4 h-4 ${currentView === 'chat' ? 'text-orange-500' : ''}`} /></div>
                         <div className="text-left leading-tight mt-0.5">
@@ -90,7 +108,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
                     <button
                         onClick={() => setCurrentView('metrics')}
-                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-bold rounded-xl transition-all duration-200 ${currentView === 'metrics' ? 'bg-zinc-200/80 dark:bg-[#3f3f46]/60 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-200 ${currentView === 'metrics' ? 'bg-zinc-200/70 dark:bg-[#34343a]/70 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
                     >
                         <div className="mt-0.5"><Activity className={`w-4 h-4 ${currentView === 'metrics' ? 'text-blue-500' : ''}`} /></div>
                         <div className="text-left leading-tight mt-0.5">
@@ -103,7 +121,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
                     <button
                         onClick={() => setCurrentView('settings' as any)}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-bold rounded-xl transition-all duration-200 ${currentView === 'settings' ? 'bg-zinc-200/80 dark:bg-[#3f3f46]/60 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-200 ${currentView === 'settings' ? 'bg-zinc-200/70 dark:bg-[#34343a]/70 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
                     >
                         <Shield className={`w-4 h-4 ${currentView === 'settings' ? 'text-blue-500' : ''}`} />
                         System Settings
@@ -111,7 +129,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
                     <button
                         onClick={() => setCurrentView('docs')}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-bold rounded-xl transition-all duration-200 ${currentView === 'docs' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 shadow-sm ring-1 ring-purple-500/10' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-200 ${currentView === 'docs' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-white/5'}`}
                     >
                         <BookOpen className="w-4 h-4" />
                         Help & Documentation
