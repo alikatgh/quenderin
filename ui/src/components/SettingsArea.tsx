@@ -24,6 +24,8 @@ interface SettingsAreaProps {
     lastOutageInfo?: { seconds: number; recoveredAt: string } | null;
     /** Clears persisted outage diagnostics */
     onClearOutageHistory?: () => void;
+    /** Current backend readiness stage from runtime polling */
+    readinessStage?: string;
 }
 
 const CONTEXT_LABELS: Record<number, string> = {
@@ -35,9 +37,10 @@ const CONTEXT_LABELS: Record<number, string> = {
     8192: 'Ultra',
 };
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
+    const [diagCopied, setDiagCopied] = useState(false);
 
     useEffect(() => {
         setSettings(currentSettings);
@@ -47,6 +50,25 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         onSave(settings);
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 2000);
+    };
+
+    const handleCopyDiagnostics = async () => {
+        const summary = {
+            readinessStage: readinessStage ?? 'unknown',
+            hardwareTier: hardwareTier ?? 'unknown',
+            contextSize: settings.contextSize,
+            memorySafetyEnabled: settings.memorySafetyEnabled,
+            lastOutage: lastOutageInfo ?? null,
+            capturedAt: new Date().toISOString(),
+        };
+        const payload = JSON.stringify(summary, null, 2);
+        try {
+            await navigator.clipboard.writeText(payload);
+            setDiagCopied(true);
+            setTimeout(() => setDiagCopied(false), 1800);
+        } catch {
+            setDiagCopied(false);
+        }
     };
 
     return (
@@ -141,12 +163,20 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                                             Last backend outage: {lastOutageInfo.seconds}s
                                         </div>
-                                        <button
-                                            onClick={onClearOutageHistory}
-                                            className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
-                                        >
-                                            Clear history
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={handleCopyDiagnostics}
+                                                className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                            >
+                                                {diagCopied ? 'Copied!' : 'Copy diagnostics'}
+                                            </button>
+                                            <button
+                                                onClick={onClearOutageHistory}
+                                                className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                            >
+                                                Clear history
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
                                         Recovered at {new Date(lastOutageInfo.recoveredAt).toLocaleString()}

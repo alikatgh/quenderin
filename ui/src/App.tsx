@@ -542,6 +542,7 @@ function AppContent() {
               hardwareTier={healthData?.hardware?.tier}
               lastOutageInfo={lastOutageInfo}
               onClearOutageHistory={clearOutageHistory}
+              readinessStage={readiness?.stage}
               onThemeChange={(pref) => {
                 // Apply immediately to DOM
                 if (pref === 'dark') setDarkMode(true);
