@@ -1,6 +1,7 @@
 import path from 'path';
 import os from 'os';
 import { availableMemBytes } from './utils/memory.js';
+import { getHardwareProfile } from './utils/hardware.js';
 
 export const MODELS_DIR = path.join(os.homedir(), '.quenderin', 'models');
 
@@ -41,8 +42,11 @@ export const QUANTIZATION_INFO: Record<string, {
 };
 
 // ─── RAM-Based Model Recommendations (ported from off-grid-mobile) ──────────
+// Starts from 1GB for Raspberry Pi and other embedded devices.
 
 export const MODEL_RECOMMENDATIONS = [
+    { minRam: 1,  maxRam: 2,        maxParams: 1,    quantization: 'Q4_K_M' },
+    { minRam: 2,  maxRam: 3,        maxParams: 1.5,  quantization: 'Q4_K_M' },
     { minRam: 3,  maxRam: 4,        maxParams: 1.5,  quantization: 'Q4_K_M' },
     { minRam: 4,  maxRam: 6,        maxParams: 3,    quantization: 'Q4_K_M' },
     { minRam: 6,  maxRam: 8,        maxParams: 4,    quantization: 'Q4_K_M' },
@@ -100,8 +104,9 @@ export function modelPath(id: string): string {
     return path.join(MODELS_DIR, entry.filename);
 }
 
-/** Check memory fitness for a specific model — returns severity-based result */
+/** Check memory fitness for a specific model — uses hardware-adaptive budget */
 export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
+    const hw = getHardwareProfile();
     const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
     // Smaller models need proportionally less overhead (KV cache is smaller)
@@ -110,7 +115,8 @@ export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;
 
-    if (usageAfterLoad > MEMORY_BUDGET_HARD) {
+    // Use hardware-specific budget — Pi gets 92% (let it swap) vs desktop 85%
+    if (usageAfterLoad > hw.memoryBudgetHard) {
         return {
             canLoad: false,
             severity: 'blocked',
@@ -145,7 +151,7 @@ export function getHardwareRecommendation(): { maxParams: number; quantization: 
     const totalRamGb = os.totalmem() / (1024 ** 3);
     const tier = MODEL_RECOMMENDATIONS.find(t => totalRamGb >= t.minRam && totalRamGb < t.maxRam);
     return {
-        maxParams: tier?.maxParams ?? 3,
+        maxParams: tier?.maxParams ?? 1,   // default to 1B for unknown/tiny hardware
         quantization: tier?.quantization ?? 'Q4_K_M',
         totalRamGb,
     };
