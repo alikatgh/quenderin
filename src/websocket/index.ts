@@ -6,6 +6,7 @@ import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
 import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
+import { getHardwareProfile } from '../utils/hardware.js';
 import logger from '../utils/logger.js';
 
 /** Max length for user-supplied goal text (prevents DoS via mega-strings) */
@@ -222,12 +223,22 @@ export class WebSocketManager {
                                     autoTrigger: 'downloadModel'
                                 });
                             } else if (e?.code === 'LLM_TIMEOUT' || e?.code === 'LLM_INIT_TIMEOUT') {
+                                const hw = getHardwareProfile();
+                                const tierHint = hw.tier === 'embedded'
+                                    ? 'Your device is low-powered — this is expected. Try sending a shorter message.'
+                                    : hw.tier === 'constrained'
+                                    ? 'Your device has limited resources. Close other apps and retry.'
+                                    : 'Close memory-heavy apps and retry.';
                                 ws.send(JSON.stringify({
                                     type: 'error',
-                                    message: `**AI Took Too Long To Respond**\nThe local model timed out while preparing a reply.\n\nTry this:\n1. Click **System Settings** and reduce context size to 1024.\n2. Close memory-heavy apps and retry.\n3. If it persists, restart Quenderin.`
+                                    message: `**AI Took Too Long To Respond**\nThe local model timed out while preparing a reply.\n\n${tierHint}\n\nIf it persists, restart Quenderin.`
                                 }));
                             } else {
-                                ws.send(JSON.stringify({ type: 'error', message: `**AI Processing Failed**\nThe local language model failed to generate a response. Re-initialize it:\n1. Check your computer's available RAM (needs at least ~5GB free).\n2. Restart the backend server (\`npm run dev\`).\n3. Try sending your message again.` }));
+                                const hw = getHardwareProfile();
+                                const ramHint = hw.tier === 'embedded' || hw.tier === 'constrained'
+                                    ? 'On low-powered devices, try the 1B model with Eco context (256-512 tokens).'
+                                    : `Check your computer has available RAM (${hw.totalRamGb.toFixed(0)}GB total).`;
+                                ws.send(JSON.stringify({ type: 'error', message: `**AI Processing Failed**\nThe local language model failed to generate a response.\n\n1. ${ramHint}\n2. Restart the backend server (\`npm run dev\`).\n3. Try sending your message again.` }));
                             }
                         }
                     } else if (data.type === 'settings_update') {

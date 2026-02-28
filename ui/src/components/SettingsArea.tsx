@@ -16,9 +16,22 @@ interface SettingsAreaProps {
     onSave: (newSettings: Settings) => void;
     onReset: () => void;
     onThemeChange?: (theme: 'light' | 'dark' | 'system') => void;
+    /** Hardware-adaptive context sizes from /health (e.g. [256,512,1024] for Pi) */
+    contextOptions?: number[];
+    /** Hardware tier string from backend (for display) */
+    hardwareTier?: string;
 }
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange }: SettingsAreaProps) {
+const CONTEXT_LABELS: Record<number, string> = {
+    256: 'Minimal',
+    512: 'Eco',
+    1024: 'Eco',
+    2048: 'Standard',
+    4096: 'Power',
+    8192: 'Ultra',
+};
+
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -81,9 +94,21 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">AI Context Window (RAM Usage)</label>
+                                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+                                    AI Context Window (RAM Usage)
+                                    {hardwareTier && (
+                                        <span className="ml-2 text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                                            — {hardwareTier} hardware detected
+                                        </span>
+                                    )}
+                                </label>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {[1024, 2048, 4096].map((size) => (
+                                    {(contextOptions ?? [1024, 2048, 4096]).map((size, i, arr) => {
+                                        const label = i === 0 ? (CONTEXT_LABELS[size] ?? 'Low')
+                                            : i === arr.length - 1 ? (CONTEXT_LABELS[size] ?? 'High')
+                                            : (CONTEXT_LABELS[size] ?? 'Mid');
+                                        const pct = Math.round(((i + 1) / arr.length) * 100);
+                                        return (
                                         <button
                                             key={size}
                                             onClick={() => setSettings({ ...settings, contextSize: size })}
@@ -92,13 +117,14 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                                                 }`}
                                         >
-                                            <div className="font-bold text-base mb-1">{size === 1024 ? 'Eco' : size === 2048 ? 'Standard' : 'Power'}</div>
+                                            <div className="font-bold text-base mb-1">{label}</div>
                                             <div className="text-[11px] opacity-70 mb-2">{size} Tokens</div>
                                             <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                <div className={`h-full bg-blue-500 transition-all`} style={{ width: `${size === 1024 ? 33 : size === 2048 ? 66 : 100}%` }}></div>
+                                                <div className={`h-full bg-blue-500 transition-all`} style={{ width: `${pct}%` }}></div>
                                             </div>
                                         </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <p className="mt-3 text-[12px] text-zinc-500 dark:text-zinc-500 italic">
                                     Lower values use less RAM but may make the AI less observant in long tasks.

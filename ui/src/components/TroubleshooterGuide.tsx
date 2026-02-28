@@ -17,15 +17,18 @@ interface TroubleshooterGuideProps {
     onResolved: () => void;
     onTriggerDownload: (modelId?: string) => void;
     downloadProgress?: number;
+    recommendedModelId?: string;
 }
 
-export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, downloadProgress = 0 }: TroubleshooterGuideProps) {
+export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, downloadProgress = 0, recommendedModelId }: TroubleshooterGuideProps) {
     const [downloadingModelId, setDownloadingModelId] = useState<string | null>(null);
 
     if (!action) return null;
 
+    const safeDefaultModel = recommendedModelId ?? 'llama32-1b';
+
     const handleDownload = (modelId?: string) => {
-        setDownloadingModelId(modelId ?? 'llama3-8b');
+        setDownloadingModelId(modelId ?? safeDefaultModel);
         onTriggerDownload(modelId);
     };
 
@@ -79,9 +82,9 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
 
     const renderModelMissing = () => {
         const models: ModelOption[] = action.fittingModels ?? [
-            { id: 'llama3-8b', label: 'Llama 3 8B (Best Quality)', ramGb: 6.75, sizeLabel: '4.7 GB' },
-            { id: 'llama32-3b', label: 'Llama 3.2 3B (Balanced)', ramGb: 3.0, sizeLabel: '2.0 GB' },
             { id: 'llama32-1b', label: 'Llama 3.2 1B (Light)', ramGb: 1.5, sizeLabel: '0.8 GB' },
+            { id: 'llama32-3b', label: 'Llama 3.2 3B (Balanced)', ramGb: 3.0, sizeLabel: '2.0 GB' },
+            { id: 'llama3-8b', label: 'Llama 3 8B (Best Quality)', ramGb: 6.75, sizeLabel: '4.7 GB' },
         ];
         const activeId = downloadingModelId;
 
@@ -233,9 +236,9 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
 
     const renderMemoryPressure = () => {
         const allModels: ModelOption[] = action.allModels ?? [
-            { id: 'llama3-8b', label: 'Llama 3 8B (Best Quality)', ramGb: 6.75, sizeLabel: '4.7 GB' },
-            { id: 'llama32-3b', label: 'Llama 3.2 3B (Balanced)', ramGb: 3.0, sizeLabel: '2.0 GB' },
             { id: 'llama32-1b', label: 'Llama 3.2 1B (Light)', ramGb: 1.5, sizeLabel: '0.8 GB' },
+            { id: 'llama32-3b', label: 'Llama 3.2 3B (Balanced)', ramGb: 3.0, sizeLabel: '2.0 GB' },
+            { id: 'llama3-8b', label: 'Llama 3 8B (Best Quality)', ramGb: 6.75, sizeLabel: '4.7 GB' },
         ];
         const activeId = downloadingModelId;
 

@@ -159,7 +159,7 @@ export function getHardwareRecommendation(): { maxParams: number; quantization: 
 
 // ─── Allowed settings values (for WS input validation) ─────────────────────
 
-export const ALLOWED_CONTEXT_SIZES = [512, 1024, 2048, 4096, 8192] as const;
+export const ALLOWED_CONTEXT_SIZES = [256, 512, 1024, 2048, 4096, 8192] as const;
 
 /**
  * Legacy single-path export — points to whichever model the user last

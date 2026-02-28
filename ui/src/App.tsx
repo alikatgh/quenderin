@@ -226,6 +226,11 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [forceShowTroubleshooter, setForceShowTroubleshooter] = useState(false);
+  const [healthData, setHealthData] = useState<{
+    contextOptions?: number[];
+    recommendedModelId?: string;
+    hardware?: { tier: string; arch: string; isArm: boolean; cpuCores: number };
+  } | null>(null);
 
   useEffect(() => {
     // Check initial launch flag
@@ -239,6 +244,7 @@ function AppContent() {
         const res = await fetch('/health');
         if (res.ok) {
           const data = await res.json();
+          setHealthData(data);
           if (data.activeModel) setActiveModel(data.activeModel);
           if (data.isBrainInstalled) {
             localStorage.setItem('quenderin_setup_complete', 'true');
@@ -317,7 +323,7 @@ function AppContent() {
       await fetch('/api/models/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modelId: modelId ?? 'llama3-8b' })
+        body: JSON.stringify({ modelId: modelId ?? healthData?.recommendedModelId ?? 'llama32-1b' })
       });
     } catch (e) {
       console.error("Failed to sequence download routing from parent", e);
@@ -341,6 +347,7 @@ function AppContent() {
           }}
           downloadProgress={downloadProgress}
           onTriggerDownload={handleTriggerDownload}
+          recommendedModelId={healthData?.recommendedModelId}
         />
       }
 
@@ -412,6 +419,8 @@ function AppContent() {
               onBack={() => setCurrentView('general_chat')}
               onSave={updateSettings}
               onReset={resetSettings}
+              contextOptions={healthData?.contextOptions}
+              hardwareTier={healthData?.hardware?.tier}
               onThemeChange={(pref) => {
                 // Apply immediately to DOM
                 if (pref === 'dark') setDarkMode(true);
