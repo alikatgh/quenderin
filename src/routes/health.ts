@@ -1,12 +1,29 @@
 import { Router } from 'express';
 import fs from 'fs';
 import os from 'os';
+import { execSync } from 'child_process';
 import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import { getReadiness, getReadinessHistory } from '../services/readiness.service.js';
 
 const router = Router();
+
+const appVersion = process.env.npm_package_version ?? 'unknown';
+
+const resolveCommitSha = (): string => {
+    const fromEnv = process.env.QUENDERIN_GIT_SHA ?? process.env.GITHUB_SHA;
+    if (fromEnv) return fromEnv.slice(0, 12);
+    try {
+        return execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+            .toString()
+            .trim();
+    } catch {
+        return 'unknown';
+    }
+};
+
+const commitSha = resolveCommitSha();
 
 /**
  * Shared LlmService reference — set via setLlmService() from server.ts.
@@ -39,6 +56,12 @@ router.get('/diagnostics', (req, res) => {
     res.status(200).json({
         status: 'OK',
         capturedAt: new Date().toISOString(),
+        buildInfo: {
+            appVersion,
+            commitSha,
+            nodeEnv: process.env.NODE_ENV ?? 'development',
+            targetOs: process.env.TARGET_OS ?? 'android',
+        },
         process: {
             pid: process.pid,
             nodeVersion: process.version,
