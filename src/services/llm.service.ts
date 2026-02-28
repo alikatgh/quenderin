@@ -6,7 +6,7 @@ import { availableMemBytes } from "../utils/memory.js";
 import { EventEmitter } from "events";
 import { ILlmProvider, GenerationMeta } from "../types/index.js";
 import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
-import { stripControlTokens } from "../utils/stripControlTokens.js";
+import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
 import { buildToolPrompt } from "./tools/registry.js";
 import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from "./tools/toolLoop.js";
@@ -15,7 +15,9 @@ import logger from "../utils/logger.js";
 
 /** Pick the best catalog model whose RAM footprint fits within safe limits */
 function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; path: string } | null {
-    for (const entry of MODEL_CATALOG) {
+    // Prefer responsiveness first (smallest -> largest) to avoid long blocking TTFT on CPU-only hosts.
+    const prioritized = [...MODEL_CATALOG].sort((a, b) => a.paramsBillions - b.paramsBillions);
+    for (const entry of prioritized) {
         const filePath = modelPath(entry.id);
         // Must exist on disk
         if (!fs.existsSync(filePath)) continue;
@@ -47,6 +49,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     // ─── Active Model Lifecycle (ported from off-grid-mobile) ───────────────
     private loadedModelId: string | null = null;
     private modelLoadTimestamp: number = 0;
+    private readonly modelInitTimeoutMs: number = 45_000;
     /** Idle timeout — unload model after 30 minutes of inactivity to free RAM */
     private idleTimeoutMs: number = 30 * 60 * 1000;
     private idleTimer: NodeJS.Timeout | null = null;
@@ -76,6 +79,42 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     public getActivePresetId(): string {
         return this.activePreset.id;
+    }
+
+    private async promptWithTimeout(
+        session: LlamaChatSession,
+        prompt: string,
+        options: {
+            maxTokens: number;
+            temperature: number;
+            onTextChunk?: (chunk: string) => void;
+        },
+        timeoutMs: number,
+        label: string
+    ): Promise<string> {
+        return Promise.race([
+            session.prompt(prompt, options),
+            new Promise<string>((_, reject) => {
+                setTimeout(() => {
+                    const err = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+                    (err as any).code = 'LLM_TIMEOUT';
+                    reject(err);
+                }, timeoutMs);
+            })
+        ]);
+    }
+
+    private async waitWithInitTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+        return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                setTimeout(() => {
+                    const err = new Error(`${label} timed out after ${Math.round(this.modelInitTimeoutMs / 1000)}s`);
+                    (err as any).code = 'LLM_INIT_TIMEOUT';
+                    reject(err);
+                }, this.modelInitTimeoutMs);
+            })
+        ]);
     }
 
     // ─── Model Lifecycle Methods ────────────────────────────────────────────
@@ -144,7 +183,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         // Mutex lock to prevent multiple concurrent requests from crashing memory
         if (this.initPromise) {
-            return this.initPromise;
+            try {
+                return await this.waitWithInitTimeout(this.initPromise, 'Model initialization');
+            } catch (error: any) {
+                if (error?.code === 'LLM_INIT_TIMEOUT') {
+                    logger.warn('[LLM] Detected stale model init lock; clearing and retrying');
+                    this.initPromise = null;
+                }
+                throw error;
+            }
         }
 
         const promise = (async () => {
@@ -197,28 +244,64 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     new Promise((_, reject) => setTimeout(() => reject(new Error("Assistant initiation timed out after 30s")), 30000))
                 ]) as any;
 
-                const model = await llama.loadModel({ modelPath: selected.path });
+                const model = await Promise.race([
+                    llama.loadModel({ modelPath: selected.path }),
+                    new Promise<never>((_, reject) => {
+                        setTimeout(() => {
+                            const err = new Error('Model load timed out');
+                            (err as any).code = 'LLM_INIT_TIMEOUT';
+                            reject(err);
+                        }, this.modelInitTimeoutMs);
+                    })
+                ]);
 
                 let context: LlamaContext;
                 const requestedCtx = this.currentSettings.contextSize;
                 try {
                     // Attempt 1: full context (GPU auto-detected by node-llama-cpp)
-                    context = await model.createContext({
-                        contextSize: requestedCtx
-                    });
+                    context = await Promise.race([
+                        model.createContext({
+                            contextSize: requestedCtx
+                        }),
+                        new Promise<never>((_, reject) => {
+                            setTimeout(() => {
+                                const err = new Error('Context creation timed out');
+                                (err as any).code = 'LLM_INIT_TIMEOUT';
+                                reject(err);
+                            }, this.modelInitTimeoutMs);
+                        })
+                    ]);
                 } catch (gpuError) {
                     logger.warn('[LLM] Primary context creation failed, trying reduced context (2048)...');
                     try {
                         // Attempt 2: reduced context
-                        context = await model.createContext({
-                            contextSize: Math.min(requestedCtx, 2048)
-                        });
+                        context = await Promise.race([
+                            model.createContext({
+                                contextSize: Math.min(requestedCtx, 2048)
+                            }),
+                            new Promise<never>((_, reject) => {
+                                setTimeout(() => {
+                                    const err = new Error('Reduced context creation timed out');
+                                    (err as any).code = 'LLM_INIT_TIMEOUT';
+                                    reject(err);
+                                }, this.modelInitTimeoutMs);
+                            })
+                        ]);
                     } catch (cpuError) {
                         logger.warn('[LLM] Reduced context failed, trying minimal context (512)...');
                         // Attempt 3: minimal context
-                        context = await model.createContext({
-                            contextSize: 512
-                        });
+                        context = await Promise.race([
+                            model.createContext({
+                                contextSize: 512
+                            }),
+                            new Promise<never>((_, reject) => {
+                                setTimeout(() => {
+                                    const err = new Error('Minimal context creation timed out');
+                                    (err as any).code = 'LLM_INIT_TIMEOUT';
+                                    reject(err);
+                                }, this.modelInitTimeoutMs);
+                            })
+                        ]);
                     }
                 }
                 this.modelInstance = model;
@@ -260,7 +343,18 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         })();
 
         this.initPromise = promise;
-        return promise;
+        try {
+            return await this.waitWithInitTimeout(promise, 'Model initialization');
+        } catch (error: any) {
+            if (error?.code === 'LLM_INIT_TIMEOUT') {
+                this.initPromise = null;
+                this.modelInstance = null;
+                this.contextInstance = null;
+                this.generalChatSession = null;
+                this.loadedModelId = null;
+            }
+            throw error;
+        }
     }
 
     public async downloadModel(modelId?: string): Promise<void> {
@@ -422,14 +516,19 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     public async generalChat(userMsg: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }> {
         const { context } = await this.getModelAndContext();
-        if (!this.generalChatSession) {
-            const toolPrompt = buildToolPrompt();
-            const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
-            this.generalChatSession = new LlamaChatSession({
-                contextSequence: context.getSequence(),
-                systemPrompt: fullSystemPrompt
-            });
-        }
+
+        const ensureSession = () => {
+            if (!this.generalChatSession) {
+                const toolPrompt = buildToolPrompt();
+                const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
+                this.generalChatSession = new LlamaChatSession({
+                    contextSequence: context.getSequence(),
+                    systemPrompt: fullSystemPrompt
+                });
+            }
+        };
+
+        ensureSession();
 
         logger.log("[Assistant] Starting private conversation...");
         this.isGeneratingChat = true;
@@ -441,12 +540,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         let tokenCount = 0;
 
         try {
-            const response = await this.generalChatSession.prompt(userMsg, {
-                maxTokens: this.activePreset.maxTokens,
+            // Keep local responses fast and avoid long blocking runs on large CPU-bound models.
+            const responseMaxTokens = Math.min(this.activePreset.maxTokens, 384);
+
+            const promptOptions = {
+                maxTokens: responseMaxTokens,
                 temperature: this.activePreset.temperature,
-                onTextChunk: onToken ? (chunk) => {
-                    // Strip control tokens and emit immediately — no batching
-                    const clean = stripControlTokens(chunk);
+                onTextChunk: onToken ? (chunk: string) => {
+                    const clean = stripControlTokensWithOptions(chunk, { trim: false });
                     if (!clean) return;
 
                     if (firstTokenTime === null) firstTokenTime = performance.now();
@@ -455,7 +556,36 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     this.tokenBuffer += clean;
                     onToken(clean);
                 } : undefined
-            });
+            };
+
+            let response: string;
+            try {
+                response = await this.promptWithTimeout(
+                    this.generalChatSession!,
+                    userMsg,
+                    promptOptions,
+                    30_000,
+                    'Chat generation'
+                );
+            } catch (err: any) {
+                if (err?.code === 'LLM_TIMEOUT') {
+                    logger.warn('[LLM] Chat session timed out; resetting session and retrying once');
+                    this.generalChatSession = null;
+                    ensureSession();
+                    this.tokenBuffer = '';
+                    firstTokenTime = null;
+                    tokenCount = 0;
+                    response = await this.promptWithTimeout(
+                        this.generalChatSession!,
+                        userMsg,
+                        promptOptions,
+                        30_000,
+                        'Chat generation retry'
+                    );
+                } else {
+                    throw err;
+                }
+            }
 
             const endTime = performance.now();
             const durationMs = endTime - startTime;
@@ -474,18 +604,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
                     // Re-prompt with tool results
                     try {
-                        const followUp = await this.generalChatSession!.prompt(
+                        const followUp = await this.promptWithTimeout(
+                            this.generalChatSession!,
                             `Here are the tool results:\n${resultContext}\n\nPlease provide your final answer incorporating these results.`,
                             {
-                                maxTokens: this.activePreset.maxTokens,
+                                maxTokens: responseMaxTokens,
                                 temperature: this.activePreset.temperature,
                                 onTextChunk: onToken ? (chunk) => {
-                                    const clean = stripControlTokens(chunk);
+                                    const clean = stripControlTokensWithOptions(chunk, { trim: false });
                                     if (!clean) return;
                                     tokenCount++;
                                     if (onToken) onToken(clean);
                                 } : undefined
-                            }
+                            },
+                            30_000,
+                            'Tool follow-up generation'
                         );
                         finalResponse = stripToolCalls(stripControlTokens(followUp.trim()));
                     } catch (err) {

@@ -4,7 +4,7 @@ import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
-import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
+import { ALLOWED_CONTEXT_SIZES, MODEL_CATALOG } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
 import logger from '../utils/logger.js';
 
@@ -152,7 +152,17 @@ export class WebSocketManager {
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: any) {
                             if (isActionRequiredError(e)) {
-                                if (e?.code !== 'OOM_PREVENTION') { // OOM_PREVENTION payload already sent by llmService
+                                if (e?.code === 'OOM_PREVENTION') {
+                                    // Fallback: always notify UI here as well to prevent silent "Thinking..." hangs.
+                                    pushActionRequired({
+                                        code: 'OOM_PREVENTION',
+                                        title: 'Not Enough Free RAM',
+                                        message: e?.message || 'None of your downloaded models fit safely in available memory. Try a smaller model or close some apps.',
+                                        autoTrigger: null,
+                                        downloadedModels: e?.downloadedModels || [],
+                                        allModels: MODEL_CATALOG
+                                    });
+                                } else {
                                     pushActionRequired({
                                         code: e?.code || 'MODEL_MISSING',
                                         title: 'AI Model Missing',
@@ -160,6 +170,11 @@ export class WebSocketManager {
                                         autoTrigger: 'downloadModel'
                                     });
                                 }
+                            } else if (e?.code === 'LLM_TIMEOUT' || e?.code === 'LLM_INIT_TIMEOUT') {
+                                ws.send(JSON.stringify({
+                                    type: 'error',
+                                    message: `**AI Took Too Long To Respond**\nThe local model timed out while preparing a reply.\n\nTry this:\n1. Click **System Settings** and reduce context size to 1024.\n2. Close memory-heavy apps and retry.\n3. If it persists, restart Quenderin.`
+                                }));
                             } else {
                                 ws.send(JSON.stringify({ type: 'error', message: `**AI Processing Failed**\nThe local language model failed to generate a response. Re-initialize it:\n1. Check your computer's available RAM (needs at least ~5GB free).\n2. Restart the backend server (\`npm run dev\`).\n3. Try sending your message again.` }));
                             }

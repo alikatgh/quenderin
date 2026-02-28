@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+    html,
+    body,
+    #root {
+        height: 100%;
+        overflow: hidden;
+    }
+
     body {
         @apply bg-[#fafafa] text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-500;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;

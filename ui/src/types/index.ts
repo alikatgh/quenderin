@@ -32,3 +32,12 @@ export interface LogEntry {
     isStreaming?: boolean;
     meta?: GenerationMeta;
 }
+
+export interface RequiredAction {
+    code: string;
+    title: string;
+    message: string;
+    autoTrigger?: string | null;
+    downloadedModels?: unknown[];
+    allModels?: unknown[];
+}

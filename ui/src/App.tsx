@@ -215,6 +215,7 @@ function AppContent() {
   const [activeModel, setActiveModel] = useState<string>('Loading Model...');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [forceShowTroubleshooter, setForceShowTroubleshooter] = useState(false);
 
   useEffect(() => {
     // Check initial launch flag
@@ -261,6 +262,12 @@ function AppContent() {
       setIsLocked(false);
     }
   }, [settings.privacyLockEnabled, settings.privacyPassphrase]);
+
+  useEffect(() => {
+    if (!requiredAction) {
+      setForceShowTroubleshooter(false);
+    }
+  }, [requiredAction]);
 
   const handleStartAgent = (g: string, attachments: { name: string, content: string }[] = []) => {
     const sent = sendGoal(g, attachments);
@@ -315,16 +322,19 @@ function AppContent() {
         onUnlock={() => setIsLocked(false)}
       />
       {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} downloadProgress={downloadProgress} />}
-      {requiredAction &&
+      {requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide
           action={requiredAction}
-          onResolved={clearRequiredAction}
+          onResolved={() => {
+            clearRequiredAction();
+            setForceShowTroubleshooter(false);
+          }}
           downloadProgress={downloadProgress}
           onTriggerDownload={handleTriggerDownload}
         />
       }
 
-      <div className={`flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 ${showOnboarding || !!requiredAction ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
@@ -360,10 +370,10 @@ function AppContent() {
           activeModel={activeModel}
         />
 
-        <div className="flex-1 flex flex-col relative h-full min-w-0 bg-white dark:bg-[#18181b] transition-colors duration-300">
+        <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors duration-300">
 
           {/* Top Header Navigation */}
-          <header className="h-[56px] flex items-center justify-between px-6 sticky top-0 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-white/5 transition-all duration-300">
+          <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-6 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-white/5 transition-all duration-300">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -407,6 +417,9 @@ function AppContent() {
             <GeneralChatArea
               logs={logs}
               status={status}
+              requiredAction={requiredAction}
+              onOpenSettings={() => setCurrentView('settings')}
+              onOpenTroubleshooter={() => setForceShowTroubleshooter(true)}
               chatInput={chatInput}
               setChatInput={setChatInput}
               onSend={handleSendChat}

@@ -18,7 +18,7 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
 
     return (
         <div
-            className={`flex-shrink-0 bg-white dark:bg-[#18181b] border-l border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col absolute md:relative right-0 z-40 h-full shadow-[-20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-none ${isOpen ? 'w-full sm:w-[380px] xl:w-[420px] translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}
+            className={`flex-shrink-0 bg-white dark:bg-[#18181b] border-l border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 right-0 md:sticky md:top-0 md:self-stretch md:inset-auto z-40 shadow-[-20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-none ${isOpen ? 'w-full sm:w-[380px] xl:w-[420px] translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}
         >
             <div className="h-full py-6 px-6 flex flex-col items-center w-full sm:w-[380px] xl:w-[420px] overflow-y-auto overflow-x-hidden">
 

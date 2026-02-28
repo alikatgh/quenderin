@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { User, Loader2, Send, MessageSquareText, Cpu, Check, Copy, Mic, FileText, X, Code, PenTool, GraduationCap } from 'lucide-react';
-import { LogEntry } from '../types/index.js';
+import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -9,6 +9,9 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 interface GeneralChatAreaProps {
     logs: LogEntry[];
     status: 'idle' | 'running' | 'done';
+    requiredAction: RequiredAction | null;
+    onOpenSettings: () => void;
+    onOpenTroubleshooter: () => void;
     chatInput: string;
     setChatInput: (val: string) => void;
     onSend: (msg: string, attachments: { name: string, content: string }[]) => void;
@@ -75,23 +78,84 @@ function CodeBlock({ children, language, ...props }: any) {
 
 import { AnimatedEntrance } from './AnimatedEntrance.js';
 
-export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
+export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const shouldAutoScrollRef = useRef(true);
+    const userScrolledUpAtRef = useRef(0);
+    const rafIdRef = useRef(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [messageQueue, setMessageQueue] = useState<string[]>([]);
     const [isQueuing, setIsQueuing] = useState(false);
     const [attachments, setAttachments] = useState<{ name: string, content: string }[]>([]);
+    const [lastSentPayload, setLastSentPayload] = useState<{ message: string, attachments: { name: string, content: string }[] } | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
 
     // Filter logs to only show chat events (chat and chat_response) and general status/errors
     const chatLogs = logs.filter(l => ['chat', 'chat_response', 'error'].includes(l.type));
+    const lastUserMessage = [...logs].reverse().find((l) => l.type === 'chat')?.message;
+    const retryAttachmentCount = lastSentPayload?.attachments?.length ?? 0;
 
+    // Stable key that only changes when log count or last message length changes
+    const lastLogKey = chatLogs.length > 0
+        ? `${chatLogs.length}-${chatLogs[chatLogs.length - 1]?.message?.length ?? 0}`
+        : '';
+
+    // --- Scroll intent detection ---
     useEffect(() => {
-        if (logsEndRef.current) {
-            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [chatLogs]);
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const onWheel = (e: WheelEvent) => {
+            if (e.deltaY < 0) {
+                shouldAutoScrollRef.current = false;
+                userScrolledUpAtRef.current = Date.now();
+            }
+        };
+
+        const onTouchMove = () => {
+            // Any touch interaction pauses auto-scroll for the cooldown period
+            shouldAutoScrollRef.current = false;
+            userScrolledUpAtRef.current = Date.now();
+        };
+
+        const onScroll = () => {
+            // If user recently scrolled up, don't re-engage for 2 seconds
+            if (Date.now() - userScrolledUpAtRef.current < 2000) {
+                shouldAutoScrollRef.current = false;
+                return;
+            }
+            const gap = container.scrollHeight - container.scrollTop - container.clientHeight;
+            shouldAutoScrollRef.current = gap < 30;
+        };
+
+        container.addEventListener('wheel', onWheel, { passive: true });
+        container.addEventListener('touchmove', onTouchMove, { passive: true });
+        container.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            container.removeEventListener('wheel', onWheel);
+            container.removeEventListener('touchmove', onTouchMove);
+            container.removeEventListener('scroll', onScroll);
+        };
+    }, []);
+
+    // --- Auto-scroll effect (uses stable key, rAF batched) ---
+    useEffect(() => {
+        cancelAnimationFrame(rafIdRef.current);
+        if (!shouldAutoScrollRef.current) return;
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        rafIdRef.current = requestAnimationFrame(() => {
+            if (!shouldAutoScrollRef.current) return; // re-check after frame
+            if (status === 'running') {
+                container.scrollTop = container.scrollHeight;
+            } else {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
+        });
+    }, [lastLogKey, status]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -107,6 +171,7 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                 setChatInput('');
             } else {
                 onSend(chatInput, attachments);
+                setLastSentPayload({ message: chatInput, attachments: [...attachments] });
                 setAttachments([]);
             }
         }
@@ -141,25 +206,26 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
     };
 
     useEffect(() => {
-        if (status === 'idle' && messageQueue.length > 0 && !isQueuing) {
+        if (status !== 'running' && messageQueue.length > 0 && !isQueuing) {
             setIsQueuing(true);
             setTimeout(() => {
                 const combined = messageQueue.join('\n\n---\n\n');
                 setMessageQueue([]);
                 setIsQueuing(false);
                 onSend(combined, []);
+                setLastSentPayload({ message: combined, attachments: [] });
             }, 300); // Small buffer to let state settle
         }
     }, [status, messageQueue, isQueuing, onSend]);
 
     return (
         <div
-            className={`flex-1 flex flex-col relative ${isDragging ? 'bg-purple-500/5 ring-4 ring-purple-500/20 ring-inset' : ''}`}
+            className={`flex-1 flex flex-col relative min-h-0 overflow-hidden ${isDragging ? 'bg-purple-500/5 ring-4 ring-purple-500/20 ring-inset' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
         >
-            <div className="flex-1 overflow-y-auto px-4 w-full">
+            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40 pt-10">
 
                     {/* Preset Switcher Bar */}
@@ -179,6 +245,41 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                             </button>
                         ))}
                     </div>
+
+                    {requiredAction?.code === 'OOM_PREVENTION' && (
+                        <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 shadow-sm animate-entrance">
+                            <p className="text-[13px] font-semibold text-amber-900 dark:text-amber-300 mb-1">Not enough free RAM for current model</p>
+                            <p className="text-[13px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                                Download a smaller model in the troubleshooter, or disable <span className="font-semibold">Memory Safety</span> in Settings and retry.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                    onClick={onOpenSettings}
+                                    className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                                >
+                                    Open Settings
+                                </button>
+                                <button
+                                    onClick={onOpenTroubleshooter}
+                                    className="px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100/70 dark:hover:bg-amber-500/20 transition-colors"
+                                >
+                                    Open Troubleshooter
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const retryMessage = lastSentPayload?.message || lastUserMessage;
+                                        const retryAttachments = lastSentPayload?.attachments || [];
+                                        if (!retryMessage) return;
+                                        onSend(retryMessage, retryAttachments);
+                                    }}
+                                    disabled={(!lastSentPayload?.message && !lastUserMessage) || status === 'running'}
+                                    className="px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100/70 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Retry Last Message{retryAttachmentCount > 0 ? ` (${retryAttachmentCount} attachment${retryAttachmentCount > 1 ? 's' : ''})` : ''}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {chatLogs.length === 0 && (
                         <div className="mt-20 flex flex-col items-center animate-fade-in px-4">
@@ -241,33 +342,30 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                                                     AI Assistant {log.isStreaming && <span className="flex h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />}
                                                 </div>
                                                 <div className="text-[16px] text-zinc-800 dark:text-zinc-300 leading-relaxed">
-                                                    {log.isStreaming ? (
-                                                        <span className="whitespace-pre-wrap">{log.message}<span className="inline-block w-[2px] h-[1em] bg-purple-500 ml-0.5 align-text-bottom animate-pulse" /></span>
-                                                    ) : (
-                                                        <div className="markdown-body prose prose-zinc dark:prose-invert max-w-none">
-                                                            <ReactMarkdown
-                                                                remarkPlugins={[remarkGfm]}
-                                                                components={{
-                                                                    code({ node, inline, className, children, ...props }: any) {
-                                                                        const match = /language-(\w+)/.exec(className || '')
-                                                                        return (!inline && match) ? (
-                                                                            <CodeBlock
-                                                                                {...props}
-                                                                                language={match[1]}
-                                                                                children={children}
-                                                                            />
-                                                                        ) : (
-                                                                            <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
-                                                                                {children}
-                                                                            </code>
-                                                                        )
-                                                                    }
-                                                                }}
-                                                            >
-                                                                {log.message}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                    )}
+                                                    <div className="markdown-body prose prose-zinc dark:prose-invert max-w-none">
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
+                                                            components={{
+                                                                code({ node, inline, className, children, ...props }: any) {
+                                                                    const match = /language-(\w+)/.exec(className || '')
+                                                                    return (!inline && match) ? (
+                                                                        <CodeBlock
+                                                                            {...props}
+                                                                            language={match[1]}
+                                                                            children={children}
+                                                                        />
+                                                                    ) : (
+                                                                        <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
+                                                                            {children}
+                                                                        </code>
+                                                                    )
+                                                                }
+                                                            }}
+                                                        >
+                                                            {log.message}
+                                                        </ReactMarkdown>
+                                                        {log.isStreaming && <span className="inline-block w-[2px] h-[1.1em] bg-purple-500 ml-0.5 align-text-bottom animate-pulse" />}
+                                                    </div>
                                                 </div>
                                                 {!log.isStreaming && log.meta && (
                                                     <div className="mt-3 flex items-center gap-3 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">

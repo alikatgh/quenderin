@@ -4,6 +4,7 @@ import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, Rotate
 interface Settings {
     contextSize: number;
     memorySafetyEnabled: boolean;
+    chatLogDedupeMs: number;
     themePreference: 'light' | 'dark' | 'system';
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
@@ -118,6 +119,27 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.memorySafetyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                 </button>
+                            </div>
+
+                            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
+                                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Duplicate Chat Bubble Suppression</label>
+                                <div className="grid grid-cols-4 gap-3">
+                                    {[0, 500, 1000, 2000].map((ms) => (
+                                        <button
+                                            key={ms}
+                                            onClick={() => setSettings({ ...settings, chatLogDedupeMs: ms })}
+                                            className={`p-3 rounded-xl border text-center transition-all ${settings.chatLogDedupeMs === ms
+                                                ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-500 text-blue-700 dark:text-blue-400 ring-2 ring-blue-500/20'
+                                                : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
+                                                }`}
+                                        >
+                                            <div className="font-bold text-sm">{ms}ms</div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 text-[12px] text-zinc-500 dark:text-zinc-500 italic">
+                                    Hides repeated identical user bubbles sent too quickly. Set to 0ms to disable suppression.
+                                </p>
                             </div>
                         </div>
                     </section>

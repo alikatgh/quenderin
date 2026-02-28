@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { UIElement, LogEntry } from '../types/index.js';
+import { UIElement, LogEntry, RequiredAction } from '../types/index.js';
 
 /** Default settings with safe defaults — used for merge on load and reset */
 export const DEFAULT_SETTINGS: AppSettings = {
     contextSize: 2048,
     memorySafetyEnabled: true,
+    chatLogDedupeMs: 1000,
     themePreference: 'system',
     privacyLockEnabled: false,
     privacyPassphrase: '',
@@ -13,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export interface AppSettings {
     contextSize: number;
     memorySafetyEnabled: boolean;
+    chatLogDedupeMs: number;
     themePreference: 'light' | 'dark' | 'system';
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
@@ -22,7 +24,7 @@ export function useAgentSocket() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [status, setStatus] = useState<'idle' | 'running' | 'done'>('idle');
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
-    const [requiredAction, setRequiredAction] = useState<{ code: string, title: string, message: string } | null>(null);
+    const [requiredAction, setRequiredAction] = useState<RequiredAction | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const [wsReady, setWsReady] = useState(false);
     const [activePresetId, setActivePresetId] = useState<string>('general');
@@ -31,6 +33,7 @@ export function useAgentSocket() {
         return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
     });
     const wsRef = useRef<WebSocket | null>(null);
+    const lastUserChatLogRef = useRef<{ message: string; at: number } | null>(null);
     // Keep a ref to settings so the onmessage handler always reads the latest value
     const settingsRef = useRef(settings);
     useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -81,7 +84,7 @@ export function useAgentSocket() {
                         }
                         return newLogs;
                     });
-                    if (status !== 'running') setStatus('running');
+                    setStatus((prev) => (prev === 'running' ? prev : 'running'));
                     return;
                 } else if (data.type === 'chat_response') {
                     setLogs((prev) => {
@@ -106,6 +109,18 @@ export function useAgentSocket() {
                     entry.message = 'Goal reached successfully.';
                     setStatus('done');
                 } else if (data.type === 'action_required') {
+                    if (data.data?.code === 'OOM_PREVENTION') {
+                        setLogs((prev) => prev.filter((log) => {
+                            if (log.type !== 'error') return true;
+                            const msg = (log.message || '').toLowerCase();
+                            return !(
+                                msg.includes('not enough free ram for this model') ||
+                                msg.includes('enable a smaller model download') ||
+                                msg.includes('disable memory safety in settings')
+                            );
+                        }));
+                    }
+                    setStatus('done');
                     setRequiredAction(data.data);
                     return; // Don't add to general logs, this is an interactive modal trigger
                 } else if (data.type === 'model_download_progress') {
@@ -168,9 +183,20 @@ export function useAgentSocket() {
         }
 
         setStatus('running');
-        setLogs(prev => [...prev, {
-            id: Math.random().toString(36).substr(2, 9), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
-        }]);
+        const normalized = msg.trim();
+        const now = Date.now();
+        const recentlyLoggedDuplicate =
+            lastUserChatLogRef.current &&
+            lastUserChatLogRef.current.message === normalized &&
+            (now - lastUserChatLogRef.current.at) < settingsRef.current.chatLogDedupeMs;
+
+        if (!recentlyLoggedDuplicate) {
+            setLogs(prev => [...prev, {
+                id: Math.random().toString(36).substr(2, 9), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
+            }]);
+            lastUserChatLogRef.current = { message: normalized, at: now };
+        }
+
         wsRef.current.send(JSON.stringify({ type: 'chat', message: msg, attachments }));
         return true;
     };
@@ -192,6 +218,7 @@ export function useAgentSocket() {
         setStatus('idle');
         setCurrentUI([]);
         setRequiredAction(null);
+        lastUserChatLogRef.current = null;
     };
 
     const clearRequiredAction = () => setRequiredAction(null);

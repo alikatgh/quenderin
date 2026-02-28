@@ -23,8 +23,14 @@ const CONTROL_TOKEN_PATTERNS: RegExp[] = [
 ];
 
 export function stripControlTokens(content: string): string {
-    return CONTROL_TOKEN_PATTERNS.reduce(
+    return stripControlTokensWithOptions(content, { trim: true });
+}
+
+export function stripControlTokensWithOptions(content: string, options: { trim?: boolean } = {}): string {
+    const sanitized = CONTROL_TOKEN_PATTERNS.reduce(
         (result, pattern) => result.replace(pattern, ''),
         content
-    ).trim();
+    );
+
+    return options.trim === false ? sanitized : sanitized.trim();
 }

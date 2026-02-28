@@ -16,7 +16,7 @@ export function Sidebar({ isOpen, wsReady, currentView, setCurrentView, onNewGoa
 
     return (
         <div
-            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#18181b] border-r border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col absolute xl:relative z-40 h-full shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none 
+            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#18181b] border-r border-zinc-200 dark:border-[#27272a] transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 xl:sticky xl:top-0 xl:self-stretch xl:inset-auto z-40 shadow-[20px_0_40px_rgba(0,0,0,0.1)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.5)] xl:shadow-none 
             ${isOpen ? 'w-[260px] translate-x-0' : 'w-0 -translate-x-full overflow-hidden'}`}
         >
             <div className="p-4 flex flex-col h-full min-w-[260px]">
