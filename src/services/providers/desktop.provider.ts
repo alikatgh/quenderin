@@ -1,13 +1,20 @@
 import { EventEmitter } from 'events';
 import { IDeviceProvider } from '../../types/index.js';
 import screenshot from 'screenshot-desktop';
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 
+interface RobotJsLike {
+    moveMouse(x: number, y: number): void;
+    mouseClick(): void;
+    typeString(text: string): void;
+    scrollMouse(x: number, y: number): void;
+    keyTap(key: string): void;
+}
+
 export class DesktopProvider extends EventEmitter implements IDeviceProvider {
-    private robot: any = null;
+    private robot: RobotJsLike | null = null;
     private robotLoaded = false;
 
     constructor() {
@@ -18,13 +25,13 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
      * Lazily import robotjs via ESM-compatible dynamic import.
      * robotjs is optional — desktop mode is gracefully degraded if it isn't installed.
      */
-    private async getRobot(): Promise<any> {
+    private async getRobot(): Promise<RobotJsLike | null> {
         if (this.robotLoaded) return this.robot;
         this.robotLoaded = true;
         try {
             // robotjs is a CJS module; Node ESM supports dynamic import() of CJS.
             const mod = await import('robotjs');
-            this.robot = mod.default ?? mod;
+            this.robot = (mod.default ?? mod) as RobotJsLike;
         } catch {
             console.warn(
                 "[DesktopProvider] 'robotjs' is not installed or failed to compile. " +
@@ -82,7 +89,7 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
         try {
             await screenshot({ filename: pngTempFile, format: 'png' });
             return { xml, screenshotPath: pngTempFile };
-        } catch (error) {
+        } catch {
             throw new Error("Unable to capture screen. Please ensure Quenderin has Screen Recording permissions in your OS settings.");
         }
     }

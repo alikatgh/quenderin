@@ -1,4 +1,4 @@
-import { AgentEvents, UIElement, IDeviceProvider, AgentAction } from '../../types/index.js';
+import { UIElement, IDeviceProvider, AgentAction } from '../../types/index.js';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class SafetyViolationError extends Error {
@@ -111,8 +111,9 @@ export class ActionExecutor {
             emitter.emit('error', `Unknown action type: ${actionType}`);
             return false;
 
-        } catch (error: any) {
-            emitter.emit('error', error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            emitter.emit('error', message);
             if (error instanceof SafetyViolationError) {
                 throw error; // Re-throw to abort entirely
             }

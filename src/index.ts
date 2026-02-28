@@ -42,8 +42,9 @@ program
       emitter.on('done', () => console.log('\n[Agent] Done.'));
 
       await agentService.runAgentLoop(goal, emitter, [], parseInt(options.steps, 10));
-    } catch (e: any) {
-      console.error("Agent encountered a fatal error:", e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("Agent encountered a fatal error:", message);
     }
   });
 
@@ -54,8 +55,9 @@ program
   .action(async (options) => {
     try {
       await startDashboardServer(parseInt(options.port, 10));
-    } catch (e: any) {
-      console.error("Failed to start dashboard server:", e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("Failed to start dashboard server:", message);
     }
   });
 

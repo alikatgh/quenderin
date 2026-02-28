@@ -67,7 +67,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             try {
                 const metrics = await metricsService.getMetrics();
                 res.json(metrics);
-            } catch (err) {
+            } catch {
                 res.status(500).json({ error: 'Failed to fetch metrics' });
             }
         });
@@ -125,7 +125,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             await fs.mkdir(voiceDir, { recursive: true });
 
             // Fire and forget the download stream pipeline
-            const downloadAndExtract = async () => {
+            const downloadAndExtract = async (): Promise<void> => {
                 const url = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
                 try {
                     const response = await fetch(url);

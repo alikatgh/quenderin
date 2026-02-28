@@ -37,11 +37,11 @@ router.get('/:filename', async (req, res) => {
         try {
             // Attempt root read first (e.g. README.md)
             fileContent = await fs.readFile(rootPath, 'utf-8');
-        } catch (rootErr) {
+        } catch {
             try {
                 // Fallback to examples directory bounds
                 fileContent = await fs.readFile(examplesPath, 'utf-8');
-            } catch (examplesErr) {
+            } catch {
                 return res.status(404).json({ error: `Document '${safeFilename}' not found in root or examples.` });
             }
         }

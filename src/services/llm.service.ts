@@ -1,4 +1,4 @@
-import { getLlama, LlamaModel, LlamaContext, LlamaChatSession, Llama3ChatWrapper, LlamaLogLevel } from "node-llama-cpp";
+import { getLlama, LlamaModel, LlamaContext, LlamaChatSession, LlamaLogLevel } from "node-llama-cpp";
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -271,7 +271,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                             }, this.modelInitTimeoutMs);
                         })
                     ]);
-                } catch (gpuError) {
+                } catch {
                     logger.warn('[LLM] Primary context creation failed, trying reduced context (2048)...');
                     try {
                         // Attempt 2: reduced context
@@ -287,7 +287,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                                 }, this.modelInitTimeoutMs);
                             })
                         ]);
-                    } catch (cpuError) {
+                    } catch {
                         logger.warn('[LLM] Reduced context failed, trying minimal context (512)...');
                         // Attempt 3: minimal context
                         context = await Promise.race([
@@ -587,9 +587,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
-            const endTime = performance.now();
-            const durationMs = endTime - startTime;
-
             // ─── Tool Call Processing ───────────────────────────────────────
             // If the response contains tool calls, execute them and re-prompt
             let finalResponse = stripControlTokens(response.trim());
@@ -621,7 +618,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                             'Tool follow-up generation'
                         );
                         finalResponse = stripToolCalls(stripControlTokens(followUp.trim()));
-                    } catch (err) {
+                    } catch {
                         logger.warn('[LLM] Tool follow-up prompt failed, using stripped response');
                         finalResponse = stripToolCalls(finalResponse);
                     }

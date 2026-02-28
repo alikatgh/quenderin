@@ -29,21 +29,18 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
                 } else {
                     let errCode = 'ADB_ERROR';
                     let title = 'ADB Error';
-                    let message = 'An unknown ADB error occurred.';
 
                     if (output.includes('no devices/emulators found') || output.includes('device offline')) {
                         errCode = 'ADB_MISSING';
                         title = 'Android Device Not Found';
-                        message = 'Ensure your emulator is running or Android device is connected via USB.';
                     } else if (output.includes('unauthorized')) {
                         errCode = 'ADB_UNAUTHORIZED';
                         title = 'Device Unauthorized';
-                        message = 'Please check your Android device screen and authorize the USB debugging connection.';
                     }
 
                     // Reject with a clean, user-friendly error instead of raw shell trace
-                    const error = new Error(title);
-                    (error as any).code = errCode;
+                    const error = new Error(title) as Error & { code?: string };
+                    error.code = errCode;
                     reject(error);
                 }
             });
@@ -62,39 +59,36 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
             const xml = await fs.readFile(xmlTempFile, 'utf-8');
             await fs.unlink(xmlTempFile).catch(() => { });
             return xml;
-        } catch (e) {
+        } catch {
             return ""; // Fallback to empty string for bad reads
         }
     }
 
     private async waitForUiIdle(): Promise<void> {
-        return new Promise(async (resolve) => {
-            let lastXml = "";
-            let stableCount = 0;
-            const maxPolls = 10; // Up to ~5 seconds (10 * 500ms)
+        let lastXml = "";
+        let stableCount = 0;
+        const maxPolls = 10; // Up to ~5 seconds (10 * 500ms)
 
-            for (let i = 0; i < maxPolls; i++) {
-                // Short wait between snapshots
-                await new Promise(res => setTimeout(res, 500));
+        for (let i = 0; i < maxPolls; i++) {
+            // Short wait between snapshots
+            await new Promise(res => setTimeout(res, 500));
 
-                const currentXml = await this.getUiHierarchyXml();
+            const currentXml = await this.getUiHierarchyXml();
 
-                // Compare length/structure coarsely first, falling back to full string equality
-                if (currentXml && currentXml === lastXml) {
-                    stableCount++;
-                } else {
-                    stableCount = 0;
-                }
-
-                lastXml = currentXml;
-
-                // Two consecutive identical snapshots = UI has settled
-                if (stableCount >= 2) {
-                    break;
-                }
+            // Compare length/structure coarsely first, falling back to full string equality
+            if (currentXml && currentXml === lastXml) {
+                stableCount++;
+            } else {
+                stableCount = 0;
             }
-            resolve();
-        });
+
+            lastXml = currentXml;
+
+            // Two consecutive identical snapshots = UI has settled
+            if (stableCount >= 2) {
+                break;
+            }
+        }
     }
 
     public async click(x: number, y: number): Promise<void> {

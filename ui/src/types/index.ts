@@ -33,11 +33,19 @@ export interface LogEntry {
     meta?: GenerationMeta;
 }
 
+export interface ModelOption {
+    id: string;
+    label: string;
+    ramGb: number;
+    sizeLabel: string;
+    isDownloaded?: boolean;
+}
+
 export interface RequiredAction {
     code: string;
     title: string;
     message: string;
     autoTrigger?: string | null;
-    downloadedModels?: unknown[];
-    allModels?: unknown[];
+    downloadedModels?: ModelOption[];
+    allModels?: ModelOption[];
 }

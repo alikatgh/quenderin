@@ -105,7 +105,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
 
     return (
         <>
-            <div className="flex-1 overflow-y-auto px-4 w-full">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40">
 
                     {agentLogs.length === 0 && (

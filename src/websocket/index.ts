@@ -146,8 +146,49 @@ export class WebSocketManager {
                         const intent = classifyIntent(message);
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
                         try {
+                            // Streaming tool-call suppression:
+                            // The LLM emits <tool_call>...</tool_call> XML mid-stream. Since the regex
+                            // needs the full closing tag to match and tokens arrive one-by-one, we
+                            // buffer and suppress any <tool_call> block before forwarding to the client.
+                            const TOOL_OPEN = '<tool_call>';
+                            const TOOL_CLOSE = '</tool_call>';
+                            let streamBuf = '';
+
                             const result = await this.llmService.generalChat(message, (token) => {
-                                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_stream', text: token }));
+                                if (ws.readyState !== WebSocket.OPEN) return;
+                                streamBuf += token;
+
+                                // Strip any complete <tool_call>...</tool_call> blocks already in the buffer
+                                while (streamBuf.includes(TOOL_CLOSE)) {
+                                    const closeIdx = streamBuf.indexOf(TOOL_CLOSE);
+                                    const openIdx = streamBuf.lastIndexOf(TOOL_OPEN, closeIdx);
+                                    if (openIdx !== -1) {
+                                        streamBuf = streamBuf.slice(0, openIdx) + streamBuf.slice(closeIdx + TOOL_CLOSE.length).trimStart();
+                                    } else { break; }
+                                }
+
+                                // If buffer contains an open <tool_call> with no close yet, hold back from the open tag
+                                const openIdx = streamBuf.indexOf(TOOL_OPEN);
+                                if (openIdx !== -1) {
+                                    const before = streamBuf.slice(0, openIdx);
+                                    if (before) ws.send(JSON.stringify({ type: 'chat_stream', text: before }));
+                                    streamBuf = streamBuf.slice(openIdx);
+                                    return;
+                                }
+
+                                // Hold back any partial '<tool_call' prefix at the tail to avoid split-token false negatives
+                                for (let len = Math.min(TOOL_OPEN.length - 1, streamBuf.length); len >= 1; len--) {
+                                    if (TOOL_OPEN.startsWith(streamBuf.slice(-len))) {
+                                        const toSend = streamBuf.slice(0, streamBuf.length - len);
+                                        if (toSend) ws.send(JSON.stringify({ type: 'chat_stream', text: toSend }));
+                                        streamBuf = streamBuf.slice(streamBuf.length - len);
+                                        return;
+                                    }
+                                }
+
+                                // Nothing suspicious — flush the buffer
+                                ws.send(JSON.stringify({ type: 'chat_stream', text: streamBuf }));
+                                streamBuf = '';
                             });
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: any) {

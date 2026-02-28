@@ -30,8 +30,8 @@ const CODE_PATTERNS = [
 ];
 
 const MATH_PATTERNS = [
-    /\b(calculate|compute|solve|evaluate|what is|how much is)\b.*[\d+\-*\/()^%]/i,
-    /^\s*[\d+\-*\/().^%\s]+\s*$/,     // pure math expression
+    /\b(calculate|compute|solve|evaluate|what is|how much is)\b.*[\d+*()^%/-]/i,
+    /^\s*[\d+*().^%/\s-]+\s*$/,     // pure math expression
     /\b(math|equation|formula|derivative|integral|factorial)\b/i,
     /\b(sqrt|sin|cos|tan|log|ln|abs)\b\s*\(/i,
 ];

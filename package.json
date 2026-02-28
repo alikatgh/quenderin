@@ -8,6 +8,13 @@
   "scripts": {
     "dashboard": "tsx src/index.ts dashboard",
     "agent": "tsx src/index.ts agent",
+    "check": "npm run typecheck && npm run lint",
+    "typecheck": "npm run typecheck:src && npm run typecheck:ui",
+    "typecheck:src": "tsc --noEmit",
+    "typecheck:ui": "cd ui && npx tsc --noEmit",
+    "lint": "npm run lint:src && npm run lint:ui",
+    "lint:src": "eslint src --ext .ts --max-warnings=0",
+    "lint:ui": "eslint ui/src --ext .ts,.tsx --max-warnings=0",
     "build:tsc": "tsc",
     "electron:dev": "npm run build:tsc && electron .",
     "electron:build": "npm run build:tsc && electron-builder --mac"
@@ -35,6 +42,8 @@
     "robotjs": "^0.6.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.14.2",

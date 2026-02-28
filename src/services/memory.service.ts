@@ -148,7 +148,7 @@ export class MemoryService {
             const match = records.reverse().find(r => r.goal.toLowerCase() === lowerGoal || lowerGoal.includes(r.goal.toLowerCase()));
 
             return match || null;
-        } catch (error) {
+        } catch {
             return null;
         }
     }

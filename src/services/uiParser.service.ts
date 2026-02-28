@@ -58,7 +58,6 @@ export class UiParserService {
             const clickable = node.clickable === 'true';
             const scrollable = node.scrollable === 'true';
             const focusable = node.focusable === 'true';
-            const checkable = node.checkable === 'true';
             const enabled = node.enabled !== 'false';
             const visible = node.visible !== 'false' && node.displayed !== 'false';
 

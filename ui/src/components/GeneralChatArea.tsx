@@ -78,6 +78,17 @@ function CodeBlock({ children, language, ...props }: any) {
 
 import { AnimatedEntrance } from './AnimatedEntrance.js';
 
+/** Strip <tool_call>...</tool_call> XML from rendered text. Safety net for streamed tokens that
+ * slip through the backend filter (e.g. when the model partially emits a call mid-stream). */
+function stripToolCallXml(text: string): string {
+    // Remove complete blocks
+    let result = text.replace(/<tool_call>[\s\S]*?<\/tool_call>\s*/g, '');
+    // Remove any open/dangling block (streaming hasn't received the closing tag yet)
+    result = result.replace(/<tool_call>[\s\S]*$/, '');
+    return result;
+}
+
+
 export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -362,7 +373,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                                 }
                                                             }}
                                                         >
-                                                            {log.message}
+                                                            {stripToolCallXml(log.message)}
                                                         </ReactMarkdown>
                                                         {log.isStreaming && <span className="inline-block w-[2px] h-[1.1em] bg-purple-500 ml-0.5 align-text-bottom animate-pulse" />}
                                                     </div>

@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import { Smartphone, Settings, CheckCircle2, AlertTriangle, BrainCircuit, Download, RefreshCw, X, AlertCircle, Monitor, Cpu } from 'lucide-react';
-
-interface ModelOption {
-    id: string;
-    label: string;
-    ramGb: number;
-    sizeLabel: string;
-    isDownloaded?: boolean;
-}
+import type { ModelOption } from '../types/index.js';
 
 interface TroubleshooterPayload {
     code: string;
     title: string;
     message: string;
-    autoTrigger?: string;
+    autoTrigger?: string | null;
     fittingModels?: ModelOption[];
     downloadedModels?: ModelOption[];
     allModels?: ModelOption[];

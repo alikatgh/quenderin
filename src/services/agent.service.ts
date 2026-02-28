@@ -5,8 +5,8 @@ import { MemoryService } from "./memory.service.js";
 import { PromptBuilder } from "./agent/promptBuilder.js";
 import { ActionExecutor } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
-import { AgentEvents, UIElement, IDeviceProvider, ILlmProvider } from "../types/index.js";
-import { MetricsService, AgentMetrics } from "./metrics.service.js";
+import { AgentEvents, AgentAction, IDeviceProvider, ILlmProvider } from "../types/index.js";
+import { MetricsService } from "./metrics.service.js";
 
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
 You will be given the current UI state as a compact JSON list of elements, and a history of your past actions.
@@ -39,6 +39,16 @@ export declare interface AgentEventEmitter {
 }
 
 export class AgentEventEmitter extends EventEmitter { }
+
+type ParsedAgentAction = {
+    action?: string;
+    target_id?: number | string;
+    id?: number | string;
+    x?: number;
+    y?: number;
+    text?: string;
+    direction?: 'up' | 'down' | 'left' | 'right';
+};
 
 export class AgentService {
     private promptBuilder: PromptBuilder;
@@ -109,7 +119,7 @@ export class AgentService {
                 emitter.emit('done');
                 return;
             }
-        } catch (e) {
+        } catch (e: unknown) {
             console.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
         }
 
@@ -184,33 +194,38 @@ export class AgentService {
 
             try {
                 // 6. Parse and Execute Action (Universal Tool Loop)
-                let actionObj: any = null;
+                let actionObj: ParsedAgentAction | null = null;
                 try {
                     const jsonStart = commandText.indexOf('{');
                     const jsonEnd = commandText.lastIndexOf('}');
                     if (jsonStart !== -1 && jsonEnd !== -1) {
-                        actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1));
+                        actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1)) as ParsedAgentAction;
                     } else {
                         throw new Error("No JSON object found.");
                     }
-                } catch (jsonErr) {
+                } catch {
                     emitter.emit('status', " Applying XML parser fallback...");
-                    const extract = (tag: string) => {
+                    const extract = (tag: string): string | undefined => {
                         const match = commandText.match(new RegExp(`<${tag}>(.*?)</${tag}>`, 'i'));
                         return match ? match[1] : undefined;
                     };
                     const action = extract('action');
                     if (!action) throw new Error("Could not parse JSON or XML action from response.");
 
-                    actionObj = { action };
+                    const xmlActionObj: ParsedAgentAction = { action: action as AgentAction['action'] };
                     const id = extract('id');
-                    if (id) actionObj.id = parseInt(id, 10);
+                    if (id) xmlActionObj.id = parseInt(id, 10);
                     const text = extract('text');
-                    if (text) actionObj.text = text;
+                    if (text) xmlActionObj.text = text;
                     const x = extract('x');
-                    if (x) actionObj.x = parseInt(x, 10);
+                    if (x) xmlActionObj.x = parseInt(x, 10);
                     const y = extract('y');
-                    if (y) actionObj.y = parseInt(y, 10);
+                    if (y) xmlActionObj.y = parseInt(y, 10);
+                    actionObj = xmlActionObj;
+                }
+
+                if (!actionObj) {
+                    throw new Error('No actionable command parsed from LLM output.');
                 }
 
                 const actionType = actionObj.action?.toLowerCase();
@@ -240,14 +255,14 @@ export class AgentService {
                 const preStateElements = [...state.elements];
 
                 // Execute action via ActionExecutor
-                const success = await this.actionExecutor.execute(actionObj, preStateElements, emitter);
+                const success = await this.actionExecutor.execute(actionObj as AgentAction, preStateElements, emitter);
 
                 if (success) {
                     // 7. Re-verify the UI after settling
                     const postState = await this.uiVerifier.waitForIdle(emitter);
 
                     // 8. Generate actionable contextual feedback for LLM
-                    const verificationResult = await this.uiVerifier.verifyAction(actionObj, preStateElements, postState.elements);
+                    const verificationResult = await this.uiVerifier.verifyAction(actionObj as Partial<AgentAction>, preStateElements, postState.elements);
                     actionHistory.push(verificationResult);
 
                     expectedActionEffect = true;
@@ -257,9 +272,10 @@ export class AgentService {
                     actionHistory.push(`[Failed] Failed to execute ${actionType}`);
                 }
 
-            } catch (err: any) {
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
                 emitter.emit('error', `**Command Execution Failed**\nI couldn't run the last command. Troubleshooting steps:\n1. Wait a moment; I am automatically retrying.\n2. If this persists, ensure your device hasn't disconnected.\n3. Check the terminal running \`npm run dev\` for more detailed connectivity issues.`);
-                actionHistory.push(`[Failed] Action error: ${err.message}`);
+                actionHistory.push(`[Failed] Action error: ${message}`);
                 // Small backoff before next step
                 await new Promise(r => setTimeout(r, 1000));
             }

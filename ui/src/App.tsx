@@ -209,7 +209,17 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 function AppContent() {
   const [goal, setGoal] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1280 : true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('quenderin_sidebar_open');
+    if (saved !== null) return saved === 'true';
+    return window.innerWidth >= 1280;
+  });
+
+  const setSidebarOpen = (open: boolean) => {
+    setIsSidebarOpen(open);
+    localStorage.setItem('quenderin_sidebar_open', String(open));
+  };
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings'>('general_chat');
   const [activeModel, setActiveModel] = useState<string>('Loading Model...');
@@ -235,7 +245,7 @@ function AppContent() {
             setShowOnboarding(false);
           }
         }
-      } catch (e) {
+      } catch {
         // Silent block for dev environment cross-origin resets
       }
     };
@@ -340,7 +350,7 @@ function AppContent() {
         {isSidebarOpen && (
           <div
             className="fixed inset-0 bg-black/50 z-30 xl:hidden backdrop-blur-sm transition-opacity"
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => setSidebarOpen(false)}
           />
         )}
         {isInspectorOpen && (
@@ -361,11 +371,11 @@ function AppContent() {
               resetSession();
             }
             setCurrentView(v);
-            if (window.innerWidth < 1280) setIsSidebarOpen(false);
+            if (window.innerWidth < 1280) setSidebarOpen(false);
           }}
           onNewGoal={() => {
             handleNewGoal();
-            if (window.innerWidth < 1280) setIsSidebarOpen(false);
+            if (window.innerWidth < 1280) setSidebarOpen(false);
           }}
           activeModel={activeModel}
         />
@@ -376,7 +386,7 @@ function AppContent() {
           <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-6 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-white/5 transition-all duration-300">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                onClick={() => setSidebarOpen(!isSidebarOpen)}
                 className="p-1.5 -ml-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-xl transition-all active:scale-95"
               >
                 <Menu className="w-5 h-5" />

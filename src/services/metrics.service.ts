@@ -61,7 +61,7 @@ export class MetricsService {
         try {
             const data = await fs.readFile(this.telemetryPath, 'utf-8');
             return JSON.parse(data);
-        } catch (error) {
+        } catch {
             return [];
         }
     }
@@ -84,7 +84,7 @@ export class MetricsService {
         try {
             const data = await fs.readFile(this.habitsPath, 'utf-8');
             return JSON.parse(data);
-        } catch (error) {
+        } catch {
             return [];
         }
     }

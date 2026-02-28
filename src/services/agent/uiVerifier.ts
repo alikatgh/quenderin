@@ -1,4 +1,4 @@
-import { IDeviceProvider, UIElement } from '../../types/index.js';
+import { AgentAction, IDeviceProvider, UIElement } from '../../types/index.js';
 import { UiParserService } from '../uiParser.service.js';
 import { OcrService } from '../ocr.service.js';
 import crypto from 'crypto';
@@ -48,9 +48,10 @@ export class UiVerifier {
                 } else {
                     await new Promise(res => setTimeout(res, 500));
                 }
-            } catch (error: any) {
+            } catch (error: unknown) {
                 retries++;
-                console.error(`Status: Retrying UI connection (${retries}/3) - ${error.message.split('\n')[0]}`);
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`Status: Retrying UI connection (${retries}/3) - ${message.split('\n')[0]}`);
                 if (retries >= 3) {
                     throw error;
                 }
@@ -76,7 +77,7 @@ export class UiVerifier {
                     const stateMap = new Map(finalParsed.elements.map(el => [el.id, el]));
                     finalParsed.textRepresentation = this.uiParserService.buildLLMPromptRepresentation(stateMap);
                 }
-            } catch (err: any) {
+            } catch {
                 emitter.emit('error', `**Screen Analysis Failed**\nThe vision model could not process the current screen. To fix this:\n1. Ensure the screen is not completely blank or showing a secure window (like a password screen).\n2. Navigate to a standard app screen manually.\n3. Ask me to proceed from here.`);
             }
         }
@@ -92,7 +93,7 @@ export class UiVerifier {
     }
 
     public async verifyAction(
-        actionObj: any,
+        actionObj: Partial<AgentAction>,
         preStateElements: UIElement[],
         postStateElements: UIElement[]
     ): Promise<string> {
