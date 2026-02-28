@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { User, Loader2, Send, MessageSquareText, Cpu, Check, Copy, Mic, FileText, X } from 'lucide-react';
+import { User, Loader2, Send, MessageSquareText, Cpu, Check, Copy, Mic, FileText, X, Code, PenTool, GraduationCap } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -19,11 +19,11 @@ interface GeneralChatAreaProps {
 }
 
 const PRESET_OPTIONS = [
-    { id: 'general', label: 'General', icon: '💬' },
-    { id: 'code-review', label: 'Code Review', icon: '🔍' },
-    { id: 'creative-writer', label: 'Writer', icon: '✍️' },
-    { id: 'tutor', label: 'Tutor', icon: '🎓' },
-    { id: 'summarizer', label: 'Summary', icon: '📄' },
+    { id: 'general', label: 'General', Icon: MessageSquareText },
+    { id: 'code-review', label: 'Code Review', Icon: Code },
+    { id: 'creative-writer', label: 'Writer', Icon: PenTool },
+    { id: 'tutor', label: 'Tutor', Icon: GraduationCap },
+    { id: 'summarizer', label: 'Summary', Icon: FileText },
 ];
 
 function CodeBlock({ children, language, ...props }: any) {
@@ -174,7 +174,7 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                                         : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                 }`}
                             >
-                                <span>{p.icon}</span>
+                                <p.Icon className="w-3 h-3" />
                                 <span>{p.label}</span>
                             </button>
                         ))}
