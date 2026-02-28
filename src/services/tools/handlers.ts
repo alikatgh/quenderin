@@ -2,6 +2,7 @@
  * Tool Handlers — Execute tool calls and return results
  */
 import os from 'os';
+import { availableMemBytes } from '../../utils/memory.js';
 import { safeCalculate, CalculatorError } from './calculator.js';
 import { ToolCall, ToolResult, AVAILABLE_TOOLS } from './registry.js';
 import logger from '../../utils/logger.js';
@@ -42,7 +43,7 @@ export function executeTool(call: ToolCall): ToolResult {
                     arch: os.arch(),
                     cpus: os.cpus().length,
                     totalRamGb: (os.totalmem() / (1024 ** 3)).toFixed(1),
-                    freeRamGb: (os.freemem() / (1024 ** 3)).toFixed(1),
+                    freeRamGb: (availableMemBytes() / (1024 ** 3)).toFixed(1),
                     hostname: os.hostname(),
                     uptime: `${(os.uptime() / 3600).toFixed(1)} hours`,
                 });

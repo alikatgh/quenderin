@@ -2,6 +2,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import os from 'os';
 import { MODEL_CATALOG, modelPath, getHardwareRecommendation } from '../constants.js';
+import { availableMemBytes } from '../utils/memory.js';
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.get('/health', (_req, res) => {
         activeModel,
         isBrainInstalled,
         totalRamGb: +(os.totalmem() / (1024 ** 3)).toFixed(1),
-        freeRamGb: +(os.freemem() / (1024 ** 3)).toFixed(1),
+        freeRamGb: +(availableMemBytes() / (1024 ** 3)).toFixed(1),
         recommendedMaxParams: recommendation.maxParams,
     });
 });

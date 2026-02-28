@@ -1,5 +1,6 @@
 import path from 'path';
 import os from 'os';
+import { availableMemBytes } from './utils/memory.js';
 
 export const MODELS_DIR = path.join(os.homedir(), '.quenderin', 'models');
 
@@ -99,7 +100,7 @@ export function modelPath(id: string): string {
 
 /** Check memory fitness for a specific model — returns severity-based result */
 export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
-    const freeGb = os.freemem() / (1024 ** 3);
+    const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
     const required = entry.ramGb * MODEL_OVERHEAD_MULTIPLIER;
     const remaining = freeGb - required;

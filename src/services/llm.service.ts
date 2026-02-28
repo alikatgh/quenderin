@@ -2,6 +2,7 @@ import { getLlama, LlamaModel, LlamaContext, LlamaChatSession, Llama3ChatWrapper
 import path from "path";
 import os from "os";
 import fs from "fs";
+import { availableMemBytes } from "../utils/memory.js";
 import { EventEmitter } from "events";
 import { ILlmProvider, GenerationMeta } from "../types/index.js";
 import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
@@ -154,7 +155,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 if (!selected) {
                     // No downloaded model fits — check if any model exists at all
                     const anyExists = MODEL_CATALOG.some(m => fs.existsSync(modelPath(m.id)));
-                    const freeRamGb = os.freemem() / (1024 ** 3);
+                    const freeRamGb = availableMemBytes() / (1024 ** 3);
                     const totalRamGb = os.totalmem() / (1024 ** 3);
 
                     if (!anyExists) {
@@ -182,7 +183,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 this.activeModelId = selected.entry.id;
                 logger.log(`[LLM] Loading ${selected.entry.label} (~${selected.entry.ramGb}GB RAM)`);
 
-                const freeRamGb = os.freemem() / (1024 ** 3);
+                const freeRamGb = availableMemBytes() / (1024 ** 3);
                 if (freeRamGb < 1.0) {
                     logger.warn(`[System] Warning: Only ${freeRamGb.toFixed(1)}GB RAM free. System may be slow.`);
                 }
