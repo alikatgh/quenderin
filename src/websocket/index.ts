@@ -236,7 +236,7 @@ export class WebSocketManager {
                             } else {
                                 const hw = getHardwareProfile();
                                 const ramHint = hw.tier === 'embedded' || hw.tier === 'constrained'
-                                    ? 'On low-powered devices, try the 1B model with Eco context (256-512 tokens).'
+                                    ? 'On low-powered devices, try the 1B model with Eco context (512 tokens, or 256 on embedded devices).'
                                     : `Check your computer has available RAM (${hw.totalRamGb.toFixed(0)}GB total).`;
                                 ws.send(JSON.stringify({ type: 'error', message: `**AI Processing Failed**\nThe local language model failed to generate a response.\n\n1. ${ramHint}\n2. Restart the backend server (\`npm run dev\`).\n3. Try sending your message again.` }));
                             }
