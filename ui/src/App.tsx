@@ -231,6 +231,7 @@ function AppContent() {
     recommendedModelId?: string;
     hardware?: { tier: string; arch: string; isArm: boolean; cpuCores: number };
   } | null>(null);
+  const [readiness, setReadiness] = useState<{ ready: boolean; stage: string } | null>(null);
 
   useEffect(() => {
     // Check initial launch flag
@@ -255,7 +256,22 @@ function AppContent() {
         // Silent block for dev environment cross-origin resets
       }
     };
+    const fetchReadiness = async () => {
+      try {
+        const res = await fetch('/ready');
+        const data = await res.json();
+        if (typeof data?.ready === 'boolean') {
+          setReadiness({ ready: data.ready, stage: String(data.stage ?? 'unknown') });
+        }
+      } catch {
+        setReadiness({ ready: false, stage: 'offline' });
+      }
+    };
     fetchHealth();
+    fetchReadiness();
+
+    const readinessPoll = setInterval(fetchReadiness, 5000);
+    return () => clearInterval(readinessPoll);
   }, []);
 
   const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop } = useAgentSocket();
@@ -371,6 +387,8 @@ function AppContent() {
           isOpen={isSidebarOpen}
           wsReady={wsReady}
           logs={logs}
+          readinessStage={readiness?.stage}
+          readinessReady={readiness?.ready}
           currentView={currentView}
           setCurrentView={(v) => {
             // Reset session when switching between agent and chat modes

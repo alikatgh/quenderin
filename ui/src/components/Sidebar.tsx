@@ -5,14 +5,18 @@ interface SidebarProps {
     isOpen: boolean;
     wsReady: boolean;
     logs: LogEntry[];
+    readinessStage?: string;
+    readinessReady?: boolean;
     currentView: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings';
     setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings') => void;
     onNewGoal: () => void;
     activeModel?: string;
 }
 
-export function Sidebar({ isOpen, wsReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...' }: SidebarProps) {
+export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...' }: SidebarProps) {
     const modelLabel = activeModel.includes('/') ? activeModel.split('/').pop()! : activeModel;
+    const backendReady = readinessReady ?? false;
+    const backendStage = readinessStage ?? 'unknown';
 
     return (
         <div
@@ -52,6 +56,9 @@ export function Sidebar({ isOpen, wsReady, currentView, setCurrentView, onNewGoa
                             <p className="text-[10px] font-bold uppercase tracking-tight text-zinc-400 dark:text-zinc-500 mb-0.5">AI Engine</p>
                             <p className="text-zinc-900 dark:text-zinc-100 font-bold leading-tight text-[11px] truncate" title={activeModel}>
                                 {modelLabel}
+                            </p>
+                            <p className={`text-[10px] mt-1 font-semibold uppercase tracking-tight ${backendReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                Backend {backendReady ? 'ready' : backendStage}
                             </p>
                         </div>
                     </div>
