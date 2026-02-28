@@ -17,10 +17,12 @@ export interface MemoryCheckResult {
     message: string;
 }
 
-/** 80% of total = hard block, 60% = warning */
-export const MEMORY_BUDGET_HARD = 0.80;
-export const MEMORY_BUDGET_WARNING = 0.60;
-export const MODEL_OVERHEAD_MULTIPLIER = 1.3; // KV cache + activations
+/** 85% of total = hard block, 65% = warning — more generous to actually let tiny models load */
+export const MEMORY_BUDGET_HARD = 0.85;
+export const MEMORY_BUDGET_WARNING = 0.65;
+/** Overhead multiplier scales with model size — smaller models need less KV cache headroom */
+export const MODEL_OVERHEAD_MULTIPLIER_BASE = 1.15;
+export const MODEL_OVERHEAD_MULTIPLIER_LARGE = 1.3;
 
 // ─── Quantization Reference (ported from off-grid-mobile) ───────────────────
 
@@ -102,7 +104,9 @@ export function modelPath(id: string): string {
 export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
     const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
-    const required = entry.ramGb * MODEL_OVERHEAD_MULTIPLIER;
+    // Smaller models need proportionally less overhead (KV cache is smaller)
+    const overhead = entry.paramsBillions <= 3 ? MODEL_OVERHEAD_MULTIPLIER_BASE : MODEL_OVERHEAD_MULTIPLIER_LARGE;
+    const required = entry.ramGb * overhead;
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;
 

@@ -13,20 +13,39 @@ import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from 
 import { executeToolCalls } from "./tools/handlers.js";
 import logger from "../utils/logger.js";
 
-/** Pick the best catalog model whose RAM footprint fits within safe limits */
-function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; path: string } | null {
+/**
+ * Pick the best catalog model that fits available RAM.
+ *
+ * Graceful degradation strategy:
+ * 1. Try each downloaded model smallest-first against the RAM budget.
+ * 2. If memory safety is on but nothing passes the budget, STILL return the
+ *    smallest downloaded model with `degraded: true` so the caller can load it
+ *    with a minimal context instead of blocking the entire app.
+ * 3. Return null only when literally no model file exists on disk.
+ */
+function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; path: string; degraded: boolean } | null {
     // Prefer responsiveness first (smallest -> largest) to avoid long blocking TTFT on CPU-only hosts.
     const prioritized = [...MODEL_CATALOG].sort((a, b) => a.paramsBillions - b.paramsBillions);
+    let smallestDownloaded: { entry: ModelEntry; path: string } | null = null;
+
     for (const entry of prioritized) {
         const filePath = modelPath(entry.id);
         // Must exist on disk
         if (!fs.existsSync(filePath)) continue;
+        // Track the smallest downloaded model as a last-resort fallback
+        if (!smallestDownloaded) smallestDownloaded = { entry, path: filePath };
         // If safety is on, check it fits
         if (memorySafetyEnabled) {
             const memCheck = checkMemoryForModel(entry);
             if (!memCheck.canLoad) continue;
         }
-        return { entry, path: filePath };
+        return { entry, path: filePath, degraded: false };
+    }
+
+    // Nothing passed the budget but we have at least one model on disk —
+    // return it in degraded mode so the app still works (slowly) instead of blocking.
+    if (smallestDownloaded) {
+        return { ...smallestDownloaded, degraded: true };
     }
     return null;
 }
@@ -211,31 +230,26 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 const selected = selectBestModel(this.currentSettings.memorySafetyEnabled);
 
                 if (!selected) {
-                    // No downloaded model fits — check if any model exists at all
-                    const anyExists = MODEL_CATALOG.some(m => fs.existsSync(modelPath(m.id)));
+                    // No model file exists on disk at all — ask user to download one
                     const freeRamGb = availableMemBytes() / (1024 ** 3);
                     const totalRamGb = os.totalmem() / (1024 ** 3);
+                    const fittingModels = MODEL_CATALOG.filter(m => {
+                        const used = totalRamGb - freeRamGb;
+                        return (m.ramGb + used) <= totalRamGb * 0.85;
+                    });
+                    const err = new Error("MODEL_MISSING");
+                    (err as any).code = "MODEL_MISSING";
+                    (err as any).fittingModels = fittingModels.length > 0 ? fittingModels : MODEL_CATALOG;
+                    throw err;
+                }
 
-                    if (!anyExists) {
-                        // Tell UI to show download options
-                        const fittingModels = MODEL_CATALOG.filter(m => {
-                            const used = totalRamGb - freeRamGb;
-                            return (m.ramGb + used) <= totalRamGb * 0.85;
-                        });
-                        const err = new Error("MODEL_MISSING");
-                        (err as any).code = "MODEL_MISSING";
-                        (err as any).fittingModels = fittingModels;
-                        throw err;
-                    } else {
-                        // Models exist but none fit RAM — tell UI about options
-                        const downloadedModels = MODEL_CATALOG.filter(m => fs.existsSync(modelPath(m.id)));
-                        const err = new Error("Loading model would exceed safe memory limits");
-                        (err as any).code = "OOM_PREVENTION";
-                        (err as any).downloadedModels = downloadedModels;
-                        (err as any).freeRamGb = freeRamGb.toFixed(1);
-                        (err as any).totalRamGb = totalRamGb.toFixed(1);
-                        throw err;
-                    }
+                // Graceful degradation: model exists but doesn't fit the RAM budget.
+                // Load it anyway with minimal context and warn the user, rather than
+                // showing an impassable OOM wall. The OS will swap if needed — slow
+                // but functional, which is better than a dead app.
+                if (selected.degraded) {
+                    logger.warn(`[Lifecycle] RAM is tight — loading ${selected.entry.label} in degraded mode (minimal context). Performance may be reduced.`);
+                    this.currentSettings.contextSize = 512;
                 }
 
                 this.activeModelId = selected.entry.id;
@@ -244,6 +258,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 const freeRamGb = availableMemBytes() / (1024 ** 3);
                 if (freeRamGb < 1.0) {
                     logger.warn(`[System] Warning: Only ${freeRamGb.toFixed(1)}GB RAM free. System may be slow.`);
+                }
+
+                // ─── Auto-scale context size by available RAM ───────────────
+                // Large contexts consume lots of KV cache memory. On low-RAM systems,
+                // clamp automatically so the user doesn't have to fiddle with settings.
+                const autoContextForRam = (freeGb: number): number => {
+                    if (freeGb < 1.5) return 512;
+                    if (freeGb < 3)   return 1024;
+                    if (freeGb < 6)   return 2048;
+                    return 8192;
+                };
+                const maxContextForRam = autoContextForRam(freeRamGb);
+                const effectiveCtx = Math.min(this.currentSettings.contextSize, maxContextForRam);
+                if (effectiveCtx < this.currentSettings.contextSize) {
+                    logger.log(`[LLM] Auto-reduced context from ${this.currentSettings.contextSize} to ${effectiveCtx} based on ${freeRamGb.toFixed(1)}GB free RAM`);
                 }
 
                 // --- GPU / Context Fallback Chain (ported from off-grid-mobile) ---
@@ -267,7 +296,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 ]);
 
                 let context: LlamaContext;
-                const requestedCtx = this.currentSettings.contextSize;
+                const requestedCtx = effectiveCtx;
                 try {
                     // Attempt 1: full context (GPU auto-detected by node-llama-cpp)
                     context = await Promise.race([
@@ -322,7 +351,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 return { model, context };
             } catch (error: any) {
                 const isModelMissing = error?.code === "MODEL_MISSING" || error?.code === "ENOENT";
-                const isOomPrevention = error?.code === "OOM_PREVENTION";
 
                 if (isModelMissing) {
                     this.emit('action_required', {
@@ -331,18 +359,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         message: 'Download one of the models below to get started. Smaller models use less RAM.',
                         autoTrigger: 'downloadModel',
                         fittingModels: (error as any).fittingModels ?? MODEL_CATALOG
-                    });
-                } else if (isOomPrevention) {
-                    const downloaded = (error as any).downloadedModels ?? [];
-                    const free = (error as any).freeRamGb ?? '?';
-                    const total = (error as any).totalRamGb ?? '?';
-                    this.emit('action_required', {
-                        code: 'OOM_PREVENTION',
-                        title: 'Not Enough Free RAM',
-                        message: `You have ${free}GB free of ${total}GB total. None of your downloaded models fit safely. Try a smaller model or close some apps.`,
-                        autoTrigger: null,
-                        downloadedModels: downloaded,
-                        allModels: MODEL_CATALOG
                     });
                 } else {
                     console.error("Failed to load LLaMA model:", error);

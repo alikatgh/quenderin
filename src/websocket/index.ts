@@ -4,7 +4,7 @@ import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
-import { ALLOWED_CONTEXT_SIZES, MODEL_CATALOG } from '../constants.js';
+import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
 import logger from '../utils/logger.js';
 
@@ -109,7 +109,7 @@ export class WebSocketManager {
                 try {
                     const data = JSON.parse(message.toString());
                     const isActionRequiredError = (e: any) => {
-                        return ['MODEL_MISSING', 'ADB_MISSING', 'ADB_UNAUTHORIZED', 'PICOVOICE_MISSING', 'DESKTOP_PERMISSIONS', 'ENOENT', 'OOM_PREVENTION'].includes(e?.code);
+                        return ['MODEL_MISSING', 'ADB_MISSING', 'ADB_UNAUTHORIZED', 'PICOVOICE_MISSING', 'DESKTOP_PERMISSIONS', 'ENOENT'].includes(e?.code);
                     };
 
                     if (data.type === 'start') {
@@ -215,24 +215,12 @@ export class WebSocketManager {
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: any) {
                             if (isActionRequiredError(e)) {
-                                if (e?.code === 'OOM_PREVENTION') {
-                                    // Fallback: always notify UI here as well to prevent silent "Thinking..." hangs.
-                                    pushActionRequired({
-                                        code: 'OOM_PREVENTION',
-                                        title: 'Not Enough Free RAM',
-                                        message: e?.message || 'None of your downloaded models fit safely in available memory. Try a smaller model or close some apps.',
-                                        autoTrigger: null,
-                                        downloadedModels: e?.downloadedModels || [],
-                                        allModels: MODEL_CATALOG
-                                    });
-                                } else {
-                                    pushActionRequired({
-                                        code: e?.code || 'MODEL_MISSING',
-                                        title: 'AI Model Missing',
-                                        message: 'Quenderin needs its brain to function. The LLaMA instruction-tuned checkpoint is absent.',
-                                        autoTrigger: 'downloadModel'
-                                    });
-                                }
+                                pushActionRequired({
+                                    code: e?.code || 'MODEL_MISSING',
+                                    title: 'AI Model Missing',
+                                    message: 'Download a model to get started. The 1B model works on almost any hardware.',
+                                    autoTrigger: 'downloadModel'
+                                });
                             } else if (e?.code === 'LLM_TIMEOUT' || e?.code === 'LLM_INIT_TIMEOUT') {
                                 ws.send(JSON.stringify({
                                     type: 'error',
