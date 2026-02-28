@@ -66,7 +66,9 @@ export function useAgentSocket() {
                     entry.message = data.message;
                 } else if (data.type === 'observe') {
                     entry.message = `Scanned Device View Hierarchy. Found ${data.elements?.length || 0} interactable nodes.`;
-                    entry.elements = data.elements;
+                    // Do NOT store elements on the log entry — Inspector reads directly from
+                    // currentUI state. Storing elements here would retain hundreds of UIElement
+                    // objects per observe event in the logs array forever.
                     setCurrentUI(data.elements || []);
                 } else if (data.type === 'decide') {
                     entry.message = `Executing command: ${data.command}`;
@@ -131,7 +133,12 @@ export function useAgentSocket() {
                     return;
                 }
 
-                setLogs((prev) => [...prev, entry]);
+                // Cap the log buffer at 300 entries so long chat sessions never grow the
+                // React state without bound (each spread is O(n), 300 is imperceptible to users).
+                setLogs((prev) => {
+                    const next = [...prev, entry];
+                    return next.length > 300 ? next.slice(-300) : next;
+                });
             } catch (e) {
                 console.error("Invalid WS message", e);
             }

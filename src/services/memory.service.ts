@@ -171,12 +171,21 @@ export class MemoryService {
         }
     }
 
+    private readonly MAX_CORRECTIONS = 500;
+
     public async saveCorrection(uiContextString: string, correctionString: string): Promise<void> {
         await this.initPromise;
         await this.withWriteLock(async () => {
             try {
                 const data = await fs.readFile(this.correctionsPath, 'utf-8');
-                const records: CorrectionEntry[] = JSON.parse(data);
+                let records: CorrectionEntry[] = JSON.parse(data);
+
+                // Evict the oldest entries when we hit the cap.
+                // Each correction stores a 384-dim float vector (~3 KB as JSON).
+                // 500 entries ≈ 1.5 MB on disk — a safe ceiling for low-RAM hosts.
+                if (records.length >= this.MAX_CORRECTIONS) {
+                    records = records.slice(-(this.MAX_CORRECTIONS - 1));
+                }
 
                 const embeddingVector = await this.embedText(uiContextString + " " + correctionString);
 
