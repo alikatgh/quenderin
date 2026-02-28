@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Download, CheckCircle2, BrainCircuit, Mic } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
 import { ThemeProvider } from './context/ThemeContext.js';
@@ -232,6 +232,8 @@ function AppContent() {
     hardware?: { tier: string; arch: string; isArm: boolean; cpuCores: number };
   } | null>(null);
   const [readiness, setReadiness] = useState<{ ready: boolean; stage: string } | null>(null);
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
+  const previousReadyRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     // Check initial launch flag
@@ -306,6 +308,21 @@ function AppContent() {
   const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
+
+  useEffect(() => {
+    if (typeof readiness?.ready !== 'boolean') return;
+    const wasReady = previousReadyRef.current;
+    if (wasReady === false && readiness.ready === true) {
+      setShowRecoveryBanner(true);
+    }
+    previousReadyRef.current = readiness.ready;
+  }, [readiness?.ready]);
+
+  useEffect(() => {
+    if (!showRecoveryBanner) return;
+    const timer = setTimeout(() => setShowRecoveryBanner(false), 3000);
+    return () => clearTimeout(timer);
+  }, [showRecoveryBanner]);
 
   useEffect(() => {
     if (settings.themePreference === 'dark') setDarkMode(true);
@@ -435,6 +452,12 @@ function AppContent() {
         />
 
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors duration-300">
+
+          {showRecoveryBanner && (
+            <div className="absolute top-3 right-4 z-30 px-3 py-1.5 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+              Backend recovered and ready
+            </div>
+          )}
 
           {/* Top Header Navigation */}
           <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-6 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-white/5 transition-all duration-300">
