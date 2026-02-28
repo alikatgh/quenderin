@@ -13,6 +13,48 @@ import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from 
 import { executeToolCalls } from "./tools/handlers.js";
 import logger from "../utils/logger.js";
 
+// ─── Performance: Model-aware context caps ──────────────────────────────────
+// Larger context = more KV cache memory = slower inference.
+// Small models (1B) can't effectively use huge contexts anyway.
+const MODEL_MAX_CONTEXT: Record<number, number> = {
+    1:  2048,   // 1B model: 2048 is the sweet spot
+    3:  4096,   // 3B model: can handle more but diminishing returns
+    8:  8192,   // 8B model: full context only on large-RAM systems
+};
+
+/** Determine the best context size given model, RAM, and user preference. */
+function resolveContextForSituation(
+    entry: ModelEntry,
+    freeRamGb: number,
+    userSetting: number,
+    degraded: boolean
+): number {
+    // Hard degraded mode — absolute minimum
+    if (degraded) return 512;
+
+    // 1) Model-aware cap: don't waste KV cache on models that can't use it
+    const modelCap = MODEL_MAX_CONTEXT[entry.paramsBillions] ?? 4096;
+
+    // 2) RAM-aware cap: scale down if free memory is tight
+    let ramCap: number;
+    if (freeRamGb < 1.5)      ramCap = 512;
+    else if (freeRamGb < 2.5)  ramCap = 1024;
+    else if (freeRamGb < 4)    ramCap = 2048;
+    else if (freeRamGb < 6)    ramCap = 4096;
+    else                       ramCap = 8192;
+
+    // 3) Pick the minimum of user preference, model cap, and RAM cap
+    const effective = Math.min(userSetting, modelCap, ramCap);
+    return Math.max(effective, 512); // floor at 512
+}
+
+/** Task-specific max-token limits to keep inference snappy. */
+const TASK_MAX_TOKENS = {
+    chat:   384,   // chat responses are short — kept tight for speed
+    code:   1024,  // code gen needs room but 2048 was overkill
+    action: 150,   // agent actions are terse
+} as const;
+
 /**
  * Pick the best catalog model that fits available RAM.
  *
@@ -61,9 +103,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private activeModelId: string = MODEL_CATALOG[0].id;
     private activePreset: Preset = getPresetById('general');
     private currentSettings = {
-        contextSize: 2048,
+        contextSize: 2048,  // user-facing setting; actual context is resolved per-situation
         memorySafetyEnabled: true
     };
+    /** Cached reference to the loaded model entry for per-request decisions */
+    private activeModelEntry: ModelEntry | null = null;
 
     // ─── Active Model Lifecycle (ported from off-grid-mobile) ───────────────
     private loadedModelId: string | null = null;
@@ -173,6 +217,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.chatTurnCount = 0;
         this.initPromise = null;
         this.loadedModelId = null;
+        this.activeModelEntry = null;
         if (this.idleTimer) {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
@@ -249,10 +294,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // but functional, which is better than a dead app.
                 if (selected.degraded) {
                     logger.warn(`[Lifecycle] RAM is tight — loading ${selected.entry.label} in degraded mode (minimal context). Performance may be reduced.`);
-                    this.currentSettings.contextSize = 512;
                 }
 
                 this.activeModelId = selected.entry.id;
+                this.activeModelEntry = selected.entry;
                 logger.log(`[LLM] Loading ${selected.entry.label} (~${selected.entry.ramGb}GB RAM)`);
 
                 const freeRamGb = availableMemBytes() / (1024 ** 3);
@@ -260,32 +305,34 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     logger.warn(`[System] Warning: Only ${freeRamGb.toFixed(1)}GB RAM free. System may be slow.`);
                 }
 
-                // ─── Auto-scale context size by available RAM ───────────────
-                // Large contexts consume lots of KV cache memory. On low-RAM systems,
-                // clamp automatically so the user doesn't have to fiddle with settings.
-                const autoContextForRam = (freeGb: number): number => {
-                    if (freeGb < 1.5) return 512;
-                    if (freeGb < 3)   return 1024;
-                    if (freeGb < 6)   return 2048;
-                    return 8192;
-                };
-                const maxContextForRam = autoContextForRam(freeRamGb);
-                const effectiveCtx = Math.min(this.currentSettings.contextSize, maxContextForRam);
+                // ─── Situation-aware context sizing ─────────────────────────
+                // Considers model size (1B/3B/8B caps), available RAM, user
+                // preference, and degraded state — picks the smartest value
+                // so users never have to fiddle with settings manually.
+                const effectiveCtx = resolveContextForSituation(
+                    selected.entry, freeRamGb,
+                    this.currentSettings.contextSize, selected.degraded
+                );
                 if (effectiveCtx < this.currentSettings.contextSize) {
-                    logger.log(`[LLM] Auto-reduced context from ${this.currentSettings.contextSize} to ${effectiveCtx} based on ${freeRamGb.toFixed(1)}GB free RAM`);
+                    logger.log(`[LLM] Context auto-tuned: ${this.currentSettings.contextSize} → ${effectiveCtx} (model=${selected.entry.paramsBillions}B, freeRAM=${freeRamGb.toFixed(1)}GB${selected.degraded ? ', degraded' : ''})`);
                 }
 
                 // --- GPU / Context Fallback Chain (ported from off-grid-mobile) ---
-                // Attempt 1: Default (Metal/CUDA) + requested context
-                // Attempt 2: CPU-only + requested context
-                // Attempt 3: CPU-only + minimal context (2048)
+                // • Flash attention: drastically reduces KV cache memory + speeds up inference
+                // • GPU layers: offload as many transformer layers to Metal/CUDA as possible
+                // • Fallback chain: effectiveCtx → halved → 512
                 const llama = await Promise.race([
                     getLlama({ logLevel: LlamaLogLevel.disabled }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error("Assistant initiation timed out after 30s")), 30000))
                 ]) as any;
 
+                // Offload all layers to GPU (Metal on macOS, CUDA on Linux/Windows).
+                // node-llama-cpp 3.x: "max" means auto-detect and offload everything that fits.
                 const model = await Promise.race([
-                    llama.loadModel({ modelPath: selected.path }),
+                    llama.loadModel({
+                        modelPath: selected.path,
+                        gpuLayers: "max" as any,    // full GPU offload for speed
+                    }),
                     new Promise<never>((_, reject) => {
                         setTimeout(() => {
                             const err = new Error('Model load timed out');
@@ -295,55 +342,39 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     })
                 ]);
 
+                /** Helper: create context with flash attention + timeout */
+                const tryCreateContext = (ctxSize: number) => Promise.race([
+                    model.createContext({
+                        contextSize: ctxSize,
+                        flashAttention: true,   // major perf win — reduces KV cache mem + faster attention
+                    }),
+                    new Promise<never>((_, reject) => {
+                        setTimeout(() => {
+                            const err = new Error(`Context creation (${ctxSize}) timed out`);
+                            (err as any).code = 'LLM_INIT_TIMEOUT';
+                            reject(err);
+                        }, this.modelInitTimeoutMs);
+                    })
+                ]);
+
                 let context: LlamaContext;
                 const requestedCtx = effectiveCtx;
                 try {
-                    // Attempt 1: full context (GPU auto-detected by node-llama-cpp)
-                    context = await Promise.race([
-                        model.createContext({
-                            contextSize: requestedCtx
-                        }),
-                        new Promise<never>((_, reject) => {
-                            setTimeout(() => {
-                                const err = new Error('Context creation timed out');
-                                (err as any).code = 'LLM_INIT_TIMEOUT';
-                                reject(err);
-                            }, this.modelInitTimeoutMs);
-                        })
-                    ]);
+                    // Attempt 1: resolved effective context
+                    context = await tryCreateContext(requestedCtx);
                 } catch {
-                    logger.warn('[LLM] Primary context creation failed, trying reduced context (2048)...');
+                    const reducedCtx = Math.min(requestedCtx, Math.max(Math.floor(requestedCtx / 2), 512));
+                    logger.warn(`[LLM] Context creation failed at ${requestedCtx}, trying ${reducedCtx}...`);
                     try {
-                        // Attempt 2: reduced context
-                        context = await Promise.race([
-                            model.createContext({
-                                contextSize: Math.min(requestedCtx, 2048)
-                            }),
-                            new Promise<never>((_, reject) => {
-                                setTimeout(() => {
-                                    const err = new Error('Reduced context creation timed out');
-                                    (err as any).code = 'LLM_INIT_TIMEOUT';
-                                    reject(err);
-                                }, this.modelInitTimeoutMs);
-                            })
-                        ]);
+                        // Attempt 2: halved context
+                        context = await tryCreateContext(reducedCtx);
                     } catch {
-                        logger.warn('[LLM] Reduced context failed, trying minimal context (512)...');
+                        logger.warn(`[LLM] Reduced context failed, trying minimal (512)...`);
                         // Attempt 3: minimal context
-                        context = await Promise.race([
-                            model.createContext({
-                                contextSize: 512
-                            }),
-                            new Promise<never>((_, reject) => {
-                                setTimeout(() => {
-                                    const err = new Error('Minimal context creation timed out');
-                                    (err as any).code = 'LLM_INIT_TIMEOUT';
-                                    reject(err);
-                                }, this.modelInitTimeoutMs);
-                            })
-                        ]);
+                        context = await tryCreateContext(512);
                     }
                 }
+                logger.log(`[LLM] Context ready: ${requestedCtx} tokens, flashAttention=on, gpuLayers=max`);
                 this.modelInstance = model;
                 this.contextInstance = context;
                 this.loadedModelId = selected.entry.id;
@@ -514,7 +545,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         try {
             const response = await session.prompt(userPrompt, {
-                maxTokens: 2048,
+                maxTokens: TASK_MAX_TOKENS.code,
                 temperature: 0.1
             });
 
@@ -546,7 +577,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         try {
             const response = await session.prompt(finalPrompt, {
-                maxTokens: options.maxTokens || 150,
+                maxTokens: options.maxTokens || TASK_MAX_TOKENS.action,
                 temperature: options.temperature || 0.1
             });
             return response.trim();
@@ -589,7 +620,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         try {
             // Keep local responses fast and avoid long blocking runs on large CPU-bound models.
-            const responseMaxTokens = Math.min(this.activePreset.maxTokens, 384);
+            const responseMaxTokens = Math.min(this.activePreset.maxTokens, TASK_MAX_TOKENS.chat);
 
             const promptOptions = {
                 maxTokens: responseMaxTokens,
