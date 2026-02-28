@@ -16,6 +16,10 @@ const MAX_CHAT_LENGTH = 8000;
 export class WebSocketManager {
     private wss: WebSocketServer;
     private activeWs: WebSocket | null = null;
+    // Store active listener refs so we can clean them up on a NEW connection
+    // even if the old WebSocket's 'close' event never fires (e.g. network drop).
+    private activeActionRequiredHandler: ((payload: any) => void) | null = null;
+    private activeDownloadProgressHandler: ((payload: any) => void) | null = null;
 
     constructor(
         server: Server,
@@ -28,6 +32,10 @@ export class WebSocketManager {
         this.wss.on('error', (err) => {
             logger.error('[WebSocket] Server error:', err);
         });
+        // Raise max-listeners ceiling to handle reconnection-heavy sessions without Node warnings
+        this.llmService.setMaxListeners(30);
+        this.voiceService.setMaxListeners(30);
+        (this.deviceProvider as any).setMaxListeners?.(30);
         this.setupConnection();
     }
 
@@ -43,8 +51,6 @@ export class WebSocketManager {
 
     private setupConnection() {
         this.wss.on('connection', (ws, request) => {
-            // Validate origin to block cross-site WebSocket hijacking.
-            // Allow connections with no origin header (Electron, curl, etc.).
             const origin = request.headers.origin;
             if (origin && !this.isAllowedLocalOrigin(origin)) {
                 console.warn(`[WebSocket] Rejected connection from disallowed origin: ${origin}`);
@@ -53,6 +59,18 @@ export class WebSocketManager {
             }
 
             logger.log('Frontend connected to WebSocket');
+
+            // If the previous ws never fired 'close' (e.g. browser crash / network drop),
+            // we must manually remove its stale listeners before registering new ones.
+            if (this.activeActionRequiredHandler) {
+                this.deviceProvider.off('action_required', this.activeActionRequiredHandler);
+                this.voiceService.off('action_required', this.activeActionRequiredHandler);
+                this.llmService.off('action_required', this.activeActionRequiredHandler);
+            }
+            if (this.activeDownloadProgressHandler) {
+                this.llmService.off('model_download_progress', this.activeDownloadProgressHandler);
+            }
+
             this.activeWs = ws;
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
@@ -77,6 +95,10 @@ export class WebSocketManager {
                     ws.send(JSON.stringify({ type: 'model_download_progress', data: payload }));
                 }
             };
+
+            // Store refs so a future reconnect can remove them if this ws never emits 'close'
+            this.activeActionRequiredHandler = pushActionRequired;
+            this.activeDownloadProgressHandler = pushModelDownloadProgress;
 
             this.deviceProvider.on('action_required', pushActionRequired);
             this.voiceService.on('action_required', pushActionRequired);
@@ -251,6 +273,13 @@ export class WebSocketManager {
                 this.voiceService.off('action_required', pushActionRequired);
                 this.llmService.off('action_required', pushActionRequired);
                 this.llmService.off('model_download_progress', pushModelDownloadProgress);
+                // Clear instance refs so we don't double-remove on the next connection
+                if (this.activeActionRequiredHandler === pushActionRequired) {
+                    this.activeActionRequiredHandler = null;
+                }
+                if (this.activeDownloadProgressHandler === pushModelDownloadProgress) {
+                    this.activeDownloadProgressHandler = null;
+                }
             });
         });
     }

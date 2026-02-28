@@ -21,22 +21,23 @@ export interface HabitLog {
 
 export class MetricsService {
     private telemetryPath: string;
-    private habitsPath: string;
+    /** Habit logs use NDJSON (newline-delimited JSON) so each write is a single
+     *  fs.appendFile call — no read-parse-write-all cycle every 3 seconds. */
+    private habitsNdjsonPath: string;
 
     constructor() {
         const homeDir = os.homedir();
-        // Ensure the global .quenderin config directory exists
         const configDir = path.join(homeDir, '.quenderin');
         this.telemetryPath = path.join(configDir, 'telemetry.json');
-        this.habitsPath = path.join(configDir, 'habits.json');
+        this.habitsNdjsonPath = path.join(configDir, 'habits.ndjson');
 
-        // Initialize directory and files if they don't exist
         fs.mkdir(configDir, { recursive: true }).then(() => {
             fs.access(this.telemetryPath).catch(() => {
                 fs.writeFile(this.telemetryPath, JSON.stringify([]), 'utf-8');
             });
-            fs.access(this.habitsPath).catch(() => {
-                fs.writeFile(this.habitsPath, JSON.stringify([]), 'utf-8');
+            // NDJSON file — just create empty if missing (no brackets needed)
+            fs.access(this.habitsNdjsonPath).catch(() => {
+                fs.writeFile(this.habitsNdjsonPath, '', 'utf-8');
             });
         }).catch(err => {
             console.error('Failed to initialize Quenderin metrics store:', err);
@@ -66,15 +67,11 @@ export class MetricsService {
         }
     }
 
+    /** Append a single habit log entry. Uses NDJSON (one JSON per line) so this is a
+     *  pure append — no read-parse-write-all cycle that would thrash the heap every 3s. */
     public async appendHabitLog(log: HabitLog): Promise<void> {
         try {
-            const data = await fs.readFile(this.habitsPath, 'utf-8');
-            let records: HabitLog[] = JSON.parse(data);
-            if (records.length >= 1000) {
-                records = records.slice(-999);
-            }
-            records.push(log);
-            await fs.writeFile(this.habitsPath, JSON.stringify(records, null, 2), 'utf-8');
+            await fs.appendFile(this.habitsNdjsonPath, JSON.stringify(log) + '\n', 'utf-8');
         } catch (error) {
             console.error('Failed to write habit log data:', error);
         }
@@ -82,8 +79,24 @@ export class MetricsService {
 
     public async getHabits(): Promise<HabitLog[]> {
         try {
-            const data = await fs.readFile(this.habitsPath, 'utf-8');
-            return JSON.parse(data);
+            const raw = await fs.readFile(this.habitsNdjsonPath, 'utf-8');
+            const lines = raw.split('\n').filter(line => line.trim().length > 0);
+            const records = lines
+                .map(line => {
+                    try { return JSON.parse(line) as HabitLog; }
+                    catch { return null; }
+                })
+                .filter((r): r is HabitLog => r !== null);
+
+            // Compact the file when it exceeds 2000 entries — rewrite with last 1000
+            if (lines.length > 2000) {
+                const kept = records.slice(-1000);
+                fs.writeFile(this.habitsNdjsonPath, kept.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf-8')
+                    .catch(() => { /* best-effort compaction */ });
+                return kept;
+            }
+
+            return records.slice(-1000);
         } catch {
             return [];
         }

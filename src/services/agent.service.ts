@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import fs from "fs/promises";
 import { UiParserService } from "./uiParser.service.js";
 import { OcrService } from "./ocr.service.js";
 import { MemoryService } from "./memory.service.js";
@@ -190,6 +191,10 @@ export class AgentService {
                 { maxTokens: 150, temperature: 0.1 },
                 state.screenshotPath
             );
+            // Screenshot has been consumed by both LLM calls — delete it to free /tmp space (2–5 MB per frame)
+            if (state.screenshotPath) {
+                fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
+            }
             emitter.emit('decide', commandText);
 
             try {

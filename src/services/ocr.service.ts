@@ -3,11 +3,29 @@ import { UIElement } from '../types/index.js';
 
 export class OcrService {
     private workerCache: any = null;
+    /** Terminate Tesseract worker after 5 min idle to free ~150 MB */
+    private workerIdleTimer: NodeJS.Timeout | null = null;
+    private readonly WORKER_IDLE_MS = 5 * 60 * 1000;
+
+    private resetWorkerIdleTimer(): void {
+        if (this.workerIdleTimer) clearTimeout(this.workerIdleTimer);
+        this.workerIdleTimer = setTimeout(async () => {
+            if (this.workerCache) {
+                console.log('[OCR] Releasing Tesseract worker after idle timeout to free RAM');
+                try { await this.workerCache.terminate(); } catch { /* best-effort */ }
+                this.workerCache = null;
+            }
+            this.workerIdleTimer = null;
+        }, this.WORKER_IDLE_MS);
+        this.workerIdleTimer.unref(); // Don't block process exit
+    }
 
     private async getWorker() {
         if (!this.workerCache) {
             this.workerCache = await createWorker('eng');
         }
+        // Reset idle countdown on each use
+        this.resetWorkerIdleTimer();
         return this.workerCache;
     }
 
@@ -59,6 +77,10 @@ export class OcrService {
     }
 
     public async terminate() {
+        if (this.workerIdleTimer) {
+            clearTimeout(this.workerIdleTimer);
+            this.workerIdleTimer = null;
+        }
         if (this.workerCache) {
             await this.workerCache.terminate();
             this.workerCache = null;

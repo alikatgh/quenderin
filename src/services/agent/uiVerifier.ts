@@ -2,6 +2,7 @@ import { AgentAction, IDeviceProvider, UIElement } from '../../types/index.js';
 import { UiParserService } from '../uiParser.service.js';
 import { OcrService } from '../ocr.service.js';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 import { AgentEventEmitter } from '../agent.service.js';
 
 export class UiVerifier {
@@ -25,13 +26,16 @@ export class UiVerifier {
         let stableCount = 0;
         let finalScreenshotPath = "";
         let retries = 0;
+        // Track ALL screenshot paths so we can delete the intermediate ones (each PNG is 2–5 MB)
+        const allScreenshotPaths: string[] = [];
 
         emitter.emit('status', "Waiting for UI to become idle...");
 
         while (!isIdle) {
             try {
-                // Fetch both XML and Screenshot natively via the Provider
                 const { xml, screenshotPath } = await this.deviceProvider.getScreenContext();
+                allScreenshotPaths.push(screenshotPath);
+
                 const parsed = this.uiParserService.parseUI(xml);
 
                 if (parsed.elements.length === lastElementsLength) {
@@ -59,16 +63,24 @@ export class UiVerifier {
             }
         }
 
+        // Delete every intermediate screenshot — only keep the final one we're returning.
+        // Each Android/desktop PNG is 2–5 MB; without cleanup they pile up in /tmp fast.
+        for (const p of allScreenshotPaths) {
+            if (p && p !== finalScreenshotPath) {
+                fs.unlink(p).catch(() => { /* temp file may already be gone */ });
+            }
+        }
+
         // Vision Fallback (OCR) integration
         if (finalParsed && finalParsed.elements.length < 5) {
             emitter.emit('status', "Few UI elements detected. Triggering Vision OCR Fallback...");
             try {
-                // Find next available ID
-                const nextId = finalParsed.elements.length > 0
-                    ? Math.max(...finalParsed.elements.map(e => e.id)) + 1
+                // Use reduce instead of spread to avoid stack overflow on large element arrays
+                const maxId = finalParsed.elements.length > 0
+                    ? finalParsed.elements.reduce((max, e) => e.id > max ? e.id : max, 0) + 1
                     : 1000;
 
-                const ocrElements = await this.ocrService.extractTextElements(finalScreenshotPath, nextId);
+                const ocrElements = await this.ocrService.extractTextElements(finalScreenshotPath, maxId);
 
                 if (ocrElements.length > 0) {
                     emitter.emit('status', `Found ${ocrElements.length} synthetic text nodes via OCR.`);
