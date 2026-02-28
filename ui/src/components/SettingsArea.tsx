@@ -20,6 +20,8 @@ interface SettingsAreaProps {
     contextOptions?: number[];
     /** Hardware tier string from backend (for display) */
     hardwareTier?: string;
+    /** Last backend outage summary persisted from runtime recovery events */
+    lastOutageInfo?: { seconds: number; recoveredAt: string } | null;
 }
 
 const CONTEXT_LABELS: Record<number, string> = {
@@ -31,7 +33,7 @@ const CONTEXT_LABELS: Record<number, string> = {
     8192: 'Ultra',
 };
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -130,6 +132,17 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                     Lower values use less RAM but may make the AI less observant in long tasks.
                                 </p>
                             </div>
+
+                            {lastOutageInfo && (
+                                <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
+                                    <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                        Last backend outage: {lastOutageInfo.seconds}s
+                                    </div>
+                                    <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
+                                        Recovered at {new Date(lastOutageInfo.recoveredAt).toLocaleString()}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex items-center justify-between py-4 border-t border-zinc-100 dark:border-zinc-800/50">
                                 <div className="flex items-center gap-3">

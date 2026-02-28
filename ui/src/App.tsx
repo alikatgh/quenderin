@@ -234,6 +234,20 @@ function AppContent() {
   const [readiness, setReadiness] = useState<{ ready: boolean; stage: string } | null>(null);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
   const [lastOutageMs, setLastOutageMs] = useState(0);
+  const [lastOutageInfo, setLastOutageInfo] = useState<{ seconds: number; recoveredAt: string } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('quenderin_last_outage');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { seconds?: number; recoveredAt?: string };
+      if (typeof parsed.seconds === 'number' && typeof parsed.recoveredAt === 'string') {
+        return { seconds: parsed.seconds, recoveredAt: parsed.recoveredAt };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
   const previousReadyRef = useRef<boolean | null>(null);
   const outageStartRef = useRef<number | null>(null);
 
@@ -320,6 +334,10 @@ function AppContent() {
     if (wasReady === false && readiness.ready === true) {
       const outageMs = outageStartRef.current ? Date.now() - outageStartRef.current : 0;
       setLastOutageMs(outageMs);
+      const outageSeconds = Math.max(1, Math.round(outageMs / 1000));
+      const summary = { seconds: outageSeconds, recoveredAt: new Date().toISOString() };
+      setLastOutageInfo(summary);
+      localStorage.setItem('quenderin_last_outage', JSON.stringify(summary));
       outageStartRef.current = null;
       setShowRecoveryBanner(true);
     }
@@ -516,6 +534,7 @@ function AppContent() {
               onReset={resetSettings}
               contextOptions={healthData?.contextOptions}
               hardwareTier={healthData?.hardware?.tier}
+              lastOutageInfo={lastOutageInfo}
               onThemeChange={(pref) => {
                 // Apply immediately to DOM
                 if (pref === 'dark') setDarkMode(true);
