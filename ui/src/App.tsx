@@ -389,9 +389,12 @@ function AppContent() {
               onSave={updateSettings}
               onReset={resetSettings}
               onThemeChange={(pref) => {
+                // Apply immediately to DOM
                 if (pref === 'dark') setDarkMode(true);
                 else if (pref === 'light') setDarkMode(false);
                 else setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+                // Also persist immediately — don't wait for "Apply Changes"
+                updateSettings({ ...settings, themePreference: pref });
               }}
             />
           ) : currentView === 'metrics' ? (

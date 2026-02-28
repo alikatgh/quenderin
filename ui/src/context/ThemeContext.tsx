@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 type ThemeContextType = {
     isDarkMode: boolean;
@@ -50,8 +50,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         return () => mq.removeEventListener('change', handler);
     }, []);
 
-    const toggleTheme = () => setIsDarkMode(prev => !prev);
-    const setDarkMode = (isDark: boolean) => setIsDarkMode(isDark);
+    const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
+    const setDarkMode = useCallback((isDark: boolean) => setIsDarkMode(isDark), []);
 
     return (
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme, setDarkMode }}>
