@@ -4,7 +4,7 @@ import os from 'os';
 import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
-import { getReadiness } from '../services/readiness.service.js';
+import { getReadiness, getReadinessHistory } from '../services/readiness.service.js';
 
 const router = Router();
 
@@ -27,6 +27,7 @@ export function setHealthLlmService(service: {
 router.get('/diagnostics', (_req, res) => {
     const hw = getHardwareProfile();
     const readiness = getReadiness();
+    const readinessHistory = getReadinessHistory();
     const lifecycle = llmServiceRef?.getModelLifecycleInfo?.();
     const activeModel = llmServiceRef?.getActiveModelLabel() ?? 'not loaded';
 
@@ -44,6 +45,7 @@ router.get('/diagnostics', (_req, res) => {
             heapTotalMb: +((process.memoryUsage().heapTotal || 0) / (1024 ** 2)).toFixed(1),
         },
         readiness,
+        readinessHistory,
         llm: {
             activeModel,
             lifecycle: lifecycle ?? null,
