@@ -10,6 +10,8 @@ interface DocsProps {
 const MENU_ITEMS = [
     { label: 'Introduction', file: 'README.md' },
     { label: 'Quickstart', file: 'QUICKSTART.md' },
+    { label: 'Feature Guide', file: 'FEATURES.md' },
+    { label: 'Troubleshooting', file: 'TROUBLESHOOTING.md' },
     { label: 'Security', file: 'SECURITY.md' },
     { label: 'Setup Guide', file: 'SETUP.md' }
 ];
