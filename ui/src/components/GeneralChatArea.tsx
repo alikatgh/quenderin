@@ -239,6 +239,11 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40 pt-10">
 
+                    <div className="mb-6 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/80 dark:bg-[#111113]/70 backdrop-blur px-4 py-3 shadow-sm">
+                        <h2 className="text-[18px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Chats</h2>
+                        <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">Private, local conversation with your assistant.</p>
+                    </div>
+
                     {/* Preset Switcher Bar */}
                     <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-hide">
                         {PRESET_OPTIONS.map((p) => (
@@ -293,29 +298,29 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                     )}
 
                     {chatLogs.length === 0 && (
-                        <div className="mt-20 flex flex-col items-center animate-fade-in px-4">
-                            <div className="w-16 h-16 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-[#3f3f46]">
-                                <MessageSquareText className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                        <div className="mt-14 flex flex-col items-center animate-fade-in px-4">
+                            <div className="w-16 h-16 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center mb-5 shadow-sm border border-zinc-200 dark:border-[#3f3f46]">
+                                <MessageSquareText className="w-8 h-8 text-zinc-700 dark:text-zinc-300" />
                             </div>
-                            <h2 className="text-3xl font-semibold text-zinc-900 dark:text-white mb-2 tracking-tight">General Chat</h2>
-                            <p className="text-zinc-500 dark:text-[#a1a1aa] mb-12 text-[15px] text-center max-w-lg leading-relaxed">
-                                Talk directly to the local AI assistant. No phone-control features — just fast, private, and fully offline conversation.
+                            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-2 tracking-tight">Ready for your first chat?</h2>
+                            <p className="text-zinc-500 dark:text-[#a1a1aa] mb-10 text-[14px] text-center max-w-lg leading-relaxed">
+                                Think through anything locally — from ideas to quick technical questions.
                             </p>
 
-                            <div className="grid sm:grid-cols-2 gap-4 w-full">
+                            <div className="grid sm:grid-cols-2 gap-3 w-full">
                                 <AnimatedEntrance index={1}>
-                                    <div className="p-5 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl flex flex-col justify-center hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:translate-y-[-2px] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md group h-full" onClick={() => { onSend("Write a python script to parse CSV files", []); }}>
-                                        <p className="text-[13px] text-zinc-600 dark:text-zinc-400 mb-2 font-medium">Example prompt:</p>
-                                        <p className="text-[14px] text-zinc-800 dark:text-zinc-200 font-semibold flex items-center gap-2">
+                                    <div className="p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/60 dark:bg-[#27272a]/30 rounded-2xl flex flex-col justify-center hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:translate-y-[-2px] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md group h-full" onClick={() => { onSend("Write a python script to parse CSV files", []); }}>
+                                        <p className="text-[12px] text-zinc-600 dark:text-zinc-400 mb-1.5 font-medium">Example prompt</p>
+                                        <p className="text-[13px] text-zinc-800 dark:text-zinc-200 font-semibold flex items-center gap-2">
                                             "Write a python script to parse CSV files"
                                         </p>
                                     </div>
                                 </AnimatedEntrance>
 
                                 <AnimatedEntrance index={2}>
-                                    <div className="p-5 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl flex flex-col justify-center hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:translate-y-[-2px] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md group h-full" onClick={() => { onSend("Explain quantum computing like I'm 5", []); }}>
-                                        <p className="text-[13px] text-zinc-600 dark:text-zinc-400 mb-2 font-medium">Example prompt:</p>
-                                        <p className="text-[14px] text-zinc-800 dark:text-zinc-200 font-semibold flex items-center gap-2">
+                                    <div className="p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/60 dark:bg-[#27272a]/30 rounded-2xl flex flex-col justify-center hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:translate-y-[-2px] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md group h-full" onClick={() => { onSend("Explain quantum computing like I'm 5", []); }}>
+                                        <p className="text-[12px] text-zinc-600 dark:text-zinc-400 mb-1.5 font-medium">Example prompt</p>
+                                        <p className="text-[13px] text-zinc-800 dark:text-zinc-200 font-semibold flex items-center gap-2">
                                             "Explain quantum computing like I'm 5"
                                         </p>
                                     </div>

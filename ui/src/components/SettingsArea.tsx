@@ -64,6 +64,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [diagCopied, setDiagCopied] = useState(false);
     const [diagCopiedFromFallback, setDiagCopiedFromFallback] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
+    const [lastCopiedAt, setLastCopiedAt] = useState<Date | null>(null);
     const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
     const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
     const manualPayloadRef = useRef<HTMLTextAreaElement | null>(null);
@@ -141,6 +142,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
             setDiagCopyFailed(false);
             setDiagCopiedFromFallback(false);
             setManualDiagnosticsPayload(null);
+            setLastCopiedAt(new Date());
             setDiagCopied(true);
             setTimeout(() => setDiagCopied(false), 1800);
         } catch {
@@ -160,6 +162,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
             setDiagCopyFailed(false);
             setDiagCopiedFromFallback(true);
             setManualDiagnosticsPayload(null);
+            setLastCopiedAt(new Date());
             setDiagCopied(true);
             setTimeout(() => {
                 setDiagCopied(false);
@@ -286,6 +289,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                     <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
                                         Recovered at {new Date(lastOutageInfo.recoveredAt).toLocaleString()}
                                     </div>
+                                    {lastCopiedAt && (
+                                        <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
+                                            Last copied at {lastCopiedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        </div>
+                                    )}
                                     {manualDiagnosticsPayload && (
                                         <div className="mt-3 rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-100/60 dark:bg-amber-500/10 p-2.5">
                                             <div className="flex items-center justify-between gap-2 mb-2">
