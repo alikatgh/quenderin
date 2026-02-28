@@ -256,22 +256,51 @@ function AppContent() {
         // Silent block for dev environment cross-origin resets
       }
     };
+    let cancelled = false;
+    let readinessTimer: ReturnType<typeof setTimeout> | null = null;
+    let readinessFailureCount = 0;
+
+    const BASE_READINESS_POLL_MS = 5000;
+    const MAX_READINESS_POLL_MS = 30000;
+
+    const nextReadinessDelay = () => {
+      if (readinessFailureCount <= 0) return BASE_READINESS_POLL_MS;
+      const step = Math.min(3, readinessFailureCount - 1); // 5s, 10s, 20s, 30s
+      return Math.min(MAX_READINESS_POLL_MS, BASE_READINESS_POLL_MS * (2 ** step));
+    };
+
+    const scheduleReadinessPoll = () => {
+      if (cancelled) return;
+      readinessTimer = setTimeout(fetchReadiness, nextReadinessDelay());
+    };
+
     const fetchReadiness = async () => {
       try {
-        const res = await fetch('/ready');
+        const res = await fetch('/ready', { cache: 'no-store' });
         const data = await res.json();
+        if (cancelled) return;
         if (typeof data?.ready === 'boolean') {
+          readinessFailureCount = 0;
           setReadiness({ ready: data.ready, stage: String(data.stage ?? 'unknown') });
+        } else {
+          throw new Error('Invalid readiness response');
         }
       } catch {
-        setReadiness({ ready: false, stage: 'offline' });
+        if (cancelled) return;
+        readinessFailureCount += 1;
+        const retrySeconds = Math.round(nextReadinessDelay() / 1000);
+        setReadiness({ ready: false, stage: `retrying in ${retrySeconds}s` });
+      } finally {
+        scheduleReadinessPoll();
       }
     };
     fetchHealth();
     fetchReadiness();
 
-    const readinessPoll = setInterval(fetchReadiness, 5000);
-    return () => clearInterval(readinessPoll);
+    return () => {
+      cancelled = true;
+      if (readinessTimer) clearTimeout(readinessTimer);
+    };
   }, []);
 
   const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop } = useAgentSocket();
