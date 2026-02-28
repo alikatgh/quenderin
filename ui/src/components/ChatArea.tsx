@@ -69,11 +69,14 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = useState(false);
 
+    // Filter to only agent-type logs — ignore chat entries from General Chat
+    const agentLogs = logs.filter(l => ['status', 'observe', 'decide', 'action', 'error', 'done'].includes(l.type));
+
     useEffect(() => {
         if (logsEndRef.current) {
             logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [logs]);
+    }, [agentLogs]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -105,7 +108,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
             <div className="flex-1 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40">
 
-                    {logs.length === 0 && (
+                    {agentLogs.length === 0 && (
                         <div className="mt-24 flex flex-col items-center animate-fade-in px-4">
                             <div className="w-16 h-16 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-[#3f3f46]">
                                 <Sparkles className="w-8 h-8 text-zinc-800 dark:text-zinc-300" />
@@ -140,7 +143,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                         </div>
                     )}
 
-                    {logs.length > 0 && (
+                    {agentLogs.length > 0 && (
                         <div className="mt-10 mb-8 w-full animate-fade-in">
                             <div className="flex gap-4 sm:gap-6 group mb-10">
                                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-600 dark:bg-[#27272a] dark:border-[#3f3f46] dark:text-zinc-400 flex flex-shrink-0 items-center justify-center shadow-sm">
@@ -148,7 +151,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-[16px] text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap">
-                                        {logs[0]?.message.replace('Goal set: ', '')}
+                                        {agentLogs[0]?.message.replace('Goal set: ', '')}
                                     </div>
                                 </div>
                             </div>
@@ -164,7 +167,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                     </div>
 
                                     <div className="space-y-4">
-                                        {logs.slice(1).filter((l) => l.type !== 'chat' && l.type !== 'chat_response' && l.type !== 'log').map((log) => (
+                                        {agentLogs.slice(1).map((log) => (
                                             <div key={log.id} className="animate-fade-in">
                                                 {log.type === 'error' ? (
                                                     <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start gap-3 mt-4 mb-2 shadow-sm">

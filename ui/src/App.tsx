@@ -346,6 +346,10 @@ function AppContent() {
           logs={logs}
           currentView={currentView}
           setCurrentView={(v) => {
+            // Reset session when switching between agent and chat modes
+            if ((v === 'chat' && currentView === 'general_chat') || (v === 'general_chat' && currentView === 'chat')) {
+              resetSession();
+            }
             setCurrentView(v);
             if (window.innerWidth < 1280) setIsSidebarOpen(false);
           }}
