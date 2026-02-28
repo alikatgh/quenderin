@@ -48,6 +48,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
     const [diagCopied, setDiagCopied] = useState(false);
+    const [diagCopyFailed, setDiagCopyFailed] = useState(false);
     const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
 
     const shortDiagnosticsId = lastDiagnosticsId
@@ -66,6 +67,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     const handleCopyDiagnostics = async () => {
         try {
+            setDiagCopyFailed(false);
             const diagnosticsId = createDiagnosticsId();
             setLastDiagnosticsId(diagnosticsId);
             let serverDiagnostics: unknown = null;
@@ -112,10 +114,13 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
             const payload = JSON.stringify(summary, null, 2);
             await navigator.clipboard.writeText(payload);
+            setDiagCopyFailed(false);
             setDiagCopied(true);
             setTimeout(() => setDiagCopied(false), 1800);
         } catch {
             setDiagCopied(false);
+            setDiagCopyFailed(true);
+            setTimeout(() => setDiagCopyFailed(false), 2200);
         }
     };
 
@@ -216,7 +221,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 onClick={handleCopyDiagnostics}
                                                 className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
                                             >
-                                                {diagCopied ? `Copied! • ID: ${shortDiagnosticsId ?? 'n/a'}` : 'Copy diagnostics'}
+                                                {diagCopyFailed
+                                                    ? 'Copy failed • Retry'
+                                                    : diagCopied
+                                                        ? `Copied! • ID: ${shortDiagnosticsId ?? 'n/a'}`
+                                                        : 'Copy diagnostics'}
                                             </button>
                                             <button
                                                 onClick={onClearOutageHistory}
