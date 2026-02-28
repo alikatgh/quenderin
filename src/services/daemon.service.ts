@@ -7,7 +7,8 @@ export interface ObservationData {
     timestamp: string;
     hash: string;
     elements: UIElement[];
-    xml: string;
+    /** Raw XML is intentionally omitted from in-memory log to prevent heap bloat.
+     *  Re-fetch from the device if you need the raw dump for a specific observation. */
 }
 
 export class DaemonService extends EventEmitter {
@@ -72,7 +73,7 @@ export class DaemonService extends EventEmitter {
                         timestamp: new Date().toISOString(),
                         hash: currentHash,
                         elements: parsed.elements,
-                        xml: xml
+                        // xml intentionally excluded — stored xml per-frame eats hundreds of MB
                     };
 
                     this.observationLog.push(observation);

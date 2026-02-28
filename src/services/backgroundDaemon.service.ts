@@ -9,8 +9,11 @@ export class BackgroundDaemonService extends EventEmitter {
     private isRunning = false;
     private pollIntervalMs = 3000; // 3 seconds per requirements
     private diffThreshold = 0.05;  // 5% minimum change to trigger LLM
-    private lastPngData: PNG | null = null;
+    /** Store only the raw RGBA pixel data — NOT the full PNG object to save ~16MB */
+    private lastPixelData: Buffer | null = null;
     private lastDimensions: { width: number, height: number } | null = null;
+    /** Pre-allocated diff scratch buffer — reused every tick to avoid GC pressure */
+    private diffScratch: Uint8Array | null = null;
 
     constructor(
         private deviceProvider: IDeviceProvider,
@@ -42,27 +45,33 @@ export class BackgroundDaemonService extends EventEmitter {
         });
     }
 
-    private async calculateVisualDiff(currentImgPath: string): Promise<{ diffRatio: number, pngData: PNG | null }> {
+    private async calculateVisualDiff(currentImgPath: string): Promise<{ diffRatio: number }> {
         try {
             const currentBuffer = await fs.readFile(currentImgPath);
             const currentPng = await this.parsePng(currentBuffer);
 
             // First run, or dimension mismatch (e.g. rotated screen/different monitor)
-            if (!this.lastPngData || !this.lastDimensions ||
+            if (!this.lastPixelData || !this.lastDimensions ||
                 this.lastDimensions.width !== currentPng.width ||
                 this.lastDimensions.height !== currentPng.height) {
 
-                this.lastPngData = currentPng;
+                // Store only raw pixel data — drop the PNG wrapper to free ~8–16 MB
+                this.lastPixelData = Buffer.from(currentPng.data);
                 this.lastDimensions = { width: currentPng.width, height: currentPng.height };
-                return { diffRatio: 1.0, pngData: currentPng }; // 100% diff on first load
+                // Pre-allocate/resize scratch buffer for pixelmatch output
+                const pixelCount = currentPng.width * currentPng.height * 4;
+                if (!this.diffScratch || this.diffScratch.length !== pixelCount) {
+                    this.diffScratch = new Uint8Array(pixelCount);
+                }
+                return { diffRatio: 1.0 }; // 100% diff on first load
             }
 
-            const lastPng = this.lastPngData;
+            const lastPixelData = this.lastPixelData;
 
             const numDiffPixels = pixelmatch(
-                lastPng.data,
+                lastPixelData,
                 currentPng.data,
-                new Uint8Array(currentPng.width * currentPng.height * 4), // Requires a valid typed array, even if we drop it
+                this.diffScratch!, // reuse pre-allocated buffer — no GC pressure
                 currentPng.width,
                 currentPng.height,
                 { threshold: 0.1 }
@@ -71,13 +80,13 @@ export class BackgroundDaemonService extends EventEmitter {
             const totalPixels = currentPng.width * currentPng.height;
             const diffRatio = numDiffPixels / totalPixels;
 
-            // Update state for next tick with parsed PNG to skip redundant parse calls
-            this.lastPngData = currentPng;
+            // Update stored pixel data (only the raw buffer, not the PNG object)
+            this.lastPixelData = Buffer.from(currentPng.data);
 
-            return { diffRatio, pngData: currentPng };
+            return { diffRatio };
         } catch (e: any) {
             this.emit('error', `Failed to calculate visual diff: ${e.message}`);
-            return { diffRatio: 0, pngData: null };
+            return { diffRatio: 0 };
         }
     }
 

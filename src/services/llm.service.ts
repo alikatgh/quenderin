@@ -141,6 +141,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.modelInstance = null;
         this.contextInstance = null;
         this.generalChatSession = null;
+        this.chatTurnCount = 0;
         this.initPromise = null;
         this.loadedModelId = null;
         if (this.idleTimer) {
@@ -468,12 +469,18 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
     }
 
+    // Tracks how many turns the current generalChatSession has seen.
+    // Reset the session before context overflows (2048 tokens / ~80 tok/turn ≈ 25 turns).
+    private chatTurnCount: number = 0;
+    private readonly MAX_CHAT_TURNS = 20;
+
     public async generateCode(userPrompt: string): Promise<string> {
         const { context } = await this.getModelAndContext();
         const systemPrompt = `You are an expert code generator. Given a prompt, generate only the TypeScript code required to fulfill the request. Do not add any conversational text or markdown formatting.`;
 
+        const sequence = context.getSequence();
         const session = new LlamaChatSession({
-            contextSequence: context.getSequence(),
+            contextSequence: sequence,
             systemPrompt: systemPrompt
         });
 
@@ -490,14 +497,18 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         } catch (error) {
             logger.error("Error during generation:", error);
             throw error;
+        } finally {
+            // Dispose the sequence to release KV cache slots back to the context pool
+            try { sequence.dispose(); } catch { /* already disposed */ }
         }
     }
 
     public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string> {
         const { context } = await this.getModelAndContext();
-        // Use a new session to prevent context bounds filling up endlessly
+        // Use a new sequence per call — dispose it when done to free KV cache slots
+        const sequence = context.getSequence();
         const session = new LlamaChatSession({
-            contextSequence: context.getSequence(),
+            contextSequence: sequence,
             systemPrompt: systemPrompt || undefined
         });
 
@@ -506,25 +517,34 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             ? `${userPrompt}\n[IMAGE UPLOADED: ${imagePath}]`
             : userPrompt;
 
-        const response = await session.prompt(finalPrompt, {
-            maxTokens: options.maxTokens || 150,
-            temperature: options.temperature || 0.1
-        });
-
-        return response.trim();
+        try {
+            const response = await session.prompt(finalPrompt, {
+                maxTokens: options.maxTokens || 150,
+                temperature: options.temperature || 0.1
+            });
+            return response.trim();
+        } finally {
+            try { sequence.dispose(); } catch { /* already disposed */ }
+        }
     }
 
     public async generalChat(userMsg: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }> {
         const { context } = await this.getModelAndContext();
 
         const ensureSession = () => {
-            if (!this.generalChatSession) {
+            // Reset session when it approaches the context limit to prevent OOM.
+            // At ~80 tokens/turn and a 2048-token context the session starts thrashing around turn 20.
+            if (!this.generalChatSession || this.chatTurnCount >= this.MAX_CHAT_TURNS) {
+                if (this.chatTurnCount >= this.MAX_CHAT_TURNS) {
+                    logger.log(`[LLM] Chat session reached ${this.MAX_CHAT_TURNS} turns — resetting to free context window`);
+                }
                 const toolPrompt = buildToolPrompt();
                 const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
                 this.generalChatSession = new LlamaChatSession({
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
                 });
+                this.chatTurnCount = 0;
             }
         };
 
@@ -635,6 +655,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             };
 
             logger.log(`[LLM] Finished streaming. ${meta.tokenCount} tokens @ ${meta.tokensPerSecond} tok/s, TTFT ${meta.timeToFirstTokenMs}ms${toolCallsMade ? ' (with tool calls)' : ''}`);
+            this.chatTurnCount++;
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
             return { text: finalResponse, meta };
@@ -656,6 +677,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.modelInstance = null;
         this.contextInstance = null;
         this.generalChatSession = null;
+        this.chatTurnCount = 0;
         this.initPromise = null;
     }
 }

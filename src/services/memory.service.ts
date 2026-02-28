@@ -29,6 +29,9 @@ export class MemoryService {
     private initPromise: Promise<void>;
     /** Simple promise-based write mutex to prevent read-modify-write races */
     private writeLock: Promise<void> = Promise.resolve();
+    /** Release Xenova model after 5 min idle to free ~80 MB */
+    private extractorIdleTimer: NodeJS.Timeout | null = null;
+    private readonly EXTRACTOR_IDLE_MS = 5 * 60 * 1000;
 
     constructor() {
         const homeDir = os.homedir();
@@ -69,11 +72,26 @@ export class MemoryService {
         }
     }
 
+    private resetExtractorIdleTimer(): void {
+        if (this.extractorIdleTimer) clearTimeout(this.extractorIdleTimer);
+        this.extractorIdleTimer = setTimeout(() => {
+            if (this.extractor) {
+                console.log('[Memory RAG] Releasing embedding model after idle timeout to free RAM');
+                this.extractor = null;
+            }
+            this.extractorIdleTimer = null;
+        }, this.EXTRACTOR_IDLE_MS);
+        // Don't block process exit
+        this.extractorIdleTimer.unref();
+    }
+
     private async getExtractor() {
         if (!this.extractor) {
             console.log('\n[Memory RAG] Initializing local semantic embedding model (Xenova/all-MiniLM-L6-v2)...');
             this.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
         }
+        // Reset the idle countdown each time it's actually used
+        this.resetExtractorIdleTimer();
         return this.extractor;
     }
 
