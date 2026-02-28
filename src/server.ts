@@ -1,4 +1,5 @@
 import { createServer } from 'http';
+import net from 'net';
 import open from 'open';
 import { createApp } from './app.js';
 import { WebSocketManager } from './websocket/index.js';
@@ -15,7 +16,31 @@ import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
 import { setHealthLlmService } from './routes/health.js';
 
+async function isPortFree(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+        const tester = net.createServer()
+            .once('error', () => resolve(false))
+            .once('listening', () => {
+                tester.close(() => resolve(true));
+            })
+            .listen(port, '::');
+    });
+}
+
+async function findAvailablePort(startPort: number, maxTries: number = 20): Promise<number> {
+    for (let candidate = startPort; candidate < startPort + maxTries; candidate++) {
+        if (await isPortFree(candidate)) {
+            return candidate;
+        }
+    }
+    throw new Error(`No available port found in range ${startPort}-${startPort + maxTries - 1}`);
+}
+
 export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<void> {
+    const selectedPort = await findAvailablePort(port);
+    if (selectedPort !== port) {
+        console.warn(`[Server] Port ${port} is busy, starting on port ${selectedPort} instead.`);
+    }
     // 1. Dependency Injection / Initialize Services
     const targetOS = process.env.TARGET_OS || 'android';
 
@@ -56,10 +81,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const app = createApp(metricsService, agentService, llmService);
     const server = createServer(app);
 
-    // 3. Initialize WebSockets
-    new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
-
-    // 4. Graceful shutdown handlers
+    // 3. Graceful shutdown handlers
     const shutdown = () => {
         console.log('\n[System] Shutting down gracefully...');
         backgroundDaemon.stop();
@@ -75,18 +97,22 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     process.once('SIGTERM', shutdown);
     process.once('SIGINT', shutdown);
 
-    // 5. Boot Server
+    // 4. Boot Server
     return new Promise<void>((resolve, reject) => {
         server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
-                console.error(`\n[Server] Port ${port} is already in use. Kill the existing process (lsof -ti:${port} | xargs kill) and retry.`);
+                console.error(`\n[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
             }
+            backgroundDaemon.stop();
+            voiceService.shutdown();
+            ocrService.terminate().catch(() => { });
             reject(err);
         });
-        server.listen(port, async () => {
-            console.log(`\n Dashboard running at http://localhost:${port}`);
+        server.listen(selectedPort, async () => {
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
+            console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
             if (openBrowser) {
-                await open(`http://localhost:${port}`);
+                await open(`http://localhost:${selectedPort}`);
             }
             resolve();
         });

@@ -25,6 +25,9 @@ export class WebSocketManager {
         private voiceService: VoiceService
     ) {
         this.wss = new WebSocketServer({ server });
+        this.wss.on('error', (err) => {
+            logger.error('[WebSocket] Server error:', err);
+        });
         this.setupConnection();
     }
 
