@@ -44,6 +44,20 @@ const createDiagnosticsId = (): string => {
     return `diag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const downloadDiagnosticsJson = (payload: string, diagnosticsId?: string | null): void => {
+    const safeId = (diagnosticsId ?? 'unknown').replace(/[^a-zA-Z0-9-_]/g, '').slice(0, 24) || 'unknown';
+    const fileName = `quenderin-diagnostics-${safeId}.json`;
+    const blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
@@ -250,12 +264,20 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                                                     Clipboard unavailable — copy manually
                                                 </div>
-                                                <button
-                                                    onClick={() => setManualDiagnosticsPayload(null)}
-                                                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
-                                                >
-                                                    Hide
-                                                </button>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => downloadDiagnosticsJson(manualDiagnosticsPayload, lastDiagnosticsId)}
+                                                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                                    >
+                                                        Download .json
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setManualDiagnosticsPayload(null)}
+                                                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                                    >
+                                                        Hide
+                                                    </button>
+                                                </div>
                                             </div>
                                             <textarea
                                                 readOnly
