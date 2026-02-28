@@ -41,6 +41,20 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     if (selectedPort !== port) {
         console.warn(`[Server] Port ${port} is busy, starting on port ${selectedPort} instead.`);
     }
+    const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const isInteractiveShell = Boolean(process.stdout.isTTY && process.stdin.isTTY);
+    const browserDisabledByEnv = process.env.QUENDERIN_NO_BROWSER === '1' || process.env.BROWSER === 'none';
+    const effectiveOpenBrowser = openBrowser && !isCi && isInteractiveShell && !browserDisabledByEnv;
+
+    if (openBrowser && !effectiveOpenBrowser) {
+        const reason = isCi
+            ? 'CI environment detected'
+            : !isInteractiveShell
+                ? 'non-interactive shell detected'
+                : 'browser disabled by environment';
+        console.log(`[Server] Browser auto-open disabled (${reason}).`);
+    }
+
     // 1. Dependency Injection / Initialize Services
     const targetOS = process.env.TARGET_OS || 'android';
 
@@ -111,7 +125,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.listen(selectedPort, async () => {
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
             console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
-            if (openBrowser) {
+            if (effectiveOpenBrowser) {
                 try {
                     await open(`http://localhost:${selectedPort}`);
                 } catch (error) {
