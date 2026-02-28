@@ -52,9 +52,10 @@ program
   .command('dashboard')
   .description('Launch the Agent Web UI dashboard.')
   .option('-p, --port <number>', 'Port for the web server', '3000')
+  .option('--no-open', 'Do not auto-open browser window')
   .action(async (options) => {
     try {
-      await startDashboardServer(parseInt(options.port, 10));
+      await startDashboardServer(parseInt(options.port, 10), options.open);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("Failed to start dashboard server:", message);

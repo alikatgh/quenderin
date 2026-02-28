@@ -112,7 +112,12 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
             console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
             if (openBrowser) {
-                await open(`http://localhost:${selectedPort}`);
+                try {
+                    await open(`http://localhost:${selectedPort}`);
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    console.warn(`[Server] Failed to auto-open browser: ${message}`);
+                }
             }
             resolve();
         });
