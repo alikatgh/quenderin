@@ -97,6 +97,12 @@ export const MODEL_CATALOG = [
 
 export type ModelEntry = typeof MODEL_CATALOG[number];
 
+export function getRecommendedModelIdForTotalRam(totalRamGb: number): ModelEntry['id'] {
+    if (totalRamGb < 3) return 'llama32-1b';
+    if (totalRamGb < 6) return 'llama32-3b';
+    return 'llama3-8b';
+}
+
 /** Resolves the full path for a model by its catalog id */
 export function modelPath(id: string): string {
     const entry = MODEL_CATALOG.find(m => m.id === id);

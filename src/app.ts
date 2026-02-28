@@ -11,7 +11,7 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
 import { LlmService } from './services/llm.service.js';
-import { MODEL_CATALOG, modelPath as getModelPath } from './constants.js';
+import { MODEL_CATALOG, modelPath as getModelPath, getRecommendedModelIdForTotalRam } from './constants.js';
 import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
@@ -100,9 +100,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         app.post('/api/models/download', (req, res) => {
             const modelId = req.body?.modelId as string | undefined;
             const hw = getHardwareProfile();
-            const fallbackModelId = hw.totalRamGb < 3 ? 'llama32-1b'
-                : hw.totalRamGb < 6 ? 'llama32-3b'
-                : 'llama3-8b';
+            const fallbackModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
             const requestedModelId = modelId ?? fallbackModelId;
             llmService.downloadModel(requestedModelId).catch(e => console.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });

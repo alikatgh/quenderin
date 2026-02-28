@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import os from 'os';
-import { MODEL_CATALOG, modelPath, getHardwareRecommendation } from '../constants.js';
+import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 
@@ -33,9 +33,7 @@ router.get('/health', (_req, res) => {
         : [1024, 2048, 4096]; // standard
 
     // Best default model to recommend for download based on hardware
-    const recommendedModelId = hw.totalRamGb < 3 ? 'llama32-1b'
-        : hw.totalRamGb < 6 ? 'llama32-3b'
-        : 'llama3-8b';
+    const recommendedModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
 
     res.status(200).json({
         status: 'OK',
