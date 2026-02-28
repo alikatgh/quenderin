@@ -9,10 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure we compute the root of the quenderin project regardless of dist/ or src/ execution
+// Non-compiled: __dirname = .../src/routes  → up 2 = project root
+// Compiled:     __dirname = .../dist/src/routes → up 3 = project root
 const isCompiledMode = __filename.includes('/dist/') || __filename.includes('\\dist\\');
 const rootDir = isCompiledMode
-    ? path.join(__dirname, '..', '..')
-    : path.join(__dirname, '..');
+    ? path.join(__dirname, '..', '..', '..')
+    : path.join(__dirname, '..', '..');
 
 router.get('/:filename', async (req, res) => {
     try {
