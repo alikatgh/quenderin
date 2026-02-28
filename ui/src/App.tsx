@@ -233,7 +233,9 @@ function AppContent() {
   } | null>(null);
   const [readiness, setReadiness] = useState<{ ready: boolean; stage: string } | null>(null);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
+  const [lastOutageMs, setLastOutageMs] = useState(0);
   const previousReadyRef = useRef<boolean | null>(null);
+  const outageStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Check initial launch flag
@@ -312,8 +314,17 @@ function AppContent() {
   useEffect(() => {
     if (typeof readiness?.ready !== 'boolean') return;
     const wasReady = previousReadyRef.current;
+    if (readiness.ready === false && outageStartRef.current === null) {
+      outageStartRef.current = Date.now();
+    }
     if (wasReady === false && readiness.ready === true) {
+      const outageMs = outageStartRef.current ? Date.now() - outageStartRef.current : 0;
+      setLastOutageMs(outageMs);
+      outageStartRef.current = null;
       setShowRecoveryBanner(true);
+    }
+    if (wasReady === true && readiness.ready === true) {
+      outageStartRef.current = null;
     }
     previousReadyRef.current = readiness.ready;
   }, [readiness?.ready]);
@@ -392,6 +403,9 @@ function AppContent() {
     }
   };
 
+  const outageSeconds = Math.max(1, Math.round(lastOutageMs / 1000));
+  const shouldShowSettingsShortcut = lastOutageMs >= 15_000;
+
   return (
     <>
       <PrivacyLock
@@ -454,8 +468,19 @@ function AppContent() {
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors duration-300">
 
           {showRecoveryBanner && (
-            <div className="absolute top-3 right-4 z-30 px-3 py-1.5 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-              Backend recovered and ready
+            <div className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
+              <span>Backend recovered and ready{lastOutageMs > 0 ? ` (${outageSeconds}s outage)` : ''}</span>
+              {shouldShowSettingsShortcut && (
+                <button
+                  onClick={() => {
+                    setCurrentView('settings');
+                    setShowRecoveryBanner(false);
+                  }}
+                  className="px-2 py-0.5 rounded-md border border-emerald-400/40 dark:border-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                >
+                  Open Settings
+                </button>
+              )}
             </div>
           )}
 
