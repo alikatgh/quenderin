@@ -4,6 +4,7 @@ import os from 'os';
 import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
+import { getReadiness } from '../services/readiness.service.js';
 
 const router = Router();
 
@@ -16,6 +17,14 @@ let llmServiceRef: { getActiveModelLabel: () => string } | null = null;
 export function setHealthLlmService(service: { getActiveModelLabel: () => string }) {
     llmServiceRef = service;
 }
+
+router.get('/ready', (_req, res) => {
+    const readiness = getReadiness();
+    if (readiness.ready) {
+        return res.status(200).json({ status: 'READY', ...readiness });
+    }
+    return res.status(503).json({ status: 'NOT_READY', ...readiness });
+});
 
 router.get('/health', (_req, res) => {
     const activeModel = llmServiceRef?.getActiveModelLabel() ?? 'not loaded';

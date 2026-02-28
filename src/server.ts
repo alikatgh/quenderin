@@ -15,6 +15,7 @@ import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
 import { setHealthLlmService } from './routes/health.js';
+import { resetReadinessForStartup, setReadiness } from './services/readiness.service.js';
 
 async function isPortFree(port: number): Promise<boolean> {
     return new Promise((resolve) => {
@@ -37,6 +38,9 @@ async function findAvailablePort(startPort: number, maxTries: number = 20): Prom
 }
 
 export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<void> {
+    resetReadinessForStartup('Dashboard startup initiated');
+    setReadiness(false, 'initializing-services', 'Initializing core services');
+
     const selectedPort = await findAvailablePort(port);
     if (selectedPort !== port) {
         console.warn(`[Server] Port ${port} is busy, starting on port ${selectedPort} instead.`);
@@ -92,11 +96,13 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     }
 
     // 2. Setup Express
+    setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
     const app = createApp(metricsService, agentService, llmService);
     const server = createServer(app);
 
     // 3. Graceful shutdown handlers
     const shutdown = () => {
+        setReadiness(false, 'shutting-down', 'Shutdown signal received');
         console.log('\n[System] Shutting down gracefully...');
         backgroundDaemon.stop();
         voiceService.shutdown();
@@ -117,6 +123,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             if (err.code === 'EADDRINUSE') {
                 console.error(`\n[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
             }
+            setReadiness(false, 'server-error', err.message);
             backgroundDaemon.stop();
             voiceService.shutdown();
             ocrService.terminate().catch(() => { });
@@ -124,6 +131,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         });
         server.listen(selectedPort, async () => {
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
+            setReadiness(true, 'serving', `Listening on port ${selectedPort}`);
             console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {
                 try {
