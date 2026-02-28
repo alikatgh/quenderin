@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { User, Loader2, Send, MessageSquareText, Cpu, Check, Copy, Mic, FileText, X, Code, PenTool, GraduationCap } from 'lucide-react';
+import { User, Loader2, Send, MessageSquareText, Cpu, Check, Copy, Mic, FileText, X, Code, PenTool, GraduationCap, Search } from 'lucide-react';
 import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -106,6 +106,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
 
     // Filter logs to only show chat events (chat and chat_response) and general status/errors
     const chatLogs = logs.filter(l => ['chat', 'chat_response', 'error'].includes(l.type));
+    const userChatLogs = chatLogs.filter((entry) => entry.type === 'chat');
     const normalizedFilter = chatFilter.trim().toLowerCase();
     const visibleChatLogs = normalizedFilter.length === 0
         ? chatLogs
@@ -263,7 +264,8 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                 + New chat
                             </button>
                         </div>
-                        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/60 px-3 py-2">
+                        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/60 px-3 py-2 flex items-center gap-2">
+                            <Search className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                             <input
                                 value={chatFilter}
                                 onChange={(e) => setChatFilter(e.target.value)}
@@ -271,7 +273,35 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                 className="w-full bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 outline-none"
                             />
                         </div>
-                        <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-2">Private, local conversation with your assistant.</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                            <p className="text-[12px] text-zinc-500 dark:text-zinc-400">{userChatLogs.length} chats with Quenderin</p>
+                            {chatFilter && (
+                                <button
+                                    onClick={() => setChatFilter('')}
+                                    className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+
+                        {userChatLogs.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                {userChatLogs.slice(-6).reverse().map((entry) => (
+                                    <button
+                                        key={`recent-${entry.id}`}
+                                        onClick={() => {
+                                            setChatInput(entry.message);
+                                            textareaRef.current?.focus();
+                                        }}
+                                        className="max-w-full truncate px-2.5 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-[11px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                                        title={entry.message}
+                                    >
+                                        {entry.message}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Preset Switcher Bar */}
