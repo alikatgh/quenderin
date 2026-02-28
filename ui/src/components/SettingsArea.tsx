@@ -48,6 +48,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
     const [diagCopied, setDiagCopied] = useState(false);
+    const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
+
+    const shortDiagnosticsId = lastDiagnosticsId
+        ? lastDiagnosticsId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)
+        : null;
 
     useEffect(() => {
         setSettings(currentSettings);
@@ -62,6 +67,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const handleCopyDiagnostics = async () => {
         try {
             const diagnosticsId = createDiagnosticsId();
+            setLastDiagnosticsId(diagnosticsId);
             let serverDiagnostics: unknown = null;
             let serverDiagnosticsError: string | null = null;
 
@@ -210,7 +216,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 onClick={handleCopyDiagnostics}
                                                 className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
                                             >
-                                                {diagCopied ? 'Copied!' : 'Copy diagnostics'}
+                                                {diagCopied ? `Copied! • ID: ${shortDiagnosticsId ?? 'n/a'}` : 'Copy diagnostics'}
                                             </button>
                                             <button
                                                 onClick={onClearOutageHistory}
