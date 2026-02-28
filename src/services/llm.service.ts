@@ -51,7 +51,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private modelLoadTimestamp: number = 0;
     private readonly modelInitTimeoutMs: number = 45_000;
     /** Idle timeout — unload model after 30 minutes of inactivity to free RAM */
-    private idleTimeoutMs: number = 30 * 60 * 1000;
+    private idleTimeoutMs: number;
     private idleTimer: NodeJS.Timeout | null = null;
     private lastActivityTimestamp: number = 0;
 
@@ -61,6 +61,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     constructor() {
         super();
+        this.idleTimeoutMs = this.resolveIdleTimeoutMs();
+    }
+
+    private resolveIdleTimeoutMs(): number {
+        const configured = Number(process.env.QUENDERIN_LLM_IDLE_MINUTES ?? '10');
+        if (!Number.isFinite(configured)) return 10 * 60 * 1000;
+        // Clamp to a sane range so misconfiguration can't disable unloading forever.
+        const clampedMinutes = Math.min(120, Math.max(1, Math.round(configured)));
+        return clampedMinutes * 60 * 1000;
     }
 
     public isCurrentlyGenerating(): { isGenerating: boolean, buffer: string } {
@@ -128,7 +137,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private resetIdleTimer(): void {
         if (this.idleTimer) clearTimeout(this.idleTimer);
         this.idleTimer = setTimeout(() => {
-            if (!this.isGeneratingChat && this.modelInstance) {
+            if (!this.isGeneratingChat && !this.initPromise && this.modelInstance) {
                 logger.log(`[Lifecycle] Unloading model after ${this.idleTimeoutMs / 60000}min idle to free RAM`);
                 this.unloadModel();
             }
@@ -138,6 +147,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     /** Explicitly unload model to free RAM */
     public unloadModel(): void {
+        const wasLoaded = this.modelInstance !== null;
         this.modelInstance = null;
         this.contextInstance = null;
         this.generalChatSession = null;
@@ -148,7 +158,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
         }
-        logger.log('[Lifecycle] Model unloaded');
+        if (wasLoaded) logger.log('[Lifecycle] Model unloaded');
     }
 
     /** Switch to a specific model by ID. Unloads current model if different. */
@@ -498,6 +508,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             logger.error("Error during generation:", error);
             throw error;
         } finally {
+            this.touchActivity();
             // Dispose the sequence to release KV cache slots back to the context pool
             try { sequence.dispose(); } catch { /* already disposed */ }
         }
@@ -524,6 +535,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             });
             return response.trim();
         } finally {
+            this.touchActivity();
             try { sequence.dispose(); } catch { /* already disposed */ }
         }
     }
@@ -658,10 +670,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             this.chatTurnCount++;
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
+            this.touchActivity();
             return { text: finalResponse, meta };
         } catch (error) {
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
+            this.touchActivity();
             logger.error("Error during general chat generation:", error);
             throw error; // Bubble up original error for OOM detection
         }
@@ -674,10 +688,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             logger.warn('[LLM] Settings updated but model reset deferred (generation in progress)');
             return;
         }
-        this.modelInstance = null;
-        this.contextInstance = null;
-        this.generalChatSession = null;
-        this.chatTurnCount = 0;
-        this.initPromise = null;
+        this.unloadModel();
     }
 }
