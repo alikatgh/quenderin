@@ -434,7 +434,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         logger.log("[Assistant] Starting private conversation...");
         this.isGeneratingChat = true;
         this.tokenBuffer = "";
-        let flushTimer: NodeJS.Timeout | null = null;
 
         // --- Generation metadata tracking ---
         const startTime = performance.now();
@@ -446,31 +445,17 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 maxTokens: this.activePreset.maxTokens,
                 temperature: this.activePreset.temperature,
                 onTextChunk: onToken ? (chunk) => {
-                    // Strip control tokens from each chunk before buffering
+                    // Strip control tokens and emit immediately — no batching
                     const clean = stripControlTokens(chunk);
                     if (!clean) return;
 
-                    // Track first token arrival
                     if (firstTokenTime === null) firstTokenTime = performance.now();
                     tokenCount++;
 
                     this.tokenBuffer += clean;
-                    if (!flushTimer) {
-                        flushTimer = setTimeout(() => {
-                            onToken(this.tokenBuffer);
-                            this.tokenBuffer = "";
-                            flushTimer = null;
-                        }, 50);
-                    }
+                    onToken(clean);
                 } : undefined
             });
-
-            if (flushTimer) {
-                clearTimeout(flushTimer);
-                if (this.tokenBuffer && onToken) {
-                    onToken(this.tokenBuffer);
-                }
-            }
 
             const endTime = performance.now();
             const durationMs = endTime - startTime;

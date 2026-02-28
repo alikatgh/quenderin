@@ -240,28 +240,34 @@ export function GeneralChatArea({ logs, status, chatInput, setChatInput, onSend,
                                                 <div className="text-[13px] font-bold text-purple-600/80 dark:text-purple-400/80 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                                                     AI Assistant {log.isStreaming && <span className="flex h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />}
                                                 </div>
-                                                <div className="text-[16px] text-zinc-800 dark:text-zinc-300 leading-relaxed markdown-body prose prose-zinc dark:prose-invert max-w-none">
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[remarkGfm]}
-                                                        components={{
-                                                            code({ node, inline, className, children, ...props }: any) {
-                                                                const match = /language-(\w+)/.exec(className || '')
-                                                                return (!inline && match) ? (
-                                                                    <CodeBlock
-                                                                        {...props}
-                                                                        language={match[1]}
-                                                                        children={children}
-                                                                    />
-                                                                ) : (
-                                                                    <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
-                                                                        {children}
-                                                                    </code>
-                                                                )
-                                                            }
-                                                        }}
-                                                    >
-                                                        {log.message}
-                                                    </ReactMarkdown>
+                                                <div className="text-[16px] text-zinc-800 dark:text-zinc-300 leading-relaxed">
+                                                    {log.isStreaming ? (
+                                                        <span className="whitespace-pre-wrap">{log.message}<span className="inline-block w-[2px] h-[1em] bg-purple-500 ml-0.5 align-text-bottom animate-pulse" /></span>
+                                                    ) : (
+                                                        <div className="markdown-body prose prose-zinc dark:prose-invert max-w-none">
+                                                            <ReactMarkdown
+                                                                remarkPlugins={[remarkGfm]}
+                                                                components={{
+                                                                    code({ node, inline, className, children, ...props }: any) {
+                                                                        const match = /language-(\w+)/.exec(className || '')
+                                                                        return (!inline && match) ? (
+                                                                            <CodeBlock
+                                                                                {...props}
+                                                                                language={match[1]}
+                                                                                children={children}
+                                                                            />
+                                                                        ) : (
+                                                                            <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
+                                                                                {children}
+                                                                            </code>
+                                                                        )
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {log.message}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {!log.isStreaming && log.meta && (
                                                     <div className="mt-3 flex items-center gap-3 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">
