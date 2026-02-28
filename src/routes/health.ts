@@ -2,6 +2,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
+import { randomUUID } from 'crypto';
 import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
@@ -9,7 +10,7 @@ import { getReadiness, getReadinessHistory } from '../services/readiness.service
 
 const router = Router();
 
-const DIAGNOSTICS_SCHEMA_VERSION = '1.0.0';
+const DIAGNOSTICS_SCHEMA_VERSION = '1.1.0';
 const appVersion = process.env.npm_package_version ?? 'unknown';
 
 const resolveCommitSha = (): string => {
@@ -45,6 +46,15 @@ export function setHealthLlmService(service: {
 router.get('/diagnostics', (req, res) => {
     const hw = getHardwareProfile();
     const readiness = getReadiness();
+    const diagnosticsIdFromQuery = Array.isArray(req.query.diagnosticsId)
+        ? req.query.diagnosticsId[0]
+        : req.query.diagnosticsId;
+    const diagnosticsIdFromHeader = req.header('x-diagnostics-id');
+    const diagnosticsId = typeof diagnosticsIdFromQuery === 'string' && diagnosticsIdFromQuery.trim().length > 0
+        ? diagnosticsIdFromQuery.trim()
+        : typeof diagnosticsIdFromHeader === 'string' && diagnosticsIdFromHeader.trim().length > 0
+            ? diagnosticsIdFromHeader.trim()
+            : randomUUID();
     const historyLimitRaw = Array.isArray(req.query.historyLimit)
         ? req.query.historyLimit[0]
         : req.query.historyLimit;
@@ -56,6 +66,7 @@ router.get('/diagnostics', (req, res) => {
 
     res.status(200).json({
         status: 'OK',
+        diagnosticsId,
         diagnosticsSchemaVersion: DIAGNOSTICS_SCHEMA_VERSION,
         capturedAt: new Date().toISOString(),
         buildInfo: {

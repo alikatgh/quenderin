@@ -37,6 +37,13 @@ const CONTEXT_LABELS: Record<number, string> = {
     8192: 'Ultra',
 };
 
+const createDiagnosticsId = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `diag-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
@@ -54,6 +61,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     const handleCopyDiagnostics = async () => {
         try {
+            const diagnosticsId = createDiagnosticsId();
             let serverDiagnostics: unknown = null;
             let serverDiagnosticsError: string | null = null;
 
@@ -61,7 +69,13 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2500);
                 try {
-                    const response = await fetch('/diagnostics?historyLimit=5', { cache: 'no-store', signal: controller.signal });
+                    const response = await fetch(`/diagnostics?historyLimit=5&diagnosticsId=${encodeURIComponent(diagnosticsId)}`, {
+                        cache: 'no-store',
+                        signal: controller.signal,
+                        headers: {
+                            'x-diagnostics-id': diagnosticsId,
+                        },
+                    });
 
                     if (!response.ok) {
                         serverDiagnosticsError = `HTTP ${response.status}`;
@@ -76,7 +90,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
             }
 
             const summary = {
-                diagnosticsSchemaVersion: '1.0.0',
+                diagnosticsId,
+                diagnosticsSchemaVersion: '1.1.0',
                 capturedAt: new Date().toISOString(),
                 client: {
                     readinessStage: readinessStage ?? 'unknown',
