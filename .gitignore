@@ -15,7 +15,8 @@ dist/
 build/
 out/
 release/
-public/
+# public/ is the built UI served by Express — must be tracked
+# Rebuild with: cd ui && npm run build
 
 # --- Logs ---
 # Ignore log files.

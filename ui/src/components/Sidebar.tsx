@@ -11,7 +11,7 @@ interface SidebarProps {
     activeModel?: string;
 }
 
-export function Sidebar({ isOpen, wsReady, logs, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...' }: SidebarProps) {
+export function Sidebar({ isOpen, wsReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...' }: SidebarProps) {
     const modelLabel = activeModel.includes('/') ? activeModel.split('/').pop()! : activeModel;
 
     return (
