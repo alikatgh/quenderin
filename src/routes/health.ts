@@ -12,11 +12,52 @@ const router = Router();
  * Shared LlmService reference — set via setLlmService() from server.ts.
  * This avoids circular imports while letting /health reflect the real loaded model.
  */
-let llmServiceRef: { getActiveModelLabel: () => string } | null = null;
+let llmServiceRef: {
+    getActiveModelLabel: () => string;
+    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean };
+} | null = null;
 
-export function setHealthLlmService(service: { getActiveModelLabel: () => string }) {
+export function setHealthLlmService(service: {
+    getActiveModelLabel: () => string;
+    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean };
+}) {
     llmServiceRef = service;
 }
+
+router.get('/diagnostics', (_req, res) => {
+    const hw = getHardwareProfile();
+    const readiness = getReadiness();
+    const lifecycle = llmServiceRef?.getModelLifecycleInfo?.();
+    const activeModel = llmServiceRef?.getActiveModelLabel() ?? 'not loaded';
+
+    res.status(200).json({
+        status: 'OK',
+        capturedAt: new Date().toISOString(),
+        process: {
+            pid: process.pid,
+            nodeVersion: process.version,
+            platform: process.platform,
+            arch: process.arch,
+            uptimeSec: Math.round(process.uptime()),
+            rssMb: +((process.memoryUsage().rss || 0) / (1024 ** 2)).toFixed(1),
+            heapUsedMb: +((process.memoryUsage().heapUsed || 0) / (1024 ** 2)).toFixed(1),
+            heapTotalMb: +((process.memoryUsage().heapTotal || 0) / (1024 ** 2)).toFixed(1),
+        },
+        readiness,
+        llm: {
+            activeModel,
+            lifecycle: lifecycle ?? null,
+        },
+        hardware: {
+            tier: hw.tier,
+            arch: hw.arch,
+            isArm: hw.isArm,
+            cpuCores: hw.cpuCores,
+            totalRamGb: +hw.totalRamGb.toFixed(1),
+            tryGpuOffload: hw.tryGpuOffload,
+        },
+    });
+});
 
 router.get('/ready', (_req, res) => {
     const readiness = getReadiness();

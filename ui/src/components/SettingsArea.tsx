@@ -53,16 +53,42 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     };
 
     const handleCopyDiagnostics = async () => {
-        const summary = {
-            readinessStage: readinessStage ?? 'unknown',
-            hardwareTier: hardwareTier ?? 'unknown',
-            contextSize: settings.contextSize,
-            memorySafetyEnabled: settings.memorySafetyEnabled,
-            lastOutage: lastOutageInfo ?? null,
-            capturedAt: new Date().toISOString(),
-        };
-        const payload = JSON.stringify(summary, null, 2);
         try {
+            let serverDiagnostics: unknown = null;
+            let serverDiagnosticsError: string | null = null;
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2500);
+                try {
+                    const response = await fetch('/diagnostics', { cache: 'no-store', signal: controller.signal });
+
+                    if (!response.ok) {
+                        serverDiagnosticsError = `HTTP ${response.status}`;
+                    } else {
+                        serverDiagnostics = await response.json();
+                    }
+                } finally {
+                    clearTimeout(timeout);
+                }
+            } catch (error) {
+                serverDiagnosticsError = error instanceof Error ? error.message : String(error);
+            }
+
+            const summary = {
+                capturedAt: new Date().toISOString(),
+                client: {
+                    readinessStage: readinessStage ?? 'unknown',
+                    hardwareTier: hardwareTier ?? 'unknown',
+                    contextSize: settings.contextSize,
+                    memorySafetyEnabled: settings.memorySafetyEnabled,
+                    lastOutage: lastOutageInfo ?? null,
+                },
+                server: serverDiagnostics,
+                serverDiagnosticsError,
+            };
+
+            const payload = JSON.stringify(summary, null, 2);
             await navigator.clipboard.writeText(payload);
             setDiagCopied(true);
             setTimeout(() => setDiagCopied(false), 1800);
