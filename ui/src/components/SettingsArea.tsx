@@ -50,6 +50,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [diagCopied, setDiagCopied] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
     const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
+    const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
 
     const shortDiagnosticsId = lastDiagnosticsId
         ? lastDiagnosticsId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)
@@ -66,6 +67,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     };
 
     const handleCopyDiagnostics = async () => {
+        let payload = '';
         try {
             setDiagCopyFailed(false);
             const diagnosticsId = createDiagnosticsId();
@@ -112,14 +114,18 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 serverDiagnosticsError,
             };
 
-            const payload = JSON.stringify(summary, null, 2);
+            payload = JSON.stringify(summary, null, 2);
             await navigator.clipboard.writeText(payload);
             setDiagCopyFailed(false);
+            setManualDiagnosticsPayload(null);
             setDiagCopied(true);
             setTimeout(() => setDiagCopied(false), 1800);
         } catch {
             setDiagCopied(false);
             setDiagCopyFailed(true);
+            if (payload) {
+                setManualDiagnosticsPayload(payload);
+            }
             setTimeout(() => setDiagCopyFailed(false), 2200);
         }
     };
@@ -238,6 +244,27 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                     <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
                                         Recovered at {new Date(lastOutageInfo.recoveredAt).toLocaleString()}
                                     </div>
+                                    {manualDiagnosticsPayload && (
+                                        <div className="mt-3 rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-100/60 dark:bg-amber-500/10 p-2.5">
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+                                                    Clipboard unavailable — copy manually
+                                                </div>
+                                                <button
+                                                    onClick={() => setManualDiagnosticsPayload(null)}
+                                                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-200/60 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                                >
+                                                    Hide
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                readOnly
+                                                value={manualDiagnosticsPayload}
+                                                onFocus={(e) => e.currentTarget.select()}
+                                                className="w-full h-28 text-[10px] leading-4 font-mono rounded-md border border-amber-300/70 dark:border-amber-500/30 bg-amber-50 dark:bg-[#09090b] text-amber-900 dark:text-amber-100 p-2 outline-none"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
