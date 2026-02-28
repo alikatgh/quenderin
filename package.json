@@ -8,7 +8,7 @@
   "scripts": {
     "dashboard": "tsx src/index.ts dashboard",
     "agent": "tsx src/index.ts agent",
-    "check": "npm run typecheck && npm run lint",
+    "check": "npm run typecheck && npm run lint && npm run test:recommendation",
     "typecheck": "npm run typecheck:src && npm run typecheck:ui",
     "typecheck:src": "tsc --noEmit",
     "typecheck:ui": "cd ui && npx tsc --noEmit",
