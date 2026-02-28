@@ -62,6 +62,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
     const [diagCopied, setDiagCopied] = useState(false);
+    const [diagCopiedFromFallback, setDiagCopiedFromFallback] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
     const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
     const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
@@ -138,6 +139,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
             payload = JSON.stringify(summary, null, 2);
             await navigator.clipboard.writeText(payload);
             setDiagCopyFailed(false);
+            setDiagCopiedFromFallback(false);
             setManualDiagnosticsPayload(null);
             setDiagCopied(true);
             setTimeout(() => setDiagCopied(false), 1800);
@@ -156,9 +158,13 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         try {
             await navigator.clipboard.writeText(manualDiagnosticsPayload);
             setDiagCopyFailed(false);
+            setDiagCopiedFromFallback(true);
             setManualDiagnosticsPayload(null);
             setDiagCopied(true);
-            setTimeout(() => setDiagCopied(false), 1800);
+            setTimeout(() => {
+                setDiagCopied(false);
+                setDiagCopiedFromFallback(false);
+            }, 1800);
         } catch {
             setDiagCopied(false);
             setDiagCopyFailed(true);
@@ -266,7 +272,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 {diagCopyFailed
                                                     ? 'Copy failed • Retry'
                                                     : diagCopied
-                                                        ? `Copied! • ID: ${shortDiagnosticsId ?? 'n/a'}`
+                                                        ? `${diagCopiedFromFallback ? 'Copied from fallback' : 'Copied!'} • ID: ${shortDiagnosticsId ?? 'n/a'}`
                                                         : 'Copy diagnostics'}
                                             </button>
                                             <button
