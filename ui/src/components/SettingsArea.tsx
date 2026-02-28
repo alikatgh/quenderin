@@ -61,7 +61,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2500);
                 try {
-                    const response = await fetch('/diagnostics', { cache: 'no-store', signal: controller.signal });
+                    const response = await fetch('/diagnostics?historyLimit=5', { cache: 'no-store', signal: controller.signal });
 
                     if (!response.ok) {
                         serverDiagnosticsError = `HTTP ${response.status}`;

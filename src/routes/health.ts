@@ -24,10 +24,15 @@ export function setHealthLlmService(service: {
     llmServiceRef = service;
 }
 
-router.get('/diagnostics', (_req, res) => {
+router.get('/diagnostics', (req, res) => {
     const hw = getHardwareProfile();
     const readiness = getReadiness();
-    const readinessHistory = getReadinessHistory();
+    const historyLimitRaw = Array.isArray(req.query.historyLimit)
+        ? req.query.historyLimit[0]
+        : req.query.historyLimit;
+    const parsedLimit = Number.parseInt(String(historyLimitRaw ?? ''), 10);
+    const historyLimit = Number.isFinite(parsedLimit) ? parsedLimit : undefined;
+    const readinessHistory = getReadinessHistory(historyLimit);
     const lifecycle = llmServiceRef?.getModelLifecycleInfo?.();
     const activeModel = llmServiceRef?.getActiveModelLabel() ?? 'not loaded';
 
