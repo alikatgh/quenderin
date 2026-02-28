@@ -21,6 +21,9 @@ export interface AppSettings {
 }
 
 export function useAgentSocket() {
+    const MAX_LOG_ENTRIES = 300;
+    const capLogs = (next: LogEntry[]) => next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
+
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [status, setStatus] = useState<'idle' | 'running' | 'done'>('idle');
     const [currentUI, setCurrentUI] = useState<UIElement[]>([]);
@@ -84,7 +87,7 @@ export function useAgentSocket() {
                         } else {
                             newLogs.push({ ...entry, type: 'chat_response', message: data.text, isStreaming: true });
                         }
-                        return newLogs;
+                        return capLogs(newLogs);
                     });
                     setStatus((prev) => (prev === 'running' ? prev : 'running'));
                     return;
@@ -94,12 +97,12 @@ export function useAgentSocket() {
                         const last = newLogs[newLogs.length - 1];
                         if (last && last.type === 'chat_response' && last.isStreaming) {
                             newLogs[newLogs.length - 1] = { ...last, message: data.message, isStreaming: false, meta: data.meta };
-                            return newLogs;
+                            return capLogs(newLogs);
                         } else {
                             entry.message = data.message;
                             entry.isStreaming = false;
                             entry.meta = data.meta;
-                            return [...newLogs, entry];
+                            return capLogs([...newLogs, entry]);
                         }
                     });
                     setStatus('done');
@@ -137,7 +140,7 @@ export function useAgentSocket() {
                 // React state without bound (each spread is O(n), 300 is imperceptible to users).
                 setLogs((prev) => {
                     const next = [...prev, entry];
-                    return next.length > 300 ? next.slice(-300) : next;
+                    return capLogs(next);
                 });
             } catch (e) {
                 console.error("Invalid WS message", e);
@@ -146,12 +149,12 @@ export function useAgentSocket() {
 
         ws.onclose = () => {
             setWsReady(false);
-            setLogs((prev) => [...prev, {
+            setLogs((prev) => capLogs([...prev, {
                 id: 'close',
                 type: 'error',
                 message: "**Connection Lost**\nThe interface lost connection to Quenderin.\n**How to fix this:**\n1. Check your computer window where Quenderin is running.\n2. If it closed, please restart the application.\n3. Once it's running again, click \"Reconnect\" or refresh this page.",
                 timestamp: ''
-            }]);
+            }]));
             setStatus('idle');
         };
 
@@ -160,12 +163,12 @@ export function useAgentSocket() {
 
     const sendGoal = (goal: string, attachments: { name: string, content: string }[] = []) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            setLogs(prev => [...prev, {
+            setLogs(prev => capLogs([...prev, {
                 id: 'err',
                 type: 'error',
                 message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
                 timestamp: new Date().toLocaleTimeString()
-            }]);
+            }]));
             return false;
         }
 
@@ -180,12 +183,12 @@ export function useAgentSocket() {
 
     const sendChatMessage = (msg: string, attachments: { name: string, content: string }[] = []) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            setLogs(prev => [...prev, {
+            setLogs(prev => capLogs([...prev, {
                 id: 'err',
                 type: 'error',
                 message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
                 timestamp: new Date().toLocaleTimeString()
-            }]);
+            }]));
             return false;
         }
 
@@ -198,9 +201,9 @@ export function useAgentSocket() {
             (now - lastUserChatLogRef.current.at) < settingsRef.current.chatLogDedupeMs;
 
         if (!recentlyLoggedDuplicate) {
-            setLogs(prev => [...prev, {
+            setLogs(prev => capLogs([...prev, {
                 id: Math.random().toString(36).substr(2, 9), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
-            }]);
+            }]));
             lastUserChatLogRef.current = { message: normalized, at: now };
         }
 
