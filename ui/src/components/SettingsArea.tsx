@@ -22,6 +22,8 @@ interface SettingsAreaProps {
     hardwareTier?: string;
     /** Last backend outage summary persisted from runtime recovery events */
     lastOutageInfo?: { seconds: number; recoveredAt: string } | null;
+    /** Clears persisted outage diagnostics */
+    onClearOutageHistory?: () => void;
 }
 
 const CONTEXT_LABELS: Record<number, string> = {
@@ -33,7 +35,7 @@ const CONTEXT_LABELS: Record<number, string> = {
     8192: 'Ultra',
 };
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -135,8 +137,16 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                             {lastOutageInfo && (
                                 <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
-                                    <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                                        Last backend outage: {lastOutageInfo.seconds}s
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                            Last backend outage: {lastOutageInfo.seconds}s
+                                        </div>
+                                        <button
+                                            onClick={onClearOutageHistory}
+                                            className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                        >
+                                            Clear history
+                                        </button>
                                     </div>
                                     <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
                                         Recovered at {new Date(lastOutageInfo.recoveredAt).toLocaleString()}

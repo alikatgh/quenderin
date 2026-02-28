@@ -423,6 +423,12 @@ function AppContent() {
 
   const outageSeconds = Math.max(1, Math.round(lastOutageMs / 1000));
   const shouldShowSettingsShortcut = lastOutageMs >= 15_000;
+  const clearOutageHistory = () => {
+    setLastOutageInfo(null);
+    setLastOutageMs(0);
+    outageStartRef.current = null;
+    localStorage.removeItem('quenderin_last_outage');
+  };
 
   return (
     <>
@@ -535,6 +541,7 @@ function AppContent() {
               contextOptions={healthData?.contextOptions}
               hardwareTier={healthData?.hardware?.tier}
               lastOutageInfo={lastOutageInfo}
+              onClearOutageHistory={clearOutageHistory}
               onThemeChange={(pref) => {
                 // Apply immediately to DOM
                 if (pref === 'dark') setDarkMode(true);
