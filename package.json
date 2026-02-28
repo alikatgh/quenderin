@@ -15,6 +15,8 @@
     "lint": "npm run lint:src && npm run lint:ui",
     "lint:src": "eslint src --ext .ts --max-warnings=0",
     "lint:ui": "eslint ui/src --ext .ts,.tsx --max-warnings=0",
+    "test:recommendation": "vitest run tests/recommended-model.test.ts",
+    "check:recommendation": "npm run typecheck:src && npm run test:recommendation",
     "build:tsc": "tsc",
     "electron:dev": "npm run build:tsc && electron .",
     "electron:build": "npm run build:tsc && electron-builder --mac"
