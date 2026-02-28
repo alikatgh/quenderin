@@ -102,9 +102,14 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
     const [lastSentPayload, setLastSentPayload] = useState<{ message: string, attachments: { name: string, content: string }[] } | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [chatFilter, setChatFilter] = useState('');
 
     // Filter logs to only show chat events (chat and chat_response) and general status/errors
     const chatLogs = logs.filter(l => ['chat', 'chat_response', 'error'].includes(l.type));
+    const normalizedFilter = chatFilter.trim().toLowerCase();
+    const visibleChatLogs = normalizedFilter.length === 0
+        ? chatLogs
+        : chatLogs.filter((entry) => entry.message.toLowerCase().includes(normalizedFilter));
     const lastUserMessage = [...logs].reverse().find((l) => l.type === 'chat')?.message;
     const retryAttachmentCount = lastSentPayload?.attachments?.length ?? 0;
 
@@ -216,6 +221,15 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
         onVoiceStop();
     };
 
+    const handleNewChatLocal = () => {
+        setChatInput('');
+        setAttachments([]);
+        setMessageQueue([]);
+        setIsQueuing(false);
+        setChatFilter('');
+        textareaRef.current?.focus();
+    };
+
     useEffect(() => {
         if (status !== 'running' && messageQueue.length > 0 && !isQueuing) {
             setIsQueuing(true);
@@ -239,9 +253,25 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-40 pt-10">
 
-                    <div className="mb-6 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/80 dark:bg-[#111113]/70 backdrop-blur px-4 py-3 shadow-sm">
-                        <h2 className="text-[18px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Chats</h2>
-                        <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">Private, local conversation with your assistant.</p>
+                    <div className="mb-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/80 dark:bg-[#111113]/70 backdrop-blur px-4 py-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                            <h2 className="text-[18px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Chats</h2>
+                            <button
+                                onClick={handleNewChatLocal}
+                                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 text-[12px] font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                + New chat
+                            </button>
+                        </div>
+                        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/60 px-3 py-2">
+                            <input
+                                value={chatFilter}
+                                onChange={(e) => setChatFilter(e.target.value)}
+                                placeholder="Search chats..."
+                                className="w-full bg-transparent text-[13px] text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 outline-none"
+                            />
+                        </div>
+                        <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-2">Private, local conversation with your assistant.</p>
                     </div>
 
                     {/* Preset Switcher Bar */}
@@ -329,9 +359,16 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                         </div>
                     )}
 
-                    {chatLogs.length > 0 && (
+                    {chatLogs.length > 0 && visibleChatLogs.length === 0 && (
+                        <div className="mt-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 px-4 py-6 text-center animate-fade-in">
+                            <p className="text-[14px] font-semibold text-zinc-700 dark:text-zinc-300">No chats match your search.</p>
+                            <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1">Try a different keyword or clear the search box.</p>
+                        </div>
+                    )}
+
+                    {visibleChatLogs.length > 0 && (
                         <div className="w-full animate-fade-in space-y-8">
-                            {chatLogs.map((log) => {
+                            {visibleChatLogs.map((log) => {
                                 if (log.type === 'chat') {
                                     return (
                                         <div key={log.id} className="flex gap-4 sm:gap-6 group animate-entrance">
