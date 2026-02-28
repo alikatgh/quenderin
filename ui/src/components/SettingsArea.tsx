@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface Settings {
@@ -65,6 +65,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
     const [lastDiagnosticsId, setLastDiagnosticsId] = useState<string | null>(null);
     const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
+    const manualPayloadRef = useRef<HTMLTextAreaElement | null>(null);
 
     const shortDiagnosticsId = lastDiagnosticsId
         ? lastDiagnosticsId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)
@@ -73,6 +74,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     useEffect(() => {
         setSettings(currentSettings);
     }, [currentSettings]);
+
+    useEffect(() => {
+        if (!manualDiagnosticsPayload || !manualPayloadRef.current) return;
+        manualPayloadRef.current.focus();
+        manualPayloadRef.current.select();
+    }, [manualDiagnosticsPayload]);
 
     const handleSave = () => {
         onSave(settings);
@@ -280,6 +287,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 </div>
                                             </div>
                                             <textarea
+                                                ref={manualPayloadRef}
                                                 readOnly
                                                 value={manualDiagnosticsPayload}
                                                 onFocus={(e) => e.currentTarget.select()}
