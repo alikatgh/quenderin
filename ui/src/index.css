@@ -67,7 +67,7 @@
 
 @layer utilities {
     .claude-input-wrapper {
-        @apply relative flex items-end w-full max-w-3xl mx-auto bg-white dark:bg-[#121215] border border-zinc-200/60 dark:border-[#27272a] rounded-2xl transition-all duration-300 shadow-[0_2px_12px_#00000008] dark:shadow-[0_8px_30px_#00000066] hover:border-zinc-300 dark:hover:border-zinc-700 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-4 focus-within:ring-purple-500/10 dark:focus-within:ring-purple-500/5 focus-within:shadow-[0_12px_40px_#0000000f] dark:focus-within:shadow-[0_16px_48px_#00000099];
+        @apply relative flex items-end w-full max-w-3xl mx-auto bg-white dark:bg-[#121215] border border-zinc-200/70 dark:border-[#2c2c31] rounded-xl transition-all duration-300 shadow-[0_2px_10px_#00000008] dark:shadow-[0_8px_24px_#00000066] hover:border-zinc-300 dark:hover:border-zinc-700 focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-purple-500/10 dark:focus-within:ring-purple-500/5 focus-within:shadow-[0_10px_30px_#0000000f] dark:focus-within:shadow-[0_14px_38px_#00000099];
     }
 
     .premium-card {
@@ -79,7 +79,7 @@
     }
 
     .claude-textarea {
-        @apply w-full bg-transparent border-none resize-none py-4 pl-5 pr-14 text-[16px] leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 max-h-[250px] overflow-y-auto transition-[height];
+        @apply w-full bg-transparent border-none resize-none py-3.5 pl-4 pr-12 text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 max-h-[250px] overflow-y-auto transition-[height];
     }
 
     .markdown-body {

@@ -252,7 +252,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
             onDrop={handleFileDrop}
         >
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
-                <div className="max-w-[760px] mx-auto pb-40 pt-10">
+                <div className="max-w-[760px] mx-auto pb-36 pt-8">
 
                     <div className="mb-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white/80 dark:bg-[#111113]/70 backdrop-blur px-4 py-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3 mb-3">
@@ -397,7 +397,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                     )}
 
                     {visibleChatLogs.length > 0 && (
-                        <div className="w-full animate-fade-in space-y-8">
+                        <div className="w-full animate-fade-in space-y-6">
                             {visibleChatLogs.map((log) => {
                                 if (log.type === 'chat') {
                                     return (
@@ -416,7 +416,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
 
                                 if (log.type === 'chat_response') {
                                     return (
-                                        <div key={log.id} className="flex gap-4 sm:gap-6 bg-zinc-50/50 dark:bg-zinc-800/10 -mx-4 px-4 py-8 rounded-3xl border border-zinc-200/40 dark:border-white/[0.03] hover:border-zinc-300 dark:hover:border-white/10 transition-all duration-300 shadow-sm animate-entrance">
+                                        <div key={log.id} className="flex gap-4 sm:gap-6 bg-zinc-50/50 dark:bg-zinc-800/10 -mx-3 px-3 py-6 rounded-2xl border border-zinc-200/40 dark:border-white/[0.03] hover:border-zinc-300 dark:hover:border-white/10 transition-all duration-300 shadow-sm animate-entrance">
                                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-100 border border-purple-200 text-purple-600 dark:bg-purple-500/10 dark:border-purple-500/20 dark:text-purple-400 flex flex-shrink-0 items-center justify-center shadow-sm">
                                                 <Cpu className="w-5 h-5" />
                                             </div>
@@ -515,7 +515,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                 </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white dark:from-[#18181b] dark:via-[#18181b] to-transparent pt-12 pb-6 px-4 pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white dark:from-[#18181b] dark:via-[#18181b] to-transparent pt-10 pb-5 px-4 pointer-events-none">
                 <div className="claude-input-wrapper pointer-events-auto">
                     {attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2 px-4 py-2 mb-2">
@@ -543,19 +543,19 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleStart() }
                         }}
                     />
-                    <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
+                    <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
                         <button
                             onMouseDown={startRecording}
                             onMouseUp={stopRecording}
                             onMouseLeave={isRecording ? stopRecording : undefined}
-                            className={`p-2.5 rounded-xl transition-all duration-300 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                            className={`p-2 rounded-lg transition-all duration-300 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                         >
                             <Mic className="w-5 h-5" />
                         </button>
                         <button
                             onClick={handleStart}
                             disabled={isQueuing || (!chatInput.trim() && attachments.length === 0)}
-                            className={`p-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-400 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/10'}`}
+                            className={`p-2 rounded-lg transition-all duration-300 flex items-center gap-1.5 ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-400 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/10'}`}
                         >
                             <span className="text-[11px] font-bold uppercase tracking-widest hidden sm:inline-block">{(status === 'running' && chatInput.trim()) ? 'Queue' : ''}</span>
                             {isQueuing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
