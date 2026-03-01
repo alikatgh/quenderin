@@ -406,7 +406,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                 <User className="w-5 h-5" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-[16px] text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed whitespace-pre-wrap">
+                                                <div className="text-[15px] text-zinc-800 dark:text-zinc-200 font-medium leading-7 whitespace-pre-wrap">
                                                     {log.message}
                                                 </div>
                                             </div>
@@ -424,7 +424,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                 <div className="text-[13px] font-bold text-purple-600/80 dark:text-purple-400/80 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                                                     AI Assistant {log.isStreaming && <span className="flex h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />}
                                                 </div>
-                                                <div className="text-[16px] text-zinc-800 dark:text-zinc-300 leading-relaxed">
+                                                <div className="text-[15px] text-zinc-800 dark:text-zinc-300 leading-7">
                                                     <div className="markdown-body prose prose-zinc dark:prose-invert max-w-none">
                                                         <ReactMarkdown
                                                             remarkPlugins={[remarkGfm]}
@@ -438,7 +438,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                                             children={children}
                                                                         />
                                                                     ) : (
-                                                                        <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
+                                                                        <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-[13px] font-medium`}>
                                                                             {children}
                                                                         </code>
                                                                     )
@@ -503,7 +503,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                         <div className="text-[13px] font-bold text-zinc-400 dark:text-zinc-500 mb-1 uppercase tracking-wider flex items-center gap-2">
                                             Queued for processing <Loader2 className="w-3 h-3 animate-spin" />
                                         </div>
-                                        <div className="text-[16px] text-zinc-500 dark:text-zinc-500 font-medium leading-relaxed whitespace-pre-wrap line-clamp-3">
+                                        <div className="text-[15px] text-zinc-500 dark:text-zinc-500 font-medium leading-7 whitespace-pre-wrap line-clamp-3">
                                             {msg}
                                         </div>
                                     </div>
