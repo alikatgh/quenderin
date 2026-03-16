@@ -1,6 +1,9 @@
 import { createServer } from 'http';
 import net from 'net';
 import open from 'open';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import { createApp } from './app.js';
 import { WebSocketManager } from './websocket/index.js';
 import { AgentService } from './services/agent.service.js';
@@ -16,6 +19,35 @@ import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
 import { setHealthLlmService } from './routes/health.js';
 import { resetReadinessForStartup, setReadiness } from './services/readiness.service.js';
+
+/**
+ * Periodically clean up orphaned Quenderin temp files (screenshots, WAV recordings)
+ * to prevent /tmp from filling up on devices with small storage.
+ */
+async function cleanupOrphanedTempFiles(): Promise<void> {
+    try {
+        const tmpDir = os.tmpdir();
+        const entries = await fs.readdir(tmpDir);
+        const now = Date.now();
+        const maxAgeMs = 60 * 60 * 1000; // 1 hour
+
+        for (const entry of entries) {
+            if (!entry.startsWith('desktop_screen_') &&
+                !entry.startsWith('screen_') &&
+                !entry.startsWith('window_dump_') &&
+                !entry.startsWith('quenderin_voice_')) {
+                continue;
+            }
+            try {
+                const filePath = path.join(tmpDir, entry);
+                const stat = await fs.stat(filePath);
+                if (now - stat.mtimeMs > maxAgeMs) {
+                    await fs.unlink(filePath);
+                }
+            } catch { /* file may have been deleted by another process */ }
+        }
+    } catch { /* non-fatal */ }
+}
 
 async function isPortFree(port: number): Promise<boolean> {
     return new Promise((resolve) => {
@@ -100,13 +132,22 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const app = createApp(metricsService, agentService, llmService);
     const server = createServer(app);
 
+    // 2b. Start periodic temp file cleanup (every 30 min)
+    const cleanupTimer = setInterval(cleanupOrphanedTempFiles, 30 * 60 * 1000);
+    cleanupTimer.unref();
+    // Run once at startup to clean up leftovers from previous crashes
+    cleanupOrphanedTempFiles();
+
     // 3. Graceful shutdown handlers
     const shutdown = () => {
         setReadiness(false, 'shutting-down', 'Shutdown signal received');
         console.log('\n[System] Shutting down gracefully...');
+        clearInterval(cleanupTimer);
         backgroundDaemon.stop();
         voiceService.shutdown();
         ocrService.terminate().catch(() => { });
+        // Final cleanup of temp files on shutdown
+        cleanupOrphanedTempFiles().catch(() => {});
         server.close(() => {
             console.log('[System] HTTP server closed.');
             process.exit(0);
@@ -129,6 +170,11 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             ocrService.terminate().catch(() => { });
             reject(err);
         });
+        // Set HTTP timeouts for slow networks/devices — prevent connection starvation
+        server.timeout = 2 * 60 * 1000;        // 2 min for request processing
+        server.keepAliveTimeout = 65 * 1000;    // Slightly above typical LB idle timeout (60s)
+        server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
+
         server.listen(selectedPort, async () => {
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
             setReadiness(true, 'serving', `Listening on port ${selectedPort}`);

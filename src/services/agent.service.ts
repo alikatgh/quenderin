@@ -8,6 +8,9 @@ import { ActionExecutor } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
 import { AgentEvents, AgentAction, IDeviceProvider, ILlmProvider } from "../types/index.js";
 import { MetricsService } from "./metrics.service.js";
+import { getHardwareProfile } from "../utils/hardware.js";
+
+const HW = getHardwareProfile();
 
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
 You will be given the current UI state as a compact JSON list of elements, and a history of your past actions.
@@ -83,7 +86,17 @@ export class AgentService {
         this.uiVerifier = new UiVerifier(this.deviceProvider, this.uiParserService, this.ocrService);
     }
 
-    public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = 15): Promise<void> {
+    /** Default max steps scales with hardware — fewer steps on slow devices to prevent
+     *  multi-minute inference loops. Override via QUENDERIN_MAX_AGENT_STEPS env var. */
+    private static resolveDefaultMaxSteps(): number {
+        const envSteps = Number(process.env.QUENDERIN_MAX_AGENT_STEPS);
+        if (Number.isFinite(envSteps) && envSteps >= 1) return envSteps;
+        if (HW.tier === 'embedded') return 8;
+        if (HW.tier === 'constrained') return 12;
+        return 15;
+    }
+
+    public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps()): Promise<void> {
         console.log(`[AgentService] Starting mission: ${goal}`);
         if (attachments.length > 0) {
             console.log(`[AgentService] Context enriched with ${attachments.length} attachments.`);
@@ -98,17 +111,30 @@ export class AgentService {
         const startTimeMs = Date.now();
         let totalRetries = 0;
 
-        // --- NEW: Phase 7 Intent Classification Bypass ---
+        // --- Intent Classification —  regex-first, LLM fallback ---
+        // On embedded/constrained hardware, skip the LLM call entirely when
+        // regex classification has high/medium confidence — saves 5-30s per request.
         emitter.emit('status', " Classifying intent...");
         try {
-            const intentRaw = await this.llmProvider.generateAction(
-                INTENT_CLASSIFIER_PROMPT,
-                `User Request: "${goal}"`,
-                { maxTokens: 10, temperature: 0.1 }
-            );
-            const intent = intentRaw.trim().toUpperCase();
+            const { classifyIntent } = await import('./intentClassifier.js');
+            const regexResult = classifyIntent(goal);
+            const skipLlmClassification =
+                (HW.tier === 'embedded' || HW.tier === 'constrained') &&
+                (regexResult.confidence === 'high' || regexResult.confidence === 'medium');
 
-            if (intent.includes("CHAT")) {
+            let isChat = false;
+            if (skipLlmClassification) {
+                isChat = regexResult.intent === 'chat';
+            } else {
+                const intentRaw = await this.llmProvider.generateAction(
+                    INTENT_CLASSIFIER_PROMPT,
+                    `User Request: "${goal}"`,
+                    { maxTokens: 10, temperature: 0.1 }
+                );
+                isChat = intentRaw.trim().toUpperCase().includes("CHAT");
+            }
+
+            if (isChat) {
                 emitter.emit('status', " Processing as General Intelligence (Bypassing ADB)...");
                 const prompt = await this.promptBuilder.buildEnvironment(goal, "No active UI elements (Knowledge Mode)", [], "", attachments);
                 const response = await this.llmProvider.generateAction(

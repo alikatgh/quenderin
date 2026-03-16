@@ -3,7 +3,10 @@
  *
  * Each preset defines a system prompt persona, temperature, and max tokens.
  * Users can switch presets to tailor the assistant to specific tasks.
+ * Presets are hardware-aware: on embedded/constrained tiers, system prompts
+ * are shortened and maxTokens reduced to fit small context windows.
  */
+import { getHardwareProfile, type HardwareTier } from '../utils/hardware.js';
 
 export interface Preset {
     id: string;
@@ -13,6 +16,23 @@ export interface Preset {
     systemPrompt: string;
     temperature: number;
     maxTokens: number;
+}
+
+/** Scale preset maxTokens and trim system prompts for constrained hardware */
+function adaptPreset(preset: Preset, tier: HardwareTier): Preset {
+    if (tier === 'powerful' || tier === 'standard') return preset;
+
+    const tokenScale = tier === 'embedded' ? 0.25 : 0.5; // constrained
+    const maxPromptChars = tier === 'embedded' ? 80 : 150;
+
+    return {
+        ...preset,
+        maxTokens: Math.max(64, Math.round(preset.maxTokens * tokenScale)),
+        // Trim system prompt to save context tokens on tiny models
+        systemPrompt: preset.systemPrompt.length > maxPromptChars
+            ? preset.systemPrompt.slice(0, maxPromptChars).replace(/\s+\S*$/, '') + '.'
+            : preset.systemPrompt,
+    };
 }
 
 export const DEFAULT_PRESETS: Preset[] = [
@@ -63,7 +83,10 @@ export const DEFAULT_PRESETS: Preset[] = [
     },
 ];
 
-/** Retrieve a preset by ID, falling back to the general preset */
+/** Retrieve a preset by ID, falling back to the general preset.
+ *  Automatically adapts maxTokens and system prompt for the detected hardware tier. */
 export function getPresetById(id: string): Preset {
-    return DEFAULT_PRESETS.find(p => p.id === id) ?? DEFAULT_PRESETS[0];
+    const base = DEFAULT_PRESETS.find(p => p.id === id) ?? DEFAULT_PRESETS[0];
+    const hw = getHardwareProfile();
+    return adaptPreset(base, hw.tier);
 }

@@ -14,6 +14,9 @@ const MAX_GOAL_LENGTH = 4000;
 /** Max length for a single chat message */
 const MAX_CHAT_LENGTH = 8000;
 
+/** Max buffered bytes before we consider the connection congested */
+const MAX_SEND_BUFFER_BYTES = 1024 * 1024; // 1 MB
+
 export class WebSocketManager {
     private wss: WebSocketServer;
     private activeWs: WebSocket | null = null;
@@ -21,6 +24,20 @@ export class WebSocketManager {
     // even if the old WebSocket's 'close' event never fires (e.g. network drop).
     private activeActionRequiredHandler: ((payload: any) => void) | null = null;
     private activeDownloadProgressHandler: ((payload: any) => void) | null = null;
+
+    /** Send with backpressure check — drops messages when the send buffer is full
+     *  to prevent unbounded memory growth on slow connections */
+    private safeSend(ws: WebSocket, data: string): void {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        if (ws.bufferedAmount > MAX_SEND_BUFFER_BYTES) {
+            // Connection is congested — drop non-critical messages to prevent OOM
+            return;
+        }
+        ws.send(data);
+    }
+
+    /** Ping/pong heartbeat interval — detects dead connections on slow networks */
+    private heartbeatInterval: NodeJS.Timeout | null = null;
 
     constructor(
         server: Server,
@@ -38,6 +55,22 @@ export class WebSocketManager {
         this.voiceService.setMaxListeners(30);
         (this.deviceProvider as any).setMaxListeners?.(30);
         this.setupConnection();
+        this.startHeartbeat();
+    }
+
+    /** Periodic ping to all connected clients — terminates unresponsive sockets */
+    private startHeartbeat(): void {
+        this.heartbeatInterval = setInterval(() => {
+            this.wss.clients.forEach((ws: WebSocket & { isAlive?: boolean }) => {
+                if (ws.isAlive === false) {
+                    // Client didn't respond to last ping — terminate
+                    return ws.terminate();
+                }
+                ws.isAlive = false;
+                ws.ping();
+            });
+        }, 30_000); // 30s heartbeat
+        this.heartbeatInterval.unref(); // Don't block process exit
     }
 
     private isAllowedLocalOrigin(origin: string): boolean {
@@ -73,6 +106,9 @@ export class WebSocketManager {
             }
 
             this.activeWs = ws;
+            // Mark alive for heartbeat
+            (ws as WebSocket & { isAlive?: boolean }).isAlive = true;
+            ws.on('pong', () => { (ws as WebSocket & { isAlive?: boolean }).isAlive = true; });
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
 
@@ -86,15 +122,11 @@ export class WebSocketManager {
             }
 
             const pushActionRequired = (payload: any) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: 'action_required', data: payload }));
-                }
+                this.safeSend(ws, JSON.stringify({ type: 'action_required', data: payload }));
             };
 
             const pushModelDownloadProgress = (payload: any) => {
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: 'model_download_progress', data: payload }));
-                }
+                this.safeSend(ws, JSON.stringify({ type: 'model_download_progress', data: payload }));
             };
 
             // Store refs so a future reconnect can remove them if this ws never emits 'close'
@@ -194,7 +226,7 @@ export class WebSocketManager {
                                 const openIdx = streamBuf.indexOf(TOOL_OPEN);
                                 if (openIdx !== -1) {
                                     const before = streamBuf.slice(0, openIdx);
-                                    if (before) ws.send(JSON.stringify({ type: 'chat_stream', text: before }));
+                                    if (before) this.safeSend(ws, JSON.stringify({ type: 'chat_stream', text: before }));
                                     streamBuf = streamBuf.slice(openIdx);
                                     return;
                                 }
@@ -203,14 +235,14 @@ export class WebSocketManager {
                                 for (let len = Math.min(TOOL_OPEN.length - 1, streamBuf.length); len >= 1; len--) {
                                     if (TOOL_OPEN.startsWith(streamBuf.slice(-len))) {
                                         const toSend = streamBuf.slice(0, streamBuf.length - len);
-                                        if (toSend) ws.send(JSON.stringify({ type: 'chat_stream', text: toSend }));
+                                        if (toSend) this.safeSend(ws, JSON.stringify({ type: 'chat_stream', text: toSend }));
                                         streamBuf = streamBuf.slice(streamBuf.length - len);
                                         return;
                                     }
                                 }
 
                                 // Nothing suspicious — flush the buffer
-                                ws.send(JSON.stringify({ type: 'chat_stream', text: streamBuf }));
+                                this.safeSend(ws, JSON.stringify({ type: 'chat_stream', text: streamBuf }));
                                 streamBuf = '';
                             });
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));

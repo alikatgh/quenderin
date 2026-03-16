@@ -23,12 +23,29 @@ import os from 'os';
  */
 export function availableMemBytes(): number {
     try {
+        // In containers, cgroup limits may be lower than physical RAM.
+        // Check cgroup first and cap the result accordingly.
+        const cgroupLimit = cgroupMemoryLimitBytes();
+
+        let available: number;
         if (process.platform === 'darwin') {
-            return macosAvailableBytes();
+            available = macosAvailableBytes();
+        } else if (process.platform === 'linux') {
+            available = linuxAvailableBytes();
+        } else if (process.platform === 'win32') {
+            available = windowsAvailableBytes();
+        } else {
+            available = os.freemem();
         }
-        if (process.platform === 'linux') {
-            return linuxAvailableBytes();
+
+        // If cgroup limit is set, don't report more available than the container allows
+        if (cgroupLimit > 0) {
+            const cgroupUsage = cgroupMemoryUsageBytes();
+            const cgroupFree = Math.max(0, cgroupLimit - cgroupUsage);
+            return Math.min(available, cgroupFree);
         }
+
+        return available;
     } catch {
         // fall through to safe fallback
     }
@@ -70,5 +87,61 @@ function linuxAvailableBytes(): number {
     const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
     const m = meminfo.match(/MemAvailable:\s+(\d+)\s+kB/);
     if (!m) throw new Error('MemAvailable not found in /proc/meminfo');
+    return parseInt(m[1], 10) * 1024;
+}
+
+// ---------------------------------------------------------------------------
+// Windows — query WMI for free physical memory
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Container — cgroup v1/v2 memory limits
+// ---------------------------------------------------------------------------
+
+/** Returns the cgroup memory limit in bytes, or 0 if not in a container / not detectable */
+function cgroupMemoryLimitBytes(): number {
+    if (process.platform !== 'linux') return 0;
+    try {
+        // cgroup v2 (unified hierarchy)
+        const v2 = fs.readFileSync('/sys/fs/cgroup/memory.max', 'utf8').trim();
+        if (v2 !== 'max') return parseInt(v2, 10) || 0;
+    } catch { /* not cgroup v2 */ }
+    try {
+        // cgroup v1
+        const v1 = fs.readFileSync('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'utf8').trim();
+        const limit = parseInt(v1, 10);
+        // Kernel returns a huge number (close to max int64) when unlimited
+        if (limit > 0 && limit < os.totalmem() * 2) return limit;
+    } catch { /* not cgroup v1 */ }
+    return 0;
+}
+
+/** Returns the current cgroup memory usage in bytes, or 0 if not detectable */
+function cgroupMemoryUsageBytes(): number {
+    if (process.platform !== 'linux') return 0;
+    try {
+        // cgroup v2
+        return parseInt(fs.readFileSync('/sys/fs/cgroup/memory.current', 'utf8').trim(), 10) || 0;
+    } catch { /* not cgroup v2 */ }
+    try {
+        // cgroup v1
+        return parseInt(fs.readFileSync('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'utf8').trim(), 10) || 0;
+    } catch { /* not cgroup v1 */ }
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Windows — query WMI for free physical memory
+// ---------------------------------------------------------------------------
+
+function windowsAvailableBytes(): number {
+    // wmic is available on all Windows versions (7+) without requiring PowerShell
+    const out = execSync(
+        'wmic OS get FreePhysicalMemory /value',
+        { encoding: 'utf8', timeout: 5000 }
+    );
+    const m = out.match(/FreePhysicalMemory=(\d+)/);
+    if (!m) throw new Error('FreePhysicalMemory not found in wmic output');
+    // wmic reports in KB
     return parseInt(m[1], 10) * 1024;
 }

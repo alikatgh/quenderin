@@ -4,8 +4,14 @@ import { getRecommendedModelIdForTotalRam } from '../src/constants.js';
 import { createApp } from '../src/app.js';
 
 describe('getRecommendedModelIdForTotalRam', () => {
-    it('recommends 1B below 3GB', () => {
-        expect(getRecommendedModelIdForTotalRam(1)).toBe('llama32-1b');
+    it('recommends ultra-light Q2_K below 1.5GB', () => {
+        expect(getRecommendedModelIdForTotalRam(0.5)).toBe('llama32-1b-q2');
+        expect(getRecommendedModelIdForTotalRam(1)).toBe('llama32-1b-q2');
+        expect(getRecommendedModelIdForTotalRam(1.49)).toBe('llama32-1b-q2');
+    });
+
+    it('recommends 1B from 1.5GB up to under 3GB', () => {
+        expect(getRecommendedModelIdForTotalRam(1.5)).toBe('llama32-1b');
         expect(getRecommendedModelIdForTotalRam(2.99)).toBe('llama32-1b');
     });
 

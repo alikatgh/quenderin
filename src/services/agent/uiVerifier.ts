@@ -1,11 +1,23 @@
 import { AgentAction, IDeviceProvider, UIElement } from '../../types/index.js';
 import { UiParserService } from '../uiParser.service.js';
 import { OcrService } from '../ocr.service.js';
+import { getHardwareProfile } from '../../utils/hardware.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import { AgentEventEmitter } from '../agent.service.js';
 
+const HW = getHardwareProfile();
+
 export class UiVerifier {
+    /** Polling interval between UI idle checks — scales with hardware tier */
+    private readonly idlePollMs = HW.tier === 'embedded' ? 1500
+        : HW.tier === 'constrained' ? 1000
+        : 500;
+    /** Retry backoff — longer on slow hardware */
+    private readonly retryBackoffMs = HW.tier === 'embedded' ? 2000
+        : HW.tier === 'constrained' ? 1500
+        : 1000;
+
     constructor(
         private deviceProvider: IDeviceProvider,
         private uiParserService: UiParserService,
@@ -50,7 +62,7 @@ export class UiVerifier {
                     finalParsed = parsed;
                     finalScreenshotPath = screenshotPath;
                 } else {
-                    await new Promise(res => setTimeout(res, 500));
+                    await new Promise(res => setTimeout(res, this.idlePollMs));
                 }
             } catch (error: unknown) {
                 retries++;
@@ -59,7 +71,7 @@ export class UiVerifier {
                 if (retries >= 3) {
                     throw error;
                 }
-                await new Promise(res => setTimeout(res, 1000));
+                await new Promise(res => setTimeout(res, this.retryBackoffMs));
             }
         }
 

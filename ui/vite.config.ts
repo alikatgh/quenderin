@@ -4,6 +4,24 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
+    build: {
+        // Optimize chunk splitting for low-bandwidth / slow-CPU devices
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Split heavy deps into separate cacheable chunks
+                    'react-vendor': ['react', 'react-dom'],
+                    'markdown': ['react-markdown', 'remark-gfm'],
+                    'syntax': ['react-syntax-highlighter'],
+                    'icons': ['lucide-react'],
+                },
+            },
+        },
+        // Target older browsers for Chromebook / old laptop compatibility
+        target: 'es2020',
+        // Reduce chunk size warnings threshold
+        chunkSizeWarningLimit: 600,
+    },
     server: {
         port: 5173,
         proxy: {

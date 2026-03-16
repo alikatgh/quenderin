@@ -93,11 +93,22 @@ export const MODEL_CATALOG = [
         quantization: 'Q4_K_M',
         url: 'https://huggingface.co/lmstudio-community/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf?download=true',
     },
+    {
+        id: 'llama32-1b-q2',
+        label: 'Llama 3.2 1B Ultra-Light (Low RAM)',
+        filename: 'llama-3.2-1b-instruct.Q2_K.gguf',
+        ramGb: 0.7,
+        sizeLabel: '0.4 GB download',
+        paramsBillions: 1,
+        quantization: 'Q2_K',
+        url: 'https://huggingface.co/lmstudio-community/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q2_K.gguf?download=true',
+    },
 ] as const;
 
 export type ModelEntry = typeof MODEL_CATALOG[number];
 
 export function getRecommendedModelIdForTotalRam(totalRamGb: number): ModelEntry['id'] {
+    if (totalRamGb < 1.5) return 'llama32-1b-q2';
     if (totalRamGb < 3) return 'llama32-1b';
     if (totalRamGb < 6) return 'llama32-3b';
     return 'llama3-8b';

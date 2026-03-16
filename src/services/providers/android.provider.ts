@@ -5,22 +5,48 @@ import os from 'os';
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
 import { IDeviceProvider } from '../../types/index.js';
+import { getHardwareProfile } from '../../utils/hardware.js';
+
+const HW = getHardwareProfile();
 
 export class AndroidProvider extends EventEmitter implements IDeviceProvider {
+    /** ADB command timeout scales with hardware — slow devices need more time */
+    private readonly adbTimeoutMs = Math.round(15_000 * HW.timeoutMultiplier);
+    /** Wait between UI idle polls — longer on embedded to reduce ADB round-trips */
+    private readonly uiIdlePollMs = HW.tier === 'embedded' ? 1000 : HW.tier === 'constrained' ? 750 : 500;
+    /** Cached device screen dimensions — queried once from the device */
+    private screenWidth: number = 0;
+    private screenHeight: number = 0;
+    private screenDimsQueried = false;
+
     constructor() {
         super();
     }
-    // Helper to safely execute adb commands without a shell
-    private async spawnAdb(args: string[]): Promise<string> {
+
+    // Helper to safely execute adb commands without a shell — with timeout
+    private async spawnAdb(args: string[], timeoutMs?: number): Promise<string> {
+        const timeout = timeoutMs ?? this.adbTimeoutMs;
         return new Promise((resolve, reject) => {
             const proc = spawn('adb', args);
             let stdout = '';
             let stderr = '';
+            let killed = false;
+
+            const timer = setTimeout(() => {
+                killed = true;
+                proc.kill('SIGKILL');
+                const error = new Error(`ADB command timed out after ${Math.round(timeout / 1000)}s: adb ${args.join(' ')}`) as Error & { code?: string };
+                error.code = 'ADB_TIMEOUT';
+                reject(error);
+            }, timeout);
 
             proc.stdout.on('data', (data) => stdout += data.toString());
             proc.stderr.on('data', (data) => stderr += data.toString());
 
             proc.on('close', (code) => {
+                clearTimeout(timer);
+                if (killed) return; // Already rejected by timeout
+
                 const output = (stdout + stderr).toLowerCase();
 
                 // ADB doesn't always exit with > 0 when "no devices" occurs
@@ -47,6 +73,30 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         });
     }
 
+    /** Query actual device screen resolution via ADB instead of hardcoding */
+    private async getScreenDimensions(): Promise<{ width: number; height: number }> {
+        if (this.screenDimsQueried && this.screenWidth > 0) {
+            return { width: this.screenWidth, height: this.screenHeight };
+        }
+        this.screenDimsQueried = true;
+        try {
+            const output = await this.spawnAdb(['shell', 'wm', 'size']);
+            // Output format: "Physical size: 1080x2400" or "Override size: 1080x2400"
+            const match = output.match(/(\d+)x(\d+)/);
+            if (match) {
+                this.screenWidth = parseInt(match[1], 10);
+                this.screenHeight = parseInt(match[2], 10);
+                return { width: this.screenWidth, height: this.screenHeight };
+            }
+        } catch {
+            // Fall back to reasonable defaults
+        }
+        // Default fallback
+        this.screenWidth = 1080;
+        this.screenHeight = 2400;
+        return { width: this.screenWidth, height: this.screenHeight };
+    }
+
     // Helper to get just the UI XML quickly without screenshot overhead
     private async getUiHierarchyXml(): Promise<string> {
         const uuid = crypto.randomUUID();
@@ -67,11 +117,12 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
     private async waitForUiIdle(): Promise<void> {
         let lastXml = "";
         let stableCount = 0;
-        const maxPolls = 10; // Up to ~5 seconds (10 * 500ms)
+        // Scale max polls with hardware: embedded gets more time per poll but same total budget
+        const maxPolls = 10;
 
         for (let i = 0; i < maxPolls; i++) {
-            // Short wait between snapshots
-            await new Promise(res => setTimeout(res, 500));
+            // Wait between snapshots — scales with hardware tier
+            await new Promise(res => setTimeout(res, this.uiIdlePollMs));
 
             const currentXml = await this.getUiHierarchyXml();
 
@@ -108,9 +159,8 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
     }
 
     public async scroll(direction: 'up' | 'down'): Promise<void> {
-        // Hardcoding standard device resolution center points for now layout emulation
-        const width = 1080;
-        const height = 2400;
+        // Query actual device resolution instead of hardcoding
+        const { width, height } = await this.getScreenDimensions();
         const startX = width / 2;
         const startY = height / 2;
 

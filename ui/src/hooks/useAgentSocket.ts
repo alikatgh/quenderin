@@ -32,8 +32,10 @@ export function useAgentSocket() {
     const [wsReady, setWsReady] = useState(false);
     const [activePresetId, setActivePresetId] = useState<string>('general');
     const [settings, setSettings] = useState<AppSettings>(() => {
-        const saved = localStorage.getItem('quenderin_settings');
-        return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
+        try {
+            const saved = localStorage.getItem('quenderin_settings');
+            return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
+        } catch { return { ...DEFAULT_SETTINGS }; }
     });
     const wsRef = useRef<WebSocket | null>(null);
     const lastUserChatLogRef = useRef<{ message: string; at: number } | null>(null);
@@ -42,11 +44,22 @@ export function useAgentSocket() {
     useEffect(() => { settingsRef.current = settings; }, [settings]);
 
     useEffect(() => {
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 15;
+        const BASE_DELAY_MS = 1000;
+        const MAX_DELAY_MS = 30000;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let intentionallyClosed = false;
+
+        function connect() {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
         wsRef.current = ws;
 
-        ws.onopen = () => setWsReady(true);
+        ws.onopen = () => {
+            setWsReady(true);
+            reconnectAttempts = 0; // Reset on successful connection
+        };
 
         ws.onmessage = (event) => {
             try {
@@ -149,16 +162,42 @@ export function useAgentSocket() {
 
         ws.onclose = () => {
             setWsReady(false);
-            setLogs((prev) => capLogs([...prev, {
-                id: 'close',
-                type: 'error',
-                message: "**Connection Lost**\nThe interface lost connection to Quenderin.\n**How to fix this:**\n1. Check your computer window where Quenderin is running.\n2. If it closed, please restart the application.\n3. Once it's running again, click \"Reconnect\" or refresh this page.",
-                timestamp: ''
-            }]));
-            setStatus('idle');
-        };
+            if (intentionallyClosed) return;
 
-        return () => ws.close();
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                // Exponential backoff with jitter to prevent thundering herd
+                const delay = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * Math.pow(2, reconnectAttempts));
+                const jitter = delay * 0.3 * Math.random();
+                const effectiveDelay = Math.round(delay + jitter);
+                reconnectAttempts++;
+
+                setLogs((prev) => capLogs([...prev, {
+                    id: `reconnect-${reconnectAttempts}`,
+                    type: 'status',
+                    message: `Connection lost. Reconnecting in ${Math.round(effectiveDelay / 1000)}s (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`,
+                    timestamp: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                }]));
+
+                reconnectTimer = setTimeout(connect, effectiveDelay);
+            } else {
+                setLogs((prev) => capLogs([...prev, {
+                    id: 'close',
+                    type: 'error',
+                    message: "**Connection Lost**\nThe interface lost connection to Quenderin after multiple attempts.\n**How to fix this:**\n1. Check your computer window where Quenderin is running.\n2. If it closed, please restart the application.\n3. Once it's running again, refresh this page.",
+                    timestamp: ''
+                }]));
+                setStatus('idle');
+            }
+        };
+        } // end connect()
+
+        connect();
+
+        return () => {
+            intentionallyClosed = true;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            wsRef.current?.close();
+        };
     }, []);
 
     const sendGoal = (goal: string, attachments: { name: string, content: string }[] = []) => {
@@ -235,7 +274,7 @@ export function useAgentSocket() {
 
     const updateSettings = (newSettings: typeof settings) => {
         setSettings(newSettings);
-        localStorage.setItem('quenderin_settings', JSON.stringify(newSettings));
+        try { localStorage.setItem('quenderin_settings', JSON.stringify(newSettings)); } catch { /* best-effort */ }
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'settings_update', ...newSettings }));
         }
@@ -244,7 +283,7 @@ export function useAgentSocket() {
     const resetSettings = () => {
         const fresh = { ...DEFAULT_SETTINGS };
         setSettings(fresh);
-        localStorage.setItem('quenderin_settings', JSON.stringify(fresh));
+        try { localStorage.setItem('quenderin_settings', JSON.stringify(fresh)); } catch { /* best-effort */ }
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'settings_update', ...fresh }));
         }

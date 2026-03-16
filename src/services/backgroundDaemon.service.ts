@@ -1,14 +1,21 @@
 import { EventEmitter } from 'events';
 import { IDeviceProvider, ILlmProvider } from '../types/index.js';
 import { MetricsService } from './metrics.service.js';
+import { getHardwareProfile } from '../utils/hardware.js';
 import fs from 'fs/promises';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
+const HW = getHardwareProfile();
+
 export class BackgroundDaemonService extends EventEmitter {
     private isRunning = false;
-    private pollIntervalMs = 3000; // 3 seconds per requirements
+    /** Poll interval scales with hardware tier to avoid CPU/battery drain on low-end.
+     *  Can be overridden via QUENDERIN_POLL_INTERVAL_MS env var. */
+    private pollIntervalMs: number;
     private diffThreshold = 0.05;  // 5% minimum change to trigger LLM
+    /** Consecutive idle cycles — used for adaptive backoff to save resources */
+    private idleCycleCount = 0;
     /** Store only the raw RGBA pixel data — NOT the full PNG object to save ~16MB */
     private lastPixelData: Buffer | null = null;
     private lastDimensions: { width: number, height: number } | null = null;
@@ -21,6 +28,10 @@ export class BackgroundDaemonService extends EventEmitter {
         private metricsService: MetricsService
     ) {
         super();
+        const envPoll = Number(process.env.QUENDERIN_POLL_INTERVAL_MS);
+        this.pollIntervalMs = Number.isFinite(envPoll) && envPoll >= 1000
+            ? envPoll
+            : HW.pollIntervalMs;
     }
 
     public start() {
@@ -106,6 +117,7 @@ export class BackgroundDaemonService extends EventEmitter {
 
                 // 3. LLM Processing if screen changed significantly
                 if (diffRatio > this.diffThreshold) {
+                    this.idleCycleCount = 0; // Reset backoff — screen is active
                     console.log(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
 
                     // We don't provide a UI struct here. Pure zero-shot vision.
@@ -126,6 +138,8 @@ export class BackgroundDaemonService extends EventEmitter {
                         diff_score: parseFloat(diffRatio.toFixed(3)),
                         description: description
                     });
+                } else {
+                    this.idleCycleCount++;
                 }
 
                 // Cleanup temp screenshot if needed (depending on provider behavior)
@@ -140,8 +154,13 @@ export class BackgroundDaemonService extends EventEmitter {
                 }
             }
 
-            // Wait until next tick
-            await new Promise(res => setTimeout(res, this.pollIntervalMs));
+            // Adaptive backoff: when screen is idle for many cycles, slow down polling
+            // to save CPU/battery. Resets immediately when screen changes.
+            const backoffMultiplier = this.idleCycleCount > 10 ? 3
+                : this.idleCycleCount > 5 ? 2
+                : 1;
+            const effectiveInterval = this.pollIntervalMs * backoffMultiplier;
+            await new Promise(res => setTimeout(res, effectiveInterval));
         }
     }
 }

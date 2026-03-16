@@ -94,10 +94,18 @@ router.get('/diagnostics', (req, res) => {
         hardware: {
             tier: hw.tier,
             arch: hw.arch,
+            platform: hw.platform,
             isArm: hw.isArm,
+            isLowPowerArch: hw.isLowPowerArch,
+            isContainerized: hw.isContainerized,
+            nativeAddonsLikely: hw.nativeAddonsLikely,
             cpuCores: hw.cpuCores,
             totalRamGb: +hw.totalRamGb.toFixed(1),
             tryGpuOffload: hw.tryGpuOffload,
+            timeoutMultiplier: hw.timeoutMultiplier,
+            memoryBudgetHard: hw.memoryBudgetHard,
+            pollIntervalMs: hw.pollIntervalMs,
+            maxConcurrentHeavyOps: hw.maxConcurrentHeavyOps,
         },
     });
 });
@@ -140,7 +148,9 @@ router.get('/health', (_req, res) => {
         hardware: {
             tier: hw.tier,
             arch: hw.arch,
+            platform: hw.platform,
             isArm: hw.isArm,
+            isContainerized: hw.isContainerized,
             cpuCores: hw.cpuCores,
             tryGpuOffload: hw.tryGpuOffload,
         },

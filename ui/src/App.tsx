@@ -1,17 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Download, CheckCircle2, BrainCircuit, Mic } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ChatArea } from './components/ChatArea.js';
 import { GeneralChatArea } from './components/GeneralChatArea.js';
-import { Inspector } from './components/Inspector.js';
 import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
-import { Docs } from './components/Docs.js';
-import { Metrics } from './components/Metrics.js';
-import { SettingsArea } from './components/SettingsArea.js';
 import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
+
+// Lazy-load heavy components — they import syntax highlighter, markdown,
+// and data-fetching code that isn't needed on initial render.
+const Inspector = lazy(() => import('./components/Inspector.js').then(m => ({ default: m.Inspector })));
+const Docs = lazy(() => import('./components/Docs.js').then(m => ({ default: m.Docs })));
+const Metrics = lazy(() => import('./components/Metrics.js').then(m => ({ default: m.Metrics })));
+const SettingsArea = lazy(() => import('./components/SettingsArea.js').then(m => ({ default: m.SettingsArea })));
+
+/** Lightweight fallback while lazy components load */
+function LazyFallback() {
+  return <div className="flex items-center justify-center h-full text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>;
+}
 
 function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void, downloadProgress: number }) {
   const [step, setStep] = useState(1);
@@ -211,14 +219,16 @@ function AppContent() {
   const [chatInput, setChatInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
-    const saved = localStorage.getItem('quenderin_sidebar_open');
-    if (saved !== null) return saved === 'true';
+    try {
+      const saved = localStorage.getItem('quenderin_sidebar_open');
+      if (saved !== null) return saved === 'true';
+    } catch { /* localStorage may be unavailable in private/embedded contexts */ }
     return window.innerWidth >= 1280;
   });
 
   const setSidebarOpen = (open: boolean) => {
     setIsSidebarOpen(open);
-    localStorage.setItem('quenderin_sidebar_open', String(open));
+    try { localStorage.setItem('quenderin_sidebar_open', String(open)); } catch { /* best-effort */ }
   };
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings'>('general_chat');
@@ -243,19 +253,19 @@ function AppContent() {
       if (typeof parsed.seconds === 'number' && typeof parsed.recoveredAt === 'string') {
         return { seconds: parsed.seconds, recoveredAt: parsed.recoveredAt };
       }
-      return null;
-    } catch {
-      return null;
-    }
+    } catch { /* localStorage or JSON parse failure — ignore */ }
+    return null;
   });
   const previousReadyRef = useRef<boolean | null>(null);
   const outageStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Check initial launch flag
-    if (!localStorage.getItem('quenderin_setup_complete')) {
-      setShowOnboarding(true);
-    }
+    try {
+      if (!localStorage.getItem('quenderin_setup_complete')) {
+        setShowOnboarding(true);
+      }
+    } catch { setShowOnboarding(true); }
 
     const fetchHealth = async () => {
       try {
@@ -266,7 +276,7 @@ function AppContent() {
           setHealthData(data);
           if (data.activeModel) setActiveModel(data.activeModel);
           if (data.isBrainInstalled) {
-            localStorage.setItem('quenderin_setup_complete', 'true');
+            try { localStorage.setItem('quenderin_setup_complete', 'true'); } catch { /* best-effort */ }
             setShowOnboarding(false);
           }
         }
@@ -337,7 +347,7 @@ function AppContent() {
       const outageSeconds = Math.max(1, Math.round(outageMs / 1000));
       const summary = { seconds: outageSeconds, recoveredAt: new Date().toISOString() };
       setLastOutageInfo(summary);
-      localStorage.setItem('quenderin_last_outage', JSON.stringify(summary));
+      try { localStorage.setItem('quenderin_last_outage', JSON.stringify(summary)); } catch { /* best-effort */ }
       outageStartRef.current = null;
       setShowRecoveryBanner(true);
     }
@@ -405,7 +415,7 @@ function AppContent() {
   }, [currentUI, isInspectorOpen, status]);
 
   const dismissOnboarding = () => {
-    localStorage.setItem('quenderin_setup_complete', 'true');
+    try { localStorage.setItem('quenderin_setup_complete', 'true'); } catch { /* best-effort */ }
     setShowOnboarding(false);
   };
 
@@ -427,7 +437,7 @@ function AppContent() {
     setLastOutageInfo(null);
     setLastOutageMs(0);
     outageStartRef.current = null;
-    localStorage.removeItem('quenderin_last_outage');
+    try { localStorage.removeItem('quenderin_last_outage'); } catch { /* best-effort */ }
   };
 
   return (
@@ -531,8 +541,11 @@ function AppContent() {
           </header>
 
           {currentView === 'docs' ? (
-            <Docs onBack={() => setCurrentView('general_chat')} />
+            <Suspense fallback={<LazyFallback />}>
+              <Docs onBack={() => setCurrentView('general_chat')} />
+            </Suspense>
           ) : currentView === 'settings' ? (
+            <Suspense fallback={<LazyFallback />}>
             <SettingsArea
               currentSettings={settings}
               onBack={() => setCurrentView('general_chat')}
@@ -552,8 +565,11 @@ function AppContent() {
                 updateSettings({ ...settings, themePreference: pref });
               }}
             />
+            </Suspense>
           ) : currentView === 'metrics' ? (
-            <Metrics onBack={() => setCurrentView('general_chat')} />
+            <Suspense fallback={<LazyFallback />}>
+              <Metrics onBack={() => setCurrentView('general_chat')} />
+            </Suspense>
           ) : currentView === 'general_chat' ? (
             <GeneralChatArea
               logs={logs}
@@ -583,11 +599,15 @@ function AppContent() {
           )}
         </div>
 
-        <Inspector
-          isOpen={isInspectorOpen}
-          currentUI={currentUI}
-          logs={logs}
-        />
+        {isInspectorOpen && (
+          <Suspense fallback={<LazyFallback />}>
+            <Inspector
+              isOpen={isInspectorOpen}
+              currentUI={currentUI}
+              logs={logs}
+            />
+          </Suspense>
+        )}
 
       </div>
     </>

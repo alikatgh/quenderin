@@ -132,7 +132,15 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const downloadAndExtract = async (): Promise<void> => {
                 const url = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
                 try {
-                    const response = await fetch(url);
+                    // Timeout for initial connection — 60s should be enough even on slow networks
+                    const controller = new AbortController();
+                    const fetchTimer = setTimeout(() => controller.abort(), 60_000);
+                    let response: Response;
+                    try {
+                        response = await fetch(url, { signal: controller.signal });
+                    } finally {
+                        clearTimeout(fetchTimer);
+                    }
                     if (!response.ok || !response.body) throw new Error("Failed to download Vosk model");
 
                     const { default: unzipper } = await import('unzipper');

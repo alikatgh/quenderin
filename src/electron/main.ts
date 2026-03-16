@@ -32,13 +32,15 @@ async function bootstrap() {
     console.log(`Booting Quenderin backend on port ${PORT}...`);
     await startDashboardServer(PORT, false); // false = don't open system browser
 
-    // 2. Create the Electron Window
+    // 2. Create the Electron Window — platform-aware chrome
+    const isMac = process.platform === 'darwin';
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 800,
         minWidth: 900,
         minHeight: 600,
-        titleBarStyle: 'hiddenInset',
+        // hiddenInset only works on macOS; use default frame elsewhere
+        ...(isMac ? { titleBarStyle: 'hiddenInset' as const } : { frame: true }),
         backgroundColor: '#18181b', // Match dark mode default
         show: false, // Wait until ready to show to prevent flashing
         webPreferences: {
@@ -101,9 +103,19 @@ async function bootstrap() {
 }
 
 app.whenReady().then(async () => {
-    // Mac optimization: create application menu
+    // Platform-aware application menu
+    const editSubmenu = [
+        { role: 'undo' as const },
+        { role: 'redo' as const },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        { role: 'selectAll' as const }
+    ];
+
     if (process.platform === 'darwin') {
-        const template: any = [
+        Menu.setApplicationMenu(Menu.buildFromTemplate([
             {
                 label: 'Quenderin',
                 submenu: [
@@ -118,20 +130,19 @@ app.whenReady().then(async () => {
                     { role: 'quit' }
                 ]
             },
+            { label: 'Edit', submenu: editSubmenu }
+        ]));
+    } else {
+        // Linux & Windows: simpler menu without macOS-specific roles
+        Menu.setApplicationMenu(Menu.buildFromTemplate([
             {
-                label: 'Edit',
+                label: 'File',
                 submenu: [
-                    { role: 'undo' },
-                    { role: 'redo' },
-                    { type: 'separator' },
-                    { role: 'cut' },
-                    { role: 'copy' },
-                    { role: 'paste' },
-                    { role: 'selectAll' }
+                    { role: 'quit' }
                 ]
-            }
-        ];
-        Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+            },
+            { label: 'Edit', submenu: editSubmenu }
+        ]));
     }
 
     await bootstrap();

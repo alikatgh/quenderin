@@ -4,6 +4,9 @@
  * Based on off-grid-mobile's tool calling pattern.
  * Tools are registered with name, description, parameters schema, and handler reference.
  */
+import { getHardwareProfile } from '../../utils/hardware.js';
+
+const HW = getHardwareProfile();
 
 export interface ToolParameter {
     name: string;
@@ -69,6 +72,6 @@ export function buildToolPrompt(): string {
 Available tools:
 ${toolDescriptions}
 
-You may use up to 3 tool calls per response. After using a tool, the result will be provided and you should incorporate it into your answer.
+You may use up to ${HW.tier === 'embedded' ? 1 : HW.tier === 'constrained' ? 2 : 3} tool calls per response. After using a tool, the result will be provided and you should incorporate it into your answer.
 If you don't need any tools, just respond normally without tool call tags.`;
 }

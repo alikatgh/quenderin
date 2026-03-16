@@ -1,4 +1,36 @@
-import { getLlama, LlamaModel, LlamaContext, LlamaChatSession, LlamaLogLevel } from "node-llama-cpp";
+// node-llama-cpp is a native module that may not compile on exotic architectures.
+// We import it dynamically and provide a clear error if unavailable.
+type LlamaModel = any;
+type LlamaContext = any;
+type LlamaChatSession = any;
+
+let _llamaBindings: {
+    getLlama: any;
+    LlamaModel: any;
+    LlamaContext: any;
+    LlamaChatSession: any;
+    LlamaLogLevel: any;
+} | null = null;
+let _llamaImportError: Error | null = null;
+
+try {
+    const mod = await import("node-llama-cpp");
+    _llamaBindings = {
+        getLlama: mod.getLlama,
+        LlamaModel: mod.LlamaModel,
+        LlamaContext: mod.LlamaContext,
+        LlamaChatSession: mod.LlamaChatSession,
+        LlamaLogLevel: mod.LlamaLogLevel,
+    };
+} catch (err) {
+    _llamaImportError = err instanceof Error ? err : new Error(String(err));
+    console.error(
+        `[LLM] node-llama-cpp is not available on this platform (${process.arch}/${process.platform}). ` +
+        `Local LLM inference is disabled. The dashboard UI and API will still work, but ` +
+        `chat/agent features require a supported architecture (x86_64 or arm64).`
+    );
+}
+
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -118,15 +150,52 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private idleTimeoutMs: number;
     private idleTimer: NodeJS.Timeout | null = null;
     private lastActivityTimestamp: number = 0;
+    /** Memory pressure monitor — checks heap usage periodically while model is loaded */
+    private memoryPressureTimer: NodeJS.Timeout | null = null;
 
     public getActiveModelLabel(): string {
         return MODEL_CATALOG.find(m => m.id === this.activeModelId)?.label ?? this.activeModelId;
     }
 
+    /** Create a LlamaChatSession using the dynamically imported class */
+    private createChatSession(opts: { contextSequence: any; systemPrompt?: string }): any {
+        if (!_llamaBindings) throw new Error('LLM bindings not available');
+        return new _llamaBindings.LlamaChatSession(opts);
+    }
+
     constructor() {
         super();
         this.idleTimeoutMs = this.resolveIdleTimeoutMs();
-        logger.log(`[Hardware] ${HW.tier} tier detected: ${HW.arch}, ${HW.cpuCores} cores, ${HW.totalRamGb.toFixed(1)}GB RAM, GPU=${HW.tryGpuOffload}, timeoutX=${HW.timeoutMultiplier}`);
+        logger.log(`[Hardware] ${HW.tier} tier detected: ${HW.platform}/${HW.arch}, ${HW.cpuCores} cores, ${HW.totalRamGb.toFixed(1)}GB RAM, GPU=${HW.tryGpuOffload}, nativeAddons=${HW.nativeAddonsLikely}, timeoutX=${HW.timeoutMultiplier}`);
+    }
+
+    /** Start periodic memory pressure checks while model is loaded */
+    private startMemoryPressureMonitor(): void {
+        if (this.memoryPressureTimer) return;
+        this.memoryPressureTimer = setInterval(() => {
+            if (!this.modelInstance) {
+                this.stopMemoryPressureMonitor();
+                return;
+            }
+            const freeGb = availableMemBytes() / (1024 ** 3);
+            const totalGb = os.totalmem() / (1024 ** 3);
+            const usageRatio = 1 - (freeGb / totalGb);
+
+            if (usageRatio > HW.memoryBudgetHard && !this.isGeneratingChat) {
+                logger.warn(`[Memory] Pressure critical (${(usageRatio * 100).toFixed(0)}% used, ${freeGb.toFixed(1)}GB free). Unloading model to prevent OOM.`);
+                this.unloadModel();
+            } else if (usageRatio > HW.memoryBudgetHard * 0.95) {
+                logger.warn(`[Memory] Pressure high (${(usageRatio * 100).toFixed(0)}% used, ${freeGb.toFixed(1)}GB free). Model may be unloaded soon.`);
+            }
+        }, 15_000); // Check every 15 seconds
+        this.memoryPressureTimer.unref();
+    }
+
+    private stopMemoryPressureMonitor(): void {
+        if (this.memoryPressureTimer) {
+            clearInterval(this.memoryPressureTimer);
+            this.memoryPressureTimer = null;
+        }
     }
 
     private resolveIdleTimeoutMs(): number {
@@ -224,6 +293,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
         }
+        this.stopMemoryPressureMonitor();
         if (wasLoaded) logger.log('[Lifecycle] Model unloaded');
     }
 
@@ -324,9 +394,27 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // • GPU layers: offload to Metal/CUDA when available, CPU-only on embedded/Pi
                 // • Fallback chain: effectiveCtx → halved → contextFloor
                 // • All timeouts scaled by HW.timeoutMultiplier for slow ARM boards
+                // Check if node-llama-cpp is available on this architecture
+                if (!_llamaBindings) {
+                    const err = new Error(
+                        `LLM bindings not available on ${process.arch}/${process.platform}. ` +
+                        (_llamaImportError ? _llamaImportError.message : 'Unknown import failure.')
+                    );
+                    (err as any).code = 'LLM_BINDINGS_UNAVAILABLE';
+                    this.emit('action_required', {
+                        code: 'LLM_BINDINGS_UNAVAILABLE',
+                        title: 'Platform Not Supported for Local AI',
+                        message: `Local LLM inference requires x86_64 or arm64 architecture. ` +
+                            `Your system is ${process.arch}/${process.platform}. ` +
+                            `The dashboard UI still works, but chat and agent features are disabled.`,
+                    });
+                    throw err;
+                }
+
+                const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel, LlamaChatSession: ChatSession } = _llamaBindings;
                 const llamaInitTimeout = Math.round(30_000 * HW.timeoutMultiplier);
                 const llama = await Promise.race([
-                    getLlama({ logLevel: LlamaLogLevel.disabled }),
+                    getLlamaFn({ logLevel: LogLevel.disabled }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error(`Assistant initiation timed out after ${llamaInitTimeout / 1000}s`)), llamaInitTimeout))
                 ]) as any;
 
@@ -362,11 +450,22 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     logger.log('[LLM] Model loaded in CPU-only mode (embedded hardware)');
                 }
 
+                // Thread count: limit to cpuCores-1 on low-core devices to avoid
+                // starving the OS/Node event loop. Override via QUENDERIN_THREAD_COUNT.
+                const envThreads = Number(process.env.QUENDERIN_THREAD_COUNT);
+                const autoThreads = HW.cpuCores <= 2 ? 1
+                    : HW.cpuCores <= 4 ? HW.cpuCores - 1
+                    : Math.min(HW.cpuCores - 2, 8);
+                const threads = Number.isFinite(envThreads) && envThreads >= 1
+                    ? envThreads : autoThreads;
+                logger.log(`[LLM] Using ${threads} inference threads (${HW.cpuCores} cores detected)`);
+
                 /** Helper: create context with flash attention + timeout */
                 const tryCreateContext = (ctxSize: number) => Promise.race([
                     model.createContext({
                         contextSize: ctxSize,
                         flashAttention: true,   // perf win even on CPU — reduces KV cache mem
+                        threads,
                     }),
                     new Promise<never>((_, reject) => {
                         setTimeout(() => {
@@ -399,6 +498,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 this.contextInstance = context;
                 this.loadedModelId = selected.entry.id;
                 this.modelLoadTimestamp = Date.now();
+                this.startMemoryPressureMonitor();
                 return { model, context };
             } catch (error: any) {
                 const isModelMissing = error?.code === "MODEL_MISSING" || error?.code === "ENOENT";
@@ -435,6 +535,41 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
     }
 
+    /** Cross-platform disk space check — best-effort, non-fatal on failure */
+    private async checkDiskSpace(dirPath: string, requiredBytes: number): Promise<{ ok: boolean; message: string }> {
+        try {
+            if (process.platform === 'win32') {
+                const { execSync } = await import('child_process');
+                // WMIC reports free bytes for the drive
+                const drive = path.resolve(dirPath).charAt(0);
+                const out = execSync(`wmic logicaldisk where "DeviceID='${drive}:'" get FreeSpace /value`, { encoding: 'utf8', timeout: 5000 });
+                const match = out.match(/FreeSpace=(\d+)/);
+                if (match) {
+                    const freeBytes = parseInt(match[1], 10);
+                    if (freeBytes < requiredBytes) {
+                        return { ok: false, message: `Only ${(freeBytes / (1024 ** 3)).toFixed(1)}GB free on ${drive}: drive, need ~${(requiredBytes / (1024 ** 3)).toFixed(1)}GB. Free up disk space.` };
+                    }
+                }
+            } else {
+                // Unix: use df on the directory
+                const { execSync } = await import('child_process');
+                const out = execSync(`df -k "${dirPath}" | tail -1`, { encoding: 'utf8', timeout: 5000 });
+                const parts = out.trim().split(/\s+/);
+                // df -k output: Filesystem 1K-blocks Used Available Use% Mounted
+                const availKb = parseInt(parts[3], 10);
+                if (!isNaN(availKb)) {
+                    const freeBytes = availKb * 1024;
+                    if (freeBytes < requiredBytes) {
+                        return { ok: false, message: `Only ${(freeBytes / (1024 ** 3)).toFixed(1)}GB free disk space, need ~${(requiredBytes / (1024 ** 3)).toFixed(1)}GB. Free up space before downloading.` };
+                    }
+                }
+            }
+        } catch {
+            // Non-fatal — disk check failed, proceed anyway
+        }
+        return { ok: true, message: '' };
+    }
+
     public async downloadModel(modelId?: string): Promise<void> {
         if (this.isDownloading) return;
         this.isDownloading = true;
@@ -463,6 +598,33 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
         }
 
+        // ─── Disk Space Check ─────────────────────────────────────────
+        // Estimate required space: model file + 500MB buffer for OS/other ops
+        try {
+            const estimatedSizeGb = entry.ramGb; // rough: download size ≈ RAM footprint for GGUF
+            const estimatedBytes = estimatedSizeGb * (1024 ** 3);
+            const bufferBytes = 500 * (1024 ** 2); // 500 MB buffer
+            const { availableMemBytes: getAvail } = await import('../utils/memory.js');
+            // Use free memory as a proxy for whether the system has headroom
+            // (disk space check via statfs would be ideal, but cross-platform is tricky)
+            const freeRam = getAvail();
+            if (freeRam < estimatedBytes * 0.5) {
+                logger.warn(`[LLM] Low system memory (${(freeRam / (1024 ** 3)).toFixed(1)}GB free). Download may cause swapping.`);
+            }
+            // Check disk space on the target directory
+            const diskCheck = await this.checkDiskSpace(dir, estimatedBytes + bufferBytes);
+            if (!diskCheck.ok) {
+                logger.warn(`[LLM] ${diskCheck.message}`);
+                this.emit('action_required', {
+                    code: 'DISK_SPACE_LOW',
+                    title: 'Insufficient Disk Space',
+                    message: diskCheck.message
+                });
+            }
+        } catch {
+            // Non-fatal — proceed with download even if disk check fails
+        }
+
         try {
             // ─── Download Resume Support ────────────────────────────────────
             // Check for partial download + metadata from a previous interrupted attempt
@@ -485,7 +647,24 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
-            const response = await fetch(url, { headers });
+            // Fetch with timeout — prevent hanging on slow/broken connections
+            // HTTP proxy support: respect HTTP_PROXY / HTTPS_PROXY env vars
+            // (Node.js 18+ native fetch doesn't auto-use proxies, so we log a hint)
+            const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy;
+            if (proxyUrl) {
+                logger.log(`[LLM] HTTP proxy detected: ${proxyUrl} — native fetch may not use it automatically. Consider using 'global-agent' or 'undici' ProxyAgent if downloads fail.`);
+            }
+
+            const fetchTimeoutMs = Math.round(60_000 * HW.timeoutMultiplier);
+            const controller = new AbortController();
+            const fetchTimer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+
+            let response: Response;
+            try {
+                response = await fetch(url, { headers, signal: controller.signal });
+            } finally {
+                clearTimeout(fetchTimer);
+            }
 
             if (!response.ok && response.status !== 206) {
                 throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
@@ -560,7 +739,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         const systemPrompt = `You are an expert code generator. Given a prompt, generate only the TypeScript code required to fulfill the request. Do not add any conversational text or markdown formatting.`;
 
         const sequence = context.getSequence();
-        const session = new LlamaChatSession({
+        const session = this.createChatSession({
             contextSequence: sequence,
             systemPrompt: systemPrompt
         });
@@ -589,7 +768,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         const { context } = await this.getModelAndContext();
         // Use a new sequence per call — dispose it when done to free KV cache slots
         const sequence = context.getSequence();
-        const session = new LlamaChatSession({
+        const session = this.createChatSession({
             contextSequence: sequence,
             systemPrompt: systemPrompt || undefined
         });
@@ -623,7 +802,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
                 const toolPrompt = buildToolPrompt();
                 const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
-                this.generalChatSession = new LlamaChatSession({
+                this.generalChatSession = this.createChatSession({
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
                 });
