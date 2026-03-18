@@ -17,6 +17,7 @@ import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService } from './services/memory.service.js';
+import { SessionService } from './services/session.service.js';
 import { setHealthLlmService } from './routes/health.js';
 import { resetReadinessForStartup, setReadiness } from './services/readiness.service.js';
 
@@ -106,6 +107,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
     const backgroundDaemon = new BackgroundDaemonService(deviceProvider, llmService, metricsService);
     const voiceService = new VoiceService();
+    const sessionService = new SessionService();
 
     // Wire LlmService into /health so it reports the real loaded model
     setHealthLlmService(llmService);
@@ -129,7 +131,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
 
     // 2. Setup Express
     setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
-    const app = createApp(metricsService, agentService, llmService);
+    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService);
     const server = createServer(app);
 
     // 2b. Start periodic temp file cleanup (every 30 min)
@@ -176,7 +178,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
         server.listen(selectedPort, async () => {
-            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService);
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService);
             setReadiness(true, 'serving', `Listening on port ${selectedPort}`);
             console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {

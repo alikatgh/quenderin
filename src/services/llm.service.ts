@@ -540,15 +540,31 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         try {
             if (process.platform === 'win32') {
                 const { execSync } = await import('child_process');
-                // WMIC reports free bytes for the drive
                 const drive = path.resolve(dirPath).charAt(0);
-                const out = execSync(`wmic logicaldisk where "DeviceID='${drive}:'" get FreeSpace /value`, { encoding: 'utf8', timeout: 5000 });
-                const match = out.match(/FreeSpace=(\d+)/);
-                if (match) {
-                    const freeBytes = parseInt(match[1], 10);
-                    if (freeBytes < requiredBytes) {
-                        return { ok: false, message: `Only ${(freeBytes / (1024 ** 3)).toFixed(1)}GB free on ${drive}: drive, need ~${(requiredBytes / (1024 ** 3)).toFixed(1)}GB. Free up disk space.` };
-                    }
+                let freeBytes: number | null = null;
+
+                // PowerShell: works on Windows 8+ and is the only option on Windows 11 22H2+
+                // where wmic has been removed.
+                try {
+                    const psOut = execSync(
+                        `powershell -NoProfile -Command "(Get-PSDrive -Name ${drive}).Free"`,
+                        { encoding: 'utf8', timeout: 5000 }
+                    );
+                    const parsed = parseInt(psOut.trim(), 10);
+                    if (Number.isFinite(parsed) && parsed >= 0) freeBytes = parsed;
+                } catch { /* PowerShell unavailable — try wmic */ }
+
+                // Legacy fallback: wmic works on Windows 7–10 (removed in Win11 22H2)
+                if (freeBytes === null) {
+                    try {
+                        const wmicOut = execSync(`wmic logicaldisk where "DeviceID='${drive}:'" get FreeSpace /value`, { encoding: 'utf8', timeout: 5000 });
+                        const match = wmicOut.match(/FreeSpace=(\d+)/);
+                        if (match) freeBytes = parseInt(match[1], 10);
+                    } catch { /* wmic also unavailable — skip disk check */ }
+                }
+
+                if (freeBytes !== null && freeBytes < requiredBytes) {
+                    return { ok: false, message: `Only ${(freeBytes / (1024 ** 3)).toFixed(1)}GB free on ${drive}: drive, need ~${(requiredBytes / (1024 ** 3)).toFixed(1)}GB. Free up disk space.` };
                 }
             } else {
                 // Unix: use df on the directory

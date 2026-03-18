@@ -1,5 +1,14 @@
-import { Activity, TerminalSquare, Sparkles, BookOpen, Shield, BrainCircuit, Smartphone, Search, SlidersHorizontal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, TerminalSquare, Sparkles, BookOpen, Shield, BrainCircuit, Smartphone, Search, SlidersHorizontal, Clock, Cpu } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
+
+interface SessionSummary {
+    id: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    messageCount: number;
+}
 
 interface SidebarProps {
     isOpen: boolean;
@@ -11,12 +20,30 @@ interface SidebarProps {
     setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings') => void;
     onNewGoal: () => void;
     activeModel?: string;
+    hardwareTier?: string;
 }
 
-export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...' }: SidebarProps) {
+const TIER_STYLES: Record<string, { label: string; className: string }> = {
+    powerful:    { label: 'Powerful',    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' },
+    standard:    { label: 'Standard',    className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400 border-blue-200 dark:border-blue-500/20' },
+    constrained: { label: 'Constrained', className: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' },
+    embedded:    { label: 'Embedded',    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400 border-red-200 dark:border-red-500/20' },
+};
+
+export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...', hardwareTier }: SidebarProps) {
     const modelLabel = activeModel.includes('/') ? activeModel.split('/').pop()! : activeModel;
     const backendReady = readinessReady ?? false;
     const backendStage = readinessStage ?? 'unknown';
+    const [recentSessions, setRecentSessions] = useState<SessionSummary[]>([]);
+
+    useEffect(() => {
+        fetch('/api/sessions')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.sessions) setRecentSessions(data.sessions.slice(0, 5));
+            })
+            .catch(() => {});
+    }, [currentView]); // Re-fetch when view changes (after a session ends)
 
     return (
         <div
@@ -81,6 +108,37 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                         </div>
                     </div>
                 </div>
+
+                {/* Hardware Tier Badge */}
+                {hardwareTier && TIER_STYLES[hardwareTier] && (
+                    <div className="mt-3 px-2">
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-[11px] font-semibold ${TIER_STYLES[hardwareTier].className}`}>
+                            <Cpu className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>{TIER_STYLES[hardwareTier].label} Hardware</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Recent Sessions */}
+                {recentSessions.length > 0 && (
+                    <div className="mt-5 px-2">
+                        <h3 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <Clock className="w-3 h-3" /> Recent Sessions
+                        </h3>
+                        <div className="space-y-1">
+                            {recentSessions.map(s => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setCurrentView('general_chat')}
+                                    className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-white/5 transition-colors group"
+                                >
+                                    <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 truncate group-hover:text-zinc-900 dark:group-hover:text-zinc-100">{s.title}</p>
+                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">{s.messageCount} msgs · {new Date(s.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Nav */}
                 <div className="mt-auto px-2 space-y-1">

@@ -52,6 +52,26 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         description: 'Get system information: OS, architecture, CPU count, total RAM, free RAM.',
         parameters: []
     },
+    {
+        name: 'read_file',
+        description: 'Read the text contents of a file on the local filesystem. Only files inside the user\'s home directory are allowed. Truncated at 8000 characters.',
+        parameters: [
+            { name: 'path', type: 'string', description: 'Absolute or ~ path to the file to read', required: true }
+        ]
+    },
+    {
+        name: 'note_save',
+        description: 'Save a named note to persistent local storage (~/.quenderin/notes/). Useful for remembering information across conversations.',
+        parameters: [
+            { name: 'title', type: 'string', description: 'Short title for the note (used as filename)', required: true },
+            { name: 'content', type: 'string', description: 'The text content to save', required: true }
+        ]
+    },
+    {
+        name: 'note_list',
+        description: 'List all saved notes with their titles, creation dates, and first 100 characters of content.',
+        parameters: []
+    },
 ];
 
 /** Build a tool description block for the system prompt */

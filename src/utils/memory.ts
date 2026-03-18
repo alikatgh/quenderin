@@ -91,10 +91,6 @@ function linuxAvailableBytes(): number {
 }
 
 // ---------------------------------------------------------------------------
-// Windows — query WMI for free physical memory
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Container — cgroup v1/v2 memory limits
 // ---------------------------------------------------------------------------
 
@@ -135,7 +131,18 @@ function cgroupMemoryUsageBytes(): number {
 // ---------------------------------------------------------------------------
 
 function windowsAvailableBytes(): number {
-    // wmic is available on all Windows versions (7+) without requiring PowerShell
+    // Try PowerShell first — works on Windows 8+ and is the only option on
+    // Windows 11 22H2+ where wmic has been removed.
+    try {
+        const out = execSync(
+            'powershell -NoProfile -Command "(Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory"',
+            { encoding: 'utf8', timeout: 5000 }
+        );
+        const kb = parseInt(out.trim(), 10);
+        if (Number.isFinite(kb) && kb > 0) return kb * 1024;
+    } catch { /* PowerShell unavailable — fall through to wmic */ }
+
+    // Legacy fallback: wmic works on Windows 7–10 (deprecated, removed in Win11 22H2)
     const out = execSync(
         'wmic OS get FreePhysicalMemory /value',
         { encoding: 'utf8', timeout: 5000 }

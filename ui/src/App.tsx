@@ -497,6 +497,7 @@ function AppContent() {
             if (window.innerWidth < 1280) setSidebarOpen(false);
           }}
           activeModel={activeModel}
+          hardwareTier={healthData?.hardware?.tier}
         />
 
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors duration-300">

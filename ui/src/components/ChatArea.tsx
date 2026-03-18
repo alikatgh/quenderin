@@ -64,10 +64,20 @@ function CodeBlock({ children, language, ...props }: any) {
     );
 }
 
+interface GoalTemplate { id: string; category: string; label: string; template: string; }
+
 export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView, onVoiceStart, onVoiceStop }: ChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = useState(false);
+    const [templates, setTemplates] = useState<GoalTemplate[]>([]);
+
+    useEffect(() => {
+        fetch('/api/templates')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d?.templates) setTemplates(d.templates); })
+            .catch(() => {});
+    }, []);
 
     // Filter to only agent-type logs — ignore chat entries from General Chat
     const agentLogs = logs.filter(l => ['status', 'observe', 'decide', 'action', 'error', 'done'].includes(l.type));
@@ -116,29 +126,42 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             <h2 className="text-3xl font-medium text-zinc-900 dark:text-white mb-2 tracking-tight">Spatial Assistant Ready</h2>
                             <p className="text-zinc-500 dark:text-[#a1a1aa] mb-12 text-[15px]">Quenderin is connected and waiting for instructions.</p>
 
-                            <div className="grid sm:grid-cols-2 gap-4 w-full">
+                            <div className="grid sm:grid-cols-2 gap-3 w-full">
                                 <div
                                     onClick={() => setCurrentView('docs')}
-                                    className="p-5 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:border-zinc-300 dark:hover:border-zinc-500 transition-colors cursor-pointer"
+                                    className="p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:border-zinc-300 dark:hover:border-zinc-500 transition-colors cursor-pointer col-span-full"
                                 >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <BookOpen className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-                                        <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Read Documentation</h3>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <BookOpen className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+                                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-[13px]">Read Documentation</h3>
                                     </div>
-                                    <p className="text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                        Learn about the Quenderin Vision, our private AI knowledge, and how the mobile screen connection works.
+                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
+                                        Learn how Quenderin controls your phone and uses local AI.
                                     </p>
                                 </div>
 
-                                <div className="p-5 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl flex flex-col justify-center">
-                                    <p className="text-[13px] text-zinc-600 dark:text-zinc-400 mb-3">Try asking the agent to:</p>
+                                {templates.map(t => (
                                     <button
-                                        onClick={() => { setGoal("Open Settings and turn on WiFi"); }}
-                                        className="text-left bg-transparent px-3 py-1.5 -ml-3 rounded-lg text-[14px] text-zinc-800 dark:text-zinc-200 transition-colors hover:bg-zinc-100 dark:hover:bg-[#27272a] flex items-center gap-2 group font-medium"
+                                        key={t.id}
+                                        onClick={() => setGoal(t.template)}
+                                        className="text-left p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:border-zinc-300 dark:hover:border-zinc-500 hover:translate-y-[-1px] transition-all duration-200 shadow-sm group"
                                     >
-                                        "Open Settings and turn on WiFi" <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-1 transition-all text-purple-500" />
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">{t.category}</p>
+                                                <p className="text-[13px] font-semibold text-zinc-800 dark:text-zinc-200">{t.label}</p>
+                                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">{t.template}</p>
+                                            </div>
+                                            <ArrowRight className="w-3.5 h-3.5 text-purple-500 opacity-0 group-hover:opacity-100 mt-0.5 flex-shrink-0 transition-opacity" />
+                                        </div>
                                     </button>
-                                </div>
+                                ))}
+
+                                {templates.length === 0 && (
+                                    <div className="col-span-full p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl">
+                                        <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Try: "Open Settings and turn on WiFi"</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

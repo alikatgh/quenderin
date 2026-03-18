@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, BrainCircuit, Download, Trash2, HardDrive, Zap, Cpu, FileText, Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface Settings {
     contextSize: number;
@@ -8,6 +8,17 @@ interface Settings {
     themePreference: 'light' | 'dark' | 'system';
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
+}
+
+interface ModelCatalogEntry {
+    id: string;
+    label: string;
+    ramGb: number;
+    sizeLabel: string;
+    paramsBillions: number;
+    quantization: string;
+    isDownloaded: boolean;
+    fileSizeBytes: number;
 }
 
 interface SettingsAreaProps {
@@ -20,6 +31,8 @@ interface SettingsAreaProps {
     contextOptions?: number[];
     /** Hardware tier string from backend (for display) */
     hardwareTier?: string;
+    hardwareArch?: string;
+    hardwareCpuCores?: number;
     /** Last backend outage summary persisted from runtime recovery events */
     lastOutageInfo?: { seconds: number; recoveredAt: string } | null;
     /** Clears persisted outage diagnostics */
@@ -58,9 +71,12 @@ const downloadDiagnosticsJson = (payload: string, diagnosticsId?: string | null)
     URL.revokeObjectURL(url);
 };
 
-export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
+export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
+    const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
+    const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted
+    const [modelActionType, setModelActionType] = useState<'download' | 'delete' | null>(null);
     const [diagCopied, setDiagCopied] = useState(false);
     const [diagCopiedFromFallback, setDiagCopiedFromFallback] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
@@ -69,6 +85,45 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
     const manualPayloadRef = useRef<HTMLTextAreaElement | null>(null);
 
+    // Notes
+    const [notes, setNotes] = useState<{ filename: string; title: string; preview: string; modifiedAt: number; sizeBytes: number }[]>([]);
+    const [notesOpen, setNotesOpen] = useState(false);
+    const [deletingNote, setDeletingNote] = useState<string | null>(null);
+
+    // Agent memory
+    const [trajectories, setTrajectories] = useState<{ goal: string; actionCount: number; timestamp: string }[]>([]);
+    const [memoryOpen, setMemoryOpen] = useState(false);
+    const [memoryTotal, setMemoryTotal] = useState(0);
+    const [clearingMemory, setClearingMemory] = useState(false);
+
+    useEffect(() => {
+        if (notesOpen) {
+            fetch('/api/notes').then(r => r.ok ? r.json() : null).then(d => { if (d?.notes) setNotes(d.notes); }).catch(() => {});
+        }
+    }, [notesOpen]);
+
+    useEffect(() => {
+        if (memoryOpen) {
+            fetch('/api/memory/trajectories').then(r => r.ok ? r.json() : null).then(d => { if (d) { setTrajectories(d.trajectories); setMemoryTotal(d.total); } }).catch(() => {});
+        }
+    }, [memoryOpen]);
+
+    const handleDeleteNote = async (filename: string) => {
+        setDeletingNote(filename);
+        await fetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
+        setNotes(prev => prev.filter(n => n.filename !== filename));
+        setDeletingNote(null);
+    };
+
+    const handleClearMemory = async () => {
+        if (!confirm('Clear all agent learned trajectories? The agent will start fresh without any prior experience.')) return;
+        setClearingMemory(true);
+        await fetch('/api/memory/trajectories', { method: 'DELETE' }).catch(() => {});
+        setTrajectories([]);
+        setMemoryTotal(0);
+        setClearingMemory(false);
+    };
+
     const shortDiagnosticsId = lastDiagnosticsId
         ? lastDiagnosticsId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)
         : null;
@@ -76,6 +131,50 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     useEffect(() => {
         setSettings(currentSettings);
     }, [currentSettings]);
+
+    useEffect(() => {
+        fetch('/api/models/catalog')
+            .then(r => r.json())
+            .then(d => setModelCatalog(d.catalog ?? []))
+            .catch(() => {});
+    }, []);
+
+    const refreshCatalog = () => {
+        fetch('/api/models/catalog')
+            .then(r => r.json())
+            .then(d => setModelCatalog(d.catalog ?? []))
+            .catch(() => {});
+    };
+
+    const handleDownloadModel = async (modelId: string) => {
+        setModelActionId(modelId);
+        setModelActionType('download');
+        try {
+            await fetch('/api/models/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId }),
+            });
+        } finally {
+            // Poll catalog after a short delay to pick up download status
+            setTimeout(refreshCatalog, 2000);
+            setModelActionId(null);
+            setModelActionType(null);
+        }
+    };
+
+    const handleDeleteModel = async (modelId: string) => {
+        if (!confirm('Delete this model from disk? You will need to re-download it to use it again.')) return;
+        setModelActionId(modelId);
+        setModelActionType('delete');
+        try {
+            await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
+        } finally {
+            setTimeout(refreshCatalog, 500);
+            setModelActionId(null);
+            setModelActionType(null);
+        }
+    };
 
     useEffect(() => {
         if (!manualDiagnosticsPayload || !manualPayloadRef.current) return;
@@ -449,6 +548,198 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         </div>
                     </section>
                 </div>
+
+                    {/* Model Manager Section */}
+                    <section className="premium-card p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
+                                <BrainCircuit className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">AI Model Manager</h2>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Download or remove local AI models. All inference is 100% offline.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {modelCatalog.length === 0 ? (
+                                <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-4">Loading models...</div>
+                            ) : modelCatalog.map(m => {
+                                const fileSizeGb = m.fileSizeBytes > 0 ? (m.fileSizeBytes / (1024 ** 3)).toFixed(2) : null;
+                                const isActing = modelActionId === m.id;
+                                return (
+                                    <div key={m.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${m.isDownloaded ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800'}`}>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
+                                                {m.isDownloaded && (
+                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                        <CheckCircle2 className="w-2.5 h-2.5" /> Ready
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{m.paramsBillions}B params</span>
+                                                <span className="flex items-center gap-1"><HardDrive className="w-3 h-3" />~{m.ramGb}GB RAM</span>
+                                                {fileSizeGb && <span>{fileSizeGb}GB on disk</span>}
+                                                {!m.isDownloaded && <span className="text-zinc-400">{m.sizeLabel}</span>}
+                                                <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">{m.quantization}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex-shrink-0">
+                                            {m.isDownloaded ? (
+                                                <button
+                                                    onClick={() => handleDeleteModel(m.id)}
+                                                    disabled={isActing}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isActing && modelActionType === 'delete' ? <span className="animate-spin">⟳</span> : <Trash2 className="w-3 h-3" />}
+                                                    {isActing && modelActionType === 'delete' ? 'Deleting...' : 'Delete'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleDownloadModel(m.id)}
+                                                    disabled={isActing}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isActing && modelActionType === 'download' ? <span className="animate-spin">⟳</span> : <Download className="w-3 h-3" />}
+                                                    {isActing && modelActionType === 'download' ? 'Starting...' : 'Download'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    {/* Hardware Info Section */}
+                    {(hardwareTier || hardwareArch || hardwareCpuCores) && (
+                        <section className="premium-card p-6">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="p-2 bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg border border-orange-200 dark:border-orange-500/20">
+                                    <Cpu className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Hardware Profile</h2>
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Quenderin auto-tunes to your hardware for best performance.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {hardwareTier && (
+                                    <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
+                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">Tier</div>
+                                        <div className={`text-sm font-bold capitalize ${hardwareTier === 'powerful' ? 'text-emerald-600 dark:text-emerald-400' : hardwareTier === 'standard' ? 'text-blue-600 dark:text-blue-400' : hardwareTier === 'constrained' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{hardwareTier}</div>
+                                    </div>
+                                )}
+                                {hardwareArch && (
+                                    <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
+                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">CPU Arch</div>
+                                        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">{hardwareArch}</div>
+                                    </div>
+                                )}
+                                {hardwareCpuCores && (
+                                    <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
+                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">CPU Cores</div>
+                                        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{hardwareCpuCores}</div>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Notes Panel */}
+                    <section className="premium-card p-6">
+                        <button
+                            onClick={() => setNotesOpen(o => !o)}
+                            className="w-full flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20">
+                                    <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Saved Notes</h2>
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Notes written by the AI using the note_save tool.</p>
+                                </div>
+                            </div>
+                            {notesOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
+                        </button>
+                        {notesOpen && (
+                            <div className="mt-5">
+                                {notes.length === 0 ? (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-6">No notes saved yet. Ask the AI to "save a note about..."</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {notes.map(note => (
+                                            <div key={note.filename} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{note.title}</p>
+                                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{note.preview}</p>
+                                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">{new Date(note.modifiedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {(note.sizeBytes / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteNote(note.filename)}
+                                                    disabled={deletingNote === note.filename}
+                                                    className="flex-shrink-0 p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-40"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Agent Memory Panel */}
+                    <section className="premium-card p-6">
+                        <button
+                            onClick={() => setMemoryOpen(o => !o)}
+                            className="w-full flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg border border-purple-200 dark:border-purple-500/20">
+                                    <Brain className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Agent Memory</h2>
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Goals the spatial agent has learned to complete successfully.</p>
+                                </div>
+                            </div>
+                            {memoryOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
+                        </button>
+                        {memoryOpen && (
+                            <div className="mt-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">{memoryTotal} total trajectories stored</p>
+                                    {memoryTotal > 0 && (
+                                        <button
+                                            onClick={handleClearMemory}
+                                            disabled={clearingMemory}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                        >
+                                            <AlertTriangle className="w-3 h-3" />
+                                            {clearingMemory ? 'Clearing...' : 'Clear All'}
+                                        </button>
+                                    )}
+                                </div>
+                                {trajectories.length === 0 ? (
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-6">No learned trajectories yet. Run the spatial agent to build experience.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {trajectories.map((t, i) => (
+                                            <div key={i} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                                                <p className="text-[13px] font-medium text-zinc-800 dark:text-zinc-200 leading-snug">{t.goal}</p>
+                                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">{t.actionCount} actions · {new Date(t.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </section>
 
                 <div className="mt-12 pt-8 border-t border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center text-center">
                     <div className="text-xs text-zinc-500 dark:text-zinc-500 space-y-2">

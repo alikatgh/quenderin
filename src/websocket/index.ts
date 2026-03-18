@@ -4,6 +4,7 @@ import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
+import { SessionService } from '../services/session.service.js';
 import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
 import { getHardwareProfile } from '../utils/hardware.js';
@@ -44,7 +45,8 @@ export class WebSocketManager {
         private agentService: AgentService,
         private deviceProvider: IDeviceProvider,
         private llmService: LlmService,
-        private voiceService: VoiceService
+        private voiceService: VoiceService,
+        private sessionService?: SessionService
     ) {
         this.wss = new WebSocketServer({ server });
         this.wss.on('error', (err) => {
@@ -111,6 +113,12 @@ export class WebSocketManager {
             ws.on('pong', () => { (ws as WebSocket & { isAlive?: boolean }).isAlive = true; });
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
+
+            // Start a new session and tell the client its ID (for export/history)
+            if (this.sessionService) {
+                const sessionId = this.sessionService.startSession();
+                ws.send(JSON.stringify({ type: 'session_started', sessionId }));
+            }
 
             // Subscriber logic: Re-sync state if backend is already busy
             const { isGenerating, buffer } = this.llmService.isCurrentlyGenerating();
@@ -197,6 +205,9 @@ export class WebSocketManager {
                             return;
                         }
 
+                        // Persist user message to session
+                        this.sessionService?.addMessage('user', message);
+
                         // Classify intent so the UI can display routing info
                         const intent = classifyIntent(message);
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
@@ -245,6 +256,8 @@ export class WebSocketManager {
                                 this.safeSend(ws, JSON.stringify({ type: 'chat_stream', text: streamBuf }));
                                 streamBuf = '';
                             });
+                            // Persist assistant response to session
+                            this.sessionService?.addMessage('assistant', result.text);
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: any) {
                             if (isActionRequiredError(e)) {
