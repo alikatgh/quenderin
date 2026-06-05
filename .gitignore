@@ -49,3 +49,7 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.swp
+
+# --- Claude Code ---
+# Personal, machine-specific permissions/paths — never share.
+.claude/settings.local.json
