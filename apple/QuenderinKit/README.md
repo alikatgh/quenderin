@@ -46,12 +46,26 @@ swift test       # 13 tests, runs in milliseconds, no simulator needed
   the fallback, not real inference (which needs the `llama` module + a GGUF model
   + a device/simulator).
 
+## Onboarding (Milestone M1)
+
+The "download → ready" spine, fully wired against the seams:
+
+- `ModelDownloader` (+ `URLSessionModelDownloader`, `MockModelDownloader`) —
+  streamed-progress download to disk.
+- `OnboardingModel` — `@MainActor` state machine: probe → recommend → download →
+  load → ready (or failed). Depends only on the downloader + engine protocols, so
+  it's unit-tested end-to-end with mocks.
+- `OnboardingView` — SwiftUI screen rendering each phase.
+
+See `../ROADMAP.md` for the goal, status table, and the app-target snippet.
+
 ## Not yet here (next steps)
 
-- **Link llama.cpp** — add the `llama` SwiftPM product / xcframework, then run
-  `LlamaEngine` on a simulator with a small GGUF to validate the C path.
-- **Module manifest as language-neutral JSON** — so desktop (TS) and mobile
-  (Swift/Kotlin) read one source of truth instead of two hand-synced copies.
-- **Download runtime** — port the background-`URLSession` engine from
-  `off-grid-mobile/ios/DownloadManagerModule.swift`, minus the React Native bridge.
-- **App shell** — SwiftUI onboarding: probe → recommend → download → ready.
+- **Link llama.cpp + run on device** — add the `llama` SwiftPM product /
+  xcframework, then run `LlamaEngine` on a simulator with a small GGUF. The only
+  piece that can't be proven headlessly.
+- **Wrap as an Xcode app target** — `@main` App + `OnboardingView` (snippet in ROADMAP).
+- **M2 chat** — stream tokens from the loaded model into a chat view.
+- **Shared manifest JSON** — one catalog read by TS + Swift + Kotlin.
+- **Production downloader** — port the background-`URLSession` engine from
+  `off-grid-mobile/ios/DownloadManagerModule.swift` (resumable, multi-file).
