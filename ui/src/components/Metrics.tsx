@@ -168,12 +168,9 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                     )}
                 </div>
 
-                <div className="flex items-center gap-3 mb-8">
-                    <Activity className="w-8 h-8 text-blue-500" />
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Agent Telemetry</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400 mt-1">Real-time performance analytics for your local AI agent.</p>
-                    </div>
+                <div className="mb-8">
+                    <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Agent Telemetry</h1>
+                    <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mt-1">Performance analytics for your local AI agent.</p>
                 </div>
 
                 {/* KPI Cards */}
@@ -184,13 +181,13 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                         { icon: Clock, label: 'Avg Duration', value: `${avgDurationSec}s`, color: 'purple' },
                         { icon: Zap, label: 'Avg Steps', value: String(avgSteps), sub: `${avgRetries} retries/run`, color: 'orange' },
                     ].map(({ icon: Icon, label, value, sub }) => (
-                        <div key={label} className="bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                            <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 mb-3">
-                                <Icon className="w-4 h-4" />
-                                <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+                        <div key={label} className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500 mb-2">
+                                <Icon className="w-3.5 h-3.5" />
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
                             </div>
-                            <p className={`text-3xl font-bold text-zinc-900 dark:text-white`}>{value}</p>
-                            {sub && <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{sub}</p>}
+                            <p className="text-2xl font-semibold text-zinc-900 dark:text-white tabular-nums">{value}</p>
+                            {sub && <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">{sub}</p>}
                         </div>
                     ))}
                 </div>
@@ -198,8 +195,8 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                 {/* Charts Row */}
                 {recent.length > 1 && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <div className="bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-3">Success / Fail (last {recent.length})</h3>
+                        <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5">
+                            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Success / Fail (last {recent.length})</h3>
                             <div className="overflow-x-auto">
                                 <MiniBarChart values={successBarValues} colors={successBarColors} height={70} />
                             </div>
@@ -209,16 +206,16 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-3">Duration (seconds)</h3>
+                        <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5">
+                            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Duration (seconds)</h3>
                             <div className="overflow-x-auto">
                                 <MiniLineChart values={durationValues} color="#6366f1" height={70} />
                             </div>
                             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-3">Each point = one task run</p>
                         </div>
 
-                        <div className="bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-3">Steps per Task</h3>
+                        <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5">
+                            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Steps per Task</h3>
                             <div className="overflow-x-auto">
                                 <MiniLineChart values={stepsValues} color="#f59e0b" height={70} />
                             </div>

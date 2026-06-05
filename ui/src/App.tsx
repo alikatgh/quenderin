@@ -8,6 +8,7 @@ import { GeneralChatArea } from './components/GeneralChatArea.js';
 import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
 import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 
 // Lazy-load heavy components — they import syntax highlighter, markdown,
 // and data-fetching code that isn't needed on initial render.
@@ -31,9 +32,9 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
   const handleDownloadModel = async () => {
     setIsModelDownloading(true);
     try {
-      await fetch('/api/models/download', { method: 'POST' });
-    } catch (e) {
-      console.error("Failed to sequence download routing from Wizard", e);
+      const res = await fetch('/api/models/download', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
       setIsModelDownloading(false);
     }
   };
@@ -47,13 +48,13 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
         setVoiceDownloadProgress(p => p >= 90 ? 90 : p + 10);
       }, 500);
 
-      await fetch('/api/voice/download', { method: 'POST' });
+      const res = await fetch('/api/voice/download', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       clearInterval(interval);
       setVoiceDownloadProgress(100);
       setTimeout(() => setIsVoiceDownloading(false), 1000);
-    } catch (e) {
-      console.error("Failed to sequence voice download", e);
+    } catch {
       setIsVoiceDownloading(false);
       setVoiceDownloadProgress(0);
     }
@@ -64,16 +65,15 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
     try {
       await new Promise(r => setTimeout(r, 500));
       onDismiss();
-    } catch (e) {
-      console.error("Failed to run finish", e);
+    } catch {
     } finally {
       setIsFinishing(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
 
         {/* Header Progress Bar */}
         <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
@@ -83,12 +83,10 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
         <div className="p-6">
           {step === 1 && (
             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-5 border border-purple-200 dark:border-purple-500/20 shadow-sm">
-                <TerminalSquare className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Welcome to Quenderin</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6 font-medium">
-                Welcome! Quenderin is a private assistant that runs **100% locally on your computer**. It helps you finish tasks by watching your phone screen and understanding how to use your apps, just like a human would.
+              <TerminalSquare className="w-6 h-6 text-purple-500 mb-4" />
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Welcome to Quenderin</h2>
+              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
+                A private assistant that runs 100% locally on your computer. It watches your phone screen and controls your apps, just like a human would.
               </p>
               <button onClick={() => setStep(2)} className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group">
                 Next: Setup AI Knowledge <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -98,12 +96,10 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 
           {step === 2 && (
             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-5 border border-emerald-200 dark:border-emerald-500/20 shadow-sm">
-                <BrainCircuit className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Get AI Knowledge</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                Quenderin needs to download its "knowledge" to understand your screen and help you:
+              <BrainCircuit className="w-6 h-6 text-emerald-500 mb-4" />
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Get AI Knowledge</h2>
+              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
+                Download the AI model to understand your screen and help you:
               </p>
 
               {downloadProgress === 100 ? (
@@ -122,9 +118,9 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                     <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Knowledge...</span>
                     <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
                   </div>
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 mb-4 overflow-hidden border border-zinc-300 dark:border-zinc-600">
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-4 overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-3 transition-all duration-300 ease-out"
+                      className="bg-emerald-500 h-2 transition-all duration-300 ease-out"
                       style={{ width: `${downloadProgress}%` }}
                     ></div>
                   </div>
@@ -160,12 +156,10 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 
           {step === 3 && (
             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-5 border border-blue-200 dark:border-blue-500/20 shadow-sm">
-                <Mic className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Enable Voice Helper</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-                Enable voice control to talk to Quenderin directly. This allows you to give instructions and record requests entirely offline.
+              <Mic className="w-6 h-6 text-blue-500 mb-4" />
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Enable Voice Helper</h2>
+              <p className="text-zinc-600 dark:text-zinc-400 text-[13px] leading-relaxed mb-6">
+                Talk to Quenderin directly with voice control. Fully offline.
               </p>
 
               {voiceDownloadProgress === 100 ? (
@@ -184,9 +178,9 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                     <span className="text-blue-600 dark:text-blue-400">Installing Voice Helper...</span>
                     <span className="text-zinc-500 dark:text-zinc-400">{voiceDownloadProgress}%</span>
                   </div>
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-3 mb-2 overflow-hidden border border-zinc-300 dark:border-zinc-600">
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-2 overflow-hidden">
                     <div
-                      className="bg-blue-500 h-3 transition-all duration-300 ease-out"
+                      className="bg-blue-500 h-2 transition-all duration-300 ease-out"
                       style={{ width: `${voiceDownloadProgress}%` }}
                     ></div>
                   </div>
@@ -426,8 +420,8 @@ function AppContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modelId: modelId ?? healthData?.recommendedModelId ?? 'llama32-1b' })
       });
-    } catch (e) {
-      console.error("Failed to sequence download routing from parent", e);
+    } catch {
+      // Download failure is non-fatal — user can retry from settings
     }
   };
 
@@ -500,7 +494,7 @@ function AppContent() {
           hardwareTier={healthData?.hardware?.tier}
         />
 
-        <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors duration-300">
+        <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors">
 
           {showRecoveryBanner && (
             <div className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
@@ -519,33 +513,41 @@ function AppContent() {
             </div>
           )}
 
-          {/* Top Header Navigation */}
-          <header className="h-[52px] flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/75 dark:bg-[#101012]/75 backdrop-blur-xl z-20 border-b border-zinc-200/60 dark:border-white/5 transition-all duration-300">
-            <div className="flex items-center gap-2.5">
+          {/* Top Header */}
+          <header className="h-12 flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
+            <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setSidebarOpen(!isSidebarOpen)}
-                className="p-1.5 -ml-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-all active:scale-95"
+                aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+                className="p-1.5 -ml-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all active:scale-95"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-[18px] h-[18px]" />
               </button>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-[14px] tracking-tight">Quenderin Agent</span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-[13px] tracking-tight">Quenderin</span>
             </div>
 
             <button
+              type="button"
               onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-              className={`flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all duration-300 border ${isInspectorOpen ? 'bg-zinc-200/80 dark:bg-zinc-700/60 border-zinc-300/70 dark:border-zinc-600/70 text-zinc-900 dark:text-zinc-100' : 'border-zinc-200/70 dark:border-zinc-700/70 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5'}`}
+              aria-label={isInspectorOpen ? 'Close inspector' : 'Open inspector'}
+              aria-expanded={isInspectorOpen}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg transition-all border ${isInspectorOpen ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300/70 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200' : 'border-zinc-200/60 dark:border-zinc-800/60 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
             >
-              {isInspectorOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-              <span className="hidden sm:inline">Device Inspector</span>
-              {currentUI.length > 0 && <span className="flex w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] ml-1 animate-pulse"></span>}
+              {isInspectorOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">Inspector</span>
+              {currentUI.length > 0 && <span className="flex w-1.5 h-1.5 rounded-full bg-blue-500 ml-0.5 animate-pulse" />}
             </button>
           </header>
 
           {currentView === 'docs' ? (
+            <ErrorBoundary fallbackLabel="Docs">
             <Suspense fallback={<LazyFallback />}>
               <Docs onBack={() => setCurrentView('general_chat')} />
             </Suspense>
+            </ErrorBoundary>
           ) : currentView === 'settings' ? (
+            <ErrorBoundary fallbackLabel="Settings">
             <Suspense fallback={<LazyFallback />}>
             <SettingsArea
               currentSettings={settings}
@@ -567,10 +569,13 @@ function AppContent() {
               }}
             />
             </Suspense>
+            </ErrorBoundary>
           ) : currentView === 'metrics' ? (
+            <ErrorBoundary fallbackLabel="Metrics">
             <Suspense fallback={<LazyFallback />}>
               <Metrics onBack={() => setCurrentView('general_chat')} />
             </Suspense>
+            </ErrorBoundary>
           ) : currentView === 'general_chat' ? (
             <GeneralChatArea
               logs={logs}
@@ -601,6 +606,7 @@ function AppContent() {
         </div>
 
         {isInspectorOpen && (
+          <ErrorBoundary fallbackLabel="Inspector">
           <Suspense fallback={<LazyFallback />}>
             <Inspector
               isOpen={isInspectorOpen}
@@ -608,6 +614,7 @@ function AppContent() {
               logs={logs}
             />
           </Suspense>
+          </ErrorBoundary>
         )}
 
       </div>

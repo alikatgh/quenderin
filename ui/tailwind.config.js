@@ -60,7 +60,7 @@ export default {
             pre: {
               backgroundColor: theme('colors.zinc.900'),
               color: theme('colors.zinc.100'),
-              borderRadius: 'rem',
+              borderRadius: '0.75rem',
               padding: '1rem',
               overflowX: 'auto',
               border: `1px solid ${theme('colors.zinc.200')}`,

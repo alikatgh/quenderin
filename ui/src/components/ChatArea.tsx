@@ -1,10 +1,9 @@
 import { useRef, useEffect, useState } from 'react';
-import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, Loader2, Send, Check, Copy, Mic } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, ArrowUpRight, Mic } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { CodeBlock } from './CodeBlock.js';
 
 interface ChatAreaProps {
     logs: LogEntry[];
@@ -15,53 +14,6 @@ interface ChatAreaProps {
     setCurrentView: (view: 'chat' | 'docs') => void;
     onVoiceStart: () => void;
     onVoiceStop: () => void;
-}
-
-function CodeBlock({ children, language, ...props }: any) {
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-        <div className="relative group/code my-6 overflow-hidden rounded-xl border border-white/5 shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-white/5">
-                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                    {language || 'code'}
-                </div>
-                <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
-                >
-                    {copied ? (
-                        <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400">Copied!</span>
-                        </>
-                    ) : (
-                        <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy</span>
-                        </>
-                    )}
-                </button>
-            </div>
-            <SyntaxHighlighter
-                {...props}
-                children={String(children).replace(/\n$/, '')}
-                style={vscDarkPlus}
-                language={language}
-                PreTag="div"
-                className="!bg-[#09090b] !p-4 !m-0 text-sm font-mono leading-relaxed"
-                customStyle={{
-                    fontFamily: '"JetBrains Mono", Menlo, Monaco, Consolas, monospace',
-                }}
-            />
-        </div>
-    );
 }
 
 interface GoalTemplate { id: string; category: string; label: string; template: string; }
@@ -119,47 +71,36 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                 <div className="max-w-[760px] mx-auto pb-40">
 
                     {agentLogs.length === 0 && (
-                        <div className="mt-24 flex flex-col items-center animate-fade-in px-4">
-                            <div className="w-16 h-16 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-[#3f3f46]">
-                                <Sparkles className="w-8 h-8 text-zinc-800 dark:text-zinc-300" />
-                            </div>
-                            <h2 className="text-3xl font-medium text-zinc-900 dark:text-white mb-2 tracking-tight">Spatial Assistant Ready</h2>
-                            <p className="text-zinc-500 dark:text-[#a1a1aa] mb-12 text-[15px]">Quenderin is connected and waiting for instructions.</p>
+                        <div className="mt-[20vh] flex flex-col items-center animate-fade-in px-4">
+                            <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-200 mb-2 tracking-tight">What should I automate?</h2>
+                            <p className="text-zinc-400 dark:text-zinc-500 mb-10 text-[14px]">Describe a task and I'll control the device for you.</p>
 
-                            <div className="grid sm:grid-cols-2 gap-3 w-full">
-                                <div
+                            <div className="grid sm:grid-cols-2 gap-2.5 w-full max-w-lg">
+                                <button
                                     onClick={() => setCurrentView('docs')}
-                                    className="p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:border-zinc-300 dark:hover:border-zinc-500 transition-colors cursor-pointer col-span-full"
+                                    className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all col-span-full group"
                                 >
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <BookOpen className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-[13px]">Read Documentation</h3>
+                                    <div className="flex items-center gap-2">
+                                        <BookOpen className="w-4 h-4 text-zinc-400" />
+                                        <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">Read documentation</span>
+                                        <ArrowRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 ml-auto group-hover:text-purple-500 transition-colors" />
                                     </div>
-                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
-                                        Learn how Quenderin controls your phone and uses local AI.
-                                    </p>
-                                </div>
+                                </button>
 
                                 {templates.map(t => (
                                     <button
                                         key={t.id}
                                         onClick={() => setGoal(t.template)}
-                                        className="text-left p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl hover:bg-zinc-100 dark:hover:bg-[#27272a]/60 hover:border-zinc-300 dark:hover:border-zinc-500 hover:translate-y-[-1px] transition-all duration-200 shadow-sm group"
+                                        className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group"
                                     >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">{t.category}</p>
-                                                <p className="text-[13px] font-semibold text-zinc-800 dark:text-zinc-200">{t.label}</p>
-                                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">{t.template}</p>
-                                            </div>
-                                            <ArrowRight className="w-3.5 h-3.5 text-purple-500 opacity-0 group-hover:opacity-100 mt-0.5 flex-shrink-0 transition-opacity" />
-                                        </div>
+                                        <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">{t.label}</p>
+                                        <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">{t.template}</p>
                                     </button>
                                 ))}
 
                                 {templates.length === 0 && (
-                                    <div className="col-span-full p-4 border border-zinc-200 dark:border-[#3f3f46] bg-zinc-50/50 dark:bg-[#27272a]/30 rounded-2xl">
-                                        <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Try: "Open Settings and turn on WiFi"</p>
+                                    <div className="col-span-full p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl">
+                                        <p className="text-[13px] text-zinc-400 dark:text-zinc-500">Try: "Open Settings and turn on WiFi"</p>
                                     </div>
                                 )}
                             </div>
@@ -167,29 +108,25 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                     )}
 
                     {agentLogs.length > 0 && (
-                        <div className="mt-10 mb-8 w-full animate-fade-in">
-                            <div className="flex gap-4 sm:gap-6 group mb-10">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-600 dark:bg-[#27272a] dark:border-[#3f3f46] dark:text-zinc-400 flex flex-shrink-0 items-center justify-center shadow-sm">
-                                    <User className="w-5 h-5" />
+                        <div className="mt-8 mb-8 w-full animate-fade-in">
+                            <div className="flex gap-3 mb-6">
+                                <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex flex-shrink-0 items-center justify-center">
+                                    <User className="w-4 h-4" />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[16px] text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap">
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                    <div className="text-[15px] text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap">
                                         {agentLogs[0]?.message.replace('Goal set: ', '')}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 sm:gap-6 bg-zinc-50/50 dark:bg-white/[0.02] -mx-4 px-4 py-8 rounded-3xl border border-transparent">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-100 border border-orange-200 text-orange-600 dark:bg-orange-500/10 dark:border-orange-500/20 dark:text-orange-400 flex flex-shrink-0 items-center justify-center shadow-sm">
-                                    <Sparkles className="w-5 h-5" />
+                            <div className="flex gap-3">
+                                <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex flex-shrink-0 items-center justify-center">
+                                    <Sparkles className="w-4 h-4" />
                                 </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[11px] font-bold text-orange-600 dark:text-orange-400 mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Activity className="w-3.5 h-3.5" /> Live Spatial Log
-                                    </div>
-
-                                    <div className="space-y-4">
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                    <div className="space-y-3">
                                         {agentLogs.slice(1).map((log) => (
                                             <div key={log.id} className="animate-fade-in">
                                                 {log.type === 'error' ? (
@@ -226,7 +163,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                                             {log.type === 'decide' ? (
                                                                 <div className="flex items-center flex-wrap gap-2 text-[14px] text-zinc-700 dark:text-zinc-300">
                                                                     <span>Plan generated:</span>
-                                                                    <code className="bg-zinc-100 dark:bg-[#27272a] font-mono tracking-tight text-[13px] px-2 py-0.5 rounded border border-zinc-200 dark:border-[#3f3f46] shadow-sm">{log.command}</code>
+                                                                    <code className="bg-zinc-100 dark:bg-zinc-800 font-mono tracking-tight text-[13px] px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">{log.command}</code>
                                                                 </div>
                                                             ) : (
                                                                 <span>{log.message || "Working..."}</span>
@@ -238,9 +175,10 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                         ))}
 
                                         {status === 'running' && (
-                                            <div className="flex items-center gap-2 mt-4 text-zinc-500">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                <span className="text-[14px]">Viewing the phone screen...</span>
+                                            <div className="flex items-center gap-1.5 mt-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0ms]" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:150ms]" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:300ms]" />
                                             </div>
                                         )}
                                     </div>
@@ -272,22 +210,22 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             onMouseDown={() => { setIsRecording(true); onVoiceStart() }}
                             onMouseUp={() => { setIsRecording(false); onVoiceStop() }}
                             onMouseLeave={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
-                            className={`p-2.5 rounded-xl transition-all duration-300 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                            className={`p-2 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                         >
-                            <Mic className="w-5 h-5" />
+                            <Mic className="w-[18px] h-[18px]" />
                         </button>
                         <button
                             onClick={handleStart}
                             disabled={status === 'running' || !goal.trim()}
-                            className={`p-2.5 rounded-xl transition-all duration-300 ${(status === 'running' || !goal.trim()) ? 'text-zinc-400 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/10'}`}
+                            className={`p-2 rounded-xl transition-all ${(status === 'running' || !goal.trim()) ? 'text-zinc-300 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95'}`}
                         >
-                            {status === 'running' ? <Activity className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                            {status === 'running' ? <Activity className="w-[18px] h-[18px] animate-spin" /> : <ArrowUpRight className="w-[18px] h-[18px]" />}
                         </button>
                     </div>
                 </div>
-                <div className="text-center text-[11.5px] text-zinc-500 dark:text-[#A1A1AA] mt-3 font-medium">
-                    Commands execute fully offline via your local assistant. Ensure your phone is connected before starting.
-                </div>
+                <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 mt-2.5">
+                    Runs offline on your device. Connect your phone before starting.
+                </p>
             </div>
         </>
     );

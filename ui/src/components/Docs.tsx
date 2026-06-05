@@ -60,14 +60,14 @@ export function Docs({ onBack }: DocsProps) {
                 </div>
 
                 <div className="p-4 space-y-1">
-                    <div className="text-xs font-bold tracking-wider text-zinc-400 uppercase mb-3 px-2 mt-4">Getting Started</div>
+                    <div className="text-[11px] font-semibold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase mb-2 px-2 mt-4">Getting Started</div>
                     {MENU_ITEMS.map((item) => (
                         <button
                             key={item.file}
                             onClick={() => setActiveFile(item.file)}
                             className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${activeFile === item.file
-                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium shadow-sm border border-zinc-200 dark:border-zinc-700/50'
-                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300 border border-transparent'
+                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium'
+                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300'
                                 }`}
                         >
                             <FileText className={`w-4 h-4 ${activeFile === item.file ? 'text-blue-500' : 'text-zinc-400'}`} />

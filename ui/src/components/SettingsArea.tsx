@@ -283,11 +283,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onBack}
-                            className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors transition-colors"
+                            className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                         >
-                            <ArrowLeft className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                            <ArrowLeft className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                         </button>
-                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">System Settings</h1>
+                        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white tracking-tight">Settings</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -311,13 +311,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                     {/* RAM Armor Section */}
                     <section className="premium-card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20">
-                                <Shield className="w-5 h-5" />
-                            </div>
+                        <div className="flex items-center gap-3 mb-5">
+                            <Shield className="w-5 h-5 text-blue-500" />
                             <div>
-                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">RAM Armor</h2>
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Control how much memory the AI consumes.</p>
+                                <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">RAM Armor</h2>
+                                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Control how much memory the AI consumes.</p>
                             </div>
                         </div>
 
@@ -346,7 +344,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                                                 }`}
                                         >
-                                            <div className="font-bold text-base mb-1">{label}</div>
+                                            <div className="font-semibold text-base mb-1">{label}</div>
                                             <div className="text-[11px] opacity-70 mb-2">{size} Tokens</div>
                                             <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                 <div className={`h-full bg-blue-500 transition-all`} style={{ width: `${pct}%` }}></div>
@@ -460,7 +458,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                                                 }`}
                                         >
-                                            <div className="font-bold text-sm">{ms}ms</div>
+                                            <div className="font-semibold text-sm">{ms}ms</div>
                                         </button>
                                     ))}
                                 </div>
@@ -473,13 +471,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                     {/* Privacy Section */}
                     <section className="premium-card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-500/20">
-                                <Shield className="w-5 h-5" />
-                            </div>
+                        <div className="flex items-center gap-3 mb-5">
+                            <Shield className="w-5 h-5 text-red-500" />
                             <div>
-                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Privacy Lock</h2>
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Secure your local AI assistant with a passphrase.</p>
+                                <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Privacy Lock</h2>
+                                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Secure your local AI assistant with a passphrase.</p>
                             </div>
                         </div>
 
@@ -512,14 +508,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                     {/* Appearance Section */}
                     <section className="premium-card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg border border-purple-200 dark:border-purple-500/20">
-                                <Sun className="w-5 h-5 dark:hidden" />
-                                <Moon className="w-5 h-5 hidden dark:block" />
-                            </div>
+                        <div className="flex items-center gap-3 mb-5">
+                            <Sun className="w-5 h-5 text-purple-500 dark:hidden" />
+                            <Moon className="w-5 h-5 text-purple-500 hidden dark:block" />
                             <div>
-                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Appearance</h2>
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Humidify your visual experience.</p>
+                                <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Appearance</h2>
+                                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Customize your visual experience.</p>
                             </div>
                         </div>
 
@@ -547,17 +541,14 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             ))}
                         </div>
                     </section>
-                </div>
 
                     {/* Model Manager Section */}
                     <section className="premium-card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
-                                <BrainCircuit className="w-5 h-5" />
-                            </div>
+                        <div className="flex items-center gap-3 mb-5">
+                            <BrainCircuit className="w-5 h-5 text-emerald-500" />
                             <div>
-                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">AI Model Manager</h2>
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Download or remove local AI models. All inference is 100% offline.</p>
+                                <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">AI Model Manager</h2>
+                                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Download or remove local AI models. All inference is 100% offline.</p>
                             </div>
                         </div>
 
@@ -573,7 +564,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
                                                 {m.isDownloaded && (
-                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                                                         <CheckCircle2 className="w-2.5 h-2.5" /> Ready
                                                     </span>
                                                 )}
@@ -617,31 +608,29 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     {(hardwareTier || hardwareArch || hardwareCpuCores) && (
                         <section className="premium-card p-6">
                             <div className="flex items-center gap-3 mb-5">
-                                <div className="p-2 bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg border border-orange-200 dark:border-orange-500/20">
-                                    <Cpu className="w-5 h-5" />
-                                </div>
+                                <Cpu className="w-5 h-5 text-orange-500" />
                                 <div>
-                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Hardware Profile</h2>
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Quenderin auto-tunes to your hardware for best performance.</p>
+                                    <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Hardware Profile</h2>
+                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Auto-tuned to your hardware for best performance.</p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {hardwareTier && (
                                     <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">Tier</div>
-                                        <div className={`text-sm font-bold capitalize ${hardwareTier === 'powerful' ? 'text-emerald-600 dark:text-emerald-400' : hardwareTier === 'standard' ? 'text-blue-600 dark:text-blue-400' : hardwareTier === 'constrained' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{hardwareTier}</div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">Tier</div>
+                                        <div className={`text-sm font-semibold capitalize ${hardwareTier === 'powerful' ? 'text-emerald-600 dark:text-emerald-400' : hardwareTier === 'standard' ? 'text-blue-600 dark:text-blue-400' : hardwareTier === 'constrained' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{hardwareTier}</div>
                                     </div>
                                 )}
                                 {hardwareArch && (
                                     <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">CPU Arch</div>
-                                        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">{hardwareArch}</div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">CPU Arch</div>
+                                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{hardwareArch}</div>
                                     </div>
                                 )}
                                 {hardwareCpuCores && (
                                     <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-                                        <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">CPU Cores</div>
-                                        <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{hardwareCpuCores}</div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">CPU Cores</div>
+                                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{hardwareCpuCores}</div>
                                     </div>
                                 )}
                             </div>
@@ -655,12 +644,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             className="w-full flex items-center justify-between"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20">
-                                    <FileText className="w-5 h-5" />
-                                </div>
+                                <FileText className="w-5 h-5 text-blue-500" />
                                 <div className="text-left">
-                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Saved Notes</h2>
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Notes written by the AI using the note_save tool.</p>
+                                    <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Saved Notes</h2>
+                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Notes written by the AI using the note_save tool.</p>
                                 </div>
                             </div>
                             {notesOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
@@ -700,12 +687,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             className="w-full flex items-center justify-between"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg border border-purple-200 dark:border-purple-500/20">
-                                    <Brain className="w-5 h-5" />
-                                </div>
+                                <Brain className="w-5 h-5 text-purple-500" />
                                 <div className="text-left">
-                                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Agent Memory</h2>
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Goals the spatial agent has learned to complete successfully.</p>
+                                    <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Agent Memory</h2>
+                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Goals the spatial agent has learned to complete successfully.</p>
                                 </div>
                             </div>
                             {memoryOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
@@ -740,12 +725,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             </div>
                         )}
                     </section>
+                </div>
 
-                <div className="mt-12 pt-8 border-t border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center text-center">
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500 space-y-2">
-                        <p>© 2026 Quenderin Agent • Version 0.0.1</p>
-                        <p>Settings are saved to your browser and applied to the local AI engine.</p>
-                    </div>
+                <div className="mt-10 pt-6 border-t border-zinc-200/60 dark:border-zinc-800/50 flex flex-col items-center text-center">
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                        Quenderin v0.0.1 — Settings saved to your browser.
+                    </p>
                 </div>
             </div>
         </div>

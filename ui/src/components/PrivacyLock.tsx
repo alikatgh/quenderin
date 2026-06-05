@@ -76,22 +76,23 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
     const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
 
     return (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-4 transition-all opacity-100 duration-500">
-            <div className={`w-full max-w-sm bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500 ${error ? 'animate-shake' : ''}`}>
-                <div className="flex justify-center mb-6">
-                    <div className={`w-16 h-16 ${isLockedOut ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/10' : 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-white/10'} rounded-2xl flex items-center justify-center shadow-inner border`}>
-                        {isLockedOut ? <ShieldAlert className="w-8 h-8" /> : <Lock className="w-8 h-8" />}
-                    </div>
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-4" role="dialog" aria-modal="true" aria-label="Privacy Lock">
+            <div className={`w-full max-w-sm bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500 ${error ? 'animate-shake' : ''}`}>
+                <div className="flex justify-center mb-5">
+                    {isLockedOut
+                        ? <ShieldAlert className="w-7 h-7 text-red-500" />
+                        : <Lock className="w-7 h-7 text-zinc-400 dark:text-zinc-500" />
+                    }
                 </div>
-                <h2 className="text-2xl font-bold text-center text-zinc-900 dark:text-white mb-2 tracking-tight">
-                    {isLockedOut ? 'Too Many Attempts' : 'System Locked'}
+                <h2 className="text-xl font-semibold text-center text-zinc-900 dark:text-white mb-1.5 tracking-tight">
+                    {isLockedOut ? 'Too Many Attempts' : 'Locked'}
                 </h2>
-                <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mb-8 font-medium">
+                <p className="text-center text-[13px] text-zinc-500 dark:text-zinc-400 mb-6">
                     {isLockedOut
                         ? `Locked for ${Math.floor(lockoutRemaining / 60)}:${(lockoutRemaining % 60).toString().padStart(2, '0')}. Please wait.`
                         : failedAttempts > 0
-                            ? `Enter your passphrase (${MAX_FAILED_ATTEMPTS - failedAttempts} attempts remaining)`
-                            : 'Enter your privacy passphrase to continue.'}
+                            ? `Enter passphrase (${MAX_FAILED_ATTEMPTS - failedAttempts} attempts left)`
+                            : 'Enter your passphrase to continue.'}
                 </p>
 
                 <form onSubmit={handleSubmit} className="relative">
@@ -102,10 +103,10 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
                         onChange={e => { setPassphrase(e.target.value); setError(false); }}
                         placeholder="Passphrase"
                         disabled={isLockedOut}
-                        className={`w-full bg-zinc-50 dark:bg-[#09090b] border ${error ? 'border-red-500 ring-2 ring-red-500/20 text-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-zinc-500/10 text-zinc-900 dark:text-zinc-100'} rounded-2xl py-3.5 pl-5 pr-14 text-center tracking-[0.3em] font-mono text-lg placeholder:tracking-normal placeholder:font-sans placeholder:text-zinc-400 outline-none transition-all shadow-inner disabled:opacity-40 disabled:cursor-not-allowed`}
+                        className={`w-full bg-zinc-50 dark:bg-[#09090b] border ${error ? 'border-red-500 ring-2 ring-red-500/20 text-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-purple-500/10 text-zinc-900 dark:text-zinc-100'} rounded-xl py-3 pl-5 pr-14 text-center tracking-[0.25em] font-mono text-base placeholder:tracking-normal placeholder:font-sans placeholder:text-zinc-400 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
                     />
-                    <button type="submit" className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100" disabled={!passphrase || isLockedOut}>
-                        <ArrowRight className="w-5 h-5" />
+                    <button type="submit" className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100" disabled={!passphrase || isLockedOut}>
+                        <ArrowRight className="w-4 h-4" />
                     </button>
                 </form>
             </div>
