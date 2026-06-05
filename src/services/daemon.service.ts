@@ -84,8 +84,10 @@ export class DaemonService extends EventEmitter {
 
                     this.emit('observation', observation);
                 }
-            } catch (err: any) {
-                if (err.code !== 'ADB_MISSING' && !err.message.includes('Android Device Not Found') && !err.message.includes('adb: no devices/emulators found')) {
+            } catch (err: unknown) {
+                const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+                const message = err instanceof Error ? err.message : String(err);
+                if (code !== 'ADB_MISSING' && !message.includes('Android Device Not Found') && !message.includes('adb: no devices/emulators found')) {
                     this.emit('error', `**Device Connection Lost**\nQuenderin can no longer see your device. To fix this:\n1. Check if your phone is still plugged in via USB (or your emulator is running).\n2. Ensure your phone screen is unlocked and awake.\n3. Disconnect and reconnect the USB cable, then tap "Always allow" if prompted.`);
                 }
             }

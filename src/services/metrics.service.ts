@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import logger from '../utils/logger.js';
 
 export interface AgentMetrics {
     id: string;
@@ -40,7 +41,7 @@ export class MetricsService {
                 fs.writeFile(this.habitsNdjsonPath, '', 'utf-8');
             });
         }).catch(err => {
-            console.error('Failed to initialize Quenderin metrics store:', err);
+            logger.error('Failed to initialize Quenderin metrics store:', err);
         });
     }
 
@@ -54,7 +55,7 @@ export class MetricsService {
             records.push(metrics);
             await fs.writeFile(this.telemetryPath, JSON.stringify(records, null, 2), 'utf-8');
         } catch (error) {
-            console.error('Failed to write telemetry data:', error);
+            logger.error('Failed to write telemetry data:', error);
         }
     }
 
@@ -73,7 +74,7 @@ export class MetricsService {
         try {
             await fs.appendFile(this.habitsNdjsonPath, JSON.stringify(log) + '\n', 'utf-8');
         } catch (error) {
-            console.error('Failed to write habit log data:', error);
+            logger.error('Failed to write habit log data:', error);
         }
     }
 

@@ -9,6 +9,7 @@ import { UiVerifier } from "./agent/uiVerifier.js";
 import { AgentEvents, AgentAction, IDeviceProvider, ILlmProvider } from "../types/index.js";
 import { MetricsService } from "./metrics.service.js";
 import { getHardwareProfile } from "../utils/hardware.js";
+import logger from "../utils/logger.js";
 
 const HW = getHardwareProfile();
 
@@ -58,19 +59,26 @@ export class AgentService {
     private promptBuilder: PromptBuilder;
     private actionExecutor: ActionExecutor;
     private uiVerifier: UiVerifier;
-    private isPaused: boolean = false;
-    private pendingManualOverride: string | null = null;
+    /** Guarded by _stateMutex to prevent pause/resume race conditions */
+    private _isPaused: boolean = false;
+    private _pendingManualOverride: string | null = null;
+    private _isRunning: boolean = false;
     private currentGoal: string = "";
 
-    public pause() {
-        this.isPaused = true;
+    public get isPaused(): boolean { return this._isPaused; }
+    public get isRunning(): boolean { return this._isRunning; }
+
+    public pause(): void {
+        this._isPaused = true;
+        logger.info('[AgentService] Agent paused.');
     }
 
-    public resume(manualAction?: string) {
+    public resume(manualAction?: string): void {
         if (manualAction) {
-            this.pendingManualOverride = manualAction;
+            this._pendingManualOverride = manualAction;
         }
-        this.isPaused = false;
+        this._isPaused = false;
+        logger.info(`[AgentService] Agent resumed${manualAction ? ' with manual override' : ''}.`);
     }
 
     constructor(
@@ -97,9 +105,15 @@ export class AgentService {
     }
 
     public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps()): Promise<void> {
-        console.log(`[AgentService] Starting mission: ${goal}`);
+        if (this._isRunning) {
+            logger.warn('[AgentService] Agent loop already running — ignoring duplicate start.');
+            return;
+        }
+        this._isRunning = true;
+
+        logger.info(`[AgentService] Starting mission: ${goal}`);
         if (attachments.length > 0) {
-            console.log(`[AgentService] Context enriched with ${attachments.length} attachments.`);
+            logger.info(`[AgentService] Context enriched with ${attachments.length} attachments.`);
         }
 
         let step = 0;
@@ -147,7 +161,7 @@ export class AgentService {
                 return;
             }
         } catch (e: unknown) {
-            console.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
+            logger.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
         }
 
         while (step < maxSteps && !isDone) {
@@ -171,20 +185,20 @@ export class AgentService {
             emitter.emit('status', ` Observed ${state.elements.length} elements.`);
 
             // 3. Pause Check (Human-in-the-Loop)
-            while (this.isPaused) {
+            while (this._isPaused) {
                 emitter.emit('status', " Agent paused for manual human correction. Waiting for resume...");
                 await new Promise(r => setTimeout(r, 1000));
             }
 
             // Did the human provide a manual override while we were paused?
-            if (this.pendingManualOverride) {
+            if (this._pendingManualOverride) {
                 // 3b. Overwrite memory and skip the LLM
-                emitter.emit('status', ` Applying Human Override: ${this.pendingManualOverride}`);
-                actionHistory.push(`[Success] (MANUAL OVERRIDE) ${this.pendingManualOverride}`);
+                emitter.emit('status', ` Applying Human Override: ${this._pendingManualOverride}`);
+                actionHistory.push(`[Success] (MANUAL OVERRIDE) ${this._pendingManualOverride}`);
 
-                await this.memoryService.injectOverride(goal, actionHistory, this.pendingManualOverride);
+                await this.memoryService.injectOverride(goal, actionHistory, this._pendingManualOverride);
 
-                this.pendingManualOverride = null;
+                this._pendingManualOverride = null;
                 expectedActionEffect = true;
                 continue; // Immediately jump to the next verify loop step
             }
@@ -201,7 +215,7 @@ export class AgentService {
                         state.screenshotPath
                     );
                 } catch (e) {
-                    console.error("Eye formulation failed", e);
+                    logger.debug("[AgentService] Eye formulation failed:", e);
                 }
             }
 
@@ -325,5 +339,7 @@ export class AgentService {
                 timestamp: new Date().toISOString()
             });
         }
+
+        this._isRunning = false;
     }
 }

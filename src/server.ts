@@ -20,6 +20,17 @@ import { MemoryService } from './services/memory.service.js';
 import { SessionService } from './services/session.service.js';
 import { setHealthLlmService } from './routes/health.js';
 import { resetReadinessForStartup, setReadiness } from './services/readiness.service.js';
+import logger from './utils/logger.js';
+import { TEMP_FILE_MAX_AGE_MS, TEMP_CLEANUP_INTERVAL_MS } from './constants.js';
+
+// Global safety net — log unhandled rejections instead of crashing silently
+process.on('unhandledRejection', (reason) => {
+    logger.error('[Process] Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+    logger.critical('[Process] Uncaught exception — shutting down:', err.message);
+    process.exit(1);
+});
 
 /**
  * Periodically clean up orphaned Quenderin temp files (screenshots, WAV recordings)
@@ -30,7 +41,7 @@ async function cleanupOrphanedTempFiles(): Promise<void> {
         const tmpDir = os.tmpdir();
         const entries = await fs.readdir(tmpDir);
         const now = Date.now();
-        const maxAgeMs = 60 * 60 * 1000; // 1 hour
+        const maxAgeMs = TEMP_FILE_MAX_AGE_MS;
 
         for (const entry of entries) {
             if (!entry.startsWith('desktop_screen_') &&
@@ -76,7 +87,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
 
     const selectedPort = await findAvailablePort(port);
     if (selectedPort !== port) {
-        console.warn(`[Server] Port ${port} is busy, starting on port ${selectedPort} instead.`);
+        logger.warn(`[Server] Port ${port} is busy, starting on port ${selectedPort} instead.`);
     }
     const isCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     const isInteractiveShell = Boolean(process.stdout.isTTY && process.stdin.isTTY);
@@ -89,7 +100,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             : !isInteractiveShell
                 ? 'non-interactive shell detected'
                 : 'browser disabled by environment';
-        console.log(`[Server] Browser auto-open disabled (${reason}).`);
+        logger.info(`[Server] Browser auto-open disabled (${reason}).`);
     }
 
     // 1. Dependency Injection / Initialize Services
@@ -113,20 +124,21 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     setHealthLlmService(llmService);
 
     // Start background passive observation
-    backgroundDaemon.on('error', (e) => console.log(`[Background Observer] ${e}`));
+    backgroundDaemon.on('error', (e) => logger.warn(`[Background Observer] ${e}`));
     backgroundDaemon.start();
 
     // Boot Voice Control — pipe spoken commands into the agent with the correct signature
-    voiceService.on('error', (e) => console.log(`[Voice Control] ${e}`));
+    voiceService.on('error', (e) => logger.warn(`[Voice Control] ${e}`));
     voiceService.on('command', (spokenCommand: string) => {
-        console.log(`\n\n[Voice Trigger] Executing objective: "${spokenCommand}"...`);
-        agentService.runAgentLoop(spokenCommand, new AgentEventEmitter(), [], 20);
+        logger.info(`[Voice Trigger] Executing objective: "${spokenCommand}"`);
+        agentService.runAgentLoop(spokenCommand, new AgentEventEmitter(), [], 20)
+            .catch((e) => logger.error(`[Voice Trigger] Agent loop failed for "${spokenCommand}":`, e));
     });
     const picovoiceAccessKey = process.env.PICOVOICE_ACCESS_KEY;
     if (picovoiceAccessKey) {
         await voiceService.initialize(picovoiceAccessKey);
     } else {
-        console.warn('[Voice Control] PICOVOICE_ACCESS_KEY is not set. Voice controls are disabled.');
+        logger.info('[Voice Control] PICOVOICE_ACCESS_KEY not set — voice controls disabled.');
     }
 
     // 2. Setup Express
@@ -135,7 +147,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const server = createServer(app);
 
     // 2b. Start periodic temp file cleanup (every 30 min)
-    const cleanupTimer = setInterval(cleanupOrphanedTempFiles, 30 * 60 * 1000);
+    const cleanupTimer = setInterval(cleanupOrphanedTempFiles, TEMP_CLEANUP_INTERVAL_MS);
     cleanupTimer.unref();
     // Run once at startup to clean up leftovers from previous crashes
     cleanupOrphanedTempFiles();
@@ -143,15 +155,15 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     // 3. Graceful shutdown handlers
     const shutdown = () => {
         setReadiness(false, 'shutting-down', 'Shutdown signal received');
-        console.log('\n[System] Shutting down gracefully...');
+        logger.info('[System] Shutting down gracefully...');
         clearInterval(cleanupTimer);
         backgroundDaemon.stop();
         voiceService.shutdown();
-        ocrService.terminate().catch(() => { });
+        ocrService.terminate().catch((e) => logger.debug('[Shutdown] OCR terminate error:', e));
         // Final cleanup of temp files on shutdown
-        cleanupOrphanedTempFiles().catch(() => {});
+        cleanupOrphanedTempFiles().catch((e) => logger.debug('[Shutdown] Temp cleanup error:', e));
         server.close(() => {
-            console.log('[System] HTTP server closed.');
+            logger.info('[System] HTTP server closed.');
             process.exit(0);
         });
         // Force-kill after 10 s if something hangs
@@ -164,12 +176,12 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     return new Promise<void>((resolve, reject) => {
         server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
-                console.error(`\n[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
+                logger.error(`[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
             }
             setReadiness(false, 'server-error', err.message);
             backgroundDaemon.stop();
             voiceService.shutdown();
-            ocrService.terminate().catch(() => { });
+            ocrService.terminate().catch((e) => logger.debug('[Startup] OCR terminate error:', e));
             reject(err);
         });
         // Set HTTP timeouts for slow networks/devices — prevent connection starvation
@@ -180,13 +192,13 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.listen(selectedPort, async () => {
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService);
             setReadiness(true, 'serving', `Listening on port ${selectedPort}`);
-            console.log(`\n Dashboard running at http://localhost:${selectedPort}`);
+            logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {
                 try {
                     await open(`http://localhost:${selectedPort}`);
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
-                    console.warn(`[Server] Failed to auto-open browser: ${message}`);
+                    logger.warn(`[Server] Failed to auto-open browser: ${message}`);
                 }
             }
             resolve();

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.get('/:filename', async (req, res) => {
         res.send(fileContent);
 
     } catch (err) {
-        console.error('Failed to read markdown document:', err);
+        logger.error('Failed to read markdown document:', err);
         res.status(500).json({ error: 'Internal server error while reading document.' });
     }
 });

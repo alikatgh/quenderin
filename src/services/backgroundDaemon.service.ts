@@ -2,6 +2,8 @@ import { EventEmitter } from 'events';
 import { IDeviceProvider, ILlmProvider } from '../types/index.js';
 import { MetricsService } from './metrics.service.js';
 import { getHardwareProfile } from '../utils/hardware.js';
+import logger from '../utils/logger.js';
+import { VISUAL_DIFF_THRESHOLD } from '../constants.js';
 import fs from 'fs/promises';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
@@ -13,7 +15,7 @@ export class BackgroundDaemonService extends EventEmitter {
     /** Poll interval scales with hardware tier to avoid CPU/battery drain on low-end.
      *  Can be overridden via QUENDERIN_POLL_INTERVAL_MS env var. */
     private pollIntervalMs: number;
-    private diffThreshold = 0.05;  // 5% minimum change to trigger LLM
+    private diffThreshold = VISUAL_DIFF_THRESHOLD;
     /** Consecutive idle cycles — used for adaptive backoff to save resources */
     private idleCycleCount = 0;
     /** Store only the raw RGBA pixel data — NOT the full PNG object to save ~16MB */
@@ -37,13 +39,13 @@ export class BackgroundDaemonService extends EventEmitter {
     public start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        console.log(`[Observer] Background watching started (${this.pollIntervalMs}ms loop).`);
+        logger.info(`[Observer] Background watching started (${this.pollIntervalMs}ms loop).`);
         this.pollLoop();
     }
 
     public stop() {
         this.isRunning = false;
-        console.log(`[Observer] Background watching paused.`);
+        logger.info('[Observer] Background watching paused.');
     }
 
     private async parsePng(buffer: Buffer): Promise<PNG> {
@@ -95,8 +97,9 @@ export class BackgroundDaemonService extends EventEmitter {
             this.lastPixelData = Buffer.from(currentPng.data);
 
             return { diffRatio };
-        } catch (e: any) {
-            this.emit('error', `Failed to calculate visual diff: ${e.message}`);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            this.emit('error', `Failed to calculate visual diff: ${message}`);
             return { diffRatio: 0 };
         }
     }
@@ -118,7 +121,7 @@ export class BackgroundDaemonService extends EventEmitter {
                 // 3. LLM Processing if screen changed significantly
                 if (diffRatio > this.diffThreshold) {
                     this.idleCycleCount = 0; // Reset backoff — screen is active
-                    console.log(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
+                    logger.debug(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
 
                     // We don't provide a UI struct here. Pure zero-shot vision.
                     // Assuming the provider (like LLaVA) accepts an imagePath and ignores system prompt if empty
@@ -129,7 +132,7 @@ export class BackgroundDaemonService extends EventEmitter {
                         screenshotPath
                     );
 
-                    console.log(`[Observer Log]: ${description}`);
+                    logger.debug(`[Observer] ${description}`);
 
                     // 4. Log to Habit Tracker Database
                     await this.metricsService.appendHabitLog({
@@ -148,9 +151,11 @@ export class BackgroundDaemonService extends EventEmitter {
                     await fs.unlink(screenshotPath).catch(() => { });
                 }
 
-            } catch (err: any) {
-                if (err.code !== 'ADB_MISSING' && !err.message.includes('Android Device Not Found') && !err.message.includes('adb: no devices/emulators found')) {
-                    this.emit('error', `Background polling error: ${err.message.split('\n')[0]}`);
+            } catch (err: unknown) {
+                const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+                const message = err instanceof Error ? err.message : String(err);
+                if (code !== 'ADB_MISSING' && !message.includes('Android Device Not Found') && !message.includes('adb: no devices/emulators found')) {
+                    this.emit('error', `Background polling error: ${message.split('\n')[0]}`);
                 }
             }
 

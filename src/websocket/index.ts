@@ -5,18 +5,25 @@ import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
 import { SessionService } from '../services/session.service.js';
-import { ALLOWED_CONTEXT_SIZES } from '../constants.js';
+import { ALLOWED_CONTEXT_SIZES, MAX_GOAL_LENGTH, MAX_CHAT_LENGTH, MAX_SEND_BUFFER_BYTES, MAX_ATTACHMENTS, MAX_ATTACHMENT_SIZE, WS_HEARTBEAT_INTERVAL_MS } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import logger from '../utils/logger.js';
 
-/** Max length for user-supplied goal text (prevents DoS via mega-strings) */
-const MAX_GOAL_LENGTH = 4000;
-/** Max length for a single chat message */
-const MAX_CHAT_LENGTH = 8000;
-
-/** Max buffered bytes before we consider the connection congested */
-const MAX_SEND_BUFFER_BYTES = 1024 * 1024; // 1 MB
+/** Validate and sanitize attachment arrays from WebSocket messages */
+function sanitizeAttachments(raw: unknown): { name: string; content: string }[] {
+    if (!Array.isArray(raw)) return [];
+    const result: { name: string; content: string }[] = [];
+    for (const item of raw.slice(0, MAX_ATTACHMENTS)) {
+        if (typeof item !== 'object' || item === null) continue;
+        const name = typeof (item as any).name === 'string' ? (item as any).name.slice(0, 255) : '';
+        const content = typeof (item as any).content === 'string' ? (item as any).content.slice(0, MAX_ATTACHMENT_SIZE) : '';
+        if (name && content) {
+            result.push({ name, content });
+        }
+    }
+    return result;
+}
 
 export class WebSocketManager {
     private wss: WebSocketServer;
@@ -71,7 +78,7 @@ export class WebSocketManager {
                 ws.isAlive = false;
                 ws.ping();
             });
-        }, 30_000); // 30s heartbeat
+        }, WS_HEARTBEAT_INTERVAL_MS);
         this.heartbeatInterval.unref(); // Don't block process exit
     }
 
@@ -89,7 +96,7 @@ export class WebSocketManager {
         this.wss.on('connection', (ws, request) => {
             const origin = request.headers.origin;
             if (origin && !this.isAllowedLocalOrigin(origin)) {
-                console.warn(`[WebSocket] Rejected connection from disallowed origin: ${origin}`);
+                logger.warn(`[WebSocket] Rejected connection from disallowed origin: ${origin}`);
                 ws.close(1008, 'Origin not allowed');
                 return;
             }
@@ -149,8 +156,11 @@ export class WebSocketManager {
             ws.on('message', async (message) => {
                 try {
                     const data = JSON.parse(message.toString());
-                    const isActionRequiredError = (e: any) => {
-                        return ['MODEL_MISSING', 'ADB_MISSING', 'ADB_UNAUTHORIZED', 'PICOVOICE_MISSING', 'DESKTOP_PERMISSIONS', 'ENOENT'].includes(e?.code);
+                    const getErrorCode = (e: unknown): string | undefined =>
+                        e instanceof Error ? (e as NodeJS.ErrnoException).code : undefined;
+                    const isActionRequiredError = (e: unknown) => {
+                        const code = getErrorCode(e);
+                        return code !== undefined && ['MODEL_MISSING', 'ADB_MISSING', 'ADB_UNAUTHORIZED', 'PICOVOICE_MISSING', 'DESKTOP_PERMISSIONS', 'ENOENT'].includes(code);
                     };
 
                     if (data.type === 'start') {
@@ -191,8 +201,9 @@ export class WebSocketManager {
 
                         try {
                             // SECURITY: Never use client-supplied emitter — always use server-side one
-                            await this.agentService.runAgentLoop(goal, emitter, data.attachments || []);
-                        } catch (e: any) {
+                            const attachments = sanitizeAttachments(data.attachments);
+                            await this.agentService.runAgentLoop(goal, emitter, attachments);
+                        } catch (e: unknown) {
                             if (!isActionRequiredError(e)) {
                                 ws.send(JSON.stringify({ type: 'error', message: `**Unexpected System Issue**\nThe agent engine encountered a critical issue. To restore functionality:\n1. Go to your terminal where Quenderin is running.\n2. Press \`Ctrl+C\` to stop the server.\n3. Type \`npm run dev\` and press Enter to restart it.` }));
                             }
@@ -259,15 +270,16 @@ export class WebSocketManager {
                             // Persist assistant response to session
                             this.sessionService?.addMessage('assistant', result.text);
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
-                        } catch (e: any) {
+                        } catch (e: unknown) {
+                            const eCode = getErrorCode(e);
                             if (isActionRequiredError(e)) {
                                 pushActionRequired({
-                                    code: e?.code || 'MODEL_MISSING',
+                                    code: eCode || 'MODEL_MISSING',
                                     title: 'AI Model Missing',
                                     message: 'Download a model to get started. The 1B model works on almost any hardware.',
                                     autoTrigger: 'downloadModel'
                                 });
-                            } else if (e?.code === 'LLM_TIMEOUT' || e?.code === 'LLM_INIT_TIMEOUT') {
+                            } else if (eCode === 'LLM_TIMEOUT' || eCode === 'LLM_INIT_TIMEOUT') {
                                 const hw = getHardwareProfile();
                                 const tierHint = hw.tier === 'embedded'
                                     ? 'Your device is low-powered — this is expected. Try sending a shorter message.'

@@ -174,6 +174,34 @@ export function getHardwareRecommendation(): { maxParams: number; quantization: 
     };
 }
 
+// ─── Limits & Thresholds ─────────────────────────────────────────────────────
+// Centralized to avoid scattering magic numbers across services.
+
+/** Max sessions before oldest are pruned */
+export const MAX_SESSIONS = 100;
+/** Max messages retained per session */
+export const MAX_MESSAGES_PER_SESSION = 500;
+/** Max length for user-supplied goal text (prevents DoS via mega-strings) */
+export const MAX_GOAL_LENGTH = 4000;
+/** Max length for a single chat message */
+export const MAX_CHAT_LENGTH = 8000;
+/** Max buffered bytes on a WebSocket before dropping messages */
+export const MAX_SEND_BUFFER_BYTES = 1024 * 1024; // 1 MB
+/** Max attachments per WebSocket message */
+export const MAX_ATTACHMENTS = 10;
+/** Max size of a single attachment in bytes */
+export const MAX_ATTACHMENT_SIZE = 1024 * 1024; // 1 MB
+/** Background daemon visual diff threshold to trigger LLM */
+export const VISUAL_DIFF_THRESHOLD = 0.05;
+/** Temp file max age before cleanup (1 hour) */
+export const TEMP_FILE_MAX_AGE_MS = 60 * 60 * 1000;
+/** Temp file cleanup interval (30 min) */
+export const TEMP_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+/** Session flush debounce interval */
+export const SESSION_FLUSH_INTERVAL_MS = 2000;
+/** WebSocket heartbeat interval */
+export const WS_HEARTBEAT_INTERVAL_MS = 30_000;
+
 // ─── Allowed settings values (for WS input validation) ─────────────────────
 
 export const ALLOWED_CONTEXT_SIZES = [256, 512, 1024, 2048, 4096, 8192] as const;

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import logger from './utils/logger.js';
 
 export interface QuenderinConfig {
   // Provider settings
@@ -35,7 +36,7 @@ export function loadConfig(): QuenderinConfig {
     return JSON.parse(configContent);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`Warning: Could not parse ${CONFIG_FILENAME}: ${message}`);
+    logger.warn(`Could not parse ${CONFIG_FILENAME}: ${message}`);
     return {};
   }
 }
@@ -48,10 +49,10 @@ export function saveConfig(config: QuenderinConfig): void {
 
   try {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log(`Configuration saved to ${CONFIG_FILENAME}`);
+    logger.info(`Configuration saved to ${CONFIG_FILENAME}`);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Error saving configuration: ${message}`);
+    logger.error(`Error saving configuration: ${message}`);
     throw error;
   }
 }

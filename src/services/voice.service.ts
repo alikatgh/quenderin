@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import logger from '../utils/logger.js';
 
 // Picovoice types — loaded dynamically since they are optional native deps
 interface PorcupineLike {
@@ -35,7 +36,7 @@ export class VoiceService extends EventEmitter {
 
     public async initialize(accessKey: string) {
         try {
-            console.log('[Assistant] Prepping voice helper...');
+            logger.info('[Voice] Initializing voice helper...');
 
             // Note: Porcupine requires a valid AccessKey from Picovoice Console
             if (!accessKey) {
@@ -44,7 +45,7 @@ export class VoiceService extends EventEmitter {
                     title: 'Voice Engine Unconfigured',
                     message: 'Please provide a valid Picovoice Access Key to enable offline voice commands.'
                 });
-                console.warn('[Assistant] Voice Helper is sleeping (Missing Key).');
+                logger.warn('[Voice] No access key provided — voice disabled.');
                 return;
             }
 
@@ -58,11 +59,7 @@ export class VoiceService extends EventEmitter {
                 const recorderMod = await import('@picovoice/pvrecorder-node');
                 PvRecorder = recorderMod.PvRecorder;
             } catch {
-                console.warn(
-                    '[VoiceService] Picovoice native modules not available on this platform. ' +
-                    'Voice wake-word detection is disabled. ' +
-                    'Manual recording via the UI button still works if whisper-node is installed.'
-                );
+                logger.info('[Voice] Picovoice native modules not available — wake-word detection disabled.');
                 return;
             }
 
@@ -74,14 +71,14 @@ export class VoiceService extends EventEmitter {
 
             const frameLength = this.porcupine!.frameLength;
             this.recorder = new PvRecorder(-1, frameLength); // -1 is default mic
-            console.log('[Assistant] Ready to help. Say "Jarvis" or use the Record button.');
+            logger.info('[Voice] Ready. Say "Jarvis" or use the Record button.');
 
             this.voiceAvailable = true;
             this.isListening = true;
             this.audioLoop(); // Start hardware polling asynchronously
 
-        } catch (err: any) {
-            console.error('[VoiceService] Failed to initialize:', err.message);
+        } catch (err: unknown) {
+            logger.error('[Voice] Failed to initialize:', err);
         }
     }
 
@@ -90,8 +87,8 @@ export class VoiceService extends EventEmitter {
 
         try {
             this.recorder.start();
-        } catch (e: any) {
-            console.error('[VoiceService] Microphone access denied or hardware locked:', e.message);
+        } catch (e: unknown) {
+            logger.error('[Voice] Microphone access denied or hardware locked:', e);
             this.emit('action_required', {
                 code: 'MIC_ACCESS_DENIED',
                 title: 'Microphone Unavailable',
@@ -110,7 +107,7 @@ export class VoiceService extends EventEmitter {
                     // 1. Wake Word Detection Phase
                     const keywordIndex = this.porcupine.process(pcm);
                     if (keywordIndex === 0) {
-                        console.log('\n[Assistant] 🎙️ I\'m listening...');
+                        logger.info('[Voice] Wake word detected — listening...');
                         this.STATE = 'RECORDING';
                         this.currentSampleIndex = 0;
                         this.emit('wake');
@@ -123,22 +120,22 @@ export class VoiceService extends EventEmitter {
                         this.currentSampleIndex += pcm.length;
                     } else {
                         // Buffer full, end recording
-                        console.log('[Assistant] Thinking about what you said...');
+                        logger.debug('[Voice] Buffer full — transcribing...');
                         this.STATE = 'TRANSCRIBING';
 
                         // We must yield the main thread while we do heavy I/O and ML inference
                         setImmediate(() => this.processAudioBuffer());
                     }
                 }
-            } catch (err: any) {
-                console.error('[VoiceService] Frame read error:', err.message);
+            } catch (err: unknown) {
+                logger.error('[Voice] Frame read error:', err);
             }
         }
     }
 
     public async manualCaptureStart() {
         if (this.STATE !== 'IDLE') return;
-        console.log('[Assistant] 🎙️ Manual recording started...');
+        logger.info('[Voice] Manual recording started.');
         this.STATE = 'RECORDING';
         this.currentSampleIndex = 0;
         this.emit('wake');
@@ -146,7 +143,7 @@ export class VoiceService extends EventEmitter {
 
     public async manualCaptureStop() {
         if (this.STATE !== 'RECORDING') return;
-        console.log('[Assistant] Processing manual recording...');
+        logger.debug('[Voice] Processing manual recording...');
         this.STATE = 'TRANSCRIBING';
         setImmediate(() => this.processAudioBuffer());
     }
@@ -168,11 +165,8 @@ export class VoiceService extends EventEmitter {
                 const whisperModule = await import('whisper-node');
                 whisper = whisperModule.default || whisperModule.whisper;
             } catch {
-                console.warn(
-                    '[VoiceService] whisper-node is not available on this platform. ' +
-                    'Speech-to-text is disabled. Install it with "npm install whisper-node" if your platform supports it.'
-                );
-                await fs.promises.unlink(wavPath).catch(() => {});
+                logger.info('[Voice] whisper-node not available — speech-to-text disabled.');
+                await fs.promises.unlink(wavPath).catch((e) => logger.debug('[Voice] WAV cleanup failed:', e));
                 return;
             }
 
@@ -194,18 +188,18 @@ export class VoiceService extends EventEmitter {
             const cleanText = fullText.trim();
 
             if (cleanText.length > 0) {
-                console.log(`[Assistant] I heard: "${cleanText}"`);
+                logger.info(`[Voice] Transcribed: "${cleanText}"`);
                 this.emit('command', cleanText); // Pipe to AgentService!
             } else {
-                console.log('[Assistant] I didn\'t catch that.');
+                logger.debug('[Voice] Empty transcription — no command emitted.');
             }
 
-        } catch (err: any) {
-            console.error('[VoiceService] Transcription Error:', err.message);
+        } catch (err: unknown) {
+            logger.error('[Voice] Transcription error:', err);
         } finally {
             // Return to IDLE
             this.STATE = 'IDLE';
-            console.log('[Assistant] Going back to sleep. Say "Jarvis" if you need anything.');
+            logger.debug('[Voice] Returning to idle state.');
         }
     }
 
@@ -259,7 +253,7 @@ export class VoiceService extends EventEmitter {
             if (this.porcupine) this.porcupine.release();
         } catch { /* best-effort cleanup */ }
         if (this.voiceAvailable) {
-            console.log('[VoiceService] Hardware released.');
+            logger.info('[VoiceService] Hardware released.');
         }
     }
 }

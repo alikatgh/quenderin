@@ -24,6 +24,8 @@ try {
     };
 } catch (err) {
     _llamaImportError = err instanceof Error ? err : new Error(String(err));
+    // Logger isn't imported yet at this point (top-level await), so we use console.error here.
+    // This is acceptable because it only fires once at startup when the native module is missing.
     console.error(
         `[LLM] node-llama-cpp is not available on this platform (${process.arch}/${process.platform}). ` +
         `Local LLM inference is disabled. The dashboard UI and API will still work, but ` +
@@ -45,6 +47,11 @@ import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from 
 import { executeToolCalls } from "./tools/handlers.js";
 import { getHardwareProfile } from "../utils/hardware.js";
 import logger from "../utils/logger.js";
+
+/** Narrow unknown catch to an Error-like shape with optional `code` */
+function errCode(e: unknown): string | undefined {
+    return e instanceof Error ? (e as NodeJS.ErrnoException).code : undefined;
+}
 
 // ─── Hardware-adaptive profile (detected once at startup) ───────────────────
 const HW = getHardwareProfile();
@@ -142,6 +149,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     // ─── Active Model Lifecycle (ported from off-grid-mobile) ───────────────
     private loadedModelId: string | null = null;
     private modelLoadTimestamp: number = 0;
+    /** Tracks actual GPU backend used after init (for diagnostics) */
+    private gpuBackendUsed: string = 'unknown';
+    private flashAttentionActive: boolean = false;
     /** Init timeout scaled by hardware: 45s × HW.timeoutMultiplier (e.g. 225s on Pi) */
     private readonly modelInitTimeoutMs: number = Math.round(45_000 * HW.timeoutMultiplier);
     /** Prompt timeout scaled by hardware: 30s × HW.timeoutMultiplier */
@@ -235,16 +245,20 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         timeoutMs: number,
         label: string
     ): Promise<string> {
-        return Promise.race([
-            session.prompt(prompt, options),
-            new Promise<string>((_, reject) => {
-                setTimeout(() => {
-                    const err = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
-                    (err as any).code = 'LLM_TIMEOUT';
-                    reject(err);
-                }, timeoutMs);
-            })
-        ]);
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), timeoutMs);
+        try {
+            return await session.prompt(prompt, { ...options, signal: ac.signal });
+        } catch (err: unknown) {
+            if (ac.signal.aborted) {
+                const timeoutErr: NodeJS.ErrnoException = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+                timeoutErr.code = 'LLM_TIMEOUT';
+                throw timeoutErr;
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     private async waitWithInitTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
@@ -289,6 +303,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.initPromise = null;
         this.loadedModelId = null;
         this.activeModelEntry = null;
+        this.gpuBackendUsed = 'unknown';
+        this.flashAttentionActive = false;
         if (this.idleTimer) {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
@@ -313,11 +329,13 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         await this.getModelAndContext();
     }
 
-    public getModelLifecycleInfo(): { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean } {
+    public getModelLifecycleInfo(): { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean; gpuBackend: string; flashAttention: boolean } {
         return {
             loadedModelId: this.loadedModelId,
             loadedSinceMs: this.modelLoadTimestamp > 0 ? Date.now() - this.modelLoadTimestamp : 0,
             isGenerating: this.isGeneratingChat,
+            gpuBackend: this.gpuBackendUsed,
+            flashAttention: this.flashAttentionActive,
         };
     }
 
@@ -332,8 +350,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (this.initPromise) {
             try {
                 return await this.waitWithInitTimeout(this.initPromise, 'Model initialization');
-            } catch (error: any) {
-                if (error?.code === 'LLM_INIT_TIMEOUT') {
+            } catch (error: unknown) {
+                if (errCode(error) === 'LLM_INIT_TIMEOUT') {
                     logger.warn('[LLM] Detected stale model init lock; clearing and retrying');
                     this.initPromise = null;
                 }
@@ -413,27 +431,51 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
                 const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel, LlamaChatSession: ChatSession } = _llamaBindings;
                 const llamaInitTimeout = Math.round(30_000 * HW.timeoutMultiplier);
-                const llama = await Promise.race([
-                    getLlamaFn({ logLevel: LogLevel.disabled }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error(`Assistant initiation timed out after ${llamaInitTimeout / 1000}s`)), llamaInitTimeout))
-                ]) as any;
 
-                // GPU offload: full on Metal/CUDA systems, disabled on embedded ARM (no GPU).
-                // If "max" fails (driver issue, no GPU), fall back to CPU-only.
+                // ─── 1. Initialize llama engine with GPU fallback ────────────
+                // Specify gpu explicitly so Metal/CUDA/Vulkan is negotiated
+                // properly. If GPU backend hangs (shader compilation on new
+                // chips like M4 Pro), fall back to CPU-only.
+                let llama: any;
+                const gpuMode = HW.tryGpuOffload ? "auto" : false;
+                let resolvedGpuBackend = gpuMode === false ? 'cpu' : 'gpu';
+                try {
+                    llama = await Promise.race([
+                        getLlamaFn({ logLevel: LogLevel.disabled, gpu: gpuMode }),
+                        new Promise((_, reject) => setTimeout(() => {
+                            reject(new Error(`Llama engine init (gpu=${gpuMode}) timed out after ${llamaInitTimeout / 1000}s`));
+                        }, llamaInitTimeout))
+                    ]) as any;
+                    resolvedGpuBackend = gpuMode === false ? 'cpu' : (HW.platform === 'darwin' ? 'metal' : 'gpu');
+                } catch (initErr) {
+                    if (gpuMode !== false) {
+                        logger.warn('[LLM] GPU backend init failed, retrying CPU-only:', initErr instanceof Error ? initErr.message : initErr);
+                        llama = await Promise.race([
+                            getLlamaFn({ logLevel: LogLevel.disabled, gpu: false }),
+                            new Promise((_, reject) => setTimeout(() => {
+                                reject(new Error(`Llama engine init (CPU-only) timed out after ${llamaInitTimeout / 1000}s`));
+                            }, llamaInitTimeout))
+                        ]) as any;
+                        resolvedGpuBackend = 'cpu-fallback';
+                        logger.log('[LLM] Llama engine initialized (CPU-only fallback)');
+                    } else {
+                        throw initErr;
+                    }
+                }
+
+                // ─── 2. Load model with GPU offload + AbortController ────────
+                // AbortController actually cancels native operations (unlike
+                // bare Promise.race which only races the JS promise).
                 let model: LlamaModel;
-                const loadWithGpu = (gpuLayers: "max" | number) => Promise.race([
-                    llama.loadModel({
+                const loadWithGpu = (gpuLayers: "max" | number) => {
+                    const ac = new AbortController();
+                    const timer = setTimeout(() => ac.abort(), this.modelInitTimeoutMs);
+                    return llama.loadModel({
                         modelPath: selected.path,
                         ...(gpuLayers === "max" ? { gpuLayers: "max" as any } : { gpuLayers }),
-                    }),
-                    new Promise<never>((_, reject) => {
-                        setTimeout(() => {
-                            const err = new Error('Model load timed out');
-                            (err as any).code = 'LLM_INIT_TIMEOUT';
-                            reject(err);
-                        }, this.modelInitTimeoutMs);
-                    })
-                ]);
+                        signal: ac.signal,
+                    }).finally(() => clearTimeout(timer));
+                };
 
                 if (HW.tryGpuOffload) {
                     try {
@@ -460,48 +502,63 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     ? envThreads : autoThreads;
                 logger.log(`[LLM] Using ${threads} inference threads (${HW.cpuCores} cores detected)`);
 
-                /** Helper: create context with flash attention + timeout */
-                const tryCreateContext = (ctxSize: number) => Promise.race([
-                    model.createContext({
+                // ─── 3. Create context with flash-attention + size fallback ──
+                // Flash attention may not work on all GPU generations (e.g. new
+                // Metal chips). If it fails, retry without it before reducing
+                // context size. AbortController ensures hangs are cancelled.
+                let useFlashAttention = true;
+
+                const tryCreateContext = (ctxSize: number, flash: boolean) => {
+                    const ac = new AbortController();
+                    const timer = setTimeout(() => ac.abort(), this.modelInitTimeoutMs);
+                    return model.createContext({
                         contextSize: ctxSize,
-                        flashAttention: true,   // perf win even on CPU — reduces KV cache mem
+                        flashAttention: flash,
                         threads,
-                    }),
-                    new Promise<never>((_, reject) => {
-                        setTimeout(() => {
-                            const err = new Error(`Context creation (${ctxSize}) timed out`);
-                            (err as any).code = 'LLM_INIT_TIMEOUT';
-                            reject(err);
-                        }, this.modelInitTimeoutMs);
-                    })
-                ]);
+                        signal: ac.signal,
+                    }).finally(() => clearTimeout(timer));
+                };
 
                 let context: LlamaContext;
                 const requestedCtx = effectiveCtx;
                 try {
-                    // Attempt 1: resolved effective context
-                    context = await tryCreateContext(requestedCtx);
-                } catch {
-                    const reducedCtx = Math.max(Math.floor(requestedCtx / 2), HW.contextFloor);
-                    logger.warn(`[LLM] Context creation failed at ${requestedCtx}, trying ${reducedCtx}...`);
+                    // Attempt 1: full context + flash attention
+                    context = await tryCreateContext(requestedCtx, true);
+                } catch (ctxErr1) {
+                    // Flash attention might not be supported on this GPU —
+                    // retry same size without it before reducing context.
+                    logger.warn(`[LLM] Context creation failed at ${requestedCtx} (flash=on): ${ctxErr1 instanceof Error ? ctxErr1.message : ctxErr1}`);
                     try {
-                        // Attempt 2: halved context
-                        context = await tryCreateContext(reducedCtx);
+                        context = await tryCreateContext(requestedCtx, false);
+                        useFlashAttention = false;
+                        logger.log(`[LLM] Context created without flash attention at ${requestedCtx}`);
                     } catch {
-                        logger.warn(`[LLM] Reduced context failed, trying minimal (${HW.contextFloor})...`);
-                        // Attempt 3: hardware floor
-                        context = await tryCreateContext(HW.contextFloor);
+                        const reducedCtx = Math.max(Math.floor(requestedCtx / 2), HW.contextFloor);
+                        logger.warn(`[LLM] Context creation failed at ${requestedCtx}, trying ${reducedCtx}...`);
+                        try {
+                            // Attempt 3: halved context, no flash attention
+                            context = await tryCreateContext(reducedCtx, false);
+                            useFlashAttention = false;
+                        } catch {
+                            logger.warn(`[LLM] Reduced context failed, trying minimal (${HW.contextFloor})...`);
+                            // Attempt 4: hardware floor, no flash attention
+                            context = await tryCreateContext(HW.contextFloor, false);
+                            useFlashAttention = false;
+                        }
                     }
                 }
-                logger.log(`[LLM] Context ready: ${requestedCtx} tokens, flashAttention=on, gpu=${HW.tryGpuOffload}, tier=${HW.tier}`);
+                logger.log(`[LLM] Context ready: ${requestedCtx} tokens, flashAttention=${useFlashAttention ? 'on' : 'off'}, gpu=${resolvedGpuBackend}, tier=${HW.tier}`);
                 this.modelInstance = model;
                 this.contextInstance = context;
                 this.loadedModelId = selected.entry.id;
                 this.modelLoadTimestamp = Date.now();
+                this.gpuBackendUsed = resolvedGpuBackend;
+                this.flashAttentionActive = useFlashAttention;
                 this.startMemoryPressureMonitor();
                 return { model, context };
-            } catch (error: any) {
-                const isModelMissing = error?.code === "MODEL_MISSING" || error?.code === "ENOENT";
+            } catch (error: unknown) {
+                const code = errCode(error);
+                const isModelMissing = code === "MODEL_MISSING" || code === "ENOENT";
 
                 if (isModelMissing) {
                     this.emit('action_required', {
@@ -509,10 +566,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         title: 'No AI Model Installed',
                         message: 'Download one of the models below to get started. Smaller models use less RAM.',
                         autoTrigger: 'downloadModel',
-                        fittingModels: (error as any).fittingModels ?? MODEL_CATALOG
+                        fittingModels: (error as Record<string, unknown>).fittingModels ?? MODEL_CATALOG
                     });
                 } else {
-                    console.error("Failed to load LLaMA model:", error);
+                    logger.error("Failed to load LLaMA model:", error);
                 }
 
                 this.initPromise = null;
@@ -523,8 +580,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.initPromise = promise;
         try {
             return await this.waitWithInitTimeout(promise, 'Model initialization');
-        } catch (error: any) {
-            if (error?.code === 'LLM_INIT_TIMEOUT') {
+        } catch (error: unknown) {
+            if (errCode(error) === 'LLM_INIT_TIMEOUT') {
                 this.initPromise = null;
                 this.modelInstance = null;
                 this.contextInstance = null;
@@ -543,11 +600,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 const drive = path.resolve(dirPath).charAt(0);
                 let freeBytes: number | null = null;
 
+                // Sanitize drive letter — must be a single A-Z character to prevent injection
+                const sanitizedDrive = drive.match(/^[A-Za-z]$/) ? drive : 'C';
+
                 // PowerShell: works on Windows 8+ and is the only option on Windows 11 22H2+
                 // where wmic has been removed.
                 try {
                     const psOut = execSync(
-                        `powershell -NoProfile -Command "(Get-PSDrive -Name ${drive}).Free"`,
+                        `powershell -NoProfile -Command "(Get-PSDrive -Name ${sanitizedDrive}).Free"`,
                         { encoding: 'utf8', timeout: 5000 }
                     );
                     const parsed = parseInt(psOut.trim(), 10);
@@ -557,7 +617,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // Legacy fallback: wmic works on Windows 7–10 (removed in Win11 22H2)
                 if (freeBytes === null) {
                     try {
-                        const wmicOut = execSync(`wmic logicaldisk where "DeviceID='${drive}:'" get FreeSpace /value`, { encoding: 'utf8', timeout: 5000 });
+                        const wmicOut = execSync(`wmic logicaldisk where "DeviceID='${sanitizedDrive}:'" get FreeSpace /value`, { encoding: 'utf8', timeout: 5000 });
                         const match = wmicOut.match(/FreeSpace=(\d+)/);
                         if (match) freeBytes = parseInt(match[1], 10);
                     } catch { /* wmic also unavailable — skip disk check */ }
@@ -866,8 +926,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     this.promptTimeoutMs,
                     'Chat generation'
                 );
-            } catch (err: any) {
-                if (err?.code === 'LLM_TIMEOUT') {
+            } catch (err: unknown) {
+                if (errCode(err) === 'LLM_TIMEOUT') {
                     logger.warn('[LLM] Chat session timed out; resetting session and retrying once');
                     this.generalChatSession = null;
                     ensureSession();

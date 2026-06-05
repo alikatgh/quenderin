@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { pipeline, env } from '@xenova/transformers';
+import logger from '../utils/logger.js';
 
 // Setup Xenova for Node environment
 env.allowLocalModels = false;
@@ -52,7 +53,7 @@ export class MemoryService {
                 fs.writeFile(this.correctionsPath, JSON.stringify([]), 'utf-8')
             );
         } catch (err) {
-            console.error('Failed to initialize Quenderin memory store:', err);
+            logger.error('Failed to initialize Quenderin memory store:', err);
         }
     }
 
@@ -76,7 +77,7 @@ export class MemoryService {
         if (this.extractorIdleTimer) clearTimeout(this.extractorIdleTimer);
         this.extractorIdleTimer = setTimeout(() => {
             if (this.extractor) {
-                console.log('[Memory RAG] Releasing embedding model after idle timeout to free RAM');
+                logger.info('[Memory RAG] Releasing embedding model after idle timeout to free RAM');
                 this.extractor = null;
             }
             this.extractorIdleTimer = null;
@@ -87,7 +88,7 @@ export class MemoryService {
 
     private async getExtractor() {
         if (!this.extractor) {
-            console.log('\n[Memory RAG] Initializing local semantic embedding model (Xenova/all-MiniLM-L6-v2)...');
+            logger.info('[Memory RAG] Initializing local semantic embedding model (Xenova/all-MiniLM-L6-v2)...');
             this.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
         }
         // Reset the idle countdown each time it's actually used
@@ -121,7 +122,7 @@ export class MemoryService {
 
                 await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
             } catch (error) {
-                console.error('Failed to write memory data:', error);
+                logger.error('Failed to write memory data:', error);
             }
         });
     }
@@ -147,9 +148,9 @@ export class MemoryService {
                 });
 
                 await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
-                console.log(`\n🧠 Memory forcefully updated with Manual Override for goal: ${goal}`);
+                logger.info(`Memory forcefully updated with Manual Override for goal: ${goal}`);
             } catch (error) {
-                console.error('Failed to inject manual override memory:', error);
+                logger.error('Failed to inject manual override memory:', error);
             }
         });
     }
@@ -198,9 +199,10 @@ export class MemoryService {
                 });
 
                 await fs.writeFile(this.correctionsPath, JSON.stringify(records, null, 2), 'utf-8');
-                console.log(`\n[Memory RAG] 🧠 Correction persistently saved to Vector Store!`);
-            } catch (error: any) {
-                console.error('[Memory RAG] Failed to write correction to vector store:', error.message);
+                logger.info('[Memory RAG] Correction persistently saved to Vector Store');
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : String(error);
+                logger.error('[Memory RAG] Failed to write correction to vector store:', message);
             }
         });
     }
@@ -243,8 +245,9 @@ export class MemoryService {
                 .slice(0, k)
                 .map(s => s.record);
 
-        } catch (error: any) {
-            console.error('[Memory RAG] Failed to retrieve corrections:', error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            logger.error('[Memory RAG] Failed to retrieve corrections:', message);
             return [];
         }
     }

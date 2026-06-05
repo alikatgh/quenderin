@@ -1,5 +1,6 @@
 import { createWorker } from 'tesseract.js';
 import { UIElement } from '../types/index.js';
+import logger from '../utils/logger.js';
 
 export class OcrService {
     private workerCache: any = null;
@@ -11,7 +12,7 @@ export class OcrService {
         if (this.workerIdleTimer) clearTimeout(this.workerIdleTimer);
         this.workerIdleTimer = setTimeout(async () => {
             if (this.workerCache) {
-                console.log('[OCR] Releasing Tesseract worker after idle timeout to free RAM');
+                logger.info('[OCR] Releasing Tesseract worker after idle timeout to free RAM');
                 try { await this.workerCache.terminate(); } catch { /* best-effort */ }
                 this.workerCache = null;
             }

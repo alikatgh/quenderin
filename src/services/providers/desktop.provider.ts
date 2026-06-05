@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { execSync } from 'child_process';
+import logger from '../../utils/logger.js';
 
 interface RobotJsLike {
     moveMouse(x: number, y: number): void;
@@ -38,7 +39,7 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
             const mod = await import('robotjs');
             this.robot = (mod.default ?? mod) as RobotJsLike;
         } catch {
-            console.warn(
+            logger.warn(
                 "[DesktopProvider] 'robotjs' is not installed or failed to compile. " +
                 "Desktop input control is disabled. Install it with 'npm install robotjs' if needed."
             );
@@ -62,7 +63,7 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
                 fn({ filename: opts.filename, format: opts.format as 'png' | 'jpg' });
             return this.screenshotFn;
         } catch {
-            console.warn("[DesktopProvider] 'screenshot-desktop' unavailable, using platform-native fallback.");
+            logger.warn("[DesktopProvider] 'screenshot-desktop' unavailable, using platform-native fallback.");
         }
 
         // Platform-native fallback — no native module needed
@@ -142,7 +143,7 @@ $bitmap.Dispose()`;
         try {
             robot.keyTap(mappedKey);
         } catch {
-            console.error(`[DesktopProvider] Invalid key '${mappedKey}' passed to robotjs`);
+            logger.error(`[DesktopProvider] Invalid key '${mappedKey}' passed to robotjs`);
         }
     }
 

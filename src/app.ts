@@ -17,6 +17,7 @@ import { MODEL_CATALOG, modelPath as getModelPath, getRecommendedModelIdForTotal
 import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
+import logger from './utils/logger.js';
 
 /** Pre-built goal templates to help users get started quickly */
 const GOAL_TEMPLATES = [
@@ -121,7 +122,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const hw = getHardwareProfile();
             const fallbackModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
             const requestedModelId = modelId ?? fallbackModelId;
-            llmService.downloadModel(requestedModelId).catch(e => console.error("Background model download failed:", e));
+            llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });
         });
 
@@ -143,7 +144,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 if (fsSync.existsSync(metaPath)) await fs.unlink(metaPath).catch(() => {});
                 res.json({ message: `Model ${entry.label} deleted.` });
             } catch (err) {
-                console.error('Failed to delete model:', err);
+                logger.error('Failed to delete model:', err);
                 res.status(500).json({ error: 'Failed to delete model file.' });
             }
         });
@@ -226,11 +227,11 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
                     nodeStream
                         .pipe(unzipper.Extract({ path: voiceDir }))
-                        .on('close', () => console.log('Voice model extracted.'))
-                        .on('error', (e) => console.error('Failed to extract voice model:', e));
+                        .on('close', () => logger.info('Voice model extracted.'))
+                        .on('error', (e) => logger.error('Failed to extract voice model:', e));
 
                 } catch (e) {
-                    console.error("Voice download pipeline failed:", e);
+                    logger.error("Voice download pipeline failed:", e);
                 }
             };
 
@@ -238,7 +239,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             res.json({ message: "Voice model download initiated." });
 
         } catch (error) {
-            console.error('Failed to init voice download:', error);
+            logger.error('Failed to init voice download:', error);
             res.status(500).json({ error: 'Failed to init download' });
         }
     });

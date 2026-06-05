@@ -5,6 +5,7 @@ import { getHardwareProfile } from '../../utils/hardware.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import { AgentEventEmitter } from '../agent.service.js';
+import logger from '../../utils/logger.js';
 
 const HW = getHardwareProfile();
 
@@ -67,7 +68,7 @@ export class UiVerifier {
             } catch (error: unknown) {
                 retries++;
                 const message = error instanceof Error ? error.message : String(error);
-                console.error(`Status: Retrying UI connection (${retries}/3) - ${message.split('\n')[0]}`);
+                logger.warn(`Retrying UI connection (${retries}/3) - ${message.split('\n')[0]}`);
                 if (retries >= 3) {
                     throw error;
                 }

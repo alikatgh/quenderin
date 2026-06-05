@@ -12,6 +12,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
+import logger from '../utils/logger.js';
+import { MAX_SESSIONS, MAX_MESSAGES_PER_SESSION, SESSION_FLUSH_INTERVAL_MS } from '../constants.js';
 
 export interface SessionMessage {
     role: 'user' | 'assistant';
@@ -36,8 +38,6 @@ export interface SessionSummary {
 }
 
 const SESSIONS_DIR = path.join(os.homedir(), '.quenderin', 'sessions');
-const MAX_SESSIONS = 100;        // oldest sessions pruned beyond this count
-const MAX_MESSAGES_PER_SESSION = 500;
 
 function ensureDir(): void {
     if (!fs.existsSync(SESSIONS_DIR)) {
@@ -59,6 +59,15 @@ export class SessionService {
     private flushTimer: NodeJS.Timeout | null = null;
 
     // ─── Public API ──────────────────────────────────────────────────────────
+
+    /** Cancel any pending flush timer — call on cleanup to prevent leaks */
+    public destroy(): void {
+        this.flushNow();
+        if (this.flushTimer) {
+            clearTimeout(this.flushTimer);
+            this.flushTimer = null;
+        }
+    }
 
     /** Start a fresh session (called when user begins a new conversation) */
     public startSession(): string {
@@ -116,7 +125,8 @@ export class SessionService {
                             updatedAt: s.updatedAt,
                             messageCount: Array.isArray(s.messages) ? s.messages.length : 0,
                         } satisfies SessionSummary;
-                    } catch {
+                    } catch (err) {
+                        logger.debug(`[Session] Failed to parse session file ${f}:`, err);
                         return null;
                     }
                 })
@@ -125,7 +135,8 @@ export class SessionService {
             // Sort newest first
             files.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             return files;
-        } catch {
+        } catch (err) {
+            logger.warn('[Session] Failed to list sessions:', err);
             return [];
         }
     }
@@ -136,7 +147,8 @@ export class SessionService {
         try {
             const raw = fs.readFileSync(sessionPath(id), 'utf8');
             return JSON.parse(raw) as Session;
-        } catch {
+        } catch (err) {
+            logger.debug(`[Session] Failed to load session ${id}:`, err);
             return null;
         }
     }
@@ -153,7 +165,9 @@ export class SessionService {
                 }
                 return true;
             }
-        } catch { /* ignore */ }
+        } catch (err) {
+            logger.warn(`[Session] Failed to delete session ${id}:`, err);
+        }
         return false;
     }
 
@@ -184,7 +198,7 @@ export class SessionService {
         this.flushTimer = setTimeout(() => {
             this.flushTimer = null;
             this.flushNow();
-        }, 2_000); // write at most every 2s
+        }, SESSION_FLUSH_INTERVAL_MS);
         this.flushTimer.unref();
     }
 
@@ -196,7 +210,7 @@ export class SessionService {
             this.dirty = false;
             this.pruneOldSessions();
         } catch (err) {
-            console.error('[Session] Failed to persist session:', err);
+            logger.error('[Session] Failed to persist session:', err);
         }
     }
 
@@ -208,6 +222,8 @@ export class SessionService {
             for (const s of summaries.slice(MAX_SESSIONS)) {
                 this.deleteSession(s.id);
             }
-        } catch { /* non-fatal */ }
+        } catch (err) {
+            logger.debug('[Session] Failed to prune old sessions:', err);
+        }
     }
 }

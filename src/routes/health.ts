@@ -33,12 +33,12 @@ const commitSha = resolveCommitSha();
  */
 let llmServiceRef: {
     getActiveModelLabel: () => string;
-    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean };
+    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean; gpuBackend: string; flashAttention: boolean };
 } | null = null;
 
 export function setHealthLlmService(service: {
     getActiveModelLabel: () => string;
-    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean };
+    getModelLifecycleInfo?: () => { loadedModelId: string | null; loadedSinceMs: number; isGenerating: boolean; gpuBackend: string; flashAttention: boolean };
 }) {
     llmServiceRef = service;
 }
