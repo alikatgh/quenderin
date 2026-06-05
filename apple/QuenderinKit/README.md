@@ -33,12 +33,25 @@ swift build      # compiles for the host (macOS) — warning-free
 swift test       # 13 tests, runs in milliseconds, no simulator needed
 ```
 
+## Inference
+
+`InferenceEngine` is the runtime-agnostic seam. Two conformers ship today:
+
+- `MockInferenceEngine` — canned streaming, for previews/tests/app bring-up.
+- `LlamaEngine` — the real **llama.cpp** adapter. llama.cpp stays C/C++; this is
+  the thin Swift layer that calls its C API. The C calls live behind
+  `#if canImport(llama)`, so the package builds **now** and the engine fails
+  cleanly until you link llama.cpp (see the wiring notes in `LlamaEngine.swift`).
+  The C path is a verified-on-device starting point — `swift test` covers only
+  the fallback, not real inference (which needs the `llama` module + a GGUF model
+  + a device/simulator).
+
 ## Not yet here (next steps)
 
+- **Link llama.cpp** — add the `llama` SwiftPM product / xcframework, then run
+  `LlamaEngine` on a simulator with a small GGUF to validate the C path.
 - **Module manifest as language-neutral JSON** — so desktop (TS) and mobile
   (Swift/Kotlin) read one source of truth instead of two hand-synced copies.
 - **Download runtime** — port the background-`URLSession` engine from
   `off-grid-mobile/ios/DownloadManagerModule.swift`, minus the React Native bridge.
-- **Inference runtime** — `llama.cpp` Swift bindings or Apple MLX (the
-  performance-critical piece; this is why we went native).
 - **App shell** — SwiftUI onboarding: probe → recommend → download → ready.
