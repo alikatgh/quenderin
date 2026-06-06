@@ -59,13 +59,23 @@ The "download → ready" spine, fully wired against the seams:
 
 See `../ROADMAP.md` for the goal, status table, and the app-target snippet.
 
+## Also here (M2)
+
+- `ChatModel` + `ChatView` — streaming chat against any `InferenceEngine`.
+- `ModelPickerView` + `ModelCatalog.optionsWithFitness(...)` — Tier-2 "choose a
+  model" screen that grays out models that won't fit the device.
+- `SafetyBlocklist` — the agent's hard sandbox (Pay/Delete/Password…).
+- `ModelManifest` — versioned Codable JSON, the seed of a cross-platform catalog.
+- `RootView` — onboarding → chat. The `../QuenderinApp` target wires `@main`.
+
+The whole flow runs today on `MockInferenceEngine` + `MockModelDownloader`.
+
 ## Not yet here (next steps)
 
 - **Link llama.cpp + run on device** — add the `llama` SwiftPM product /
-  xcframework, then run `LlamaEngine` on a simulator with a small GGUF. The only
-  piece that can't be proven headlessly.
-- **Wrap as an Xcode app target** — `@main` App + `OnboardingView` (snippet in ROADMAP).
-- **M2 chat** — stream tokens from the loaded model into a chat view.
-- **Shared manifest JSON** — one catalog read by TS + Swift + Kotlin.
+  xcframework, run `LlamaEngine` on a simulator with a small GGUF. The only piece
+  that can't be proven headlessly.
+- **Generate the app project** — `brew install xcodegen && cd ../QuenderinApp && xcodegen`.
 - **Production downloader** — port the background-`URLSession` engine from
   `off-grid-mobile/ios/DownloadManagerModule.swift` (resumable, multi-file).
+- **M3 agent loop** — perception → plan → execute (safety blocklist already done).
