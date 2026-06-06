@@ -1,0 +1,27 @@
+# XcodeGen spec for the Quenderin iOS app target.
+# Generate the project:  brew install xcodegen && cd apple/QuenderinApp && xcodegen
+# Then open Quenderin.xcodeproj in Xcode and Run on a simulator.
+name: Quenderin
+options:
+  bundleIdPrefix: ai.quenderin
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  QuenderinKit:
+    path: ../QuenderinKit
+targets:
+  Quenderin:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: QuenderinKit
+        product: QuenderinKit
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Quenderin
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait

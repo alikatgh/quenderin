@@ -19,11 +19,16 @@ builds on this spine.
 | Memory fitness check | ✅ `MemoryFitness`, tested |
 | Inference seam | ✅ `InferenceEngine` + `MockInferenceEngine`, tested |
 | llama.cpp adapter | ✅ `LlamaEngine` scaffold (C path needs device to verify) |
-| **Model downloader** | ✅ `ModelDownloader` + URLSession impl + mock, mock tested |
-| **Onboarding orchestration** | ✅ `OnboardingModel` state machine, tested |
-| **SwiftUI onboarding shell** | ✅ `OnboardingView` (compiles; render needs simulator) |
+| Model downloader | ✅ `ModelDownloader` + URLSession impl + mock, mock tested |
+| Onboarding orchestration | ✅ `OnboardingModel` state machine, tested |
+| SwiftUI onboarding shell | ✅ `OnboardingView` (compiles; render needs simulator) |
+| Safety blocklist | ✅ `SafetyBlocklist` (Pay/Delete/Password…), tested |
+| Shared manifest schema | ✅ `ModelManifest` (Codable JSON), round-trip tested |
+| **Tier-2 model picker** | ✅ `ModelPickerView` + fitness gating, tested |
+| **Streaming chat (M2)** | ✅ `ChatModel` + `ChatView`, tested on mock |
+| **App shell** | ✅ `RootView` + `QuenderinApp` target + xcodegen spec |
 | Link llama.cpp + run on device | ⛔ **needs you** — dependency + GGUF + simulator |
-| Wrap as an Xcode app target | ⛔ needs Xcode (see "Running" below) |
+| Generate .xcodeproj + run | ⛔ needs you — `brew install xcodegen && xcodegen` |
 
 ## The verification cliff
 
@@ -56,9 +61,17 @@ struct QuenderinApp: App {
 Swap the two mocks for `URLSessionModelDownloader()` and `LlamaEngine()` to go
 real — no other code changes, because both sit behind protocol seams.
 
-## Next milestones (after M1)
+## Milestones
 
-- **M2 — Chat:** stream tokens from the loaded model into a SwiftUI chat view.
-- **M3 — Agent loop:** port perception → plan → execute with the safety blocklist.
+- ✅ **M1 — Onboarding:** probe → recommend → download → load → ready.
+- ✅ **M2 — Chat:** stream tokens from the loaded model into a SwiftUI chat view.
+- ◔ **M3 — Agent loop:** perception → plan → execute. The safety sandbox
+  (`SafetyBlocklist`) is done; still needs the perception + execution adapters
+  (and real on-device inference).
 - **M4 — Android:** Kotlin app + JNI adapter over the *same* llama.cpp.
-- **Shared manifest:** lift the catalog into language-neutral JSON read by TS + Swift + Kotlin.
+- **Shared manifest:** `ModelManifest` schema is done; next, emit it from the
+  desktop TS app so all three platforms read one JSON instead of hand-syncing.
+
+> The whole onboarding → chat flow runs **today** on `MockInferenceEngine` +
+> `MockModelDownloader` (see `RootView` / `QuenderinApp`). Only real on-device
+> inference is gated on linking llama.cpp.
