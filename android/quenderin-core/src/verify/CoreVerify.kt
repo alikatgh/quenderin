@@ -94,6 +94,41 @@ fun main() {
     check("chat emitted after each append", sizes == listOf(1, 2))
     check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
 
+    // --- Android SoC resolution + native-heap memory model ---
+    check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
+    check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
+    check("unknown SoC falls back", AndroidSoc.fromSocModel("mystery-chip") == AndroidSoc.UNKNOWN)
+    check("native budget below total RAM but generous", run {
+        val b = AndroidSoc.nativeMemoryBudgetGB(8.0); b < 8.0 && b > 5.0
+    })
+    check("Android handles 16 GB tiers no iPhone has", AndroidSoc.nativeMemoryBudgetGB(16.0) >= 11.0)
+
+    // --- Android model selector: device-aware, jetsam-free picks ---
+    fun androidProfile(name: String, soc: AndroidSoc, ram: Double) =
+        AndroidDeviceProfile(name, soc, ram, AndroidSoc.nativeMemoryBudgetGB(ram), freeDiskGb = 128.0, batteryMAh = 4500.0)
+
+    check("4 GB mid-range Android → 1B",
+        AndroidModelSelector.select(androidProfile("Budget", AndroidSoc.MIDRANGE, 4.0)).model.id == "llama32-1b")
+    check("6 GB Snapdragon 8 Gen 2 → 4B",
+        AndroidModelSelector.select(androidProfile("Mid", AndroidSoc.SNAPDRAGON_8_GEN_2, 6.0)).model.id == "qwen3-4b")
+    check("8 GB Snapdragon 8 Gen 3 → 4B, 7B offered", run {
+        val sel = AndroidModelSelector.select(androidProfile("Flagship", AndroidSoc.SNAPDRAGON_8_GEN_3, 8.0))
+        sel.model.id == "qwen3-4b" && sel.alternatives.any { it.model.id == "mistral-7b" }
+    })
+    check("16 GB Snapdragon 8 Elite → 7B (RAM no iPhone has unlocks it)",
+        AndroidModelSelector.select(androidProfile("Gaming", AndroidSoc.SNAPDRAGON_8_ELITE, 16.0)).model.id == "mistral-7b")
+    check("same 12 GB, faster chip picks bigger", run {
+        val elite = AndroidModelSelector.select(androidProfile("A", AndroidSoc.SNAPDRAGON_8_ELITE, 12.0)).model.id
+        val gen1 = AndroidModelSelector.select(androidProfile("B", AndroidSoc.SNAPDRAGON_8_GEN_1, 12.0)).model.id
+        elite == "mistral-7b" && gen1 == "qwen3-4b"
+    })
+    check("14B never auto-picked on a phone (too slow even at 16 GB)",
+        AndroidModelSelector.select(androidProfile("Gaming", AndroidSoc.SNAPDRAGON_8_ELITE, 16.0)).model.id != "qwen3-14b")
+    check("Android pick carries a thermal/battery estimate", run {
+        val tb = AndroidModelSelector.select(androidProfile("Flagship", AndroidSoc.SNAPDRAGON_8_GEN_3, 8.0)).thermalBattery
+        tb.mAhPer1KTokens > 0 && tb.sustainedVerdict.contains("%/hr")
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

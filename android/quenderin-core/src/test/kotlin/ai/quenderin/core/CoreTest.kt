@@ -89,4 +89,32 @@ class CoreTest {
         assertEquals(listOf(1, 2), sizes)
         assertTrue(runCatching { chat.send("   ") }.isFailure)
     }
+
+    private fun androidProfile(soc: AndroidSoc, ram: Double) =
+        AndroidDeviceProfile("Test", soc, ram, AndroidSoc.nativeMemoryBudgetGB(ram), 128.0, 4500.0)
+
+    @Test fun androidSocResolution() {
+        assertEquals(AndroidSoc.SNAPDRAGON_8_GEN_3, AndroidSoc.fromSocModel("SM8650"))
+        assertEquals(AndroidSoc.DIMENSITY_9300, AndroidSoc.fromSocModel("MT6989"))
+        assertEquals(AndroidSoc.UNKNOWN, AndroidSoc.fromSocModel("mystery"))
+        // Native budget is below total RAM but generous, and extends past iPhone's 8 GB ceiling.
+        assertTrue(AndroidSoc.nativeMemoryBudgetGB(8.0) in 5.0..8.0)
+        assertTrue(AndroidSoc.nativeMemoryBudgetGB(16.0) >= 11.0)
+    }
+
+    @Test fun androidSelectorPicks() {
+        assertEquals("llama32-1b", AndroidModelSelector.select(androidProfile(AndroidSoc.MIDRANGE, 4.0)).model.id)
+        assertEquals("qwen3-4b", AndroidModelSelector.select(androidProfile(AndroidSoc.SNAPDRAGON_8_GEN_2, 6.0)).model.id)
+        // High RAM + fast chip unlocks a 7B default — impossible on an 8 GB iPhone.
+        assertEquals("mistral-7b", AndroidModelSelector.select(androidProfile(AndroidSoc.SNAPDRAGON_8_ELITE, 16.0)).model.id)
+        // Same 12 GB, slower chip → smaller pick (perf-gated).
+        assertEquals("qwen3-4b", AndroidModelSelector.select(androidProfile(AndroidSoc.SNAPDRAGON_8_GEN_1, 12.0)).model.id)
+    }
+
+    @Test fun androidThermalBatteryPresent() {
+        val sel = AndroidModelSelector.select(androidProfile(AndroidSoc.SNAPDRAGON_8_GEN_3, 8.0))
+        assertTrue(sel.thermalBattery.mAhPer1KTokens > 0)
+        assertTrue(sel.thermalBattery.sustainedTokensPerSecond < sel.estimatedTokensPerSecond)
+        assertTrue(sel.thermalBattery.chatVerdict.lowercase().contains("light"))
+    }
 }
