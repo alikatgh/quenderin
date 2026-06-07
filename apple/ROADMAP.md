@@ -65,10 +65,16 @@ real — no other code changes, because both sit behind protocol seams.
 
 - ✅ **M1 — Onboarding:** probe → recommend → download → load → ready.
 - ✅ **M2 — Chat:** stream tokens from the loaded model into a SwiftUI chat view.
-- ◔ **M3 — Agent loop:** perception → plan → execute. The safety sandbox
+- ✅ **M3 — Offline-Ready:** make the pre-trip download trustworthy for someone
+  about to lose internet — `DiskSpace` (room check), `DownloadPolicy` (Wi-Fi-only
+  guard), `BackgroundModelDownloader` + `DownloadStore` (survives suspension /
+  resumes after relaunch), and `OfflineReadiness` / `Preflight` (a verifiable
+  "✅ safe to go offline" signal). Logic all tested; live background download +
+  real connectivity need a device.
+- ◔ **M4 — Agent loop:** perception → plan → execute. The safety sandbox
   (`SafetyBlocklist`) is done; still needs the perception + execution adapters
   (and real on-device inference).
-- **M4 — Android:** Kotlin app + JNI adapter over the *same* llama.cpp.
+- **M5 — Android:** Kotlin app + JNI adapter over the *same* llama.cpp.
 - **Shared manifest:** `ModelManifest` schema is done; next, emit it from the
   desktop TS app so all three platforms read one JSON instead of hand-syncing.
 

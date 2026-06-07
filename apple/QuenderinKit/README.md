@@ -70,12 +70,28 @@ See `../ROADMAP.md` for the goal, status table, and the app-target snippet.
 
 The whole flow runs today on `MockInferenceEngine` + `MockModelDownloader`.
 
+## Offline-Ready (M3)
+
+For someone about to lose internet, the *download* is the make-or-break moment:
+
+- `DiskSpace` — will the model fit? (size estimated from params × quant bits, 300 MB margin)
+- `DownloadPolicy` + `NetworkStatus` — Wi-Fi-only guard; never start on no connection.
+- `BackgroundModelDownloader` + `DownloadStore` — a **background** URLSession that
+  survives the app being suspended, with persisted progress that resumes after
+  relaunch (the foreground downloader's fatal flaw, fixed).
+- `OfflineReadiness` / `Preflight` + `OfflineReadinessView` — a verifiable
+  **✅ "safe to go offline"** signal: model fully downloaded + disk OK, with a
+  plain-language list of any remaining blockers.
+
+Logic fully tested; live background download + real connectivity need a device.
+
 ## Not yet here (next steps)
 
 - **Link llama.cpp + run on device** — add the `llama` SwiftPM product /
   xcframework, run `LlamaEngine` on a simulator with a small GGUF. The only piece
   that can't be proven headlessly. **Step-by-step: [`INTEGRATION.md`](INTEGRATION.md).**
 - **Generate the app project** — `brew install xcodegen && cd ../QuenderinApp && xcodegen`.
-- **Production downloader** — port the background-`URLSession` engine from
-  `off-grid-mobile/ios/DownloadManagerModule.swift` (resumable, multi-file).
-- **M3 agent loop** — perception → plan → execute (safety blocklist already done).
+- **Real-device perf + battery** — measure tok/s + power on devices; recommend
+  *usable* models, not just loadable ones.
+- **Ship it** — Apple Developer account, signing, TestFlight, App Store review.
+- **M4 agent loop** — perception → plan → execute (safety blocklist already done).
