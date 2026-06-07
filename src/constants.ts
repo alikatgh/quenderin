@@ -64,6 +64,36 @@ export const MODEL_RECOMMENDATIONS = [
  */
 export const MODEL_CATALOG = [
     {
+        id: 'qwen3-14b',
+        label: 'Qwen3 14B (Best Quality)',
+        filename: 'qwen3-14b.Q4_K_M.gguf',
+        ramGb: 11.0,
+        sizeLabel: '9.0 GB download',
+        paramsBillions: 14,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true',
+    },
+    {
+        id: 'qwen25-coder-7b',
+        label: 'Qwen2.5 Coder 7B (Coding)',
+        filename: 'qwen2.5-coder-7b-instruct.Q4_K_M.gguf',
+        ramGb: 6.5,
+        sizeLabel: '4.7 GB download',
+        paramsBillions: 7,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true',
+    },
+    {
+        id: 'deepseek-r1-7b',
+        label: 'DeepSeek-R1 7B (Reasoning)',
+        filename: 'deepseek-r1-distill-qwen-7b.Q4_K_M.gguf',
+        ramGb: 6.5,
+        sizeLabel: '4.7 GB download',
+        paramsBillions: 7,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf?download=true',
+    },
+    {
         id: 'llama3-8b',
         label: 'Llama 3 8B (Best Quality)',
         filename: 'llama-3-instruct-8b.Q4_K_M.gguf',
@@ -72,6 +102,46 @@ export const MODEL_CATALOG = [
         paramsBillions: 8,
         quantization: 'Q4_K_M',
         url: 'https://huggingface.co/lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true',
+    },
+    {
+        id: 'mistral-7b',
+        label: 'Mistral 7B (All-Rounder)',
+        filename: 'mistral-7b-instruct-v0.3.Q4_K_M.gguf',
+        ramGb: 6.0,
+        sizeLabel: '4.1 GB download',
+        paramsBillions: 7,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf?download=true',
+    },
+    {
+        id: 'gemma3-4b',
+        label: 'Gemma 3 4B (Multilingual)',
+        filename: 'gemma-3-4b-it.Q4_K_M.gguf',
+        ramGb: 3.8,
+        sizeLabel: '2.5 GB download',
+        paramsBillions: 4,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf?download=true',
+    },
+    {
+        id: 'qwen3-4b',
+        label: 'Qwen3 4B (Recommended)',
+        filename: 'qwen3-4b.Q4_K_M.gguf',
+        ramGb: 3.6,
+        sizeLabel: '2.4 GB download',
+        paramsBillions: 4,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf?download=true',
+    },
+    {
+        id: 'phi4-mini',
+        label: 'Phi-4 Mini 3.8B (Efficient)',
+        filename: 'phi-4-mini-instruct.Q4_K_M.gguf',
+        ramGb: 3.4,
+        sizeLabel: '2.3 GB download',
+        paramsBillions: 3.8,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf?download=true',
     },
     {
         id: 'llama32-3b',
@@ -110,8 +180,9 @@ export type ModelEntry = typeof MODEL_CATALOG[number];
 export function getRecommendedModelIdForTotalRam(totalRamGb: number): ModelEntry['id'] {
     if (totalRamGb < 1.5) return 'llama32-1b-q2';
     if (totalRamGb < 3) return 'llama32-1b';
-    if (totalRamGb < 6) return 'llama32-3b';
-    return 'llama3-8b';
+    if (totalRamGb < 4) return 'llama32-3b';
+    if (totalRamGb < 10) return 'qwen3-4b';   // the current go-to for mainstream devices
+    return 'qwen3-14b';
 }
 
 /** Resolves the full path for a model by its catalog id */

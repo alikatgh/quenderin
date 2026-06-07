@@ -17,7 +17,7 @@ final class ModelPickerTests: XCTestCase {
 
     func testHighRAMAllowsEveryModel() {
         let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 64)
-        XCTAssertEqual(options.count, 4)
+        XCTAssertEqual(options.count, 11)
         XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad })
     }
 }

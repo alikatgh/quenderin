@@ -16,14 +16,20 @@ final class ModelRecommenderTests: XCTestCase {
         XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 2.99), "llama32-1b")
     }
 
-    func testRecommends3BFrom3UpToUnder6() {
+    func testRecommends3BFrom3UpToUnder4() {
         XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 3),    "llama32-3b")
-        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 5.99), "llama32-3b")
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 3.99), "llama32-3b")
     }
 
-    func testRecommends8BAt6AndAbove() {
-        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 6),  "llama3-8b")
-        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 18), "llama3-8b")
+    func testRecommendsQwen3From4UpToUnder10() {
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 4),    "qwen3-4b")
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 8),    "qwen3-4b")
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 9.99), "qwen3-4b")
+    }
+
+    func testRecommendsQwen3_14BAt10AndAbove() {
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 10), "qwen3-14b")
+        XCTAssertEqual(ModelRecommender.recommendedModelID(forTotalRAMGB: 18), "qwen3-14b")
     }
 
     func testEveryRecommendedIDResolvesToACatalogEntry() {
@@ -43,7 +49,7 @@ final class ModelRecommenderTests: XCTestCase {
     }
 
     func testCatalogIntegrity() {
-        XCTAssertEqual(ModelCatalog.models.count, 4)
+        XCTAssertEqual(ModelCatalog.models.count, 11)
         for model in ModelCatalog.models {
             XCTAssertNotNil(model.downloadURL, "\(model.id) has a malformed URL")
             XCTAssertNotNil(Quantization.info(id: model.quantization), "\(model.id) uses unknown quant \(model.quantization)")

@@ -10,8 +10,9 @@ public enum ModelRecommender {
     public static func recommendedModelID(forTotalRAMGB ram: Double) -> String {
         if ram < 1.5 { return "llama32-1b-q2" }
         if ram < 3   { return "llama32-1b" }
-        if ram < 6   { return "llama32-3b" }
-        return "llama3-8b"
+        if ram < 4   { return "llama32-3b" }
+        if ram < 10  { return "qwen3-4b" }   // the current go-to for mainstream devices
+        return "qwen3-14b"
     }
 
     /// Resolved catalog entry for a device's total RAM. Falls back to the
