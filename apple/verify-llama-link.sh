@@ -30,10 +30,7 @@ cmake -S llama.cpp -B llama.cpp/build \
 cmake --build llama.cpp/build --target llama -j"$(sysctl -n hw.ncpu)" >/dev/null
 echo "    built $(ls llama.cpp/build/bin/libllama.dylib)"
 
-echo "==> 3/4  Fetch a tiny model (~0.47 GB) if missing"
-[ -f model.gguf ] || curl -L -s -o model.gguf "$MODEL_URL"
-
-echo "==> 4/4  Compile + run the Swift smoke test against real llama.cpp (Metal)"
+echo "==> 2b   Type-check QuenderinKit's real '#if canImport(llama)' path vs the headers"
 mkdir -p cllama
 cat > cllama/module.modulemap <<MAP
 module llama {
@@ -41,6 +38,15 @@ module llama {
     export *
 }
 MAP
+swiftc -typecheck "$HERE"/QuenderinKit/Sources/QuenderinKit/*.swift \
+  -Xcc -fmodule-map-file="$WORK/cllama/module.modulemap" \
+  -Xcc -I"$WORK/llama.cpp/include" -Xcc -I"$WORK/llama.cpp/ggml/include" -I"$WORK/cllama"
+echo "    LlamaEngine's real inference path type-checks against current llama.cpp master"
+
+echo "==> 3/4  Fetch a tiny model (~0.47 GB) if missing"
+[ -f model.gguf ] || curl -L -s -o model.gguf "$MODEL_URL"
+
+echo "==> 4/4  Compile + run the Swift smoke test against real llama.cpp (Metal)"
 swiftc -O "$HERE/tools/llama-smoketest.swift" \
   -Xcc -fmodule-map-file="$WORK/cllama/module.modulemap" \
   -Xcc -I"$WORK/llama.cpp/include" -Xcc -I"$WORK/llama.cpp/ggml/include" \
