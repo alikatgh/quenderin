@@ -312,13 +312,15 @@ html[data-theme-mode="dark"] .theme-toggle .icon-moon { display: none; }
 .model-card:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(10,37,64,0.10); }
 .model-card.recommended { border-color: var(--accent-border); box-shadow: inset 0 0 0 1px var(--accent-border); }
 .model-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.9rem; }
-.model-fam { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.22rem 0.55rem; border-radius: 6px; }
-.fam-qwen { color: #6d28d9; background: rgba(124,58,237,0.10); }
-.fam-deepseek { color: #1d4ed8; background: rgba(29,78,216,0.10); }
-.fam-llama { color: #4f46e5; background: rgba(79,70,229,0.10); }
-.fam-gemma { color: #0f766e; background: rgba(15,118,110,0.10); }
-.fam-phi { color: #0369a1; background: rgba(3,105,161,0.10); }
-.fam-mistral { color: #c2410c; background: rgba(194,65,12,0.10); }
+/* Model-family marks — official brand SVGs inlined locally (same-origin, no third-party
+   load), tinted to each family's brand color via CSS mask. */
+.model-fam { display: inline-block; width: 1.15rem; height: 1.15rem; margin-right: 0.55rem; vertical-align: -0.24rem; flex: none; background-color: var(--fam-c, var(--text-muted)); -webkit-mask: var(--fam-i) center / contain no-repeat; mask: var(--fam-i) center / contain no-repeat; }
+.fam-qwen { --fam-c: #7c3aed; --fam-i: url(icons/qwen.svg); }
+.fam-deepseek { --fam-c: #2563eb; --fam-i: url(icons/deepseek.svg); }
+.fam-llama { --fam-c: #4f46e5; --fam-i: url(icons/llama.svg); }
+.fam-gemma { --fam-c: #0d9488; --fam-i: url(icons/gemma.svg); }
+.fam-phi { --fam-c: #0284c7; --fam-i: url(icons/phi.svg); }
+.fam-mistral { --fam-c: #ea580c; --fam-i: url(icons/mistral.svg); }
 .model-badge { font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brand); border: 1px solid var(--accent-border); border-radius: 99px; padding: 0.16rem 0.5rem; white-space: nowrap; }
 .model-card h3 { font-size: 1.18rem; }
 .model-tag { margin-top: 0.35rem; color: var(--text-secondary); font-size: 0.88rem; }
