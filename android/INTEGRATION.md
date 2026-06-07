@@ -9,9 +9,20 @@ states the app ships in and how to cross the on-device cliff.
 |-------|-------|-------------------|
 | `quenderin-core` (Kotlin brain) | **Done, tested** | `kotlinc` + `src/verify/CoreVerify.kt` → 29 checks; JUnit `CoreTest` for `./gradlew test` |
 | `LlamaEngine` Kotlin adapter | **Done** — fails cleanly off-device | Part of the 29 checks (reports unavailable, throws a clear "not linked" error) |
-| `jni/llama_jni.cpp` (C++ bridge) | **Written, not compiled here** | Needs the NDK + a llama.cpp checkout — build in Android Studio |
+| `jni/llama_jni.cpp` (C++ bridge) | **Written; one-command verify ready** | `android/verify-llama-link.sh` builds llama.cpp for Android + compile-checks it |
 | `app/` Compose UI | **Written, not compiled here** | Needs the Android SDK + AGP — build in Android Studio |
-| Real inference on a device | **The cliff** | Needs your hardware + a GGUF file |
+| Real inference on a device | **One command away** | `android/verify-llama-link.sh` runs it on an emulator/device via adb |
+
+> **One-command verification (`android/verify-llama-link.sh`):** the Android twin of the
+> **proven** `apple/verify-llama-link.sh`. It builds llama.cpp for Android (NDK), compiles
+> `jni/llama_jni.cpp` against it, builds `tools/llama-smoketest.cpp` (a C++ mirror of the
+> verified iOS Swift smoke test), and runs inference on a booted emulator/device via adb.
+>
+> ⚠️ **It hasn't been run in *this* sandbox because the local NDK is a 4 KB stub** (no
+> `clang++`); the script detects that and prints the one-line fix:
+> `sdkmanager "ndk;27.1.12297006"`. The **iOS twin is proven end-to-end** (real llama.cpp,
+> Metal, a simulated iPhone — see `apple/QuenderinKit/INTEGRATION.md`), and the C API is
+> identical, so the Android path is high-confidence — just install the NDK and run it.
 
 The app **boots on `MockInferenceEngine`** so the whole onboarding → chat flow runs the
 moment you open it in Android Studio — no llama.cpp required. `MainActivity` switches to
