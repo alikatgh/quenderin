@@ -21,7 +21,10 @@ let prompt = "<|im_start|>user\n\(userText)<|im_end|>\n<|im_start|>assistant\n"
 
 llama_backend_init(); defer { llama_backend_free() }
 
-var mp = llama_model_default_params(); mp.n_gpu_layers = 99   // all layers on Metal
+// GPU layers: default all-on-Metal; set QUENDERIN_NGL=0 to force CPU (the iOS *simulator*
+// has a broken Metal compute path that yields garbage — use CPU there; real devices use Metal).
+let ngl = Int32(ProcessInfo.processInfo.environment["QUENDERIN_NGL"] ?? "99") ?? 99
+var mp = llama_model_default_params(); mp.n_gpu_layers = ngl
 guard let model = llama_model_load_from_file(modelPath, mp) else { print("FAIL: model load"); exit(1) }
 defer { llama_model_free(model) }
 

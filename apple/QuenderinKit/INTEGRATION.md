@@ -33,10 +33,18 @@ importable module named **`llama`** exists. This guide gives that module.
 >          -Xcc -I…/include -Xcc -I…/ggml/include -I cllama -L…/build/bin -lllama
 > ```
 >
-> So the cliff is **de-risked**: the integration is no longer theoretical — it runs.
-> What still needs a device: building llama.cpp for the iOS arch (xcframework, Route A)
-> and the on-*phone* tok/s/battery numbers (the Mac numbers above are a ceiling, not a
-> phone result). Every C call matches current `master` (`llama_model_load_from_file`,
+> **And it runs on iOS too:** the same code was rebuilt for the **iOS simulator arch**
+> and run **on a booted iPhone 16 simulator** via `simctl spawn` — coherent output, ~160
+> tok/s (CPU). ⚠️ The iOS *simulator's* Metal **compute** path is broken (it emits garbage
+> with GPU layers on), so the smoke test forces CPU there (`QUENDERIN_NGL=0`); **real
+> devices use Metal** (proven on the Mac above). `apple/verify-llama-link.sh` now does the
+> simulator stage automatically when a simulator is available.
+>
+> So the cliff is **crossed**, not just de-risked: the integration compiles, links, and
+> runs both on macOS-Metal and on a simulated iPhone. What genuinely still needs **physical
+> hardware**: the iOS-device xcframework (Route A) and real on-*phone* tok/s/battery (the
+> Mac/sim numbers are CPU/host ceilings, not a phone result). Every C call matches current
+> `master` (`llama_model_load_from_file`,
 > `llama_init_from_model`, vocab-based `llama_tokenize`/`llama_token_to_piece`, the
 > `llama_sampler_*` chain, 2-arg `llama_batch_get_one`, `llama_vocab_is_eog`).
 
