@@ -31,9 +31,17 @@ public struct AgentLoop: Sendable {
         self.maxSteps = max(1, maxSteps)
     }
 
-    public func run(goal: String) async -> AgentRun {
+    public func run(
+        goal: String,
+        onStep: @Sendable (AgentStep) -> Void = { _ in }
+    ) async -> AgentRun {
         var steps: [AgentStep] = []
         var transcript = preamble(goal: goal)
+
+        func record(_ step: AgentStep) {
+            steps.append(step)
+            onStep(step)   // live update for the UI, as each step happens
+        }
 
         for _ in 0..<maxSteps {
             let reply: String
@@ -49,18 +57,18 @@ public struct AgentLoop: Sendable {
 
             switch decision {
             case .finalAnswer(let answer):
-                steps.append(AgentStep(decision: decision, observation: nil))
+                record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
 
             case .useTool(let name, let input):
                 // Safety gate — refuse blocked actions before they ever run.
                 if SafetyBlocklist.isBlocked(input) || SafetyBlocklist.isBlocked(name) {
-                    steps.append(AgentStep(decision: decision, observation: "Refused: touches a blocked action."))
+                    record(AgentStep(decision: decision, observation: "Refused: touches a blocked action."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
 
                 let observation = await execute(name: name, input: input)
-                steps.append(AgentStep(decision: decision, observation: observation))
+                record(AgentStep(decision: decision, observation: observation))
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
             }
         }

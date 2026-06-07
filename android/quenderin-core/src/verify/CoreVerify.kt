@@ -183,6 +183,12 @@ fun main() {
         val engine = ScriptedInferenceEngine(List(10) { """{"tool":"echo","input":"loop"}""" })
         AgentLoop(engine, listOf(EchoTool()), maxSteps = 3).run("x").haltReason == AgentRun.HaltReason.MAX_STEPS
     })
+    check("agent loop streams steps live via onStep", run {
+        val engine = ScriptedInferenceEngine(listOf("""{"tool":"calculator","input":"1+1"}""", """{"answer":"done"}"""))
+        val streamed = mutableListOf<AgentStep>()
+        val r = AgentLoop(engine, listOf(CalculatorTool())).run("x") { streamed.add(it) }
+        streamed.size == r.steps.size && streamed.size == 2
+    })
 
     // --- M3 resume bookkeeping (DownloadStore) ---
     check("download store tracks fraction complete", run {

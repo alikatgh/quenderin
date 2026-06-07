@@ -23,9 +23,14 @@ class AgentLoop(
 ) {
     private val maxSteps = maxOf(1, maxSteps)
 
-    fun run(goal: String): AgentRun {
+    fun run(goal: String, onStep: (AgentStep) -> Unit = {}): AgentRun {
         val steps = mutableListOf<AgentStep>()
         var transcript = preamble(goal)
+
+        fun record(step: AgentStep) {
+            steps.add(step)
+            onStep(step)   // live update for the UI, as each step happens
+        }
 
         repeat(maxSteps) {
             val reply = try {
@@ -38,17 +43,17 @@ class AgentLoop(
 
             when (decision) {
                 is AgentDecision.FinalAnswer -> {
-                    steps.add(AgentStep(decision, null))
+                    record(AgentStep(decision, null))
                     return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
                 }
                 is AgentDecision.UseTool -> {
                     // Safety gate — refuse blocked actions before they ever run.
                     if (SafetyBlocklist.isBlocked(decision.input) || SafetyBlocklist.isBlocked(decision.name)) {
-                        steps.add(AgentStep(decision, "Refused: touches a blocked action."))
+                        record(AgentStep(decision, "Refused: touches a blocked action."))
                         return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                     }
                     val observation = execute(decision.name, decision.input)
-                    steps.add(AgentStep(decision, observation))
+                    record(AgentStep(decision, observation))
                     transcript += "\nUsed ${decision.name}(${decision.input}) → $observation"
                 }
             }
