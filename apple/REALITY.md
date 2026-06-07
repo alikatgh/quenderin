@@ -31,6 +31,14 @@ from it. ([Apple ML Research](https://machinelearning.apple.com/research/apple-f
 
 ## 2. Speed — what to expect (stock llama.cpp, Q4, decode)
 
+> **✅ Measured in-repo (2026-06-07, `apple/verify-llama-link.sh`):** QuenderinKit's exact
+> `LlamaEngine` path, real llama.cpp, **Qwen2.5-0.5B Q4_K_M** — on an **M-series Mac (Metal):
+> ~157–177 tok/s decode**; on the **iPhone 16 simulator (host CPU): ~160 tok/s**. These are
+> a *small* model on *host/Mac* hardware — a **ceiling, not a phone result** — but they're the
+> first real numbers in this repo and they confirm the pipeline + the memory-bound model
+> (a 0.5B is ~2× a 1B, consistent with the table below). Real *phone* numbers still need a
+> physical device.
+
 Measured anchors (CPU, arXiv [2506.19884](https://arxiv.org/pdf/2506.19884)) plus our
 interpolations. **Decode is memory-bandwidth bound, so GPU/Metal and NPU barely raise
 these — they mainly speed up *prefill*.** An optimized engine (MNN-class) is ~2× faster.
