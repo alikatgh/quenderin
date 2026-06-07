@@ -315,22 +315,20 @@
     </div>
   </section>
 
-  <!-- CTA (ink dark section) -->
+  <!-- CTA — brand gradient, one focused action -->
   <section class="cta-band" data-theme="dark" id="waitlist">
-    <div class="container reveal">
+    <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
+    <div class="container reveal cta-inner">
       <h2>Bring your AI offline.</h2>
-      <p>Star the project to follow along, or leave your email and we&rsquo;ll tell you when the mobile apps land.</p>
-      <div class="cta-actions">
-        <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
-        <!-- Configure the form: replace the action with your Formspree (or other) endpoint. -->
-        <form class="waitlist-form" action="https://formspree.io/f/your-form-id" method="POST">
-          <label class="sr-only" for="email">Email address</label>
-          <input id="email" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
-          <button class="btn btn-primary" type="submit">Join waitlist</button>
-        </form>
-      </div>
+      <p>Join the waitlist and we&rsquo;ll tell you the moment the mobile apps land.</p>
+      <!-- Configure the form: replace the action with your Formspree (or other) endpoint. -->
+      <form class="waitlist-form" action="https://formspree.io/f/your-form-id" method="POST">
+        <label class="sr-only" for="email">Email address</label>
+        <input id="email" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+        <button class="btn btn-white" type="submit">Join the waitlist</button>
+      </form>
+      <p class="cta-secondary"><a href="https://github.com/alikatgh/quenderin" rel="noopener">Or star the project on GitHub &rarr;</a></p>
       <p class="form-consent">By joining, you consent to us emailing you once about the launch&mdash;nothing else. See our <a href="privacy.html">Privacy Policy</a>.</p>
-      <p class="status-line"><span class="dot dot-live"></span> Open source &middot; In active development</p>
     </div>
   </section>
 
@@ -342,6 +340,7 @@
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Quenderin</span>
       <p class="footer-tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
     </div>
     <nav class="footer-cols" aria-label="Footer">
       <div class="footer-col">

@@ -245,16 +245,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .faq details p { color: var(--text-secondary); padding-bottom: 1.25rem; max-width: 62ch; }
 
 /* CTA band */
-.cta-band { text-align: center; padding-block: clamp(4rem, 9vw, 6.5rem); }
-.cta-band h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
-.cta-band > p { margin-top: 1.1rem; color: var(--text-secondary); max-width: 42rem; margin-inline: auto; font-size: 1.15rem; }
-.cta-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 2rem; }
-.waitlist-form { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
-.waitlist-form input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1rem; border-radius: var(--r-full); font-size: 0.95rem; min-width: 240px; font-family: var(--font-sans); transition: border-color var(--dur-base) var(--ease-out); }
-[data-theme="dark"] .waitlist-form input { background: rgba(255,255,255,0.06); }
-.waitlist-form input::placeholder { color: var(--text-muted); }
-.waitlist-form input:focus { border-color: var(--brand); outline: none; }
-.status-line { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 2rem; font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted); }
+/* CTA — brand gradient, one focused action (bookends the hero) */
+.cta-band { position: relative; overflow: hidden; isolation: isolate; text-align: center; padding-block: clamp(5rem, 11vw, 8rem); color: #fff; }
+.cta-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: -2; }
+.cta-band::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(10,37,64,0.26), transparent 38%, rgba(10,37,64,0.20)); }
+.cta-inner { position: relative; z-index: 1; }
+.cta-band h2 { color: #fff; font-size: clamp(2.1rem, 4.6vw, 3.1rem); }
+.cta-inner > p { margin-top: 1.1rem; color: rgba(255,255,255,0.92); max-width: 40rem; margin-inline: auto; font-size: 1.15rem; }
+.waitlist-form { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-top: 2.25rem; }
+.waitlist-form input { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.34); color: #fff; padding: 0.78rem 1.15rem; border-radius: var(--r-full); font-size: 0.95rem; min-width: 260px; font-family: var(--font-sans); transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
+.waitlist-form input::placeholder { color: rgba(255,255,255,0.6); }
+.waitlist-form input:focus { border-color: #fff; background: rgba(255,255,255,0.24); outline: none; }
+.btn-white { background: #fff; color: var(--ink-900); }
+.btn-white:hover { background: rgba(255,255,255,0.92); transform: translateY(-1px); box-shadow: 0 10px 28px rgba(10,37,64,0.30); }
+.cta-secondary { margin-top: 1.4rem; }
+.cta-secondary a { color: #fff; opacity: 0.9; text-decoration: underline; font-weight: 500; }
+.cta-secondary a:hover { opacity: 1; }
+.cta-band .form-consent { color: rgba(255,255,255,0.62); margin-top: 1.6rem; }
+.footer-status { margin-top: 1rem; display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
 
 /* ---------- Footer ---------- */
 .site-footer { border-top: 1px solid var(--border); padding-top: clamp(3rem, 6vw, 4rem); background: var(--n-000); }
