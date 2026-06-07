@@ -357,7 +357,7 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 .footer-brand .brand-name { font-weight: 500; }
 .footer-tag { margin-top: 0.75rem; color: var(--text-secondary); font-size: 0.92rem; max-width: 24ch; }
 .footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-.footer-col h4 { font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 0.9rem; }
+.footer-col h3 { font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 0.9rem; }
 .footer-col a { display: block; color: var(--text-secondary); font-size: 0.92rem; padding-block: 0.32rem; }
 .footer-col a:hover { color: var(--brand); }
 .footer-base { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem; padding-block: 1.75rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.86rem; }
