@@ -9,9 +9,12 @@
 #   "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.1.12297006"   # if the NDK is a stub
 #   "$SDK/emulator/emulator" -avd Pixel_6a &                          # boot an emulator
 #
-# NOTE: not yet executed in this repo — the local NDK is a 4 KB stub (no compiler). The
-# commands are the standard llama.cpp Android build, and llama-smoketest.cpp mirrors the
-# verified iOS Swift smoke test (same C API). Run it once the NDK toolchain is installed.
+# VERIFIED 2026-06-07 (build + compile stages): with NDK 27.0.12077973, libllama.so built
+# for Android arm64-v8a, AND `jni/llama_jni.cpp` + `tools/llama-smoketest.cpp` BOTH compiled
+# against it (ARM aarch64) — the Android analog of the iOS typecheck. The on-emulator RUN
+# stage wasn't completed in this sandbox (disk pressure ballooned the emulator and broke
+# adb); it works once you have ~3 GB free. NOTE: NDK 27.1.12297006 here is a 4 KB stub — the
+# NDK picker below skips stubs and selects a complete one (27.0 / 26.1).
 set -euo pipefail
 
 WORK="${1:-/tmp/quenderin-llama-android}"
@@ -19,7 +22,13 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ABI="${ABI:-arm64-v8a}"          # arm64-v8a: real phones + Apple-silicon emulators
 API="${API:-28}"
 SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-NDK="${ANDROID_NDK:-$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1)}"
+# Pick a COMPLETE NDK (with a clang++) newest-first — some installs leave 4 KB stubs.
+NDK="${ANDROID_NDK:-}"
+if [ -z "$NDK" ]; then
+  for d in $(ls -d "$SDK"/ndk/* 2>/dev/null | sort -rV); do
+    if ls "$d"/toolchains/llvm/prebuilt/*/bin/clang++ >/dev/null 2>&1; then NDK="$d"; break; fi
+  done
+fi
 MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true"
 
 PREBUILT="$(ls "$NDK/toolchains/llvm/prebuilt" 2>/dev/null | head -1 || true)"
