@@ -13,12 +13,32 @@ importable module named **`llama`** exists. This guide gives that module.
 > that older tag mismatches the current C API. **The supported path today is the
 > prebuilt xcframework (Route A below).**
 
-> **✅ Good news (verified against current `master` `include/llama.h`):** every C
-> call in `LlamaEngine.swift` matches the current API — `llama_model_load_from_file`,
-> `llama_init_from_model`, vocab-based `llama_tokenize` / `llama_token_to_piece`,
-> the `llama_sampler_*` chain, 2-arg `llama_batch_get_one`, `llama_vocab_is_eog`.
-> The one cast the header forced (`LLAMA_DEFAULT_SEED` → `UInt32`) is already
-> applied. So expect it to compile cleanly, not a pile of drift.
+> **✅ PROVEN BY EXECUTION (2026-06-07, macOS / Xcode 16.2):** not just "the calls
+> match the header" — the exact `LlamaEngine` sequence was **compiled, linked, and run
+> against a real llama.cpp build with the Metal GPU backend**, producing coherent output
+> ("the sky is blue because tiny particles of gas… scatter light…") at **prefill ~3,800
+> tok/s · decode ~177 tok/s** for Qwen2.5‑0.5B Q4_K_M on an M‑series Mac. Reproduce it:
+>
+> ```bash
+> apple/verify-llama-link.sh      # clones+builds llama.cpp, fetches a tiny model, runs inference
+> ```
+>
+> It builds `apple/tools/llama-smoketest.swift` (a standalone mirror of `LlamaEngine`'s
+> load → tokenize → decode → sample → detokenize) with this module map + flags — the
+> recipe for the system-library target in Route B:
+>
+> ```
+> module llama { header ".../llama.cpp/include/llama.h"  export * }
+> swiftc … -Xcc -fmodule-map-file=cllama/module.modulemap \
+>          -Xcc -I…/include -Xcc -I…/ggml/include -I cllama -L…/build/bin -lllama
+> ```
+>
+> So the cliff is **de-risked**: the integration is no longer theoretical — it runs.
+> What still needs a device: building llama.cpp for the iOS arch (xcframework, Route A)
+> and the on-*phone* tok/s/battery numbers (the Mac numbers above are a ceiling, not a
+> phone result). Every C call matches current `master` (`llama_model_load_from_file`,
+> `llama_init_from_model`, vocab-based `llama_tokenize`/`llama_token_to_piece`, the
+> `llama_sampler_*` chain, 2-arg `llama_batch_get_one`, `llama_vocab_is_eog`).
 
 ---
 
