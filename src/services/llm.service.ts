@@ -429,7 +429,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     throw err;
                 }
 
-                const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel, LlamaChatSession: ChatSession } = _llamaBindings;
+                const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel } = _llamaBindings;
                 const llamaInitTimeout = Math.round(30_000 * HW.timeoutMultiplier);
 
                 // ─── 1. Initialize llama engine with GPU fallback ────────────

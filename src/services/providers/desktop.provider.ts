@@ -99,7 +99,7 @@ $bitmap.Dispose()`;
                 } else {
                     throw new Error(`Unsupported platform for screenshots: ${platform}`);
                 }
-            } catch (err) {
+            } catch {
                 throw new Error(
                     `Native screenshot failed on ${platform}. ` +
                     `Install 'screenshot-desktop' (npm install screenshot-desktop) or ensure ` +

@@ -66,6 +66,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
       await new Promise(r => setTimeout(r, 500));
       onDismiss();
     } catch {
+      // Best-effort: dismissing should still complete even if the delay/onDismiss throws.
     } finally {
       setIsFinishing(false);
     }
