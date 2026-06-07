@@ -55,15 +55,18 @@ cd android/quenderin-core && bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*
   src/verify/CoreVerify.kt -include-runtime -d /tmp/q.jar && java -jar /tmp/q.jar
 ```
 
-## The on-device cliff (what genuinely needs hardware/accounts)
+## The on-device cliff — mostly crossed
 
-Everything provable without a phone is done and green. What remains needs you:
-
-1. **Link llama.cpp** — iOS xcframework (`apple/QuenderinKit/INTEGRATION.md`) / Android NDK
-   (`android/INTEGRATION.md`) — and run on a device/simulator with a real GGUF. Both apps
-   auto-switch from the mock to the real engine the moment the binary is present.
-2. **Measure** real tok/s, TTFT, battery, thermals → replace the interpolated chip scores
-   with ground truth (the scores are conservative, clearly-labeled estimates today).
+1. **Link llama.cpp + run inference — ✅ PROVEN (iOS).** `apple/verify-llama-link.sh` builds
+   real llama.cpp, compiles QuenderinKit's exact `LlamaEngine` C-API sequence against it, and
+   runs a real inference: coherent output ("the sky is blue because…") on **macOS Metal
+   (~177 tok/s)** AND on a **booted iPhone 16 simulator (~160 tok/s, CPU)**. The integration
+   is no longer theoretical — it runs. (Wiring it as the default into the SwiftPM package
+   still needs the per-arch xcframework so it doesn't break the mock build for others.)
+2. **Still needs PHYSICAL hardware:** an iPhone for real Metal on-device tok/s + battery +
+   thermals (the Mac/sim numbers are host-CPU/Metal ceilings), and the Android NDK build run
+   on a device. These replace the conservative, clearly-labeled chip-score estimates with
+   ground truth.
 3. **Ship** — App Store / Play Store; fill the legal-page placeholders; grant the GitHub
    `workflow` token scope to enable the parked Pages deploy.
 
