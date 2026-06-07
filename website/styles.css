@@ -402,3 +402,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .learn-more { margin-top: 1.75rem; }
 .learn-more a { color: var(--brand); font-weight: 500; }
 .learn-more a:hover { text-decoration: underline; }
+
+/* FAQ as a two-column split: heading + ask-CTA (sticky) · accordion */
+.faq-split { grid-template-columns: 0.78fr 1.22fr; align-items: start; gap: clamp(2.5rem, 6vw, 5rem); }
+.faq-split .split-copy { position: sticky; top: 92px; }
+.faq-split .split-copy > p { margin-top: 1rem; color: var(--text-secondary); }
+.faq-split .faq { max-width: none; }
+.faq-cta { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-tint); }
+.faq-cta p { margin-bottom: 1rem; color: var(--text); font-weight: 500; }
+@media (max-width: 860px) {
+  .faq-split { grid-template-columns: 1fr; }
+  .faq-split .split-copy { position: static; }
+}
