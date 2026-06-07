@@ -135,6 +135,27 @@ fun main() {
         ph is OnboardingPhase.Recommended && ph.model.id == "qwen3-4b" && onb.selection != null
     })
 
+    // --- M3 offline-readiness (Android parity with iOS) ---
+    check("Wi-Fi-only policy blocks cellular", !DownloadPolicy.WIFI_ONLY.allows(NetworkStatus.CELLULAR))
+    check("Wi-Fi-only policy allows Wi-Fi", DownloadPolicy.WIFI_ONLY.allows(NetworkStatus.WIFI))
+    check("no connection is always blocked", !DownloadPolicy.WIFI_OR_CELLULAR.allows(NetworkStatus.NONE))
+    check("a held-back download explains why", DownloadPolicy.WIFI_ONLY.reason(NetworkStatus.CELLULAR)?.contains("Wi-Fi") == true)
+    check("disk check blocks a 4B on a near-full device",
+        !DiskSpace.check(ModelCatalog.entry("qwen3-4b")!!, availableBytes = 100L * 1024 * 1024).hasRoom)
+    check("disk check passes with ample room",
+        DiskSpace.check(ModelCatalog.smallest, availableBytes = 50L * 1024 * 1024 * 1024).hasRoom)
+    check("a missing model is not offline-ready",
+        !OfflineReadinessChecker.evaluate(ModelCatalog.smallest, fileExists = false, fileSizeBytes = 0).isReadyForOffline)
+    check("a complete file IS offline-ready", run {
+        val m = ModelCatalog.smallest
+        OfflineReadinessChecker.evaluate(m, fileExists = true, fileSizeBytes = DiskSpace.estimatedDownloadBytes(m)).isReadyForOffline
+    })
+    check("a half-downloaded file reports incomplete %", run {
+        val m = ModelCatalog.smallest
+        val r = OfflineReadinessChecker.evaluate(m, fileExists = true, fileSizeBytes = DiskSpace.estimatedDownloadBytes(m) / 2)
+        !r.isReadyForOffline && r.message.contains("%")
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

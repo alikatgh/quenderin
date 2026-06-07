@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -116,5 +117,24 @@ class CoreTest {
         assertTrue(sel.thermalBattery.mAhPer1KTokens > 0)
         assertTrue(sel.thermalBattery.sustainedTokensPerSecond < sel.estimatedTokensPerSecond)
         assertTrue(sel.thermalBattery.chatVerdict.lowercase().contains("light"))
+    }
+
+    @Test fun downloadPolicyGuardsCellularAndOffline() {
+        assertFalse(DownloadPolicy.WIFI_ONLY.allows(NetworkStatus.CELLULAR))
+        assertTrue(DownloadPolicy.WIFI_ONLY.allows(NetworkStatus.WIFI))
+        assertFalse(DownloadPolicy.WIFI_OR_CELLULAR.allows(NetworkStatus.NONE))
+        assertNotNull(DownloadPolicy.WIFI_ONLY.reason(NetworkStatus.CELLULAR))
+        assertNull(DownloadPolicy.WIFI_ONLY.reason(NetworkStatus.WIFI))
+    }
+
+    @Test fun offlineReadinessReflectsFileState() {
+        val m = ModelCatalog.smallest
+        assertFalse(OfflineReadinessChecker.evaluate(m, fileExists = false, fileSizeBytes = 0).isReadyForOffline)
+        assertTrue(
+            OfflineReadinessChecker.evaluate(m, fileExists = true, fileSizeBytes = DiskSpace.estimatedDownloadBytes(m)).isReadyForOffline,
+        )
+        val partial = OfflineReadinessChecker.evaluate(m, fileExists = true, fileSizeBytes = DiskSpace.estimatedDownloadBytes(m) / 2)
+        assertFalse(partial.isReadyForOffline)
+        assertTrue(partial.message.contains("%"))
     }
 }

@@ -15,8 +15,9 @@ android/
 │   │        twin of iOS IPhoneModelSelector — unlocks 7B on 12–16 GB flagships
 │   ├── InferenceEngine (seam) · MockInferenceEngine · LlamaEngine (JNI adapter)
 │   ├── ModelDownloader (seam) · MockModelDownloader
+│   ├── DownloadPolicy · DiskSpace · OfflineReadiness  (M3 "safe to go offline")
 │   ├── OnboardingModel (M1 state machine) · ChatModel (M2)
-│   ├── src/verify/CoreVerify.kt   ← headless harness (kotlinc + java, 41 checks)
+│   ├── src/verify/CoreVerify.kt   ← headless harness (kotlinc + java, 51 checks)
 │   └── src/test/…/CoreTest.kt     ← JUnit mirror (./gradlew test)
 ├── jni/                 C++ bridge to llama.cpp (llama_jni.cpp + CMakeLists.txt)
 └── app/                 Jetpack Compose app over the core (MainActivity + ui/)
