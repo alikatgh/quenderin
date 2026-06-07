@@ -2,6 +2,10 @@
 
 The portable **"brain"** of Quenderin's offline-autonomy vision, in pure Swift.
 
+> **New here?** Read [`../ARCHITECTURE.md`](../ARCHITECTURE.md) first — what
+> llama.cpp is, the engine-vs-model distinction (users download the *model*, never
+> the engine), and how the whole stack fits together.
+
 Quenderin's destination is a native mobile app (Swift on iOS, native on Android)
 that, on first launch, **probes the device's hardware** and **auto-downloads the
 right model "modules"** so the user goes from *install → ready-to-use local AI*
