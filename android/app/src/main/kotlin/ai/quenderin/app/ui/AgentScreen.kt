@@ -1,0 +1,121 @@
+package ai.quenderin.app.ui
+
+import ai.quenderin.core.AgentDecision
+import ai.quenderin.core.AgentSession
+import ai.quenderin.core.AgentStep
+import ai.quenderin.core.AgentTool
+import ai.quenderin.core.InferenceEngine
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+/**
+ * M4's screen: give the agent a goal and watch it plan → use tools → answer. Compose twin
+ * of iOS `AgentView`, bound to [AgentSession] (which streams steps live via onChange).
+ * Built on the mock engine; reachable from the app's navigation. Needs Android Studio to
+ * build (the app/cliff layer) — the AgentSession brain underneath is kotlinc-verified.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
+    val scope = rememberCoroutineScope()
+    var steps by remember { mutableStateOf<List<AgentStep>>(emptyList()) }
+    var answer by remember { mutableStateOf<String?>(null) }
+    var running by remember { mutableStateOf(false) }
+    var goal by remember { mutableStateOf("") }
+    val session = remember {
+        AgentSession(engine, tools).apply {
+            onChange = {
+                steps = this.steps
+                answer = this.answer
+                running = this.isRunning
+            }
+        }
+    }
+
+    Scaffold(topBar = { TopAppBar(title = { Text("Agent") }) }) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(steps) { step -> AgentStepRow(step) }
+                answer?.let { a ->
+                    item {
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
+                            Text(a, modifier = Modifier.padding(12.dp))
+                        }
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = goal,
+                    onValueChange = { goal = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Give the agent a goal") },
+                    enabled = !running,
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    enabled = !running && goal.isNotBlank(),
+                    onClick = {
+                        val g = goal.trim()
+                        goal = ""
+                        scope.launch(Dispatchers.IO) { session.run(g) }
+                    },
+                ) { Text("Run") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentStepRow(step: AgentStep) {
+    Column(Modifier.fillMaxWidth()) {
+        (step.decision as? AgentDecision.UseTool)?.let { tool ->
+            Text(
+                "${tool.name}(${tool.input})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        step.observation?.let { obs ->
+            Text(
+                "→ $obs",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
