@@ -76,4 +76,19 @@
       tiltEl.style.transform = "rotateY(0deg) rotateX(0deg)";
     });
   }
+
+  // Waitlist form: until a real endpoint is wired in (the action still carries the
+  // "your-form-id" placeholder), don't POST to a dead URL — degrade honestly instead of
+  // 404-ing or pretending the email was saved.
+  var waitlistForm = document.querySelector(".waitlist-form");
+  if (waitlistForm && (waitlistForm.getAttribute("action") || "").indexOf("your-form-id") !== -1) {
+    waitlistForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var note = document.createElement("p");
+      note.className = "form-consent";
+      note.textContent =
+        "The waitlist isn’t live yet — watch the repo on GitHub to hear the moment the apps land.";
+      waitlistForm.replaceWith(note);
+    });
+  }
 })();
