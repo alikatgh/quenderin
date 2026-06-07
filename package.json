@@ -21,6 +21,7 @@
     "lint:ui": "eslint ui/src --ext .ts,.tsx --max-warnings=0",
     "test:recommendation": "vitest run tests/recommended-model.test.ts",
     "check:recommendation": "npm run typecheck:src && npm run test:recommendation",
+    "gen:catalog": "python3 scripts/export_catalog.py",
     "check:catalog-parity": "python3 scripts/check_catalog_parity.py",
     "build:tsc": "tsc",
     "electron:dev": "npm run build:tsc && electron .",

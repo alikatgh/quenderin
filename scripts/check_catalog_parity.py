@@ -20,11 +20,16 @@ Usage:  python3 scripts/check_catalog_parity.py     # exit 0 = in sync, 1 = drif
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# The canonical, language-neutral manifest (generated from desktop by export_catalog.py).
+# Every source catalog must match it; a stale manifest is itself a failure.
+CANONICAL = ROOT / "shared" / "model-catalog.json"
 
 SOURCES = {
     "desktop": ROOT / "src" / "constants.ts",
@@ -86,40 +91,49 @@ def load(name: str, path: Path) -> Catalog:
     return catalog
 
 
-def main() -> int:
-    catalogs = {name: load(name, path) for name, path in SOURCES.items()}
-    reference_name = "desktop"
-    reference = catalogs[reference_name]
+def load_canonical() -> Catalog:
+    if not CANONICAL.exists():
+        sys.exit(f"FATAL: {CANONICAL} not found — run: python3 scripts/export_catalog.py")
+    data = json.loads(CANONICAL.read_text(encoding="utf-8"))
+    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"]) for m in data.get("models", [])}
+    if not catalog:
+        sys.exit(f"FATAL: {CANONICAL} has no models")
+    return catalog
 
-    print(f"Catalog parity check — reference: {reference_name} ({len(reference)} models)\n")
+
+def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
+    missing = set(reference) - set(catalog)
+    extra = set(catalog) - set(reference)
+    mismatched = {
+        mid: (reference[mid], catalog[mid])
+        for mid in set(reference) & set(catalog)
+        if reference[mid] != catalog[mid]
+    }
+    if not (missing or extra or mismatched):
+        print(f"  ok   {name}: {len(catalog)} models match the manifest")
+        return True
+    print(f"  FAIL {name}:")
+    for mid in sorted(missing):
+        print(f"        missing '{mid}' (in manifest, not {name})")
+    for mid in sorted(extra):
+        print(f"        extra '{mid}' (in {name}, not the manifest)")
+    for mid, (ref, got) in sorted(mismatched.items()):
+        print(f"        '{mid}' params/quant differ: manifest={ref} {name}={got}")
+    return False
+
+
+def main() -> int:
+    canonical = load_canonical()
+    print(f"Catalog parity — canonical: shared/model-catalog.json ({len(canonical)} models)\n")
     ok = True
-    for name, catalog in catalogs.items():
-        if name == reference_name:
-            continue
-        missing = set(reference) - set(catalog)
-        extra = set(catalog) - set(reference)
-        mismatched = {
-            mid: (reference[mid], catalog[mid])
-            for mid in set(reference) & set(catalog)
-            if reference[mid] != catalog[mid]
-        }
-        if not (missing or extra or mismatched):
-            print(f"  ok   {name}: {len(catalog)} models match")
-            continue
-        ok = False
-        print(f"  FAIL {name}:")
-        for mid in sorted(missing):
-            print(f"        missing '{mid}' (in desktop, not {name})")
-        for mid in sorted(extra):
-            print(f"        extra '{mid}' (in {name}, not desktop)")
-        for mid, (ref, got) in sorted(mismatched.items()):
-            print(f"        '{mid}' params/quant differ: desktop={ref} {name}={got}")
+    for name, path in SOURCES.items():
+        ok = compare(name, load(name, path), canonical) and ok
 
     print()
     if ok:
-        print("ALL PLATFORMS IN SYNC")
+        print("ALL PLATFORMS MATCH THE CANONICAL MANIFEST")
         return 0
-    print("CATALOG DRIFT DETECTED — sync the catalogs before shipping.")
+    print("CATALOG DRIFT — run `python3 scripts/export_catalog.py` if desktop changed, and/or sync the sources.")
     return 1
 
 

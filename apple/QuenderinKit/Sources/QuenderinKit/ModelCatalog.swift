@@ -44,6 +44,14 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
 
     /// Parsed download URL, or nil if the catalog string is malformed.
     public var downloadURL: URL? { URL(string: urlString) }
+
+    /// Map to the canonical cross-platform manifest schema (`shared/model-catalog.json`):
+    /// `ramGb` and `url`, so iOS can decode the same JSON the desktop emits.
+    private enum CodingKeys: String, CodingKey {
+        case id, label, filename, sizeLabel, paramsBillions, quantization
+        case ramGB = "ramGb"
+        case urlString = "url"
+    }
 }
 
 /// Multi-model catalog, sorted best → smallest. Mirrors `MODEL_CATALOG`.
