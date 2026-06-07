@@ -184,6 +184,26 @@ fun main() {
         AgentLoop(engine, listOf(EchoTool()), maxSteps = 3).run("x").haltReason == AgentRun.HaltReason.MAX_STEPS
     })
 
+    // --- M3 resume bookkeeping (DownloadStore) ---
+    check("download store tracks fraction complete", run {
+        val store = DownloadStore()
+        store.upsert(PersistedDownload("qwen3-4b", "q.gguf", "https://x", "/tmp/q.gguf", totalBytes = 1000))
+        store.updateProgress("qwen3-4b", bytesDownloaded = 250, totalBytes = 1000)
+        store.get("qwen3-4b")?.fractionComplete == 0.25
+    })
+    check("paused download resumes from its byte offset", run {
+        val d = PersistedDownload("m", "f", "u", "/p", bytesDownloaded = 500, totalBytes = 1000, state = PersistedDownload.State.PAUSED)
+        d.resumeOffset == 500L
+    })
+    check("completed download resumes from 0", run {
+        PersistedDownload("m", "f", "u", "/p", 1000, 1000, PersistedDownload.State.COMPLETED).resumeOffset == 0L
+    })
+    check("download store restores from a snapshot", run {
+        val store = DownloadStore()
+        store.upsert(PersistedDownload("m", "f", "u", "/p", bytesDownloaded = 300, totalBytes = 900))
+        DownloadStore(store.snapshot()).get("m")?.bytesDownloaded == 300L
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")
