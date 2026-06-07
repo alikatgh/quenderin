@@ -46,6 +46,7 @@ final class AppleSiliconTests: XCTestCase {
             XCTAssertTrue(id.hasPrefix("iPhone"), "table is iPhones only")
             XCTAssertGreaterThanOrEqual(device.totalRAMGB, 3, "\(device.name) below the LLM floor")
             XCTAssertNotEqual(device.chip, .unknown, "\(device.name) must have a known chip")
+            XCTAssertGreaterThan(device.batteryMAh, 1500, "\(device.name) needs a real battery capacity")
         }
     }
 }

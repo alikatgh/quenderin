@@ -42,6 +42,15 @@ public struct OnboardingView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+                        // Honest heat + battery expectation (advisory, not a gate).
+                        Label(sel.thermalBattery.chatVerdict, systemImage: "battery.100bolt")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Text(sel.thermalBattery.sustainedVerdict)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                         if !sel.alternatives.isEmpty {
                             DisclosureGroup("Other options") {
                                 ForEach(sel.alternatives, id: \.model.id) { opt in

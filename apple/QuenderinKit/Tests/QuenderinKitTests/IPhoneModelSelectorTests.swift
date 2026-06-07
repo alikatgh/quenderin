@@ -12,7 +12,7 @@ final class IPhoneModelSelectorTests: XCTestCase {
         return IOSDeviceProfile(
             deviceName: d.name, identifier: identifier, chip: d.chip, totalRAMGB: d.totalRAMGB,
             appMemoryBudgetGB: AppleDeviceDatabase.estimatedAppMemoryBudgetGB(totalRAMGB: d.totalRAMGB),
-            freeDiskGB: disk, isKnownDevice: true
+            freeDiskGB: disk, batteryMAh: d.batteryMAh, isKnownDevice: true
         )
     }
 
@@ -31,8 +31,8 @@ final class IPhoneModelSelectorTests: XCTestCase {
             ("iPhone11,8", "iPhone XR",            "llama32-1b"),   // A12, 3 GB
             ("iPhone11,2", "iPhone XS",            "llama32-1b"),   // A12, 4 GB → perf-gated down
             ("iPhone12,8", "iPhone SE (2nd gen)",  "llama32-1b"),   // A13, 3 GB
-            ("iPhone13,2", "iPhone 12",            "llama32-3b"),   // A14, 4 GB
-            ("iPhone14,5", "iPhone 13",            "llama32-3b"),   // A15, 4 GB
+            ("iPhone13,2", "iPhone 12",            "llama32-1b"),   // A14, 4 GB → 3B exceeds the ~2.1 GB jetsam budget
+            ("iPhone14,5", "iPhone 13",            "llama32-1b"),   // A15, 4 GB → same; live os_proc_available_memory may upgrade
             ("iPhone14,2", "iPhone 13 Pro",        "qwen3-4b"),     // A15, 6 GB
             ("iPhone15,4", "iPhone 15",            "qwen3-4b"),     // A16, 6 GB
             ("iPhone16,1", "iPhone 15 Pro",        "qwen3-4b"),     // A17 Pro, 8 GB
@@ -64,8 +64,22 @@ final class IPhoneModelSelectorTests: XCTestCase {
 
     /// Same RAM, different chip → different pick. RAM-only logic can't do this.
     func testSameRAMDifferentChipDiffers() {
-        XCTAssertEqual(IPhoneModelSelector.select(for: profile(chip: .a15, ram: 4)).model.id, "llama32-3b")
-        XCTAssertEqual(IPhoneModelSelector.select(for: profile(chip: .a12, ram: 4)).model.id, "llama32-1b")
+        // Same 6 GB: a fast A16 earns the 4B; a hypothetical A12 is perf-gated down to 1B
+        // even though the 4B fits its memory.
+        XCTAssertEqual(IPhoneModelSelector.select(for: profile(chip: .a16, ram: 6)).model.id, "qwen3-4b")
+        XCTAssertEqual(IPhoneModelSelector.select(for: profile(chip: .a12, ram: 6)).model.id, "llama32-1b")
+    }
+
+    /// The advisory heat/battery estimate is attached and sane.
+    func testThermalBatteryEstimateIsSane() {
+        let sel = IPhoneModelSelector.select(for: knownProfile("iPhone16,1")) // 15 Pro → Qwen3 4B
+        let tb = sel.thermalBattery
+        XCTAssertEqual(tb.mAhPer1KTokens, 20, accuracy: 0.01, "4B ≈ 5 mAh/1k tokens × 4")
+        XCTAssertGreaterThan(tb.activeDrainPercentPerHour, 0)
+        XCTAssertLessThan(tb.activeDrainPercentPerHour, 100, "continuous drain is a sane %/hr")
+        XCTAssertLessThan(tb.sustainedTokensPerSecond, sel.estimatedTokensPerSecond, "throttled < peak")
+        XCTAssertTrue(tb.chatVerdict.lowercased().contains("light"))
+        XCTAssertTrue(tb.sustainedVerdict.contains("%/hr"))
     }
 
     // MARK: - Gates

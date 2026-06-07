@@ -14,6 +14,8 @@ public struct IOSDeviceProfile: Sendable, Equatable, Codable {
     /// Memory an LLM can use before iOS jetsam-kills the app (GB). THE constraint.
     public let appMemoryBudgetGB: Double
     public let freeDiskGB: Double
+    /// Battery capacity (mAh) — feeds the thermal/battery "what to expect" estimate.
+    public let batteryMAh: Double
     /// True when `identifier` matched the curated device table (vs. a live-probe fallback).
     public let isKnownDevice: Bool
 
@@ -24,6 +26,7 @@ public struct IOSDeviceProfile: Sendable, Equatable, Codable {
         totalRAMGB: Double,
         appMemoryBudgetGB: Double,
         freeDiskGB: Double,
+        batteryMAh: Double = AppleDeviceDatabase.fallbackBatteryMAh,
         isKnownDevice: Bool
     ) {
         self.deviceName = deviceName
@@ -32,6 +35,7 @@ public struct IOSDeviceProfile: Sendable, Equatable, Codable {
         self.totalRAMGB = totalRAMGB
         self.appMemoryBudgetGB = appMemoryBudgetGB
         self.freeDiskGB = freeDiskGB
+        self.batteryMAh = batteryMAh
         self.isKnownDevice = isKnownDevice
     }
 }
@@ -58,6 +62,7 @@ public enum DeviceProfiler {
                 totalRAMGB: device.totalRAMGB,
                 appMemoryBudgetGB: budget,
                 freeDiskGB: freeDiskGB,
+                batteryMAh: device.batteryMAh,
                 isKnownDevice: true
             )
         }

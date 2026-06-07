@@ -39,25 +39,32 @@ itself instead of presenting a mystery choice.
 
 | Device | Chip · RAM | Pick | Why |
 |--------|-----------|------|-----|
-| iPhone SE 2 / XR | A12–A13 · 3 GB | Llama 3.2 1B | budget ~1.4 GB |
-| iPhone XS | A12 · 4 GB | Llama 3.2 1B | 3B *fits* RAM but A12 is too slow → down-tiered |
-| iPhone 12 / 13 | A14–A15 · 4 GB | Llama 3.2 3B | fits the ~2.8 GB budget, fast enough |
-| iPhone 13 Pro / 15 | A15–A16 · 6 GB | Qwen3 4B | the mainstream sweet spot |
-| iPhone 15 Pro / 16 Pro | A17–A18 Pro · 8 GB | Qwen3 4B (safe) | 7B offered as a "tight" alternative |
+| iPhone SE 2 / XR | A12–A13 · 3 GB | Llama 3.2 1B | budget ~1.5 GB |
+| iPhone XS | A12 · 4 GB | Llama 3.2 1B | even where 4B-class fits RAM, A12 is too slow → down-tiered |
+| iPhone 12 / 13 | A14–A15 · 4 GB | Llama 3.2 1B | 3B (~2.3 GB) exceeds the **measured ~2.1 GB** jetsam budget; live probe may upgrade |
+| iPhone 13 Pro / 15 | A15–A16 · 6 GB | Qwen3 4B | the mainstream sweet spot (~4.5 GB budget) |
+| iPhone 15 Pro / 16 Pro | A17–A18 Pro · 8 GB | Qwen3 4B (comfortable) | 7B *fits* (~6 GB budget) but is offered as a "tight" alternative, not the default |
 
 The headline test: a device reporting **12 GB total RAM but a ~5 GB jetsam budget** — the
 naive band recommends the 14B; the selector refuses it and picks 4B. Same RAM + different
 chip → different pick. Neither is possible with a RAM-only heuristic.
 
-## Calibration honesty (the on-device cliff)
+The default prefers the largest **comfortable** model (snappy + real headroom) over a bigger
+one that merely fits — so an 8 GB iPhone defaults to a fast 4B and *offers* the 7B, rather
+than forcing a hot, tight 7B on everyone.
 
-`AppleChip.inferenceScore` (A18 Pro ≡ 1.0), the jetsam-budget fractions, and the runtime
-footprint formula are **heuristics calibrated from public benchmarks**, not measured here.
-They're deliberately conservative (safe defaults that never get killed beat a bigger model
-that crashes). The one thing that turns these estimates into ground truth is **measuring
-tok/s, time-to-first-token, peak footprint, and battery on real devices** — the same
-on-device cliff that gates linking llama.cpp. When that data exists, update the scores and
-the tests' expected picks follow.
+## Calibration — now measured, not guessed (with an honest cliff)
+
+`AppleChip.inferenceScore` and the jetsam-budget fractions are **anchored to measured
+2024–2026 data** (see `REALITY.md` + `docs/research/on-device-llm.md`): the chip scores
+reproduce real stock-llama.cpp 1B rates (A14 ≈ 15, A16 ≈ 20 tok/s), and the memory budgets
+match empirical iOS crash-report ceilings (4 GB→~2.1, 6 GB→~4.5, 8 GB→~6.0 GB). They are
+deliberately conservative — a safe default that never gets jetsam-killed beats a bigger
+model that crashes. **Still interpolated/unverified:** A15/A17 Pro/A18/A18 Pro scores, and
+GPU-Metal/NPU decode (which barely helps — decode is memory-bound). Turning those into
+ground truth needs on-device measurement (a PocketPal-style benchmark on physical
+devices) — the same cliff that gates linking llama.cpp. When that lands, update the scores
+and the tests' expected picks follow.
 
 ## Where it lives
 
