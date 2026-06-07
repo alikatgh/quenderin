@@ -21,6 +21,35 @@ private fun check(name: String, cond: Boolean) {
     }
 }
 
+/** In-memory [FileSink] for the download-engine checks — no real disk. */
+private class FakeFileSink : FileSink {
+    val files = HashMap<String, ByteArray>()
+    override fun existingSize(path: String): Long = files[path]?.size?.toLong() ?: 0L
+    override fun truncate(path: String) { files.remove(path) }
+    override fun append(path: String, bytes: ByteArray) {
+        files[path] = (files[path] ?: ByteArray(0)) + bytes
+    }
+    override fun finalize(tempPath: String, finalPath: String) {
+        files[finalPath] = files.remove(tempPath) ?: ByteArray(0)
+    }
+}
+
+/** In-memory range-aware [HttpRangeClient] for the download-engine checks. */
+private class FakeHttpRangeClient(
+    private val full: ByteArray,
+    private val supportsResume: Boolean,
+    private val chunk: Int = 8,
+) : HttpRangeClient {
+    var lastOffset: Long = -1
+    override fun open(url: String, offsetBytes: Long): RangeResponse {
+        lastOffset = offsetBytes
+        val start = if (supportsResume) offsetBytes.toInt().coerceIn(0, full.size) else 0
+        val slice = full.copyOfRange(start, full.size)
+        val body = slice.toList().chunked(chunk).map { it.toByteArray() }.asSequence()
+        return RangeResponse(totalBytes = full.size.toLong(), resumed = supportsResume && offsetBytes > 0, body = body)
+    }
+}
+
 fun main() {
     println("QuenderinCore (Android / Kotlin) verification\n")
 
@@ -216,6 +245,49 @@ fun main() {
         val store = DownloadStore()
         store.upsert(PersistedDownload("m", "f", "u", "/p", bytesDownloaded = 300, totalBytes = 900))
         DownloadStore(store.snapshot()).get("m")?.bytesDownloaded == 300L
+    })
+    check("resumable() returns only in-flight (running/paused) rows", run {
+        val store = DownloadStore()
+        store.upsert(PersistedDownload("a", "a", "u", "/p", state = PersistedDownload.State.RUNNING))
+        store.upsert(PersistedDownload("b", "b", "u", "/p", state = PersistedDownload.State.PAUSED))
+        store.upsert(PersistedDownload("c", "c", "u", "/p", state = PersistedDownload.State.COMPLETED))
+        store.resumable().map { it.modelId }.toSet() == setOf("a", "b")
+    })
+
+    // --- Model download engine (the resumable, pure-Kotlin brain of the WorkManager downloader) ---
+    val payload = ByteArray(100) { (it % 7).toByte() }
+    val sampleModel = ModelCatalog.smallest
+    val finalFile = "/models/${sampleModel.filename}"
+    val partFile = "$finalFile.part"
+
+    check("fresh download writes the full file, returns its path, finishes at 1.0, clears the store", run {
+        val sink = FakeFileSink()
+        val store = DownloadStore()
+        val engine = ModelDownloadEngine(FakeHttpRangeClient(payload, supportsResume = true), sink, store, "/models")
+        var last = 0.0
+        val path = engine.download(sampleModel) { last = it }
+        sink.files[finalFile]?.size == 100 && path == finalFile && last == 1.0 && store.get(sampleModel.id) == null
+    })
+    check("a half-written .part resumes from its byte offset to the correct full file", run {
+        val sink = FakeFileSink().apply { files[partFile] = payload.copyOfRange(0, 40) }
+        val http = FakeHttpRangeClient(payload, supportsResume = true)
+        ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(sampleModel) {}
+        http.lastOffset == 40L && sink.files[finalFile]?.toList() == payload.toList()
+    })
+    check("a server that can't resume restarts cleanly to the correct full file", run {
+        val sink = FakeFileSink().apply { files[partFile] = payload.copyOfRange(0, 40) }
+        ModelDownloadEngine(FakeHttpRangeClient(payload, supportsResume = false), sink, DownloadStore(), "/models")
+            .download(sampleModel) {}
+        sink.files[finalFile]?.toList() == payload.toList()
+    })
+    check("a transport failure throws DownloadException and marks the row FAILED", run {
+        val store = DownloadStore()
+        val boom = object : HttpRangeClient {
+            override fun open(url: String, offsetBytes: Long): RangeResponse = throw RuntimeException("network down")
+        }
+        val result = runCatching { ModelDownloadEngine(boom, FakeFileSink(), store, "/models").download(sampleModel) {} }
+        result.exceptionOrNull() is DownloadException &&
+            store.get(sampleModel.id)?.state == PersistedDownload.State.FAILED
     })
 
     println()

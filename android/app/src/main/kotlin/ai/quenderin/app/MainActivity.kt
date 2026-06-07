@@ -6,7 +6,6 @@ import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
-import ai.quenderin.core.MockModelDownloader
 import ai.quenderin.core.ModelDownloader
 import android.app.ActivityManager
 import android.content.Context
@@ -28,7 +27,9 @@ class MainActivity : ComponentActivity() {
 
         val engine: InferenceEngine =
             if (LlamaEngine.NATIVE_AVAILABLE) LlamaEngine() else MockInferenceEngine()
-        val downloader: ModelDownloader = MockModelDownloader() // real WorkManager downloader = next milestone
+        // Real, resumable downloader that survives app death (WorkManager + the pure-core
+        // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
+        val downloader: ModelDownloader = WorkManagerModelDownloader(applicationContext)
 
         setContent {
             QuenderinTheme {

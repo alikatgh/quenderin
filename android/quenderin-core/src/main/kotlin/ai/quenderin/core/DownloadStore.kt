@@ -71,5 +71,11 @@ class DownloadStore(initial: List<PersistedDownload> = emptyList()) {
     /** The full table, for the app to persist across launches. */
     fun snapshot(): List<PersistedDownload> = all()
 
+    /** Downloads mid-flight when the app last died — the resume set. Twin of iOS `resumable()`. */
+    fun resumable(): List<PersistedDownload> =
+        records.values.filter {
+            it.state == PersistedDownload.State.RUNNING || it.state == PersistedDownload.State.PAUSED
+        }
+
     private fun emit() = onChange(all())
 }
