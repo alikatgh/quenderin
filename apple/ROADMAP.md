@@ -71,9 +71,13 @@ real — no other code changes, because both sit behind protocol seams.
   resumes after relaunch), and `OfflineReadiness` / `Preflight` (a verifiable
   "✅ safe to go offline" signal). Logic all tested; live background download +
   real connectivity need a device.
-- ◔ **M4 — Agent loop:** perception → plan → execute. The safety sandbox
-  (`SafetyBlocklist`) is done; still needs the perception + execution adapters
-  (and real on-device inference).
+- ✅ **M4 — Agent core:** an on-device **tool-use** loop (`AgentLoop`): plan (via
+  `InferenceEngine`) → safety-gate (`SafetyBlocklist`) → run a tool → observe →
+  repeat → answer. Ships `CalculatorTool`/`EchoTool`, lenient JSON planner
+  parsing (`AgentDecision`), and `ScriptedInferenceEngine` for deterministic
+  tests. Fully tested. (Driving *other apps* is intentionally out of scope — iOS
+  sandboxes that; the agent acts through tools it owns. Real planning quality
+  needs llama.cpp linked.)
 - **M5 — Android:** Kotlin app + JNI adapter over the *same* llama.cpp.
 - **Shared manifest:** `ModelManifest` schema is done; next, emit it from the
   desktop TS app so all three platforms read one JSON instead of hand-syncing.

@@ -85,6 +85,22 @@ For someone about to lose internet, the *download* is the make-or-break moment:
 
 Logic fully tested; live background download + real connectivity need a device.
 
+## Agent Core (M4)
+
+The vision's perceive → plan → execute loop, in the form iOS allows — a
+**tool-use** agent, not an OS driver:
+
+- `AgentTool` (+ `CalculatorTool`, `EchoTool`) — capabilities the agent owns.
+- `AgentDecision` / `AgentDecisionParser` — the planner's JSON (`{"tool":..}` or
+  `{"answer":..}`), tolerant of surrounding prose.
+- `AgentLoop` — plan (`InferenceEngine`) → **safety-gate every tool call**
+  (`SafetyBlocklist`) → run → feed the observation back → repeat → answer, with a
+  step cap. Returns an `AgentRun` (steps, answer, halt reason).
+- `ScriptedInferenceEngine` — deterministic multi-turn engine for tests/previews.
+
+> Driving *other apps* is deliberately excluded — iOS sandboxes it. Real planning
+> quality arrives when llama.cpp is linked; the loop itself is engine-agnostic.
+
 ## Not yet here (next steps)
 
 - **Link llama.cpp + run on device** — add the `llama` SwiftPM product /
