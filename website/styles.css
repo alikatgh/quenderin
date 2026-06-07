@@ -373,3 +373,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 @media (max-width: 600px) {
   .netrow { grid-template-columns: 2.2rem 1fr auto; font-size: 0.72rem; }
 }
+
+/* ===================================================================
+   Legal / compliance pages (privacy, terms, imprint, accessibility)
+   =================================================================== */
+.legal-header { border-bottom: 1px solid var(--border); padding-block: 1.1rem; background: var(--n-000); }
+.legal-header .brand { color: var(--text); }
+.legal { max-width: 760px; padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+.legal h1 { font-size: clamp(2rem, 4vw, 2.75rem); margin-bottom: 0.6rem; }
+.legal-updated { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; font-family: var(--font-mono); }
+.legal h2 { font-size: 1.45rem; margin-top: 2.5rem; margin-bottom: 0.6rem; }
+.legal h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.4rem; }
+.legal p, .legal li { color: var(--text-secondary); line-height: 1.7; }
+.legal p { margin-bottom: 1rem; }
+.legal ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.legal li { margin-bottom: 0.45rem; }
+.legal a { color: var(--brand); text-decoration: underline; }
+.legal strong { color: var(--text); }
+.legal .ph { background: var(--accent-soft); border: 1px dashed var(--accent-border); border-radius: 5px; padding: 0.05rem 0.4rem; font-family: var(--font-mono); font-size: 0.85em; color: var(--brand-dark); }
+.legal-note { background: var(--surface-tint); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.4rem; margin-bottom: 2rem; font-size: 0.92rem; }
+.legal-note p { margin-bottom: 0; }
+.form-consent { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; max-width: 38rem; margin-inline: auto; }
+[data-theme="dark"] .form-consent { color: rgba(255,255,255,0.6); }
+.form-consent a { color: inherit; text-decoration: underline; }
+.footer-legal { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
+.footer-legal a { color: var(--text-muted); font-size: 0.86rem; }
+.footer-legal a:hover { color: var(--brand); }
