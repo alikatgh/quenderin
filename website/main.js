@@ -6,6 +6,22 @@
   var yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
+  // Dark / light theme toggle (initial mode is set by the inline head script)
+  var themeToggle = document.querySelector(".theme-toggle");
+  if (themeToggle) {
+    var root = document.documentElement;
+    var sync = function () {
+      themeToggle.setAttribute("aria-pressed", root.getAttribute("data-theme-mode") === "dark" ? "true" : "false");
+    };
+    sync();
+    themeToggle.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme-mode") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme-mode", next);
+      try { localStorage.setItem("quenderin_theme", next); } catch (e) { /* private mode */ }
+      sync();
+    });
+  }
+
   // Mobile nav toggle
   var toggle = document.querySelector(".nav-toggle");
   var menu = document.getElementById("nav-menu");

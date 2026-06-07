@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Quenderin — An AI that runs on your phone, even offline</title>
 <meta name="description" content="Quenderin runs large language models fully on your device. No internet, no API keys, no telemetry. Download a model once and your assistant works on a plane, in a tent, off the grid." />
 <meta name="theme-color" content="#ffffff" />
@@ -44,6 +45,10 @@
       <span class="brand-name">Quenderin</span>
     </a>
     <nav class="nav" aria-label="Primary">
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
       <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
         <span class="nav-toggle-bar"></span>
       </button>
@@ -266,55 +271,22 @@
         <h2>Bring any model. Right-sized for your hardware.</h2>
         <p>Quenderin runs on llama.cpp&mdash;so it runs <strong>any GGUF model</strong>: Llama, Qwen, DeepSeek, Mistral, Gemma, Phi. Here&rsquo;s the curated shortlist it recommends from, sized for everything from a Raspberry&nbsp;Pi to an M-series Mac.</p>
       </header>
-      <div class="model-grid">
-        <article class="model-card recommended reveal">
-          <div class="model-top"><span class="model-fam fam-qwen">Qwen</span><span class="model-badge">Recommended</span></div>
-          <h3>Qwen3 4B</h3>
-          <p class="model-tag">General-purpose &middot; Apache&nbsp;2.0 &middot; the current go-to</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>2.4&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>4&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-deepseek">DeepSeek</span></div>
-          <h3>DeepSeek-R1 7B</h3>
-          <p class="model-tag">Step-by-step reasoning &amp; math</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>4.7&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>8&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-qwen">Qwen</span></div>
-          <h3>Qwen2.5 Coder 7B</h3>
-          <p class="model-tag">Code generation &amp; tool use</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>4.7&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>8&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-gemma">Gemma</span></div>
-          <h3>Gemma 3 4B</h3>
-          <p class="model-tag">Multilingual &middot; 140+ languages</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>2.5&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>4&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-phi">Phi</span></div>
-          <h3>Phi-4 mini 3.8B</h3>
-          <p class="model-tag">Runs well on CPU &middot; 128K context</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>2.3&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>4&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-mistral">Mistral</span></div>
-          <h3>Mistral 7B</h3>
-          <p class="model-tag">Fast, capable all-rounder</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>4.1&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>6&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-llama">Llama</span></div>
-          <h3>Llama 3.2 1B</h3>
-          <p class="model-tag">Ultra-light &middot; runs on a Pi</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>0.8&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>1.5&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
-        <article class="model-card reveal">
-          <div class="model-top"><span class="model-fam fam-qwen">Qwen</span></div>
-          <h3>Qwen3 14B</h3>
-          <p class="model-tag">Best quality for a strong device</p>
-          <dl class="model-specs"><div><dt>Download</dt><dd>9.0&nbsp;GB</dd></div><div><dt>Min RAM</dt><dd>12&nbsp;GB</dd></div><div><dt>Quant</dt><dd>Q4_K_M</dd></div></dl>
-        </article>
+      <div class="table-wrap reveal">
+        <table class="spec-table model-spec-table">
+          <thead>
+            <tr><th scope="col">Model</th><th scope="col">Good for</th><th scope="col">Download</th><th scope="col">Min&nbsp;RAM</th><th scope="col">Quant</th></tr>
+          </thead>
+          <tbody>
+            <tr class="recommended"><td><span class="model-fam fam-qwen">Qwen</span>Qwen3&nbsp;4B<span class="badge">Recommended</span></td><td>General-purpose, Apache&nbsp;2.0 &mdash; the current go-to</td><td>2.4&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-deepseek">DeepSeek</span>DeepSeek-R1&nbsp;7B</td><td>Step-by-step reasoning &amp; math</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen">Qwen</span>Qwen2.5&nbsp;Coder&nbsp;7B</td><td>Code generation &amp; tool use</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-gemma">Gemma</span>Gemma&nbsp;3&nbsp;4B</td><td>Multilingual, 140+ languages</td><td>2.5&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-phi">Phi</span>Phi-4&nbsp;mini&nbsp;3.8B</td><td>Efficient, runs well on CPU</td><td>2.3&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-mistral">Mistral</span>Mistral&nbsp;7B</td><td>Fast, capable all-rounder</td><td>4.1&nbsp;GB</td><td>6&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-llama">Llama</span>Llama&nbsp;3.2&nbsp;1B</td><td>Ultra-light &mdash; runs on a Pi</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen">Qwen</span>Qwen3&nbsp;14B</td><td>Best quality for a strong device</td><td>9.0&nbsp;GB</td><td>12&nbsp;GB</td><td>Q4_K_M</td></tr>
+          </tbody>
+        </table>
       </div>
       <p class="models-foot">&plus;&nbsp;<strong>thousands more</strong> from Hugging Face&mdash;any GGUF works. Choosing is optional: Quenderin picks the best fit for your device automatically.</p>
     </div>
