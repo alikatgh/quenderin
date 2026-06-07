@@ -138,28 +138,29 @@
 
   <!-- HOW IT WORKS -->
   <section class="section tint" id="how">
-    <div class="container">
-      <header class="section-head reveal">
+    <div class="container split">
+      <div class="split-copy reveal">
         <p class="eyebrow">How it works</p>
         <h2>Download once. Run forever.</h2>
-      </header>
-      <ol class="steps">
-        <li class="step reveal">
-          <span class="step-num">01</span>
-          <h3>Probe</h3>
-          <p>Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can actually run well.</p>
-        </li>
-        <li class="step reveal">
-          <span class="step-num">02</span>
-          <h3>Download</h3>
-          <p>Pull the model once over Wi-Fi. From a 0.4&nbsp;GB ultra-light to a 4.7&nbsp;GB flagship&mdash;your choice. It resumes if you get interrupted.</p>
-        </li>
-        <li class="step reveal">
-          <span class="step-num">03</span>
-          <h3>Go offline</h3>
-          <p>Everything runs locally from then on. A clear &ldquo;ready to go offline&rdquo; check tells you it&rsquo;s safe before you leave the grid.</p>
-        </li>
-      </ol>
+        <ol class="steplist">
+          <li><span class="step-num">01</span><div><h3>Probe</h3><p>Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
+          <li><span class="step-num">02</span><div><h3>Download</h3><p>Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
+          <li><span class="step-num">03</span><div><h3>Go offline</h3><p>Everything runs locally from then on. A clear check tells you it&rsquo;s safe before you leave the grid.</p></div></li>
+        </ol>
+      </div>
+      <div class="split-visual reveal">
+        <div class="phone" aria-hidden="true">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <p class="phone-eyebrow">Recommended for your device</p>
+            <h4>Llama 3.2 3B</h4>
+            <p class="phone-sub">8&nbsp;GB RAM &middot; 2.0&nbsp;GB download</p>
+            <div class="phone-bar"><span></span></div>
+            <p class="phone-pct">2.0 / 2.0 GB &middot; complete</p>
+            <div class="phone-ready"><span class="dot dot-live"></span> Ready to go offline</div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -170,30 +171,40 @@
         <p class="eyebrow">Features</p>
         <h2>A real assistant, with nothing phoning home.</h2>
       </header>
-      <div class="grid">
-        <article class="cell reveal">
+      <div class="bento">
+        <article class="cell span-2 reveal">
           <h3>Truly offline</h3>
           <p>After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
+          <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> Airplane mode &middot; still answering</span></div>
+        </article>
+        <article class="cell reveal">
+          <div class="bignum">$0</div>
+          <h3>Forever free</h3>
+          <p>No subscriptions, no per-token billing. It runs on hardware you already own.</p>
+        </article>
+        <article class="cell span-2 reveal">
+          <h3>Does things, safely</h3>
+          <p>A tool-using agent with a hard safety blocklist&mdash;it will never autonomously touch:</p>
+          <div class="cell-visual chips">
+            <span class="chip chip-x">Pay</span><span class="chip chip-x">Delete</span><span class="chip chip-x">Password</span><span class="chip chip-x">Transfer</span>
+          </div>
         </article>
         <article class="cell reveal">
           <h3>Private by design</h3>
-          <p>Nothing leaves your device. No accounts, no analytics, no telemetry. Your conversations are yours.</p>
+          <p>No accounts, no analytics, no telemetry. Your conversations are yours.</p>
         </article>
         <article class="cell reveal">
           <h3>Hardware-adaptive</h3>
-          <p>One app, every device. It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
-        </article>
-        <article class="cell reveal">
-          <h3>Does things, safely</h3>
-          <p>A tool-using agent with a hard safety blocklist&mdash;it will never autonomously touch pay, delete, or password actions.</p>
+          <p>It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
+          <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
         </article>
         <article class="cell reveal">
           <h3>Open source</h3>
-          <p>MIT licensed. Read every line, audit every claim, build it yourself. Trust by inspection, not by promise.</p>
+          <p>MIT licensed. Read every line, audit every claim, build it yourself.</p>
         </article>
         <article class="cell reveal">
-          <h3>$0 forever</h3>
-          <p>No subscriptions, no per-token billing. The model runs on hardware you already own.</p>
+          <h3>Resumable downloads</h3>
+          <p>The model keeps downloading in the background&mdash;even if you switch apps the night before a trip.</p>
         </article>
       </div>
     </div>
@@ -217,18 +228,28 @@
 
   <!-- PRIVACY -->
   <section class="section" id="privacy">
-    <div class="container">
-      <header class="section-head reveal">
+    <div class="container split">
+      <div class="split-copy reveal">
         <p class="eyebrow">Privacy</p>
         <h2>Your data never had to leave. So it doesn&rsquo;t.</h2>
-      </header>
-      <ul class="checklist reveal">
-        <li>No cloud calls after the model is downloaded</li>
-        <li>No API keys, no sign-in, no account</li>
-        <li>No analytics, no tracking, no telemetry</li>
-        <li>Conversations stored only on your device</li>
-        <li>Open source &mdash; verify all of the above yourself</li>
-      </ul>
+        <ul class="checklist">
+          <li>No cloud calls after the model is downloaded</li>
+          <li>No API keys, no sign-in, no account</li>
+          <li>No analytics, no tracking, no telemetry</li>
+          <li>Conversations stored only on your device</li>
+          <li>Open source &mdash; verify all of the above yourself</li>
+        </ul>
+      </div>
+      <div class="split-visual reveal">
+        <div class="netpanel" aria-hidden="true">
+          <div class="netpanel-bar"><span class="dot dot-live"></span> Network activity &middot; on-device</div>
+          <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok">once, Wi-Fi</span></div>
+          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x">never sent</span></div>
+          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x">never sent</span></div>
+          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x">no account</span></div>
+          <div class="netpanel-foot"><span class="dot dot-live"></span> 0 B sent since launch &middot; nothing left your device</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -246,7 +267,7 @@
           </thead>
           <tbody>
             <tr><td>Llama&nbsp;3&nbsp;8B <span class="muted">Best quality</span></td><td>Q4_K_M</td><td>4.7&nbsp;GB</td><td>6&nbsp;GB</td></tr>
-            <tr><td>Llama&nbsp;3.2&nbsp;3B <span class="muted">Balanced</span></td><td>Q4_K_M</td><td>2.0&nbsp;GB</td><td>3&nbsp;GB</td></tr>
+            <tr class="recommended"><td>Llama&nbsp;3.2&nbsp;3B <span class="muted">Balanced</span><span class="badge">Recommended</span></td><td>Q4_K_M</td><td>2.0&nbsp;GB</td><td>3&nbsp;GB</td></tr>
             <tr><td>Llama&nbsp;3.2&nbsp;1B <span class="muted">Light</span></td><td>Q4_K_M</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td></tr>
             <tr><td>Llama&nbsp;3.2&nbsp;1B <span class="muted">Ultra-light</span></td><td>Q2_K</td><td>0.4&nbsp;GB</td><td>1&nbsp;GB</td></tr>
           </tbody>
