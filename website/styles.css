@@ -484,7 +484,7 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 .legal li { margin-bottom: 0.45rem; }
 .legal a { color: var(--brand); text-decoration: underline; }
 .legal strong { color: var(--text); }
-.legal .ph { background: var(--accent-soft); border: 1px dashed var(--accent-border); border-radius: 5px; padding: 0.05rem 0.4rem; font-family: var(--font-mono); font-size: 0.85em; color: var(--brand-dark); }
+.legal .ph { background: var(--accent-soft); border: 1px dashed var(--accent-border); border-radius: 5px; padding: 0.05rem 0.4rem; font-family: var(--font-mono); font-size: 0.85em; color: var(--brand); }
 .legal-note { background: var(--surface-tint); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.4rem; margin-bottom: 2rem; font-size: 0.92rem; }
 .legal-note p { margin-bottom: 0; }
 .form-consent { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; max-width: 38rem; margin-inline: auto; }
