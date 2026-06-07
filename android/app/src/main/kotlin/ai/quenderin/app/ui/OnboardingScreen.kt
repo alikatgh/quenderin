@@ -47,7 +47,7 @@ fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> A
     }
 
     when (val current = phase) {
-        is OnboardingPhase.Ready -> ChatScreen(engine = engine, model = current.model)
+        is OnboardingPhase.Ready -> MainTabs(engine = engine, model = current.model)
         else -> OnboardingScreen(
             phase = current,
             selection = onboarding.selection,

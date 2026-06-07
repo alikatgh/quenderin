@@ -14,17 +14,20 @@ import QuenderinKit
 struct QuenderinApp: App {
     @StateObject private var onboarding: OnboardingModel
     @StateObject private var chat: ChatModel
+    @StateObject private var agent: AgentSession
 
     init() {
         let engine: InferenceEngine = MockInferenceEngine()       // ← swap to LlamaEngine()
         let downloader: ModelDownloader = MockModelDownloader()    // ← swap to URLSessionModelDownloader()
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
         _chat = StateObject(wrappedValue: ChatModel(engine: engine))
+        // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
+        _agent = StateObject(wrappedValue: AgentSession(engine: engine, tools: [CalculatorTool(), EchoTool()]))
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(onboarding: onboarding, chat: chat)
+            RootView(onboarding: onboarding, chat: chat, agent: agent)
         }
     }
 }
