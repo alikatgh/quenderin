@@ -399,3 +399,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .footer-legal { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
 .footer-legal a { color: var(--text-muted); font-size: 0.86rem; }
 .footer-legal a:hover { color: var(--brand); }
+.learn-more { margin-top: 1.75rem; }
+.learn-more a { color: var(--brand); font-weight: 500; }
+.learn-more a:hover { text-decoration: underline; }
