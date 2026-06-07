@@ -1,36 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Quenderin — AI that runs on your phone, even offline">
   <defs>
     <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#a855f7"/>
-      <stop offset="1" stop-color="#6d28d9"/>
+      <stop offset="0" stop-color="#7A5AF8"/>
+      <stop offset="1" stop-color="#635BFF"/>
     </linearGradient>
+    <radialGradient id="blob1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7A5AF8" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7A5AF8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blob2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF6B8A" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FF6B8A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blob3" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFD55A" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#FFD55A" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="1200" height="630" fill="#09090b"/>
-  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#232329"/>
+
+  <rect width="1200" height="630" fill="#ffffff"/>
+  <!-- mesh-gradient wash (top-right) -->
+  <ellipse cx="980" cy="120" rx="420" ry="300" fill="url(#blob1)"/>
+  <ellipse cx="1140" cy="300" rx="360" ry="280" fill="url(#blob2)"/>
+  <ellipse cx="900" cy="40" rx="320" ry="240" fill="url(#blob3)"/>
 
   <!-- Brand -->
   <g transform="translate(80, 84)">
     <rect width="44" height="44" rx="12" fill="url(#mark)"/>
     <circle cx="20" cy="20" r="9" fill="none" stroke="#fff" stroke-width="3.5"/>
     <line x1="26" y1="26" x2="32" y2="32" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="62" y="31" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" font-weight="700" fill="#f2f2f3">Quenderin</text>
+    <text x="62" y="31" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" font-weight="500" fill="#0A2540">Quenderin</text>
   </g>
 
-  <!-- Headline -->
-  <text x="80" y="300" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="74" font-weight="800" fill="#f2f2f3" letter-spacing="-1.5">An AI that runs on your</text>
-  <text x="80" y="386" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="74" font-weight="800" fill="#f2f2f3" letter-spacing="-1.5">phone&#8212;even <tspan fill="#a855f7">offline</tspan>.</text>
+  <!-- Headline (light weight, ink) -->
+  <text x="80" y="300" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="76" font-weight="300" fill="#0A2540" letter-spacing="-3">An AI that runs on your</text>
+  <text x="80" y="392" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="76" font-weight="300" fill="#0A2540" letter-spacing="-3">phone&#8212;even <tspan fill="#635BFF">offline</tspan>.</text>
 
   <!-- Subhead -->
-  <text x="80" y="452" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" fill="#9a9aa6">Local LLMs on-device. No cloud, no API keys, no telemetry.</text>
+  <text x="80" y="456" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" fill="#3C4257">Local LLMs on-device. No cloud, no API keys, no telemetry.</text>
 
   <!-- Spec strip -->
-  <g font-family="ui-monospace, Menlo, monospace" font-size="24" fill="#6b6b76">
+  <g font-family="ui-monospace, Menlo, monospace" font-size="24" fill="#697386">
     <text x="80" y="556">100% offline</text>
-    <text x="320" y="556">&#183;</text>
-    <text x="350" y="556">0 telemetry</text>
-    <text x="560" y="556">&#183;</text>
-    <text x="590" y="556">$0 per token</text>
-    <text x="820" y="556">&#183;</text>
-    <text x="850" y="556">MIT open source</text>
+    <text x="330" y="556">&#183;</text>
+    <text x="360" y="556">0 telemetry</text>
+    <text x="580" y="556">&#183;</text>
+    <text x="610" y="556">$0 per token</text>
+    <text x="840" y="556">&#183;</text>
+    <text x="870" y="556">MIT open source</text>
   </g>
 </svg>
