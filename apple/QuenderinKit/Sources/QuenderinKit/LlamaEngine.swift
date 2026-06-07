@@ -141,22 +141,37 @@ public actor LlamaEngine: InferenceEngine {
         defer { llama_sampler_free(sampler) }
 
         // 3) Decode prompt, then sample one token at a time.
-        var batch = llama_batch_get_one(&tokens, Int32(tokens.count))
+        //
+        // `llama_batch_get_one` only BORROWS the token pointer, so the batch must be built
+        // AND consumed while that storage is alive — passing `&array` and using the batch
+        // on a later line dangles (crash/garbage). This was caught by actually running the
+        // C API; see apple/tools/llama-smoketest.swift. Hence withUnsafeMutableBufferPointer.
+        func decode(_ toks: inout [llama_token]) -> Bool {
+            toks.withUnsafeMutableBufferPointer {
+                llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count))) == 0
+            }
+        }
+
+        if !decode(&tokens) {
+            continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
+            return
+        }
+
         var produced = 0
         while produced < options.maxTokens {
             if Task.isCancelled { break }
-            if llama_decode(context, batch) != 0 {
-                continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
-                return
-            }
-            var next = llama_sampler_sample(sampler, context, -1)
+            let next = llama_sampler_sample(sampler, context, -1)
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
 
             let piece = tokenToPiece(next)
             if !piece.isEmpty { continuation.yield(piece) }
             produced += 1
 
-            batch = llama_batch_get_one(&next, 1)           // feed the token back
+            var one = [next]                               // feed the token back (alive during decode)
+            if !decode(&one) {
+                continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
+                return
+            }
         }
         continuation.finish()
     }
