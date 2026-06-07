@@ -1,0 +1,9 @@
+# Gradle / Kotlin / Android build output
+.gradle/
+build/
+*.jar
+*.iml
+local.properties
+.idea/
+captures/
+.cxx/
