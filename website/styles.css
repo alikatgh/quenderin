@@ -191,14 +191,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .trust-list { display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; font-size: 0.88rem; color: var(--text-secondary); font-weight: 500; }
 
 /* ---------- Sections ---------- */
-.section { padding-block: clamp(4rem, 9vw, 7rem); background: var(--surface); }
+.section { padding-block: clamp(3.25rem, 6.5vw, 5.25rem); background: var(--surface); }
 .section.tint { background: var(--surface-tint); }
-.section-head { max-width: 42rem; margin-bottom: 3rem; }
+.section-head { max-width: 42rem; margin-bottom: 2.25rem; }
 .section-head h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); }
 .section-head .lede, .section-head p { margin-top: 1rem; color: var(--text-secondary); font-size: 1.1rem; }
 
 /* Ink band (the punctuation) */
-.band { padding-block: clamp(4.5rem, 10vw, 7.5rem); text-align: center; }
+.band { padding-block: clamp(3.5rem, 7.5vw, 6rem); text-align: center; }
 .band-inner { max-width: 48rem; margin-inline: auto; }
 .band h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
 .band p { margin-top: 1.25rem; font-size: 1.15rem; color: var(--text-secondary); }
@@ -263,6 +263,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 .cta-secondary a:hover { opacity: 1; }
 .cta-band .form-consent { color: rgba(255,255,255,0.62); margin-top: 1.6rem; }
 .footer-status { margin-top: 1rem; display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
+
+/* How-it-works phone: glow + floating annotations (fills the column) */
+.phone-stage { position: relative; display: flex; justify-content: center; align-items: center; }
+.phone-stage::before { content: ""; position: absolute; inset: -6% 0; z-index: 0; background: radial-gradient(closest-side, rgba(99,91,255,0.22), transparent 75%); filter: blur(16px); }
+.phone-stage .phone { position: relative; z-index: 1; }
+.phone-annot { position: absolute; z-index: 2; background: var(--n-000); border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem 0.9rem; font-size: 0.82rem; font-weight: 500; color: var(--text); box-shadow: 0 14px 30px rgba(10,37,64,0.14); display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+.annot-check { color: var(--brand); font-weight: 700; }
+.phone-annot-1 { top: 45%; left: -13%; }
+.phone-annot-2 { bottom: 24%; right: -14%; }
+@media (max-width: 980px) { .phone-annot { display: none; } .phone-stage::before { display: none; } }
 
 /* ---------- Footer ---------- */
 .site-footer { border-top: 1px solid var(--border); padding-top: clamp(3rem, 6vw, 4rem); background: var(--n-000); }
