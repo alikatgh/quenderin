@@ -112,6 +112,40 @@ removal point — bump *down* to an older one, or just use Route A.
 
 ---
 
+## Route C — Headless source build via `$QUENDERIN_LLAMA_DIR` (fastest to verify) ✅
+
+For compiling/running the **real** engine on a Mac with no xcframework — and the
+path the committed regression test (`LlamaEngineRealInferenceTests`) uses — point
+the package at a built llama.cpp checkout:
+
+```bash
+git clone --depth 1 https://github.com/ggml-org/llama.cpp /tmp/llama.cpp
+cmake -S /tmp/llama.cpp -B /tmp/llama.cpp/build -DBUILD_SHARED_LIBS=ON -DGGML_METAL=ON \
+      -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF \
+      -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+cmake --build /tmp/llama.cpp/build --target llama -j
+
+# the real LlamaEngine actor compiles + links (#if canImport(llama) goes true):
+QUENDERIN_LLAMA_DIR=/tmp/llama.cpp swift build
+# …and runs end to end against any small GGUF:
+QUENDERIN_LLAMA_DIR=/tmp/llama.cpp QUENDERIN_LLAMA_MODEL=/path/model.gguf \
+  DYLD_LIBRARY_PATH=/tmp/llama.cpp/build/bin \
+  swift test --filter LlamaEngineRealInferenceTests
+```
+
+With `QUENDERIN_LLAMA_DIR` **unset**, the package is byte-for-byte the mock-only
+build `main` always shipped — no dependency, `canImport(llama)` false. `Package.swift`
+adds a `llama` system-library target (`Sources/llama/`) plus the `-I` / `-L` / `-rpath`
+flags **only when it is set**. This links dynamically against a *dev* build — for a
+shippable app use the xcframework (Route A); Route C is the fastest path for headless
+CI/verification on macOS.
+
+> **Verified 2026-06-07:** with `QUENDERIN_LLAMA_DIR` set, `swift build` compiles
+> `LlamaEngine`'s `#if canImport(llama)` path (warning-free); `swift test` runs 91 tests
+> with the gated real-inference test skipping cleanly when the env vars are absent.
+
+---
+
 ## Authoritative reference
 
 llama.cpp ships an official SwiftUI example you can mirror for the binding:

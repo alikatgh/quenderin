@@ -101,7 +101,7 @@ public actor LlamaEngine: InferenceEngine {
 
         #if canImport(llama)
         return AsyncThrowingStream { continuation in
-            let task = Task { await self.runGeneration(prompt: prompt, options: options, into: continuation) }
+            let task = Task { self.runGeneration(prompt: prompt, options: options, into: continuation) }
             continuation.onTermination = { _ in task.cancel() }
         }
         #else

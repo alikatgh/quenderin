@@ -1,0 +1,12 @@
+// System-library module that exposes llama.cpp's C API to Swift under the name
+// `llama` — exactly what LlamaEngine.swift's `import llama` / `#if canImport(llama)`
+// expects. Activated only when Package.swift sees $QUENDERIN_LLAMA_DIR (a built
+// llama.cpp checkout); otherwise the package builds mock-only as before.
+//
+// The header is pulled in via shim.h with an angled include, resolved by the
+// `-I$QUENDERIN_LLAMA_DIR/include` flag Package.swift adds to the consumer.
+module llama {
+    header "shim.h"
+    link "llama"
+    export *
+}
