@@ -18,7 +18,7 @@ builds on this spine.
 | Recommendation (device → model) | ✅ `ModelRecommender`, tested (matches desktop) |
 | Memory fitness check | ✅ `MemoryFitness`, tested |
 | Inference seam | ✅ `InferenceEngine` + `MockInferenceEngine`, tested |
-| llama.cpp adapter | ✅ `LlamaEngine` scaffold (C path needs device to verify) |
+| llama.cpp adapter | ✅ `LlamaEngine` — **C path PROVEN**: type-checks vs real llama.cpp + runs inference on Mac Metal & iPhone sim (`apple/verify-llama-link.sh`) |
 | Model downloader | ✅ `ModelDownloader` + URLSession impl + mock, mock tested |
 | Onboarding orchestration | ✅ `OnboardingModel` state machine, tested |
 | SwiftUI onboarding shell | ✅ `OnboardingView` (compiles; render needs simulator) |
@@ -27,15 +27,21 @@ builds on this spine.
 | **Tier-2 model picker** | ✅ `ModelPickerView` + fitness gating, tested |
 | **Streaming chat (M2)** | ✅ `ChatModel` + `ChatView`, tested on mock |
 | **App shell** | ✅ `RootView` + `QuenderinApp` target + xcodegen spec |
-| Link llama.cpp + run on device | ⛔ **needs you** — dependency + GGUF + simulator |
-| Generate .xcodeproj + run | ⛔ needs you — `brew install xcodegen && xcodegen` |
+| Link llama.cpp + run inference | ✅ **PROVEN** — real llama.cpp, Mac Metal (~177 tok/s) + iPhone 16 simulator (~160 tok/s); coherent output |
+| Real on-*phone* tok/s + battery | ⛔ **needs you** — a physical iPhone (Mac/sim numbers are a ceiling) |
+| Generate .xcodeproj + run the app | ⛔ needs you — `brew install xcodegen && xcodegen` |
 
-## The verification cliff
+## The verification cliff — crossed
 
-Everything marked ✅ is proven by `swift test` on a Mac — no simulator, no
-model file. The ⛔ items cross into "needs a real device + a multi-GB model,"
-which is hands-on work only you can run. The code is written and degrades
-cleanly until then (the app runs on `MockInferenceEngine` today).
+Everything marked ✅ is proven by `swift test` on a Mac. The llama.cpp link —
+long *the* "needs a device" cliff — is now **proven by execution**:
+`apple/verify-llama-link.sh` builds real llama.cpp, type-checks `LlamaEngine`'s
+real `#if canImport(llama)` path against current master, and runs **coherent
+inference on Mac Metal and a booted iPhone 16 simulator**. It even caught + fixed
+a real dangling-pointer bug in that path. What genuinely still needs *you*: a real
+iPhone for on-phone tok/s/battery, the xcframework packaging (Route A in
+INTEGRATION.md), and the App Store. The app runs on `MockInferenceEngine` until
+you flip the two lines in `QuenderinApp.init()`.
 
 ## Running the onboarding flow today (on the mock engine)
 
