@@ -189,6 +189,14 @@ fun main() {
         val r = AgentLoop(engine, listOf(CalculatorTool())).run("x") { streamed.add(it) }
         streamed.size == r.steps.size && streamed.size == 2
     })
+    check("agent session runs and publishes the result", run {
+        val engine = ScriptedInferenceEngine(listOf("""{"tool":"calculator","input":"2+2"}""", """{"answer":"4"}"""))
+        var changes = 0
+        val session = AgentSession(engine, listOf(CalculatorTool())) { changes++ }
+        session.run("2+2?")
+        session.answer == "4" && session.steps.size == 2 && !session.isRunning &&
+            session.haltReason == AgentRun.HaltReason.ANSWERED && changes > 0
+    })
 
     // --- M3 resume bookkeeping (DownloadStore) ---
     check("download store tracks fraction complete", run {

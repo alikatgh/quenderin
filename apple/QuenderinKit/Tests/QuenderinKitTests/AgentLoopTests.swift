@@ -25,6 +25,23 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(collector.count, 2)
     }
 
+    @MainActor
+    func testAgentSessionPublishesResult() async {
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"calculator","input":"2 + 2"}"#,
+            #"{"answer":"4"}"#,
+        ])
+        let session = AgentSession(engine: engine, tools: [CalculatorTool()])
+        XCTAssertFalse(session.isRunning)
+
+        await session.run(goal: "What is 2+2?")
+
+        XCTAssertEqual(session.answer, "4")
+        XCTAssertEqual(session.haltReason, .answered)
+        XCTAssertEqual(session.steps.count, 2)
+        XCTAssertFalse(session.isRunning)
+    }
+
     func testRunsToolThenAnswers() async {
         let engine = ScriptedInferenceEngine(replies: [
             #"{"tool":"calculator","input":"20 + 22"}"#,
