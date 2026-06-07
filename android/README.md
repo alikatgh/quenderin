@@ -40,6 +40,29 @@ blocklist, the `LlamaEngine` off-device fallback, and the M1/M2 onboarding + cha
 Open `android/` in Android Studio → run `app`. The full onboarding → chat flow works on
 `MockInferenceEngine`; no llama.cpp required.
 
+## What the selector picks (and why Android differs from iOS)
+
+`AndroidModelSelector` gates each model on memory + chip speed + disk, then defaults to
+the largest *comfortable* model. Android's memory reality differs from iOS, and the picks
+show it:
+
+| Device | Pick | Why |
+|--------|------|-----|
+| 4 GB mid-range | Llama 3.2 1B | budget ~2.2 GB; 3B too big |
+| 6 GB Snapdragon 8 Gen 2 | Qwen3 4B | the mainstream sweet spot |
+| 8 GB Snapdragon 8 Gen 3 | Qwen3 4B | comfortable; 7B *offered* (tight) |
+| 12 GB + slower chip | Qwen3 4B | RAM allows more, but the chip is the limit |
+| **16 GB Snapdragon 8 Elite** | **Mistral 7B** | RAM + a fast chip unlock a 7B **no 8 GB iPhone can hold** |
+
+Two Android-specific truths, both from the measured research (`apple/REALITY.md`):
+- **Native heap, not jetsam.** llama.cpp allocates via JNI on the native heap, which is
+  bounded by total RAM + the low-memory-killer — *not* the tiny Dalvik per-app cap. So
+  budgets are more generous than iOS, and the 12–16 GB tiers (common on Android) unlock
+  bigger models.
+- **The 7 tok/s floor keeps 14B off phones** — it's too slow to feel alive even at 16 GB.
+
+`ThermalBattery` attaches the same heat/battery advisory as iOS.
+
 ## Go real
 
 Linking llama.cpp (NDK + CMake) and running on a device is the on-device cliff —
@@ -49,5 +72,6 @@ native `.so` is built; no code change required.
 ## Parity rule
 
 `ModelCatalog` + `ModelRecommender` must stay identical across desktop (`src/constants.ts`),
-iOS (`apple/QuenderinKit`), and here. Today they're hand-synced; the plan is to have the
-desktop emit a shared manifest JSON the mobile clients consume.
+iOS (`apple/QuenderinKit`), and here — enforced by `scripts/check_catalog_parity.py`
+(`npm run check:catalog-parity`). The selectors (`AndroidModelSelector` /
+`IPhoneModelSelector`) are platform-specific by design; the *catalog* is the shared part.
