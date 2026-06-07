@@ -74,7 +74,7 @@ The whole flow runs today on `MockInferenceEngine` + `MockModelDownloader`.
 
 - **Link llama.cpp + run on device** — add the `llama` SwiftPM product /
   xcframework, run `LlamaEngine` on a simulator with a small GGUF. The only piece
-  that can't be proven headlessly.
+  that can't be proven headlessly. **Step-by-step: [`INTEGRATION.md`](INTEGRATION.md).**
 - **Generate the app project** — `brew install xcodegen && cd ../QuenderinApp && xcodegen`.
 - **Production downloader** — port the background-`URLSession` engine from
   `off-grid-mobile/ios/DownloadManagerModule.swift` (resumable, multi-file).
