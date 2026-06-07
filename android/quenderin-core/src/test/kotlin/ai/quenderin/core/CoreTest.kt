@@ -52,4 +52,41 @@ class CoreTest {
         engine.unload()
         assertEquals(null, engine.loadedModelId)
     }
+
+    @Test fun llamaEngineFailsCleanlyOffDevice() {
+        val llama = LlamaEngine()
+        assertFalse(llama.available(), "no native lib on the JVM")
+        val e = runCatching { llama.load(ModelCatalog.smallest, "/dev/null") }.exceptionOrNull()
+        assertNotNull(e)
+        assertTrue(e!!.message!!.contains("not linked"))
+        assertTrue(runCatching { llama.complete("hi") }.isFailure)
+    }
+
+    @Test fun onboardingReachesReady() {
+        val phases = mutableListOf<OnboardingPhase>()
+        val onboarding = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+            .apply { onChange = { phases += it } }
+        onboarding.start { DeviceProfile(totalRamGB = 8.0, freeRamGB = 6.0) }
+        assertEquals("qwen3-4b", (onboarding.phase as OnboardingPhase.Recommended).model.id)
+        onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))
+        assertTrue(onboarding.phase is OnboardingPhase.Ready)
+        assertTrue(phases.any { it is OnboardingPhase.Downloading })
+    }
+
+    @Test fun onboardingFailsWhenItCannotFit() {
+        val onboarding = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+        onboarding.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }
+        assertTrue(onboarding.phase is OnboardingPhase.Failed)
+    }
+
+    @Test fun chatAccumulatesTranscript() {
+        val engine = MockInferenceEngine("Running on-device.")
+        engine.load(ModelCatalog.smallest, "/dev/null")
+        val sizes = mutableListOf<Int>()
+        val chat = ChatModel(engine).apply { onChange = { sizes += it.size } }
+        assertEquals("Running on-device.", chat.send("hello"))
+        assertEquals(listOf(Role.USER, Role.ASSISTANT), chat.messages.map { it.role })
+        assertEquals(listOf(1, 2), sizes)
+        assertTrue(runCatching { chat.send("   ") }.isFailure)
+    }
 }

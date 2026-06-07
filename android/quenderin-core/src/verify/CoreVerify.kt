@@ -58,6 +58,42 @@ fun main() {
     engine.unload()
     check("unload clears the loaded model", engine.loadedModelId == null)
 
+    // --- LlamaEngine: fails cleanly off-device (no .so), per the JNI contract ---
+    val llama = LlamaEngine()
+    check("LlamaEngine reports unavailable on the JVM (no native lib)", !llama.available())
+    check("LlamaEngine.load throws a clear 'not linked' error when unlinked",
+        runCatching { llama.load(ModelCatalog.smallest, "/dev/null") }
+            .exceptionOrNull()?.message?.contains("not linked") == true)
+    check("LlamaEngine.complete throws when unlinked", runCatching { llama.complete("hi") }.isFailure)
+
+    // --- OnboardingModel (M1): probe → recommend → download(mock) → load(mock) → ready ---
+    val phases = mutableListOf<OnboardingPhase>()
+    val onboarding = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+        .apply { onChange = { phases += it } }
+    onboarding.start { DeviceProfile(totalRamGB = 8.0, freeRamGB = 6.0) }
+    check("onboarding recommends Qwen3 4B for an 8 GB device",
+        (onboarding.phase as? OnboardingPhase.Recommended)?.model?.id == "qwen3-4b")
+    onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))
+    check("onboarding reaches Ready", onboarding.phase is OnboardingPhase.Ready)
+    check("onboarding streamed Downloading progress", phases.any { it is OnboardingPhase.Downloading })
+    check("onboarding fails cleanly when even the recommended model can't fit", run {
+        val tight = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+        tight.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }
+        tight.phase is OnboardingPhase.Failed
+    })
+
+    // --- ChatModel (M2): send runs the engine, transcript accumulates ---
+    val chatEngine = MockInferenceEngine(cannedReply = "Running on-device.")
+    chatEngine.load(ModelCatalog.smallest, "/dev/null")
+    val sizes = mutableListOf<Int>()
+    val chat = ChatModel(chatEngine).apply { onChange = { sizes += it.size } }
+    val reply = chat.send("hello")
+    check("chat returns the engine reply", reply == "Running on-device.")
+    check("chat transcript is user then assistant",
+        chat.messages.map { it.role } == listOf(Role.USER, Role.ASSISTANT))
+    check("chat emitted after each append", sizes == listOf(1, 2))
+    check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

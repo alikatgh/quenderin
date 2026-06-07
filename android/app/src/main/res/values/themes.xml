@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A bare no-action-bar host theme; all real theming is done by Compose
+     (ui/Theme.kt, Material 3). Uses the framework Material theme so no extra
+     XML theme dependency is needed. -->
+<resources>
+    <style name="Theme.Quenderin" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

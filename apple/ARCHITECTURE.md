@@ -112,7 +112,7 @@ The same llama.cpp/ggml core powers every platform; only the thin adapter differ
 |----------|---------|--------|
 | Desktop (Electron/TS) | `node-llama-cpp` (Node binding) | shipping prototype |
 | iOS (Swift) | `LlamaEngine` (Swift → C API) | built; needs llama.cpp linked on-device |
-| Android (Kotlin) | JNI bridge (Kotlin → C++) | **core started** (`android/quenderin-core`, tested); JNI + Compose next |
+| Android (Kotlin) | `LlamaEngine` (Kotlin → JNI → C++) | **brain + UI built on mock** (M1–M2): core tested (29 kotlinc checks), JNI bridge (`jni/llama_jni.cpp`) + Compose app (`android/app`) written; needs llama.cpp linked on-device (same cliff as iOS) |
 
 The durable, portable assets — the model catalog/recommendation logic and the
 symbolic protocols — are shared so all three clients agree on what to run.
