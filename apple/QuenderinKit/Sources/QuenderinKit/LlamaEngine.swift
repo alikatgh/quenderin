@@ -135,7 +135,9 @@ public actor LlamaEngine: InferenceEngine {
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(Float(options.topP), 1))
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(Float(options.temperature)))
-        llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED))
+        // LLAMA_DEFAULT_SEED is a hex macro that imports to Swift as Int; the C
+        // param is uint32_t — cast so it compiles against the current header.
+        llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32(truncatingIfNeeded: LLAMA_DEFAULT_SEED)))
         defer { llama_sampler_free(sampler) }
 
         // 3) Decode prompt, then sample one token at a time.
