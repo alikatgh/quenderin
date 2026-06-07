@@ -8,6 +8,7 @@
 # booted emulator or attached device for the run step.
 #   "$SDK/cmdline-tools/latest/bin/sdkmanager" "ndk;27.1.12297006"   # if the NDK is a stub
 #   "$SDK/emulator/emulator" -avd Pixel_6a &                          # boot an emulator
+#   QUENDERIN_MODEL=~/models/qwen.gguf  android/verify-llama-link.sh  # use your model, 0 download
 #
 # VERIFIED 2026-06-07 (build + compile stages): with NDK 27.0.12077973, libllama.so built
 # for Android arm64-v8a, AND `jni/llama_jni.cpp` + `tools/llama-smoketest.cpp` BOTH compiled
@@ -64,7 +65,12 @@ echo "==> 4/5  Build the native inference smoke test"
   -L"$WORK/llama.cpp/build-android/bin" -lllama -o smoketest
 
 echo "==> 5/5  Push + run on the device (needs a booted emulator/device)"
-[ -f model.gguf ] || curl -L -s -o model.gguf "$MODEL_URL"
+if [ -n "${QUENDERIN_MODEL:-}" ]; then
+  ln -sf "$QUENDERIN_MODEL" model.gguf            # use YOUR model — no download
+elif [ ! -f model.gguf ]; then
+  echo "    (set QUENDERIN_MODEL=/path/to/your.gguf to skip this download)"
+  curl -L -s -o model.gguf "$MODEL_URL"
+fi
 ADB="$SDK/platform-tools/adb"; DEV="/data/local/tmp/quenderin"
 "$ADB" shell mkdir -p "$DEV"
 "$ADB" push smoketest "$DEV"/ >/dev/null

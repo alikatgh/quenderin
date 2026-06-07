@@ -8,8 +8,10 @@
 # This de-risks the "link llama.cpp" cliff — the exact API sequence QuenderinKit uses
 # (load_from_file → init_from_model → tokenize → decode → sampler → token_to_piece) is proven.
 #
-# Requirements: Xcode (swiftc), cmake, git, ~2 GB free disk, network for the model.
+# Requirements: Xcode (swiftc), cmake, git, ~2 GB free disk. Bring your own GGUF via
+#   QUENDERIN_MODEL=/path/to/your.gguf to skip the model download (no network needed for it).
 # Usage: apple/verify-llama-link.sh [workdir]   (default: /tmp/quenderin-llama-verify)
+#   QUENDERIN_MODEL=~/models/qwen.gguf  apple/verify-llama-link.sh   # use your model, 0 download
 set -euo pipefail
 
 WORK="${1:-/tmp/quenderin-llama-verify}"
@@ -44,7 +46,12 @@ swiftc -typecheck "$HERE"/QuenderinKit/Sources/QuenderinKit/*.swift \
 echo "    LlamaEngine's real inference path type-checks against current llama.cpp master"
 
 echo "==> 3/4  Fetch a tiny model (~0.47 GB) if missing"
-[ -f model.gguf ] || curl -L -s -o model.gguf "$MODEL_URL"
+if [ -n "${QUENDERIN_MODEL:-}" ]; then
+  ln -sf "$QUENDERIN_MODEL" model.gguf            # use YOUR model — no download
+elif [ ! -f model.gguf ]; then
+  echo "    (set QUENDERIN_MODEL=/path/to/your.gguf to skip this download)"
+  curl -L -s -o model.gguf "$MODEL_URL"
+fi
 
 echo "==> 4/4  Compile + run the Swift smoke test against real llama.cpp (Metal)"
 swiftc -O "$HERE/tools/llama-smoketest.swift" \
