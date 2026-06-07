@@ -1,0 +1,42 @@
+# Quenderin Documentation
+
+Everything you need to understand, run, and extend Quenderin — the offline,
+on-device AI agent.
+
+## Start here
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — the whole system: the offline-first
+  thesis, the desktop (Electron) app, the native-mobile destination, and the
+  agent loop. Read this first.
+
+## Reference
+
+| Doc | What it covers |
+|-----|----------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, data flow, the OODA agent loop, the two products |
+| [BACKEND.md](BACKEND.md) | The `src/` services — LLM, agent, session, memory, voice, OCR, daemons, tools, device providers |
+| [API.md](API.md) | The REST routes **and** the full WebSocket message protocol |
+| [FRONTEND.md](FRONTEND.md) | The React/Vite UI — components, state, the agent socket hook, theming |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, scripts, build, test, lint, project layout |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
+
+## The native mobile app
+
+The iOS/Android rebuild has its own docs under `apple/`:
+
+| Doc | What it covers |
+|-----|----------------|
+| [../apple/ARCHITECTURE.md](../apple/ARCHITECTURE.md) | What llama.cpp is, the **engine-vs-model** distinction, the native stack |
+| [../apple/ROADMAP.md](../apple/ROADMAP.md) | Milestones M1–M4 and what's left |
+| [../apple/QuenderinKit/README.md](../apple/QuenderinKit/README.md) | The Swift package module catalog |
+| [../apple/QuenderinKit/INTEGRATION.md](../apple/QuenderinKit/INTEGRATION.md) | How to link llama.cpp on a device |
+
+## One-paragraph summary
+
+Quenderin runs large language models **fully on the user's device** — no cloud,
+no API keys, no telemetry. The shipping prototype is an **Electron desktop app**
+(TypeScript backend + React UI) that serves a dashboard, runs local GGUF models
+via `node-llama-cpp`, and drives an agent loop that can observe a screen, plan a
+symbolic action, execute it, and verify the result — all gated by a hard safety
+blocklist. The **destination** is a native iOS/Android app (`apple/`) built on the
+same llama.cpp engine. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full picture.

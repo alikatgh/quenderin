@@ -74,8 +74,18 @@ npm run electron:dev
 
 ---
 
+## Documentation
+
+Full documentation lives in [`docs/`](docs/README.md):
+
+- **[Architecture](docs/ARCHITECTURE.md)** — the system, the agent loop, the two products
+- **[Backend](docs/BACKEND.md)** &middot; **[API &amp; WebSocket](docs/API.md)** &middot; **[Frontend](docs/FRONTEND.md)**
+- **[Development](docs/DEVELOPMENT.md)** — setup, build, test, project layout
+- **Native mobile:** [apple/ARCHITECTURE.md](apple/ARCHITECTURE.md) — what llama.cpp is, the engine-vs-model distinction, the Swift stack
+
 ## Contributing
-MIT License. PRs welcome!
+
+MIT License. PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ---
 **Stop configuring. Start automating.**
