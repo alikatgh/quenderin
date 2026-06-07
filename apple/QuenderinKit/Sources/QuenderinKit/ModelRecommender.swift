@@ -32,7 +32,21 @@ public enum ModelRecommender {
     }
 
     /// Convenience: recommend straight from the live device probe.
+    ///
+    /// On iOS this defers to `IPhoneModelSelector`, which is jetsam-budget- and
+    /// chip-aware — the naive total-RAM band would over-pick and risk the app being
+    /// jetsam-killed. Elsewhere (desktop parity, tests) it uses the shared band logic.
     public static func recommendedModelForThisDevice() -> ModelEntry {
-        recommendedModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB)
+        #if os(iOS)
+        return IPhoneModelSelector.selectForThisDevice().model
+        #else
+        return recommendedModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB)
+        #endif
+    }
+
+    /// The full, explained iPhone selection (model + rationale + alternatives) for a
+    /// device profile. The app uses this to show *why* a model was chosen.
+    public static func selection(for device: IOSDeviceProfile) -> ModelSelection {
+        IPhoneModelSelector.select(for: device)
     }
 }

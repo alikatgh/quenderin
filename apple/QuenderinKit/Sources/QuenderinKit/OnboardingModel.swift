@@ -24,20 +24,57 @@ public final class OnboardingModel: ObservableObject {
     private let downloader: ModelDownloader
     private let engine: InferenceEngine
     private let modelsDir: URL
+    private let deviceProfile: IOSDeviceProfile?
 
-    public init(downloader: ModelDownloader, engine: InferenceEngine, modelsDir: URL? = nil) {
+    /// The full, explained iPhone selection (rationale + alternatives) when the pick
+    /// came from `IPhoneModelSelector`. Nil on platforms that use the RAM-band path.
+    @Published public private(set) var selection: ModelSelection?
+
+    public init(
+        downloader: ModelDownloader,
+        engine: InferenceEngine,
+        modelsDir: URL? = nil,
+        deviceProfile: IOSDeviceProfile? = nil
+    ) {
         self.downloader = downloader
         self.engine = engine
         self.modelsDir = modelsDir ?? Self.defaultModelsDir()
+        self.deviceProfile = deviceProfile
     }
 
     /// Probe hardware and produce a recommendation. Idempotent.
+    ///
+    /// On iPhones (or when a profile is injected) this uses the jetsam-budget- and
+    /// chip-aware `IPhoneModelSelector` and records the full `selection` so the UI can
+    /// explain the choice. Elsewhere it uses the shared RAM-band recommender.
     public func start() async {
         phase = .probing
         let hardware = HardwareProbe.current()
-        let model = ModelRecommender.recommendedModel(forTotalRAMGB: hardware.totalRAMGB)
-        let fitness = MemoryFitness.check(for: model)
-        phase = .recommended(model, hardware, fitness)
+        if let profile = deviceProfile ?? Self.liveProfile() {
+            let sel = IPhoneModelSelector.select(for: profile)
+            selection = sel
+            let fitness = MemoryCheckResult(
+                canLoad: true,
+                severity: sel.confidence == .comfortable ? .safe : (sel.confidence == .tight ? .warning : .critical),
+                availableMemoryGB: sel.usableMemoryGB,
+                requiredMemoryGB: sel.estimatedRuntimeGB,
+                remainingAfterLoadGB: sel.memoryHeadroomGB,
+                message: sel.rationale
+            )
+            phase = .recommended(sel.model, hardware, fitness)
+        } else {
+            let model = ModelRecommender.recommendedModel(forTotalRAMGB: hardware.totalRAMGB)
+            phase = .recommended(model, hardware, MemoryFitness.check(for: model))
+        }
+    }
+
+    /// The live device profile on iOS; nil elsewhere (desktop/tests fall back to the band).
+    static func liveProfile() -> IOSDeviceProfile? {
+        #if os(iOS)
+        return DeviceProfiler.current()
+        #else
+        return nil
+        #endif
     }
 
     /// Download (if needed) then load `model`, driving `phase` through the flow.

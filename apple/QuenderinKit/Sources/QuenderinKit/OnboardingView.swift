@@ -21,15 +21,52 @@ public struct OnboardingView: View {
                     Text("Recommended for your device")
                         .font(.headline)
                     Text(entry.label)
-                    Text("\(Int(hardware.totalRAMGB.rounded())) GB RAM · \(entry.sizeLabel)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if !fitness.canLoad {
-                        Text(fitness.message)
+                        .font(.title3.weight(.semibold))
+
+                    if let sel = model.selection {
+                        // World-class iPhone pick: device + chip + speed + confidence + alternatives.
+                        Text(sel.device.deviceName)
+                            .font(.caption).foregroundStyle(.secondary)
+                        Label("~\(Int(sel.estimatedTokensPerSecond.rounded())) tok/s · \(sel.device.chip.displayName)",
+                              systemImage: "bolt.fill")
+                            .font(.caption.monospacedDigit())
+                        Group {
+                            switch sel.confidence {
+                            case .comfortable: Text("Great fit").foregroundStyle(.green)
+                            case .tight:       Text("Tight fit").foregroundStyle(.orange)
+                            case .forced:      Text("Limited device").foregroundStyle(.orange)
+                            }
+                        }
+                        .font(.caption2.weight(.semibold))
+                        Text(sel.rationale)
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+                        if !sel.alternatives.isEmpty {
+                            DisclosureGroup("Other options") {
+                                ForEach(sel.alternatives, id: \.model.id) { opt in
+                                    HStack(alignment: .firstTextBaseline) {
+                                        Text(opt.model.label)
+                                        Spacer()
+                                        Text(opt.note).foregroundStyle(.secondary)
+                                    }
+                                    .font(.caption2)
+                                }
+                            }
+                            .font(.caption)
+                        }
+                    } else {
+                        Text("\(Int(hardware.totalRAMGB.rounded())) GB RAM · \(entry.sizeLabel)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !fitness.canLoad {
+                            Text(fitness.message)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .multilineTextAlignment(.center)
+                        }
                     }
+
                     Button("Download & Start") {
                         Task { await model.install(entry) }
                     }

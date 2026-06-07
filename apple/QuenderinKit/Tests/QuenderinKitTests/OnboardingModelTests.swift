@@ -78,6 +78,30 @@ final class OnboardingModelTests: XCTestCase {
         XCTAssertTrue(message.contains("offline"), "message should explain the cause: \(message)")
     }
 
+    func testStartUsesIPhoneSelectorWhenProfileInjected() async {
+        let dir = freshModelsDir()
+        let device = IOSDeviceProfile(
+            deviceName: "iPhone 15 Pro", identifier: "iPhone16,1", chip: .a17Pro, totalRAMGB: 8,
+            appMemoryBudgetGB: AppleDeviceDatabase.estimatedAppMemoryBudgetGB(totalRAMGB: 8),
+            freeDiskGB: 128, isKnownDevice: true
+        )
+        let model = OnboardingModel(
+            downloader: MockModelDownloader(), engine: MockInferenceEngine(),
+            modelsDir: dir, deviceProfile: device
+        )
+
+        await model.start()
+
+        guard case let .recommended(entry, _, fitness) = model.phase else {
+            return XCTFail("expected .recommended, got \(model.phase)")
+        }
+        // The jetsam-aware selector picks the safe 4B on an 8 GB iPhone, not a 7B/14B over-pick.
+        XCTAssertEqual(entry.id, "qwen3-4b")
+        XCTAssertEqual(model.selection?.model.id, "qwen3-4b")
+        XCTAssertTrue(fitness.message.contains("iPhone 15 Pro"), "fitness carries the rationale")
+        XCTAssertFalse(model.selection?.alternatives.isEmpty ?? true, "alternatives are surfaced")
+    }
+
     func testInstallSurfacesLoadFailure() async {
         let dir = freshModelsDir()
         defer { try? FileManager.default.removeItem(at: dir) }
