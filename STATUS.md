@@ -21,7 +21,7 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 | **Android** | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 - **M3** = Wi-Fi guard · disk-fit check · "safe to go offline" verdict · resume bookkeeping.
-- **M4** = `AgentTool` + safe arithmetic · lenient JSON planner · `AgentLoop` (plan → safety-gate → execute → observe → repeat, live `onStep`) · `AgentSession` (bindable view-model).
+- **M4** = `AgentTool` + safe arithmetic · lenient JSON planner · `AgentLoop` (plan → safety-gate → execute → observe → repeat, live `onStep`) · `AgentSession` (bindable view-model) · `AgentView`/`AgentScreen` (the screen; iOS `RootView` gains an optional Agent tab).
 
 ## Model picking — world-class, device-aware, measured
 
