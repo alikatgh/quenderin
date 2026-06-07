@@ -137,4 +137,33 @@ class CoreTest {
         assertFalse(partial.isReadyForOffline)
         assertTrue(partial.message.contains("%"))
     }
+
+    @Test fun arithmeticParserHandlesPrecedenceAndErrors() {
+        assertEquals(84.0, ArithmeticParser.evaluate("12 * (3 + 4)"))
+        assertEquals("42", CalculatorTool().run("20 + 22"))
+        assertNull(ArithmeticParser.evaluate("2 +* 3"))
+        assertNull(ArithmeticParser.evaluate("4 / 0"))
+    }
+
+    @Test fun agentDecisionParserIsLenient() {
+        assertEquals(AgentDecision.UseTool("calculator", "2+2"),
+            AgentDecisionParser.parse("""{"tool":"calculator","input":"2+2"}"""))
+        assertEquals(AgentDecision.FinalAnswer("42"),
+            AgentDecisionParser.parse("""Sure! {"answer":"42"} done"""))
+        assertNull(AgentDecisionParser.parse("no json here"))
+    }
+
+    @Test fun agentLoopRunsToolThenAnswersAndGatesUnsafe() {
+        val engine = ScriptedInferenceEngine(
+            listOf("""{"tool":"calculator","input":"20 + 22"}""", """{"answer":"It is 42."}"""),
+        )
+        val run = AgentLoop(engine, listOf(CalculatorTool())).run("What is 20 + 22?")
+        assertEquals(AgentRun.HaltReason.ANSWERED, run.haltReason)
+        assertEquals("It is 42.", run.answer)
+        assertTrue(run.steps.any { it.observation == "42" })
+
+        val blocked = AgentLoop(ScriptedInferenceEngine(listOf("""{"tool":"echo","input":"delete and pay"}""")), listOf(EchoTool()))
+            .run("x")
+        assertEquals(AgentRun.HaltReason.BLOCKED, blocked.haltReason)
+    }
 }

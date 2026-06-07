@@ -156,6 +156,34 @@ fun main() {
         !r.isReadyForOffline && r.message.contains("%")
     })
 
+    // --- M4 agent loop (Android parity): plan → safety-gate → execute → observe → repeat ---
+    check("arithmetic parser evaluates precedence + parens", ArithmeticParser.evaluate("12 * (3 + 4)") == 84.0)
+    check("arithmetic parser rejects malformed input", ArithmeticParser.evaluate("2 +* 3") == null)
+    check("arithmetic parser rejects divide-by-zero", ArithmeticParser.evaluate("4 / 0") == null)
+    check("calculator renders integers cleanly", CalculatorTool().run("20 + 22") == "42")
+    check("decision parser reads a tool call",
+        AgentDecisionParser.parse("""{"tool":"calculator","input":"2+2"}""") == AgentDecision.UseTool("calculator", "2+2"))
+    check("decision parser reads a final answer wrapped in prose",
+        AgentDecisionParser.parse("""Sure thing! {"answer":"42"} hope that helps""") == AgentDecision.FinalAnswer("42"))
+    check("agent loop uses a tool then answers", run {
+        val engine = ScriptedInferenceEngine(listOf(
+            """{"tool":"calculator","input":"20 + 22"}""",
+            """{"answer":"The answer is 42."}""",
+        ))
+        val r = AgentLoop(engine, listOf(CalculatorTool())).run("What is 20 + 22?")
+        r.haltReason == AgentRun.HaltReason.ANSWERED && r.answer == "The answer is 42." && r.steps.any { it.observation == "42" }
+    })
+    check("agent loop safety-gates a blocked action", run {
+        val engine = ScriptedInferenceEngine(listOf("""{"tool":"echo","input":"delete my files and pay"}"""))
+        AgentLoop(engine, listOf(EchoTool())).run("do it").haltReason == AgentRun.HaltReason.BLOCKED
+    })
+    check("agent loop halts cleanly on a non-JSON plan",
+        AgentLoop(ScriptedInferenceEngine(listOf("not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
+    check("agent loop caps runaway steps", run {
+        val engine = ScriptedInferenceEngine(List(10) { """{"tool":"echo","input":"loop"}""" })
+        AgentLoop(engine, listOf(EchoTool()), maxSteps = 3).run("x").haltReason == AgentRun.HaltReason.MAX_STEPS
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")
