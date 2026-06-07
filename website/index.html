@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quenderin — An AI that runs on your phone, even offline</title>
+<meta name="description" content="Quenderin runs large language models fully on your device. No internet, no API keys, no telemetry. Download a model once and your assistant works on a plane, in a tent, off the grid." />
+<meta name="theme-color" content="#0a0a0b" />
+<link rel="canonical" href="https://alikatgh.github.io/quenderin/" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="styles.css" />
+
+<!-- Open Graph / social -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Quenderin — AI that runs on your phone, even offline" />
+<meta property="og:description" content="Local LLMs on-device. No cloud, no API keys, no telemetry. Works without a signal." />
+<meta property="og:url" content="https://alikatgh.github.io/quenderin/" />
+<meta property="og:image" content="https://alikatgh.github.io/quenderin/og-image.svg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Quenderin — AI that runs on your phone, even offline" />
+<meta name="twitter:description" content="Local LLMs on-device. No cloud, no API keys, no telemetry." />
+<meta name="twitter:image" content="https://alikatgh.github.io/quenderin/og-image.svg" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Quenderin",
+  "applicationCategory": "Productivity",
+  "operatingSystem": "iOS, Android, macOS, Linux",
+  "description": "Offline, on-device AI assistant powered by local large language models. No internet, API keys, or telemetry.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "url": "https://alikatgh.github.io/quenderin/"
+}
+</script>
+
+<!-- Without JS, reveal-on-scroll content must still be visible -->
+<noscript><style>.reveal{opacity:1 !important}</style></noscript>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container header-inner">
+    <a class="brand" href="#top" aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <ul class="nav-menu" id="nav-menu">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+        <li><a href="#models">Models</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero container">
+    <div class="hero-copy reveal">
+      <p class="eyebrow">Offline &middot; Private &middot; Yours</p>
+      <h1>An AI that lives on your phone&mdash;<br>not in someone&rsquo;s cloud.</h1>
+      <p class="lede">
+        Quenderin runs large language models <strong>fully on your device</strong>. No internet,
+        no API keys, no telemetry. Download a model once over Wi-Fi, and your assistant keeps
+        working on a plane, in a tent, anywhere your signal doesn&rsquo;t.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">View on GitHub</a>
+        <a class="btn btn-ghost" href="#waitlist">Join the waitlist</a>
+      </div>
+      <ul class="spec-strip" aria-label="Key facts">
+        <li><span class="spec-num">100%</span> offline</li>
+        <li><span class="spec-num">0</span> API keys</li>
+        <li><span class="spec-num">0</span> telemetry</li>
+        <li><span class="spec-num">$0</span> per token</li>
+      </ul>
+    </div>
+
+    <div class="hero-visual reveal" aria-hidden="true">
+      <div class="device">
+        <div class="device-bar">
+          <span class="dot dot-live"></span>
+          <span class="device-status">On-device &middot; Offline</span>
+          <span class="device-airplane">✈ airplane mode</span>
+        </div>
+        <div class="chat">
+          <div class="msg msg-user"><span class="msg-who">You</span>Best knot for a tarp shelter?</div>
+          <div class="msg msg-ai">
+            <span class="msg-who">Quenderin</span>
+            A <strong>taut-line hitch</strong> on the ridgeline&mdash;it grips under load but slides
+            to re-tension when the wind picks up. For the corners, a prusik loop lets you adjust
+            without untying.
+          </div>
+          <div class="chat-foot"><span class="dot dot-live"></span> 0&nbsp;ms to a server &middot; nothing left your phone</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <section class="trust container" aria-label="Built on">
+    <p class="trust-label">Local inference, the real way</p>
+    <ul class="trust-list">
+      <li>Local GGUF models</li>
+      <li>node-llama-cpp / llama.cpp</li>
+      <li>Apple Silicon &rarr; Raspberry Pi</li>
+      <li>MIT open source</li>
+    </ul>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="band container reveal">
+    <h2 class="band-title">The cloud isn&rsquo;t always there.<br>Your AI shouldn&rsquo;t vanish with your signal.</h2>
+    <p class="band-text">
+      Every other assistant is a thin client for a data center. Lose connection and it goes dark&mdash;
+      and even when it works, your words travel to a server you don&rsquo;t own. Quenderin flips that:
+      the model lives <em>on the device in your hand</em>.
+    </p>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section container" id="how">
+    <header class="section-head reveal">
+      <p class="eyebrow">How it works</p>
+      <h2>Download once. Run forever.</h2>
+    </header>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step-num">01</span>
+        <h3>Probe</h3>
+        <p>Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can actually run well.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step-num">02</span>
+        <h3>Download</h3>
+        <p>Pull the model once over Wi-Fi. From a 0.4&nbsp;GB ultra-light to a 4.7&nbsp;GB flagship&mdash;your choice. It resumes if you get interrupted.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step-num">03</span>
+        <h3>Go offline</h3>
+        <p>Everything runs locally from then on. A clear &ldquo;ready to go offline&rdquo; check tells you it&rsquo;s safe before you leave the grid.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section container" id="features">
+    <header class="section-head reveal">
+      <p class="eyebrow">Features</p>
+      <h2>A real assistant, with nothing phoning home.</h2>
+    </header>
+    <div class="grid">
+      <article class="cell reveal">
+        <h3>Truly offline</h3>
+        <p>After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
+      </article>
+      <article class="cell reveal">
+        <h3>Private by design</h3>
+        <p>Nothing leaves your device. No accounts, no analytics, no telemetry. Your conversations are yours.</p>
+      </article>
+      <article class="cell reveal">
+        <h3>Hardware-adaptive</h3>
+        <p>One app, every device. It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
+      </article>
+      <article class="cell reveal">
+        <h3>Does things, safely</h3>
+        <p>A tool-using agent with a hard safety blocklist&mdash;it will never autonomously touch pay, delete, or password actions.</p>
+      </article>
+      <article class="cell reveal">
+        <h3>Open source</h3>
+        <p>MIT licensed. Read every line, audit every claim, build it yourself. Trust by inspection, not by promise.</p>
+      </article>
+      <article class="cell reveal">
+        <h3>$0 forever</h3>
+        <p>No subscriptions, no per-token billing. The model runs on hardware you already own.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- OFF-GRID STORY -->
+  <section class="band band-feature container reveal" id="story">
+    <p class="eyebrow">Built for the edge of the map</p>
+    <h2 class="band-title">You&rsquo;re going off the grid for three days.</h2>
+    <p class="band-text">
+      The night before, on hotel Wi-Fi, you download a model&mdash;and Quenderin keeps the download
+      alive even when you switch apps, then shows a green <strong>&ldquo;ready to go offline&rdquo;</strong>.
+      On the trail, with no bars, you still have a capable assistant in your pocket. That&rsquo;s the
+      whole point: an AI that doesn&rsquo;t need the world to be online.
+    </p>
+  </section>
+
+  <!-- PRIVACY -->
+  <section class="section container" id="privacy">
+    <header class="section-head reveal">
+      <p class="eyebrow">Privacy</p>
+      <h2>Your data never had to leave. So it doesn&rsquo;t.</h2>
+    </header>
+    <ul class="checklist reveal">
+      <li>No cloud calls after the model is downloaded</li>
+      <li>No API keys, no sign-in, no account</li>
+      <li>No analytics, no tracking, no telemetry</li>
+      <li>Conversations stored only on your device</li>
+      <li>Open source &mdash; verify all of the above yourself</li>
+    </ul>
+  </section>
+
+  <!-- MODELS / SPECS -->
+  <section class="section container" id="models">
+    <header class="section-head reveal">
+      <p class="eyebrow">Model catalog</p>
+      <h2>Right-sized for your hardware.</h2>
+    </header>
+    <div class="table-wrap reveal">
+      <table class="spec-table">
+        <thead>
+          <tr><th scope="col">Model</th><th scope="col">Quant</th><th scope="col">Download</th><th scope="col">Min RAM</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Llama&nbsp;3&nbsp;8B <span class="muted">Best quality</span></td><td>Q4_K_M</td><td>4.7&nbsp;GB</td><td>6&nbsp;GB</td></tr>
+          <tr><td>Llama&nbsp;3.2&nbsp;3B <span class="muted">Balanced</span></td><td>Q4_K_M</td><td>2.0&nbsp;GB</td><td>3&nbsp;GB</td></tr>
+          <tr><td>Llama&nbsp;3.2&nbsp;1B <span class="muted">Light</span></td><td>Q4_K_M</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td></tr>
+          <tr><td>Llama&nbsp;3.2&nbsp;1B <span class="muted">Ultra-light</span></td><td>Q2_K</td><td>0.4&nbsp;GB</td><td>1&nbsp;GB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">Quenderin recommends one automatically&mdash;choosing a model is optional, for those who want it.</p>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section container" id="faq">
+    <header class="section-head reveal">
+      <p class="eyebrow">FAQ</p>
+      <h2>Questions, answered.</h2>
+    </header>
+    <div class="faq reveal">
+      <details>
+        <summary>Is it really free?</summary>
+        <p>Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription.</p>
+      </details>
+      <details>
+        <summary>Is my data sent anywhere?</summary>
+        <p>No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it&rsquo;s open source, you can verify this yourself.</p>
+      </details>
+      <details>
+        <summary>What devices does it run on?</summary>
+        <p>The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
+      </details>
+      <details>
+        <summary>Do I need a powerful phone?</summary>
+        <p>No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build.</p>
+      </details>
+      <details>
+        <summary>When can I install it?</summary>
+        <p>It&rsquo;s open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star the repo or join the waitlist to hear when.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- CTA / WAITLIST -->
+  <section class="cta-band container reveal" id="waitlist">
+    <h2>Bring your AI offline.</h2>
+    <p>Star the project to follow along, or leave your email and we&rsquo;ll tell you when the mobile apps land.</p>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
+      <!-- Configure the form: replace the action with your Formspree (or other) endpoint. -->
+      <form class="waitlist-form" action="https://formspree.io/f/your-form-id" method="POST">
+        <label class="sr-only" for="email">Email address</label>
+        <input id="email" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+        <button class="btn btn-primary" type="submit">Join waitlist</button>
+      </form>
+    </div>
+    <p class="status-line"><span class="dot dot-live"></span> Open source &middot; In active development</p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag">Offline, private, on-device AI.</p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#models">Models</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h4>Learn</h4>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">FAQ</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container footer-base">
+    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <p class="footer-note">Built with zero third-party trackers&mdash;this page makes no external requests.</p>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+</body>
+</html>

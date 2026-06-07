@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Quenderin — AI that runs on your phone, even offline">
+  <defs>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#09090b"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#232329"/>
+
+  <!-- Brand -->
+  <g transform="translate(80, 84)">
+    <rect width="44" height="44" rx="12" fill="url(#mark)"/>
+    <circle cx="20" cy="20" r="9" fill="none" stroke="#fff" stroke-width="3.5"/>
+    <line x1="26" y1="26" x2="32" y2="32" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="62" y="31" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" font-weight="700" fill="#f2f2f3">Quenderin</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="80" y="300" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="74" font-weight="800" fill="#f2f2f3" letter-spacing="-1.5">An AI that runs on your</text>
+  <text x="80" y="386" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="74" font-weight="800" fill="#f2f2f3" letter-spacing="-1.5">phone&#8212;even <tspan fill="#a855f7">offline</tspan>.</text>
+
+  <!-- Subhead -->
+  <text x="80" y="452" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="30" fill="#9a9aa6">Local LLMs on-device. No cloud, no API keys, no telemetry.</text>
+
+  <!-- Spec strip -->
+  <g font-family="ui-monospace, Menlo, monospace" font-size="24" fill="#6b6b76">
+    <text x="80" y="556">100% offline</text>
+    <text x="320" y="556">&#183;</text>
+    <text x="350" y="556">0 telemetry</text>
+    <text x="560" y="556">&#183;</text>
+    <text x="590" y="556">$0 per token</text>
+    <text x="820" y="556">&#183;</text>
+    <text x="850" y="556">MIT open source</text>
+  </g>
+</svg>

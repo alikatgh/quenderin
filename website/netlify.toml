@@ -1,0 +1,13 @@
+# Netlify deploy config.
+# In the Netlify dashboard set "Base directory" to `website` (or point the site at this folder).
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "interest-cohort=()"
