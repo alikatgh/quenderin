@@ -34,6 +34,40 @@ class OnboardingModel(
         }
 
     /**
+     * The full selector result (rationale + heat/battery + alternatives) when the pick
+     * came from [AndroidModelSelector]. Null on the simple RAM-band path.
+     */
+    var selection: ModelSelection? = null
+        private set
+
+    /**
+     * World-class path: a full device profile → [AndroidModelSelector] (native-heap
+     * budget + chip + disk + heat/battery aware). The app builds the profile from the
+     * framework (`Build.SOC_MODEL`, `ActivityManager.MemoryInfo`, `StatFs`). Twin of the
+     * iOS onboarding's selector path.
+     */
+    fun start(profile: AndroidDeviceProfile) {
+        phase = OnboardingPhase.Probing
+        val sel = AndroidModelSelector.select(profile)
+        selection = sel
+        val severity = when (sel.confidence) {
+            SelectionConfidence.COMFORTABLE -> MemorySeverity.SAFE
+            SelectionConfidence.TIGHT -> MemorySeverity.WARNING
+            SelectionConfidence.FORCED -> MemorySeverity.CRITICAL
+        }
+        phase = OnboardingPhase.Recommended(
+            sel.model,
+            MemoryCheckResult(
+                canLoad = true,
+                severity = severity,
+                requiredGB = sel.estimatedRuntimeGb,
+                availableGB = sel.usableMemoryGb,
+                message = sel.rationale,
+            ),
+        )
+    }
+
+    /**
      * Probe + recommend. [probe] is injected (not read from the OS here) so tests are
      * deterministic. Lands on [OnboardingPhase.Recommended], or [OnboardingPhase.Failed]
      * if even the recommended model can't fit.

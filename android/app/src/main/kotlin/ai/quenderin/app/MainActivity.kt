@@ -2,7 +2,7 @@ package ai.quenderin.app
 
 import ai.quenderin.app.ui.AppRoot
 import ai.quenderin.app.ui.QuenderinTheme
-import ai.quenderin.core.DeviceProfile
+import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
@@ -10,7 +10,9 @@ import ai.quenderin.core.MockModelDownloader
 import ai.quenderin.core.ModelDownloader
 import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
+import android.os.StatFs
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 
@@ -35,11 +37,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Real device RAM via ActivityManager — the input to the shared recommender. */
-    private fun probeDevice(): DeviceProfile {
+    /**
+     * Build the rich device profile the AndroidModelSelector needs: RAM (ActivityManager),
+     * SoC (Build.SOC_MODEL on API 31+, else Build.HARDWARE), and free disk (StatFs).
+     * Battery capacity has no clean public API, so it defaults (PowerProfile reflection is
+     * a follow-up). The native-memory budget is derived inside AndroidDeviceProfile.from.
+     */
+    private fun probeDevice(): AndroidDeviceProfile {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val info = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
         val gb = 1024.0 * 1024.0 * 1024.0
-        return DeviceProfile(totalRamGB = info.totalMem / gb, freeRamGB = info.availMem / gb)
+        val socModel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL else Build.HARDWARE
+        val freeDiskGb = StatFs(filesDir.path).availableBytes / 1_000_000_000.0
+        return AndroidDeviceProfile.from(
+            deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
+            socModel = socModel,
+            totalRamGb = info.totalMem / gb,
+            freeDiskGb = freeDiskGb,
+        )
     }
 }

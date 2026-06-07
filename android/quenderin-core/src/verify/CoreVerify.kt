@@ -128,6 +128,12 @@ fun main() {
         val tb = AndroidModelSelector.select(androidProfile("Flagship", AndroidSoc.SNAPDRAGON_8_GEN_3, 8.0)).thermalBattery
         tb.mAhPer1KTokens > 0 && tb.sustainedVerdict.contains("%/hr")
     })
+    check("onboarding via AndroidDeviceProfile uses the selector", run {
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+        onb.start(AndroidDeviceProfile.from("Flagship", "SM8650", totalRamGb = 8.0, freeDiskGb = 128.0))
+        val ph = onb.phase
+        ph is OnboardingPhase.Recommended && ph.model.id == "qwen3-4b" && onb.selection != null
+    })
 
     println()
     if (failures == 0) {

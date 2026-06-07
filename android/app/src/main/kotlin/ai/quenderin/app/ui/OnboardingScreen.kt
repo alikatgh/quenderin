@@ -1,9 +1,10 @@
 package ai.quenderin.app.ui
 
-import ai.quenderin.core.DeviceProfile
+import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.ModelSelection
 import ai.quenderin.core.OnboardingModel
 import ai.quenderin.core.OnboardingPhase
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +39,7 @@ import kotlinx.coroutines.launch
  * blocking download/load on [Dispatchers.IO]. Twin of iOS `RootView`.
  */
 @Composable
-fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> DeviceProfile) {
+fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> AndroidDeviceProfile) {
     val scope = rememberCoroutineScope()
     var phase by remember { mutableStateOf<OnboardingPhase>(OnboardingPhase.Idle) }
     val onboarding = remember {
@@ -49,7 +50,8 @@ fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> D
         is OnboardingPhase.Ready -> ChatScreen(engine = engine, model = current.model)
         else -> OnboardingScreen(
             phase = current,
-            onStart = { onboarding.start(probe) },
+            selection = onboarding.selection,
+            onStart = { onboarding.start(probe()) },   // world-class selector path
             onAccept = { model -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(model) } },
         )
     }
@@ -58,6 +60,7 @@ fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> D
 @Composable
 fun OnboardingScreen(
     phase: OnboardingPhase,
+    selection: ModelSelection?,
     onStart: () -> Unit,
     onAccept: (ModelEntry) -> Unit,
 ) {
@@ -90,10 +93,23 @@ fun OnboardingScreen(
                     Text(phase.model.sizeLabel, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        phase.fitness.message,
+                        phase.fitness.message,   // = the selector's rationale
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
                     )
+                    selection?.let { sel ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            sel.thermalBattery.chatVerdict,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            sel.thermalBattery.sustainedVerdict,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { onAccept(phase.model) }) { Text("Download & continue") }
                 }
