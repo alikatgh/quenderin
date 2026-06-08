@@ -165,6 +165,34 @@ fun main() {
         captured.last().contains("remember apples") && captured.last().contains("ok")
     })
 
+    // --- ConversationStore (offline persistence: a transcript survives relaunch; twin of Swift) ---
+    check("conversation store round-trips roles, text, and order", run {
+        val store = ConversationStore()
+        val original = listOf(
+            ChatMessage(Role.USER, "hi"),
+            ChatMessage(Role.ASSISTANT, "hello there"),
+            ChatMessage(Role.USER, "bye"),
+        )
+        val restored = store.decode(store.encode(original))
+        restored.map { it.role } == original.map { it.role } && restored.map { it.text } == original.map { it.text }
+    })
+    check("conversation store decodes blank input to an empty conversation", run {
+        ConversationStore().decode("").isEmpty() && ConversationStore().decode("   ").isEmpty()
+    })
+    check("conversation store survives newlines, tabs, and backslashes in message text", run {
+        val store = ConversationStore()
+        val tricky = listOf(
+            ChatMessage(Role.USER, "line one\nline two\twith tab"),
+            ChatMessage(Role.ASSISTANT, "back\\slash and \"quotes\""),
+        )
+        store.decode(store.encode(tricky)).map { it.text } == tricky.map { it.text }
+    })
+    check("ChatModel.restore seeds a saved transcript", run {
+        val chat = ChatModel(MockInferenceEngine())
+        chat.restore(listOf(ChatMessage(Role.USER, "earlier question"), ChatMessage(Role.ASSISTANT, "earlier answer")))
+        chat.messages.size == 2 && chat.messages.first().text == "earlier question"
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)

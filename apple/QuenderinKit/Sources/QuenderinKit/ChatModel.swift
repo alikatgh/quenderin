@@ -63,4 +63,10 @@ public final class ChatModel: ObservableObject {
     public func reset() {
         messages.removeAll()
     }
+
+    /// Replace the transcript with a previously persisted conversation (see `ConversationStore`),
+    /// so a chat picks up exactly where it left off after a relaunch.
+    public func restore(_ saved: [ChatMessage]) {
+        messages = saved
+    }
 }

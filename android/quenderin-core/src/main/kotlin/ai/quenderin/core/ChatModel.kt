@@ -43,4 +43,12 @@ class ChatModel(
         _messages.clear()
         emit()
     }
+
+    /** Replace the transcript with a previously persisted conversation (see [ConversationStore]),
+     *  so a chat picks up exactly where it left off after a relaunch. */
+    fun restore(saved: List<ChatMessage>) {
+        _messages.clear()
+        _messages.addAll(saved)
+        emit()
+    }
 }
