@@ -190,6 +190,15 @@ fun main() {
     check("arithmetic parser rejects malformed input", ArithmeticParser.evaluate("2 +* 3") == null)
     check("arithmetic parser rejects divide-by-zero", ArithmeticParser.evaluate("4 / 0") == null)
     check("calculator renders integers cleanly", CalculatorTool().run("20 + 22") == "42")
+    check("units converts length", UnitConverterTool().run("1 km to m") == "1 km = 1000 m")
+    check("units handles affine temperature", UnitConverterTool().run("30 C to F") == "30 c = 86 f")
+    check("units resolves spelled-out aliases", UnitConverterTool().run("5 kilometers to miles").contains("3.10"))
+    check("units rejects cross-dimension", UnitConverterTool().run("5 kg to mi").contains("Can't convert"))
+    check("units rejects garbage", UnitConverterTool().run("hello world").contains("Couldn't read"))
+    check("date counts days between (order-independent)", DateCalcTool().run("days between 2026-12-25 and 2026-06-08") == "200 days")
+    check("date adds days across months", DateCalcTool().run("2026-06-08 plus 90 days") == "2026-09-06")
+    check("date subtracts days", DateCalcTool().run("2026-12-25 minus 14 days") == "2026-12-11")
+    check("date rejects garbage", DateCalcTool().run("what time is it").contains("Couldn't read"))
     check("decision parser reads a tool call",
         AgentDecisionParser.parse("""{"tool":"calculator","input":"2+2"}""") == AgentDecision.UseTool("calculator", "2+2"))
     check("decision parser reads a final answer wrapped in prose",

@@ -47,7 +47,7 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry) {
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
                 0 -> ChatScreen(engine = engine, model = model)
-                else -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), EchoTool()))
+                else -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
             }
         }
     }
