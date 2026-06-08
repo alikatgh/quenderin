@@ -193,6 +193,32 @@ fun main() {
         chat.messages.size == 2 && chat.messages.first().text == "earlier question"
     })
 
+    // --- ConversationLibrary (chat-history index: recency list / upsert / remove / title; twin of Swift) ---
+    check("conversation library lists most-recent-first with a stable id tie-break", run {
+        val lib = ConversationLibrary()
+        lib.upsert(ConversationSummary("a", "A", 100))
+        lib.upsert(ConversationSummary("c", "C", 300))
+        lib.upsert(ConversationSummary("b", "B", 300))
+        lib.list().map { it.id } == listOf("b", "c", "a")
+    })
+    check("conversation library upsert replaces by id", run {
+        val lib = ConversationLibrary()
+        lib.upsert(ConversationSummary("a", "first", 100))
+        lib.upsert(ConversationSummary("a", "renamed", 200))
+        lib.count == 1 && lib.get("a")?.title == "renamed" && lib.get("a")?.updatedAt == 200L
+    })
+    check("conversation library remove + snapshot/restore round-trip", run {
+        val lib = ConversationLibrary()
+        lib.upsert(ConversationSummary("a", "A", 1))
+        lib.upsert(ConversationSummary("b", "B", 2))
+        lib.remove("a") && ConversationLibrary(lib.snapshot()).list().map { it.id } == listOf("b")
+    })
+    check("conversation library derives a title from the first user message", run {
+        ConversationLibrary.titleFromFirstUserMessage(null) == "New conversation" &&
+            ConversationLibrary.titleFromFirstUserMessage("  hello   there  ") == "hello there" &&
+            ConversationLibrary.titleFromFirstUserMessage("x".repeat(60)).let { it.length == 41 && it.endsWith("…") }
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
