@@ -22,7 +22,7 @@ struct QuenderinApp: App {
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
         _chat = StateObject(wrappedValue: ChatModel(engine: engine))
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
-        _agent = StateObject(wrappedValue: AgentSession(engine: engine, tools: [CalculatorTool(), EchoTool()]))
+        _agent = StateObject(wrappedValue: AgentSession(engine: engine, tools: [CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()]))
     }
 
     var body: some Scene {
