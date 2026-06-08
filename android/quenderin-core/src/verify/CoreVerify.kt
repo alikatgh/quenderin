@@ -219,6 +219,43 @@ fun main() {
             ConversationLibrary.titleFromFirstUserMessage("x".repeat(60)).let { it.length == 41 && it.endsWith("…") }
     })
 
+    // --- ConversationManager (capstone: lifecycle over library + persistence; twin of Swift) ---
+    check("conversation manager startNew creates a titled, current, listed conversation", run {
+        val mgr = ConversationManager(InMemoryConversationPersistence(), now = { 1000L }, makeId = { "c1" })
+        val id = mgr.startNew()
+        mgr.currentId == id && mgr.list().size == 1 && mgr.list().first().title == "New conversation"
+    })
+    check("conversation manager save derives a title and persists the transcript", run {
+        val mgr = ConversationManager(InMemoryConversationPersistence(), now = { 1000L }, makeId = { "c1" })
+        val id = mgr.startNew()
+        mgr.save(id, listOf(ChatMessage(Role.USER, "How do I center a div?"), ChatMessage(Role.ASSISTANT, "Flexbox.")))
+        mgr.list().first().title == "How do I center a div?" && mgr.open(id).size == 2
+    })
+    check("conversation manager lists newest-first and a touch re-sorts to top", run {
+        var clock = 1000L
+        val mgr = ConversationManager(InMemoryConversationPersistence(), now = { clock }, makeId = { "id-$clock" })
+        val first = mgr.startNew(); clock += 1000
+        val second = mgr.startNew()
+        val newestIsSecond = mgr.list().first().id == second
+        clock += 1000
+        mgr.save(first, listOf(ChatMessage(Role.USER, "hi")))
+        newestIsSecond && mgr.list().first().id == first
+    })
+    check("conversation manager delete removes everywhere and clears current", run {
+        val mgr = ConversationManager(InMemoryConversationPersistence(), now = { 1L }, makeId = { "c1" })
+        val id = mgr.startNew()
+        mgr.save(id, listOf(ChatMessage(Role.USER, "hi")))
+        mgr.delete(id)
+        mgr.list().isEmpty() && mgr.currentId == null && mgr.open(id).isEmpty()
+    })
+    check("conversation manager history survives a fresh instance (persistence-backed)", run {
+        val p = InMemoryConversationPersistence()
+        val id = ConversationManager(p, now = { 5L }, makeId = { "c1" }).let { m -> m.startNew().also { m.save(it, listOf(ChatMessage(Role.USER, "remembered question"))) } }
+        val reopened = ConversationManager(p, now = { 9L }, makeId = { "x" })
+        reopened.list().map { it.id } == listOf(id) && reopened.open(id).size == 1 &&
+            reopened.list().first().title == "remembered question"
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
