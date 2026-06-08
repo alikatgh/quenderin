@@ -23,9 +23,11 @@ public final class ChatModel: ObservableObject {
     @Published public private(set) var isGenerating = false
 
     private let engine: InferenceEngine
+    private let context: ConversationContext
 
-    public init(engine: InferenceEngine) {
+    public init(engine: InferenceEngine, context: ConversationContext = .init()) {
         self.engine = engine
+        self.context = context
     }
 
     /// Send a prompt and stream the reply. No-ops on empty input or while a
@@ -35,6 +37,9 @@ public final class ChatModel: ObservableObject {
         guard !trimmed.isEmpty, !isGenerating else { return }
 
         messages.append(ChatMessage(role: .user, text: trimmed))
+        // Build the prompt from the whole conversation (system prompt + history within the
+        // context-window budget) so the assistant remembers prior turns — not just this line.
+        let enginePrompt = context.build(history: messages)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let index = messages.count - 1
@@ -43,7 +48,7 @@ public final class ChatModel: ObservableObject {
         defer { isGenerating = false }
 
         do {
-            let stream = try await engine.generate(prompt: trimmed, options: options)
+            let stream = try await engine.generate(prompt: enginePrompt, options: options)
             for try await token in stream {
                 assistant.text += token
                 messages[index] = assistant

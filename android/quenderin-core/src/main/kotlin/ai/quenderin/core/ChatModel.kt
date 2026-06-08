@@ -14,6 +14,7 @@ data class ChatMessage(val role: Role, val text: String)
 class ChatModel(
     private val engine: InferenceEngine,
     var onChange: (List<ChatMessage>) -> Unit = {},
+    private val context: ConversationContext = ConversationContext(),
 ) {
     private val _messages = mutableListOf<ChatMessage>()
     val messages: List<ChatMessage> get() = _messages.toList()
@@ -30,20 +31,12 @@ class ChatModel(
         require(trimmed.isNotEmpty()) { "Message is empty" }
         _messages += ChatMessage(Role.USER, trimmed)
         emit()
-        val reply = engine.complete(buildPrompt())
+        // Prompt = system prompt + prior history within the context-window budget, so the
+        // assistant remembers earlier turns (not just this line).
+        val reply = engine.complete(context.build(_messages))
         _messages += ChatMessage(Role.ASSISTANT, reply)
         emit()
         return reply
-    }
-
-    /** Render the transcript into a simple instruct-style prompt for the engine. */
-    private fun buildPrompt(): String = buildString {
-        for (m in _messages) {
-            append(if (m.role == Role.USER) "User: " else "Assistant: ")
-            append(m.text)
-            append('\n')
-        }
-        append("Assistant: ")
     }
 
     fun reset() {

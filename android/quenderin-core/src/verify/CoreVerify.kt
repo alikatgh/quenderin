@@ -123,6 +123,48 @@ fun main() {
     check("chat emitted after each append", sizes == listOf(1, 2))
     check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
 
+    // --- ConversationContext (chat memory + context-window budgeting; twin of Swift) ---
+    check("conversation context keeps multi-turn history (no amnesia)", run {
+        val p = ConversationContext().build(
+            listOf(
+                ChatMessage(Role.USER, "remember apples"),
+                ChatMessage(Role.ASSISTANT, "ok"),
+                ChatMessage(Role.USER, "what did I say?"),
+            )
+        )
+        p.contains("remember apples") && p.contains("ok") && p.contains("what did I say?")
+    })
+    check("conversation context leads with the system prompt + ends primed for the assistant", run {
+        val p = ConversationContext().build(listOf(ChatMessage(Role.USER, "hi")))
+        p.contains("Quenderin") && p.trimEnd().endsWith("Assistant:")
+    })
+    check("conversation context drops oldest turns past the token budget, keeps newest", run {
+        val ctx = ConversationContext(systemPrompt = "", contextTokens = 80, reservedForResponse = 0)
+        val history = (1..20).map {
+            ChatMessage(if (it % 2 == 1) Role.USER else Role.ASSISTANT, "message number $it here")
+        }
+        val p = ctx.build(history)
+        !p.contains("message number 1 here") && p.contains("message number 20 here")
+    })
+    check("conversation context never drops the latest turn even if it alone exceeds budget", run {
+        val ctx = ConversationContext(systemPrompt = "", contextTokens = 4, reservedForResponse = 0)
+        ctx.build(listOf(ChatMessage(Role.USER, "a single message far larger than the tiny budget")))
+            .contains("a single message far larger")
+    })
+    check("ChatModel feeds prior history back to the engine (memory, not amnesia)", run {
+        val captured = mutableListOf<String>()
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "cap"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String { captured += prompt; return "ok" }
+        }
+        val chat = ChatModel(engine)
+        chat.send("remember apples")
+        chat.send("recall?")
+        captured.last().contains("remember apples") && captured.last().contains("ok")
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
