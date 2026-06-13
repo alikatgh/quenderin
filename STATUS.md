@@ -10,8 +10,8 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 | Platform | What's there | Engine | Verification |
 |----------|--------------|--------|--------------|
 | **Desktop** (Electron/TS) | Shipping prototype — full agent + chat | `node-llama-cpp` (real) | `npm run lint && npm run typecheck && npm run test:recommendation` |
-| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI, on the mock engine | `LlamaEngine` (JNI to llama.cpp — **not yet linked**) | `cd apple/QuenderinKit && swift test` → **90 tests** |
-| **Android** (Kotlin) | M1–M4 brain + picker, on the mock engine | `LlamaEngine` (JNI to llama.cpp — **not yet linked**) | `android/quenderin-core` via bundled `kotlinc` → **67 checks** |
+| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs**; `DefaultInferenceEngine.make()` picks it when built with `QUENDERIN_LLAMA_DIR`/xcframework, else mock) | `cd apple/QuenderinKit && swift test` → **90 tests** |
+| **Android** (Kotlin) | M1–M4 brain + picker, on the mock engine | `LlamaEngine` (JNI to llama.cpp — **not yet linked**) | `android/quenderin-core` via bundled `kotlinc` → **99 checks** |
 
 ## Milestone parity (mobile brain — both run on mocks, fully tested)
 
@@ -57,12 +57,18 @@ cd android/quenderin-core && bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*
 
 ## The on-device cliff — mostly crossed
 
-1. **Link llama.cpp + run inference — ✅ PROVEN (iOS).** `apple/verify-llama-link.sh` builds
-   real llama.cpp, compiles QuenderinKit's exact `LlamaEngine` C-API sequence against it, and
-   runs a real inference: coherent output ("the sky is blue because…") on **macOS Metal
-   (~177 tok/s)** AND on a **booted iPhone 16 simulator (~160 tok/s, CPU)**. The integration
-   is no longer theoretical — it runs. (Wiring it as the default into the SwiftPM package
-   still needs the per-arch xcframework so it doesn't break the mock build for others.)
+1. **Link llama.cpp + run inference — ✅ PROVEN (iOS), now as the package default.**
+   `apple/verify-llama-link.sh` builds real llama.cpp, compiles QuenderinKit's exact
+   `LlamaEngine` C-API sequence against it, and runs a real inference: coherent output
+   ("the sky is blue because…") on **macOS Metal (~177 tok/s)** AND on a **booted iPhone 16
+   simulator (~160 tok/s, CPU)**. Re-verified 2026-06-13 end-to-end here via
+   `QUENDERIN_LLAMA_DIR=… swift build` (the real `LlamaEngine` compiles **as part of the
+   package**) + the smoke test (~135 tok/s decode, **CPU**, M-series Mac — no Metal toolchain
+   in CommandLineTools, so this is a CPU floor, not the Metal number). The default-selection
+   seam now exists: `DefaultInferenceEngine.make()` returns the real engine when
+   `canImport(llama)` and the mock otherwise — **both build paths verified** (`swift build`
+   with and without `QUENDERIN_LLAMA_DIR`). What remains is shipping the per-arch **xcframework**
+   so a normal Xcode/device build links llama.cpp without `QUENDERIN_LLAMA_DIR`.
 2. **Still needs PHYSICAL hardware:** an iPhone for real Metal on-device tok/s + battery +
    thermals (the Mac/sim numbers are host-CPU/Metal ceilings), and the Android NDK build run
    on a device. These replace the conservative, clearly-labeled chip-score estimates with
