@@ -3,13 +3,13 @@ import QuenderinKit
 
 /// The Quenderin iOS app entry point.
 ///
-/// Today it runs on the **mock** engine + downloader so the whole flow
-/// (onboarding → chat) is clickable without llama.cpp or a model file. To go
-/// real, change the two lines in `init()`:
-///   - `MockInferenceEngine()`   → `LlamaEngine()`            (once llama.cpp is linked)
-///   - `MockModelDownloader()`   → `URLSessionModelDownloader()`
-/// Nothing else changes — both sit behind protocol seams, and onboarding + chat
-/// share ONE engine instance (load in onboarding, generate in chat).
+/// Both seams are now wired to their real implementations:
+///   - engine: `DefaultInferenceEngine.make()` → real `LlamaEngine` when this build
+///     links llama.cpp (`canImport(llama)` — `QUENDERIN_LLAMA_DIR` or the xcframework),
+///     else the mock so the whole flow (onboarding → chat) stays clickable with no model.
+///   - downloader: `URLSessionModelDownloader` → real streamed GGUF download.
+/// Both sit behind protocol seams, and onboarding + chat share ONE engine instance
+/// (load in onboarding, generate in chat).
 @main
 struct QuenderinApp: App {
     @StateObject private var onboarding: OnboardingModel
@@ -17,8 +17,8 @@ struct QuenderinApp: App {
     @StateObject private var agent: AgentSession
 
     init() {
-        let engine: InferenceEngine = MockInferenceEngine()       // ← swap to LlamaEngine()
-        let downloader: ModelDownloader = MockModelDownloader()    // ← swap to URLSessionModelDownloader()
+        let engine: InferenceEngine = DefaultInferenceEngine.make() // real LlamaEngine when llama.cpp is linked, else mock
+        let downloader: ModelDownloader = URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
         _chat = StateObject(wrappedValue: ChatModel(engine: engine))
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).

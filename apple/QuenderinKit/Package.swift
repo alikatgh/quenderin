@@ -26,12 +26,28 @@ import Foundation
 let llamaDir = ProcessInfo.processInfo.environment["QUENDERIN_LLAMA_DIR"]
     .flatMap { $0.isEmpty ? nil : $0 }
 
+// Route A (the shippable path): drop a prebuilt `llama.xcframework` under Frameworks/
+// and it is linked automatically — `canImport(llama)` flips true for device + simulator
+// + macOS, Metal included. Build it once with llama.cpp's `./build-xcframework.sh`
+// (see INTEGRATION.md), then:
+//   mkdir -p apple/QuenderinKit/Frameworks
+//   cp -R build-apple/llama.xcframework apple/QuenderinKit/Frameworks/
+// (`Frameworks/*.xcframework` is git-ignored — it's a large binary; ship via LFS/CI.)
+let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
+let xcframeworkRelPath = "Frameworks/llama.xcframework"
+let hasXcframework = FileManager.default.fileExists(atPath: packageDir + "/" + xcframeworkRelPath)
+
 var qkDependencies: [Target.Dependency] = []
 var qkSwiftSettings: [SwiftSetting] = []
 var qkLinkerSettings: [LinkerSetting] = []
 var optionalTargets: [Target] = []
 
-if let dir = llamaDir {
+if hasXcframework {
+    // Route A — prebuilt xcframework: device/simulator/macOS, Metal GPU included.
+    qkDependencies.append("llama")
+    optionalTargets.append(.binaryTarget(name: "llama", path: xcframeworkRelPath))
+} else if let dir = llamaDir {
+    // Route C — link a local dev build of llama.cpp (headless; fastest to verify).
     qkDependencies.append("llama")
     qkSwiftSettings.append(.unsafeFlags([
         "-Xcc", "-I\(dir)/include",
