@@ -10,6 +10,7 @@
   "type": "module",
   "main": "dist/electron/main.js",
   "scripts": {
+    "postinstall": "cd ui && npm install",
     "dashboard": "tsx src/index.ts dashboard",
     "agent": "tsx src/index.ts agent",
     "check": "npm run typecheck && npm run lint && npm run test:recommendation",
@@ -19,12 +20,15 @@
     "lint": "npm run lint:src && npm run lint:ui",
     "lint:src": "eslint src --ext .ts --max-warnings=0",
     "lint:ui": "eslint ui/src --ext .ts,.tsx --max-warnings=0",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:recommendation": "vitest run tests/recommended-model.test.ts",
     "test:manifest": "vitest run tests/manifest.test.ts",
     "check:recommendation": "npm run typecheck:src && npm run test:recommendation",
     "gen:catalog": "python3 scripts/export_catalog.py",
     "check:catalog-parity": "python3 scripts/check_catalog_parity.py",
     "build:tsc": "tsc",
+    "build": "npm run build:tsc",
     "electron:dev": "npm run build:tsc && electron .",
     "electron:build": "npm run build:tsc && electron-builder --mac",
     "electron:build:linux": "npm run build:tsc && electron-builder --linux",
@@ -68,6 +72,7 @@
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.4.5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@vitest/coverage-v8": "^4.0.18"
   }
 }
