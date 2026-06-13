@@ -60,15 +60,21 @@ describe('getRecommendedModelIdForTotalRam', () => {
         expect(getRecommendedModelIdForTotalRam(2.99)).toBe('llama32-1b');
     });
 
-    it('recommends 3B from 3GB up to under 6GB', () => {
+    it('recommends 3B from 3GB up to under 4GB', () => {
         expect(getRecommendedModelIdForTotalRam(3)).toBe('llama32-3b');
-        expect(getRecommendedModelIdForTotalRam(5.99)).toBe('llama32-3b');
+        expect(getRecommendedModelIdForTotalRam(3.99)).toBe('llama32-3b');
     });
 
-    it('recommends 8B at 6GB and above', () => {
-        expect(getRecommendedModelIdForTotalRam(6)).toBe('llama3-8b');
-        expect(getRecommendedModelIdForTotalRam(18)).toBe('llama3-8b');
-        expect(getRecommendedModelIdForTotalRam(128)).toBe('llama3-8b');
+    it('recommends Qwen3 4B from 4GB up to under 10GB', () => {
+        expect(getRecommendedModelIdForTotalRam(4)).toBe('qwen3-4b');
+        expect(getRecommendedModelIdForTotalRam(8)).toBe('qwen3-4b');
+        expect(getRecommendedModelIdForTotalRam(9.99)).toBe('qwen3-4b');
+    });
+
+    it('recommends Qwen3 14B at 10GB and above', () => {
+        expect(getRecommendedModelIdForTotalRam(10)).toBe('qwen3-14b');
+        expect(getRecommendedModelIdForTotalRam(18)).toBe('qwen3-14b');
+        expect(getRecommendedModelIdForTotalRam(128)).toBe('qwen3-14b');
     });
 });
 
