@@ -69,16 +69,20 @@ profile that allows it). Not required for bring-up or for 1–3B models.
 ### Prereqs
 - **Android Studio** (or the command-line SDK) with **platform 35** + **build-tools 35**.
 - For real inference only: the **NDK** (`sdkmanager "ndk;26.3.11579264"`) + CMake.
-- Gradle 8.7–8.9 (matches AGP 8.5.2) — Android Studio bundles a compatible one.
+- A committed Gradle **wrapper** (`./gradlew`, pinned to 8.9 to match AGP 8.5.2) — no
+  separate Gradle install needed. JDK **17** for the build (`JAVA_HOME=…/openjdk@17`).
+- `android/local.properties` with `sdk.dir=<your Android SDK>` (git-ignored).
 
-### A. Bring-up (mock engine) — clickable app, no model, no NDK
-The app is written to boot on `MockInferenceEngine` the moment it opens:
+### A. Bring-up (mock engine) — clickable app, no model, no NDK ✅ verified
+The app boots on `MockInferenceEngine` the moment it opens. **This build is verified in-repo**
+— produces `app-debug.apk` (`ai.quenderin.app`, label "Quenderin", target SDK 35):
 ```bash
 cd android
-# In Android Studio: open the android/ folder, let it sync, Run on an emulator/device.
-# Or headless (with a configured SDK + Gradle):
-gradle :app:assembleDebug      # → app/build/outputs/apk/debug/app-debug.apk
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties     # one-time
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug
+#   → app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk  # to a device/emulator
+# (Or just open the android/ folder in Android Studio and hit Run.)
 ```
 `MainActivity` already uses the **real** `WorkManagerModelDownloader`, and selects the
 engine with `if (LlamaEngine.NATIVE_AVAILABLE) LlamaEngine() else MockInferenceEngine()` —
@@ -94,7 +98,7 @@ git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
 #      externalNativeBuild { cmake { path = file("../jni/CMakeLists.txt"); version = "3.22.1" } }
 
 # 3. Build — produces libquenderin_llama.so, flipping LlamaEngine.NATIVE_AVAILABLE true
-gradle :app:assembleDebug
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 See `android/INTEGRATION.md` for the JNI details. The native build is CPU (GGML_OPENMP off);
