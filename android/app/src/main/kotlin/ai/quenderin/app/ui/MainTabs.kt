@@ -1,9 +1,11 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.CalculatorTool
+import ai.quenderin.core.DateCalcTool
 import ai.quenderin.core.EchoTool
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.UnitConverterTool
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding

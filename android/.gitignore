@@ -2,6 +2,8 @@
 .gradle/
 build/
 *.jar
+# …but the Gradle wrapper jar must be committed so ./gradlew works on a clean clone.
+!gradle/wrapper/gradle-wrapper.jar
 *.iml
 local.properties
 .idea/
