@@ -9,3 +9,6 @@ local.properties
 .idea/
 captures/
 .cxx/
+
+# External llama.cpp checkout (add as a submodule; not vendored here)
+jni/llama.cpp

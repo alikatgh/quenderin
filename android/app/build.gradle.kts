@@ -11,6 +11,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
 }
 
+// Auto-detect a llama.cpp checkout at android/jni/llama.cpp (git submodule or symlink).
+// Present  → the JNI bridge is compiled and LlamaEngine does real on-device inference.
+// Absent   → the app builds clean and runs on MockInferenceEngine.
+// This mirrors iOS Package.swift's xcframework auto-detection — same "clean by default,
+// real when the native checkout is present" contract. Add it with:
+//   git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
+val nativeLlama = file("../jni/llama.cpp").exists()
+
 android {
     namespace = "ai.quenderin.app"
     compileSdk = 35
@@ -22,18 +30,20 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        // --- On-device inference (opt-in). Uncomment after adding llama.cpp under
-        //     android/jni/llama.cpp (git submodule) — see android/INTEGRATION.md.
-        //     Until then the app builds clean and runs on MockInferenceEngine.
-        // ndk { abiFilters += listOf("arm64-v8a") }   // add "x86_64" for the emulator
+        if (nativeLlama) {
+            ndk { abiFilters += listOf("arm64-v8a") }   // add "x86_64" for x86 emulators
+        }
     }
 
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("../jni/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    if (nativeLlama) {
+        ndkVersion = "26.3.11579264"
+        externalNativeBuild {
+            cmake {
+                path = file("../jni/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
+    }
 
     buildFeatures { compose = true }
 
