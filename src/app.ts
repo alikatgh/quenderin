@@ -60,7 +60,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             callback(new Error(`CORS: origin '${origin}' is not allowed`));
         }
     }));
-    app.use(express.json());
+    app.use(express.json({ limit: '256kb' }));
 
     // Serve strictly static frontend relative to this file to support packaged ASARs
     const __filename = fileURLToPath(import.meta.url);
