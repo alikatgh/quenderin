@@ -12,8 +12,7 @@ The TypeScript backend in `src/`. It runs as a plain Node server
 | `src/app.ts` | The Express app: all `/api/*` routes, static UI from `public/` |
 | `src/electron/main.ts` | Electron main process — owns the dashboard server + the window |
 | `src/electron/preload.ts` | `contextBridge` API (no `nodeIntegration`) |
-| `src/config.ts` | Loads/saves `~/.quenderin/config.json` |
-| `src/constants.ts` | Model catalog, RAM tiers, quantization table, limits/thresholds |
+| `src/constants.ts` | Model catalog, RAM tiers, limits/thresholds |
 
 ## Services (`src/services/`)
 
@@ -62,7 +61,6 @@ The chat assistant's tool loop:
   the agent. Gated on `PICOVOICE_ACCESS_KEY` (optional).
 - `backgroundDaemon.service.ts` — passive observation; triggers the LLM only when
   the screen changes beyond `VISUAL_DIFF_THRESHOLD` (adaptive backoff when idle).
-- `daemon.service.ts` — long-running task/daemon management.
 - `metrics.service.ts` — tok/s, TTFT, RAM, loaded-model telemetry.
 - `readiness.service.ts` — drives `/ready` and `/health`.
 
@@ -73,7 +71,6 @@ The chat assistant's tool loop:
 | `logger.ts` | Structured logging (levels: debug/info/warn/error/critical) — used everywhere instead of `console.*` |
 | `hardware.ts` | Hardware profile (RAM/chip), adaptive timeout multipliers, memory budgets |
 | `memory.ts` | Available-memory probing |
-| `generateId.ts` | ID generation |
 | `stripControlTokens.ts` | Cleans model output of control tokens |
 
 ## Conventions
