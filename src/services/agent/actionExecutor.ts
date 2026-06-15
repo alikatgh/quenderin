@@ -106,6 +106,18 @@ export class ActionExecutor {
                 emitter.emit('status', `Scrolling ${direction}`);
                 await this.deviceProvider.scroll(direction as 'up' | 'down');
                 return true;
+            } else if (actionType === 'key') {
+                // Hardware/navigation keys (back/home/enter) — wires the previously-dead
+                // deviceProvider.pressKey() so the agent can dismiss dialogs / submit forms (C8/C9).
+                const key = (actionObj.key || '').toLowerCase();
+                const allowed = ['back', 'home', 'enter'];
+                if (!allowed.includes(key)) {
+                    emitter.emit('error', `Unsupported key '${actionObj.key}'. Supported: ${allowed.join(', ')}.`);
+                    return false;
+                }
+                emitter.emit('status', `Pressing ${key}`);
+                await this.deviceProvider.pressKey(key);
+                return true;
             }
 
             emitter.emit('error', `Unknown action type: ${actionType}`);

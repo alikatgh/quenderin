@@ -21,10 +21,8 @@ If you cannot output JSON, you may use XML tags as a fallback: <action>click</ac
 Valid actions:
 {"action": "click", "id": <element_id>}
 {"action": "input", "id": <element_id>, "text": "<text_to_type>"}
-{"action": "swipe", "x1": <x1>, "y1": <y1>, "x2": <x2>, "y2": <y2>}
-{"action": "back"}
-{"action": "home"}
-{"action": "enter"}
+{"action": "scroll", "direction": "up"|"down"}
+{"action": "key", "key": "back"|"home"|"enter"}
 {"action": "done"}
 
 Example output:
@@ -53,6 +51,7 @@ type ParsedAgentAction = {
     y?: number;
     text?: string;
     direction?: 'up' | 'down' | 'left' | 'right';
+    key?: string;
 };
 
 export class AgentService {
@@ -266,6 +265,10 @@ export class AgentService {
                     if (x) xmlActionObj.x = parseInt(x, 10);
                     const y = extract('y');
                     if (y) xmlActionObj.y = parseInt(y, 10);
+                    const direction = extract('direction');
+                    if (direction) xmlActionObj.direction = direction as AgentAction['direction'];
+                    const key = extract('key');
+                    if (key) xmlActionObj.key = key;
                     actionObj = xmlActionObj;
                 }
 

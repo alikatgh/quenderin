@@ -49,11 +49,13 @@ export interface ILlmProvider extends EventEmitter {
 }
 
 export interface AgentAction {
-    action: 'click' | 'input' | 'scroll' | 'done';
+    action: 'click' | 'input' | 'scroll' | 'key' | 'done';
     id?: number | string;
     target_id?: number | string;
     x?: number;
     y?: number;
     text?: string;
     direction?: 'up' | 'down' | 'left' | 'right';
+    /** Hardware/navigation key for the 'key' action: 'back' | 'home' | 'enter'. */
+    key?: string;
 }
