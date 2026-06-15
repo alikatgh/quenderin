@@ -86,7 +86,7 @@ async function findAvailablePort(startPort: number, maxTries: number = 20): Prom
     throw new Error(`No available port found in range ${startPort}-${startPort + maxTries - 1}`);
 }
 
-export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<void> {
+export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<number> {
     resetReadinessForStartup('Dashboard startup initiated');
     setReadiness(false, 'initializing-services', 'Initializing core services');
 
@@ -178,7 +178,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     process.once('SIGINT', shutdown);
 
     // 4. Boot Server
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<number>((resolve, reject) => {
         server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
                 logger.error(`[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
@@ -206,7 +206,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
                     logger.warn(`[Server] Failed to auto-open browser: ${message}`);
                 }
             }
-            resolve();
+            resolve(selectedPort);
         });
     });
 }
