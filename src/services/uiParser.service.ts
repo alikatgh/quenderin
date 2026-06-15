@@ -4,7 +4,10 @@ import { UIElement } from '../types/index.js';
 export class UiParserService {
     private xmlParser = new XMLParser({
         ignoreAttributes: false,
-        attributeNamePrefix: ""
+        attributeNamePrefix: "",
+        // The XML is device-sourced (/sdcard/window_dump.xml) and untrusted — disable entity
+        // expansion to avoid the fast-xml-parser numeric-entity DoS (CVE-2026-33036).
+        processEntities: false
     });
 
     public parseUI(xmlContent: string): { elements: UIElement[], textRepresentation: string } {

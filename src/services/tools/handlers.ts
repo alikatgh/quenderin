@@ -130,6 +130,9 @@ export function executeTool(call: ToolCall): ToolResult {
                 if (!content) return { tool: 'note_save', success: false, result: '', error: 'Missing content parameter' };
                 // Sanitise title for use as filename
                 const safeTitle = title.replace(/[^a-zA-Z0-9\s\-_]/g, '').trim().replace(/\s+/g, '_').slice(0, 80);
+                // An all-special/non-ASCII title (e.g. "!!!", "日本語") sanitises to "" → a hidden
+                // ".md" file that silently collides/overwrites across all such titles (M14).
+                if (!safeTitle) return { tool: 'note_save', success: false, result: '', error: 'Title has no filename-safe characters; use letters, digits, spaces, - or _' };
                 ensureNotesDir();
                 const notePath = path.join(NOTES_DIR, `${safeTitle}.md`);
                 const header = `# ${title}\n_Saved: ${new Date().toISOString()}_\n\n`;

@@ -134,6 +134,9 @@ export class VoiceService extends EventEmitter {
     }
 
     public async manualCaptureStart() {
+        // Without a loaded recorder, audioLoop never runs, so STATE stays IDLE and we would
+        // otherwise flip to RECORDING and later transcribe an empty buffer.
+        if (!this.voiceAvailable || !this.recorder) return;
         if (this.STATE !== 'IDLE') return;
         logger.info('[Voice] Manual recording started.');
         this.STATE = 'RECORDING';
@@ -142,6 +145,7 @@ export class VoiceService extends EventEmitter {
     }
 
     public async manualCaptureStop() {
+        if (!this.voiceAvailable || !this.recorder) return;
         if (this.STATE !== 'RECORDING') return;
         logger.debug('[Voice] Processing manual recording...');
         this.STATE = 'TRANSCRIBING';

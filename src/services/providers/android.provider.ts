@@ -153,8 +153,13 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         const deletes = Array(50).fill('67');
         await this.spawnAdb(['shell', 'input', 'keyevent', ...deletes]);
 
-        // Safely passes text as an exact argument, no shell parsing
-        await this.spawnAdb(['shell', 'input', 'text', text]);
+        // `adb shell input text` runs under the DEVICE shell, which re-tokenizes the joined args
+        // and re-splits `input text` on spaces. So a raw string can (a) inject device-shell
+        // commands — `"a; reboot"` would run `reboot` (H1) — and (b) lose everything after the
+        // first space (M9). The text is LLM-produced while steered by untrusted on-screen content.
+        // Encode spaces as `%s` (input's space token) and backslash-escape shell metacharacters.
+        const escaped = text.replace(/[\s\\"'`$()<>|;&*?~[\]{}#!%]/g, (c) => (c === ' ' ? '%s' : '\\' + c));
+        await this.spawnAdb(['shell', 'input', 'text', escaped]);
         await this.waitForUiIdle();
     }
 

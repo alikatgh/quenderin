@@ -55,7 +55,8 @@ export class WebSocketManager {
         private voiceService: VoiceService,
         private sessionService?: SessionService
     ) {
-        this.wss = new WebSocketServer({ server });
+        // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
+        this.wss = new WebSocketServer({ server, path: '/ws' });
         this.wss.on('error', (err) => {
             logger.error('[WebSocket] Server error:', err);
         });
@@ -83,7 +84,7 @@ export class WebSocketManager {
     }
 
     private isAllowedLocalOrigin(origin: string): boolean {
-        if (origin === 'null') return true;
+        // Literal "null" origin (sandboxed iframes, file://) is NOT trusted (M2).
         try {
             const parsed = new URL(origin);
             return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);

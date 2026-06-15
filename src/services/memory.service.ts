@@ -110,8 +110,10 @@ export class MemoryService {
                 let records: TrajectoryEntry[] = JSON.parse(data);
 
                 // Limit memory to the last 50 successful trajectories to prevent bloating
-                if (records.length > 50) {
-                    records = records.slice(1);
+                // Keep the most recent 49 so the push below lands exactly at the 50 cap.
+                // (The old `slice(1)` dropped only ONE element, pinning the file at 51 forever.)
+                if (records.length >= 50) {
+                    records = records.slice(-(50 - 1));
                 }
 
                 records.push({
@@ -134,8 +136,10 @@ export class MemoryService {
                 const data = await fs.readFile(this.memoryPath, 'utf-8');
                 let records: TrajectoryEntry[] = JSON.parse(data);
 
-                if (records.length > 50) {
-                    records = records.slice(1);
+                // Keep the most recent 49 so the push below lands exactly at the 50 cap.
+                // (The old `slice(1)` dropped only ONE element, pinning the file at 51 forever.)
+                if (records.length >= 50) {
+                    records = records.slice(-(50 - 1));
                 }
 
                 const cleanedHistory = actionsHistory.filter(a => a.startsWith('[Success]'));
@@ -164,7 +168,9 @@ export class MemoryService {
             // Simple exact/includes matching for POC
             // A more advanced version would use normalized embeddings
             const lowerGoal = goal.toLowerCase();
-            const match = records.reverse().find(r => r.goal.toLowerCase() === lowerGoal || lowerGoal.includes(r.goal.toLowerCase()));
+            // Copy before reverse — `records.reverse()` mutates the parsed array in place, which
+            // becomes a real bug the moment the parse is cached (see audit C4/M15).
+            const match = [...records].reverse().find(r => r.goal.toLowerCase() === lowerGoal || lowerGoal.includes(r.goal.toLowerCase()));
 
             return match || null;
         } catch {

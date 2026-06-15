@@ -751,6 +751,25 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
 
             const isResume = response.status === 206;
+
+            // Validate the resume response before trusting the byte accounting (H9):
+            //  • 200 (server ignored our Range — common with CDNs/redirects): the write stream
+            //    truncates below, so the counter MUST restart from 0, else progress counts from
+            //    the stale partial size and can exceed 100%.
+            //  • 206 whose Content-Range starts somewhere other than our partial size: appending
+            //    would write at the wrong offset and corrupt the GGUF — discard the partial + retry.
+            if (receivedBytes > 0 && !isResume) {
+                receivedBytes = 0;
+            } else if (isResume) {
+                const contentRange = response.headers.get('content-range');
+                const startMatch = contentRange ? contentRange.match(/bytes\s+(\d+)-/i) : null;
+                if (!startMatch || Number(startMatch[1]) !== receivedBytes) {
+                    try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                    try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
+                    throw new Error(`Download resume offset mismatch (server '${contentRange ?? 'none'}' vs local ${receivedBytes}); discarded partial — please retry.`);
+                }
+            }
+
             const contentLength = Number(response.headers.get('content-length')) || 0;
             const totalBytes = isResume ? receivedBytes + contentLength : contentLength;
 
