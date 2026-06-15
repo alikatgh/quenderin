@@ -88,6 +88,11 @@ class Parser {
         return this.pos < this.tokens.length ? this.tokens[this.pos] : null;
     }
 
+    /** True once every token has been consumed — used to reject trailing garbage. */
+    atEnd(): boolean {
+        return this.pos >= this.tokens.length;
+    }
+
     private consume(): Token {
         if (this.pos >= this.tokens.length) {
             throw new CalculatorError('Unexpected end of expression');
@@ -220,6 +225,11 @@ export function safeCalculate(expression: string): number {
     }
     const parser = new Parser(tokens);
     const result = parser.parseExpression();
+    // Reject tokenizable-but-unconsumed trailing input (e.g. "2 3", "(1+2) 4") instead of
+    // silently returning a partial answer — for a calculator, a wrong number is worse than an error.
+    if (!parser.atEnd()) {
+        throw new CalculatorError('Unexpected trailing input in expression');
+    }
     if (!isFinite(result)) {
         throw new CalculatorError('Result is not finite');
     }

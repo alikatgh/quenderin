@@ -125,8 +125,10 @@ export class UiVerifier {
         const actionType = actionObj.action?.toLowerCase();
         const targetIdRaw = actionObj.target_id !== undefined ? actionObj.target_id : actionObj.id;
 
-        // If it wasn't a targeted interaction, we just check for general state hashes in the agent loop
-        if (!targetIdRaw || (actionType !== 'click' && actionType !== 'input')) {
+        // If it wasn't a targeted interaction, we just check for general state hashes in the agent loop.
+        // Element ids start at 0, so test missing-ness explicitly — `!targetIdRaw` would wrongly
+        // treat the valid first/root element (id 0) as "no target" and skip real verification.
+        if (targetIdRaw === undefined || targetIdRaw === null || (actionType !== 'click' && actionType !== 'input')) {
             return actionType ? `[Success] Executed ${actionType}.` : '[Success] Action executed.';
         }
 

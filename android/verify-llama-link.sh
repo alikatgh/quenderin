@@ -12,10 +12,11 @@
 #
 # VERIFIED 2026-06-07 (build + compile stages): with NDK 27.0.12077973, libllama.so built
 # for Android arm64-v8a, AND `jni/llama_jni.cpp` + `tools/llama-smoketest.cpp` BOTH compiled
-# against it (ARM aarch64) — the Android analog of the iOS typecheck. The on-emulator RUN
-# stage wasn't completed in this sandbox (disk pressure ballooned the emulator and broke
-# adb); it works once you have ~3 GB free. NOTE: NDK 27.1.12297006 here is a 4 KB stub — the
-# NDK picker below skips stubs and selects a complete one (27.0 / 26.1).
+# against it (ARM aarch64) — the Android analog of the iOS typecheck.
+# VERIFIED END-TO-END 2026-06-14 (NDK r26d / 26.3.11579264): the full RUN stage completed on a
+# booted arm64 emulator — coherent output ("the sky is blue because…"), ~102 tok/s decode (CPU).
+# NOTE: some NDK installs leave a 4 KB stub — the NDK picker below skips stubs and selects a
+# complete one. The smoke test links libc++_shared.so dynamically, so step 5 now pushes it too.
 set -euo pipefail
 
 WORK="${1:-/tmp/quenderin-llama-android}"
@@ -75,6 +76,10 @@ ADB="$SDK/platform-tools/adb"; DEV="/data/local/tmp/quenderin"
 "$ADB" shell mkdir -p "$DEV"
 "$ADB" push smoketest "$DEV"/ >/dev/null
 "$ADB" push llama.cpp/build-android/bin/*.so "$DEV"/ >/dev/null
+# The smoketest dynamically links libc++_shared.so (NDK C++ runtime) — push it from the NDK
+# sysroot or the run fails with: CANNOT LINK EXECUTABLE … library "libc++_shared.so" not found.
+LIBCXX="$NDK/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+[ -f "$LIBCXX" ] && "$ADB" push "$LIBCXX" "$DEV"/ >/dev/null
 "$ADB" push model.gguf "$DEV"/ >/dev/null
 "$ADB" shell "chmod +x $DEV/smoketest"
 echo "--------------------------------------------------------------------"
