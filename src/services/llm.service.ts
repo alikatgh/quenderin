@@ -810,36 +810,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return Math.max(3, Math.min(25, Math.floor(ctxSize / 100)));
     }
 
-    public async generateCode(userPrompt: string): Promise<string> {
-        const { context } = await this.getModelAndContext();
-        const systemPrompt = `You are an expert code generator. Given a prompt, generate only the TypeScript code required to fulfill the request. Do not add any conversational text or markdown formatting.`;
-
-        const sequence = context.getSequence();
-        const session = this.createChatSession({
-            contextSequence: sequence,
-            systemPrompt: systemPrompt
-        });
-
-        logger.log("[Assistant] Warming up...");
-
-        try {
-            const response = await session.prompt(userPrompt, {
-                maxTokens: HW.codeMaxTokens,
-                temperature: 0.1
-            });
-
-            logger.log("[Assistant] Finished.");
-            return stripControlTokens(response);
-        } catch (error) {
-            logger.error("Error during generation:", error);
-            throw error;
-        } finally {
-            this.touchActivity();
-            // Dispose the sequence to release KV cache slots back to the context pool
-            try { sequence.dispose(); } catch { /* already disposed */ }
-        }
-    }
-
     public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string> {
         const { context } = await this.getModelAndContext();
         // Use a new sequence per call — dispose it when done to free KV cache slots

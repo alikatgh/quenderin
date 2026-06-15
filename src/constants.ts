@@ -25,22 +25,6 @@ export const MEMORY_BUDGET_WARNING = 0.65;
 export const MODEL_OVERHEAD_MULTIPLIER_BASE = 1.15;
 export const MODEL_OVERHEAD_MULTIPLIER_LARGE = 1.3;
 
-// ─── Quantization Reference (ported from off-grid-mobile) ───────────────────
-
-export const QUANTIZATION_INFO: Record<string, {
-    bitsPerWeight: number;
-    quality: string;
-    description: string;
-    recommended: boolean;
-}> = {
-    'Q2_K':   { bitsPerWeight: 2.625, quality: 'Low',       description: 'Extreme compression, noticeable quality loss', recommended: false },
-    'Q3_K_M': { bitsPerWeight: 3.5,   quality: 'Fair',      description: 'Moderate compression',                         recommended: false },
-    'Q4_K_M': { bitsPerWeight: 4.5,   quality: 'Good',      description: 'Best balance of quality and size',             recommended: true },
-    'Q5_K_M': { bitsPerWeight: 5.5,   quality: 'High',      description: 'Near original quality',                        recommended: false },
-    'Q6_K':   { bitsPerWeight: 6.5,   quality: 'Very High', description: 'Minimal quality loss',                         recommended: false },
-    'Q8_0':   { bitsPerWeight: 8,     quality: 'Excellent',  description: 'Best quantized quality',                       recommended: false },
-};
-
 // ─── RAM-Based Model Recommendations (ported from off-grid-mobile) ──────────
 // Starts from 1GB for Raspberry Pi and other embedded devices.
 
@@ -276,11 +260,3 @@ export const WS_HEARTBEAT_INTERVAL_MS = 30_000;
 // ─── Allowed settings values (for WS input validation) ─────────────────────
 
 export const ALLOWED_CONTEXT_SIZES = [256, 512, 1024, 2048, 4096, 8192] as const;
-
-/**
- * Legacy single-path export — points to whichever model the user last
- * selected (or default best). Can be overridden via LLM_MODEL_PATH env var.
- */
-export const LLM_MODEL_PATH =
-    process.env.LLM_MODEL_PATH ||
-    path.join(MODELS_DIR, MODEL_CATALOG[0].filename);

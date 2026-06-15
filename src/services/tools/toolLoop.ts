@@ -2,13 +2,12 @@
  * Tool Loop — Parses LLM output for tool calls, executes them, and re-prompts
  *
  * Uses XML fallback parsing (since small local models can't reliably output JSON tool calls).
- * Maximum 3 iterations to prevent infinite loops.
+ *
+ * NOTE: only the parse/strip/format helpers are live — `generalChat` runs the loop inline
+ * (`llm.service.ts`) and the WS layer does stream-level suppression. There is no shared loop fn.
  */
 import { ToolCall, ToolResult } from './registry.js';
-import { executeToolCalls } from './handlers.js';
 import logger from '../../utils/logger.js';
-
-const MAX_ITERATIONS = 3;
 
 /** Parse tool calls from LLM output using XML tags */
 export function parseToolCalls(text: string): ToolCall[] {
@@ -57,44 +56,3 @@ export function formatToolResults(results: ToolResult[]): string {
     }).join('\n');
 }
 
-/**
- * Run the tool loop — execute tool calls from LLM output and generate a follow-up.
- *
- * @param initialResponse - The LLM's first response (may contain tool calls)
- * @param promptWithResults - Function to re-prompt the LLM with tool results
- * @returns Final text response (with tool calls stripped)
- */
-export async function runToolLoop(
-    initialResponse: string,
-    promptWithResults: (toolResultContext: string) => Promise<string>
-): Promise<{ finalText: string; toolResults: ToolResult[] }> {
-    let currentText = initialResponse;
-    const allResults: ToolResult[] = [];
-
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
-        if (!hasToolCalls(currentText)) {
-            break;
-        }
-
-        const calls = parseToolCalls(currentText);
-        if (calls.length === 0) break;
-
-        logger.log(`[ToolLoop] Iteration ${i + 1}: executing ${calls.length} tool call(s)`);
-        const results = executeToolCalls(calls);
-        allResults.push(...results);
-
-        // Re-prompt the LLM with tool results
-        const resultContext = formatToolResults(results);
-        try {
-            currentText = await promptWithResults(resultContext);
-        } catch (err) {
-            logger.error('[ToolLoop] Re-prompt failed:', err);
-            break;
-        }
-    }
-
-    return {
-        finalText: stripToolCalls(currentText),
-        toolResults: allResults,
-    };
-}
