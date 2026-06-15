@@ -11,18 +11,20 @@ states the app ships in and how to cross the on-device cliff.
 | `LlamaEngine` Kotlin adapter | **Done** — fails cleanly off-device | Part of the 29 checks (reports unavailable, throws a clear "not linked" error) |
 | `jni/llama_jni.cpp` (C++ bridge) | **Written; one-command verify ready** | `android/verify-llama-link.sh` builds llama.cpp for Android + compile-checks it |
 | `app/` Compose UI | **Written, not compiled here** | Needs the Android SDK + AGP — build in Android Studio |
-| Real inference on a device | **One command away** | `android/verify-llama-link.sh` runs it on an emulator/device via adb |
+| Real inference on a device | **✅ PROVEN (2026-06-14)** | `android/verify-llama-link.sh` ran it on a booted arm64 emulator — coherent output, ~102 tok/s |
 
 > **One-command verification (`android/verify-llama-link.sh`):** the Android twin of the
 > **proven** `apple/verify-llama-link.sh`. It builds llama.cpp for Android (NDK), compiles
 > `jni/llama_jni.cpp` against it, builds `tools/llama-smoketest.cpp` (a C++ mirror of the
 > verified iOS Swift smoke test), and runs inference on a booted emulator/device via adb.
 >
-> ⚠️ **It hasn't been run in *this* sandbox because the local NDK is a 4 KB stub** (no
-> `clang++`); the script detects that and prints the one-line fix:
-> `sdkmanager "ndk;27.1.12297006"`. The **iOS twin is proven end-to-end** (real llama.cpp,
-> Metal, a simulated iPhone — see `apple/QuenderinKit/INTEGRATION.md`), and the C API is
-> identical, so the Android path is high-confidence — just install the NDK and run it.
+> ✅ **PROVEN END-TO-END (2026-06-14, NDK r26d):** `libllama.so` built for Android arm64-v8a,
+> `jni/llama_jni.cpp` compiled against it, and the smoke test **ran on a booted arm64
+> emulator** — coherent output ("the sky is blue because…"), **~102 tok/s decode (CPU)**. The
+> real-inference **APK** (`./gradlew :app:assembleDebug` with `jni/llama.cpp` present) installs
+> and the running app loads `libquenderin_llama.so` (`nativeloader: …ok`), so the app uses the
+> real engine. Matches the iOS twin (Mac Metal + simulated iPhone). Physical-phone tok/s/
+> battery/thermals are the only thing left to measure.
 
 The app **boots on `MockInferenceEngine`** so the whole onboarding → chat flow runs the
 moment you open it in Android Studio — no llama.cpp required. `MainActivity` switches to

@@ -11,7 +11,7 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 |----------|--------------|--------|--------------|
 | **Desktop** (Electron/TS) | Shipping prototype — full agent + chat | `node-llama-cpp` (real) | `npm run lint && npm run typecheck && npm run test:recommendation` |
 | **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs**; `DefaultInferenceEngine.make()` picks it when built with `QUENDERIN_LLAMA_DIR`/xcframework, else mock) | `cd apple/QuenderinKit && swift test` → **90 tests** |
-| **Android** (Kotlin) | M1–M4 brain + picker, on the mock engine | `LlamaEngine` (JNI to llama.cpp — **not yet linked**) | `android/quenderin-core` via bundled `kotlinc` → **99 checks** |
+| **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **99 checks**; `./gradlew :app:assembleDebug` → APK |
 
 ## Milestone parity (mobile brain — both run on mocks, fully tested)
 
@@ -55,7 +55,19 @@ cd android/quenderin-core && bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*
   src/verify/CoreVerify.kt -include-runtime -d /tmp/q.jar && java -jar /tmp/q.jar
 ```
 
-## The on-device cliff — mostly crossed
+## The on-device cliff — crossed on both platforms
+
+0. **Real on-device inference — ✅ PROVEN on iOS *and* Android (2026-06-14).** Both native
+   engines were built against real llama.cpp and produced coherent inference end-to-end:
+   - **iOS:** `QUENDERIN_LLAMA_DIR=… swift build` compiles the real `LlamaEngine` as part of
+     QuenderinKit; the smoke test runs (~135 tok/s decode, CPU, M-series Mac).
+   - **Android:** `android/verify-llama-link.sh` built `libllama.so` via the NDK, compiled the
+     `jni/llama_jni.cpp` bridge, and ran inference **on a booted arm64 emulator** — coherent
+     output, **~102 tok/s decode (CPU)**. The real-inference **APK** builds (`./gradlew
+     :app:assembleDebug` with `jni/llama.cpp` present), installs, and the running app loads
+     `libquenderin_llama.so` (`nativeloader: …ok`) so `NATIVE_AVAILABLE` is true and it uses
+     the real engine. Both platforms auto-detect the native lib (iOS xcframework / Android
+     `jni/llama.cpp`) and fall back to the mock when absent.
 
 1. **Link llama.cpp + run inference — ✅ PROVEN (iOS), now as the package default.**
    `apple/verify-llama-link.sh` builds real llama.cpp, compiles QuenderinKit's exact
@@ -69,10 +81,11 @@ cd android/quenderin-core && bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*
    `canImport(llama)` and the mock otherwise — **both build paths verified** (`swift build`
    with and without `QUENDERIN_LLAMA_DIR`). What remains is shipping the per-arch **xcframework**
    so a normal Xcode/device build links llama.cpp without `QUENDERIN_LLAMA_DIR`.
-2. **Still needs PHYSICAL hardware:** an iPhone for real Metal on-device tok/s + battery +
-   thermals (the Mac/sim numbers are host-CPU/Metal ceilings), and the Android NDK build run
-   on a device. These replace the conservative, clearly-labeled chip-score estimates with
-   ground truth.
+2. **Still needs PHYSICAL hardware (for ground-truth numbers only — the path is proven):**
+   an iPhone for real Metal on-device tok/s + battery + thermals, and a physical Android
+   phone for real-SoC tok/s. The Mac/sim/emulator numbers are host-CPU ceilings; only a real
+   phone replaces the conservative, clearly-labeled chip-score estimates with ground truth.
+   (The Android **NDK build + on-emulator run** is now done — see item 0.)
 3. **Ship** — App Store / Play Store; fill the legal-page placeholders; grant the GitHub
    `workflow` token scope to enable the parked Pages deploy.
 
