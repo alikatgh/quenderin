@@ -21,47 +21,42 @@ If you discover a security vulnerability, please report it by emailing the maint
 
 We will respond to security reports within 48 hours and will keep you informed throughout the process.
 
-## Security Considerations
+## Security Model
 
-### API Key Storage
+Quenderin runs **fully on-device**: models are local GGUF files executed via
+`node-llama-cpp`. There are **no cloud LLM providers, no API keys, and no `quenderin.json`
+config file** — so there is nothing to store a key in, and no key ever leaves the machine.
+Configuration is via environment variables and the in-app Settings UI.
 
-**Important:** Quenderin stores API keys in plaintext in the `quenderin.json` configuration file.
+### Local server binding
 
-**Best Practices:**
-1. Never commit `quenderin.json` to version control (it's in `.gitignore` by default)
-2. Use environment variables for API keys in production environments
-3. Restrict file permissions on `quenderin.json`:
-   ```bash
-   chmod 600 quenderin.json
-   ```
-4. Regularly rotate your API keys
-5. Use separate API keys for development and production
+The dashboard/agent server binds to **loopback (`127.0.0.1`) by default** on port **3000**
+(override with `--port`). It is **unauthenticated**, so it must not be exposed to the
+network. Set `QUENDERIN_HOST=0.0.0.0` only on a trusted network and at your own risk.
 
-### Local-First Security
+Defense-in-depth on the local server:
+- CORS and WebSocket connections are restricted to localhost origins (a literal `null`
+  origin is rejected); the WebSocket upgrade is pinned to `/ws`.
+- A Content-Security-Policy header is set.
+- JSON request bodies are capped at **256 KB**; attachment count/size are capped.
+- `/api/docs` serves only an allowlist of public docs.
+- Device-sourced UI XML is parsed with entity expansion disabled.
 
-Quenderin prioritizes local-first operation:
-- Works completely offline with Ollama
-- No telemetry or tracking
-- Your code stays on your machine
-- Open source and auditable
+There is **no rate limiting** — the loopback-only binding is the intended control. If you
+expose the server, put your own authentication and rate limiting in front of it.
 
-### Network Security
+### Autonomous device control — experimental
 
-When using cloud LLM providers:
-- All API communications use HTTPS
-- API keys are only sent to the configured provider
-- No data is sent to third parties
-- Rate limiting is enabled on the UI server
+The agent issues real input to the host and any connected device. Action safety is gated by
+an **experimental, English keyword blocklist** that is **not** a robust safety boundary — it
+misses paraphrases, other languages, and prompt-injected instructions from on-screen content.
+Treat the agent as experimental, supervise it, and do not point it at sensitive apps or
+accounts.
 
-### UI Server Security
-
-The web UI server (port 3777) includes:
-- CORS restricted to localhost only
-- Rate limiting (100 requests per 15 minutes)
-- Input validation on all endpoints
-- File upload size limits (1MB max)
-
-**Note:** The UI server is designed for local development only and should not be exposed to the internet.
+### What stays local
+- No telemetry or tracking; the agent's data lives under your home directory.
+- Open source and auditable.
+- After the one-time model download, normal operation needs no network.
 
 ## Security Updates
 
@@ -73,10 +68,10 @@ We take security seriously and will:
 
 ## Dependencies
 
-We regularly update dependencies to address security vulnerabilities:
-- Run `npm audit` to check for known vulnerabilities
-- Automated Dependabot updates are enabled
-- All dependencies are reviewed before updates
+- Run `npm audit` to check for known vulnerabilities. There is currently **no CI audit gate
+  and no Dependabot configuration** — the dependency-vulnerability backlog is tracked in
+  `docs/audits/2026-06-14-CONSOLIDATED-open-findings.md`.
+- Review dependencies before updating.
 
 ## Responsible Disclosure
 

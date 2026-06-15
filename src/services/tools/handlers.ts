@@ -86,13 +86,26 @@ export function executeTool(call: ToolCall): ToolResult {
                 if (!fs.existsSync(resolved)) {
                     return { tool: 'read_file', success: false, result: '', error: `File not found: ${resolved}` };
                 }
-                const stat = fs.statSync(resolved);
+                // Defeat symlink escape: follow symlinks to the real target and re-check
+                // containment. A lexical (path.resolve) check alone lets a symlink that
+                // lives inside $HOME point at an out-of-home file (e.g. ~/link -> /etc/passwd)
+                // slip past the prefix check.
+                let realResolved: string;
+                try {
+                    realResolved = fs.realpathSync(resolved);
+                } catch {
+                    return { tool: 'read_file', success: false, result: '', error: `File not found: ${resolved}` };
+                }
+                if (!isInsideHome(realResolved)) {
+                    return { tool: 'read_file', success: false, result: '', error: 'Access denied: path resolves (via symlink) to a location outside your home directory.' };
+                }
+                const stat = fs.statSync(realResolved);
                 if (!stat.isFile()) {
                     return { tool: 'read_file', success: false, result: '', error: 'Path is a directory, not a file.' };
                 }
                 // Read up to MAX_FILE_READ_BYTES to protect context window
                 const buf = Buffer.alloc(MAX_FILE_READ_BYTES);
-                const fd = fs.openSync(resolved, 'r');
+                const fd = fs.openSync(realResolved, 'r');
                 const bytesRead = fs.readSync(fd, buf, 0, MAX_FILE_READ_BYTES, 0);
                 fs.closeSync(fd);
                 const content = buf.slice(0, bytesRead).toString('utf8');
@@ -117,6 +130,9 @@ export function executeTool(call: ToolCall): ToolResult {
                 if (!content) return { tool: 'note_save', success: false, result: '', error: 'Missing content parameter' };
                 // Sanitise title for use as filename
                 const safeTitle = title.replace(/[^a-zA-Z0-9\s\-_]/g, '').trim().replace(/\s+/g, '_').slice(0, 80);
+                // An all-special/non-ASCII title (e.g. "!!!", "日本語") sanitises to "" → a hidden
+                // ".md" file that silently collides/overwrites across all such titles (M14).
+                if (!safeTitle) return { tool: 'note_save', success: false, result: '', error: 'Title has no filename-safe characters; use letters, digits, spaces, - or _' };
                 ensureNotesDir();
                 const notePath = path.join(NOTES_DIR, `${safeTitle}.md`);
                 const header = `# ${title}\n_Saved: ${new Date().toISOString()}_\n\n`;

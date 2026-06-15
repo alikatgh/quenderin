@@ -7,19 +7,20 @@ install. Two tiers per platform:
   model file. Fastest way to see the app on a device/simulator.
 - **Real on-device inference** — link llama.cpp so the app actually generates tokens.
 
-> **What's already verified in this repo (CI-free, on a CommandLineTools Mac):**
-> - `QuenderinKit` compiles in **all three** engine modes — mock, `QUENDERIN_LLAMA_DIR`
->   dev-build, and (config-wise) the xcframework path. (`swift build`)
-> - Real llama.cpp inference runs end-to-end through `LlamaEngine`'s exact C-API path —
->   coherent output, ~135 tok/s decode (CPU, M-series Mac). (`apple/verify-llama-link.sh`)
-> - The Xcode project generates cleanly from `project.yml` (`xcodegen`).
-> - Android `quenderin-core` passes **99/99** checks (`kotlinc` + `java`).
+> **What's verified end-to-end in this repo (2026-06-14, no CI):**
+> - **iOS app builds + runs** on the iPhone 17 simulator (Xcode 26.3): `xcodegen` →
+>   `xcodebuild -sdk iphonesimulator` → install + launch; the model picker renders a
+>   device-aware recommendation (Apple M4 → Llama 3.2 3B Balanced).
+> - **Android app builds + runs** on a booted arm64 emulator: `./gradlew :app:assembleDebug`
+>   → `adb install` → launch; picker renders (low-mem emulator → Llama 3.2 1B).
+> - **Real llama.cpp inference runs on both:** iOS `apple/verify-llama-link.sh` (~135 tok/s,
+>   CPU, Mac) and Android `android/verify-llama-link.sh` **on the emulator** (~102 tok/s, CPU,
+>   arm64). The real-inference Android APK loads `libquenderin_llama.so` (`NATIVE_AVAILABLE`
+>   true). `QuenderinKit` compiles in all engine modes (`swift build`); Android core 99/99.
 >
-> **What needs your machine (cannot be done from CommandLineTools alone):**
-> - iOS: **full Xcode** (iOS SDK + Simulator) to build/run the app target; a physical
->   iPhone for real Metal tok/s, battery, and thermals.
-> - Android: **Android SDK + Gradle** (mock APK) and additionally the **NDK** (native
->   llama build); an emulator or device to run.
+> **What still needs a physical device (ground-truth numbers only — the path is proven):**
+> - A real **iPhone** for Metal tok/s + battery + thermals, and a real **Android phone** for
+>   SoC tok/s. The Mac/sim/emulator numbers are host-CPU ceilings.
 
 ---
 
@@ -30,14 +31,19 @@ install. Two tiers per platform:
   `…/Xcode.app/Contents/Developer`. Switch with `sudo xcode-select -s /Applications/Xcode.app`.
 - `brew install xcodegen`
 
-### A. Bring-up (mock engine) — clickable app, no model
+### A. Bring-up (mock engine) — clickable app, no model ✅ verified
 ```bash
 cd apple/QuenderinApp
 xcodegen generate            # → Quenderin.xcodeproj (+ Info.plist, both git-ignored)
-open Quenderin.xcodeproj     # then Run (⌘R) on an iPhone 16 simulator
+open Quenderin.xcodeproj     # then Run (⌘R) on an iPhone simulator
+# …or fully headless (what was verified here):
+xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -sdk iphonesimulator \
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcrun simctl install booted "$(find ~/Library/Developer/Xcode/DerivedData -name Quenderin.app -path '*iphonesimulator*' | head -1)"
+xcrun simctl launch booted ai.quenderin.Quenderin
 ```
-The app boots into onboarding and runs the full flow on `MockInferenceEngine`. The engine
-is chosen by `DefaultInferenceEngine.make()` — it's the mock until llama.cpp is linked (next).
+The app runs the full flow on `MockInferenceEngine`. The engine is chosen by
+`DefaultInferenceEngine.make()` — mock until llama.cpp is linked (next).
 
 ### B. Real on-device inference — Route A, the shippable path
 ```bash

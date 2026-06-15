@@ -17,6 +17,13 @@ const rootDir = isCompiledMode
     ? path.join(__dirname, '..', '..', '..')
     : path.join(__dirname, '..', '..');
 
+// Default-deny allowlist (M3): only the user-facing docs the Docs UI serves are exposed,
+// so this unauthenticated route can't disclose arbitrary repo/examples markdown.
+const ALLOWED_DOCS = new Set([
+    'README.md', 'QUICKSTART.md', 'FEATURES.md', 'TROUBLESHOOTING.md',
+    'SECURITY.md', 'SETUP.md', 'RUN_GUIDE.md', 'CONTRIBUTING.md', 'LICENSE.md',
+]);
+
 router.get('/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
@@ -28,6 +35,11 @@ router.get('/:filename', async (req, res) => {
 
         // 2. Eradicate Path Traversal Vectors (strip all slashes/directories)
         const safeFilename = path.basename(filename);
+
+        // 3. Default-deny: only serve allowlisted public docs (M3).
+        if (!ALLOWED_DOCS.has(safeFilename)) {
+            return res.status(403).json({ error: 'Document not available.' });
+        }
 
         // 3. Dual-Path Resolution (Root -> /examples/)
         const rootPath = path.join(rootDir, safeFilename);

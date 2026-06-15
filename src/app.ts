@@ -35,7 +35,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     const app = express();
 
     const isAllowedLocalOrigin = (origin: string): boolean => {
-        if (origin === 'null') return true; // Some embedded/Electron contexts
+        // Note: literal "null" origin (sandboxed iframes, file://, some redirects) is NOT trusted.
+        // Header-less requests (curl, Electron, server-to-server) are handled by the `!origin` path.
         try {
             const parsed = new URL(origin);
             return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
@@ -60,7 +61,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             callback(new Error(`CORS: origin '${origin}' is not allowed`));
         }
     }));
-    app.use(express.json());
+    app.use(express.json({ limit: '256kb' }));
 
     // Serve strictly static frontend relative to this file to support packaged ASARs
     const __filename = fileURLToPath(import.meta.url);

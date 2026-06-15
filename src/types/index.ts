@@ -44,17 +44,18 @@ export interface IDeviceProvider extends EventEmitter {
 }
 
 export interface ILlmProvider extends EventEmitter {
-    generateCode(prompt: string): Promise<string>;
     generalChat(prompt: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
 }
 
 export interface AgentAction {
-    action: 'click' | 'input' | 'scroll' | 'done';
+    action: 'click' | 'input' | 'scroll' | 'key' | 'done';
     id?: number | string;
     target_id?: number | string;
     x?: number;
     y?: number;
     text?: string;
     direction?: 'up' | 'down' | 'left' | 'right';
+    /** Hardware/navigation key for the 'key' action: 'back' | 'home' | 'enter'. */
+    key?: string;
 }

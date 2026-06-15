@@ -108,7 +108,6 @@ acts through tools, not by driving the OS.
 | `ocr.service.ts` | Text extraction from screenshots (perception) |
 | `uiParser.service.ts` | Screen → compact LLM-readable UI tree |
 | `backgroundDaemon.service.ts` | Passive observation; triggers on visual change |
-| `daemon.service.ts` | Long-running task/daemon management |
 | `readiness.service.ts` | Server readiness state (`/ready`, `/health`) |
 | `intentClassifier.ts` | Routes input (chat vs. agent objective) |
 | `presets.ts` | Assistant personas (General/Code/Writer/Tutor/Summary) |
