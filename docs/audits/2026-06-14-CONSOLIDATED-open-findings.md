@@ -7,6 +7,11 @@ lens: consolidated
 
 This report consolidates findings extracted from 11 prior audit reports and re-verified as **still open** against current source. After deduping near-duplicates, there are **47 open findings: 14 CRITICAL, 19 HIGH, 14 MEDIUM**. The dominant themes are: a fully unauthenticated server bound to all network interfaces, an LLM-driven autonomous device-control surface gated only by a 5-word English substring blocklist, an unverified multi-GB model-download/parse chain, broad supply-chain CVEs (2 critical, 14 high, 5 moderate) with no CI audit gate, mobile (Swift/Kotlin) and UI test suites entirely absent from CI, an agent that advertises actions it cannot execute, a packaged Electron app that ships a stale/broken entry point and no servable UI, and pervasive documentation that describes a different (cloud) product with materially false security assurances.
 
+> **Resolution status (updated 2026-06-15, branch `security-fixes` / PRs #7–#8).**
+> **Criticals: 4/14 resolved** — C1 (loopback bind), C2 (all 21 dep CVEs → `npm audit` clean, incl. simple-git RCE + protobufjs, runtime-verified), C8 + C9 (agent action vocabulary / `pressKey`). C13 partially addressed (Electron hardened + real-port load; entry-dedup still open).
+> **Highs resolved:** H1, H4, H5, H6, H8, H9, H10, H13, H19, H21, H23–H26, H33–H36. **Mediums resolved:** M2, M3, M6, M7, M9, M14, M15, M18, M22, M24, M27, M33.
+> **Still open (highest value):** C3 (download integrity/checksums), C4–C7 (perf hot-paths), C10/C11/C12 (data-store ownership / packaged UI / model-pin route), C14 + H11 (mobile/parity CI), H2/H22/M34 (safety-policy redesign), and the test-coverage adds (H12, H14–H17, M16, M28/M29).
+
 ---
 
 ## CRITICAL
