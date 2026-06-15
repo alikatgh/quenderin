@@ -23,6 +23,11 @@ import { resetReadinessForStartup, setReadiness } from './services/readiness.ser
 import logger from './utils/logger.js';
 import { TEMP_FILE_MAX_AGE_MS, TEMP_CLEANUP_INTERVAL_MS } from './constants.js';
 
+// Bind to loopback only by default — this is a local dashboard/agent that controls the
+// machine and a connected device, so it must not be reachable from the LAN. Set
+// QUENDERIN_HOST=0.0.0.0 to deliberately expose it (e.g. trusted dev network).
+const BIND_HOST = process.env.QUENDERIN_HOST || '127.0.0.1';
+
 // Global safety net — log unhandled rejections instead of crashing silently
 process.on('unhandledRejection', (reason) => {
     logger.error('[Process] Unhandled promise rejection:', reason);
@@ -68,7 +73,7 @@ async function isPortFree(port: number): Promise<boolean> {
             .once('listening', () => {
                 tester.close(() => resolve(true));
             })
-            .listen(port, '::');
+            .listen(port, BIND_HOST);
     });
 }
 
@@ -189,9 +194,9 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.keepAliveTimeout = 65 * 1000;    // Slightly above typical LB idle timeout (60s)
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
-        server.listen(selectedPort, async () => {
+        server.listen(selectedPort, BIND_HOST, async () => {
             new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService);
-            setReadiness(true, 'serving', `Listening on port ${selectedPort}`);
+            setReadiness(true, 'serving', `Listening on ${BIND_HOST}:${selectedPort}`);
             logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {
                 try {
