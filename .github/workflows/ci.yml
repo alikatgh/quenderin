@@ -99,6 +99,25 @@ jobs:
             android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
           java -jar /tmp/qcore.jar
 
+  mobile-android-app:
+    name: Android app (assembleDebug)
+    runs-on: ubuntu-latest
+    # Builds the real :app module — Compose UI + AndroidManifest merge. The kotlinc-core job
+    # above cannot catch app-module breakage (missing imports, bad @Composable, manifest errors);
+    # only a full Gradle build does (see BUG_JOURNAL.md, 2026-06-15). Verified locally on JDK 21.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Build the debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --console=plain
+
   catalog-parity:
     name: Model catalog parity
     runs-on: ubuntu-latest

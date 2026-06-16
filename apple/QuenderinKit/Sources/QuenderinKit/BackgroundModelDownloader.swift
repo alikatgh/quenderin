@@ -13,6 +13,15 @@ import Foundation
 /// > persistence/resume bookkeeping is unit-tested via `DownloadStore`; this
 /// > class wires `URLSession` to it. Conforms to `ModelDownloader`, so it drops
 /// > into `OnboardingModel` in place of the foreground downloader.
+/// >
+/// > ⚠️ **NOT the shipping default.** `QuenderinApp` wires the foreground
+/// > `URLSessionModelDownloader`, so this class is never instantiated at runtime and the app
+/// > therefore declares no `UIBackgroundModes` (App Store review item: a background `URLSession`
+/// > with no declared background mode). To actually ship background downloads: wire this in
+/// > `QuenderinApp`, add `UIBackgroundModes` (`fetch`/`processing`) to the app Info.plist
+/// > (`project.yml` `properties`), and implement
+/// > `application(_:handleEventsForBackgroundURLSession:completionHandler:)` to resume the
+/// > session on relaunch. Until then it stays opt-in and out of the review surface.
 public final class BackgroundModelDownloader: NSObject, ModelDownloader, @unchecked Sendable {
     private let store: DownloadStore
     private let sessionIdentifier: String
