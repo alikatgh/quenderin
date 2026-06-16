@@ -24,6 +24,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -45,34 +46,37 @@ MARKERS = {
     "Android": "val models",
 }
 
-# A model entry: id -> (paramsBillions: float, quantization: str)
-Catalog = dict[str, tuple[float, str]]
+# A model entry: id -> (paramsBillions: float, quantization: str, sha256: Optional[str])
+Catalog = dict[str, tuple[float, str, Optional[str]]]
 
 
 def parse_named(text: str) -> Catalog:
-    """desktop TS + iOS Swift: `id: "x" ... paramsBillions: N ... quantization: "Q"`."""
+    """desktop TS + iOS Swift. Split at each `id:` so an absent (optional) sha256 can never
+    borrow the NEXT entry's hash; extract each field per-block (no cross-entry DOTALL span)."""
     catalog: Catalog = {}
-    # Only look inside the model catalog (skip the HardwareTiers block, which also has
-    # `quantization:` but no `id:`/`paramsBillions:` pairing).
-    for m in re.finditer(
-        r"""id:\s*['"]([\w.-]+)['"].*?paramsBillions:\s*([\d.]+).*?quantization:\s*['"]([\w_]+)['"]""",
-        text,
-        re.DOTALL,
-    ):
-        mid, params, quant = m.group(1), float(m.group(2)), m.group(3)
-        catalog[mid] = (params, quant)
+    starts = [m.start() for m in re.finditer(r"""id:\s*['"][\w.-]+['"]""", text)]
+    starts.append(len(text))
+    for i in range(len(starts) - 1):
+        block = text[starts[i]:starts[i + 1]]
+        idm = re.search(r"""id:\s*['"]([\w.-]+)['"]""", block)
+        pm = re.search(r"""paramsBillions:\s*([\d.]+)""", block)
+        qm = re.search(r"""quantization:\s*['"]([\w_]+)['"]""", block)
+        if not (idm and pm and qm):
+            continue  # a stray `id:` that isn't a model entry
+        sm = re.search(r"""sha256:\s*['"]([0-9a-f]{64})['"]""", block)
+        catalog[idm.group(1)] = (float(pm.group(1)), qm.group(1), sm.group(1) if sm else None)
     return catalog
 
 
 def parse_kotlin(text: str) -> Catalog:
-    """Android Kotlin (positional): ModelEntry("id", "label", "file", ram, "size", params, "quant", "url")."""
+    """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_]+)"\s*,""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-f]{64})")?\s*\)""",
         text,
     ):
         mid, params, quant = m.group(1), float(m.group(2)), m.group(3)
-        catalog[mid] = (params, quant)
+        catalog[mid] = (params, quant, m.group(4))  # group(4) is None when sha256 is omitted
     return catalog
 
 
@@ -95,7 +99,7 @@ def load_canonical() -> Catalog:
     if not CANONICAL.exists():
         sys.exit(f"FATAL: {CANONICAL} not found — run: python3 scripts/export_catalog.py")
     data = json.loads(CANONICAL.read_text(encoding="utf-8"))
-    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"]) for m in data.get("models", [])}
+    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"], m.get("sha256")) for m in data.get("models", [])}
     if not catalog:
         sys.exit(f"FATAL: {CANONICAL} has no models")
     return catalog

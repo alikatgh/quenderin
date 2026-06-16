@@ -31,10 +31,14 @@ interface HttpRangeClient {
 interface FileSink {
     /** Bytes already on disk for a partial download, or 0 if none. */
     fun existingSize(path: String): Long
-    /** Discard a partial file (used when the server can't resume). */
+    /** Discard a partial file (server can't resume, or a failed integrity check). */
     fun truncate(path: String)
     /** Append [bytes] to [path], creating it if needed. */
     fun append(path: String, bytes: ByteArray)
+    /** First [n] bytes of [path] for a magic-number check; fewer if the file is shorter. */
+    fun head(path: String, n: Int): ByteArray
+    /** Lowercase-hex SHA-256 of the file at [path], streamed in constant memory. */
+    fun sha256(path: String): String
     /** Atomically move the finished temp file into its final location. */
     fun finalize(tempPath: String, finalPath: String)
 }
@@ -107,6 +111,24 @@ class ModelDownloadEngine(
                 )
             }
 
+            // Integrity gate (C3): verify the assembled bytes BEFORE promoting .part → final,
+            // so a MITM / poisoned-mirror / truncated file never becomes the active model. A
+            // failed check discards the partial (it must not be resumed) and fails the download.
+            if (!ModelIntegrity.hasGGUFMagic(sink.head(tempPath, 4))) {
+                sink.truncate(tempPath)
+                throw DownloadException("downloaded file for ${model.filename} is not a valid GGUF (bad magic header)")
+            }
+            val expectedSha = model.sha256
+            if (expectedSha != null) {
+                val actualSha = sink.sha256(tempPath)
+                if (!actualSha.equals(expectedSha, ignoreCase = true)) {
+                    sink.truncate(tempPath)
+                    throw DownloadException(
+                        "checksum mismatch for ${model.filename}: expected $expectedSha, got $actualSha"
+                    )
+                }
+            }
+
             sink.finalize(tempPath, finalPath)
             store.updateProgress(model.id, bytesDownloaded = downloaded, totalBytes = if (total > 0) total else downloaded)
             onProgress(1.0)
@@ -115,6 +137,9 @@ class ModelDownloadEngine(
             store.remove(model.id)
             return finalPath
         } catch (t: Throwable) {
+            // Clear any partially-written final file (e.g. a cross-filesystem copy that failed
+            // after the rename fallback) so no half-written model is left behind a passed gate (C3-4).
+            runCatching { sink.truncate(finalPath) }
             store.setState(model.id, PersistedDownload.State.FAILED)
             if (t is DownloadException) throw t
             throw DownloadException("download failed for ${model.filename}: ${t.message}")

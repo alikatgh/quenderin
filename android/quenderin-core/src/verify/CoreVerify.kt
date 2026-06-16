@@ -29,6 +29,12 @@ private class FakeFileSink : FileSink {
     override fun append(path: String, bytes: ByteArray) {
         files[path] = (files[path] ?: ByteArray(0)) + bytes
     }
+    override fun head(path: String, n: Int): ByteArray {
+        val b = files[path] ?: ByteArray(0)
+        return b.copyOf(minOf(n, b.size))
+    }
+    override fun sha256(path: String): String =
+        ModelIntegrity.sha256Hex(files[path] ?: throw java.io.FileNotFoundException(path))
     override fun finalize(tempPath: String, finalPath: String) {
         files[finalPath] = files.remove(tempPath) ?: ByteArray(0)
     }
@@ -256,6 +262,32 @@ fun main() {
             reopened.list().first().title == "remembered question"
     })
 
+    // --- ModelManager (multi-model lifecycle: installed / active / usage / delete; twin of Swift) ---
+    run {
+        val small = ModelCatalog.smallest
+        val mid = ModelCatalog.entry("qwen3-4b")!!
+        fun storage() = InMemoryModelStorage().apply { install(small.filename, 300); install(mid.filename, 4000) }
+
+        check("model manager lists only on-disk catalog models with sizes + total usage", run {
+            val mgr = ModelManager(storage())
+            mgr.installed().map { it.id }.toSet() == setOf(small.id, mid.id) && mgr.totalBytesUsed == 4300L
+        })
+        check("model manager pins the active model to the top and rejects activating an uninstalled one", run {
+            val mgr = ModelManager(storage())
+            mgr.setActive(small.id) && mgr.installed().first().id == small.id && !mgr.setActive("nope")
+        })
+        check("model manager delete reclaims bytes and clears active when the active model is removed", run {
+            val mgr = ModelManager(storage(), initialActiveModelId = mid.id)
+            val reclaimableOk = mgr.reclaimableBytes == 300L
+            val freed = mgr.delete(mid.id)
+            reclaimableOk && freed == 4000L && mgr.activeModelId == null && !mgr.isInstalled(mid.id) && mgr.totalBytesUsed == 300L
+        })
+        check("model manager delete of an uninstalled model is a no-op", run {
+            val mgr = ModelManager(InMemoryModelStorage().apply { install(small.filename, 300) })
+            mgr.delete("qwen3-14b") == 0L && mgr.totalBytesUsed == 300L
+        })
+    }
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
@@ -396,9 +428,18 @@ fun main() {
         store.resumable().map { it.modelId }.toSet() == setOf("a", "b")
     })
 
+    // --- Model integrity (GGUF magic + SHA-256 verification; audit C3) ---
+    check("GGUF magic detected on a real header", ModelIntegrity.hasGGUFMagic(ModelIntegrity.GGUF_MAGIC + byteArrayOf(1, 2, 3)))
+    check("non-GGUF bytes rejected", !ModelIntegrity.hasGGUFMagic("<htm".toByteArray()))
+    check("too-short buffer is not GGUF", !ModelIntegrity.hasGGUFMagic(byteArrayOf(0x47, 0x47)))
+    check("sha256 matches the NIST 'abc' test vector",
+        ModelIntegrity.sha256Hex("abc".toByteArray()) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+
     // --- Model download engine (the resumable, pure-Kotlin brain of the WorkManager downloader) ---
-    val payload = ByteArray(100) { (it % 7).toByte() }
-    val sampleModel = ModelCatalog.smallest
+    // A 100-byte body starting with the GGUF magic + a catalog entry pinned to its hash, so the
+    // engine's integrity gate (C3) passes on the happy paths below.
+    val payload = ModelIntegrity.GGUF_MAGIC + ByteArray(96) { (it % 7).toByte() }
+    val sampleModel = ModelCatalog.smallest.copy(sha256 = ModelIntegrity.sha256Hex(payload))
     val finalFile = "/models/${sampleModel.filename}"
     val partFile = "$finalFile.part"
 
@@ -430,6 +471,22 @@ fun main() {
         val result = runCatching { ModelDownloadEngine(boom, FakeFileSink(), store, "/models").download(sampleModel) {} }
         result.exceptionOrNull() is DownloadException &&
             store.get(sampleModel.id)?.state == PersistedDownload.State.FAILED
+    })
+    check("integrity gate rejects a non-GGUF body and fails the download (C3)", run {
+        val notGguf = ByteArray(100) { (it % 7).toByte() } // valid length, no GGUF magic
+        val result = runCatching {
+            ModelDownloadEngine(FakeHttpRangeClient(notGguf, supportsResume = true), FakeFileSink(), DownloadStore(), "/models")
+                .download(ModelCatalog.smallest.copy(sha256 = null)) {}
+        }
+        result.exceptionOrNull().let { it is DownloadException && it.message?.contains("GGUF") == true }
+    })
+    check("integrity gate rejects a checksum mismatch and discards the partial (C3)", run {
+        val sink = FakeFileSink()
+        val result = runCatching {
+            ModelDownloadEngine(FakeHttpRangeClient(payload, supportsResume = true), sink, DownloadStore(), "/models")
+                .download(sampleModel.copy(sha256 = "f".repeat(64))) {}
+        }
+        result.exceptionOrNull() is DownloadException && sink.files[partFile] == null && sink.files[finalFile] == null
     })
 
     println()

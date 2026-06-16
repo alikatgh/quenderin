@@ -87,15 +87,36 @@ class JvmFileSink : FileSink {
         }
     }
 
+    override fun head(path: String, n: Int): ByteArray {
+        val file = File(path)
+        if (!file.isFile) return ByteArray(0)
+        RandomAccessFile(file, "r").use { raf ->
+            val len = minOf(n.toLong(), raf.length()).toInt()
+            val buf = ByteArray(len)
+            raf.readFully(buf)
+            return buf
+        }
+    }
+
+    // Streamed in constant memory via the shared ModelIntegrity helper (the canonical impl).
+    override fun sha256(path: String): String = ModelIntegrity.sha256Hex(File(path))
+
     override fun finalize(tempPath: String, finalPath: String) {
         val temp = File(tempPath)
         val dest = File(finalPath)
         dest.parentFile?.mkdirs()
         if (dest.exists()) dest.delete()
         if (!temp.renameTo(dest)) {
-            // Cross-filesystem fallback.
-            temp.copyTo(dest, overwrite = true)
-            temp.delete()
+            // Cross-filesystem fallback (e.g. internal storage → SD card). If the copy fails
+            // midway, delete the partial dest so no half-written file is left behind a passed
+            // integrity gate (C3-4).
+            try {
+                temp.copyTo(dest, overwrite = true)
+                temp.delete()
+            } catch (e: Exception) {
+                runCatching { dest.delete() }
+                throw e
+            }
         }
     }
 }

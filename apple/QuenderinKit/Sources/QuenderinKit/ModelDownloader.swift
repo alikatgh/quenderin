@@ -49,6 +49,7 @@ public struct URLSessionModelDownloader: ModelDownloader {
                     let partial = destination.appendingPathExtension("partial")
                     FileManager.default.createFile(atPath: partial.path, contents: nil)
                     let handle = try FileHandle(forWritingTo: partial)
+                    defer { try? handle.close() }  // close on success, throw, or cancellation — no fd leak
 
                     var downloaded: Int64 = 0
                     var chunk = Data()
@@ -75,6 +76,19 @@ public struct URLSessionModelDownloader: ModelDownloader {
 
                     try? FileManager.default.removeItem(at: destination)
                     try FileManager.default.moveItem(at: partial, to: destination)
+
+                    // Integrity gate (C3): verify the finished file before signaling success —
+                    // a MITM, poisoned mirror, or truncated transfer must not reach the GGUF
+                    // parser. The protocol only carries url+destination, so resolve the expected
+                    // SHA-256 from the catalog by URL (nil → GGUF magic-header check only).
+                    let expectedSHA = ModelCatalog.models.first { $0.downloadURL == url }?.sha256
+                    do {
+                        try ModelIntegrity.verify(fileURL: destination, expectedSHA256: expectedSHA)
+                    } catch {
+                        try? FileManager.default.removeItem(at: destination)
+                        continuation.finish(throwing: error)
+                        return
+                    }
 
                     continuation.yield(.progress(1.0))
                     continuation.yield(.finished(destination))
