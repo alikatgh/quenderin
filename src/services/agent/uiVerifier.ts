@@ -44,43 +44,50 @@ export class UiVerifier {
 
         emitter.emit('status', "Waiting for UI to become idle...");
 
-        while (!isIdle) {
-            try {
-                const { xml, screenshotPath } = await this.deviceProvider.getScreenContext();
-                allScreenshotPaths.push(screenshotPath);
+        // Cap the poll count so an animating UI (spinner / video / live feed) whose element count
+        // never stabilizes can't spin forever — treat the cap as "idle enough" (H8).
+        let polls = 0;
+        const MAX_IDLE_POLLS = 20;
+        try {
+            while (!isIdle) {
+                try {
+                    const { xml, screenshotPath } = await this.deviceProvider.getScreenContext();
+                    allScreenshotPaths.push(screenshotPath);
 
-                const parsed = this.uiParserService.parseUI(xml);
+                    const parsed = this.uiParserService.parseUI(xml);
 
-                if (parsed.elements.length === lastElementsLength) {
-                    stableCount++;
-                } else {
-                    stableCount = 0;
-                    lastElementsLength = parsed.elements.length;
-                }
+                    if (parsed.elements.length === lastElementsLength) {
+                        stableCount++;
+                    } else {
+                        stableCount = 0;
+                        lastElementsLength = parsed.elements.length;
+                    }
 
-                if (stableCount >= 2) {
-                    isIdle = true;
-                    finalParsed = parsed;
-                    finalScreenshotPath = screenshotPath;
-                } else {
-                    await new Promise(res => setTimeout(res, this.idlePollMs));
+                    if (stableCount >= 2 || ++polls >= MAX_IDLE_POLLS) {
+                        isIdle = true;
+                        finalParsed = parsed;
+                        finalScreenshotPath = screenshotPath;
+                    } else {
+                        await new Promise(res => setTimeout(res, this.idlePollMs));
+                    }
+                } catch (error: unknown) {
+                    retries++;
+                    const message = error instanceof Error ? error.message : String(error);
+                    logger.warn(`Retrying UI connection (${retries}/3) - ${message.split('\n')[0]}`);
+                    if (retries >= 3) {
+                        throw error;
+                    }
+                    await new Promise(res => setTimeout(res, this.retryBackoffMs));
                 }
-            } catch (error: unknown) {
-                retries++;
-                const message = error instanceof Error ? error.message : String(error);
-                logger.warn(`Retrying UI connection (${retries}/3) - ${message.split('\n')[0]}`);
-                if (retries >= 3) {
-                    throw error;
-                }
-                await new Promise(res => setTimeout(res, this.retryBackoffMs));
             }
-        }
-
-        // Delete every intermediate screenshot — only keep the final one we're returning.
-        // Each Android/desktop PNG is 2–5 MB; without cleanup they pile up in /tmp fast.
-        for (const p of allScreenshotPaths) {
-            if (p && p !== finalScreenshotPath) {
-                fs.unlink(p).catch(() => { /* temp file may already be gone */ });
+        } finally {
+            // Delete every intermediate screenshot — even if we threw above — keeping only the final
+            // one. Each PNG is 2–5 MB; without this they pile up in /tmp (H8: this was after the loop,
+            // unreachable on the retries-exhausted throw).
+            for (const p of allScreenshotPaths) {
+                if (p && p !== finalScreenshotPath) {
+                    fs.unlink(p).catch(() => { /* temp file may already be gone */ });
+                }
             }
         }
 

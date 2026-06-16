@@ -43,6 +43,12 @@ class AgentLoop(
 
             when (decision) {
                 is AgentDecision.FinalAnswer -> {
+                    // The safety gate also applies to the final answer (H14): a jailbroken/fine-tuned
+                    // on-device model could emit blocked content as an answer, bypassing the tool-only gate.
+                    if (SafetyBlocklist.isBlocked(decision.answer)) {
+                        record(AgentStep(decision, "Refused: answer touches a blocked topic."))
+                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                    }
                     record(AgentStep(decision, null))
                     return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
                 }

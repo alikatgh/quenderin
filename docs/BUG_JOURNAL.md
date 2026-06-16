@@ -63,9 +63,24 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   holder is replaced/nulled without `dispose()` → "No sequences left" after the first rotation. (KV-cache)
 - **JNI: clear pending exceptions before the next JNI call; null-check `Get`/`NewStringUTF`.** A callback
   that throws leaves a pending exception; the next JNI call is UB → ART aborts the process. (C3, H4, H5)
+- **A "running"/"busy" flag must reset in `finally`.** Resetting only on the happy path leaves it stuck
+  `true` after any throw → the feature is silently dead for the whole process. Wrap the body; reset in
+  `finally`. (H7)
+- **Poll-until-stable loops need a hard iteration cap + `finally` cleanup.** A "wait for idle" loop with
+  only a per-error retry cap spins forever on an animating UI and never reaches post-loop cleanup. Cap the
+  polls; clean up in `finally`. (H8)
+- **Origin checks: compare parsed origins, not `startsWith`.** `url.startsWith("http://localhost:3000")`
+  passes for `http://localhost:3000.attacker.com`; and `will-navigate` misses server 3xx redirects — also
+  handle `will-redirect`. (H11, H12)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-ship review wave 2 (safety/lock highs): agent `_isRunning` left stuck on a throw →
+  permanent dead-lock, fixed with try/finally + an extracted `_runAgentLoop` (H7); unbounded `waitForIdle`
+  poll → max-poll cap + cleanup-in-finally (H8); safety-blocklist bypass via `key`/enter + missing
+  resourceId & pre-loop goal checks + expanded list (H9/H10); Electron nav-guard `startsWith`→parsed-origin
+  + `will-redirect` (H11/H12); safety gate now also covers the agent's final answer, iOS+Android (H14).
+  Desktop 57 / iOS 134 / Android core green.
 - 2026-06-16 — Pre-submission deep review (18-agent workflow) of the high-risk code the prior audits
   skipped found 5 criticals + 13 highs. Fixed the ship-blockers: iOS model/context leak on re-load (C1)
   + arith-parser stack overflow (C4); Android native-handle use-after-free → lock (C2) + JNI

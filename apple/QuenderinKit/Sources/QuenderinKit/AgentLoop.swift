@@ -57,6 +57,12 @@ public struct AgentLoop: Sendable {
 
             switch decision {
             case .finalAnswer(let answer):
+                // The safety gate also applies to the final answer (H14): a jailbroken/fine-tuned
+                // on-device model could emit blocked content as an answer, bypassing the tool-only gate.
+                if SafetyBlocklist.isBlocked(answer) {
+                    record(AgentStep(decision: decision, observation: "Refused: answer touches a blocked topic."))
+                    return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
+                }
                 record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
 

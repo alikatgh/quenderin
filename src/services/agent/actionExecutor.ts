@@ -9,7 +9,13 @@ export class SafetyViolationError extends Error {
 }
 
 export class ActionExecutor {
-    private readonly BLOCKLIST = ['pay', 'delete', 'password', 'buy', 'confirm purchase'];
+    // Destructive / financial actions the agent must never trigger without explicit human intent.
+    // Multi-word phrases avoid the false positives bare words cause (e.g. "send" vs "send money") (H10).
+    private readonly BLOCKLIST = [
+        'pay', 'delete', 'password', 'buy', 'confirm purchase', 'confirm payment',
+        'transfer', 'send money', 'purchase', 'checkout', 'place order', 'withdraw',
+        'wipe', 'factory reset', 'uninstall', 'revoke', 'deactivate',
+    ];
 
     constructor(private deviceProvider: IDeviceProvider) { }
 
@@ -17,6 +23,7 @@ export class ActionExecutor {
         const textToCheck = [
             el?.text,
             el?.contentDesc,
+            el?.resourceId,   // H10: icon buttons with empty labels but a resource-id like "confirm_transfer_btn"
             inputText
         ].filter(Boolean).map(t => t!.toLowerCase());
 
@@ -28,6 +35,11 @@ export class ActionExecutor {
                 }
             }
         }
+    }
+
+    /** Refuse a blatantly destructive GOAL before the agent loop starts (H10). Throws SafetyViolationError. */
+    public assertGoalSafe(goal: string): void {
+        this.checkSafety(undefined, goal);
     }
 
     public async execute(actionObj: AgentAction, elements: UIElement[], emitter: AgentEventEmitter): Promise<boolean> {
@@ -114,6 +126,12 @@ export class ActionExecutor {
                 if (!allowed.includes(key)) {
                     emitter.emit('error', `Unsupported key '${actionObj.key}'. Supported: ${allowed.join(', ')}.`);
                     return false;
+                }
+                // Safety (H9): `enter` can confirm a dialog the agent was just blocked from clicking
+                // (e.g. a payment confirm). If any on-screen element matches the blocklist, refuse the
+                // keystroke so it can't bypass the click-level gate. (checkSafety throws → aborts.)
+                if (key === 'enter') {
+                    for (const el of elements) this.checkSafety(el);
                 }
                 emitter.emit('status', `Pressing ${key}`);
                 await this.deviceProvider.pressKey(key);

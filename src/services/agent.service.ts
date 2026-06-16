@@ -108,8 +108,25 @@ export class AgentService {
             logger.warn('[AgentService] Agent loop already running — ignoring duplicate start.');
             return;
         }
+        // Refuse a blatantly destructive goal before any work (H10) — per-action checks still apply.
+        try {
+            this.actionExecutor.assertGoalSafe(goal);
+        } catch (e: unknown) {
+            emitter.emit('error', e instanceof Error ? e.message : String(e));
+            emitter.emit('done');
+            return;
+        }
         this._isRunning = true;
+        // try/finally guarantees the running flag clears on EVERY exit — a throw used to leave it
+        // stuck `true`, permanently dead-locking all future runAgentLoop() calls (H7).
+        try {
+            await this._runAgentLoop(goal, emitter, attachments, maxSteps);
+        } finally {
+            this._isRunning = false;
+        }
+    }
 
+    private async _runAgentLoop(goal: string, emitter: AgentEventEmitter, attachments: { name: string, content: string }[], maxSteps: number): Promise<void> {
         logger.info(`[AgentService] Starting mission: ${goal}`);
         if (attachments.length > 0) {
             logger.info(`[AgentService] Context enriched with ${attachments.length} attachments.`);
@@ -342,7 +359,5 @@ export class AgentService {
                 timestamp: new Date().toISOString()
             });
         }
-
-        this._isRunning = false;
     }
 }
