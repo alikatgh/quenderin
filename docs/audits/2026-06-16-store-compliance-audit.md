@@ -20,6 +20,18 @@
 
 **Counts:** 4 blockers · 6 major · 8 minor (deduplicated across stores; see grouped tables below).
 
+> **Resolution status (updated 2026-06-16 — commits `8a53180`, `27a09a3`, `e423d3e` on `main`).**
+> **Code-side: done + CI-green.** iOS `PrivacyInfo.xcprivacy` added (blocker cleared); Android FGS
+> `<service foregroundServiceType="dataSync">` declared (blocker + the API-34 crash);
+> `ITSAppUsesNonExemptEncryption=false`; `models/` backup-exclusion; privacy policy drafted at
+> `docs/legal/privacy-policy.md`; **Report/Flag affordance + AI-content disclaimer shipped on iOS +
+> Android** (the major Generative-AI items); `BackgroundModelDownloader` marked non-shipping (#9);
+> and the Android app module is now gated by a CI `assembleDebug` job. All seven CI jobs pass.
+> **Remaining = account/hosting only (no code):** host the privacy policy + paste the URL, change the
+> support email from the default, file **17+ / Mature 17+**, opt into Apple's Standard EULA, complete
+> the Data-Safety form. The one remaining *blocker* is the privacy-policy URL — the text is written,
+> it just needs hosting.
+
 ---
 
 ## Gaps by Store and Severity
