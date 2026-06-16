@@ -15,6 +15,7 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - PrivacyInfo.xcprivacy
     dependencies:
       - package: QuenderinKit
         product: QuenderinKit
@@ -25,3 +26,4 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false

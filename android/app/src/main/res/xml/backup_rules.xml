@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API <=30 backup rules (android:fullBackupContent). Exclude downloaded GGUF models
+     (filesDir/models, 0.4-9 GB) — over the cloud-backup cap and re-downloadable. -->
+<full-backup-content>
+    <exclude domain="file" path="models/" />
+</full-backup-content>

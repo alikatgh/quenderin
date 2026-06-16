@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Apple Privacy Manifest (required for App Store submission since 2024-05-01).
+  Quenderin is fully on-device: no tracking, no data collection, no third-party SDKs.
+  The only required-reason APIs it touches are local disk-space + file-metadata checks used
+  to decide whether a model fits and is fully downloaded (DiskSpace.swift, OfflineReadiness.swift,
+  Preflight.swift) — declared below with Apple's approved reason codes.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <!-- volumeAvailableCapacityForImportantUsageKey / attributesOfFileSystem — shown to
+                 the user to decide if a model fits. Reason E174.1: display disk space to the user. -->
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>E174.1</string>
+            </array>
+        </dict>
+        <dict>
+            <!-- attributesOfItem(.size) on files the app itself wrote (downloaded models).
+                 Reason 3B52.1: access metadata of files inside the app's own container. -->
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>3B52.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

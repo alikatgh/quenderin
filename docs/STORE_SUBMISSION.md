@@ -13,16 +13,16 @@ stores — lean into it. The one real prerequisite to create first is the **lega
 
 ## 0. Do this first — legal pages (both stores require them)
 
-There are **no in-app or hosted privacy/terms pages yet.** Both stores reject without a
-**privacy policy URL**; the App Store also needs a terms/EULA (or uses Apple's standard EULA).
+A ready-to-publish privacy policy is now drafted at **`docs/legal/privacy-policy.md`** — fill in
+the date + support email, host it (GitHub Pages or any static URL), and paste that URL into App
+Store Connect, Play Console, **and** an in-app About/Privacy row. Both stores reject without a
+reachable privacy-policy URL.
 
-The good news: the honest policy is short, because the app collects nothing.
-- **What to state:** inference runs entirely on-device; no account; no analytics/telemetry; the
-  *only* network call is downloading the model you choose, fetched directly from Hugging Face
-  over your own connection (no user data is sent to us — we have no servers).
-- **Where to host:** the parked GitHub Pages site (STATUS.md item 3 — needs the `workflow`
-  token scope granted to enable the Pages deploy), or any static URL. Link it in both store
-  listings and from an in-app "About / Privacy" row.
+For the App Store's EULA requirement, opt into **Apple's Standard EULA** in App Store Connect →
+App Information (one click — no custom terms file needed). Play does not require a separate terms
+page. The policy is short because the app collects nothing: on-device inference, no account, no
+analytics/telemetry; the only network call is the user-initiated Hugging Face model download (no
+user data sent — there are no servers).
 
 ---
 
@@ -45,8 +45,12 @@ full id (e.g. `ai.quenderin.app`) and register it in your Developer account.
 - [ ] Screenshots: 6.7" + 6.5" (+ 5.5" if you support older) and iPad sizes if Universal.
 - [ ] **App Review notes** — reviewers need context for an on-device LLM: "Inference is fully
       on-device. On first launch the app downloads a model (~0.4–9 GB) from Hugging Face over
-      Wi-Fi — please be on Wi-Fi. No account or login. No data leaves the device." Call out the
-      autonomous device-control / agent feature and its safety gating so review isn't surprised.
+      Wi-Fi — please be on Wi-Fi. No account or login. No data leaves the device. The in-app
+      'agent' performs only local calculator / unit-conversion / date math — it does NOT control
+      the device, other apps, or the screen."
+      > ⚠️ **Do NOT** describe ADB / autonomous device-control in store copy or review notes — that
+      > is a separate **desktop** product. The store apps cannot do it, so claiming it is
+      > inaccurate-metadata (App Store 2.3.1 / Play Deceptive Behavior) grounds for rejection.
 - [ ] TestFlight build first (internal → external) before production submit.
 
 ## 2. Android — Play Store

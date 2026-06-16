@@ -48,9 +48,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **PEP 604 `X | None` is eager in a runtime assignment.** Fine in annotations under
   `from __future__ import annotations`, but `Alias = dict[..., X | None]` evaluates `|` now and dies
   on Python <3.10. Use `Optional[X]`.
+- **WorkManager foreground service needs an explicit manifest `<service>`.** WorkManager does NOT
+  merge `android:foregroundServiceType` into the merged manifest, so a runtime `setForeground(…DATA_SYNC)`
+  throws `MissingForegroundServiceTypeException` on API 34+. Declare `<service
+  android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType=…
+  tools:node="merge"/>` even though you never author the service class yourself.
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Store-compliance audit (workflow): native apps are clean (offline, no automation,
+  minimal perms) but had 4 submission blockers. Fixed code-side: iOS `PrivacyInfo.xcprivacy`
+  (E174.1 + 3B52.1), Android WorkManager `<service> foregroundServiceType=dataSync` (a latent
+  `MissingForegroundServiceTypeException` crash on API 34+ mid-download), encryption-exempt key,
+  `models/` backup-exclusion. Report: `docs/audits/2026-06-16-store-compliance-audit.md`.
 - 2026-06-16 — Adversarial review of the C3 fix found 2 CRITICAL self-introduced bypasses: the
   desktop "already downloaded" early-return skipped verification (`llm.service.ts:667`), and the iOS
   background downloader looked up sha256 by FILENAME not catalog id (`BackgroundModelDownloader.swift:41`)

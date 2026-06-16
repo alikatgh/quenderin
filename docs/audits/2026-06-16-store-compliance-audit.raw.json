@@ -1,0 +1,198 @@
+{
+  "audit": "store-compliance",
+  "date": "2026-06-16",
+  "app": "Quenderin native store apps (iOS SwiftUI + QuenderinKit; Android Kotlin/Compose ai.quenderin.app)",
+  "scope": "Whether the native iOS + Android store apps can pass App Store + Google Play review. Offline on-device LLM: onboarding -> model picker -> user-initiated GGUF download from HuggingFace -> llama.cpp on-device inference -> chat + pure-logic agent (calculator/unit-convert/date). No account, backend, analytics. ADB device control is a SEPARATE desktop Electron app, not in scope.",
+  "verdict": {
+    "summary": "Neither store can be submitted today. iOS and Android each have exactly 2 hard blockers. All blockers are submission-mechanics or one Android manifest line with cheap, well-scoped fixes; the underlying app design (offline, no data collection, minimal permissions, no device automation, targetSdk current) is genuinely review-friendly.",
+    "iosReady": false,
+    "androidReady": false,
+    "iosBlockers": [
+      "PrivacyInfo.xcprivacy absent -> App Store Connect upload validator auto-rejects the binary",
+      "No privacy-policy URL -> App Store Connect record cannot be submitted for review (hard field)"
+    ],
+    "androidBlockers": [
+      "No <service> declaring foregroundServiceType=dataSync -> MissingForegroundServiceTypeException crash on Android 14+ during the model download",
+      "No privacy-policy URL -> Play Console listing / Data Safety form cannot be completed"
+    ]
+  },
+  "counts": { "blocker": 4, "major": 6, "minor": 8, "compliant": 23 },
+  "findings": [
+    {
+      "id": "IOS-B1",
+      "store": "ios",
+      "status": "blocker",
+      "item": "PrivacyInfo.xcprivacy privacy manifest absent",
+      "policyRef": "App Store Review Guidelines 5.1.1; Apple Privacy Manifest policy (mandatory for all new submissions/updates since 2024-05-01)",
+      "evidence": "find over apple/ returns zero PrivacyInfo.xcprivacy (re-confirmed this session). Required-reason APIs used: disk-space volumeAvailableCapacityForImportantUsageKey + attributesOfFileSystem (DiskSpace.swift:24-28); file-size attributesOfItem .size (OfflineReadiness.swift:52-53, Preflight.swift:66); writes to .applicationSupportDirectory (OnboardingModel.swift:127). Upload validator rejects binaries missing the manifest or using required-reason APIs without a declared reason. llama.xcframework slices also lack a manifest.",
+      "remediation": "Add apple/QuenderinKit/Sources/QuenderinKit/PrivacyInfo.xcprivacy (or app target): NSPrivacyTracking=false, NSPrivacyTrackingDomains=[], NSPrivacyCollectedDataTypes=[], NSPrivacyAccessedAPITypes with disk-space reason E174.1 and file-attribute reason 3B52.1. Confirm llama.xcframework manifest coverage."
+    },
+    {
+      "id": "IOS-B2",
+      "store": "ios",
+      "status": "blocker",
+      "item": "No privacy-policy URL (also a Play blocker)",
+      "policyRef": "App Store Review Guidelines 5.1.1; App Store Connect requires a privacy-policy URL for every app",
+      "evidence": "docs/STORE_SUBMISSION.md:13-25 ('Both stores reject without a privacy policy URL'). No URL in any Swift source. RootView/ChatView/AgentView have no Settings/About/Privacy row.",
+      "remediation": "Host a short static policy (GitHub Pages per STORE_SUBMISSION.md:24). Fill the URL in App Store Connect (hard gating field). Add an in-app About/Privacy row."
+    },
+    {
+      "id": "IOS-M1",
+      "store": "ios",
+      "status": "major",
+      "item": "UIBackgroundModes not declared while BackgroundModelDownloader uses a background URLSession",
+      "policyRef": "App Store Review Guidelines 2.5.4; Apple QA1941",
+      "evidence": "BackgroundModelDownloader.swift:31 creates URLSessionConfiguration.background(withIdentifier:) with sessionSendsLaunchEvents=true. Neither Info.plist (1-30) nor project.yml (1-27) declare UIBackgroundModes. Shipping path QuenderinApp.swift:21 wires foreground URLSessionModelDownloader, so latent; but the class is in the bundled framework (visible to static analysis) and handleEventsForBackgroundURLSession is absent.",
+      "remediation": "If background download is intended: add UIBackgroundModes (fetch or BGProcessingTaskRequest) and implement application(_:handleEventsForBackgroundURLSession:completionHandler:)/.backgroundTask. If foreground is the shipping path: mark BackgroundModelDownloader as non-shipping."
+    },
+    {
+      "id": "IOS-M2",
+      "store": "ios",
+      "status": "major",
+      "item": "No EULA / Terms - Apple Standard EULA not opted in",
+      "policyRef": "App Store Review Guidelines 5.1.1; App Store Connect -> App Information -> EULA",
+      "evidence": "STORE_SUBMISSION.md:17 covers only the privacy gap. Submit for Review stays greyed out until a custom EULA URL or Apple's Standard EULA is selected.",
+      "remediation": "Select 'Use Apple's Standard End User License Agreement' in App Information. One click, no code."
+    },
+    {
+      "id": "IOS-m1",
+      "store": "ios",
+      "status": "minor",
+      "item": "ITSAppUsesNonExemptEncryption key missing from Info.plist",
+      "policyRef": "App Store Review Guidelines 2.5.4/2.5.8; US EAR 742.15(b) exemption",
+      "evidence": "Info.plist (1-30) has no key. App uses only OS TLS + CryptoKit SHA-256 (exempt). STORE_SUBMISSION.md:44 documents the fix; not done. Triggers the export questionnaire on every upload (Missing Compliance state).",
+      "remediation": "Add <key>ITSAppUsesNonExemptEncryption</key><false/> to Info.plist (or project.yml properties). One line."
+    },
+    {
+      "id": "IOS-m2",
+      "store": "ios",
+      "status": "minor",
+      "item": "Guideline 4.2 minimum functionality - app is a near-empty shell until a 0.4-9 GB download completes",
+      "policyRef": "App Store Review Guidelines 4.2 (Minimum Functionality)",
+      "evidence": "RootView.swift:20-35 gates all post-onboarding UI behind 'if case .ready = onboarding.phase'. 9 GB model can be 30-60 min on Wi-Fi; no demo/cached mode before ready.",
+      "remediation": "Risk low - onboarding (OnboardingModel.swift phases probing->recommended->downloading->loading->ready) is purposeful, not blank. Provide complete App Review notes (size range, be on Wi-Fi, onboarding IS first-use by design) per STORE_SUBMISSION.md:47-49. Optional read-only demo mode."
+    },
+    {
+      "id": "AND-B1",
+      "store": "android",
+      "status": "blocker",
+      "item": "Foreground service type not declared - no <service> element in AndroidManifest.xml",
+      "policyRef": "Google Play Foreground Service Policy; Android 14 (API 34) FGS-type enforcement; targetSdk 35 makes it mandatory",
+      "evidence": "AndroidManifest.xml has zero <service> elements (re-confirmed this session; manifest ends after the single <activity>). ModelDownloadWorker.kt:65-71 passes FOREGROUND_SERVICE_TYPE_DATA_SYNC at runtime; FOREGROUND_SERVICE_DATA_SYNC declared at manifest:9. WorkManager 2.9.1 does not auto-inject android:foregroundServiceType. On API 34+, setForeground() with an undeclared type throws MissingForegroundServiceTypeException - crashing during the model download (primary setup step).",
+      "remediation": "Add <service android:name=\"androidx.work.impl.foreground.SystemForegroundService\" android:foregroundServiceType=\"dataSync\" tools:node=\"merge\" /> and xmlns:tools to <manifest>. Declare DATA_SYNC in Play Console -> App Content -> foreground service types."
+    },
+    {
+      "id": "AND-B2",
+      "store": "android",
+      "status": "blocker",
+      "item": "No privacy-policy URL (also an iOS blocker)",
+      "policyRef": "Google Play User Data policy (privacy policy required in Play Console field AND in-app for all apps)",
+      "evidence": "STORE_SUBMISSION.md section 0: no hosted/in-app policy. No 'privacy' reference in OnboardingScreen.kt, ChatScreen.kt, AgentScreen.kt, MainTabs.kt. Play Console submission cannot complete without it.",
+      "remediation": "Host the same short static policy; link in the Play Console listing field and an in-app About/Privacy row."
+    },
+    {
+      "id": "AND-M1",
+      "store": "android",
+      "status": "major",
+      "item": "No user mechanism to flag/report AI-generated content",
+      "policyRef": "Google Play Generative AI Policy (effective Dec 2023) - applies to on-device and cloud alike",
+      "evidence": "ChatScreen.kt (114 lines) renders MessageBubble (58-59) with no long-press/overflow/flag. AgentScreen.kt (121 lines) renders AgentStepRow (69) + final-answer Surface (70-76) with no report action.",
+      "remediation": "Add a long-press/overflow 'Report this response' on AI bubbles (ChatScreen) and agent answers (AgentScreen). A mailto: or in-app form to a developer address satisfies the policy; no moderation pipeline required."
+    },
+    {
+      "id": "AND-M2",
+      "store": "android",
+      "status": "major",
+      "item": "SafetyBlocklist gates agent tool inputs but not chat output",
+      "policyRef": "Google Play Generative AI Policy ('implement safeguards to minimize the risk of outputting policy-violating content'); Inappropriate Content policy",
+      "evidence": "AgentLoop.kt:49-54 applies SafetyBlocklist.isBlocked() to decision.input/decision.name only. ChatScreen.kt:76-93 -> chat.send(text) returns model output unfiltered. SafetyBlocklist.kt:9-17 covers financial/destructive/credential only - no hate/violence/CSAM. Unconstrained GGUF can emit policy-violating chat text.",
+      "remediation": "Add an output-side keyword/regex check in ChatModel/inference result path (on-device, no cloud call). Expand SafetyBlocklist categories for chat and agent paths. 'Minimize risk' language -> keyword filter suffices."
+    },
+    {
+      "id": "AND-m1",
+      "store": "android",
+      "status": "minor",
+      "item": "android:allowBackup=true with no backup-exclusion rules",
+      "policyRef": "Google Play Data Safety form accuracy; Android backup best practice",
+      "evidence": "AndroidManifest.xml:14 allowBackup=true, no dataExtractionRules/fullBackupContent. ModelDownloadWorker.kt:51 stores 0.4-9 GB GGUF at filesDir/models. Drive backup silently skips (25 MB cap); ADB backup would attempt multi-GB archives.",
+      "remediation": "Add res/xml/backup_rules.xml with <exclude domain=\"file\" path=\"models/\" />; reference via android:dataExtractionRules (API 31+) and android:fullBackupContent (API <=30). Reflect conversation-history backup stance in the Data Safety form."
+    },
+    {
+      "id": "AND-m2",
+      "store": "android",
+      "status": "minor",
+      "item": "Data Safety form: HuggingFace network access must be disclosed accurately",
+      "policyRef": "Google Play Data Safety form policy",
+      "evidence": "WorkManagerModelDownloader.kt enqueues a GET to HuggingFace (URL from ModelCatalog). Carries no user data, but INTERNET permission visible in the manifest could prompt a reviewer mismatch with 'no data shared.'",
+      "remediation": "Answer 'No data collected'/'No data shared' (accurate - GET of a public file). Add a store-description note: 'The only network activity is downloading your chosen model from HuggingFace on first setup. No user data ever leaves your device.'"
+    },
+    {
+      "id": "BOTH-B1",
+      "store": "both",
+      "status": "blocker",
+      "item": "Privacy-policy URL missing - both stores require one before review",
+      "policyRef": "App Store Review Guidelines 5.1.1; Google Play User Data policy",
+      "evidence": "STORE_SUBMISSION.md:16-17. No privacy_policy_url in any store-metadata file; none in Info.plist/AndroidManifest.xml.",
+      "remediation": "Host one short static page; link in App Store Connect, Play Console, and an in-app About/Privacy row. (Tracked per-store as IOS-B2 / AND-B2; this is the cross-cutting framing - counted once.)"
+    },
+    {
+      "id": "BOTH-M1",
+      "store": "both",
+      "status": "major",
+      "item": "LLM/chat output entirely unmoderated - blocklist gates only agent tool calls",
+      "policyRef": "App Store Review Guidelines 1.2 (objectionable AI content); Google Play AI-Generated Content policy",
+      "evidence": "SafetyBlocklist.swift:1-3 docstring scopes it to agent tool actions. AgentLoop.swift:63-68 runs the check inside the .useTool branch only; .finalAnswer (59-61) and direct chat completions return verbatim, unfiltered.",
+      "remediation": "(1) One-time onboarding disclaimer; (2) a Report/Flag affordance (mailto: satisfies the checklist); (3) optional lightweight output-side keyword check showing a warning banner."
+    },
+    {
+      "id": "BOTH-M2",
+      "store": "both",
+      "status": "major",
+      "item": "Age rating must be filed 17+ (iOS) / Mature 17+ (Android)",
+      "policyRef": "App Store Review Guidelines 1.2 + Age Rating questionnaire (Unrestricted Web Access / Mature Themes -> 17+); Google Play IARC (unrestricted AI text -> Mature 17+)",
+      "evidence": "AgentLoop.swift:59-61 returns raw LLM output. An unrestricted GGUF (Mistral/LLaMA) can produce sexual/violent/extremist text on direct prompting. Both stores treat this as a Mature signal regardless of intent.",
+      "remediation": "File 17+ at submission (questionnaire only). Filing lower and having a reviewer discover the capability is grounds for removal. A lower rating becomes defensible only if an output filter is added later."
+    },
+    {
+      "id": "BOTH-M3",
+      "store": "both",
+      "status": "major",
+      "item": "README markets 'Offline, Autonomous Computer Usage' / ADB device control the store apps do not have",
+      "policyRef": "App Store Review Guidelines 2.3.1 (Accurate Metadata); Google Play Deceptive Behavior",
+      "evidence": "README.md:1-5 ('drive Android and Desktop interfaces autonomously'); README.md:35,40-43 (ADB view-hierarchy + adb shell input tap). STORE_SUBMISSION.md:49 instructs the submitter to 'Call out the autonomous device-control / agent feature' - a capability absent from store apps (AgentTool.swift, AgentToolsExtra.swift, AgentScreen.kt: only echo/calculator/units/date).",
+      "remediation": "(1) Write store-specific copy describing offline chat + pure-math agent. (2) Scope device-control mentions to the desktop Electron product. (3) Fix STORE_SUBMISSION.md:49 so App Review notes do not claim a non-existent feature. Major because the review-notes instruction is live, actionable danger."
+    }
+  ],
+  "compliant": [
+    { "store": "ios", "item": "2.5.2 - GGUF files are read-only tensor data (weights), not executable code; like a CoreML .mlpackage" },
+    { "store": "ios", "item": "1.2 - single-user offline generator; no sharing/feed/server -> multi-user moderation not in scope" },
+    { "store": "ios", "item": "5.1.1 - no unnecessary NSUsageDescription strings; no AVFoundation/CoreLocation/Contacts/Photos usage" },
+    { "store": "ios", "item": "5.1.2 - 'Data Not Collected' nutrition label accurate (no analytics/crash/ads SDKs; ConversationStore local-file only)" },
+    { "store": "ios", "item": "2.1 - deployment target iOS 16 meets the current new-submission floor (project.yml:8)" },
+    { "store": "ios", "item": "Export compliance - only standard OS crypto (TLS + SHA-256); exempt under EAR 742.15(b)" },
+    { "store": "ios", "item": "No system entitlements beyond app sandbox; agent tools are local math/date/unit only" },
+    { "store": "ios", "item": "Portrait-only orientation acceptable for a chat/agent app (Info.plist:27)" },
+    { "store": "android", "item": "Target API - targetSdk 35 / compileSdk 35 / minSdk 28 exceeds the current Play floor (build.gradle.kts:23,27,29)" },
+    { "store": "android", "item": "Permissions - exactly 5, each justified; no SYSTEM_ALERT_WINDOW / QUERY_ALL_PACKAGES / contacts / camera / mic / accessibility (manifest:5-11)" },
+    { "store": "android", "item": "Device & Network Abuse - no AccessibilityService/overlay/ADB/screen capture/inter-app control in the source" },
+    { "store": "android", "item": "FGS runtime type-selection correct on API 34+ (ModelDownloadWorker.kt:65-71); gap is the missing manifest <service>, not the runtime code" },
+    { "store": "android", "item": "Content rating - text-only, no sharing/violence/sexual/ads/IAP -> expected Everyone / PEGI 3 (with the unrestricted-LLM caveat under BOTH-M2)" },
+    { "store": "both", "item": "Data collection disclosures - 'Data Not Collected / No Data Shared' accurate (STORE_SUBMISSION.md:38-41,58-62)" },
+    { "store": "both", "item": "SafetyBlocklist on agent tool calls - gates both name and input before execution; Swift/Kotlin parity (AgentLoop.swift:63-68, SafetyBlocklist.swift:12-20, SafetyBlocklist.kt:9-17)" },
+    { "store": "both", "item": "Agent tools are pure on-device logic - no automation/accessibility/screen capture; AgentTool.swift docstring notes iOS sandboxing forbids driving another app" },
+    { "store": "android", "item": "No accessibility/overlay/package-query permissions - Device & Network Abuse clean (manifest:5-11)" },
+    { "store": "both", "item": "FOREGROUND_SERVICE_DATA_SYNC declared and matches actual use (large model download)" }
+  ],
+  "remediationOrder": [
+    "Phase 1 (unblock submission): 1) Host privacy policy + fill URL in App Store Connect & Play Console + in-app row; 2) Android <service> FGS-type fix; 3) Add iOS PrivacyInfo.xcprivacy with E174.1 + 3B52.1",
+    "Phase 2 (clear major risks): 4) Report/Flag affordance in chat+agent; 5) File 17+ / Mature 17+; 6) Onboarding disclaimer + output-side keyword filter; 7) Fix STORE_SUBMISSION.md:49 + accurate store copy/review notes; 8) Opt into Apple Standard EULA; 9) Decide on BackgroundModelDownloader",
+    "Phase 3 (cleanup/friction): 10) ITSAppUsesNonExemptEncryption=false; 11) Android backup_rules.xml excluding models/; 12) Data Safety + store-description network note; 13) iOS 4.2 App Review notes (size range, Wi-Fi, onboarding is first-use)"
+  ],
+  "topActions": [
+    "Host a privacy policy and fill the URL in App Store Connect + Play Console + an in-app About/Privacy row (unblocks BOTH stores)",
+    "Android: add <service android:name=\"androidx.work.impl.foreground.SystemForegroundService\" android:foregroundServiceType=\"dataSync\" tools:node=\"merge\"/> + xmlns:tools (unblocks Play; prevents API 34+ crash)",
+    "iOS: add PrivacyInfo.xcprivacy to the app/QuenderinKit target (NSPrivacyTracking=false, empty data arrays, required-reason E174.1 + 3B52.1) (unblocks the upload validator)",
+    "Add a Report/Flag affordance in chat + agent UIs and file age rating at 17+/Mature 17+ on both stores (Generative AI + age-rating policy)",
+    "Fix STORE_SUBMISSION.md:49 and write store copy/review notes that do NOT claim device control; scope ADB language to the desktop Electron product (accurate-metadata)"
+  ]
+}
