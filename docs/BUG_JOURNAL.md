@@ -56,6 +56,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Generative-AI content policy (App Store 1.2 / Play): integrated `SupportContact`
+  (disclaimer + report-mailto) on both platforms. iOS views + test were wired; Android twin
+  (`SupportContact.kt`) existed but was untested by CI and unwired in the UI. Added 6 checks to
+  `CoreVerify.kt` (the kotlinc CI gate) + wired `ChatScreen`/`AgentScreen` (long-press report,
+  disclaimer). Lesson: a "twin" file isn't done until its CI harness AND its UI consumer reference
+  it — grep the verify harness + the screens, not just the source file. (iOS 134 / core green)
 - 2026-06-16 — Store-compliance audit (workflow): native apps are clean (offline, no automation,
   minimal perms) but had 4 submission blockers. Fixed code-side: iOS `PrivacyInfo.xcprivacy`
   (E174.1 + 3B52.1), Android WorkManager `<service> foregroundServiceType=dataSync` (a latent
