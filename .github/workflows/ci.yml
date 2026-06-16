@@ -63,3 +63,53 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: false
+
+  # ── Mobile + cross-platform gates (audit C14/H11: these suites previously ran only
+  #    locally, so they could regress silently). All three commands are the same ones
+  #    documented in STATUS.md and verified locally. ──────────────────────────────────
+  mobile-ios:
+    name: iOS (QuenderinKit) tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Run QuenderinKit tests
+        working-directory: apple/QuenderinKit
+        run: swift test
+
+  mobile-android-core:
+    name: Android core (Kotlin) checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Kotlin compiler
+        run: |
+          curl -sSLO https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+          unzip -q kotlin-compiler-2.0.21.zip -d "$HOME/kotlin"
+          echo "$HOME/kotlin/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: Compile + run the pure-Kotlin core verification
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
+          java -jar /tmp/qcore.jar
+
+  catalog-parity:
+    name: Model catalog parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Manifest is regenerated from the desktop catalog (no drift)
+        run: |
+          python3 scripts/export_catalog.py
+          git diff --exit-code shared/model-catalog.json
+      - name: All three platform catalogs agree (ids, params, quant, sha256)
+        run: python3 scripts/check_catalog_parity.py
