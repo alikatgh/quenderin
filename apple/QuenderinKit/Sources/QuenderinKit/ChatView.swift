@@ -31,16 +31,25 @@ public struct ChatView: View {
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || model.isGenerating)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top, 8)
+            Text(SupportContact.aiDisclaimer)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
         }
     }
 }
 
 private struct ChatBubble: View {
     let message: ChatMessage
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let bubble = VStack(alignment: .leading, spacing: 2) {
             Text(message.role == .user ? "You" : "Quenderin")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -48,6 +57,21 @@ private struct ChatBubble: View {
                 .textSelection(.enabled)
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+
+        // Report affordance on AI responses only (Generative-AI content policy).
+        if message.role == .assistant, !message.text.isEmpty {
+            bubble.contextMenu {
+                Button {
+                    if let url = SupportContact.reportMailto(reportedText: message.text, context: "chat") {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("Report response", systemImage: "flag")
+                }
+            }
+        } else {
+            bubble
+        }
     }
 }
 #endif

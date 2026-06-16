@@ -5,6 +5,11 @@ import ai.quenderin.core.ChatModel
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Role
+import ai.quenderin.core.SupportContact
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,6 +55,7 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val chat = remember { ChatModel(engine).apply { onChange = { messages = it } } }
+    val context = LocalContext.current
 
     Scaffold(topBar = { TopAppBar(title = { Text(model.label) }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -56,8 +63,21 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(messages) { msg -> MessageBubble(msg) }
+                items(messages) { msg ->
+                    MessageBubble(msg) {
+                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
+                        runCatching { context.startActivity(intent) }
+                    }
+                }
             }
+
+            // AI-content disclaimer (Generative-AI content policy).
+            Text(
+                SupportContact.AI_DISCLAIMER,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
 
             Row(
                 Modifier.fillMaxWidth().padding(12.dp),
@@ -93,9 +113,11 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageBubble(msg: ChatMessage) {
+private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     val mine = msg.role == Role.USER
+    val reportable = !mine && msg.text.isNotBlank()
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
@@ -103,6 +125,8 @@ private fun MessageBubble(msg: ChatMessage) {
         Surface(
             color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(14.dp),
+            // Long-press an AI response to report it (Generative-AI flag mechanism).
+            modifier = if (reportable) Modifier.combinedClickable(onClick = {}, onLongClick = onReport) else Modifier,
         ) {
             Text(
                 text = msg.text,

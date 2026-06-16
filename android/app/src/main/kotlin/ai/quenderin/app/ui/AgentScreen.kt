@@ -5,6 +5,11 @@ import ai.quenderin.core.AgentSession
 import ai.quenderin.core.AgentStep
 import ai.quenderin.core.AgentTool
 import ai.quenderin.core.InferenceEngine
+import ai.quenderin.core.SupportContact
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,7 +48,7 @@ import kotlinx.coroutines.launch
  * Built on the mock engine; reachable from the app's navigation. Needs Android Studio to
  * build (the app/cliff layer) — the AgentSession brain underneath is kotlinc-verified.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     val scope = rememberCoroutineScope()
@@ -59,6 +65,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             }
         }
     }
+    val context = LocalContext.current
 
     Scaffold(topBar = { TopAppBar(title = { Text("Agent") }) }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -69,12 +76,32 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 items(steps) { step -> AgentStepRow(step) }
                 answer?.let { a ->
                     item {
-                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            // Long-press the answer to report it (Generative-AI flag mechanism).
+                            modifier = Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(a, "agent")))
+                                    runCatching { context.startActivity(intent) }
+                                },
+                            ),
+                        ) {
                             Text(a, modifier = Modifier.padding(12.dp))
                         }
                     }
                 }
             }
+
+            // AI-content disclaimer (Generative-AI content policy).
+            Text(
+                SupportContact.AI_DISCLAIMER,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
+
             Row(
                 Modifier.fillMaxWidth().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

@@ -24,6 +24,16 @@ page. The policy is short because the app collects nothing: on-device inference,
 analytics/telemetry; the only network call is the user-initiated Hugging Face model download (no
 user data sent — there are no servers).
 
+### Content safety (Generative-AI policy) — IMPLEMENTED in code ✅
+
+- **"Report response"** is wired onto every AI chat message + agent answer (iOS context-menu,
+  Android long-press) and opens a pre-filled `mailto:`. ⚠️ **Change the target email** before
+  publishing — it currently defaults to a personal address: `SupportContact.reportEmail`
+  (QuenderinKit) / `SupportContact.REPORT_EMAIL` (quenderin-core).
+- A **content disclaimer** ("AI-generated on-device · may be inaccurate or objectionable") shows
+  beneath both screens.
+- Still **file the 17+ / Mature 17+ age rating** at submission (questionnaire only, no code).
+
 ---
 
 ## 1. iOS — App Store
@@ -69,6 +79,26 @@ full id (e.g. `ai.quenderin.app`) and register it in your Developer account.
 - [ ] Content rating questionnaire; store listing (short/full description, feature graphic,
       phone screenshots).
 - [ ] Roll out via tracks: **internal testing → closed → production.**
+
+---
+
+## 2b. Generative-AI content policy (App Store 1.2 / Play AI-Generated Content)
+
+Both stores require apps that surface model-generated text to (a) **disclose** the content is
+AI-generated, (b) give users a **way to report/flag** objectionable output, and (c) apply some
+**content-safety filtering**. All three ship in-app — no backend needed:
+
+- [x] **Disclosure** — `SupportContact.aiDisclaimer` ("Responses are AI-generated on-device and
+      may be inaccurate or objectionable.") renders beneath both the chat and agent screens on iOS
+      (`ChatView`/`AgentView`) and Android (`ChatScreen`/`AgentScreen`).
+- [x] **Report mechanism** — a "Report response" action on every AI message (iOS context-menu;
+      Android long-press) opens a pre-filled `mailto:` to the support address via
+      `SupportContact.reportMailto(...)` / `reportMailtoUri(...)`. Model text is percent-encoded so
+      arbitrary output can't corrupt the URL/URI (covered by `SupportContactTests` + `CoreVerify`).
+- [x] **Safety filtering** — `SafetyBlocklist` gates unsafe agent actions on both platforms (the
+      agent loop halts with `BLOCKED` on flagged content).
+- [ ] **Before publishing:** change `SupportContact.reportEmail` / `REPORT_EMAIL` from the
+      placeholder to a dedicated, monitored support address (it ships in the app binary).
 
 ---
 

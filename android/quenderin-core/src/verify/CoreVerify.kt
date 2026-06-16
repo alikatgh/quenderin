@@ -435,6 +435,17 @@ fun main() {
     check("sha256 matches the NIST 'abc' test vector",
         ModelIntegrity.sha256Hex("abc".toByteArray()) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
 
+    // --- Support contact (Generative-AI "report this response" mailto; twin of Swift) ---
+    check("report mailto targets the support address", run {
+        val uri = SupportContact.reportMailtoUri("hello", "chat")
+        uri.startsWith("mailto:${SupportContact.REPORT_EMAIL}?") && uri.contains("subject=") && uri.contains("body=")
+    })
+    check("report mailto percent-encodes special chars so model output can't break the URI", run {
+        val uri = SupportContact.reportMailtoUri("danger & death = bad?", "agent")
+        !uri.contains("danger & death") && uri.contains("danger") && !uri.contains(" ")
+    })
+    check("AI disclaimer is non-empty", SupportContact.AI_DISCLAIMER.isNotEmpty())
+
     // --- Model download engine (the resumable, pure-Kotlin brain of the WorkManager downloader) ---
     // A 100-byte body starting with the GGUF magic + a catalog entry pinned to its hash, so the
     // engine's integrity gate (C3) passes on the happy paths below.
@@ -488,6 +499,32 @@ fun main() {
         }
         result.exceptionOrNull() is DownloadException && sink.files[partFile] == null && sink.files[finalFile] == null
     })
+
+    // ── Content-safety surface (Generative-AI store policy). Twin of iOS SupportContactTests. ──
+    check("report mailto targets the support address", run {
+        SupportContact.reportMailtoUri("hello", "chat").startsWith("mailto:${SupportContact.REPORT_EMAIL}?")
+    })
+    check("report mailto carries subject + body", run {
+        val uri = SupportContact.reportMailtoUri("hello", "chat")
+        uri.contains("subject=") && uri.contains("body=")
+    })
+    check("report mailto percent-encodes sub-delimiters so output can't break the URI", run {
+        val uri = SupportContact.reportMailtoUri("danger & death = bad?", "agent")
+        // raw '&', spaces, '=', '?' from the model text must be encoded, not left literal in the query.
+        !uri.contains("danger & death") && uri.contains("danger") && uri.contains("death") &&
+            // exactly one literal '&'/'=' /'?' — the ones we placed as query separators.
+            uri.count { it == '&' } == 1 && uri.substringAfter("?subject=").count { it == '?' } == 0
+    })
+    check("report mailto uses %20 for spaces (mailto clients reject '+')", run {
+        SupportContact.reportMailtoUri("a b c", "chat").contains("%20") &&
+            !SupportContact.reportMailtoUri("a b c", "chat").substringAfter("body=").contains("+")
+    })
+    check("report mailto caps the snippet at ~1000 chars", run {
+        val long = "x".repeat(5000)
+        // encoded body stays bounded: 1000 'x' + ellipsis + boilerplate, not 5000.
+        SupportContact.reportMailtoUri(long, "chat").count { it == 'x' } <= 1100
+    })
+    check("AI disclaimer is non-empty", SupportContact.AI_DISCLAIMER.isNotEmpty())
 
     println()
     if (failures == 0) {

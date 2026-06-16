@@ -6,6 +6,7 @@ import SwiftUI
 public struct AgentView: View {
     @ObservedObject private var session: AgentSession
     @State private var goal: String = ""
+    @Environment(\.openURL) private var openURL
 
     public init(session: AgentSession) {
         self.session = session
@@ -24,6 +25,15 @@ public struct AgentView: View {
                             .padding(12)
                             .background(Color.accentColor.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .contextMenu {
+                                Button {
+                                    if let url = SupportContact.reportMailto(reportedText: answer, context: "agent") {
+                                        openURL(url)
+                                    }
+                                } label: {
+                                    Label("Report answer", systemImage: "flag")
+                                }
+                            }
                     }
                 }
                 .padding()
@@ -42,7 +52,15 @@ public struct AgentView: View {
                 }
                 .disabled(session.isRunning || goal.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top, 8)
+            Text(SupportContact.aiDisclaimer)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
         }
     }
 }
