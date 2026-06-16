@@ -56,6 +56,10 @@ def parse_desktop_models(text: str) -> list[dict]:
                 raise SystemExit(f"FATAL: numeric field '{key}' missing from a catalog entry")
             return float(m.group(1))
 
+        def s_opt(key: str) -> str | None:
+            m = re.search(rf"{key}:\s*'([^']*)'", entry)
+            return m.group(1) if m else None
+
         models.append(
             {
                 "id": s("id"),
@@ -66,6 +70,9 @@ def parse_desktop_models(text: str) -> list[dict]:
                 "paramsBillions": n("paramsBillions"),
                 "quantization": s("quantization"),
                 "url": s("url"),
+                # Optional: a model may be added to constants.ts before refresh_model_hashes.py
+                # runs → emit null rather than crashing; integrity falls back to magic-only.
+                "sha256": s_opt("sha256"),
             }
         )
     if not models:

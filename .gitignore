@@ -4,6 +4,10 @@
 /models/
 window_dump.xml
 off-grid-mobile/
+# Abandoned React Native scaffold — its tracked files were removed upstream (68d8d49); the
+# leftover working-tree cruft (~513 MB: node_modules, Pods, vendor, build output) is regenerable,
+# not source, and must not be swept into commits/PRs.
+/mobile/
 
 # --- Dependencies ---
 # Ignore the directory where npm installs packages.

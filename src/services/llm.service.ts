@@ -46,6 +46,7 @@ import { buildToolPrompt } from "./tools/registry.js";
 import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from "./tools/toolLoop.js";
 import { executeToolCalls } from "./tools/handlers.js";
 import { getHardwareProfile } from "../utils/hardware.js";
+import { verifyModelIntegrity } from "./modelIntegrity.js";
 import logger from "../utils/logger.js";
 
 /** Narrow unknown catch to an Error-like shape with optional `code` */
@@ -662,15 +663,26 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         logger.log(`[LLM] Downloading ${entry.label} from HuggingFace...`);
 
-        // Check if already downloaded
+        // Check if already downloaded — but a pre-existing file is still UNTRUSTED (C3): one
+        // planted before first launch, corrupted in place, or substituted must not be handed to
+        // node-llama-cpp's GGUF parser unverified. Verify it; on failure delete it and fall
+        // through to a fresh download rather than re-accepting a bad file on every launch.
         if (fs.existsSync(dest)) {
             const stats = await fs.promises.stat(dest);
             if (stats.size > 100_000_000) { // 100MB sanity check
-                this.emit('model_download_progress', { progress: 100, modelId: entry.id });
-                this.isDownloading = false;
-                // Clean up stale metadata
-                if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
-                return;
+                try {
+                    await verifyModelIntegrity(dest, entry.sha256);
+                    this.emit('model_download_progress', { progress: 100, modelId: entry.id });
+                    this.isDownloading = false;
+                    // Clean up stale metadata
+                    if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+                    return;
+                } catch (verifyError) {
+                    logger.warn(`[LLM] Pre-existing ${entry.filename} failed integrity check (${String(verifyError)}); deleting and re-downloading.`);
+                    try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                    try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
+                    // fall through to a fresh download
+                }
             }
         }
 
@@ -805,6 +817,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
 
             await new Promise<void>(resolve => fileStream.end(resolve));
+
+            // ─── Integrity verification (C3) ────────────────────────────────
+            // The bytes are on disk but unverified: a TLS-MITM, poisoned mirror, or
+            // truncated transfer could have substituted/corrupted them before they reach
+            // node-llama-cpp's GGUF parser (which has memory-corruption→RCE CVEs). Check
+            // the GGUF magic header and, when the catalog pins one, the full-file SHA-256.
+            // On failure delete the file — a tampered/corrupt result must NOT be kept for
+            // resume (the resume path would append to a poisoned partial) — then surface it.
+            try {
+                await verifyModelIntegrity(dest, entry.sha256);
+            } catch (verifyError) {
+                try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
+                throw verifyError;
+            }
 
             // Clean up download metadata on success
             if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);

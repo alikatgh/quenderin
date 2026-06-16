@@ -38,7 +38,16 @@ public final class BackgroundModelDownloader: NSObject, ModelDownloader, @unchec
     // MARK: - ModelDownloader
 
     public func download(from url: URL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error> {
-        download(from: url, to: destination, modelId: destination.lastPathComponent)
+        // Resolve the catalog id from the URL so the integrity gate (C3) in didFinishDownloadingTo
+        // can look up the pinned SHA-256. lastPathComponent is the FILENAME, not the id, so
+        // ModelCatalog.entry(id:) would miss and silently downgrade to magic-only verification.
+        download(from: url, to: destination, modelId: Self.catalogModelId(for: url, destination: destination))
+    }
+
+    /// The catalog model id for a download URL (so the SHA-256 gate can find the pinned hash);
+    /// falls back to the filename for genuinely off-catalog downloads.
+    static func catalogModelId(for url: URL, destination: URL) -> String {
+        ModelCatalog.models.first { $0.downloadURL == url }?.id ?? destination.lastPathComponent
     }
 
     public func download(from url: URL, to destination: URL, modelId: String) -> AsyncThrowingStream<DownloadEvent, Error> {
@@ -129,11 +138,17 @@ extension BackgroundModelDownloader: URLSessionDownloadDelegate {
             try? FileManager.default.removeItem(at: destination)
             // Must move synchronously — URLSession deletes `location` on return.
             try FileManager.default.moveItem(at: location, to: destination)
+            // Integrity gate (C3): verify before signaling success — a MITM, poisoned mirror,
+            // or truncated transfer must not reach the GGUF parser. Expected SHA-256 comes
+            // from the catalog by model id (nil → GGUF magic-header check only).
+            try ModelIntegrity.verify(fileURL: destination, expectedSHA256: ModelCatalog.entry(id: resolved)?.sha256)
             continuation?.yield(.progress(1.0))
             continuation?.yield(.finished(destination))
             continuation?.finish()
             Task { await store.remove(modelId: resolved) }
         } catch {
+            // Includes integrity failure — don't keep a corrupt/unverified file for resume.
+            try? FileManager.default.removeItem(at: destination)
             continuation?.finish(throwing: DownloadError.writeFailed(reason: String(describing: error)))
             Task { await store.setState(modelId: resolved, .failed) }
         }

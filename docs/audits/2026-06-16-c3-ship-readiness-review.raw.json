@@ -1,0 +1,212 @@
+{
+  "review": "C3 ship-readiness — model-download integrity verification + mobile CI",
+  "branch": "feat/ship-readiness",
+  "date": "2026-06-16",
+  "verdict": "BLOCKING",
+  "blocking": true,
+  "blockingReason": "Two confirmed criticals defeat the C3 control on desktop (pre-existing-file bypass) and iOS (background-path SHA-256 downgrade). Must be fixed before merge.",
+  "counts": { "critical": 2, "high": 1, "medium": 3, "low": 2 },
+  "dimensionsReviewed": [
+    "ts-desktop",
+    "swift-ios",
+    "kotlin-android",
+    "catalog-data",
+    "ci-yaml",
+    "consistency"
+  ],
+  "hashSpotCheck": "Per-model SHA-256 values spot-checked against HuggingFace LFS pointers where the sandbox network allowed; catalog/manifest internally consistent across TS/Swift/Kotlin/JSON for all 11 current entries.",
+  "topActions": [
+    "C3-1 (CRITICAL) src/services/llm.service.ts:667-675 — verify pre-existing model file before trusting it; on failure delete + re-download.",
+    "C3-2 (CRITICAL) apple/QuenderinKit/Sources/QuenderinKit/BackgroundModelDownloader.swift:40-41 — resolve catalog id from download URL, not filename, so SHA-256 verification runs on the background path.",
+    "C3-3 (HIGH) android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelIntegrity.kt:26-27 — add streaming sha256Hex(File) and make it canonical; deprecate the in-memory ByteArray overload.",
+    "C3-4 (MEDIUM) android/.../JvmDownloadIO.kt:115-125 — delete partial dest on copyTo failure before rethrow; engine catch also truncates finalPath.",
+    "C3-5 (MEDIUM) scripts/export_catalog.py:69 — make sha256 optional (s_opt) to match Swift/Kotlin optional semantics.",
+    "C3-6 (MEDIUM) scripts/check_catalog_parity.py:57-63 — per-entry parse so the sha256 regex cannot cross entry boundaries.",
+    "C3-7 (LOW) apple/.../ModelDownloader.swift:51 — defer { try? handle.close() } to avoid fd leak on error/cancellation.",
+    "C3-8 (LOW) android/.../ModelDownloadEngine.kt:117-142 — store.remove(model.id) after integrity failure to clear stale FAILED state."
+  ],
+  "confirmedFindings": [
+    {
+      "id": "C3-1",
+      "title": "Pre-existing file bypasses integrity verification entirely (desktop early-return)",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/src/services/llm.service.ts",
+      "line": "667-675",
+      "severity": "critical",
+      "category": "Security",
+      "dimension": "Desktop C3 (TypeScript) + Cross-platform equivalence",
+      "confidence": "medium",
+      "detail": "The early-return block at lines 667-675 checks fs.existsSync(dest) and stats.size > 100_000_000 then returns immediately, emitting 100% progress. verifyModelIntegrity is never called on a pre-existing file. This defeats C3: (a) a file planted at the model path before first launch is handed to the GGUF parser without GGUF-magic or SHA-256 verification, and (b) a previously-clean file later corrupted on disk is silently accepted on every subsequent app launch. The threat model explicitly names silently-truncated transfers and llama.cpp RCE CVEs. verifyModelIntegrity IS called at line 818 but only inside the download path, which the early-return bypasses entirely. Reported independently by both the ts-desktop and consistency dimensions.",
+      "suggestedFix": "Inside the size check call await verifyModelIntegrity(dest, entry.sha256); on success emit 100% and return; on failure unlink dest + metaPath and fall through to re-download."
+    },
+    {
+      "id": "C3-2",
+      "title": "BackgroundModelDownloader protocol path silently skips SHA-256 — modelId is filename, not catalog id",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/BackgroundModelDownloader.swift",
+      "line": "40-41",
+      "severity": "critical",
+      "category": "Security",
+      "dimension": "iOS C3 (Swift)",
+      "confidence": "medium",
+      "detail": "The ModelDownloader protocol conformance calls download(from:to:modelId: destination.lastPathComponent). lastPathComponent is the filename (e.g. qwen3-14b.Q4_K_M.gguf), not the catalog id (qwen3-14b). In didFinishDownloadingTo (line 124), resolved equals the filename; at line 135 ModelCatalog.entry(id: resolved) searches by id and always returns nil, so expectedSHA256 is always nil and ModelIntegrity.verify falls back to GGUF magic-header only. The full SHA-256 gate is silently bypassed for every download on the protocol path (OnboardingModel wiring). The foreground URLSessionModelDownloader.download(from:to:) (ModelDownloader.swift:83) resolves correctly via ModelCatalog.models.first { $0.downloadURL == url }. All catalog entries pin a SHA-256, so the omission is consequential for every production background download.",
+      "suggestedFix": "let modelId = ModelCatalog.models.first { $0.downloadURL == url }?.id ?? destination.lastPathComponent; then call download(from:to:modelId:). Add a BackgroundModelDownloaderTests case driving a catalog-registered URL through the protocol path."
+    },
+    {
+      "id": "C3-3",
+      "title": "Android ModelIntegrity.sha256Hex takes ByteArray (in-memory) — OOM on multi-GB models; diverges from TS and iOS streaming twins",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelIntegrity.kt",
+      "line": "26-27",
+      "severity": "high",
+      "category": "Cross-platform divergence / correctness",
+      "dimension": "Cross-platform equivalence + regressions",
+      "confidence": "medium",
+      "detail": "Desktop sha256File (modelIntegrity.ts) and iOS sha256Hex(of:URL) both stream the file in chunks. The Android sha256Hex(bytes: ByteArray) signature requires the entire file in a ByteArray — a multi-GB GGUF causes OutOfMemoryError. Production sidesteps this via sink.sha256(tempPath) (ModelDownloadEngine.kt:123), so it does not fire today, but the public canonical utility is mistyped for its stated purpose and any future caller or test helper that hashes a real file path will OOM. NOTE: the kotlin-android dimension's own copy of this finding was rated low and marked isReal=false (speculative there); the consistency dimension confirmed it HIGH under the cross-platform-equivalence lens, which governs.",
+      "suggestedFix": "Add fun sha256Hex(file: java.io.File): String streaming in 1MB chunks; make it canonical (ModelDownloadEngine calls it); mark/deprecate the ByteArray overload internal for small-buffer tests."
+    },
+    {
+      "id": "C3-4",
+      "title": "finalize() cross-filesystem fallback leaves corrupt final file on partial copy failure",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/android/quenderin-core/src/main/kotlin/ai/quenderin/core/JvmDownloadIO.kt",
+      "line": "115-125",
+      "severity": "medium",
+      "category": "Security / Integrity",
+      "dimension": "Android C3 (Kotlin)",
+      "confidence": "medium",
+      "detail": "finalize() deletes dest (line 119), tries atomic renameTo (line 120), and on cross-filesystem failure falls back to copyTo(dest, overwrite=true) then temp.delete() (lines 122-123). If copyTo throws mid-write, the exception propagates to ModelDownloadEngine's outer catch (line 139) which sets FAILED and rethrows but does NOT delete finalPath. Result: finalPath partially written/corrupt, tempPath intact. An app-layer File(finalPath).exists() check finds a corrupt file and hands it to llama.cpp without re-running the C3 gate. The same-filesystem renameTo path is atomic and unaffected.",
+      "suggestedFix": "In finalize(): try { temp.copyTo(dest, overwrite=true); temp.delete() } catch (e) { runCatching { dest.delete() }; throw e }. Also have the engine catch block call sink.truncate(finalPath) alongside marking FAILED."
+    },
+    {
+      "id": "C3-5",
+      "title": "export_catalog.py treats sha256 as required but the type system declares it optional",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/scripts/export_catalog.py",
+      "line": "69",
+      "severity": "medium",
+      "category": "correctness",
+      "dimension": "Catalog data + sync tooling",
+      "confidence": "medium",
+      "detail": "s('sha256') at line 69 calls sys.exit() if sha256 is absent from a TS entry. But sha256 is Optional in Swift (String? at ModelCatalog.swift:46) and Kotlin (String? = null at ModelCatalog.kt:43), and magic-only verification is valid when sha256 is nil/null. The script's own docstring documents adding a model to constants.ts before refresh_model_hashes.py runs; in that documented intermediate state export_catalog.py crashes FATAL and blocks the manifest-regeneration pipeline instead of emitting null. Latent today (all 11 entries carry a hash).",
+      "suggestedFix": "Add an optional s_opt() helper returning None when the key is absent; use 'sha256': s_opt('sha256')."
+    },
+    {
+      "id": "C3-6",
+      "title": "check_catalog_parity.py parse_named regex crosses model entry boundaries when sha256 is absent",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/scripts/check_catalog_parity.py",
+      "line": "57-63",
+      "severity": "medium",
+      "category": "correctness",
+      "dimension": "Catalog data + sync tooling",
+      "confidence": "medium",
+      "detail": "parse_named uses one re.DOTALL span with .*? between fields, ending at the sha256 literal. A sha256-less entry makes the non-greedy .*? spill past the entry boundary and grab the next model's hash, pairing the wrong id with the wrong hash; an entry lacking sha256 at the end of the list is dropped (count mismatch -> wrong 'missing' diagnosis). Compounding: load_canonical() (line 98) uses m.get('sha256', '') so the manifest carries '' while parse_named borrows a neighbor's 64-char hash — a guaranteed false mismatch or false pass. Same trigger as C3-5 (new model before refresh). Latent today.",
+      "suggestedFix": "Split catalog text into per-entry blocks first (split on ModelEntry / object-literal boundaries), then extract each field per-block without DOTALL, using an optional capture group for sha256 (absence -> None, never borrowed)."
+    },
+    {
+      "id": "C3-7",
+      "title": "iOS URLSessionModelDownloader leaks FileHandle on download error",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/ModelDownloader.swift",
+      "line": "51",
+      "severity": "low",
+      "category": "Resource leak / correctness",
+      "dimension": "Cross-platform equivalence + regressions",
+      "confidence": "medium",
+      "detail": "FileHandle(forWritingTo: partial) opened at line 51 is closed explicitly only at line 74 on the happy path. If the for-try-await byte loop (line 58) throws (network error, Task cancellation -> catch at lines 95-98), the handle is never closed. No defer. Repeated failed downloads accumulate leaked fds until EMFILE.",
+      "suggestedFix": "let handle = try FileHandle(forWritingTo: partial); defer { try? handle.close() }"
+    },
+    {
+      "id": "C3-8",
+      "title": "Android DownloadStore retains FAILED state entry after integrity-check failure",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelDownloadEngine.kt",
+      "line": "117-142",
+      "severity": "low",
+      "category": "State regression / cross-platform divergence",
+      "dimension": "Cross-platform equivalence + regressions",
+      "confidence": "medium",
+      "detail": "On magic/SHA-256 failure (lines 117-129) the engine calls sink.truncate(tempPath) and throws. The catch (lines 139-141) sets setState(FAILED) but does NOT call store.remove(model.id) (remove only happens on the success path at line 137). The stale FAILED record (bytesDownloaded reflects the now-truncated partial) persists until the next download() overwrites it via upsert(RUNNING). Any UI observer or WorkManager retry logic reading store state in the failure->retry window sees inconsistent resume accounting. iOS and desktop have no persistent store — platform-specific asymmetry.",
+      "suggestedFix": "Add store.remove(model.id) before the rethrow (or document that the next download() atomically overwrites it)."
+    },
+    {
+      "id": "C3-9",
+      "title": "FakeFileSink.sha256 returns hash of empty bytes for missing path; JvmFileSink.sha256 would throw FileNotFoundException",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/android/quenderin-core/src/verify/CoreVerify.kt",
+      "line": "36",
+      "severity": "low",
+      "category": "Test Seam Divergence",
+      "dimension": "Android C3 (Kotlin)",
+      "confidence": "medium",
+      "detail": "FakeFileSink.sha256(path) returns ModelIntegrity.sha256Hex(files[path] ?: ByteArray(0)) — for a missing path it silently returns the SHA-256 of empty bytes (e3b0c44298fc1c149...) instead of throwing. Production JvmFileSink.sha256 opens a FileInputStream and throws FileNotFoundException for a missing file. No current test exercises this divergence (the engine only hashes after a successful write), so nothing is broken today, but it would mask a future regression where sha256 is invoked before the file is fully written. NOTE: this is a third confirmed low; the report groups the two highest-priority lows (C3-7, C3-8) in the LOW section and folds this alongside, but it is a distinct finding. Severity-count lows = 2 (C3-7, C3-8) per the headline; this seam item is the additional confirmed low recorded here for completeness.",
+      "suggestedFix": "override fun sha256(path: String): String = files[path]?.let { ModelIntegrity.sha256Hex(it) } ?: throw java.io.FileNotFoundException(\"FakeFileSink: no file at $path\")."
+    }
+  ],
+  "rejectedFindings": [
+    {
+      "title": "No test coverage for empty-file case in verifyModelIntegrity",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/tests/modelIntegrity.test.ts",
+      "line": "57-59",
+      "severity": "low",
+      "isReal": false,
+      "reasoning": "readHead returns buf.subarray(0, bytesRead) (bytesRead=0 for empty), hasGGUFMagic guards head.length >= 4 and correctly returns false, so verifyModelIntegrity already throws ModelIntegrityError on an empty file. The 'rejects a non-GGUF file' test (line 57-58) already exercises the same hasGGUFMagic=false branch. Missing coverage of an already-correct path is a test-quality observation, not a code defect."
+    },
+    {
+      "title": "ModelIntegrity.sha256Hex ByteArray API-safety-trap (kotlin-android dimension copy)",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelIntegrity.kt",
+      "line": "26-27",
+      "severity": "low",
+      "isReal": false,
+      "reasoning": "Within the kotlin-android dimension this was rejected as speculative — no current caller misuses it (engine uses sink.sha256). The SAME underlying issue was independently confirmed HIGH by the consistency dimension as a cross-platform divergence (recorded as C3-3). The HIGH framing governs; this row documents the dimension-local rejection only."
+    }
+  ],
+  "rawDimensionResults": [
+    {
+      "dim": "ts-desktop",
+      "title": "Desktop C3 (TypeScript)",
+      "confirmed": ["Pre-existing file bypasses integrity verification entirely"],
+      "rejected": ["No test coverage for empty-file case in verifyModelIntegrity"]
+    },
+    {
+      "dim": "swift-ios",
+      "title": "iOS C3 (Swift)",
+      "confirmed": ["BackgroundModelDownloader protocol path silently skips SHA-256 — modelId is filename, not catalog id"],
+      "rejected": []
+    },
+    {
+      "dim": "kotlin-android",
+      "title": "Android C3 (Kotlin)",
+      "confirmed": [
+        "finalize() cross-filesystem fallback leaves corrupt final file on partial copy failure",
+        "FakeFileSink.sha256 returns hash of empty bytes for missing path; JvmFileSink.sha256 would throw FileNotFoundException"
+      ],
+      "rejected": ["ModelIntegrity.sha256Hex takes a ByteArray — a future caller doing file re-verification would OOM (rejected as speculative in this dimension; re-confirmed HIGH by consistency dimension)"]
+    },
+    {
+      "dim": "catalog-data",
+      "title": "Catalog data + sync tooling",
+      "confirmed": [
+        "export_catalog.py treats sha256 as required but the type system declares it optional",
+        "check_catalog_parity.py parse_named regex crosses model entry boundaries when sha256 is absent"
+      ],
+      "rejected": []
+    },
+    {
+      "dim": "ci-yaml",
+      "title": "CI workflow",
+      "confirmed": [],
+      "rejected": []
+    },
+    {
+      "dim": "consistency",
+      "title": "Cross-platform equivalence + regressions",
+      "confirmed": [
+        "Desktop pre-existing model file bypasses all integrity checks (== C3-1)",
+        "Android ModelIntegrity.sha256Hex takes ByteArray — OOM; diverges from TS/iOS streaming twins (C3-3, HIGH)",
+        "iOS URLSessionModelDownloader leaks FileHandle on download error (C3-7)",
+        "Android DownloadStore retains FAILED state entry after integrity-check failure (C3-8)"
+      ],
+      "rejected": []
+    }
+  ],
+  "residualRisk": [
+    "Catalog tooling (C3-5, C3-6) detonates on the documented 'add model before refresh_model_hashes.py' step — highest residual risk after the criticals.",
+    "OOM trap (C3-3) is routed around in production but the public API still invites a multi-GB in-memory hash.",
+    "Cross-filesystem Android path (C3-4) only fires for SD-card users; won't show in CI.",
+    "fd-leak (C3-7) and stale-FAILED (C3-8) are reliability/UX papercuts; no integrity impact.",
+    "All findings confidence=medium: grounded in cited code, not dynamically reproduced (no end-to-end model download in this review)."
+  ]
+}
