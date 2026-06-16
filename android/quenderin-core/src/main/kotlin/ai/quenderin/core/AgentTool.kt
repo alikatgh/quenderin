@@ -69,26 +69,28 @@ object ArithmeticParser {
         private fun advance() { pos++ }
 
         // expression = term (('+' | '-') term)*
-        fun parseExpression(): Double? {
-            var value = parseTerm() ?: return null
+        fun parseExpression(depth: Int = 0): Double? {
+            if (depth > MAX_DEPTH) return null  // cap recursion — parity with the Swift twin (C4)
+            var value = parseTerm(depth + 1) ?: return null
             while (true) {
                 val op = peek()
                 if (op != "+" && op != "-") break
                 advance()
-                val rhs = parseTerm() ?: return null
+                val rhs = parseTerm(depth + 1) ?: return null
                 value = if (op == "+") value + rhs else value - rhs
             }
             return value
         }
 
         // term = factor (('*' | '/') factor)*
-        private fun parseTerm(): Double? {
-            var value = parseFactor() ?: return null
+        private fun parseTerm(depth: Int): Double? {
+            if (depth > MAX_DEPTH) return null
+            var value = parseFactor(depth + 1) ?: return null
             while (true) {
                 val op = peek()
                 if (op != "*" && op != "/") break
                 advance()
-                val rhs = parseFactor() ?: return null
+                val rhs = parseFactor(depth + 1) ?: return null
                 if (op == "/") {
                     if (rhs == 0.0) return null
                     value /= rhs
@@ -100,12 +102,13 @@ object ArithmeticParser {
         }
 
         // factor = number | '(' expression ')' | '-' factor
-        private fun parseFactor(): Double? {
+        private fun parseFactor(depth: Int): Double? {
+            if (depth > MAX_DEPTH) return null
             val token = peek() ?: return null
-            if (token == "-") { advance(); val f = parseFactor() ?: return null; return -f }
+            if (token == "-") { advance(); val f = parseFactor(depth + 1) ?: return null; return -f }
             if (token == "(") {
                 advance()
-                val value = parseExpression() ?: return null
+                val value = parseExpression(depth + 1) ?: return null
                 if (peek() != ")") return null
                 advance()
                 return value
@@ -114,5 +117,7 @@ object ArithmeticParser {
             advance()
             return number
         }
+
+        private companion object { const val MAX_DEPTH = 100 }
     }
 }

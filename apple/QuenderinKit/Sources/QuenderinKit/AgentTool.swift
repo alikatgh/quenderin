@@ -76,35 +76,43 @@ enum ArithmeticParser {
         private func peek() -> String? { pos < tokens.count ? tokens[pos] : nil }
         private mutating func advance() -> String? { defer { pos += 1 }; return peek() }
 
+        // A recursion-depth cap: a Swift stack overflow is NOT a catchable Error, so deeply
+        // nested parens (e.g. adversarial model output) would hard-crash the process instead of
+        // failing the calc gracefully. Bail to nil past this depth (C4; mirrors the Kotlin twin).
+        private static let maxDepth = 100
+
         // expression = term (('+' | '-') term)*
-        mutating func parseExpression() -> Double? {
-            guard var value = parseTerm() else { return nil }
+        mutating func parseExpression(_ depth: Int = 0) -> Double? {
+            if depth > Self.maxDepth { return nil }
+            guard var value = parseTerm(depth + 1) else { return nil }
             while let op = peek(), op == "+" || op == "-" {
                 _ = advance()
-                guard let rhs = parseTerm() else { return nil }
+                guard let rhs = parseTerm(depth + 1) else { return nil }
                 value = (op == "+") ? value + rhs : value - rhs
             }
             return value
         }
 
         // term = factor (('*' | '/') factor)*
-        private mutating func parseTerm() -> Double? {
-            guard var value = parseFactor() else { return nil }
+        private mutating func parseTerm(_ depth: Int) -> Double? {
+            if depth > Self.maxDepth { return nil }
+            guard var value = parseFactor(depth + 1) else { return nil }
             while let op = peek(), op == "*" || op == "/" {
                 _ = advance()
-                guard let rhs = parseFactor() else { return nil }
+                guard let rhs = parseFactor(depth + 1) else { return nil }
                 if op == "/" { guard rhs != 0 else { return nil }; value /= rhs } else { value *= rhs }
             }
             return value
         }
 
         // factor = number | '(' expression ')' | '-' factor
-        private mutating func parseFactor() -> Double? {
+        private mutating func parseFactor(_ depth: Int) -> Double? {
+            if depth > Self.maxDepth { return nil }
             guard let token = peek() else { return nil }
-            if token == "-" { _ = advance(); guard let f = parseFactor() else { return nil }; return -f }
+            if token == "-" { _ = advance(); guard let f = parseFactor(depth + 1) else { return nil }; return -f }
             if token == "(" {
                 _ = advance()
-                guard let value = parseExpression(), peek() == ")" else { return nil }
+                guard let value = parseExpression(depth + 1), peek() == ")" else { return nil }
                 _ = advance()
                 return value
             }

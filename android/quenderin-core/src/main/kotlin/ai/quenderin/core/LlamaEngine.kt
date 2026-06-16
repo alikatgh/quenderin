@@ -26,18 +26,26 @@ class LlamaEngine(
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
 
+    /**
+     * Serializes ALL native access. load/unload/complete must not interleave — a `unload()` on
+     * one thread (e.g. UI cancel) while `complete()` runs on another would free the native handle
+     * mid-call → use-after-free / SIGSEGV (C2). Held across the long native call on purpose: you
+     * cannot safely free during a native generation anyway.
+     */
+    private val lock = Any()
+
     /** True only when the native library actually loaded — i.e. a real device build. */
     fun available(): Boolean = NATIVE_AVAILABLE
 
-    override fun load(model: ModelEntry, filePath: String) {
+    override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
-        if (handle != 0L) unload()
+        if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
         handle = nativeLoad(filePath, contextTokens, threads)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }
 
-    override fun unload() {
+    override fun unload() = synchronized(lock) {
         if (handle != 0L) {
             nativeFree(handle)
             handle = 0L
@@ -45,18 +53,18 @@ class LlamaEngine(
         loadedModelId = null
     }
 
-    override fun complete(prompt: String): String {
+    override fun complete(prompt: String): String = synchronized(lock) {
         ensureReady()
-        return nativeComplete(handle, prompt, maxTokens)
+        nativeComplete(handle, prompt, maxTokens)
     }
 
     /**
      * Streaming completion: the native side invokes [onToken] per decoded piece and
      * also returns the full text. Lets the Compose layer render tokens as they arrive.
      */
-    fun complete(prompt: String, onToken: (String) -> Unit): String {
+    fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
-        return nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
+        nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
 
     private fun ensureReady() {

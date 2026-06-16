@@ -37,6 +37,7 @@ public actor LlamaEngine: InferenceEngine {
     private var model: OpaquePointer?     // llama_model *
     private var context: OpaquePointer?   // llama_context *
     private var vocab: OpaquePointer?     // const llama_vocab *
+    private var backendInitialized = false  // llama_backend_init is "once per process" — gate it (L1)
     #endif
 
     public init() {}
@@ -49,7 +50,15 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         #if canImport(llama)
-        llama_backend_init()
+        // Free any model/context from a previous load() before allocating new ones — a model
+        // switch would otherwise leak the old multi-GB context until process exit (C1).
+        if let c = self.context { llama_free(c) }
+        if let m = self.model { llama_model_free(m) }
+        self.context = nil
+        self.model = nil
+        self.vocab = nil
+
+        if !backendInitialized { llama_backend_init(); backendInitialized = true }  // once per process (L1)
 
         var modelParams = llama_model_default_params()
         // Offload every layer to the GPU (Metal on Apple) — this is the perf win.
@@ -91,7 +100,7 @@ public actor LlamaEngine: InferenceEngine {
         self.context = nil
         self.model = nil
         self.vocab = nil
-        llama_backend_free()
+        if backendInitialized { llama_backend_free(); backendInitialized = false }  // symmetric with the gated init (L1)
         #endif
         self.loaded = nil
     }

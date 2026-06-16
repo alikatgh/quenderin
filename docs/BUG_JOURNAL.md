@@ -53,9 +53,25 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   throws `MissingForegroundServiceTypeException` on API 34+. Declare `<service
   android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType=…
   tools:node="merge"/>` even though you never author the service class yourself.
+- **Native handle lifecycle: free-before-reassign + serialize access.** Re-`load()` that overwrites a
+  `llama_model*`/`llama_context*` without freeing leaks multi-GB until process exit (C1); a free on one
+  thread during a native call on another is a use-after-free — serialize load/unload/complete (C2).
+- **Recursive-descent parser on untrusted input needs a depth cap.** A Swift stack overflow is NOT a
+  catchable `Error` (deep nesting hard-crashes); the JVM raises a catchable `StackOverflowError` → silent
+  crash-vs-graceful parity break. Thread a depth limit through both. (C4)
+- **Pooled resources must be disposed on rotation.** A KV-cache sequence slot (fixed-N pool) leaks if the
+  holder is replaced/nulled without `dispose()` → "No sequences left" after the first rotation. (KV-cache)
+- **JNI: clear pending exceptions before the next JNI call; null-check `Get`/`NewStringUTF`.** A callback
+  that throws leaves a pending exception; the next JNI call is UB → ART aborts the process. (C3, H4, H5)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-submission deep review (18-agent workflow) of the high-risk code the prior audits
+  skipped found 5 criticals + 13 highs. Fixed the ship-blockers: iOS model/context leak on re-load (C1)
+  + arith-parser stack overflow (C4); Android native-handle use-after-free → lock (C2) + JNI
+  pending-exception process-abort (C3, +H4/H5/H6/L3); desktop KV-cache sequence-slot leak →
+  autoDisposeSequence+dispose (chat died permanently after one rotation). iOS 134 / desktop 57 / core
+  green. Report: `docs/audits/2026-06-16-preship-deep-review.md`. (JNI .cpp compile-checks only in Android Studio.)
 - 2026-06-16 — Generative-AI content policy (App Store 1.2 / Play): integrated `SupportContact`
   (disclaimer + report-mailto) on both platforms. iOS views + test were wired; Android twin
   (`SupportContact.kt`) existed but was untested by CI and unwired in the UI. Added 6 checks to

@@ -171,7 +171,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** Create a LlamaChatSession using the dynamically imported class */
     private createChatSession(opts: { contextSequence: any; systemPrompt?: string }): any {
         if (!_llamaBindings) throw new Error('LLM bindings not available');
-        return new _llamaBindings.LlamaChatSession(opts);
+        // autoDisposeSequence: disposing the session frees its KV-cache sequence slot. Without it,
+        // each session rotation leaks a slot and context.getSequence() eventually throws
+        // "No sequences left" — chat then fails permanently until a full model reload.
+        return new _llamaBindings.LlamaChatSession({ ...opts, autoDisposeSequence: true });
+    }
+
+    /** Dispose the general chat session (freeing its KV-cache sequence slot) and clear it. */
+    private disposeChatSession(): void {
+        try { this.generalChatSession?.dispose(); } catch { /* already disposed */ }
+        this.generalChatSession = null;
     }
 
     constructor() {
@@ -227,7 +236,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (preset.id === this.activePreset.id) return;
         this.activePreset = preset;
         // Reset chat session to pick up the new system prompt
-        this.generalChatSession = null;
+        this.disposeChatSession();
         logger.log(`[LLM] Preset switched to: ${preset.label}`);
     }
 
@@ -299,7 +308,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         const wasLoaded = this.modelInstance !== null;
         this.modelInstance = null;
         this.contextInstance = null;
-        this.generalChatSession = null;
+        this.disposeChatSession();
         this.chatTurnCount = 0;
         this.initPromise = null;
         this.loadedModelId = null;
@@ -586,7 +595,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 this.initPromise = null;
                 this.modelInstance = null;
                 this.contextInstance = null;
-                this.generalChatSession = null;
+                this.disposeChatSession();
                 this.loadedModelId = null;
             }
             throw error;
@@ -892,6 +901,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 if (this.chatTurnCount >= this.MAX_CHAT_TURNS) {
                     logger.log(`[LLM] Chat session reached ${this.MAX_CHAT_TURNS} turns — resetting to free context window`);
                 }
+                // Free the outgoing session's KV-cache sequence slot before allocating a new one,
+                // or the slot leaks and context.getSequence() below eventually throws "No sequences left".
+                this.disposeChatSession();
                 const toolPrompt = buildToolPrompt();
                 const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
                 this.generalChatSession = this.createChatSession({
@@ -945,7 +957,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             } catch (err: unknown) {
                 if (errCode(err) === 'LLM_TIMEOUT') {
                     logger.warn('[LLM] Chat session timed out; resetting session and retrying once');
-                    this.generalChatSession = null;
+                    this.disposeChatSession();
                     ensureSession();
                     this.tokenBuffer = '';
                     firstTokenTime = null;

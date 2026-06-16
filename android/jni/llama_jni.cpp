@@ -12,6 +12,7 @@
 #include <android/log.h>
 #include <string>
 #include <vector>
+#include <mutex>
 #include "llama.h"
 
 #define LOG_TAG "QuenderinLlama"
@@ -26,7 +27,7 @@ struct LlamaHandle {
     llama_sampler* sampler = nullptr;
 };
 
-bool g_backend_ready = false;
+std::once_flag g_backend_once;  // llama_backend_init exactly once per process, race-free (H6)
 
 // Tokenize `text` with the model's vocab.
 std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& text, bool add_bos) {
@@ -55,6 +56,7 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     if (env && sink) {
         jclass cls = env->GetObjectClass(sink);
         on_token = env->GetMethodID(cls, "onToken", "(Ljava/lang/String;)V");
+        env->DeleteLocalRef(cls);   // L3: don't pin the class local-ref for the whole stream
     }
 
     std::string out;
@@ -69,9 +71,14 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         std::string p = piece(vocab, next);
         out += p;
         if (on_token) {
-            jstring js = env->NewStringUTF(p.c_str());
-            env->CallVoidMethod(sink, on_token, js);
-            env->DeleteLocalRef(js);
+            jstring js = env->NewStringUTF(p.c_str());   // null on OOM (H5)
+            if (js) {
+                env->CallVoidMethod(sink, on_token, js);
+                env->DeleteLocalRef(js);
+            }
+            // If onToken threw, a JNI exception is now pending; the next JNI call (NewStringUTF)
+            // is UB and ART aborts the whole process. Stop the loop so it propagates cleanly (C3).
+            if (env->ExceptionCheck()) break;
         }
         batch = llama_batch_get_one(&next, 1);
     }
@@ -87,9 +94,10 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads) {
-    if (!g_backend_ready) { llama_backend_init(); g_backend_ready = true; }
+    std::call_once(g_backend_once, [] { llama_backend_init(); });   // race-free, once per process (H6)
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
+    if (!path) return 0;   // OOM (H4)
 
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0; // CPU on mobile by default; Vulkan/GPU offload is a later tuning step
@@ -114,7 +122,9 @@ JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject /*thiz*/,
                                                   jlong handle, jstring prompt, jint max_tokens) {
     LlamaHandle* h = as_handle(handle);
+    if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
+    if (!p) return env->NewStringUTF("");   // OOM (H4)
     std::string out = generate(h, std::string(p), max_tokens, nullptr, nullptr);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());
@@ -125,7 +135,9 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
                                                            jlong handle, jstring prompt, jint max_tokens,
                                                            jobject sink) {
     LlamaHandle* h = as_handle(handle);
+    if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
+    if (!p) return env->NewStringUTF("");   // OOM (H4)
     std::string out = generate(h, std::string(p), max_tokens, env, sink);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());
