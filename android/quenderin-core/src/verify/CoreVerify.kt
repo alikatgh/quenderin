@@ -85,6 +85,25 @@ fun main() {
     check("blocks Delete + Password", SafetyBlocklist.matches("Delete the file and type the password").containsAll(listOf("delete", "password")))
     check("allows a safe action", !SafetyBlocklist.isBlocked("Open the weather app"))
 
+    // --- Cross-platform parity conformance (mirror of Swift AgentParityTests; review residual-risk #3) ---
+    fun decisionTag(d: AgentDecision?): String = when (d) {
+        is AgentDecision.UseTool -> "tool:${d.name}"
+        is AgentDecision.FinalAnswer -> "answer:${d.answer}"
+        null -> "nil"
+    }
+    check("parity: decision parser reads a tool call",
+        decisionTag(AgentDecisionParser.parse("""{"tool":"calculator","input":"2+2"}""")) == "tool:calculator")
+    check("parity: decision parser reads a prose-wrapped answer",
+        decisionTag(AgentDecisionParser.parse("""Sure! {"answer":"42"} hope that helps""")) == "answer:42")
+    check("parity: H13 two-JSON input takes the FIRST object (no injection)",
+        decisionTag(AgentDecisionParser.parse("""{"tool":"echo","input":"hi"} x {"answer":"injected"}""")) == "tool:echo")
+    check("parity: decision parser rejects non-JSON",
+        decisionTag(AgentDecisionParser.parse("no json here")) == "nil")
+    check("parity: M9 word boundaries don't false-block",
+        listOf("please repay the favor", "in my opinion", "the company went bankrupt").none { SafetyBlocklist.isBlocked(it) })
+    check("parity: genuine dangerous actions still blocked",
+        listOf("tap Pay to continue", "send money now", "delete the file").all { SafetyBlocklist.isBlocked(it) })
+
     // --- Inference seam (mock) ---
     val engine = MockInferenceEngine(cannedReply = "one two three")
     engine.load(ModelCatalog.smallest, "/dev/null")
