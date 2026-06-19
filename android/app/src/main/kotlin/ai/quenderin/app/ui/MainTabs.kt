@@ -43,13 +43,20 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry) {
                     icon = { Text("🤖") },
                     label = { Text("Agent") },
                 )
+                NavigationBarItem(
+                    selected = tab == 2,
+                    onClick = { tab = 2 },
+                    icon = { Text("ℹ️") },
+                    label = { Text("About") },
+                )
             }
         },
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
                 0 -> ChatScreen(engine = engine, model = model)
-                else -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
+                1 -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
+                else -> AboutScreen()
             }
         }
     }

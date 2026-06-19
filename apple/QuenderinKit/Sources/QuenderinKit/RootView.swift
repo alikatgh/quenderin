@@ -18,15 +18,15 @@ public struct RootView: View {
     public var body: some View {
         Group {
             if case .ready = onboarding.phase {
-                if let agent {
-                    TabView {
-                        ChatView(model: chat)
-                            .tabItem { Label("Chat", systemImage: "bubble.left") }
+                TabView {
+                    ChatView(model: chat)
+                        .tabItem { Label("Chat", systemImage: "bubble.left") }
+                    if let agent {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                     }
-                } else {
-                    ChatView(model: chat)
+                    AboutView()
+                        .tabItem { Label("About", systemImage: "info.circle") }
                 }
             } else {
                 OnboardingView(model: onboarding)

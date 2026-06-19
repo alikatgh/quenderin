@@ -8,6 +8,9 @@ public enum SupportContact {
     /// ⚠️ CHANGE to a dedicated support address before publishing — this ships in the app binary.
     public static let reportEmail = "wallmarketshq@gmail.com"
 
+    /// ⚠️ Replace with the real hosted URL before publishing (see docs/legal/privacy-policy.md).
+    public static let privacyPolicyURL = "https://example.com/quenderin-privacy"
+
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."
