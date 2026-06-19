@@ -188,6 +188,7 @@ public actor LlamaEngine: InferenceEngine {
     /// Two-pass wrapper over `llama_tokenize`.
     private func tokenize(text: String, addBOS: Bool) -> [llama_token] {
         guard let vocab else { return [] }
+        guard text.utf8.count <= Int(Int32.max) else { return [] }  // a >2 GB prompt would overflow Int32 -> C UB (M2)
         let byteLen = Int32(text.utf8.count)
         let capacity = byteLen + (addBOS ? 1 : 0) + 1
         var out = [llama_token](repeating: 0, count: Int(capacity))

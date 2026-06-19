@@ -14,31 +14,49 @@ class AgentSession(
 ) {
     private val loop = AgentLoop(engine, tools, maxSteps)
 
+    @Volatile
     var steps: List<AgentStep> = emptyList()
         private set
+
+    @Volatile
     var isRunning: Boolean = false
         private set
+
+    @Volatile
     var answer: String? = null
         private set
+
+    @Volatile
     var haltReason: AgentRun.HaltReason? = null
         private set
 
-    /** Run the agent to completion. Blocking; call off-main. Streams steps live. */
+    /**
+     * Run the agent to completion. Blocking; call off-main. Streams steps live.
+     * Fields are @Volatile so the Compose reader on the main thread sees the background writes
+     * (happens-before), and run() is guarded against re-entry — concurrent runs would race
+     * destructively. isRunning is cleared in finally so a throw can't leave it stuck (M10).
+     */
     fun run(goal: String) {
-        steps = emptyList()
-        answer = null
-        haltReason = null
-        isRunning = true
-        onChange()
+        synchronized(this) {
+            if (isRunning) return
+            isRunning = true
+        }
+        try {
+            steps = emptyList()
+            answer = null
+            haltReason = null
+            onChange()
 
-        val result = loop.run(goal) { step ->
-            steps = steps + step
+            val result = loop.run(goal) { step ->
+                steps = steps + step
+                onChange()
+            }
+
+            answer = result.answer
+            haltReason = result.haltReason
+        } finally {
+            isRunning = false
             onChange()
         }
-
-        answer = result.answer
-        haltReason = result.haltReason
-        isRunning = false
-        onChange()
     }
 }

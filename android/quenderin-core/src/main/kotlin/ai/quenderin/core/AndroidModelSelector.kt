@@ -130,7 +130,7 @@ object AndroidModelSelector {
                 estimatedRuntimeGb = runtime,
                 appMemoryBudgetGb = device.appMemoryBudgetGb,
                 usableMemoryGb = usableGb,
-                memoryHeadroomGb = usableGb - runtime,
+                memoryHeadroomGb = maxOf(0.0, usableGb - runtime),  // clamp: negative headroom is meaningless (forced path)
                 thermalBattery = ThermalBattery.estimate(sm, device.soc, device.batteryMAh, tokS),
                 confidence = SelectionConfidence.FORCED,
                 rationale = "${device.deviceName} is very memory-constrained (~%.1f GB usable). ".format(usableGb) +

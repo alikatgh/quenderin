@@ -51,9 +51,9 @@ router.get('/diagnostics', (req, res) => {
         : req.query.diagnosticsId;
     const diagnosticsIdFromHeader = req.header('x-diagnostics-id');
     const diagnosticsId = typeof diagnosticsIdFromQuery === 'string' && diagnosticsIdFromQuery.trim().length > 0
-        ? diagnosticsIdFromQuery.trim()
+        ? diagnosticsIdFromQuery.trim().slice(0, 128)
         : typeof diagnosticsIdFromHeader === 'string' && diagnosticsIdFromHeader.trim().length > 0
-            ? diagnosticsIdFromHeader.trim()
+            ? diagnosticsIdFromHeader.trim().slice(0, 128)
             : randomUUID();
     const historyLimitRaw = Array.isArray(req.query.historyLimit)
         ? req.query.historyLimit[0]

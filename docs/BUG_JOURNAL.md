@@ -75,6 +75,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-ship review wave 5 (remaining safe mediums/lows): M8 zip-slip in the voice-pack
+  download → per-entry path validation (no more write-outside-voiceDir); M10 Android AgentSession data
+  race → @Volatile + re-entry guard + finally; M11 cosine NaN-sort guard; M2 iOS tokenize Int32-overflow
+  guard; M3 scripted-engine modelNotLoaded guard; M4 adb `type()` normalizes non-space whitespace; M-surrogate
+  title truncation; L5 reject unknown download id (400); L6 diagnosticsId length cap; clamp negative
+  headroom (both selectors). Desktop 57 / iOS 134 / core green. Only device-dependent (H2/H3) + a few marginal items remain.
 - 2026-06-16 — Pre-ship review wave 4 (more non-blocking): iOS `tokenToPiece` reallocates on a
   >64-byte token instead of dropping it — was garbled output on long Unicode/byte-fallback/special
   tokens (H1); desktop `/api/agent/resume` type+length-guards `manualAction` (a prompt-injection

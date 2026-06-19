@@ -123,6 +123,11 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
         app.post('/api/models/download', (req, res) => {
             const modelId = req.body?.modelId as string | undefined;
+            // Reject an unknown id instead of silently downloading the fallback model (L5; mirrors DELETE).
+            if (modelId !== undefined && !MODEL_CATALOG.some(m => m.id === modelId)) {
+                res.status(400).json({ error: `Unknown modelId: ${modelId}` });
+                return;
+            }
             const hw = getHardwareProfile();
             const fallbackModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
             const requestedModelId = modelId ?? fallbackModelId;
@@ -229,10 +234,25 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                     const { Readable } = await import('stream');
                     const nodeStream = Readable.fromWeb(response.body as any);
 
+                    // Zip-slip guard (M8): unzipper.Extract does NOT strip `../` from entry names, so a
+                    // poisoned / MITM'd archive could write outside voiceDir. Parse entries and drop any
+                    // whose resolved path escapes voiceDir (sync mkdir keeps the entry stream flowing).
+                    const pathMod = await import('path');
+                    const fsMod = await import('fs');
+                    const safeRoot = pathMod.resolve(voiceDir);
                     nodeStream
-                        .pipe(unzipper.Extract({ path: voiceDir }))
+                        .pipe(unzipper.Parse())
+                        .on('entry', (entry: any) => {
+                            const dest = pathMod.resolve(safeRoot, entry.path);
+                            if (entry.type === 'Directory' || (dest !== safeRoot && !dest.startsWith(safeRoot + pathMod.sep))) {
+                                entry.autodrain();
+                                return;
+                            }
+                            fsMod.mkdirSync(pathMod.dirname(dest), { recursive: true });
+                            entry.pipe(fsMod.createWriteStream(dest));
+                        })
                         .on('close', () => logger.info('Voice model extracted.'))
-                        .on('error', (e) => logger.error('Failed to extract voice model:', e));
+                        .on('error', (e: Error) => logger.error('Failed to extract voice model:', e));
 
                 } catch (e) {
                     logger.error("Voice download pipeline failed:", e);

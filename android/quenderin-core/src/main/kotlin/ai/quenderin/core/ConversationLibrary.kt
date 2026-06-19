@@ -53,7 +53,11 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
             if (trimmed.isEmpty()) return "New conversation"
             val collapsed = trimmed.split(Regex("\\s+")).joinToString(" ")
             val limit = 40
-            return if (collapsed.length <= limit) collapsed else collapsed.substring(0, limit) + "…"
+            if (collapsed.length <= limit) return collapsed
+            // Don't split a surrogate pair (emoji / CJK-ext): a lone high surrogate is invalid UTF-16
+            // and can break Gson/Jackson. Drop the trailing half if the cut lands mid-pair.
+            val end = if (collapsed[limit - 1].isHighSurrogate()) limit - 1 else limit
+            return collapsed.substring(0, end) + "…"
         }
     }
 }

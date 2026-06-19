@@ -17,6 +17,7 @@ public actor ScriptedInferenceEngine: InferenceEngine {
     public func unload() async { loaded = nil }
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        guard loaded != nil else { throw InferenceError.modelNotLoaded }  // match real engine: no reply after unload (M3/I1)
         let next = replies.isEmpty ? "{\"answer\":\"(no more scripted replies)\"}" : replies.removeFirst()
         return AsyncThrowingStream { continuation in
             continuation.yield(next)

@@ -214,6 +214,9 @@ export class MemoryService {
     }
 
     private cosineSimilarity(a: number[], b: number[]): number {
+        // Differing lengths (e.g. an embedding-model dimension change) would read undefined → NaN,
+        // which destabilizes the top-k sort comparator. Treat mismatched vectors as zero (M11).
+        if (a.length !== b.length) return 0;
         let dotProduct = 0;
         let normA = 0;
         let normB = 0;

@@ -158,7 +158,12 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         // commands — `"a; reboot"` would run `reboot` (H1) — and (b) lose everything after the
         // first space (M9). The text is LLM-produced while steered by untrusted on-screen content.
         // Encode spaces as `%s` (input's space token) and backslash-escape shell metacharacters.
-        const escaped = text.replace(/[\s\\"'`$()<>|;&*?~[\]{}#!%]/g, (c) => (c === ' ' ? '%s' : '\\' + c));
+        // Normalize non-space whitespace to spaces FIRST: mapping tab/newline/CR to `\<char>` made the
+        // device shell treat `\<newline>` as line-continuation (dropping it) and `\<CR>` truncate the
+        // token on some shells — corrupting typed text from pasted/multiline content. `input text`
+        // can't type real newlines anyway (M4).
+        const normalized = text.replace(/[\t\n\r\f\v]+/g, ' ');
+        const escaped = normalized.replace(/[\s\\"'`$()<>|;&*?~[\]{}#!%]/g, (c) => (c === ' ' ? '%s' : '\\' + c));
         await this.spawnAdb(['shell', 'input', 'text', escaped]);
         await this.waitForUiIdle();
     }

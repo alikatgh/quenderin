@@ -182,7 +182,7 @@ public enum IPhoneModelSelector {
                 estimatedRuntimeGB: runtime,
                 appMemoryBudgetGB: device.appMemoryBudgetGB,
                 usableMemoryGB: usableGB,
-                memoryHeadroomGB: usableGB - runtime,
+                memoryHeadroomGB: max(0.0, usableGB - runtime),  // clamp: negative headroom is meaningless (forced path)
                 thermalBattery: ThermalBattery.estimate(for: sm, chip: device.chip, batteryMAh: device.batteryMAh, peakTokensPerSecond: tokS),
                 confidence: .forced,
                 rationale: "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). "
