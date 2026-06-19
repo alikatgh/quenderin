@@ -72,23 +72,28 @@ export class UiParserService {
 
             const parsedBounds = extractBounds(bounds);
 
-            const element: UIElement = {
-                id: idCounter++,
-                text,
-                contentDesc,
-                className,
-                resourceId,
-                clickable,
-                scrollable,
-                focusable,
-                enabled,
-                visible,
-                bounds,
-                center: parsedBounds.center,
-                rect: parsedBounds.rect
-            };
+            // Skip structural/container nodes with no text, no content-desc, AND no bounds — the
+            // bounds-less hierarchy root was being registered as a ghost element at id 0 / center
+            // (0,0), letting a confused or adversarial model tap the screen's top-left corner (M6).
+            if (text || contentDesc || bounds) {
+                const element: UIElement = {
+                    id: idCounter++,
+                    text,
+                    contentDesc,
+                    className,
+                    resourceId,
+                    clickable,
+                    scrollable,
+                    focusable,
+                    enabled,
+                    visible,
+                    bounds,
+                    center: parsedBounds.center,
+                    rect: parsedBounds.rect
+                };
 
-            stateMap.set(element.id, element);
+                stateMap.set(element.id, element);
+            }
         };
 
         if (rawTree && rawTree.hierarchy) {

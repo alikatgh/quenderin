@@ -75,6 +75,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-ship review wave 4 (more non-blocking): iOS `tokenToPiece` reallocates on a
+  >64-byte token instead of dropping it — was garbled output on long Unicode/byte-fallback/special
+  tokens (H1); desktop `/api/agent/resume` type+length-guards `manualAction` (a prompt-injection
+  vector that coerced non-strings into the LLM context) (M7); `uiParser` no longer registers the
+  bounds-less hierarchy root as a ghost id-0 clickable at (0,0) (M6). Desktop 57 / iOS 134 green.
 - 2026-06-16 — Pre-ship review wave 3 (non-blocking hardening): desktop `df` shell-injection →
   `execFileSync` (no shell); the agent decision parser now walks balanced braces so a 2nd JSON object
   in one response can't inject a premature answer (Swift returned planError, Kotlin returned it — a

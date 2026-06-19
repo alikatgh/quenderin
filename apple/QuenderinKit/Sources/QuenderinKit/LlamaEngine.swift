@@ -202,7 +202,14 @@ public actor LlamaEngine: InferenceEngine {
     private func tokenToPiece(_ token: llama_token) -> String {
         guard let vocab else { return "" }
         var buffer = [CChar](repeating: 0, count: 64)
-        let n = llama_token_to_piece(vocab, token, &buffer, Int32(buffer.count), 0, true)
+        var n = llama_token_to_piece(vocab, token, &buffer, Int32(buffer.count), 0, true)
+        if n < 0 {
+            // A negative return is -(required bytes): the 64-byte buffer was too small (long Unicode,
+            // byte-fallback, or special tokens). Re-run with the exact size so the piece isn't silently
+            // dropped — `guard n > 0` previously treated this like empty, corrupting output (H1).
+            buffer = [CChar](repeating: 0, count: Int(-n))
+            n = llama_token_to_piece(vocab, token, &buffer, Int32(buffer.count), 0, true)
+        }
         guard n > 0 else { return "" }
         let bytes = buffer.prefix(Int(n)).map { UInt8(bitPattern: $0) }
         return String(decoding: bytes, as: UTF8.self)

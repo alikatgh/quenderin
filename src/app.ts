@@ -97,7 +97,10 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         });
 
         app.post('/api/agent/resume', (req, res) => {
-            const { manualAction } = req.body;
+            // Type + length guard (M7/L7): manualAction is interpolated into the LLM action-history
+            // context, so a non-string (object/array) is a prompt-injection vector; cap the length too.
+            const raw = (req.body as { manualAction?: unknown } | undefined)?.manualAction;
+            const manualAction = typeof raw === 'string' ? raw.slice(0, 4000).trim() : undefined;
             agentService.resume(manualAction);
             res.json({ message: "Agent loop resumed.", manualAction });
         });
