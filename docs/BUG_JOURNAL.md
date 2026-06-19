@@ -75,6 +75,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-ship review wave 3 (non-blocking hardening): desktop `df` shell-injection →
+  `execFileSync` (no shell); the agent decision parser now walks balanced braces so a 2nd JSON object
+  in one response can't inject a premature answer (Swift returned planError, Kotlin returned it — a
+  parity break), iOS+Android (H13); SafetyBlocklist single-word entries use `\b` boundaries so "pay"
+  no longer blocks "repay"/"opinion", iOS+Android (M9); Android ConversationStore escapes `\r`
+  (data-loss round-trip). Desktop 57 / iOS 134 / Android core green.
 - 2026-06-16 — Pre-ship review wave 2 (safety/lock highs): agent `_isRunning` left stuck on a throw →
   permanent dead-lock, fixed with try/finally + an extracted `_runAgentLoop` (H7); unbounded `waitForIdle`
   poll → max-poll cap + cleanup-in-finally (H8); safety-blocklist bypass via `key`/enter + missing

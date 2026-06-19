@@ -637,10 +637,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     return { ok: false, message: `Only ${(freeBytes / (1024 ** 3)).toFixed(1)}GB free on ${drive}: drive, need ~${(requiredBytes / (1024 ** 3)).toFixed(1)}GB. Free up disk space.` };
                 }
             } else {
-                // Unix: use df on the directory
-                const { execSync } = await import('child_process');
-                const out = execSync(`df -k "${dirPath}" | tail -1`, { encoding: 'utf8', timeout: 5000 });
-                const parts = out.trim().split(/\s+/);
+                // Unix: df on the directory. execFileSync (no shell) so a home dir containing " or $(
+                // can't break quoting / inject a subshell — the path derives from os.homedir().
+                const { execFileSync } = await import('child_process');
+                const out = execFileSync('df', ['-k', dirPath], { encoding: 'utf8', timeout: 5000 });
+                const lines = out.trim().split('\n');
+                const parts = (lines[lines.length - 1] || '').trim().split(/\s+/);
                 // df -k output: Filesystem 1K-blocks Used Available Use% Mounted
                 const availKb = parseInt(parts[3], 10);
                 if (!isNaN(availKb)) {

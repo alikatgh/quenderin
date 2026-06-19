@@ -22,11 +22,34 @@ object AgentDecisionParser {
         return null
     }
 
-    /** The outermost `{ ... }` from surrounding text. */
+    /** The FIRST complete, balanced `{ ... }` object — walking braces (skipping quoted strings)
+     *  instead of first-`{`..last-`}` so a second JSON object in the same response can't be merged
+     *  in and return a premature/injected answer (H13; parity with Swift). */
     private fun firstJsonObject(text: String): String? {
         val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        return if (start in 0 until end) text.substring(start, end + 1) else null
+        if (start < 0) return null
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = start
+        while (i < text.length) {
+            val c = text[i]
+            if (inString) {
+                when {
+                    escaped -> escaped = false
+                    c == '\\' -> escaped = true
+                    c == '"' -> inString = false
+                }
+            } else {
+                when (c) {
+                    '"' -> inString = true
+                    '{' -> depth++
+                    '}' -> { depth--; if (depth == 0) return text.substring(start, i + 1) }
+                }
+            }
+            i++
+        }
+        return null
     }
 
     private val ESCAPES = Regex("""\\(.)""")

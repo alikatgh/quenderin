@@ -26,7 +26,7 @@ class ConversationStore {
     }
 
     private fun escape(s: String): String =
-        s.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+        s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
 
     private fun unescape(s: String): String = buildString {
         var i = 0
@@ -35,6 +35,7 @@ class ConversationStore {
             if (c == '\\' && i + 1 < s.length) {
                 when (s[i + 1]) {
                     'n' -> { append('\n'); i += 2 }
+                    'r' -> { append('\r'); i += 2 }
                     't' -> { append('\t'); i += 2 }
                     '\\' -> { append('\\'); i += 2 }
                     else -> { append(c); i++ }

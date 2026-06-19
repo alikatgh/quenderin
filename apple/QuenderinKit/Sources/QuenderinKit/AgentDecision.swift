@@ -26,13 +26,32 @@ public enum AgentDecisionParser {
         return nil
     }
 
-    /// Extract the outermost `{ ... }` from surrounding text.
+    /// Extract the FIRST complete, balanced `{ ... }` object from surrounding text. Walking braces
+    /// (and skipping quoted strings) instead of first-`{`..last-`}` stops a second JSON object in the
+    /// same response from being merged in — which made Kotlin return a premature/injected answer
+    /// while Swift returned planError (H13, a parity break). Now both take the first object.
     private static func firstJSONObject(in text: String) -> String? {
-        guard let start = text.firstIndex(of: "{"),
-              let end = text.lastIndex(of: "}"),
-              start < end else {
-            return nil
+        guard let start = text.firstIndex(of: "{") else { return nil }
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = start
+        while i < text.endIndex {
+            let c = text[i]
+            if inString {
+                if escaped { escaped = false }
+                else if c == "\\" { escaped = true }
+                else if c == "\"" { inString = false }
+            } else if c == "\"" {
+                inString = true
+            } else if c == "{" {
+                depth += 1
+            } else if c == "}" {
+                depth -= 1
+                if depth == 0 { return String(text[start...i]) }
+            }
+            i = text.index(after: i)
         }
-        return String(text[start...end])
+        return nil
     }
 }

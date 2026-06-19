@@ -21,6 +21,11 @@ object SafetyBlocklist {
     /** The specific blocked keywords found — so the UI can explain *why*. */
     fun matches(text: String): List<String> {
         val haystack = text.lowercase()
-        return blockedKeywords.filter { haystack.contains(it) }
+        return blockedKeywords.filter { keyword ->
+            // Multi-word phrases ("send money") are specific enough as substrings; single words need
+            // word boundaries so "pay" doesn't fire on "repay", "pin" on "opinion", etc. (M9)
+            if (keyword.contains(" ")) haystack.contains(keyword)
+            else Regex("\\b${Regex.escape(keyword)}\\b").containsMatchIn(haystack)
+        }
     }
 }

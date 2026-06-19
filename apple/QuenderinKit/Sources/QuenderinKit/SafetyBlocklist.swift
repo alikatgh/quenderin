@@ -28,6 +28,12 @@ public enum SafetyBlocklist {
     /// *why* an action was withheld, not just that it was.
     public static func matches(in text: String) -> [String] {
         let haystack = text.lowercased()
-        return blockedKeywords.filter { haystack.contains($0) }
+        return blockedKeywords.filter { keyword in
+            // Multi-word phrases ("send money") are specific enough as substrings; single words need
+            // word boundaries so "pay" doesn't fire on "repay", "pin" on "opinion", etc. (M9)
+            if keyword.contains(" ") { return haystack.contains(keyword) }
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+            return haystack.range(of: pattern, options: .regularExpression) != nil
+        }
     }
 }
