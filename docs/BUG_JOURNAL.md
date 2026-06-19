@@ -75,6 +75,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-16 — Pre-ship review wave 6 (last safe items): M5 unique device-side dump paths + rm (was a
+  fixed `/sdcard/window_dump.xml` → stale/mid-write reads under concurrent ADB); M12 hoist `embedText`
+  out of the write-lock (was serializing every save behind a 100–500 ms inference); L4 device-side
+  delete loop so all 50 deletes fire on Android ≤9. Desktop 57 green. **Only H2/H3 — which need an
+  on-device run to fix safely — remain in code; the rest of the deep review is fully remediated.**
 - 2026-06-16 — Pre-ship review wave 5 (remaining safe mediums/lows): M8 zip-slip in the voice-pack
   download → per-entry path validation (no more write-outside-voiceDir); M10 Android AgentSession data
   race → @Volatile + re-entry guard + finally; M11 cosine NaN-sort guard; M2 iOS tokenize Int32-overflow

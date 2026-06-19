@@ -182,6 +182,18 @@ export class MemoryService {
 
     public async saveCorrection(uiContextString: string, correctionString: string): Promise<void> {
         await this.initPromise;
+
+        // Embed OUTSIDE the write lock (M12): embedText is a read-only 100–500 ms inference; holding the
+        // lock across it serialized it against every concurrent read/save. Only the file read-modify-write
+        // below needs the lock.
+        let embeddingVector: number[];
+        try {
+            embeddingVector = await this.embedText(uiContextString + " " + correctionString);
+        } catch (error: unknown) {
+            logger.error('[Memory RAG] Failed to embed correction:', error instanceof Error ? error.message : String(error));
+            return;
+        }
+
         await this.withWriteLock(async () => {
             try {
                 const data = await fs.readFile(this.correctionsPath, 'utf-8');
@@ -193,8 +205,6 @@ export class MemoryService {
                 if (records.length >= this.MAX_CORRECTIONS) {
                     records = records.slice(-(this.MAX_CORRECTIONS - 1));
                 }
-
-                const embeddingVector = await this.embedText(uiContextString + " " + correctionString);
 
                 records.push({
                     id: Date.now().toString(),

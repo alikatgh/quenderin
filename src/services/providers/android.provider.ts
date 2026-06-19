@@ -103,9 +103,11 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         const xmlFileName = `window_dump_poll_${uuid}.xml`;
         const xmlTempFile = path.join(os.tmpdir(), xmlFileName);
 
+        const devXml = `/sdcard/${xmlFileName}`;   // unique device-side path too (M5)
         try {
-            await this.spawnAdb(['shell', 'uiautomator', 'dump', '/sdcard/window_dump.xml']);
-            await this.spawnAdb(['pull', '/sdcard/window_dump.xml', xmlTempFile]);
+            await this.spawnAdb(['shell', 'uiautomator', 'dump', devXml]);
+            await this.spawnAdb(['pull', devXml, xmlTempFile]);
+            await this.spawnAdb(['shell', 'rm', '-f', devXml]).catch(() => { });
             const xml = await fs.readFile(xmlTempFile, 'utf-8');
             await fs.unlink(xmlTempFile).catch(() => { });
             return xml;
@@ -149,9 +151,10 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
 
     public async type(text: string): Promise<void> {
         // Clear field first
-        await this.spawnAdb(['shell', 'input', 'keyevent', '123']);
-        const deletes = Array(50).fill('67');
-        await this.spawnAdb(['shell', 'input', 'keyevent', ...deletes]);
+        await this.spawnAdb(['shell', 'input', 'keyevent', '123']); // MOVE_END
+        // A single `input keyevent 67 67 …` fires only ONE delete on Android <=9 (multi-keycode is
+        // ignored), leaving stale text in the field. Run a device-side loop so all 50 fire everywhere (L4).
+        await this.spawnAdb(['shell', 'i=0; while [ $i -lt 50 ]; do input keyevent 67; i=$((i+1)); done']);
 
         // `adb shell input text` runs under the DEVICE shell, which re-tokenizes the joined args
         // and re-splits `input text` on spaces. So a raw string can (a) inject device-shell
@@ -207,12 +210,18 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         const xmlTempFile = path.join(os.tmpdir(), xmlFileName);
         const pngTempFile = path.join(os.tmpdir(), pngFileName);
 
-        // Parallelize ADB calls for speed
+        // Unique DEVICE-side paths too (M5): the local temp files were UUID'd but the on-device dump
+        // paths were fixed, so overlapping ADB ops (concurrent idle-polls / multi-device) could pull a
+        // stale or mid-write dump. Suffix the device path and rm it after pull.
+        const devXml = `/sdcard/${xmlFileName}`;
+        const devPng = `/sdcard/${pngFileName}`;
         await Promise.all([
-            this.spawnAdb(['shell', 'uiautomator', 'dump', '/sdcard/window_dump.xml'])
-                .then(() => this.spawnAdb(['pull', '/sdcard/window_dump.xml', xmlTempFile])),
-            this.spawnAdb(['shell', 'screencap', '-p', '/sdcard/screen.png'])
-                .then(() => this.spawnAdb(['pull', '/sdcard/screen.png', pngTempFile]))
+            this.spawnAdb(['shell', 'uiautomator', 'dump', devXml])
+                .then(() => this.spawnAdb(['pull', devXml, xmlTempFile]))
+                .then(() => this.spawnAdb(['shell', 'rm', '-f', devXml]).catch(() => { })),
+            this.spawnAdb(['shell', 'screencap', '-p', devPng])
+                .then(() => this.spawnAdb(['pull', devPng, pngTempFile]))
+                .then(() => this.spawnAdb(['shell', 'rm', '-f', devPng]).catch(() => { }))
         ]);
 
         const xml = await fs.readFile(xmlTempFile, 'utf-8');
