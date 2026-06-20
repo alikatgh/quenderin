@@ -72,9 +72,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Origin checks: compare parsed origins, not `startsWith`.** `url.startsWith("http://localhost:3000")`
   passes for `http://localhost:3000.attacker.com`; and `will-navigate` misses server 3xx redirects — also
   handle `will-redirect`. (H11, H12)
+- **View-model publishes terminal state the view never renders.** A bindable VM exposes a non-success
+  terminal field (`haltReason`, `error`, empty-result) but the view only renders the happy path → a
+  silent dead-end (steps trail off, no explanation). Render EVERY terminal state; put the human-readable
+  copy in the shared core so both platforms stay in parity and it's unit-testable. (agent halt-reason)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-20 — Agent halts silently with no answer. Symptom: a goal that hit the step limit, the
+  safety gate, or a plan-parse error showed the steps then nothing — user can't tell why it stopped.
+  Cause: `AgentSession` publishes `haltReason` but `AgentView` (iOS) / `AgentScreen` (Android) only
+  rendered `answer`. Fix: shared `AgentRun.HaltReason.userMessage` (identical strings in QuenderinKit
+  + quenderin-core, parity-checked) + a halt banner when `answer == nil && !isRunning`. iOS 139 /
+  core green. Lesson: render every terminal state a VM publishes — see top-section pattern.
 - 2026-06-16 — Pre-ship review wave 6 (last safe items): M5 unique device-side dump paths + rm (was a
   fixed `/sdcard/window_dump.xml` → stale/mid-write reads under concurrent ADB); M12 hoist `embedText`
   out of the write-lock (was serializing every save behind a 100–500 ms inference); L4 device-side

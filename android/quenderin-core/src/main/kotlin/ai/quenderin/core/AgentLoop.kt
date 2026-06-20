@@ -10,6 +10,19 @@ data class AgentRun(val steps: List<AgentStep>, val answer: String?, val haltRea
 }
 
 /**
+ * A short, user-facing explanation for why the agent stopped, shown when there is no answer
+ * to display. ANSWERED returns null — the answer itself is shown instead. Kept identical to
+ * iOS `AgentRun.HaltReason.userMessage` (cross-platform parity).
+ */
+val AgentRun.HaltReason.userMessage: String?
+    get() = when (this) {
+        AgentRun.HaltReason.ANSWERED -> null
+        AgentRun.HaltReason.MAX_STEPS -> "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
+        AgentRun.HaltReason.BLOCKED -> "The agent stopped: a step was blocked by the on-device safety filter."
+        AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't turn this goal into a valid plan. Try rephrasing it."
+    }
+
+/**
  * The vision's perceive → plan → execute loop, in the shippable form: a **tool-use** agent.
  * Each turn the planner (an [InferenceEngine]) emits a decision; tool calls are
  * **safety-gated** ([SafetyBlocklist]) before running, their output is fed back, and the

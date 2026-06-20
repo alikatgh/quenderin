@@ -34,6 +34,10 @@ public struct AgentView: View {
                                     Label("Report answer", systemImage: "flag")
                                 }
                             }
+                    } else if !session.isRunning, let message = session.haltReason?.userMessage {
+                        // The agent stopped without an answer (step limit, safety gate, plan error):
+                        // say so instead of trailing off into silence.
+                        AgentHaltBanner(message: message)
                     }
                 }
                 .padding()
@@ -62,6 +66,26 @@ public struct AgentView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
         }
+    }
+}
+
+/// Shown when the agent halts without an answer — turns a silent dead-end into an
+/// explanation (step limit, safety gate, or plan error). Tinted distinctly from the answer.
+private struct AgentHaltBanner: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.callout)
+        .padding(12)
+        .background(Color.orange.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
     }
 }
 

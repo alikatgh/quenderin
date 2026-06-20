@@ -15,6 +15,20 @@ public struct AgentRun: Sendable, Equatable {
     public let haltReason: HaltReason
 }
 
+public extension AgentRun.HaltReason {
+    /// A short, user-facing explanation for why the agent stopped, shown when there is no
+    /// answer to display. `.answered` returns nil — the answer itself is shown instead.
+    /// Kept identical to Android `AgentRun.HaltReason.userMessage` (cross-platform parity).
+    var userMessage: String? {
+        switch self {
+        case .answered:  return nil
+        case .maxSteps:  return "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
+        case .blocked:   return "The agent stopped: a step was blocked by the on-device safety filter."
+        case .planError: return "The agent couldn't turn this goal into a valid plan. Try rephrasing it."
+        }
+    }
+}
+
 /// The vision's perceive → plan → execute loop, in the form iOS allows: a
 /// **tool-use** agent. Each turn the planner (an `InferenceEngine`) emits a
 /// decision; tool calls are **safety-gated** (`SafetyBlocklist`) before running,

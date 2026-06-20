@@ -1,11 +1,13 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.AgentDecision
+import ai.quenderin.core.AgentRun
 import ai.quenderin.core.AgentSession
 import ai.quenderin.core.AgentStep
 import ai.quenderin.core.AgentTool
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.SupportContact
+import ai.quenderin.core.userMessage
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -55,6 +57,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     var steps by remember { mutableStateOf<List<AgentStep>>(emptyList()) }
     var answer by remember { mutableStateOf<String?>(null) }
     var running by remember { mutableStateOf(false) }
+    var haltReason by remember { mutableStateOf<AgentRun.HaltReason?>(null) }
     var goal by remember { mutableStateOf("") }
     val session = remember {
         AgentSession(engine, tools).apply {
@@ -62,6 +65,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 steps = this.steps
                 answer = this.answer
                 running = this.isRunning
+                haltReason = this.haltReason
             }
         }
     }
@@ -91,6 +95,11 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                             Text(a, modifier = Modifier.padding(12.dp))
                         }
                     }
+                }
+                // The agent stopped without an answer (step limit, safety gate, plan error):
+                // say so instead of trailing off into silence.
+                if (answer == null && !running) {
+                    haltReason?.userMessage?.let { msg -> item { AgentHaltBanner(msg) } }
                 }
             }
 
@@ -123,6 +132,26 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     },
                 ) { Text("Run") }
             }
+        }
+    }
+}
+
+/**
+ * Shown when the agent halts without an answer — turns a silent dead-end into an explanation
+ * (step limit, safety gate, or plan error). Tinted distinctly from the answer. Compose twin
+ * of iOS `AgentHaltBanner`.
+ */
+@Composable
+private fun AgentHaltBanner(message: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+            Text("⚠️")
+            Spacer(Modifier.width(8.dp))
+            Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
         }
     }
 }
