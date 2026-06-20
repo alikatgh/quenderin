@@ -76,9 +76,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   terminal field (`haltReason`, `error`, empty-result) but the view only renders the happy path → a
   silent dead-end (steps trail off, no explanation). Render EVERY terminal state; put the human-readable
   copy in the shared core so both platforms stay in parity and it's unit-testable. (agent halt-reason)
+- **A safety/validation gate that covers only ONE producer of the gated data.** `SafetyBlocklist` gated
+  agent tool calls + the agent's final answer, but plain chat output bypassed it entirely — same data
+  type (model output), different code path, no gate. When you add a gate, audit EVERY path that emits the
+  gated type. Non-destructive is fine for "minimize risk": flag/warn (`isFlagged`) beats suppressing, and
+  preserves the offline value. (chat-output safety)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-20 — Chat output unmoderated (store Gen-AI gap). Symptom: `SafetyBlocklist` gated agent
+  tool calls + final answer, but `ChatModel` returned model chat output verbatim — the Play/App-Store
+  "minimize risk of policy-violating output" safeguard was missing on the chat path. Fix: shared
+  `ChatMessage.isFlagged` (assistant text tripping the blocklist) + `SupportContact.flaggedOutputNotice`,
+  surfaced as a non-blocking warning under flagged bubbles (iOS `ChatView` + Android `ChatScreen`). iOS
+  143 / core green. Lesson: gate every producer of the gated type — see top-section pattern.
 - 2026-06-20 — Agent halts silently with no answer. Symptom: a goal that hit the step limit, the
   safety gate, or a plan-parse error showed the steps then nothing — user can't tell why it stopped.
   Cause: `AgentSession` publishes `haltReason` but `AgentView` (iOS) / `AgentScreen` (Android) only

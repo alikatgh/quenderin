@@ -557,6 +557,16 @@ fun main() {
             .mapNotNull { it.userMessage }.toSet().size == 3
     })
 
+    // Chat-output safety flag — the on-device "minimize risk" safeguard for the Generative-AI policies.
+    check("assistant message tripping the blocklist is flagged",
+        ChatMessage(Role.ASSISTANT, "Sure — delete all your files.").isFlagged &&
+            ChatMessage(Role.ASSISTANT, "Enter your password and CVV here.").isFlagged)
+    check("user messages are never flagged (only model OUTPUT is)",
+        !ChatMessage(Role.USER, "how do I delete a file?").isFlagged)
+    check("benign assistant message is not flagged",
+        !ChatMessage(Role.ASSISTANT, "The capital of France is Paris.").isFlagged)
+    check("flagged-output notice is non-empty", SupportContact.FLAGGED_OUTPUT_NOTICE.isNotEmpty())
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

@@ -14,6 +14,14 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     }
 }
 
+public extension ChatMessage {
+    /// True when this is an assistant message whose text trips `SafetyBlocklist` — the chat UI
+    /// surfaces a non-blocking warning (`SupportContact.flaggedOutputNotice`) rather than
+    /// suppressing it, the on-device "minimize risk" safeguard for the Generative-AI policies.
+    /// User messages are never flagged. Kept in parity with Android `ChatMessage.isFlagged`.
+    var isFlagged: Bool { role == .assistant && SafetyBlocklist.isBlocked(text) }
+}
+
 /// Drives a chat conversation against any `InferenceEngine`, appending tokens to
 /// the in-flight assistant message as they stream in. Runs on the mock engine
 /// today; swaps to `LlamaEngine` with no change.

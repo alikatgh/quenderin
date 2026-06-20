@@ -55,6 +55,14 @@ private struct ChatBubble: View {
                 .foregroundStyle(.secondary)
             Text(message.text.isEmpty ? "…" : message.text)
                 .textSelection(.enabled)
+            // On-device "minimize risk" safeguard: warn (don't suppress) when a response trips
+            // the safety blocklist. Non-blocking — the report action stays in the context menu.
+            if message.isFlagged {
+                Label(SupportContact.flaggedOutputNotice, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .padding(.top, 2)
+            }
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
 

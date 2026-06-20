@@ -15,6 +15,12 @@ public enum SupportContact {
     public static let aiDisclaimer =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."
 
+    /// Shown on a chat response that trips `SafetyBlocklist` — a non-blocking, on-device
+    /// "minimize risk" safeguard for the Generative-AI policies. Kept identical to Android
+    /// `SupportContact.FLAGGED_OUTPUT_NOTICE` (cross-platform parity).
+    public static let flaggedOutputNotice =
+        "This response mentions a sensitive action (e.g. payments, deletion, or credentials). It isn't filtered — verify before acting, and report if inappropriate."
+
     /// A `mailto:` URL pre-filled to report an AI response. `context` is "chat" or "agent".
     /// All user/model text is percent-encoded so arbitrary output can't break the URL.
     public static func reportMailto(reportedText: String, context: String = "chat") -> URL? {

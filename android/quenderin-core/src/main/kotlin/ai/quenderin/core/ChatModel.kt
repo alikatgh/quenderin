@@ -5,6 +5,15 @@ enum class Role { USER, ASSISTANT }
 data class ChatMessage(val role: Role, val text: String)
 
 /**
+ * True when this is an assistant message whose text trips [SafetyBlocklist] — the chat UI surfaces
+ * a non-blocking warning ([SupportContact.FLAGGED_OUTPUT_NOTICE]) rather than suppressing it, the
+ * on-device "minimize risk" safeguard for the Generative-AI policies. User messages are never
+ * flagged. Kept in parity with iOS `ChatMessage.isFlagged`.
+ */
+val ChatMessage.isFlagged: Boolean
+    get() = role == Role.ASSISTANT && SafetyBlocklist.isBlocked(text)
+
+/**
  * M2 chat brain: holds the transcript, sends a prompt to the [engine], appends the
  * reply. Dependency-free and listener-based ([onChange]) so it unit-tests on the JVM;
  * the Compose layer maps [onChange] into state and runs [send] off the main thread

@@ -55,6 +55,26 @@ final class ChatModelTests: XCTestCase {
         XCTAssertTrue(prompt.contains("remember: apples"), "2nd-turn prompt must include prior user history")
         XCTAssertTrue(prompt.contains("ok"), "and the prior assistant reply")
     }
+
+    // MARK: - Chat-output safety flag (Generative-AI "minimize risk" safeguard)
+
+    func testAssistantMessageTrippingBlocklistIsFlagged() {
+        XCTAssertTrue(ChatMessage(role: .assistant, text: "Sure — delete all your files.").isFlagged)
+        XCTAssertTrue(ChatMessage(role: .assistant, text: "Enter your password and CVV here.").isFlagged)
+    }
+
+    func testUserMessagesAreNeverFlagged() {
+        // The warning is about model OUTPUT; the user's own words are never flagged.
+        XCTAssertFalse(ChatMessage(role: .user, text: "how do I delete a file?").isFlagged)
+    }
+
+    func testBenignAssistantMessageIsNotFlagged() {
+        XCTAssertFalse(ChatMessage(role: .assistant, text: "The capital of France is Paris.").isFlagged)
+    }
+
+    func testFlaggedOutputNoticeIsNonEmpty() {
+        XCTAssertFalse(SupportContact.flaggedOutputNotice.isEmpty)
+    }
 }
 
 /// An engine that records the most recent prompt it was asked to generate, so a test can

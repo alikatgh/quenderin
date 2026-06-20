@@ -19,6 +19,12 @@ object SupportContact {
     const val AI_DISCLAIMER =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."
 
+    /** Shown on a chat response that trips [SafetyBlocklist] — a non-blocking, on-device
+     *  "minimize risk" safeguard for the Generative-AI policies. Kept identical to iOS
+     *  `SupportContact.flaggedOutputNotice` (cross-platform parity). */
+    const val FLAGGED_OUTPUT_NOTICE =
+        "This response mentions a sensitive action (e.g. payments, deletion, or credentials). It isn't filtered — verify before acting, and report if inappropriate."
+
     /** A `mailto:` URI pre-filled to report an AI response. [context] is "chat" or "agent". All
      *  user/model text is percent-encoded so arbitrary output can't break the URI. */
     fun reportMailtoUri(reportedText: String, context: String = "chat"): String {
