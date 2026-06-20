@@ -25,7 +25,10 @@ public struct RootView: View {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                     }
-                    SettingsView(coordinator: conversations, model: model)
+                    SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
+                        // Reuse the onboarding install flow: download (if needed) → load → swap.
+                        Task { await onboarding.install(picked) }
+                    })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                 }
             } else {

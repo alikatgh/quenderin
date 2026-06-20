@@ -27,7 +27,12 @@ import androidx.compose.ui.Modifier
  * dependency. App/cliff layer — build in Android Studio.
  */
 @Composable
-fun MainTabs(engine: InferenceEngine, model: ModelEntry, conversations: ConversationPersistence) {
+fun MainTabs(
+    engine: InferenceEngine,
+    model: ModelEntry,
+    conversations: ConversationPersistence,
+    onSelectModel: (ModelEntry) -> Unit,
+) {
     var tab by remember { mutableIntStateOf(0) }
     Scaffold(
         bottomBar = {
@@ -57,7 +62,7 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry, conversations: Conversa
             when (tab) {
                 0 -> ChatScreen(engine = engine, model = model, persistence = conversations)
                 1 -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
-                else -> SettingsScreen(model = model, persistence = conversations)
+                else -> SettingsScreen(model = model, persistence = conversations, onSelectModel = onSelectModel)
             }
         }
     }

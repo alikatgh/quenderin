@@ -1,27 +1,35 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.ConversationPersistence
+import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.SupportContact
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -33,10 +41,15 @@ import androidx.compose.ui.unit.dp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(model: ModelEntry, persistence: ConversationPersistence) {
+fun SettingsScreen(
+    model: ModelEntry,
+    persistence: ConversationPersistence,
+    onSelectModel: (ModelEntry) -> Unit,
+) {
     val context = LocalContext.current
     // Read on entry (the tab recomposes fresh each visit); the index file is tiny.
     val conversationCount = remember { persistence.loadIndex().size }
+    var showPicker by remember { mutableStateOf(false) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { pad ->
         Column(
@@ -46,6 +59,7 @@ fun SettingsScreen(model: ModelEntry, persistence: ConversationPersistence) {
             SectionHeader("Model")
             LabeledRow("Active model", model.label)
             LabeledRow("Size", model.sizeLabel)
+            OutlinedButton(onClick = { showPicker = true }) { Text("Change model…") }
             Caption("Runs entirely on-device via llama.cpp — no cloud.")
 
             SectionHeader("Storage")
@@ -69,6 +83,56 @@ fun SettingsScreen(model: ModelEntry, persistence: ConversationPersistence) {
                 "Quenderin runs entirely on your device. No account, no cloud, no tracking — once a " +
                     "model is downloaded it works fully offline, and nothing you type leaves your phone.",
             )
+        }
+    }
+
+    if (showPicker) {
+        ModalBottomSheet(onDismissRequest = { showPicker = false }) {
+            ModelPickerSheet(
+                currentModelId = model.id,
+                onSelect = { picked ->
+                    showPicker = false
+                    if (picked.id != model.id) onSelectModel(picked)
+                },
+            )
+        }
+    }
+}
+
+/** Pick a different model: lists the catalog; selecting one downloads it (if needed) and loads it. */
+@Composable
+private fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Text(
+            "Choose a model",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
+        )
+        Text(
+            "Switching downloads the model if it isn't already on your device.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+        )
+        Column(Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+            ModelCatalog.models.forEach { entry ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onSelect(entry) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.label)
+                        Text(
+                            entry.sizeLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (entry.id == currentModelId) {
+                        Text("Current", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
         }
     }
 }
