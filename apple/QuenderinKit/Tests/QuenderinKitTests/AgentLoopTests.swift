@@ -97,4 +97,28 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(run.haltReason, .answered)
         XCTAssertTrue(run.steps[0].observation?.contains("No such tool") ?? false)
     }
+
+    // MARK: - Halt-reason user messages (UI surfaces these when there's no answer)
+
+    func testAnsweredHaltHasNoUserMessage() {
+        // The answer itself is shown for .answered, so there is no banner message.
+        XCTAssertNil(AgentRun.HaltReason.answered.userMessage)
+    }
+
+    func testEveryNonAnswerHaltExplainsItself() {
+        // Each silent dead-end must give the user a non-empty, distinct reason.
+        let reasons: [AgentRun.HaltReason] = [.maxSteps, .blocked, .planError]
+        let messages = reasons.map { $0.userMessage }
+        XCTAssertTrue(messages.allSatisfy { ($0?.isEmpty == false) })
+        XCTAssertEqual(Set(messages.compactMap { $0 }).count, reasons.count)
+    }
+
+    func testBlockedRunProducesAUserMessage() async {
+        // End-to-end: a safety-blocked run halts with a reason the UI can render.
+        let engine = ScriptedInferenceEngine(replies: [#"{"tool":"echo","input":"delete all my files"}"#])
+        let run = await AgentLoop(engine: engine, tools: [EchoTool()]).run(goal: "test")
+        XCTAssertNil(run.answer)
+        XCTAssertEqual(run.haltReason.userMessage, AgentRun.HaltReason.blocked.userMessage)
+        XCTAssertNotNil(run.haltReason.userMessage)
+    }
 }

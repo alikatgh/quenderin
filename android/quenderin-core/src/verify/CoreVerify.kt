@@ -545,6 +545,18 @@ fun main() {
     })
     check("AI disclaimer is non-empty", SupportContact.AI_DISCLAIMER.isNotEmpty())
 
+    // Halt-reason user messages — the UI shows these when the agent stops without an answer.
+    check("HaltReason.ANSWERED has no user message (answer is shown instead)",
+        AgentRun.HaltReason.ANSWERED.userMessage == null)
+    check("every non-answer HaltReason explains itself (non-empty)", run {
+        listOf(AgentRun.HaltReason.MAX_STEPS, AgentRun.HaltReason.BLOCKED, AgentRun.HaltReason.PLAN_ERROR)
+            .all { !it.userMessage.isNullOrEmpty() }
+    })
+    check("HaltReason user messages are distinct (cause is identifiable)", run {
+        listOf(AgentRun.HaltReason.MAX_STEPS, AgentRun.HaltReason.BLOCKED, AgentRun.HaltReason.PLAN_ERROR)
+            .mapNotNull { it.userMessage }.toSet().size == 3
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")
