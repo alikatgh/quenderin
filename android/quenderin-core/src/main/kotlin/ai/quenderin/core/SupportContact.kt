@@ -9,8 +9,8 @@ import java.net.URLEncoder
  * an ACTION_SENDTO intent. Twin of iOS `SupportContact`.
  */
 object SupportContact {
-    /** CHANGE to a dedicated support address before publishing — this ships in the app binary. */
-    const val REPORT_EMAIL = "wallmarketshq@gmail.com"
+    /** Dedicated support / content-report address (ships in the app binary). */
+    const val REPORT_EMAIL = "quenderin@aulenor.com"
 
     /** Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html. */
     const val PRIVACY_POLICY_URL = "https://quenderin.org/privacy.html"

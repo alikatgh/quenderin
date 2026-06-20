@@ -38,10 +38,10 @@ Privacy-policy **text** is written (`docs/legal/privacy-policy.md`) — it just 
       `SupportContact.privacyPolicyURL` / `PRIVACY_POLICY_URL` (currently `https://example.com/quenderin-privacy`)
       and link it from the in-app About screen.
 
-### B. In-binary contact detail (needs your value; I wire it)
-- [ ] Dedicated support email for the "Report response" mailto. Current:
-      `SupportContact.reportEmail` / `REPORT_EMAIL = wallmarketshq@gmail.com` (real, but flagged
-      "change before publishing"). Give me the address and I'll set it on both platforms.
+### B. In-binary contact detail
+- [x] Dedicated support email for the "Report response" mailto, in-app Settings, and the website:
+      `SupportContact.reportEmail` / `REPORT_EMAIL = quenderin@aulenor.com` — set on both platforms
+      and across all website legal pages.
 
 ### C. Store-console questionnaires (no code — clicks in the consoles)
 - [ ] **Age rating 17+ (App Store) / Mature 17+ (Play IARC)** — an unrestricted local LLM can emit

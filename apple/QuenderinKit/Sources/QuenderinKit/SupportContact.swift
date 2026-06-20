@@ -5,8 +5,8 @@ import Foundation
 /// that opens a pre-filled `mailto:`. Pure + testable; the SwiftUI views just open the URL.
 /// Twin of Android `SupportContact`.
 public enum SupportContact {
-    /// ⚠️ CHANGE to a dedicated support address before publishing — this ships in the app binary.
-    public static let reportEmail = "wallmarketshq@gmail.com"
+    /// Dedicated support / content-report address (ships in the app binary).
+    public static let reportEmail = "quenderin@aulenor.com"
 
     /// Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html.
     public static let privacyPolicyURL = "https://quenderin.org/privacy.html"

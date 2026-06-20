@@ -19,7 +19,7 @@ account-side step is **paste + capture screenshots + submit**, not authoring.
 - **Data collected/shared:** **None.** No account, no analytics, no telemetry, no backend. The only network call is the user-initiated model download from Hugging Face (a public-file GET; transmits no user data).
 - **Privacy policy URL:** `https://quenderin.org/privacy.html` (hosted on Cloudflare Pages from `website/privacy.html`)
 - **Marketing URL:** `https://quenderin.org`
-- **Support URL / email:** _<your support page / email — note: website uses albert.chromium@gmail.com, the apps use wallmarketshq@gmail.com; pick ONE before submitting>_
+- **Support email:** `quenderin@aulenor.com` (same address in-app, on the website, and for content reports)
 
 ---
 
