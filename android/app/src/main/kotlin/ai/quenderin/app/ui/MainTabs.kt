@@ -1,6 +1,7 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.CalculatorTool
+import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.DateCalcTool
 import ai.quenderin.core.EchoTool
 import ai.quenderin.core.InferenceEngine
@@ -26,7 +27,7 @@ import androidx.compose.ui.Modifier
  * dependency. App/cliff layer — build in Android Studio.
  */
 @Composable
-fun MainTabs(engine: InferenceEngine, model: ModelEntry) {
+fun MainTabs(engine: InferenceEngine, model: ModelEntry, conversations: ConversationPersistence) {
     var tab by remember { mutableIntStateOf(0) }
     Scaffold(
         bottomBar = {
@@ -54,7 +55,7 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
-                0 -> ChatScreen(engine = engine, model = model)
+                0 -> ChatScreen(engine = engine, model = model, persistence = conversations)
                 1 -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
                 else -> AboutScreen()
             }

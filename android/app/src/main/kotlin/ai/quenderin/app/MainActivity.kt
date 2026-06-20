@@ -3,10 +3,13 @@ package ai.quenderin.app
 import ai.quenderin.app.ui.AppRoot
 import ai.quenderin.app.ui.QuenderinTheme
 import ai.quenderin.core.AndroidDeviceProfile
+import ai.quenderin.core.ConversationPersistence
+import ai.quenderin.core.FileConversationPersistence
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
 import ai.quenderin.core.ModelDownloader
+import java.io.File
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
@@ -30,10 +33,12 @@ class MainActivity : ComponentActivity() {
         // Real, resumable downloader that survives app death (WorkManager + the pure-core
         // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
         val downloader: ModelDownloader = WorkManagerModelDownloader(applicationContext)
+        // On-device conversation history: transcripts + index under filesDir, never a server.
+        val conversations: ConversationPersistence = FileConversationPersistence(File(filesDir, "conversations"))
 
         setContent {
             QuenderinTheme {
-                AppRoot(engine = engine, downloader = downloader, probe = ::probeDevice)
+                AppRoot(engine = engine, downloader = downloader, probe = ::probeDevice, conversations = conversations)
             }
         }
     }
