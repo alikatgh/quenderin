@@ -6,20 +6,31 @@
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Quenderin — An AI that runs on your phone, even offline</title>
 <meta name="description" content="Quenderin runs large language models fully on your device. No internet, no API keys, no telemetry. Download a model once and your assistant works on a plane, in a tent, off the grid." />
-<meta name="theme-color" content="#ffffff" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://alikatgh.github.io/quenderin/" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
 
 <meta property="og:type" content="website" />
+<meta property="og:site_name" content="Quenderin" />
 <meta property="og:title" content="Quenderin — AI that runs on your phone, even offline" />
 <meta property="og:description" content="Local LLMs on-device. No cloud, no API keys, no telemetry. Works without a signal." />
 <meta property="og:url" content="https://alikatgh.github.io/quenderin/" />
-<meta property="og:image" content="https://alikatgh.github.io/quenderin/og-image.svg" />
+<meta property="og:image" content="https://alikatgh.github.io/quenderin/og-image.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Quenderin — AI that runs on your phone, even offline" />
 <meta name="twitter:description" content="Local LLMs on-device. No cloud, no API keys, no telemetry." />
-<meta name="twitter:image" content="https://alikatgh.github.io/quenderin/og-image.svg" />
+<meta name="twitter:image" content="https://alikatgh.github.io/quenderin/og-image.png" />
+<meta name="twitter:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
 
 <script type="application/ld+json">
 {
@@ -31,6 +42,39 @@
   "description": "Offline, on-device AI assistant powered by local large language models. No internet, API keys, or telemetry.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "url": "https://alikatgh.github.io/quenderin/"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is it really free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware — so there are no token costs and no subscription." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my data sent anywhere?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it is open source, you can verify this yourself." }
+    },
+    {
+      "@type": "Question",
+      "name": "What devices does it run on?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development — the same hardware-detection and model-selection engine, rebuilt natively for performance." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need a powerful phone?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs — down to a 0.4 GB ultra-light build." }
+    },
+    {
+      "@type": "Question",
+      "name": "When can I install it?",
+      "acceptedAnswer": { "@type": "Answer", "text": "It is open source and runnable from GitHub today. The polished mobile apps are on the way — star or watch the repo on GitHub to hear the moment they land." }
+    }
+  ]
 }
 </script>
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
@@ -81,7 +125,7 @@
           </p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">View on GitHub</a>
-            <a class="btn btn-ghost" href="#waitlist">Join the waitlist</a>
+            <a class="btn btn-ghost" href="#how">See how it works</a>
           </div>
           <ul class="spec-strip" aria-label="Key facts">
             <li><span class="spec-num">100%</span> offline</li>
@@ -323,7 +367,7 @@
         </details>
         <details>
           <summary>When can I install it?</summary>
-          <p>It&rsquo;s open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star the repo or join the waitlist to hear when.</p>
+          <p>It&rsquo;s open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star or watch the repo on GitHub to hear the moment they land.</p>
         </details>
       </div>
     </div>
@@ -334,15 +378,12 @@
     <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
     <div class="container reveal cta-inner">
       <h2>Bring your AI offline.</h2>
-      <p>Join the waitlist and we&rsquo;ll tell you the moment the mobile apps land.</p>
-      <!-- Configure the form: replace the action with your Formspree (or other) endpoint. -->
-      <form class="waitlist-form" action="https://formspree.io/f/your-form-id" method="POST">
-        <label class="sr-only" for="email">Email address</label>
-        <input id="email" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
-        <button class="btn btn-white" type="submit">Join the waitlist</button>
-      </form>
-      <p class="cta-secondary"><a href="https://github.com/alikatgh/quenderin" rel="noopener">Or star the project on GitHub &rarr;</a></p>
-      <p class="form-consent">By joining, you consent to us emailing you once about the launch&mdash;nothing else. See our <a href="privacy.html">Privacy Policy</a>.</p>
+      <p>It&rsquo;s open source and runs from GitHub today. Star the repo to follow along&mdash;and watch releases to hear the moment the mobile apps land.</p>
+      <div class="cta-row">
+        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Watch releases &rarr;</a>
+      </div>
+      <p class="form-consent">No email, no account, no trackers&mdash;just the code. See our <a href="privacy.html">Privacy Policy</a>.</p>
     </div>
   </section>
 

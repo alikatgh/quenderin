@@ -57,6 +57,8 @@ ehthumbs.db
 # --- Claude Code ---
 # Personal, machine-specific permissions/paths — never share.
 .claude/settings.local.json
+# Preview/dev-server launch config — holds an absolute, machine-specific path.
+.claude/launch.json
 # test coverage output
 coverage/
 

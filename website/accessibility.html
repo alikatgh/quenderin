@@ -6,9 +6,14 @@
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Accessibility Statement — Quenderin</title>
 <meta name="description" content="Quenderin's accessibility statement — WCAG 2.1 AA and EN 301 549 conformance." />
-<meta name="theme-color" content="#ffffff" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://alikatgh.github.io/quenderin/accessibility.html" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -34,7 +39,7 @@
     <li>A "skip to content" link and fully keyboard-operable navigation and controls.</li>
     <li>Visible keyboard focus indicators on every interactive element.</li>
     <li>Text and interface colours chosen to meet AA contrast; meaning is never conveyed by colour alone.</li>
-    <li>Tabular figures and clear labels; the waitlist input has an associated label.</li>
+    <li>Tabular figures, descriptive link text, and clear labels on every interactive control.</li>
     <li><strong>Reduced motion is honoured:</strong> with <code>prefers-reduced-motion</code> enabled, the animated gradient and scroll animations are disabled and a static frame is shown.</li>
     <li>Decorative graphics (the gradient canvas and product mockups) are marked <code>aria-hidden</code> so screen readers skip them.</li>
     <li>The site loads no third-party scripts, so it behaves predictably with assistive tech.</li>

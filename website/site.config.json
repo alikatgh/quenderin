@@ -1,10 +1,13 @@
 {
   "//": "Single source for the operator/legal details on the legal pages. Fill the blanks below, then run:  node website/scripts/fill-legal.mjs  — it injects them into legal.html / terms.html / privacy.html. Leave a field blank to keep its on-page placeholder until you have it.",
-  "legalName": "",
-  "address": "",
-  "phone": "",
-  "responsibleParty": "",
-  "trademarkOwner": "",
-  "formProvider": "",
+  "//status": "GENERIC placeholders for now — replace legalName/address/responsibleParty with real operator details before a formal public launch, then re-run fill-legal.mjs.",
+  "//formProvider": "No longer used — the site is GitHub-only with no email form, so privacy.html has no form-processor clause to fill.",
+  "//contact": "Contact email is already wired in all three pages as albert.chromium@gmail.com.",
+  "legalName": "The Quenderin Project",
+  "address": "Available on request",
+  "phone": "Not applicable",
+  "responsibleParty": "The Quenderin Project (albert.chromium@gmail.com)",
+  "trademarkOwner": "the property of the Quenderin Project",
+  "formProvider": "Not applicable (no form)",
   "jurisdiction": "the State of Delaware, United States"
 }

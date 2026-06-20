@@ -6,16 +6,40 @@ HTML, CSS, and a few lines of vanilla JS.
 
 ```
 website/
-├── index.html      # the landing page
-├── styles.css      # design system + all sections
-├── main.js         # mobile nav, scroll reveal, footer year
-├── favicon.svg     # brand mark
-├── og-image.svg    # social share card (1200×630)
-├── 404.html        # off-grid 404
+├── index.html          # the landing page
+├── styles.css          # design system + all sections
+├── main.js             # mobile nav, scroll reveal, theme toggle, footer year
+├── gradient.js         # Stripe-style WebGL mesh gradient (reduced-motion aware)
+├── favicon.svg         # brand mark (modern browsers)
+├── favicon-16/32.png   # PNG favicon fallbacks  ┐
+├── apple-touch-icon.png# iOS home-screen icon   ├─ generated, see scripts/rasterize.mjs
+├── og-image.svg/.png   # social share card 1200×630 (PNG is what scrapers read) ┘
+├── site.webmanifest    # PWA manifest (installable, theme color)
+├── 404.html            # off-grid 404
 ├── robots.txt
 ├── sitemap.xml
-├── netlify.toml    # Netlify config
-└── vercel.json     # Vercel config
+├── netlify.toml        # Netlify config
+├── vercel.json         # Vercel config
+└── scripts/
+    ├── serve.py        # sandbox-safe static server (absolute paths; no os.getcwd)
+    ├── shoot.mjs       # full-page / per-section screenshots via Chrome DevTools
+    └── rasterize.mjs   # SVG → PNG for og-image + favicons + apple-touch-icon
+```
+
+## Regenerate the PNG assets
+
+The favicons, `apple-touch-icon.png`, and `og-image.png` are **generated** from the
+SVGs — edit `favicon.svg` / `og-image.svg`, then re-run (requires Google Chrome):
+
+```bash
+node website/scripts/rasterize.mjs   # → og-image.png, favicon-16/32.png, apple-touch-icon.png
+```
+
+To screenshot the rendered site (full page + every section, light/dark, any width):
+
+```bash
+python3 website/scripts/serve.py 8099 &                 # static server
+node website/scripts/shoot.mjs http://127.0.0.1:8099/ /tmp/shots dark 1440
 ```
 
 ## Preview locally
