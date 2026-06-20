@@ -91,4 +91,14 @@ public final class ConversationManager {
         persistence.saveIndex(library.snapshot())
         if currentID == id { currentID = nil }
     }
+
+    /// Delete every conversation (all transcripts + the index). Nothing is current afterward.
+    public func clearAll() {
+        for summary in library.snapshot() {
+            persistence.deleteTranscript(id: summary.id)
+            library.remove(summary.id)
+        }
+        persistence.saveIndex(library.snapshot())   // now empty
+        currentID = nil
+    }
 }

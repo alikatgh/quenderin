@@ -47,8 +47,8 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry, conversations: Conversa
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
-                    icon = { Text("ℹ️") },
-                    label = { Text("About") },
+                    icon = { Text("⚙️") },
+                    label = { Text("Settings") },
                 )
             }
         },
@@ -57,7 +57,7 @@ fun MainTabs(engine: InferenceEngine, model: ModelEntry, conversations: Conversa
             when (tab) {
                 0 -> ChatScreen(engine = engine, model = model, persistence = conversations)
                 1 -> AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
-                else -> AboutScreen()
+                else -> SettingsScreen(model = model, persistence = conversations)
             }
         }
     }

@@ -150,6 +150,7 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
                 summaries = summaries,
                 onOpen = { id -> coordinator.open(id); showHistory = false },
                 onDelete = { id -> coordinator.delete(id) },
+                onClearAll = { coordinator.clearAll(); showHistory = false },
             )
         }
     }
@@ -161,13 +162,18 @@ private fun ConversationHistoryList(
     summaries: List<ConversationSummary>,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onClearAll: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-        Text(
-            "History",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("History", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            if (summaries.isNotEmpty()) {
+                TextButton(onClick = onClearAll) { Text("Clear all") }
+            }
+        }
         if (summaries.isEmpty()) {
             Text(
                 "No conversations yet",
