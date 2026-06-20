@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://alikatgh.github.io/quenderin/sitemap.xml
+Sitemap: https://quenderin.org/sitemap.xml

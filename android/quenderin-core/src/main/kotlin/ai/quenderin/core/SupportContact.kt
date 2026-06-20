@@ -12,8 +12,8 @@ object SupportContact {
     /** CHANGE to a dedicated support address before publishing — this ships in the app binary. */
     const val REPORT_EMAIL = "wallmarketshq@gmail.com"
 
-    /** Replace with the real hosted URL before publishing (see docs/legal/privacy-policy.md). */
-    const val PRIVACY_POLICY_URL = "https://example.com/quenderin-privacy"
+    /** Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html. */
+    const val PRIVACY_POLICY_URL = "https://quenderin.org/privacy.html"
 
     /** Shown beneath chat + agent output so users know responses are unfiltered, on-device AI. */
     const val AI_DISCLAIMER =

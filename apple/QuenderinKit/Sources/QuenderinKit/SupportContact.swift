@@ -8,8 +8,8 @@ public enum SupportContact {
     /// ⚠️ CHANGE to a dedicated support address before publishing — this ships in the app binary.
     public static let reportEmail = "wallmarketshq@gmail.com"
 
-    /// ⚠️ Replace with the real hosted URL before publishing (see docs/legal/privacy-policy.md).
-    public static let privacyPolicyURL = "https://example.com/quenderin-privacy"
+    /// Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html.
+    public static let privacyPolicyURL = "https://quenderin.org/privacy.html"
 
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =
