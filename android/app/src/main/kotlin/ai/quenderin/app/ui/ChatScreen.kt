@@ -2,6 +2,9 @@ package ai.quenderin.app.ui
 
 import ai.quenderin.core.ChatMessage
 import ai.quenderin.core.ChatModel
+import ai.quenderin.core.ConversationCoordinator
+import ai.quenderin.core.ConversationPersistence
+import ai.quenderin.core.ConversationSummary
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Role
@@ -10,6 +13,7 @@ import ai.quenderin.core.isFlagged
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,12 +30,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,15 +58,37 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
+fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: ConversationPersistence) {
     val scope = rememberCoroutineScope()
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
+    var summaries by remember { mutableStateOf<List<ConversationSummary>>(emptyList()) }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    val chat = remember { ChatModel(engine).apply { onChange = { messages = it } } }
+    var showHistory by remember { mutableStateOf(false) }
+    // The coordinator owns the ChatModel and restores the most recent conversation in its init.
+    // Construct it with no-op listeners so that restore doesn't write Compose state *during*
+    // composition; sync the initial values and wire live updates in the LaunchedEffect below.
+    val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
+    val chat = coordinator.chat
+    LaunchedEffect(coordinator) {
+        messages = chat.messages
+        summaries = coordinator.summaries
+        chat.onChange = { messages = it }
+        coordinator.onChange = { summaries = it }
+    }
     val context = LocalContext.current
 
-    Scaffold(topBar = { TopAppBar(title = { Text(model.label) }) }) { pad ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(model.label) },
+                actions = {
+                    TextButton(onClick = { showHistory = true }) { Text("History") }
+                    TextButton(onClick = { coordinator.startNew() }) { Text("New") }
+                },
+            )
+        },
+    ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -104,11 +134,60 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
                             } catch (_: Throwable) {
                                 // Surfaced in a fuller UI; swallowed here to keep the shell minimal.
                             } finally {
+                                coordinator.persist()   // save the turn so it survives relaunch
                                 busy = false
                             }
                         }
                     },
                 ) { Text("Send") }
+            }
+        }
+    }
+
+    if (showHistory) {
+        ModalBottomSheet(onDismissRequest = { showHistory = false }) {
+            ConversationHistoryList(
+                summaries = summaries,
+                onOpen = { id -> coordinator.open(id); showHistory = false },
+                onDelete = { id -> coordinator.delete(id) },
+            )
+        }
+    }
+}
+
+/** The chat-history sheet: tap a row to open that conversation, Delete to remove it. */
+@Composable
+private fun ConversationHistoryList(
+    summaries: List<ConversationSummary>,
+    onOpen: (String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Text(
+            "History",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+        )
+        if (summaries.isEmpty()) {
+            Text(
+                "No conversations yet",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        } else {
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                items(summaries) { summary ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpen(summary.id) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(summary.title, modifier = Modifier.weight(1f), maxLines = 1)
+                        TextButton(onClick = { onDelete(summary.id) }) { Text("Delete") }
+                    }
+                }
             }
         }
     }

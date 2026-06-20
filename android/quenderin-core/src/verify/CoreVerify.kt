@@ -567,6 +567,50 @@ fun main() {
         !ChatMessage(Role.ASSISTANT, "The capital of France is Paris.").isFlagged)
     check("flagged-output notice is non-empty", SupportContact.FLAGGED_OUTPUT_NOTICE.isNotEmpty())
 
+    // Conversation history — file persistence round-trip + coordinator lifecycle (twin of iOS).
+    check("FileConversationPersistence round-trips a transcript + index", run {
+        val dir = java.nio.file.Files.createTempDirectory("convtest").toFile()
+        try {
+            val p = FileConversationPersistence(dir)
+            p.saveTranscript("abc", listOf(ChatMessage(Role.USER, "hi"), ChatMessage(Role.ASSISTANT, "hello")))
+            val round = p.loadTranscript("abc").map { it.text }
+            p.saveIndex(listOf(ConversationSummary("abc", "hi", 123L)))
+            val idx = p.loadIndex()
+            p.deleteTranscript("abc")
+            round == listOf("hi", "hello") &&
+                idx.size == 1 && idx[0].id == "abc" && idx[0].title == "hi" && idx[0].updatedAt == 123L &&
+                p.loadTranscript("abc").isEmpty()
+        } finally {
+            dir.deleteRecursively()
+        }
+    })
+    check("ConversationCoordinator restores the most recent conversation across sessions", run {
+        val p = InMemoryConversationPersistence()
+        val chat1 = ChatModel(ScriptedInferenceEngine(listOf("hello there")))
+        ConversationCoordinator(chat1, p, now = { 1000L }).also { chat1.send("first question"); it.persist() }
+        val chat2 = ChatModel(ScriptedInferenceEngine(listOf("ignored")))
+        val c2 = ConversationCoordinator(chat2, p, now = { 2000L })
+        chat2.messages.map { it.text } == listOf("first question", "hello there") &&
+            c2.summaries.size == 1 && c2.summaries[0].title == "first question"
+    })
+    check("ConversationCoordinator.startNew is a no-op on an empty chat", run {
+        val p = InMemoryConversationPersistence()
+        val c = ConversationCoordinator(ChatModel(ScriptedInferenceEngine(listOf("x"))), p, now = { 1L })
+        val before = c.summaries.size
+        c.startNew()
+        c.summaries.size == before
+    })
+    check("ConversationCoordinator delete-current starts fresh", run {
+        val p = InMemoryConversationPersistence()
+        val chat = ChatModel(ScriptedInferenceEngine(listOf("ok")))
+        val c = ConversationCoordinator(chat, p, now = { 5L })
+        chat.send("keep me")
+        c.persist()
+        val id = c.summaries.first().id
+        c.delete(id)
+        c.summaries.none { it.id == id } && chat.messages.isEmpty()
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

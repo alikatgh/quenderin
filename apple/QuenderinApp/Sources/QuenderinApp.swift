@@ -13,21 +13,24 @@ import QuenderinKit
 @main
 struct QuenderinApp: App {
     @StateObject private var onboarding: OnboardingModel
-    @StateObject private var chat: ChatModel
+    @StateObject private var conversations: ConversationCoordinator
     @StateObject private var agent: AgentSession
 
     init() {
         let engine: InferenceEngine = DefaultInferenceEngine.make() // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
-        _chat = StateObject(wrappedValue: ChatModel(engine: engine))
+        // Chat + on-device conversation history: the coordinator owns the ChatModel, restores the
+        // most recent conversation on launch, and persists each turn to Application Support.
+        let chat = ChatModel(engine: engine)
+        _conversations = StateObject(wrappedValue: ConversationCoordinator(chat: chat, persistence: FileConversationPersistence()))
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
         _agent = StateObject(wrappedValue: AgentSession(engine: engine, tools: [CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()]))
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(onboarding: onboarding, chat: chat, agent: agent)
+            RootView(onboarding: onboarding, conversations: conversations, agent: agent)
         }
     }
 }

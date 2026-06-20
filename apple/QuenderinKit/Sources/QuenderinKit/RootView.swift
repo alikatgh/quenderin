@@ -1,17 +1,17 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// The app root: shows onboarding until a model is ready, then chat — plus an optional
-/// Agent tab when an `AgentSession` is supplied. The app target owns the models (as
-/// `@StateObject`, sharing one engine) and passes them in.
+/// The app root: shows onboarding until a model is ready, then chat (with conversation
+/// history) — plus an optional Agent tab when an `AgentSession` is supplied. The app target
+/// owns the models (as `@StateObject`, sharing one engine) and passes them in.
 public struct RootView: View {
     @ObservedObject private var onboarding: OnboardingModel
-    @ObservedObject private var chat: ChatModel
+    @ObservedObject private var conversations: ConversationCoordinator
     private let agent: AgentSession?
 
-    public init(onboarding: OnboardingModel, chat: ChatModel, agent: AgentSession? = nil) {
+    public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
-        self.chat = chat
+        self.conversations = conversations
         self.agent = agent
     }
 
@@ -19,7 +19,7 @@ public struct RootView: View {
         Group {
             if case .ready = onboarding.phase {
                 TabView {
-                    ChatView(model: chat)
+                    ChatHomeView(coordinator: conversations)
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                     if let agent {
                         AgentView(session: agent)

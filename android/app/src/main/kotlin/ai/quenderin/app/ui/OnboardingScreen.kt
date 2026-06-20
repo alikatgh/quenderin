@@ -1,6 +1,7 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.AndroidDeviceProfile
+import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
@@ -39,7 +40,12 @@ import kotlinx.coroutines.launch
  * blocking download/load on [Dispatchers.IO]. Twin of iOS `RootView`.
  */
 @Composable
-fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> AndroidDeviceProfile) {
+fun AppRoot(
+    engine: InferenceEngine,
+    downloader: ModelDownloader,
+    probe: () -> AndroidDeviceProfile,
+    conversations: ConversationPersistence,
+) {
     val scope = rememberCoroutineScope()
     var phase by remember { mutableStateOf<OnboardingPhase>(OnboardingPhase.Idle) }
     val onboarding = remember {
@@ -47,7 +53,7 @@ fun AppRoot(engine: InferenceEngine, downloader: ModelDownloader, probe: () -> A
     }
 
     when (val current = phase) {
-        is OnboardingPhase.Ready -> MainTabs(engine = engine, model = current.model)
+        is OnboardingPhase.Ready -> MainTabs(engine = engine, model = current.model, conversations = conversations)
         else -> OnboardingScreen(
             phase = current,
             selection = onboarding.selection,

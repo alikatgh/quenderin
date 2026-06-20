@@ -81,9 +81,35 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   type (model output), different code path, no gate. When you add a gate, audit EVERY path that emits the
   gated type. Non-destructive is fine for "minimize risk": flag/warn (`isFlagged`) beats suppressing, and
   preserves the offline value. (chat-output safety)
+- **Compose: never write `@Composable` state during composition.** A `remember { }` initializer that
+  constructs an object whose `init` fires a listener that sets a `mutableStateOf` (e.g. restoring a
+  conversation that calls `chat.onChange` → `messages = it`) writes state mid-composition and can throw.
+  Construct with no-op listeners, then sync initial values + wire the live listeners in a `LaunchedEffect`.
+  (SwiftUI is fine — `@StateObject` init runs before any view body.) (conversation history)
+- **Headless `--screenshot` fires before scroll-reveal → blank below-fold captures.** A page that reveals
+  sections via IntersectionObserver (`.reveal{opacity:0}` until scrolled in) screenshots BLANK for
+  everything below the first viewport, because CLI headless never scrolls. Drive the DevTools Protocol
+  instead (`website/scripts/shoot.mjs`): inject `.reveal{opacity:1!important}`, set theme, then
+  `Page.captureScreenshot{captureBeyondViewport:true, clip}`. Also: macOS TCC blocks the preview sandbox
+  from `os.getcwd()`/opening files under `~/Documents` — pass ABSOLUTE paths and a hard-coded `directory=`
+  (`website/scripts/serve.py`), never `python3 -m http.server --directory`. (website tooling)
+- **SVG `og:image` / favicon silently unsupported by the consumers that matter.** Social scrapers
+  (Twitter/LinkedIn/Slack/iMessage) need a PNG/JPG `og:image`; iOS `apple-touch-icon` must be PNG. Ship
+  rasterized PNGs (`website/scripts/rasterize.mjs`) + keep the SVG as the modern `rel="icon"`. (website assets)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-20 — Conversation history wired into both apps (built-but-unwired core). Symptom: core had full
+  multi-conversation support (`ConversationManager`/`Library`/`Store`, tested) but neither app exposed it —
+  chat showed only the in-memory thread. Fix: `FileConversationPersistence` (kit + core) + a
+  `ConversationCoordinator` (restore-recent / persist-per-turn / new / open / delete) + a History sheet
+  (iOS `ChatHomeView`, Android `ChatScreen`). iOS 149 / core green. Lesson: Compose composition-write — see pattern above.
+- 2026-06-20 — Marketing site world-class pass (no app code). Symptom: site polished but not share-ready —
+  SVG-only `og:image` (blank social previews), no PNG favicon/`apple-touch-icon`, no FAQ rich-results, no
+  manifest. Fix: `scripts/rasterize.mjs` → og-image.png (1200×630) + favicon-16/32 + apple-touch-icon.png;
+  `site.webmanifest`; FAQPage JSON-LD; dual `theme-color` on all 6 pages. Built `scripts/serve.py` +
+  `scripts/shoot.mjs` (CDP screenshotter). Verified: assets 200, both JSON-LD valid, a11y focus/scrim intact.
+  Lesson: see the two website patterns above. Still user-only: legal placeholders + waitlist endpoint.
 - 2026-06-20 — Chat output unmoderated (store Gen-AI gap). Symptom: `SafetyBlocklist` gated agent
   tool calls + final answer, but `ChatModel` returned model chat output verbatim — the Play/App-Store
   "minimize risk of policy-violating output" safeguard was missing on the chat path. Fix: shared
