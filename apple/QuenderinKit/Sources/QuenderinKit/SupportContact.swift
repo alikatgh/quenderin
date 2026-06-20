@@ -9,7 +9,7 @@ public enum SupportContact {
     public static let reportEmail = "quenderin@aulenor.com"
 
     /// Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html.
-    public static let privacyPolicyURL = "https://quenderin.org/privacy.html"
+    public static let privacyPolicyURL = "https://quenderin.org/privacy"
 
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =

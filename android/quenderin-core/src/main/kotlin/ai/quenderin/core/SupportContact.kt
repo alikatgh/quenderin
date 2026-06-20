@@ -13,7 +13,7 @@ object SupportContact {
     const val REPORT_EMAIL = "quenderin@aulenor.com"
 
     /** Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html. */
-    const val PRIVACY_POLICY_URL = "https://quenderin.org/privacy.html"
+    const val PRIVACY_POLICY_URL = "https://quenderin.org/privacy"
 
     /** Shown beneath chat + agent output so users know responses are unfiltered, on-device AI. */
     const val AI_DISCLAIMER =

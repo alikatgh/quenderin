@@ -17,7 +17,7 @@ account-side step is **paste + capture screenshots + submit**, not authoring.
 - **Age rating:** **17+ / Mature 17+** — the app runs unrestricted open-source LLMs that can produce mature text on direct prompting.
 - **Price:** Free · **No in-app purchases · No ads**
 - **Data collected/shared:** **None.** No account, no analytics, no telemetry, no backend. The only network call is the user-initiated model download from Hugging Face (a public-file GET; transmits no user data).
-- **Privacy policy URL:** `https://quenderin.org/privacy.html` (hosted on Cloudflare Pages from `website/privacy.html`)
+- **Privacy policy URL:** `https://quenderin.org/privacy` (hosted on Cloudflare Pages from `website/privacy.html`; `/privacy.html` 307-redirects here)
 - **Marketing URL:** `https://quenderin.org`
 - **Support email:** `quenderin@aulenor.com` (same address in-app, on the website, and for content reports)
 
