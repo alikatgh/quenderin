@@ -101,4 +101,24 @@ final class ConversationCoordinatorTests: XCTestCase {
         coord.open(idA)   // switch back
         XCTAssertEqual(chat.messages.first?.text, "conversation A")
     }
+
+    @MainActor
+    func testClearAllWipesHistoryThenStartsFresh() async {
+        let persistence = InMemoryConversationPersistence()
+        let chat = await loadedChat("ok")
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
+        await chat.send("one")
+        coord.persist()
+        coord.startNew()
+        await chat.send("two")
+        coord.persist()
+        XCTAssertEqual(coord.summaries.count, 2)
+
+        coord.clearAll()
+        // Back to first-launch state: the chat is empty and only a fresh conversation remains.
+        XCTAssertTrue(chat.messages.isEmpty)
+        XCTAssertEqual(coord.summaries.count, 1)
+        XCTAssertEqual(coord.summaries.first?.title, "New conversation")
+        XCTAssertEqual(persistence.loadIndex().count, 1)   // persistence actually wiped
+    }
 }

@@ -17,7 +17,7 @@ public struct RootView: View {
 
     public var body: some View {
         Group {
-            if case .ready = onboarding.phase {
+            if case .ready(let model) = onboarding.phase {
                 TabView {
                     ChatHomeView(coordinator: conversations)
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
@@ -25,8 +25,8 @@ public struct RootView: View {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                     }
-                    AboutView()
-                        .tabItem { Label("About", systemImage: "info.circle") }
+                    SettingsView(coordinator: conversations, model: model)
+                        .tabItem { Label("Settings", systemImage: "gearshape") }
                 }
             } else {
                 OnboardingView(model: onboarding)

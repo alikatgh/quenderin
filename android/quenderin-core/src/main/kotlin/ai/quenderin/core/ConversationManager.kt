@@ -81,4 +81,11 @@ class ConversationManager(
         persistence.saveIndex(library.snapshot())
         if (currentId == id) currentId = null
     }
+
+    /** Delete every conversation (all transcripts + the index). Nothing is current afterward. */
+    fun clearAll() {
+        library.snapshot().forEach { persistence.deleteTranscript(it.id); library.remove(it.id) }
+        persistence.saveIndex(library.snapshot())   // now empty
+        currentId = null
+    }
 }

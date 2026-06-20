@@ -46,6 +46,7 @@ public struct ChatHomeView: View {
 struct ConversationHistoryView: View {
     @ObservedObject var coordinator: ConversationCoordinator
     let onDismiss: () -> Void
+    @State private var showClearConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -79,7 +80,18 @@ struct ConversationHistoryView: View {
             }
             .navigationTitle("History")
             .toolbar {
+                if !coordinator.summaries.isEmpty {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Clear All", role: .destructive) { showClearConfirm = true }
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDismiss) }
+            }
+            .confirmationDialog("Delete all conversations?", isPresented: $showClearConfirm, titleVisibility: .visible) {
+                Button("Delete All", role: .destructive) { coordinator.clearAll() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently removes every saved conversation from this device.")
             }
         }
     }

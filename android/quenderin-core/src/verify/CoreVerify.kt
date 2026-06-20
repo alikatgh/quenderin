@@ -617,6 +617,17 @@ fun main() {
         session.clear()
         hadContent && session.steps.isEmpty() && session.answer == null && session.haltReason == null
     })
+    check("ConversationCoordinator.clearAll wipes history then starts fresh", run {
+        val p = InMemoryConversationPersistence()
+        val chat = ChatModel(ScriptedInferenceEngine(listOf("ok", "ok")))
+        val c = ConversationCoordinator(chat, p, now = { 1L })
+        chat.send("one"); c.persist()
+        c.startNew(); chat.send("two"); c.persist()
+        val hadTwo = c.summaries.size == 2
+        c.clearAll()
+        hadTwo && chat.messages.isEmpty() && c.summaries.size == 1 &&
+            c.summaries[0].title == "New conversation" && p.loadIndex().size == 1
+    })
 
     println()
     if (failures == 0) {

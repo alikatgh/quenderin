@@ -72,4 +72,12 @@ public final class ConversationCoordinator: ObservableObject {
         }
         refresh()
     }
+
+    /// Delete all saved conversations, then drop into a fresh empty one (first-launch state).
+    public func clearAll() {
+        manager.clearAll()
+        manager.startNew()
+        chat.reset()
+        refresh()
+    }
 }
