@@ -54,6 +54,18 @@
   --pad: clamp(1.25rem, 4vw, 2rem);
   --font-sans: sohne-var, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* Display face for headlines only; non-Latin scripts fall back to --font-sans per glyph */
+  --font-display: "Bricolage Grotesque", var(--font-sans);
+}
+
+/* Headline display face — self-hosted (OFL), so the "nothing loads from a third party" promise holds.
+   Latin variable subset: Cyrillic / Arabic / CJK / Indic headlines fall back to --font-sans automatically. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("fonts/bricolage-grotesque-latin.woff2") format("woff2");
 }
 
 /* Dark "ink" section token overrides — same components, different surface layer */
@@ -84,9 +96,9 @@ body {
   font-variant-numeric: tabular-nums;
 }
 h1, h2, h3, h4 { margin: 0; color: var(--text); }
-/* The signature: light display weights + tight negative tracking */
-h1 { font-weight: 300; letter-spacing: -0.04em; line-height: 1.03; }
-h2 { font-weight: 400; letter-spacing: -0.02em; line-height: 1.12; }
+/* Headlines: self-hosted Bricolage Grotesque display face, with presence */
+h1 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.025em; line-height: 1.04; }
+h2 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; }
 h3 { font-weight: 500; letter-spacing: -0.01em; line-height: 1.2; }
 h4 { font-weight: 500; line-height: 1.3; }
 p { margin: 0; }
