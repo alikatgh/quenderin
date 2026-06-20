@@ -6,6 +6,7 @@ import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Role
 import ai.quenderin.core.SupportContact
+import ai.quenderin.core.isFlagged
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -118,20 +119,32 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry) {
 private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     val mine = msg.role == Role.USER
     val reportable = !mine && msg.text.isNotBlank()
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
-    ) {
-        Surface(
-            color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(14.dp),
-            // Long-press an AI response to report it (Generative-AI flag mechanism).
-            modifier = if (reportable) Modifier.combinedClickable(onClick = {}, onLongClick = onReport) else Modifier,
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
         ) {
+            Surface(
+                color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(14.dp),
+                // Long-press an AI response to report it (Generative-AI flag mechanism).
+                modifier = if (reportable) Modifier.combinedClickable(onClick = {}, onLongClick = onReport) else Modifier,
+            ) {
+                Text(
+                    text = msg.text,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    color = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // On-device "minimize risk" safeguard: warn (don't suppress) when a response trips the
+        // safety blocklist. Non-blocking — long-press still reports.
+        if (msg.isFlagged) {
             Text(
-                text = msg.text,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                color = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                SupportContact.FLAGGED_OUTPUT_NOTICE,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             )
         }
     }

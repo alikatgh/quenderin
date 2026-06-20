@@ -10,7 +10,7 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 | Platform | What's there | Engine | Verification |
 |----------|--------------|--------|--------------|
 | **Desktop** (Electron/TS) | Shipping prototype — full agent + chat | `node-llama-cpp` (real) | `npm run lint && npm run typecheck && npm run test:recommendation` |
-| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **119 tests** (incl. real-inference test through the actual engine) |
+| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **143 tests** (incl. real-inference test through the actual engine) |
 | **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **99 checks**; `./gradlew :app:assembleDebug` → APK |
 
 ## Milestone parity (mobile brain — both run on mocks, fully tested)
@@ -89,5 +89,21 @@ cd android/quenderin-core && bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*
 3. **Ship** — App Store / Play Store; fill the legal-page placeholders; grant the GitHub
    `workflow` token scope to enable the parked Pages deploy.
 
-Product decisions still open: wire `AgentSession` into a UI tab (agentic chat?), and
-optional Android runtime manifest-loading (kotlinx.serialization in the app).
+## Store readiness — software done; the rest needs *you*
+
+Both native apps are **code-complete and compliance-clean in software**. The Generative-AI
+content-safety surface is fully wired on iOS + Android: an unfiltered-output disclaimer, a
+"Report this response" affordance (chat + agent), the agent's final answer + tool calls gated
+by `SafetyBlocklist`, **chat output flagged** with a non-blocking warning when it trips the
+blocklist (`ChatMessage.isFlagged` + `SupportContact.flaggedOutputNotice`, parity-checked), and
+the agent now explains *why* it halted (`HaltReason.userMessage`). Store blockers that were code
+(iOS `PrivacyInfo.xcprivacy`, Android FGS `<service>`, backup-exclusion, `ITSAppUsesNonExemptEncryption`)
+are resolved and CI-gated.
+
+**What's left is account/hardware/legal only — an agent can't do it.** The full ledger with
+exact files and one-line actions is in **`docs/SHIP_READINESS.md`**; the short list: host the
+privacy policy + paste the URL (the one remaining *blocker*), set a dedicated support email,
+file 17+/Mature 17+, opt into Apple's Standard EULA, complete the Play Data-Safety form, and
+capture real on-device tok/s on a physical phone.
+
+Optional future product work: Android runtime manifest-loading (kotlinx.serialization in the app).
