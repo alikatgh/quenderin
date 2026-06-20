@@ -15,6 +15,14 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
+<style>
+  /* Language picker + minimal RTL support (added with i18n) */
+  .lang-select{font:inherit;font-size:.85rem;line-height:1;padding:.4em 1.5em .4em .6em;border:1px solid rgba(128,128,128,.35);border-radius:8px;background:transparent;color:inherit;cursor:pointer;opacity:.85;-webkit-appearance:none;appearance:none}
+  .lang-select:hover{opacity:1}
+  .lang-select:focus-visible{outline:2px solid #635BFF;outline-offset:2px}
+  html[dir="rtl"] .spec-strip,html[dir="rtl"] .trust-list,html[dir="rtl"] .checklist,html[dir="rtl"] .steplist{text-align:right}
+  html[dir="rtl"] .lang-select{padding:.4em .6em .4em 1.5em}
+</style>
 
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Quenderin" />
@@ -80,7 +88,7 @@
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
 
 <header class="site-header" id="top">
   <div class="container container-wide header-inner">
@@ -89,6 +97,12 @@
       <span class="brand-name">Quenderin</span>
     </a>
     <nav class="nav" aria-label="Primary">
+      <select class="lang-select" aria-label="Language">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="ar">العربية</option>
+        <option value="zh">中文</option>
+      </select>
       <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -97,11 +111,11 @@
         <span class="nav-toggle-bar"></span>
       </button>
       <ul class="nav-menu" id="nav-menu">
-        <li><a href="#how">How it works</a></li>
-        <li><a href="#features">Features</a></li>
-        <li><a href="#privacy">Privacy</a></li>
-        <li><a href="#models">Models</a></li>
-        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#how" data-i18n="nav.how">How it works</a></li>
+        <li><a href="#features" data-i18n="nav.features">Features</a></li>
+        <li><a href="#privacy" data-i18n="nav.privacy">Privacy</a></li>
+        <li><a href="#models" data-i18n="nav.models">Models</a></li>
+        <li><a href="#faq" data-i18n="nav.faq">FAQ</a></li>
         <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a></li>
       </ul>
     </nav>
@@ -116,22 +130,22 @@
     <div class="container container-wide">
       <div class="hero-inner">
         <div class="hero-copy reveal">
-          <p class="eyebrow">Offline &middot; Private &middot; Yours</p>
-          <h1>An AI that lives on your phone&mdash;not in someone&rsquo;s cloud.</h1>
-          <p class="lede">
+          <p class="eyebrow" data-i18n="hero.eyebrow">Offline &middot; Private &middot; Yours</p>
+          <h1 data-i18n="hero.title">An AI that lives on your phone&mdash;not in someone&rsquo;s cloud.</h1>
+          <p class="lede" data-i18n-html="hero.lede">
             Quenderin runs large language models <strong>fully on your device</strong>. No internet,
             no API keys, no telemetry. Download a model once over Wi-Fi, and your assistant keeps
             working on a plane, in a tent, anywhere your signal doesn&rsquo;t.
           </p>
           <div class="cta-row">
-            <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">View on GitHub</a>
-            <a class="btn btn-ghost" href="#how">See how it works</a>
+            <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.cta1">View on GitHub</a>
+            <a class="btn btn-ghost" href="#how" data-i18n="hero.cta2">See how it works</a>
           </div>
           <ul class="spec-strip" aria-label="Key facts">
-            <li><span class="spec-num">100%</span> offline</li>
-            <li><span class="spec-num">0</span> API keys</li>
-            <li><span class="spec-num">0</span> telemetry</li>
-            <li><span class="spec-num">$0</span> per token</li>
+            <li><span class="spec-num">100%</span> <span data-i18n="hero.spec1">offline</span></li>
+            <li><span class="spec-num">0</span> <span data-i18n="hero.spec2">API keys</span></li>
+            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">telemetry</span></li>
+            <li><span class="spec-num">$0</span> <span data-i18n="hero.spec4">per token</span></li>
           </ul>
         </div>
 
@@ -139,18 +153,18 @@
           <div class="device">
             <div class="device-bar">
               <span class="dot dot-live"></span>
-              <span class="device-status">On-device &middot; Offline</span>
-              <span class="device-airplane">✈ airplane mode</span>
+              <span class="device-status" data-i18n="hero.dev.status">On-device &middot; Offline</span>
+              <span class="device-airplane" data-i18n="hero.dev.airplane">✈ airplane mode</span>
             </div>
             <div class="chat">
-              <div class="msg msg-user"><span class="msg-who">You</span>Best knot for a tarp shelter?</div>
+              <div class="msg msg-user"><span class="msg-who" data-i18n="hero.dev.user">You</span><span data-i18n="hero.dev.q">Best knot for a tarp shelter?</span></div>
               <div class="msg msg-ai">
                 <span class="msg-who">Quenderin</span>
-                A <strong>taut-line hitch</strong> on the ridgeline&mdash;it grips under load but slides
+                <span data-i18n-html="hero.dev.ai">A <strong>taut-line hitch</strong> on the ridgeline&mdash;it grips under load but slides
                 to re-tension when the wind picks up. For the corners, a prusik loop lets you adjust
-                without untying.
+                without untying.</span>
               </div>
-              <div class="chat-foot"><span class="dot dot-live"></span> 0&nbsp;ms to a server &middot; nothing left your phone</div>
+              <div class="chat-foot"><span class="dot dot-live"></span> <span data-i18n="hero.dev.foot">0&nbsp;ms to a server &middot; nothing left your phone</span></div>
             </div>
           </div>
         </div>
@@ -161,12 +175,12 @@
   <!-- TRUST STRIP -->
   <div class="container container-wide">
     <section class="trust" aria-label="Built on">
-      <p class="trust-label">Local inference, done right</p>
+      <p class="trust-label" data-i18n="trust.label">Local inference, done right</p>
       <ul class="trust-list">
-        <li>Local GGUF models</li>
+        <li data-i18n="trust.1">Local GGUF models</li>
         <li>node-llama-cpp / llama.cpp</li>
-        <li>Apple Silicon &rarr; Raspberry Pi</li>
-        <li>MIT open source</li>
+        <li data-i18n="trust.3">Apple Silicon &rarr; Raspberry Pi</li>
+        <li data-i18n="trust.4">MIT open source</li>
       </ul>
     </section>
   </div>
@@ -175,8 +189,8 @@
   <section class="band">
     <div class="container">
       <div class="band-inner reveal">
-        <h2>The cloud isn&rsquo;t always there. Your AI shouldn&rsquo;t vanish with your signal.</h2>
-        <p>
+        <h2 data-i18n="problem.title">The cloud isn&rsquo;t always there. Your AI shouldn&rsquo;t vanish with your signal.</h2>
+        <p data-i18n-html="problem.body">
           Every other assistant is a thin client for a data center. Lose connection and it goes dark&mdash;
           and even when it works, your words travel to a server you don&rsquo;t own. Quenderin flips that:
           the model lives <em>on the device in your hand</em>.
@@ -189,29 +203,29 @@
   <section class="section tint" id="how">
     <div class="container split">
       <div class="split-copy reveal">
-        <p class="eyebrow">How it works</p>
-        <h2>Download once. Run forever.</h2>
+        <p class="eyebrow" data-i18n="how.eyebrow">How it works</p>
+        <h2 data-i18n="how.title">Download once. Run forever.</h2>
         <ol class="steplist">
-          <li><span class="step-num">01</span><div><h3>Probe</h3><p>Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
-          <li><span class="step-num">02</span><div><h3>Download</h3><p>Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
-          <li><span class="step-num">03</span><div><h3>Go offline</h3><p>Everything runs locally from then on. A clear check tells you it&rsquo;s safe before you leave the grid.</p></div></li>
+          <li><span class="step-num">01</span><div><h3 data-i18n="how.s1t">Probe</h3><p data-i18n="how.s1b">Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
+          <li><span class="step-num">02</span><div><h3 data-i18n="how.s2t">Download</h3><p data-i18n="how.s2b">Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
+          <li><span class="step-num">03</span><div><h3 data-i18n="how.s3t">Go offline</h3><p data-i18n="how.s3b">Everything runs locally from then on. A clear check tells you it&rsquo;s safe before you leave the grid.</p></div></li>
         </ol>
       </div>
       <div class="split-visual reveal">
         <div class="phone-stage" aria-hidden="true">
-          <div class="phone-annot phone-annot-1"><span class="annot-check">&#10003;</span> Fits your 8&nbsp;GB device</div>
+          <div class="phone-annot phone-annot-1" data-i18n="how.ph.annot1">✓ Fits your 8&nbsp;GB device</div>
           <div class="phone">
             <div class="phone-screen">
               <div class="phone-notch"></div>
-              <p class="phone-eyebrow">Recommended for your device</p>
+              <p class="phone-eyebrow" data-i18n="how.ph.eyebrow">Recommended for your device</p>
               <h4>Qwen3 4B</h4>
-              <p class="phone-sub">8&nbsp;GB RAM &middot; 2.4&nbsp;GB download</p>
+              <p class="phone-sub" data-i18n="how.ph.sub">8&nbsp;GB RAM &middot; 2.4&nbsp;GB download</p>
               <div class="phone-bar"><span></span></div>
-              <p class="phone-pct">2.4 / 2.4 GB &middot; complete</p>
-              <div class="phone-ready"><span class="dot dot-live"></span> Ready to go offline</div>
+              <p class="phone-pct" data-i18n="how.ph.pct">2.4 / 2.4 GB &middot; complete</p>
+              <div class="phone-ready"><span class="dot dot-live"></span> <span data-i18n="how.ph.ready">Ready to go offline</span></div>
             </div>
           </div>
-          <div class="phone-annot phone-annot-2">Resumes in the background</div>
+          <div class="phone-annot phone-annot-2" data-i18n="how.ph.annot2">Resumes in the background</div>
         </div>
       </div>
     </div>
@@ -221,43 +235,43 @@
   <section class="section" id="features">
     <div class="container">
       <header class="section-head reveal">
-        <p class="eyebrow">Features</p>
-        <h2>A real assistant, with nothing phoning home.</h2>
+        <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
+        <h2 data-i18n="feat.title">A real assistant, with nothing phoning home.</h2>
       </header>
       <div class="bento">
         <article class="cell span-2 reveal">
-          <h3>Truly offline</h3>
-          <p>After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
-          <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> Airplane mode &middot; still answering</span></div>
+          <h3 data-i18n="feat.offline.t">Truly offline</h3>
+          <p data-i18n="feat.offline.b">After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
+          <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Airplane mode &middot; still answering</span></span></div>
         </article>
         <article class="cell reveal">
           <div class="bignum">$0</div>
-          <h3>Forever free</h3>
-          <p>No subscriptions, no per-token billing. It runs on hardware you already own.</p>
+          <h3 data-i18n="feat.free.t">Forever free</h3>
+          <p data-i18n="feat.free.b">No subscriptions, no per-token billing. It runs on hardware you already own.</p>
         </article>
         <article class="cell span-2 reveal">
-          <h3>Does things, safely</h3>
-          <p>A tool-using agent with a hard safety blocklist&mdash;it will never autonomously touch:</p>
+          <h3 data-i18n="feat.agent.t">Does things, safely</h3>
+          <p data-i18n="feat.agent.b">A tool-using agent with a hard safety blocklist&mdash;it will never autonomously touch:</p>
           <div class="cell-visual chips">
-            <span class="chip chip-x">Pay</span><span class="chip chip-x">Delete</span><span class="chip chip-x">Password</span><span class="chip chip-x">Transfer</span>
+            <span class="chip chip-x" data-i18n="feat.agent.c1">Pay</span><span class="chip chip-x" data-i18n="feat.agent.c2">Delete</span><span class="chip chip-x" data-i18n="feat.agent.c3">Password</span><span class="chip chip-x" data-i18n="feat.agent.c4">Transfer</span>
           </div>
         </article>
         <article class="cell reveal">
-          <h3>Private by design</h3>
-          <p>No accounts, no analytics, no telemetry. Your conversations are yours.</p>
+          <h3 data-i18n="feat.priv.t">Private by design</h3>
+          <p data-i18n="feat.priv.b">No accounts, no analytics, no telemetry. Your conversations are yours.</p>
         </article>
         <article class="cell reveal">
-          <h3>Hardware-adaptive</h3>
-          <p>It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
+          <h3 data-i18n="feat.hw.t">Hardware-adaptive</h3>
+          <p data-i18n="feat.hw.b">It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
           <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
         </article>
         <article class="cell reveal">
-          <h3>Open source</h3>
-          <p>MIT licensed. Read every line, audit every claim, build it yourself.</p>
+          <h3 data-i18n="feat.os.t">Open source</h3>
+          <p data-i18n="feat.os.b">MIT licensed. Read every line, audit every claim, build it yourself.</p>
         </article>
         <article class="cell reveal">
-          <h3>Resumable downloads</h3>
-          <p>The model keeps downloading in the background&mdash;even if you switch apps the night before a trip.</p>
+          <h3 data-i18n="feat.resume.t">Resumable downloads</h3>
+          <p data-i18n="feat.resume.b">The model keeps downloading in the background&mdash;even if you switch apps the night before a trip.</p>
         </article>
       </div>
     </div>
@@ -267,9 +281,9 @@
   <section class="band" data-theme="dark" id="story">
     <div class="container">
       <div class="band-inner reveal">
-        <p class="eyebrow">Built for the edge of the map</p>
-        <h2>You&rsquo;re going off the grid for three days.</h2>
-        <p>
+        <p class="eyebrow" data-i18n="story.eyebrow">Built for the edge of the map</p>
+        <h2 data-i18n="story.title">You&rsquo;re going off the grid for three days.</h2>
+        <p data-i18n-html="story.body">
           The night before, on hotel Wi-Fi, you download a model&mdash;and Quenderin keeps the download
           alive even when you switch apps, then shows a green <strong>&ldquo;ready to go offline&rdquo;</strong>.
           On the trail, with no bars, you still have a capable assistant in your pocket. That&rsquo;s the
@@ -283,25 +297,25 @@
   <section class="section" id="privacy">
     <div class="container split">
       <div class="split-copy reveal">
-        <p class="eyebrow">Privacy</p>
-        <h2>Your data never had to leave. So it doesn&rsquo;t.</h2>
+        <p class="eyebrow" data-i18n="priv.eyebrow">Privacy</p>
+        <h2 data-i18n="priv.title">Your data never had to leave. So it doesn&rsquo;t.</h2>
         <ul class="checklist">
-          <li>No cloud calls after the model is downloaded</li>
-          <li>No API keys, no sign-in, no account</li>
-          <li>No analytics, no tracking, no telemetry</li>
-          <li>Conversations stored only on your device</li>
-          <li>Open source &mdash; verify all of the above yourself</li>
+          <li data-i18n="priv.c1">No cloud calls after the model is downloaded</li>
+          <li data-i18n="priv.c2">No API keys, no sign-in, no account</li>
+          <li data-i18n="priv.c3">No analytics, no tracking, no telemetry</li>
+          <li data-i18n="priv.c4">Conversations stored only on your device</li>
+          <li data-i18n="priv.c5">Open source &mdash; verify all of the above yourself</li>
         </ul>
-        <p class="learn-more"><a href="privacy.html">Read the full Privacy Policy &rarr;</a></p>
+        <p class="learn-more"><a href="privacy.html" data-i18n="priv.link">Read the full Privacy Policy &rarr;</a></p>
       </div>
       <div class="split-visual reveal">
         <div class="netpanel" aria-hidden="true">
-          <div class="netpanel-bar"><span class="dot dot-live"></span> Network activity &middot; on-device</div>
-          <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok">once, Wi-Fi</span></div>
-          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x">never sent</span></div>
-          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x">never sent</span></div>
-          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x">no account</span></div>
-          <div class="netpanel-foot"><span class="dot dot-live"></span> 0 B sent since launch &middot; nothing left your device</div>
+          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar">Network activity &middot; on-device</span></div>
+          <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok" data-i18n="priv.net.once">once, Wi-Fi</span></div>
+          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
+          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
+          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x" data-i18n="priv.net.noacct">no account</span></div>
+          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot">0 B sent since launch &middot; nothing left your device</span></div>
         </div>
       </div>
     </div>
@@ -311,28 +325,28 @@
   <section class="section tint" id="models">
     <div class="container">
       <header class="section-head reveal">
-        <p class="eyebrow">Model catalog</p>
-        <h2>Bring any model. Right-sized for your hardware.</h2>
-        <p>Quenderin runs on llama.cpp&mdash;so it runs <strong>any GGUF model</strong>: Llama, Qwen, DeepSeek, Mistral, Gemma, Phi. Here&rsquo;s the curated shortlist it recommends from, sized for everything from a Raspberry&nbsp;Pi to an M-series Mac.</p>
+        <p class="eyebrow" data-i18n="models.eyebrow">Model catalog</p>
+        <h2 data-i18n="models.title">Bring any model. Right-sized for your hardware.</h2>
+        <p data-i18n-html="models.intro">Quenderin runs on llama.cpp&mdash;so it runs <strong>any GGUF model</strong>: Llama, Qwen, DeepSeek, Mistral, Gemma, Phi. Here&rsquo;s the curated shortlist it recommends from, sized for everything from a Raspberry&nbsp;Pi to an M-series Mac.</p>
       </header>
       <div class="table-wrap reveal">
         <table class="spec-table model-spec-table">
           <thead>
-            <tr><th scope="col">Model</th><th scope="col">Good for</th><th scope="col">Download</th><th scope="col">Min&nbsp;RAM</th><th scope="col">Quant</th></tr>
+            <tr><th scope="col" data-i18n="models.th.model">Model</th><th scope="col" data-i18n="models.th.for">Good for</th><th scope="col" data-i18n="models.th.dl">Download</th><th scope="col" data-i18n="models.th.ram">Min&nbsp;RAM</th><th scope="col" data-i18n="models.th.quant">Quant</th></tr>
           </thead>
           <tbody>
-            <tr class="recommended"><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;4B<span class="badge">Recommended</span></td><td>General-purpose, Apache&nbsp;2.0 &mdash; the current go-to</td><td>2.4&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-deepseek" aria-hidden="true"></span>DeepSeek-R1&nbsp;7B</td><td>Step-by-step reasoning &amp; math</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen2.5&nbsp;Coder&nbsp;7B</td><td>Code generation &amp; tool use</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-gemma" aria-hidden="true"></span>Gemma&nbsp;3&nbsp;4B</td><td>Multilingual, 140+ languages</td><td>2.5&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-phi" aria-hidden="true"></span>Phi-4&nbsp;mini&nbsp;3.8B</td><td>Efficient, runs well on CPU</td><td>2.3&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-mistral" aria-hidden="true"></span>Mistral&nbsp;7B</td><td>Fast, capable all-rounder</td><td>4.1&nbsp;GB</td><td>6&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-llama" aria-hidden="true"></span>Llama&nbsp;3.2&nbsp;1B</td><td>Ultra-light &mdash; runs on a Pi</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;14B</td><td>Best quality for a strong device</td><td>9.0&nbsp;GB</td><td>12&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr class="recommended"><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;4B<span class="badge" data-i18n="models.badge">Recommended</span></td><td data-i18n="models.r1">General-purpose, Apache&nbsp;2.0 &mdash; the current go-to</td><td>2.4&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-deepseek" aria-hidden="true"></span>DeepSeek-R1&nbsp;7B</td><td data-i18n="models.r2">Step-by-step reasoning &amp; math</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen2.5&nbsp;Coder&nbsp;7B</td><td data-i18n="models.r3">Code generation &amp; tool use</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-gemma" aria-hidden="true"></span>Gemma&nbsp;3&nbsp;4B</td><td data-i18n="models.r4">Multilingual, 140+ languages</td><td>2.5&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-phi" aria-hidden="true"></span>Phi-4&nbsp;mini&nbsp;3.8B</td><td data-i18n="models.r5">Efficient, runs well on CPU</td><td>2.3&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-mistral" aria-hidden="true"></span>Mistral&nbsp;7B</td><td data-i18n="models.r6">Fast, capable all-rounder</td><td>4.1&nbsp;GB</td><td>6&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-llama" aria-hidden="true"></span>Llama&nbsp;3.2&nbsp;1B</td><td data-i18n="models.r7">Ultra-light &mdash; runs on a Pi</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;14B</td><td data-i18n="models.r8">Best quality for a strong device</td><td>9.0&nbsp;GB</td><td>12&nbsp;GB</td><td>Q4_K_M</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="models-foot">&plus;&nbsp;<strong>thousands more</strong> from Hugging Face&mdash;any GGUF works. Choosing is optional: Quenderin picks the best fit for your device automatically.</p>
+      <p class="models-foot" data-i18n-html="models.foot">&plus;&nbsp;<strong>thousands more</strong> from Hugging Face&mdash;any GGUF works. Choosing is optional: Quenderin picks the best fit for your device automatically.</p>
     </div>
   </section>
 
@@ -340,34 +354,34 @@
   <section class="section" id="faq">
     <div class="container split faq-split">
       <div class="split-copy reveal">
-        <p class="eyebrow">FAQ</p>
-        <h2>Questions, answered.</h2>
-        <p>It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here&rsquo;s the rest.</p>
+        <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
+        <h2 data-i18n="faq.title">Questions, answered.</h2>
+        <p data-i18n="faq.intro">It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here&rsquo;s the rest.</p>
         <div class="faq-cta">
-          <p>Still have a question?</p>
-          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener">Ask on GitHub</a>
+          <p data-i18n="faq.cta.q">Still have a question?</p>
+          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener" data-i18n="faq.cta.link">Ask on GitHub</a>
         </div>
       </div>
       <div class="faq reveal">
         <details>
-          <summary>Is it really free?</summary>
-          <p>Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription.</p>
+          <summary data-i18n="faq.q1">Is it really free?</summary>
+          <p data-i18n="faq.a1">Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription.</p>
         </details>
         <details>
-          <summary>Is my data sent anywhere?</summary>
-          <p>No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it&rsquo;s open source, you can verify this yourself.</p>
+          <summary data-i18n="faq.q2">Is my data sent anywhere?</summary>
+          <p data-i18n="faq.a2">No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it&rsquo;s open source, you can verify this yourself.</p>
         </details>
         <details>
-          <summary>What devices does it run on?</summary>
-          <p>The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
+          <summary data-i18n="faq.q3">What devices does it run on?</summary>
+          <p data-i18n="faq.a3">The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
         </details>
         <details>
-          <summary>Do I need a powerful phone?</summary>
-          <p>No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build.</p>
+          <summary data-i18n="faq.q4">Do I need a powerful phone?</summary>
+          <p data-i18n="faq.a4">No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build.</p>
         </details>
         <details>
-          <summary>When can I install it?</summary>
-          <p>It&rsquo;s open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star or watch the repo on GitHub to hear the moment they land.</p>
+          <summary data-i18n="faq.q5">When can I install it?</summary>
+          <p data-i18n="faq.a5">It&rsquo;s open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star or watch the repo on GitHub to hear the moment they land.</p>
         </details>
       </div>
     </div>
@@ -377,13 +391,13 @@
   <section class="cta-band" data-theme="dark" id="waitlist">
     <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
     <div class="container reveal cta-inner">
-      <h2>Bring your AI offline.</h2>
-      <p>It&rsquo;s open source and runs from GitHub today. Star the repo to follow along&mdash;and watch releases to hear the moment the mobile apps land.</p>
+      <h2 data-i18n="cta.title">Bring your AI offline.</h2>
+      <p data-i18n="cta.body">It&rsquo;s open source and runs from GitHub today. Star the repo to follow along&mdash;and watch releases to hear the moment the mobile apps land.</p>
       <div class="cta-row">
-        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
-        <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Watch releases &rarr;</a>
+        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="cta.btn1">Star on GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="cta.btn2">Watch releases &rarr;</a>
       </div>
-      <p class="form-consent">No email, no account, no trackers&mdash;just the code. See our <a href="privacy.html">Privacy Policy</a>.</p>
+      <p class="form-consent" data-i18n-html="cta.consent">No email, no account, no trackers&mdash;just the code. See our <a href="privacy.html">Privacy Policy</a>.</p>
     </div>
   </section>
 
@@ -394,42 +408,43 @@
     <div class="footer-brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Quenderin</span>
-      <p class="footer-tag">Offline, private, on-device AI.</p>
-      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
+      <p class="footer-tag" data-i18n="foot.tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
     </div>
     <nav class="footer-cols" aria-label="Footer">
       <div class="footer-col">
-        <h3>Product</h3>
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#models">Models</a>
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#models" data-i18n="nav.models">Models</a>
       </div>
       <div class="footer-col">
-        <h3>Project</h3>
+        <h3 data-i18n="foot.col.project">Project</h3>
         <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
-        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
-        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
       </div>
       <div class="footer-col">
-        <h3>Learn</h3>
-        <a href="#privacy">Privacy</a>
-        <a href="#faq">FAQ</a>
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="#privacy" data-i18n="nav.privacy">Privacy</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
       </div>
     </nav>
   </div>
   <div class="container container-wide footer-base">
-    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
     <nav class="footer-legal" aria-label="Legal">
-      <a href="privacy.html">Privacy</a>
-      <a href="terms.html">Terms</a>
-      <a href="legal.html">Legal Notice</a>
-      <a href="accessibility.html">Accessibility</a>
+      <a href="privacy.html" data-i18n="foot.legal.privacy">Privacy</a>
+      <a href="terms.html" data-i18n="foot.legal.terms">Terms</a>
+      <a href="legal.html" data-i18n="foot.legal.legal">Legal Notice</a>
+      <a href="accessibility.html" data-i18n="foot.legal.a11y">Accessibility</a>
     </nav>
-    <p class="footer-note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
   </div>
 </footer>
 
 <script src="gradient.js" defer></script>
 <script src="main.js" defer></script>
+<script src="i18n.js" defer></script>
 </body>
 </html>
