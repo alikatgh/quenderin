@@ -33,4 +33,13 @@ public final class AgentSession: ObservableObject {
         answer = result.answer
         haltReason = result.haltReason
     }
+
+    /// Clear the transcript so the screen returns to its empty state. No-op while a run is in
+    /// flight — don't wipe a live run out from under the loop. Mirrors `ChatModel.reset`.
+    public func clear() {
+        guard !isRunning else { return }
+        steps = []
+        answer = nil
+        haltReason = nil
+    }
 }

@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,7 +72,17 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     }
     val context = LocalContext.current
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Agent") }) }) { pad ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Agent") },
+                actions = {
+                    val hasContent = steps.isNotEmpty() || answer != null || haltReason != null
+                    TextButton(onClick = { session.clear() }, enabled = !running && hasContent) { Text("Clear") }
+                },
+            )
+        },
+    ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -100,6 +111,10 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 // say so instead of trailing off into silence.
                 if (answer == null && !running) {
                     haltReason?.userMessage?.let { msg -> item { AgentHaltBanner(msg) } }
+                }
+                // First run: show what the agent can do instead of a blank screen.
+                if (steps.isEmpty() && answer == null && haltReason == null && !running) {
+                    item { AgentEmptyState() }
                 }
             }
 
@@ -152,6 +167,29 @@ private fun AgentHaltBanner(message: String) {
             Text("⚠️")
             Spacer(Modifier.width(8.dp))
             Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
+        }
+    }
+}
+
+/** First-run guidance: what to type when the agent transcript is empty, so the screen isn't blank. */
+@Composable
+private fun AgentEmptyState() {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 24.dp)) {
+        Text(
+            "Give the agent a goal — it plans, uses tools, and answers. Try:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf(
+            "What's 18% of 240?",
+            "Convert 5 miles to kilometres",
+            "How many days until 2027-01-01?",
+        ).forEach { example ->
+            Text(
+                "↳ $example",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

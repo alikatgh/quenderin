@@ -59,4 +59,16 @@ class AgentSession(
             onChange()
         }
     }
+
+    /**
+     * Clear the transcript so the screen returns to its empty state. No-op while a run is in
+     * flight — don't wipe a live run out from under the loop. Mirrors iOS `AgentSession.clear`.
+     */
+    fun clear() {
+        synchronized(this) { if (isRunning) return }
+        steps = emptyList()
+        answer = null
+        haltReason = null
+        onChange()
+    }
 }

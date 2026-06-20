@@ -121,4 +121,18 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(run.haltReason.userMessage, AgentRun.HaltReason.blocked.userMessage)
         XCTAssertNotNil(run.haltReason.userMessage)
     }
+
+    @MainActor
+    func testClearResetsTheTranscript() async {
+        let engine = ScriptedInferenceEngine(replies: [#"{"answer":"done"}"#])
+        let session = AgentSession(engine: engine, tools: [])
+        await session.run(goal: "x")
+        XCTAssertFalse(session.steps.isEmpty)
+        XCTAssertEqual(session.answer, "done")
+
+        session.clear()
+        XCTAssertTrue(session.steps.isEmpty)
+        XCTAssertNil(session.answer)
+        XCTAssertNil(session.haltReason)
+    }
 }

@@ -610,6 +610,13 @@ fun main() {
         c.delete(id)
         c.summaries.none { it.id == id } && chat.messages.isEmpty()
     })
+    check("AgentSession.clear resets the transcript", run {
+        val session = AgentSession(ScriptedInferenceEngine(listOf("""{"answer":"done"}""")), emptyList())
+        session.run("x")
+        val hadContent = session.steps.isNotEmpty() && session.answer == "done"
+        session.clear()
+        hadContent && session.steps.isEmpty() && session.answer == null && session.haltReason == null
+    })
 
     println()
     if (failures == 0) {
