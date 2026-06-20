@@ -53,7 +53,13 @@ fun AppRoot(
     }
 
     when (val current = phase) {
-        is OnboardingPhase.Ready -> MainTabs(engine = engine, model = current.model, conversations = conversations)
+        is OnboardingPhase.Ready -> MainTabs(
+            engine = engine,
+            model = current.model,
+            conversations = conversations,
+            // Reuse the onboarding install flow: download (if needed) → load → swap. Blocking → IO.
+            onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
+        )
         else -> OnboardingScreen(
             phase = current,
             selection = onboarding.selection,

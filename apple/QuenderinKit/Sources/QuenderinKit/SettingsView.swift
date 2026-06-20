@@ -8,11 +8,14 @@ import SwiftUI
 public struct SettingsView: View {
     @ObservedObject private var coordinator: ConversationCoordinator
     private let model: ModelEntry
+    private let onSelectModel: (ModelEntry) -> Void
     @Environment(\.openURL) private var openURL
+    @State private var showPicker = false
 
-    public init(coordinator: ConversationCoordinator, model: ModelEntry) {
+    public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.coordinator = coordinator
         self.model = model
+        self.onSelectModel = onSelectModel
     }
 
     public var body: some View {
@@ -21,6 +24,9 @@ public struct SettingsView: View {
             Section("Model") {
                 LabeledRow(title: "Active model", value: model.label)
                 LabeledRow(title: "Size", value: model.sizeLabel)
+                Button { showPicker = true } label: {
+                    Label("Change model…", systemImage: "arrow.triangle.2.circlepath")
+                }
                 Text("Runs entirely on-device via llama.cpp — no cloud.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
@@ -47,6 +53,19 @@ public struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
                 Text("Version \(version)")
                     .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .sheet(isPresented: $showPicker) {
+            NavigationStack {
+                // Reuses the fitness-aware picker (disables models that won't fit, explains why).
+                ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB) { picked in
+                    showPicker = false
+                    if picked.id != model.id { onSelectModel(picked) }
+                }
+                .navigationTitle("Choose a model")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { showPicker = false } }
+                }
             }
         }
     }
