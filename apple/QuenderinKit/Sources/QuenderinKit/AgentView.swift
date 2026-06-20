@@ -38,12 +38,18 @@ public struct AgentView: View {
                         // The agent stopped without an answer (step limit, safety gate, plan error):
                         // say so instead of trailing off into silence.
                         AgentHaltBanner(message: message)
+                    } else if session.steps.isEmpty, !session.isRunning {
+                        // First run: show what the agent can do instead of a blank screen.
+                        AgentEmptyState()
                     }
                 }
                 .padding()
             }
             Divider()
             HStack(spacing: 8) {
+                Button { session.clear() } label: { Image(systemName: "trash") }
+                    .disabled(session.isRunning || (session.steps.isEmpty && session.answer == nil && session.haltReason == nil))
+                    .accessibilityLabel("Clear")
                 TextField("Give the agent a goal…", text: $goal)
                     .textFieldStyle(.roundedBorder)
                     .disabled(session.isRunning)
@@ -66,6 +72,30 @@ public struct AgentView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
         }
+    }
+}
+
+/// First-run guidance: what to type when the agent transcript is empty, so the screen isn't blank.
+private struct AgentEmptyState: View {
+    private let examples = [
+        "What's 18% of 240?",
+        "Convert 5 miles to kilometres",
+        "How many days until 2027-01-01?",
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Give the agent a goal — it plans, uses tools, and answers. Try:")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            ForEach(examples, id: \.self) { example in
+                Label(example, systemImage: "arrow.turn.down.right")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 24)
     }
 }
 
