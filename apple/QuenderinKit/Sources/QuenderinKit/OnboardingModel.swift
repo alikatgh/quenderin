@@ -77,47 +77,58 @@ public final class OnboardingModel: ObservableObject {
         #endif
     }
 
-    /// Download (if needed) then load `model`, driving `phase` through the flow.
+    /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH
+    /// whose new model fails to load, the previously-working model is restored (H1).
     public func install(_ model: ModelEntry) async {
+        // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
+        let previousID = await engine.loadedModelID()
         let destination = modelsDir.appendingPathComponent(model.filename)
 
-        if FileManager.default.fileExists(atPath: destination.path) {
-            await load(model, at: destination)
-            return
-        }
-
-        guard let url = model.downloadURL else {
-            phase = .failed("\(model.label) has no valid download URL.")
-            return
-        }
-
-        phase = .downloading(model, progress: 0)
-        do {
-            // Consumed sequentially on the main actor → ordered phase updates.
-            for try await event in downloader.download(from: url, to: destination) {
-                switch event {
-                case .progress(let fraction):
-                    phase = .downloading(model, progress: fraction)
-                case .finished:
-                    break
-                }
+        if !FileManager.default.fileExists(atPath: destination.path) {
+            guard let url = model.downloadURL else {
+                phase = .failed("\(model.label) has no valid download URL.")
+                return
             }
-        } catch {
-            phase = .failed(Self.describe(error))
-            return
+            phase = .downloading(model, progress: 0)
+            do {
+                // Consumed sequentially on the main actor → ordered phase updates.
+                for try await event in downloader.download(from: url, to: destination) {
+                    switch event {
+                    case .progress(let fraction):
+                        phase = .downloading(model, progress: fraction)
+                    case .finished:
+                        break
+                    }
+                }
+            } catch {
+                phase = .failed(Self.describe(error))
+                return
+            }
         }
 
-        await load(model, at: destination)
-    }
-
-    private func load(_ model: ModelEntry, at url: URL) async {
         phase = .loading(model)
         do {
-            try await engine.load(model: model, at: url)
+            try await engine.load(model: model, at: destination)
             phase = .ready(model)
         } catch {
-            phase = .failed(Self.describe(error))
+            // `load()` already freed the previously-loaded model before failing, so on a failed
+            // switch restore the prior model rather than leaving the engine empty (H1).
+            if let previousID, previousID != model.id,
+               let previous = ModelCatalog.entry(id: previousID),
+               await restore(previous) {
+                phase = .ready(previous)
+            } else {
+                phase = .failed(Self.describe(error))
+            }
         }
+    }
+
+    /// Best-effort reload of a previously-working model after a failed switch (its file is still on
+    /// disk). Returns true on success.
+    private func restore(_ model: ModelEntry) async -> Bool {
+        let destination = modelsDir.appendingPathComponent(model.filename)
+        do { try await engine.load(model: model, at: destination); return true }
+        catch { return false }
     }
 
     // MARK: - Helpers

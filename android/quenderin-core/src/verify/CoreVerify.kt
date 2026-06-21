@@ -135,6 +135,25 @@ fun main() {
         tight.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }
         tight.phase is OnboardingPhase.Failed
     })
+    check("a failed model switch restores the previously-working model (H1)", run {
+        val a = ModelCatalog.models[0]
+        val b = ModelCatalog.models.first { it.id != a.id }
+        // Engine that loads anything except b, which throws — exercises failed-switch recovery.
+        val engine = object : InferenceEngine {
+            override var loadedModelId: String? = null
+            override fun load(model: ModelEntry, filePath: String) {
+                if (model.id == b.id) throw RuntimeException("test: too big to load")
+                loadedModelId = model.id
+            }
+            override fun unload() { loadedModelId = null }
+            override fun complete(prompt: String): String = "ok"
+        }
+        val onb = OnboardingModel(engine, MockModelDownloader())
+        onb.acceptAndPrepare(a)   // A loads fine
+        onb.acceptAndPrepare(b)   // switch to B fails → must restore A, not strand the user
+        val phase = onb.phase
+        phase is OnboardingPhase.Ready && phase.model.id == a.id && engine.loadedModelId == a.id
+    })
 
     // --- ChatModel (M2): send runs the engine, transcript accumulates ---
     val chatEngine = MockInferenceEngine(cannedReply = "Running on-device.")
