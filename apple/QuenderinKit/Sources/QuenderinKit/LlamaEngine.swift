@@ -128,9 +128,14 @@ public actor LlamaEngine: InferenceEngine {
 
         var ctxParams = llama_context_default_params()
         ctxParams.n_ctx = UInt32(contextTokens)   // device-tuned (M1), not a fixed 4096
-        let threads = Int32(max(1, ProcessInfo.processInfo.activeProcessorCount - 1))
+        // Performance-core count, not all cores — E-cores slow + heat up mobile decode.
+        let threads = Int32(ThreadPlanner.recommend(
+            performanceCores: HardwareProbe.performanceCoreCount(),
+            totalCores: ProcessInfo.processInfo.activeProcessorCount))
         ctxParams.n_threads = threads
         ctxParams.n_threads_batch = threads
+        // (Metal flash-attention is a further ~15-25% win but the field name varies across
+        //  llama.cpp versions — enable it once the pinned commit's `llama_context_params` is known.)
 
         guard let ctx = llama_init_from_model(m, ctxParams) else {
             llama_model_free(m)
