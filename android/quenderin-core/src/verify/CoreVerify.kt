@@ -623,6 +623,20 @@ fun main() {
         }
     })
 
+    // Thermal-adaptive threading — hotter device → fewer threads (twin of iOS ThermalThrottleTests).
+    check("ThermalThrottle drops threads as the device heats up, never below 1",
+        ThermalThrottle.recommendedThreads(ThermalLevel.NOMINAL, 4) == 4 &&
+            ThermalThrottle.recommendedThreads(ThermalLevel.FAIR, 4) == 3 &&
+            ThermalThrottle.recommendedThreads(ThermalLevel.SERIOUS, 4) == 2 &&
+            ThermalThrottle.recommendedThreads(ThermalLevel.CRITICAL, 4) == 1 &&
+            ThermalThrottle.recommendedThreads(ThermalLevel.CRITICAL, 1) == 1 &&
+            ThermalThrottle.recommendedThreads(ThermalLevel.NOMINAL, 0) == 1)
+    check("ThermalMonitor maps PowerManager status ints to levels",
+        ThermalMonitor.levelFromStatus(0) == ThermalLevel.NOMINAL &&
+            ThermalMonitor.levelFromStatus(2) == ThermalLevel.FAIR &&
+            ThermalMonitor.levelFromStatus(3) == ThermalLevel.SERIOUS &&
+            ThermalMonitor.levelFromStatus(6) == ThermalLevel.CRITICAL)
+
     // Conversation history — file persistence round-trip + coordinator lifecycle (twin of iOS).
     check("FileConversationPersistence round-trips a transcript + index", run {
         val dir = java.nio.file.Files.createTempDirectory("convtest").toFile()

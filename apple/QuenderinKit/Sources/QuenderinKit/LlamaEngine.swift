@@ -133,9 +133,13 @@ public actor LlamaEngine: InferenceEngine {
         let nctx = ContextWindow.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
         ctxParams.n_ctx = UInt32(nctx)
         // Performance-core count, not all cores — E-cores slow + heat up mobile decode.
-        let threads = Int32(ThreadPlanner.recommend(
+        let baseThreads = ThreadPlanner.recommend(
             performanceCores: HardwareProbe.performanceCoreCount(),
-            totalCores: ProcessInfo.processInfo.activeProcessorCount))
+            totalCores: ProcessInfo.processInfo.activeProcessorCount)
+        // If the device is already thermally throttling when we load, start with fewer threads
+        // so a long generation stays sustainable instead of spiking heat and getting killed.
+        let threads = Int32(ThermalThrottle.recommendedThreads(
+            level: ThermalMonitor.currentLevel(), baseThreads: baseThreads))
         ctxParams.n_threads = threads
         ctxParams.n_threads_batch = threads
         // (Metal flash-attention is a further ~15-25% win but the field name varies across

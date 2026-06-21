@@ -36,6 +36,15 @@ class LlamaEngine(
     private var cancelRequested: Boolean = false
 
     /**
+     * Live thermal pressure, supplied by the app (which reads `PowerManager.currentThermalStatus`
+     * via [ThermalMonitor.levelFromStatus]; the core stays free of `android.os`). Read at load to
+     * size the thread count — launch while the phone is already hot → start with fewer threads so a
+     * long generation stays sustainable. Defaults to NOMINAL, so behaviour is unchanged if unset.
+     */
+    @Volatile
+    var thermalLevel: ThermalLevel = ThermalLevel.NOMINAL
+
+    /**
      * Serializes ALL native access. load/unload/complete must not interleave — a `unload()` on
      * one thread (e.g. UI cancel) while `complete()` runs on another would free the native handle
      * mid-call → use-after-free / SIGSEGV (C2). Held across the long native call on purpose: you
@@ -53,8 +62,11 @@ class LlamaEngine(
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
-        val t = if (threads > 0) threads
+        val base = if (threads > 0) threads
         else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
+        // If the device is already thermally throttling, start with fewer threads (heat is the
+        // sustained-load ceiling on a phone, not memory).
+        val t = ThermalThrottle.recommendedThreads(thermalLevel, base)
         // n_ctx from the real app-memory budget AND this model's footprint (footprint-aware M1).
         val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB)
         handle = nativeLoad(filePath, nctx, t)
