@@ -7,8 +7,8 @@ states the app ships in and how to cross the on-device cliff.
 
 | Layer | State | How it's verified |
 |-------|-------|-------------------|
-| `quenderin-core` (Kotlin brain) | **Done, tested** | `kotlinc` + `src/verify/CoreVerify.kt` → 29 checks; JUnit `CoreTest` for `./gradlew test` |
-| `LlamaEngine` Kotlin adapter | **Done** — fails cleanly off-device | Part of the 29 checks (reports unavailable, throws a clear "not linked" error) |
+| `quenderin-core` (Kotlin brain) | **Done, tested** | `kotlinc` + `src/verify/CoreVerify.kt` → 139 checks; JUnit `CoreTest` for `./gradlew test` |
+| `LlamaEngine` Kotlin adapter | **Done** — fails cleanly off-device | Part of the 139 checks (reports unavailable, throws a clear "not linked" error) |
 | `jni/llama_jni.cpp` (C++ bridge) | **Written; one-command verify ready** | `android/verify-llama-link.sh` builds llama.cpp for Android + compile-checks it |
 | `app/` Compose UI | **Written, not compiled here** | Needs the Android SDK + AGP — build in Android Studio |
 | Real inference on a device | **✅ PROVEN (2026-06-14)** | `android/verify-llama-link.sh` ran it on a booted arm64 emulator — coherent output, ~102 tok/s |

@@ -18,7 +18,7 @@ android/
 │   ├── DownloadPolicy · DiskSpace · OfflineReadiness · DownloadStore  (M3 offline + resume)
 │   ├── AgentTool · AgentDecision · AgentLoop · ScriptedInferenceEngine  (M4 agent loop)
 │   ├── OnboardingModel (M1 state machine) · ChatModel (M2)
-│   ├── src/verify/CoreVerify.kt   ← headless harness (kotlinc + java, 65 checks)
+│   ├── src/verify/CoreVerify.kt   ← headless harness (kotlinc + java, 139 checks)
 │   └── src/test/…/CoreTest.kt     ← JUnit mirror (./gradlew test)
 ├── jni/                 C++ bridge to llama.cpp (llama_jni.cpp + CMakeLists.txt)
 └── app/                 Jetpack Compose app over the core (MainActivity + ui/)

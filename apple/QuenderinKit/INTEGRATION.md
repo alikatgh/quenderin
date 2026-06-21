@@ -211,6 +211,6 @@ func testRealInferenceSmoke() async throws {
 
 `LlamaEngine.swift` keeps every real call inside `#if canImport(llama)`. With no
 `llama` module that code is skipped and the engine returns a clean `.loadFailed`
-(verified by `LlamaEngineTests`). So the package builds and all 40 tests pass
+(verified by `LlamaEngineTests`). So the package builds and all 153 tests pass
 **before** you do any of the above — and the app runs on `MockInferenceEngine`
 meanwhile.
