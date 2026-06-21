@@ -10,8 +10,8 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 | Platform | What's there | Engine | Verification |
 |----------|--------------|--------|--------------|
 | **Desktop** (Electron/TS) | Shipping prototype — full agent + chat | `node-llama-cpp` (real) | `npm run lint && npm run typecheck && npm run test:recommendation` |
-| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **153 tests** (incl. real-inference test through the actual engine) |
-| **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **139 checks**; `./gradlew :app:assembleDebug` → APK |
+| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **169 tests** (incl. real-inference test through the actual engine, compiled against the pinned llama/ggml headers) |
+| **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **148 checks**; `./gradlew :app:assembleDebug` → APK |
 
 ## Milestone parity (mobile brain — both run on mocks, fully tested)
 
@@ -25,6 +25,7 @@ how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 - **Conversation history** = `ConversationManager`/`Library`/`Store` + a file-backed `ConversationPersistence` + a `ConversationCoordinator` (restore-recent · persist-per-turn · new · open · delete), wired into the Chat tab on both platforms (iOS `ChatHomeView` + History sheet; Android `ChatScreen` + History bottom sheet).
 - **Settings + model switching** = a Settings tab (active model · storage · privacy · clear-all) and post-onboarding model switching (reuse the install flow; a failed switch restores the prior model — audit H1). Both platforms.
 - **Engineering hardening** (`docs/audits/2026-06-20-mobile-engineering-audit.md`) = device-aware `n_ctx` (`ContextWindow`, M1) · iOS generation off the cooperative pool + lock-serialized (M2) · switch-time cancellation (M3) · atomic conversation writes (L1) · JNI OOM throw (L3). All 8 findings fixed or resolved.
+- **Phone hardware adaptation** (`docs/audits/2026-06-20-phone-hardware-adaptation-plan.md`) = P-core-only thread count (`ThreadPlanner`) · footprint-aware `n_ctx` (per-model + app-memory budget) · honest **'unsupported'** exit for phones too small to run any model · **thermal-adaptive threading** (shed cores as the SoC heats — `ThermalMonitor`/`ThermalThrottle`) · **q8_0 KV-cache quantization** (~2× context on tight devices — `KVCachePolicy`) · mmap-pinned / mlock-forbidden model load (jetsam guard). Every Priority 1–2 + verifiable Priority-3 item shipped; Vulkan GPU offload and in-flight thermal re-tuning are the remaining on-device milestones.
 
 ## Model picking — world-class, device-aware, measured
 
