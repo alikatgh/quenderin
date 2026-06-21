@@ -44,7 +44,8 @@ std::string piece(const llama_vocab* vocab, llama_token tok) {
     return std::string(buf, n);
 }
 
-// Run greedy generation. If `env`/`sink` are non-null, push each piece to sink.onToken().
+// Run generation with the handle's sampler (top-p + temperature, built in nativeLoad). If
+// `env`/`sink` are non-null, push each piece to sink.onToken().
 // `thiz` is the LlamaEngine instance; its boolean `cancelRequested` field is polled each token so
 // a model switch can interrupt a running generation (audit M3).
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
@@ -113,7 +114,7 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,
-                                              jint kv_cache_quant) {
+                                              jint kv_cache_quant, jfloat temperature, jfloat top_p) {
     std::call_once(g_backend_once, [] { llama_backend_init(); });   // race-free, once per process (H6)
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
@@ -143,8 +144,16 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     llama_context* ctx = llama_init_from_model(model, cp);
     if (!ctx) { LOGE("context init failed"); llama_model_free(model); return 0; }
 
+    // Sampler chain matching iOS (top-p → temperature → dist) so output isn't the repetitive,
+    // loop-prone text greedy decoding produces. temperature <= 0 → deterministic greedy (honored).
     llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
+    if (temperature > 0.0f) {
+        llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
+        llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
+        llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+    } else {
+        llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
+    }
 
     auto* h = new LlamaHandle{model, ctx, sampler};
     return reinterpret_cast<jlong>(h);
