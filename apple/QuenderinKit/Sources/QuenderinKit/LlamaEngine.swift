@@ -40,6 +40,9 @@ public actor LlamaEngine: InferenceEngine {
     nonisolated(unsafe) private var context: OpaquePointer?   // llama_context *
     nonisolated(unsafe) private var vocab: OpaquePointer?     // const llama_vocab *
     nonisolated(unsafe) private var backendInitialized = false  // llama_backend_init is once-per-process (L1)
+    /// The unthrottled (P-core) thread count chosen at load — the governor's baseline for in-flight
+    /// thermal re-tuning during generation. Set under `nativeLock`; read at the start of a decode.
+    nonisolated(unsafe) private var loadedBaseThreads = 1
     /// Serializes every native access (load/unload/generate) so freeing can't race a decode (C1/C2).
     private let nativeLock = NSLock()
     /// Set true to interrupt a running generation (model switch / explicit cancel) — M3.
@@ -150,6 +153,7 @@ public actor LlamaEngine: InferenceEngine {
         let baseThreads = ThreadPlanner.recommend(
             performanceCores: HardwareProbe.performanceCoreCount(),
             totalCores: ProcessInfo.processInfo.activeProcessorCount)
+        loadedBaseThreads = baseThreads   // governor baseline for in-flight thermal re-tuning
         // If the device is already thermally throttling when we load, start with fewer threads
         // so a long generation stays sustainable instead of spiking heat and getting killed.
         let threads = Int32(ThermalThrottle.recommendedThreads(
@@ -225,9 +229,19 @@ public actor LlamaEngine: InferenceEngine {
             return
         }
 
+        // In-flight thermal governor: as a long generation heats the SoC, shed threads so it
+        // sustains instead of throttling to a crawl. Sampled every 32 tokens (the read is cheap and
+        // heat moves slowly), and only re-tunes when the level actually changes (M3 thermal).
+        var governor = ThermalGovernor(baseThreads: loadedBaseThreads, initialLevel: ThermalMonitor.currentLevel())
+        let thermalSampleInterval = 32
+
         var produced = 0
         while produced < options.maxTokens {
             if cancelState.withLock({ $0 }) { break }   // interrupted by a switch/cancel (M3)
+            if produced % thermalSampleInterval == 0,
+               let retuned = governor.update(level: ThermalMonitor.currentLevel()) {
+                llama_set_n_threads(context, Int32(retuned), Int32(retuned))
+            }
             let next = llama_sampler_sample(sampler, context, -1)
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
 

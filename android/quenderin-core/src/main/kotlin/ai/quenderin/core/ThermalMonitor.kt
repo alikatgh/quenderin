@@ -40,3 +40,29 @@ object ThermalThrottle {
         }
     }
 }
+
+/**
+ * Re-tunes the thread count *during* a long generation as the thermal level moves — the load-time
+ * snapshot only catches a phone that's already hot, but a 10-minute agent loop is what MAKES it hot.
+ * The 4-level enum is its own hysteresis: re-tune only when the level changes AND the thread count
+ * actually differs. Pure state machine, twin of iOS `ThermalGovernor`. (On Android the in-decode
+ * sampling + `llama_set_n_threads` call live in the JNI C++ loop — the on-device wiring; this is the
+ * shared, unit-tested decision logic.)
+ */
+class ThermalGovernor(baseThreadsParam: Int, initialLevel: ThermalLevel) {
+    val baseThreads: Int = maxOf(1, baseThreadsParam)
+    var currentLevel: ThermalLevel = initialLevel
+        private set
+    var currentThreads: Int = ThermalThrottle.recommendedThreads(initialLevel, maxOf(1, baseThreadsParam))
+        private set
+
+    /** Returns the new thread count to apply only when it should change; null when nothing changes. */
+    fun update(level: ThermalLevel): Int? {
+        if (level == currentLevel) return null
+        currentLevel = level
+        val n = ThermalThrottle.recommendedThreads(level, baseThreads)
+        if (n == currentThreads) return null
+        currentThreads = n
+        return n
+    }
+}

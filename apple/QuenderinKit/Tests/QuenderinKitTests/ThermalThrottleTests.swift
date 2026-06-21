@@ -49,4 +49,36 @@ final class ThermalThrottleTests: XCTestCase {
         let level = ThermalMonitor.currentLevel()
         XCTAssertTrue([.nominal, .fair, .serious, .critical].contains(level))
     }
+
+    // MARK: - In-flight governor (re-tuning threads during generation)
+
+    func testGovernorNoChangeWhenLevelStable() {
+        var g = ThermalGovernor(baseThreads: 4, initialLevel: .nominal)
+        XCTAssertEqual(g.currentThreads, 4)
+        XCTAssertNil(g.update(level: .nominal), "same level → no re-tune")
+        XCTAssertNil(g.update(level: .nominal))
+    }
+
+    func testGovernorShedsThenRecoversThreads() {
+        var g = ThermalGovernor(baseThreads: 4, initialLevel: .nominal)
+        XCTAssertEqual(g.update(level: .serious), 2, "heating up halves the threads")
+        XCTAssertEqual(g.currentThreads, 2)
+        XCTAssertEqual(g.update(level: .critical), 1, "critical → single core")
+        XCTAssertEqual(g.update(level: .nominal), 4, "cooling back down restores the full count")
+    }
+
+    /// Two distinct levels that map to the SAME thread count must not emit a redundant re-tune
+    /// (avoids thrashing llama_set_n_threads at a boundary).
+    func testGovernorSuppressesRedundantRetune() {
+        var g = ThermalGovernor(baseThreads: 2, initialLevel: .nominal)  // base 2
+        // fair → max(1, 2-1)=1; serious → max(1, 2/2)=1 — same count, different level.
+        XCTAssertEqual(g.update(level: .fair), 1)
+        XCTAssertNil(g.update(level: .serious), "level changed but thread count is identical → no-op")
+    }
+
+    func testGovernorClampsDegenerateBase() {
+        var g = ThermalGovernor(baseThreads: 0, initialLevel: .nominal)
+        XCTAssertEqual(g.currentThreads, 1)
+        XCTAssertNil(g.update(level: .critical), "already at 1 thread → nothing to shed")
+    }
 }
