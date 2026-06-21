@@ -27,6 +27,14 @@ class LlamaEngine(
     private var handle: Long = 0L
 
     /**
+     * Cancellation flag the native decode loop polls each token (`jni/llama_jni.cpp`). `@Volatile`
+     * + lock-free on purpose: [requestCancel] must signal a running [complete] WITHOUT taking [lock]
+     * (which that generation holds). Reset at the start of each completion. Audit M3.
+     */
+    @Volatile
+    private var cancelRequested: Boolean = false
+
+    /**
      * Serializes ALL native access. load/unload/complete must not interleave — a `unload()` on
      * one thread (e.g. UI cancel) while `complete()` runs on another would free the native handle
      * mid-call → use-after-free / SIGSEGV (C2). Held across the long native call on purpose: you
@@ -36,6 +44,9 @@ class LlamaEngine(
 
     /** True only when the native library actually loaded — i.e. a real device build. */
     fun available(): Boolean = NATIVE_AVAILABLE
+
+    /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
+    override fun requestCancel() { cancelRequested = true }
 
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
@@ -55,6 +66,7 @@ class LlamaEngine(
 
     override fun complete(prompt: String): String = synchronized(lock) {
         ensureReady()
+        cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
 
@@ -64,6 +76,7 @@ class LlamaEngine(
      */
     fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
+        cancelRequested = false   // fresh generation (M3)
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
 

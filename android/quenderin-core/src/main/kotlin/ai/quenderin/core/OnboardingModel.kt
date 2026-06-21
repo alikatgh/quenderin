@@ -98,6 +98,8 @@ class OnboardingModel(
             return
         }
         try {
+            // Interrupt any in-flight generation so the switch's load() isn't blocked behind it (M3).
+            engine.requestCancel()
             phase = OnboardingPhase.Loading(model)
             engine.load(model, path)
         } catch (t: Throwable) {

@@ -15,6 +15,11 @@ interface InferenceEngine {
     fun unload()
     /** The full completion for a prompt. */
     fun complete(prompt: String): String
+
+    /** Best-effort: interrupt an in-flight [complete] (e.g. a model switch or stop button). Must NOT
+     *  take the engine's generation lock — it has to signal a generation that already holds it.
+     *  Default no-op for engines without interruption (mock, scripted, tests). Audit M3. */
+    fun requestCancel() {}
 }
 
 class EngineNotLoadedException : IllegalStateException("No model is loaded")
