@@ -14,17 +14,18 @@ a bogus-symbol probe:
 - **Android selection via native-heap budget** — already routed through `AndroidModelSelector` in `AppRoot` (verified, no change). _(audit #26)_
 - **Honest 'unsupported' exit** — `SelectionConfidence.unsupported` → onboarding `Failed`. _(PR #24)_
 - **Live ThermalMonitor + thermal-adaptive threads (load-time)** — `ThermalLevel`/`ThermalThrottle`; iOS reads `ProcessInfo.thermalState`, Android maps `PowerManager` status. _(PR #25)_
+- **In-flight thermal governor** — `ThermalGovernor` re-tunes threads *during* a long decode (iOS fully wired: samples every 32 tokens → `llama_set_n_threads`; Android governor tested for parity, JNI loop is on-device). _(PR #29)_
 - **KV-cache quantization (q8_0)** — `KVCacheType`/`KVCachePolicy` + cache-aware `n_ctx`; engine sets `type_k`/`type_v`. ~2× context on tight devices. _(PR #26)_
-- **mmap/mlock jetsam guard** — explicit `use_mmap = true`, `use_mlock = false` at model load (both platforms). _(this PR)_
+- **mmap/mlock jetsam guard** — explicit `use_mmap = true`, `use_mlock = false` at model load (both platforms). _(PR #27)_
 
 **Finding — Metal flash attention is already optimal:** the pinned header's `flash_attn_type` defaults to
 `LLAMA_FLASH_ATTN_TYPE_AUTO` (-1), so llama.cpp auto-enables FA where the backend supports it (Metal).
 Forcing `ENABLED` is a no-op at best and unsafe on backends where AUTO correctly disables it → **no change**.
 This is also why KV quant stops at q8_0: q4_0 for the V cache requires FA on the non-AUTO path.
 
-**Genuinely needs a device next** (can't be CI-verified here, wiring points below): in-flight thermal
-re-tuning during decode (`nativeSetThreads` + the decode loop), Android Vulkan GPU offload, and per-tier
-`n_batch`/`n_ubatch` tuning. See _On-device milestones_.
+**Genuinely needs a device next** (can't be CI-verified here): Android's in-decode thermal read + thread
+set inside the JNI C++ loop (iOS is already wired; the shared `ThermalGovernor` decision logic is tested),
+Android **Vulkan GPU offload**, and per-tier `n_batch`/`n_ubatch` tuning. See _On-device milestones_.
 
 ## Do now (verifiable)
 
