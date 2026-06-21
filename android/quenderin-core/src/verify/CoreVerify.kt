@@ -603,6 +603,22 @@ fun main() {
             ContextWindow.recommend(4.0, 3.8) == 512 && ContextWindow.recommend(6.0, 3.8) == 4096 &&
             ContextWindow.recommend(2.0, 0.8) == 2048)
 
+    // KV-cache quantization — q8_0 on tight devices buys ~2× context for the same memory (twin of
+    // iOS KVCachePolicyTests).
+    check("KVCachePolicy keeps f16 when roomy, quantizes when tight",
+        KVCachePolicy.recommend(6.0, 0.8) == KVCacheType.F16 &&
+            KVCachePolicy.recommend(2.0, 1.4) == KVCacheType.Q8_0 &&
+            KVCachePolicy.recommend(1.2, 0.8) == KVCacheType.Q8_0)
+    check("ContextWindow.f16 overload equals the 2-arg version (no behaviour change)",
+        ContextWindow.recommend(8.0, 0.8, KVCacheType.F16) == ContextWindow.recommend(8.0, 0.8) &&
+            ContextWindow.recommend(2.0, 1.4, KVCacheType.F16) == ContextWindow.recommend(2.0, 1.4))
+    check("ContextWindow q8_0 yields more context than f16, preserving KV memory", run {
+        val f16 = ContextWindow.recommend(1.4, 0.8, KVCacheType.F16)
+        val q8 = ContextWindow.recommend(1.4, 0.8, KVCacheType.Q8_0)
+        val memDelta = Math.abs(q8 * KVCacheType.Q8_0.relativeCostPerToken - f16 * KVCacheType.F16.relativeCostPerToken)
+        q8 > f16 && q8 % 256 == 0 && q8 in 256..8192 && memDelta <= 256.0
+    })
+
     // ThreadPlanner: inference threads = performance (big) cores, not all cores.
     check("ThreadPlanner.recommend uses P-cores, clamps, and falls back",
         ThreadPlanner.recommend(4, 8) == 4 && ThreadPlanner.recommend(null, 8) == 7 &&
