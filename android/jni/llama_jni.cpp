@@ -112,7 +112,8 @@ extern "C" {
 
 JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
-                                              jstring model_path, jint context_tokens, jint threads) {
+                                              jstring model_path, jint context_tokens, jint threads,
+                                              jint kv_cache_quant) {
     std::call_once(g_backend_once, [] { llama_backend_init(); });   // race-free, once per process (H6)
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
@@ -127,6 +128,13 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     llama_context_params cp = llama_context_default_params();
     cp.n_ctx     = context_tokens > 0 ? (uint32_t) context_tokens : 4096;
     cp.n_threads = threads > 0 ? threads : 0; // 0 → llama.cpp picks
+    // Quantize the KV cache on memory-tight devices (KVCacheType.nativeId: 0 f16, 1 q8_0). q8_0 is
+    // safe for both K and V on the standard (non-flash-attention) path; the Kotlin side already sized
+    // n_ctx for this dtype, so the smaller per-token cost buys back context instead of memory.
+    if (kv_cache_quant == 1) {
+        cp.type_k = GGML_TYPE_Q8_0;
+        cp.type_v = GGML_TYPE_Q8_0;
+    }
     llama_context* ctx = llama_init_from_model(model, cp);
     if (!ctx) { LOGE("context init failed"); llama_model_free(model); return 0; }
 

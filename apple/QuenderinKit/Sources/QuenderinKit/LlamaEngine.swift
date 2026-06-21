@@ -128,10 +128,18 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         var ctxParams = llama_context_default_params()
-        // n_ctx from the real app-memory budget AND this model's footprint (footprint-aware M1):
-        // a 1B gets a big context, a 7B on the same phone is capped tight.
-        let nctx = ContextWindow.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
+        // per-token memory, near-lossless), which the cache-aware n_ctx then turns into ~2× context.
+        let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype
+        // (footprint-aware M1): a 1B gets a big context, a 7B on the same phone is capped tight.
+        let nctx = ContextWindow.recommend(
+            appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         ctxParams.n_ctx = UInt32(nctx)
+        // q8_0 is safe for both K and V on the standard (non-flash-attention) path.
+        let ggmlCacheType: ggml_type = (kvCacheType == .q8_0) ? GGML_TYPE_Q8_0 : GGML_TYPE_F16
+        ctxParams.type_k = ggmlCacheType
+        ctxParams.type_v = ggmlCacheType
         // Performance-core count, not all cores — E-cores slow + heat up mobile decode.
         let baseThreads = ThreadPlanner.recommend(
             performanceCores: HardwareProbe.performanceCoreCount(),

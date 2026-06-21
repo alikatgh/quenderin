@@ -30,4 +30,18 @@ object ContextWindow {
             else -> 4096
         }
     }
+
+    /**
+     * Cache-aware: a quantized KV cache costs less per token, so the *same* KV-memory budget holds
+     * proportionally more tokens. Size the f16 context for the headroom, then scale by the inverse
+     * per-token cost of the chosen dtype (q8_0 ≈ +90% context for the same memory), clamped to a
+     * sane ceiling and rounded to a 256-token multiple. The [KVCacheType.F16] case is identical to
+     * the 2-arg overload, so existing behaviour is unchanged unless quantization is requested.
+     */
+    fun recommend(appBudgetGb: Double, modelWeightsGb: Double, kvCacheType: KVCacheType): Int {
+        val base = recommend(appBudgetGb, modelWeightsGb)
+        val scaled = base / kvCacheType.relativeCostPerToken
+        val rounded = Math.round(scaled / 256.0).toInt() * 256
+        return rounded.coerceIn(256, 8192)
+    }
 }

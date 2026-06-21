@@ -67,9 +67,12 @@ class LlamaEngine(
         // If the device is already thermally throttling, start with fewer threads (heat is the
         // sustained-load ceiling on a phone, not memory).
         val t = ThermalThrottle.recommendedThreads(thermalLevel, base)
-        // n_ctx from the real app-memory budget AND this model's footprint (footprint-aware M1).
-        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB)
-        handle = nativeLoad(filePath, nctx, t)
+        // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
+        // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
+        val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+        // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
+        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType)
+        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }
@@ -104,7 +107,7 @@ class LlamaEngine(
     }
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
-    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int): Long
+    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeFree(handle: Long)
