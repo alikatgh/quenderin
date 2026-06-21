@@ -1,0 +1,36 @@
+{
+  "q": [
+    "Best knot for a tarp shelter?",
+    "How do I keep pasta from sticking?",
+    "What should I do for a minor burn?",
+    "Why is the sky blue?",
+    "Affect or effect?",
+    "What's a race condition?",
+    "How do I read a chord like Cmaj7?",
+    "Why are my tomato leaves curling?",
+    "What is compound interest?",
+    "My car won't start and just clicks — why?",
+    "Why did the Roman Empire fall?",
+    "Why does ice float?",
+    "How long should I rest a muscle between workouts?",
+    "Quick way to tell if a number divides by 3?",
+    "How do I beat jet lag?"
+  ],
+  "a": [
+    "A <strong>taut-line hitch</strong> on the ridgeline — it grips under load but slides to re-tension when the wind picks up. For the corners, a prusik loop lets you adjust without untying.",
+    "Salt the water well and stir in the first minute, when the starch is gummiest. <strong>Don't add oil</strong> — it just coats the strands so the sauce slides off. Save a little pasta water to bring the sauce together.",
+    "Cool it under <strong>running water for 20 minutes</strong> — no ice, no butter. Cover loosely with cling film or a clean cloth. If the blister is bigger than your palm, or it's on the face or hands, see a doctor.",
+    "Air scatters short <strong>blue wavelengths</strong> far more than red — Rayleigh scattering. At sunset the light travels through more air, the blue scatters away, and the warm reds reach your eyes.",
+    "<strong>Affect</strong> is almost always the verb (it affects you); <strong>effect</strong> is almost always the noun (the effect of it). Memory hook: the Action is Affect, the End result is Effect.",
+    "When two tasks touch shared data at the same time and the outcome depends on timing. You fix it by <strong>serializing access</strong> — a lock, a queue, or an atomic operation — so only one touches it at once.",
+    "Stack the 1st, 3rd, 5th and 7th notes of the C major scale: <strong>C – E – G – B</strong>. The 'maj7' means the seventh sits a half-step below the octave, giving that warm, open sound.",
+    "Usually <strong>heat or water stress</strong>, not disease — the leaf curls to lose less water. Mulch, water deeply in the morning, and rule out wind or weed-killer drift before treating for anything.",
+    "Interest that earns interest. $1,000 at 5% becomes $1,050; the next year you earn 5% on $1,050, not $1,000. Over decades that <strong>snowball</strong> dwarfs what you first put in.",
+    "A rapid clicking is usually a <strong>flat battery</strong> or a loose terminal, not the starter motor. Check the terminals are clean and tight, then try a jump start. One loud clunk instead points to the starter.",
+    "No single cause — decades of <strong>overextension</strong>, debased currency, civil wars, and pressure from migrating peoples. The western half fell in 476 CE; the eastern (Byzantine) half lasted another thousand years.",
+    "Water is <strong>densest at 4°C</strong>. As it freezes, the molecules lock into an open hexagonal lattice that takes up more room, so ice is about 9% less dense than liquid water — and floats.",
+    "Give a muscle group <strong>about 48 hours</strong> before training it hard again — that's when the repair and growth happen. Train other groups in between if you want to keep going.",
+    "Add up the digits; if that <strong>sum divides by 3</strong>, so does the number. For 1,233: 1+2+3+3 = 9, which divides by 3 — so 1,233 does too.",
+    "Shift toward the destination's clock a few days before you fly, get <strong>daylight on arrival</strong>, and don't nap — stay up until the local bedtime. Hydrate, and skip alcohol on the plane."
+  ]
+}

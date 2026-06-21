@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Features — Quenderin</title>
+<meta name="description" content="What Quenderin does: a truly offline assistant, a tool-using agent with a hard safety blocklist, private by design, hardware-adaptive, open source, and resumable downloads." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/features.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">Features</p>
+        <h2>A real assistant, with nothing phoning home.</h2>
+        <p>Quenderin isn't a stripped-down toy because it runs locally — it's a capable assistant that happens to need nobody's servers. Here's what that buys you.</p>
+      </header>
+      <div class="bento">
+        <article class="cell span-2">
+          <h3>Truly offline</h3>
+          <p>After the one-time model download, there are <strong>zero network calls</strong>. It answers at 35,000 feet, on a train through a tunnel, or three days into a hike with no bars. Offline isn't a degraded mode — it's the normal mode.</p>
+          <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> Airplane mode &middot; still answering</span></div>
+        </article>
+        <article class="cell">
+          <div class="bignum">$0</div>
+          <h3>Forever free</h3>
+          <p>No subscriptions, no per-token billing. Inference runs on hardware you already own.</p>
+        </article>
+        <article class="cell span-2">
+          <h3>Does things, safely</h3>
+          <p>Quenderin includes a tool-using agent that can carry out small tasks — but it ships with a <strong>hard safety blocklist</strong> it can never override on its own. It will not autonomously pay, delete, transfer money, or touch credentials. Sensitive actions are surfaced for you to confirm, never taken silently.</p>
+          <div class="cell-visual chips">
+            <span class="chip chip-x">Pay</span><span class="chip chip-x">Delete</span><span class="chip chip-x">Password</span><span class="chip chip-x">Transfer</span>
+          </div>
+        </article>
+        <article class="cell">
+          <h3>Private by design</h3>
+          <p>No accounts, no analytics, no telemetry. Your conversations stay on your device — and because it's open source, that's verifiable, not a promise.</p>
+        </article>
+        <article class="cell">
+          <h3>Hardware-adaptive</h3>
+          <p>It picks a model that fits your memory and chip — and warns you before one that doesn't, so it never stutters or fails to load.</p>
+          <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
+        </article>
+        <article class="cell">
+          <h3>Open source</h3>
+          <p>MIT licensed. Read every line, audit every privacy claim, and build it yourself from source.</p>
+        </article>
+        <article class="cell">
+          <h3>Resumable downloads</h3>
+          <p>Models keep downloading in the background and resume after an interruption — switch apps the night before a trip and it's still ready by morning.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band" data-theme="dark">
+    <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
+    <div class="container cta-inner">
+      <h2>See what it can run.</h2>
+      <p>Every feature above works with any model you choose — from a Raspberry Pi build to an M-series flagship.</p>
+      <div class="cta-row">
+        <a class="btn btn-white" href="models.html">Browse the models &rarr;</a>
+        <a class="btn btn-ghost" href="how-it-works.html">How it works</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3>Product</h3>
+        <a href="how-it-works.html">How it works</a>
+        <a href="features.html">Features</a>
+        <a href="models.html">Models</a>
+      </div>
+      <div class="footer-col">
+        <h3>Project</h3>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3>Learn</h3>
+        <a href="privacy.html">Privacy</a>
+        <a href="faq.html">FAQ</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal Notice</a>
+      <a href="accessibility.html">Accessibility</a>
+    </nav>
+    <p class="footer-note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="gradient.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>

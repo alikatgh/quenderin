@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://quenderin.org/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://quenderin.org/how-it-works.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://quenderin.org/features.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://quenderin.org/models.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://quenderin.org/faq.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://quenderin.org/privacy.html</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
   <url><loc>https://quenderin.org/terms.html</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
   <url><loc>https://quenderin.org/legal.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>

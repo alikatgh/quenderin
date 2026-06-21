@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Models — Quenderin</title>
+<meta name="description" content="Quenderin runs any GGUF model on llama.cpp — Llama, Qwen, DeepSeek, Mistral, Gemma, Phi — right-sized for everything from a Raspberry Pi to an M-series Mac." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/models.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">Model catalog</p>
+        <h2>Bring any model. Right-sized for your hardware.</h2>
+        <p>Quenderin runs on <strong>llama.cpp</strong>, so it runs <strong>any GGUF model</strong> — Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face. Below is the curated shortlist it recommends from, sized for everything from a Raspberry&nbsp;Pi to an M-series Mac.</p>
+      </header>
+      <div class="table-wrap">
+        <table class="spec-table model-spec-table">
+          <thead>
+            <tr><th scope="col">Model</th><th scope="col">Good for</th><th scope="col">Download</th><th scope="col">Min&nbsp;RAM</th><th scope="col">Quant</th></tr>
+          </thead>
+          <tbody>
+            <tr class="recommended"><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;4B<span class="badge">Recommended</span></td><td>General-purpose, Apache&nbsp;2.0 &mdash; the current go-to</td><td>2.4&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-deepseek" aria-hidden="true"></span>DeepSeek-R1&nbsp;7B</td><td>Step-by-step reasoning &amp; math</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen2.5&nbsp;Coder&nbsp;7B</td><td>Code generation &amp; tool use</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-gemma" aria-hidden="true"></span>Gemma&nbsp;3&nbsp;4B</td><td>Multilingual, 140+ languages</td><td>2.5&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-phi" aria-hidden="true"></span>Phi-4&nbsp;mini&nbsp;3.8B</td><td>Efficient, runs well on CPU</td><td>2.3&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-mistral" aria-hidden="true"></span>Mistral&nbsp;7B</td><td>Fast, capable all-rounder</td><td>4.1&nbsp;GB</td><td>6&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-llama" aria-hidden="true"></span>Llama&nbsp;3.2&nbsp;1B</td><td>Ultra-light &mdash; runs on a Pi</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td><td>Q4_K_M</td></tr>
+            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;14B</td><td>Best quality for a strong device</td><td>9.0&nbsp;GB</td><td>12&nbsp;GB</td><td>Q4_K_M</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="models-foot">&plus;&nbsp;<strong>thousands more</strong> from Hugging Face — any GGUF works.</p>
+    </div>
+  </section>
+
+  <section class="section tint">
+    <div class="container split">
+      <div class="split-copy">
+        <p class="eyebrow">How recommendation works</p>
+        <h2>You don't have to choose.</h2>
+        <p>Choosing a model is optional. Quenderin detects your device's memory and chip and automatically selects the best fit — leaving headroom for the operating system so the app stays responsive. It steers you away from a model that would swap to disk or fail to load.</p>
+        <p>Prefer to drive? Override the recommendation and load any GGUF you like, including ones you've downloaded yourself.</p>
+        <p class="learn-more"><a href="how-it-works.html">See how the probe works &rarr;</a></p>
+      </div>
+      <div class="split-copy">
+        <p class="eyebrow">Quantization</p>
+        <h2>Why Q4_K_M.</h2>
+        <p>The catalog defaults to <strong>Q4_K_M</strong> quantization — a 4-bit format that cuts a model's size to roughly a quarter of full precision while keeping almost all of its quality. That's what makes a 7-billion-parameter model fit, and run, on a phone.</p>
+        <p>Larger quants (more quality, more memory) and smaller ones (lighter, faster) are available for any model you bring.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band" data-theme="dark">
+    <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
+    <div class="container cta-inner">
+      <h2>Run one on your device.</h2>
+      <p>It's open source and runs from GitHub today. Star the repo to follow along.</p>
+      <div class="cta-row">
+        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
+        <a class="btn btn-ghost" href="faq.html">Read the FAQ &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3>Product</h3>
+        <a href="how-it-works.html">How it works</a>
+        <a href="features.html">Features</a>
+        <a href="models.html">Models</a>
+      </div>
+      <div class="footer-col">
+        <h3>Project</h3>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3>Learn</h3>
+        <a href="privacy.html">Privacy</a>
+        <a href="faq.html">FAQ</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal Notice</a>
+      <a href="accessibility.html">Accessibility</a>
+    </nav>
+    <p class="footer-note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="gradient.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>

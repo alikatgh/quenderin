@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>How it works — Quenderin</title>
+<meta name="description" content="How Quenderin runs a large language model entirely on your device: probe your hardware, download a model once, then go fully offline. No cloud, no API keys, no telemetry." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/how-it-works.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>Download once. Run forever.</h2>
+        <p>Quenderin turns your phone or laptop into a self-contained AI. There's no server doing the thinking for you — the model itself lives on your device. Setup is three steps, and it only happens once.</p>
+      </header>
+    </div>
+  </section>
+
+  <section class="section tint">
+    <div class="container">
+      <ol class="steplist">
+        <li><span class="step-num">01</span><div><h3>Probe your hardware</h3><p>On first launch, Quenderin reads what your device actually has — total and free RAM, the chip, and whether there's a usable GPU. It uses that to recommend the largest model your device can run <em>well</em>, not just the largest one that fits. If nothing fits comfortably, it tells you plainly instead of stalling.</p></div></li>
+        <li><span class="step-num">02</span><div><h3>Download a model once</h3><p>Pick the recommendation or choose your own — anywhere from a 0.4&nbsp;GB ultra-light build to a 9&nbsp;GB flagship. The download runs over Wi-Fi and <strong>resumes in the background</strong> if you switch apps or lose signal, so a big model finishing overnight is no problem. Every download is integrity-checked before it's ever loaded.</p></div></li>
+        <li><span class="step-num">03</span><div><h3>Go offline</h3><p>From then on, everything runs locally. Before you leave the grid, a clear check confirms the model is present and ready — a green <strong>"ready to go offline"</strong>. After that, airplane mode, a tunnel, or three days on a trail make no difference.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" id="offline">
+    <div class="container split">
+      <div class="split-copy">
+        <p class="eyebrow">On-device, really</p>
+        <h2>What "on-device" actually means.</h2>
+        <p>Most assistants are a thin app in front of someone else's data center. Quenderin is the opposite: the weights, the inference, and your conversation history all stay on the hardware in your hand.</p>
+        <ul class="checklist">
+          <li>No prompt or response is ever sent to a server</li>
+          <li>No account, no sign-in, no API keys to manage</li>
+          <li>No analytics or telemetry — there's nothing phoning home to disable</li>
+          <li>Conversations are stored locally and are yours to delete</li>
+          <li>The one and only network call is the initial model download</li>
+        </ul>
+        <p class="learn-more"><a href="privacy.html">Read the full Privacy Policy &rarr;</a></p>
+      </div>
+      <div class="split-copy">
+        <p class="eyebrow">Right-sized for you</p>
+        <h2>It picks a model that actually runs.</h2>
+        <p>Bigger isn't always better on a phone. Quenderin matches the model to your device's memory headroom, leaving room for the operating system so things stay responsive — and it warns you before a model that would swap, stutter, or fail to load.</p>
+        <p>The result: a capable assistant that feels instant, instead of a flagship model that crawls. You can always override the recommendation and choose your own trade-off.</p>
+        <p class="learn-more"><a href="models.html">See the model catalog &rarr;</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band" data-theme="dark">
+    <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
+    <div class="container cta-inner">
+      <h2>Bring your AI offline.</h2>
+      <p>It's open source and runs from GitHub today. Star the repo to follow along — and watch releases to hear the moment the mobile apps land.</p>
+      <div class="cta-row">
+        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
+        <a class="btn btn-ghost" href="features.html">Explore the features &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3>Product</h3>
+        <a href="how-it-works.html">How it works</a>
+        <a href="features.html">Features</a>
+        <a href="models.html">Models</a>
+      </div>
+      <div class="footer-col">
+        <h3>Project</h3>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3>Learn</h3>
+        <a href="privacy.html">Privacy</a>
+        <a href="faq.html">FAQ</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="legal.html">Legal Notice</a>
+      <a href="accessibility.html">Accessibility</a>
+    </nav>
+    <p class="footer-note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="gradient.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>
