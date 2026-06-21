@@ -10,6 +10,28 @@
   var KEY = 'quenderin_lang';
   var RTL = { ar: 1, ur: 1, fa: 1, he: 1 };
 
+  // Rotating hero demo Q&A — one of N pairs, picked per page load, shown in the active language.
+  var DEMO_DIR = 'i18n/demos/';
+  var demoIndex = null;
+  var demoCache = {};
+  function renderDemo(lang) {
+    if (demoIndex === null) return;
+    var qEl = document.getElementById('demo-q');
+    var aEl = document.getElementById('demo-a');
+    if (!qEl || !aEl) return;
+    var put = function (d) {
+      if (!d || !d.q || !d.a || !d.q.length) return;
+      var i = demoIndex % d.q.length;
+      qEl.textContent = d.q[i];
+      aEl.innerHTML = d.a[i];
+    };
+    if (demoCache[lang]) { put(demoCache[lang]); return; }
+    fetch(DEMO_DIR + lang + '.json', { cache: 'no-cache' })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) { demoCache[lang] = d; put(d); })
+      .catch(function () { if (lang !== 'en') renderDemo('en'); });
+  }
+
   function selectEl() { return document.querySelector('.lang-select'); }
 
   function available() {
@@ -43,6 +65,7 @@
     var md = document.querySelector('meta[name="description"]');
     if (md && dict['meta.description']) md.setAttribute('content', dict['meta.description']);
     var sel = selectEl(); if (sel) sel.value = lang;
+    renderDemo(lang);
   }
 
   function load(lang) {
@@ -64,8 +87,10 @@
       sel.value = cur;
       sel.addEventListener('change', function () { setLang(this.value); });
     }
+    demoIndex = Math.floor(Math.random() * 15);
     // English already rendered in the HTML; only fetch a dictionary when switching away.
-    if (cur !== 'en') load(cur);
+    if (cur !== 'en') load(cur);   // load -> apply -> renderDemo
+    else renderDemo('en');
   });
 
   window.__quenderinI18n = { setLang: setLang, load: load };
