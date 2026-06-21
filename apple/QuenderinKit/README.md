@@ -34,7 +34,7 @@ the **same** hardware. If you change one catalog, change the other.
 
 ```bash
 swift build      # compiles for the host (macOS) — warning-free
-swift test       # 13 tests, runs in milliseconds, no simulator needed
+swift test       # 153 tests, runs in milliseconds, no simulator needed
 ```
 
 ## Inference
