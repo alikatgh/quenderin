@@ -652,6 +652,18 @@ fun main() {
             ThermalMonitor.levelFromStatus(2) == ThermalLevel.FAIR &&
             ThermalMonitor.levelFromStatus(3) == ThermalLevel.SERIOUS &&
             ThermalMonitor.levelFromStatus(6) == ThermalLevel.CRITICAL)
+    check("ThermalGovernor sheds then recovers threads, suppressing redundant re-tunes", run {
+        val g = ThermalGovernor(4, ThermalLevel.NOMINAL)
+        val shed = g.update(ThermalLevel.SERIOUS)        // 4 → 2
+        val crit = g.update(ThermalLevel.CRITICAL)       // 2 → 1
+        val recover = g.update(ThermalLevel.NOMINAL)     // 1 → 4
+        val stable = g.update(ThermalLevel.NOMINAL)      // same level → null
+        // base 2: fair and serious both map to 1 → second change is a redundant no-op.
+        val g2 = ThermalGovernor(2, ThermalLevel.NOMINAL)
+        val toOne = g2.update(ThermalLevel.FAIR)         // 2 → 1
+        val redundant = g2.update(ThermalLevel.SERIOUS)  // still 1 → null
+        shed == 2 && crit == 1 && recover == 4 && stable == null && toOne == 1 && redundant == null
+    })
 
     // Conversation history — file persistence round-trip + coordinator lifecycle (twin of iOS).
     check("FileConversationPersistence round-trips a transcript + index", run {

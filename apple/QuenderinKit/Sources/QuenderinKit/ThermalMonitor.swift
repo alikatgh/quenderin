@@ -38,3 +38,33 @@ public enum ThermalThrottle {
         }
     }
 }
+
+/// Re-tunes the thread count *during* a long generation as the thermal level moves — the load-time
+/// snapshot only catches a phone that's already hot, but a 10-minute agent loop is what MAKES it
+/// hot. The 4-level enum is its own hysteresis: re-tune only when the level changes AND the thread
+/// count actually differs, so a sensor flapping at a boundary can't thrash `llama_set_n_threads`.
+/// Pure state machine — the engine owns the sampling cadence and the native call. Twin of Android
+/// `ThermalGovernor`.
+public struct ThermalGovernor {
+    public let baseThreads: Int
+    public private(set) var currentLevel: ThermalLevel
+    public private(set) var currentThreads: Int
+
+    public init(baseThreads: Int, initialLevel: ThermalLevel) {
+        let base = max(1, baseThreads)
+        self.baseThreads = base
+        self.currentLevel = initialLevel
+        self.currentThreads = ThermalThrottle.recommendedThreads(level: initialLevel, baseThreads: base)
+    }
+
+    /// Feed a freshly-read level. Returns the new thread count to apply (via `llama_set_n_threads`)
+    /// only when it should change; `nil` when nothing needs to change (same level, or same count).
+    public mutating func update(level: ThermalLevel) -> Int? {
+        guard level != currentLevel else { return nil }
+        currentLevel = level
+        let n = ThermalThrottle.recommendedThreads(level: level, baseThreads: baseThreads)
+        guard n != currentThreads else { return nil }
+        currentThreads = n
+        return n
+    }
+}
