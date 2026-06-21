@@ -14,8 +14,9 @@ package ai.quenderin.core
  * "fails cleanly until linked" contract the tests pin down.
  */
 class LlamaEngine(
-    private val contextTokens: Int = 4096,
-    /** Worker threads; 0 → the native side picks (≈ performance cores). */
+    /** Device app-memory budget (GB, native-heap); n_ctx is sized from this + the model footprint. */
+    private val deviceBudgetGb: Double = 4.0,
+    /** Worker threads; 0 → ThreadPlanner picks the big-core count. */
     private val threads: Int = 0,
     private val maxTokens: Int = 512,
 ) : InferenceEngine {
@@ -54,7 +55,9 @@ class LlamaEngine(
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
         val t = if (threads > 0) threads
         else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
-        handle = nativeLoad(filePath, contextTokens, t)
+        // n_ctx from the real app-memory budget AND this model's footprint (footprint-aware M1).
+        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB)
+        handle = nativeLoad(filePath, nctx, t)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }

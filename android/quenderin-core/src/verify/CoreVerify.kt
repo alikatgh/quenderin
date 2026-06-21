@@ -590,6 +590,10 @@ fun main() {
     check("ContextWindow scales n_ctx with device RAM (M1)",
         ContextWindow.recommend(3.0) == 1024 && ContextWindow.recommend(4.0) == 2048 &&
             ContextWindow.recommend(5.9) == 2048 && ContextWindow.recommend(8.0) == 4096)
+    check("ContextWindow footprint-aware: per-model + app budget",
+        ContextWindow.recommend(4.0, 0.8) == 4096 && ContextWindow.recommend(4.0, 6.0) == 512 &&
+            ContextWindow.recommend(4.0, 3.8) == 512 && ContextWindow.recommend(6.0, 3.8) == 4096 &&
+            ContextWindow.recommend(2.0, 0.8) == 2048)
 
     // ThreadPlanner: inference threads = performance (big) cores, not all cores.
     check("ThreadPlanner.recommend uses P-cores, clamps, and falls back",
