@@ -3,6 +3,7 @@ package ai.quenderin.app
 import ai.quenderin.app.ui.AppRoot
 import ai.quenderin.app.ui.QuenderinTheme
 import ai.quenderin.core.AndroidDeviceProfile
+import ai.quenderin.core.ContextWindow
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileConversationPersistence
 import ai.quenderin.core.InferenceEngine
@@ -29,7 +30,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val engine: InferenceEngine =
-            if (LlamaEngine.NATIVE_AVAILABLE) LlamaEngine() else MockInferenceEngine()
+            if (LlamaEngine.NATIVE_AVAILABLE) {
+                // Device-tuned context window so the KV cache doesn't OOM memory-tight phones (M1).
+                val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val totalRamGb = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+                    .totalMem / (1024.0 * 1024.0 * 1024.0)
+                LlamaEngine(contextTokens = ContextWindow.recommend(totalRamGb))
+            } else {
+                MockInferenceEngine()
+            }
         // Real, resumable downloader that survives app death (WorkManager + the pure-core
         // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
         val downloader: ModelDownloader = WorkManagerModelDownloader(applicationContext)
