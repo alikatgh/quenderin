@@ -86,6 +86,10 @@ class OnboardingModel(
 
     /** Proceed from Recommended → download → load → ready for [model]. Blocking; call off-main. */
     fun acceptAndPrepare(model: ModelEntry) {
+        // The model we'll fall back to if this one fails to load (a model SWITCH from Settings) — so a
+        // bad pick can't strand the user with no model (H1). null on first-run onboarding.
+        val previousId = engine.loadedModelId
+
         val path = try {
             phase = OnboardingPhase.Downloading(model, 0.0)
             downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
@@ -97,9 +101,27 @@ class OnboardingModel(
             phase = OnboardingPhase.Loading(model)
             engine.load(model, path)
         } catch (t: Throwable) {
-            phase = OnboardingPhase.Failed("Load failed: ${t.message}")
+            // load() already freed the previously-loaded model before failing (free-before-reassign),
+            // so on a failed SWITCH restore the prior model rather than leaving the engine empty (H1).
+            val previous = previousId
+                ?.takeIf { it != model.id }
+                ?.let { id -> ModelCatalog.models.firstOrNull { it.id == id } }
+            if (previous != null && restore(previous)) {
+                phase = OnboardingPhase.Ready(previous)
+            } else {
+                phase = OnboardingPhase.Failed("Couldn't load ${model.label}: ${t.message}")
+            }
             return
         }
         phase = OnboardingPhase.Ready(model)
+    }
+
+    /** Best-effort reload of a previously-working model after a failed switch. Its file is still on
+     *  disk (download() returns the existing path without re-fetching). Returns true on success. */
+    private fun restore(model: ModelEntry): Boolean = try {
+        engine.load(model, downloader.download(model) {})
+        true
+    } catch (t: Throwable) {
+        false
     }
 }

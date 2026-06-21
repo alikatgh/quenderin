@@ -120,4 +120,45 @@ final class OnboardingModelTests: XCTestCase {
             return XCTFail("expected .failed from LlamaEngine load, got \(model.phase)")
         }
     }
+
+    /// A failed model SWITCH must restore the previously-working model, not leave the engine empty (H1).
+    func testFailedSwitchRestoresPreviousModel() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let modelA = ModelCatalog.smallest
+        let modelB = try XCTUnwrap(ModelCatalog.models.first { $0.id != modelA.id })
+
+        let engine = FailOnLoadEngine(failingID: modelB.id)
+        let onboarding = OnboardingModel(downloader: MockModelDownloader(), engine: engine, modelsDir: dir)
+
+        await onboarding.install(modelA)                      // first model loads fine
+        guard case .ready(let readyA) = onboarding.phase, readyA.id == modelA.id else {
+            return XCTFail("expected .ready(modelA), got \(onboarding.phase)")
+        }
+
+        await onboarding.install(modelB)                      // switch to B — B fails to load
+        guard case .ready(let readyB) = onboarding.phase else {
+            return XCTFail("a failed switch must restore the previous model, got \(onboarding.phase)")
+        }
+        XCTAssertEqual(readyB.id, modelA.id)                  // restored to A — session not bricked
+        let loaded = await engine.loadedModelID()
+        XCTAssertEqual(loaded, modelA.id)                     // engine actually re-loaded A
+    }
+}
+
+/// Test engine that loads any model except `failingID`, which throws — exercises the failed-switch
+/// recovery path without a real (multi-GB) model.
+private actor FailOnLoadEngine: InferenceEngine {
+    let failingID: String
+    private var loaded: String?
+    init(failingID: String) { self.failingID = failingID }
+    func loadedModelID() async -> String? { loaded }
+    func load(model: ModelEntry, at fileURL: URL) async throws {
+        if model.id == failingID { throw InferenceError.loadFailed(reason: "test: too big to load") }
+        loaded = model.id
+    }
+    func unload() async { loaded = nil }
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
 }
