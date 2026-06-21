@@ -45,8 +45,10 @@ std::string piece(const llama_vocab* vocab, llama_token tok) {
 }
 
 // Run greedy generation. If `env`/`sink` are non-null, push each piece to sink.onToken().
+// `thiz` is the LlamaEngine instance; its boolean `cancelRequested` field is polled each token so
+// a model switch can interrupt a running generation (audit M3).
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
-                     JNIEnv* env, jobject sink) {
+                     JNIEnv* env, jobject sink, jobject thiz) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
     std::vector<llama_token> tokens = tokenize(vocab, prompt, true);
@@ -59,8 +61,17 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         env->DeleteLocalRef(cls);   // L3: don't pin the class local-ref for the whole stream
     }
 
+    // Resolve the cancellation field once; polled lock-free each token (M3).
+    jfieldID cancel_fid = nullptr;
+    if (env && thiz) {
+        jclass tcls = env->GetObjectClass(thiz);
+        cancel_fid = env->GetFieldID(tcls, "cancelRequested", "Z");
+        env->DeleteLocalRef(tcls);
+    }
+
     std::string out;
     for (int i = 0; i < max_tokens; ++i) {
+        if (cancel_fid && env->GetBooleanField(thiz, cancel_fid)) break;   // interrupted (M3)
         if (llama_decode(h->ctx, batch) != 0) {
             LOGE("llama_decode failed");
             break;
@@ -127,26 +138,26 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
 }
 
 JNIEXPORT jstring JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject /*thiz*/,
+Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject thiz,
                                                   jlong handle, jstring prompt, jint max_tokens) {
     LlamaHandle* h = as_handle(handle);
     if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
     if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
-    std::string out = generate(h, std::string(p), max_tokens, nullptr, nullptr);
+    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());
 }
 
 JNIEXPORT jstring JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject /*thiz*/,
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject thiz,
                                                            jlong handle, jstring prompt, jint max_tokens,
                                                            jobject sink) {
     LlamaHandle* h = as_handle(handle);
     if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
     if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
-    std::string out = generate(h, std::string(p), max_tokens, env, sink);
+    std::string out = generate(h, std::string(p), max_tokens, env, sink, thiz);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());
 }

@@ -49,9 +49,16 @@ public protocol InferenceEngine: Sendable {
     /// Stream tokens as they are produced. Throws `.modelNotLoaded` if no model
     /// is loaded yet.
     func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
+
+    /// Best-effort: interrupt an in-flight `generate` (e.g. a model switch or a stop button).
+    /// Synchronous + non-blocking by design so it can signal a generation that holds the engine.
+    /// Default no-op for engines that don't support interruption (mock, scripted, tests).
+    func requestCancel()
 }
 
 public extension InferenceEngine {
+    func requestCancel() {}
+
     /// Convenience: accumulate the token stream into one completion string.
     func complete(prompt: String, options: GenerationOptions = .init()) async throws -> String {
         var output = ""
