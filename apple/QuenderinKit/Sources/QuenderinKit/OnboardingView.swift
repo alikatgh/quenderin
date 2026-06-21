@@ -35,6 +35,7 @@ public struct OnboardingView: View {
                             case .comfortable: Text("Great fit").foregroundStyle(.green)
                             case .tight:       Text("Tight fit").foregroundStyle(.orange)
                             case .forced:      Text("Limited device").foregroundStyle(.orange)
+                            case .unsupported: Text("Not supported").foregroundStyle(.red)   // onboarding shows .failed instead
                             }
                         }
                         .font(.caption2.weight(.semibold))

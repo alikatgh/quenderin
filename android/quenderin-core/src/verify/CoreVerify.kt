@@ -154,6 +154,14 @@ fun main() {
         val phase = onb.phase
         phase is OnboardingPhase.Ready && phase.model.id == a.id && engine.loadedModelId == a.id
     })
+    check("unsupported device: even the smallest model can't run → UNSUPPORTED + Failed onboarding", run {
+        // Almost no native-heap budget — even the smallest model won't fit.
+        val tiny = AndroidDeviceProfile("Ancient", AndroidSoc.MIDRANGE, 1.0, 0.2, 128.0, 4500.0)
+        val sel = AndroidModelSelector.select(tiny)
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
+        onb.start(tiny)
+        sel.confidence == SelectionConfidence.UNSUPPORTED && onb.phase is OnboardingPhase.Failed
+    })
 
     // --- ChatModel (M2): send runs the engine, transcript accumulates ---
     val chatEngine = MockInferenceEngine(cannedReply = "Running on-device.")

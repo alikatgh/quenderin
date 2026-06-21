@@ -144,6 +144,23 @@ final class OnboardingModelTests: XCTestCase {
         let loaded = await engine.loadedModelID()
         XCTAssertEqual(loaded, modelA.id)                     // engine actually re-loaded A
     }
+
+    /// A device too small to run even the smallest model fails onboarding honestly — no doomed download.
+    func testUnsupportedDeviceFailsOnboarding() async {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let tiny = IOSDeviceProfile(
+            deviceName: "Ancient", identifier: "z", chip: .a12, totalRAMGB: 1,
+            appMemoryBudgetGB: 0.2, freeDiskGB: 32, isKnownDevice: false
+        )
+        let onboarding = OnboardingModel(
+            downloader: MockModelDownloader(), engine: MockInferenceEngine(), modelsDir: dir, deviceProfile: tiny
+        )
+        await onboarding.start()
+        guard case .failed = onboarding.phase else {
+            return XCTFail("unsupported device must fail onboarding, got \(onboarding.phase)")
+        }
+    }
 }
 
 /// Test engine that loads any model except `failingID`, which throws — exercises the failed-switch

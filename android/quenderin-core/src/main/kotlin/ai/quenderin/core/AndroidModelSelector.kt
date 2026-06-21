@@ -1,7 +1,11 @@
 package ai.quenderin.core
 
-/** How sure we are about a pick — drives the UI's "great fit / tight / limited" copy. */
-enum class SelectionConfidence { COMFORTABLE, TIGHT, FORCED }
+/** How sure we are about a pick — drives the UI's "great fit / tight / limited" copy.
+ *  UNSUPPORTED = even the smallest model can't run here; don't load anything. */
+enum class SelectionConfidence { COMFORTABLE, TIGHT, FORCED, UNSUPPORTED }
+
+/** Below this, on-device inference is too slow to be usable — flag the device unsupported. */
+const val ABSOLUTE_MIN_TOKENS_PER_SECOND = 3.0
 
 /** A model considered during selection, with why it was (or wasn't) chosen. */
 data class ModelOption(
@@ -124,6 +128,10 @@ object AndroidModelSelector {
             val sm = ModelCatalog.smallest
             val runtime = estimatedRuntimeGb(sm)
             val tokS = estimatedTokensPerSecond(sm, device.soc)
+            // If even the smallest model won't fit in the RAW budget (the absolute low-memory-killer
+            // ceiling, not the comfort-discounted usable figure) or would be too slow, the device is
+            // UNSUPPORTED — say so honestly instead of loading something the OS kills (any-phone floor).
+            val runnable = runtime <= device.appMemoryBudgetGb && tokS >= ABSOLUTE_MIN_TOKENS_PER_SECOND
             return ModelSelection(
                 model = sm,
                 estimatedTokensPerSecond = tokS,
@@ -132,9 +140,13 @@ object AndroidModelSelector {
                 usableMemoryGb = usableGb,
                 memoryHeadroomGb = maxOf(0.0, usableGb - runtime),  // clamp: negative headroom is meaningless (forced path)
                 thermalBattery = ThermalBattery.estimate(sm, device.soc, device.batteryMAh, tokS),
-                confidence = SelectionConfidence.FORCED,
-                rationale = "${device.deviceName} is very memory-constrained (~%.1f GB usable). ".format(usableGb) +
-                    "Using the smallest model, ${sm.label}, so it stays responsive.",
+                confidence = if (runnable) SelectionConfidence.FORCED else SelectionConfidence.UNSUPPORTED,
+                rationale = if (runnable) {
+                    "${device.deviceName} is very memory-constrained (~%.1f GB usable). ".format(usableGb) +
+                        "Using the smallest model, ${sm.label}, so it stays responsive."
+                } else {
+                    "${device.deviceName} doesn't have enough memory to run on-device AI (~%.1f GB usable; even ${sm.label} needs ~%.1f GB). Not supported here.".format(usableGb, runtime)
+                },
                 device = device,
                 alternatives = options,
             )
