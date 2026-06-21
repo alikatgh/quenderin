@@ -107,9 +107,31 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   serialization is load-bearing for safety (it stops `load()` freeing the context mid-decode), so to move
   the loop off the pool you must REPLACE that guarantee with a lock (`NSLock` + `nonisolated(unsafe)`),
   not just remove it. (audit M2)
+- **iOS engine (Swift) and Android engine (JNI `.cpp`) silently diverge.** Android decoded with
+  `llama_sampler_init_greedy()` (repetitive output) while iOS sampled `top_p → temp → dist` the whole
+  time — no test caught it because the kotlinc core check NEVER compiles `jni/llama_jni.cpp` and the
+  Compose app build only compiles the Kotlin `external fun` decl, not its C++ body. When you change one
+  platform's engine, diff the twin; keep the sampler/param choices identical. Thread params through the
+  Kotlin side (CI-compiled) and mirror the *verified* iOS native sequence in the `.cpp`. (android sampling parity)
+- **Verify a `#if canImport(X)` / conditional-compile branch is ACTUALLY compiled before trusting it.**
+  `swift test` only compiles `LlamaEngine`'s `#if canImport(llama)` body when the vendored
+  `Frameworks/llama.xcframework` is present (or `$QUENDERIN_LLAMA_DIR` is set) — otherwise the mock path
+  compiles and a wrong native symbol passes silently (CI's iOS job runs the mock build!). Probe it: insert
+  a bogus symbol (`GGML_TYPE_NOPE`, `modelParams.use_mmap_BOGUS`) into the branch, expect a compile error,
+  then revert. Compiles clean = the branch was excluded and your change was never checked. (canImport probe)
+- **Don't force a llama.cpp param the default already handles.** `flash_attn_type` defaults to
+  `LLAMA_FLASH_ATTN_TYPE_AUTO` (-1) → llama.cpp enables FA where the backend supports it. Forcing
+  `ENABLED` is a no-op at best, unsafe where AUTO would disable it. Read the header's default before
+  setting any `*_default_params()` field. (flash-attn AUTO)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-21 — Phone hardware-adaptation batch (PRs #22–31, plan `docs/audits/2026-06-20-phone-hardware-adaptation-plan.md`).
+  Shipped: P-core threads (`ThreadPlanner`) · footprint-aware `n_ctx` · honest `unsupported` exit · thermal-adaptive
+  threads + in-flight `ThermalGovernor` (iOS calls `llama_set_n_threads` every 32 tokens) · q8_0 KV cache
+  (`KVCachePolicy`, ~2× context) · mmap/mlock jetsam guard · Android top-p+temp sampling (was greedy — parity fix).
+  Every iOS native field proven compiled via the bogus-symbol probe. iOS 173 / core 149 green. Remaining = on-device
+  (Android JNI thermal loop, Vulkan, micro-batch). Lessons: see the parity / canImport-probe / flash-attn patterns above.
 - 2026-06-20 — Mobile engineering audit (8 findings) fixed/resolved. Native-engine review for running
   multi-GB models on phones. H1 recoverable model switch · M1 device-aware `n_ctx` (`ContextWindow`) ·
   M2 iOS decode off the cooperative pool (`NSLock` + `nonisolated(unsafe)`) · M3 switch-time cancellation
