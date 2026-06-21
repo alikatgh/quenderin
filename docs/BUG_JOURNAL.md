@@ -96,9 +96,26 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **SVG `og:image` / favicon silently unsupported by the consumers that matter.** Social scrapers
   (Twitter/LinkedIn/Slack/iMessage) need a PNG/JPG `og:image`; iOS `apple-touch-icon` must be PNG. Ship
   rasterized PNGs (`website/scripts/rasterize.mjs`) + keep the SVG as the modern `rel="icon"`. (website assets)
+- **A model SWITCH frees the working model before the new one loads → a failed load bricks the session.**
+  Free-before-reassign (C1) is right for memory, but for a *switch* capture the current model first and
+  reload it if the new one fails — don't strand the user with no model. (Also: a picker that lists every
+  model with no fitness gate lets a user pick one that can't load.) (audit H1)
+- **A fixed `n_ctx` ignores the device memory budget.** The KV cache scales with `n_ctx` and sits on top
+  of the weights, so 4096 can OOM a model that "fits" by weights on a tight phone. Scale `n_ctx` by RAM
+  (`ContextWindow`). (audit M1)
+- **A long synchronous native loop on a Swift `actor` pins a cooperative-pool thread.** The actor's
+  serialization is load-bearing for safety (it stops `load()` freeing the context mid-decode), so to move
+  the loop off the pool you must REPLACE that guarantee with a lock (`NSLock` + `nonisolated(unsafe)`),
+  not just remove it. (audit M2)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-20 — Mobile engineering audit (8 findings) fixed/resolved. Native-engine review for running
+  multi-GB models on phones. H1 recoverable model switch · M1 device-aware `n_ctx` (`ContextWindow`) ·
+  M2 iOS decode off the cooperative pool (`NSLock` + `nonisolated(unsafe)`) · M3 switch-time cancellation
+  (`requestCancel`) · L1 atomic conversation writes · L3 JNI OOM throw; L2 (atomic > append for small
+  text) + L4 (Android Vulkan = device milestone) resolved. iOS 153 / core 139 green. See top-section
+  patterns + `docs/audits/2026-06-20-mobile-engineering-audit.md`.
 - 2026-06-20 — Conversation history wired into both apps (built-but-unwired core). Symptom: core had full
   multi-conversation support (`ConversationManager`/`Library`/`Store`, tested) but neither app exposed it —
   chat showed only the in-memory thread. Fix: `FileConversationPersistence` (kit + core) + a

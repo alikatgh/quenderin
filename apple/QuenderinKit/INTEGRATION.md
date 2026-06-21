@@ -141,7 +141,7 @@ shippable app use the xcframework (Route A); Route C is the fastest path for hea
 CI/verification on macOS.
 
 > **Verified 2026-06-07:** with `QUENDERIN_LLAMA_DIR` set, `swift build` compiles
-> `LlamaEngine`'s `#if canImport(llama)` path (warning-free); `swift test` runs 91 tests
+> `LlamaEngine`'s `#if canImport(llama)` path (warning-free); `swift test` runs 153 tests
 > with the gated real-inference test skipping cleanly when the env vars are absent.
 
 ---
