@@ -81,9 +81,24 @@ def call_deepseek(name, payload):
     return data["choices"][0]["message"]["content"]
 
 
+def load_dotenv():
+    """Populate os.environ from a root .env (KEY=value lines) if present. Stdlib, no deps. The .env
+    file is gitignored — it never gets committed."""
+    f = ROOT / ".env"
+    if not f.exists():
+        return
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
 def main():
+    load_dotenv()
     if not os.environ.get("DEEPSEEK_API_KEY"):
-        sys.exit("Set DEEPSEEK_API_KEY (get one at https://platform.deepseek.com).")
+        sys.exit("Set DEEPSEEK_API_KEY in .env (root) or the environment — get one at https://platform.deepseek.com.")
     force = "--force" in sys.argv
     en = json.loads(EN.read_text(encoding="utf-8"))
     n = len(en["q"])
