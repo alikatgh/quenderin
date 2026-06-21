@@ -2,6 +2,30 @@
 
 This plan adapts on-device inference to real phone hardware constraints by correcting thread scheduling, memory budgeting, and model selection so the engine stops scheduling decode onto slow E-cores and stops sizing context/model picks off total RAM instead of the live app-memory budget. It splits into changes whose logic is unit-verifiable on the JVM/Swift now and changes whose effect requires a physical device (Vulkan, Metal flash attention, cache-tuning, live thermal/battery signals).
 
+## Status — shipped (as of 2026-06-21)
+
+Every **Priority 1–2** "do now" item plus the verifiable slices of Priority 3 are merged to `main`,
+each behind iOS `swift test` + Android core verification, with the iOS engine's native fields proven
+compiled against the **pinned** llama/ggml headers (vendored xcframework → `canImport(llama)` true) via
+a bogus-symbol probe:
+
+- **P-core thread count at load** — `ThreadPlanner` (both platforms). _(PR #22)_
+- **Footprint-aware n_ctx** — `ContextWindow.recommend(appBudget, weights)`. _(PR #23)_
+- **Android selection via native-heap budget** — already routed through `AndroidModelSelector` in `AppRoot` (verified, no change). _(audit #26)_
+- **Honest 'unsupported' exit** — `SelectionConfidence.unsupported` → onboarding `Failed`. _(PR #24)_
+- **Live ThermalMonitor + thermal-adaptive threads (load-time)** — `ThermalLevel`/`ThermalThrottle`; iOS reads `ProcessInfo.thermalState`, Android maps `PowerManager` status. _(PR #25)_
+- **KV-cache quantization (q8_0)** — `KVCacheType`/`KVCachePolicy` + cache-aware `n_ctx`; engine sets `type_k`/`type_v`. ~2× context on tight devices. _(PR #26)_
+- **mmap/mlock jetsam guard** — explicit `use_mmap = true`, `use_mlock = false` at model load (both platforms). _(this PR)_
+
+**Finding — Metal flash attention is already optimal:** the pinned header's `flash_attn_type` defaults to
+`LLAMA_FLASH_ATTN_TYPE_AUTO` (-1), so llama.cpp auto-enables FA where the backend supports it (Metal).
+Forcing `ENABLED` is a no-op at best and unsafe on backends where AUTO correctly disables it → **no change**.
+This is also why KV quant stops at q8_0: q4_0 for the V cache requires FA on the non-AUTO path.
+
+**Genuinely needs a device next** (can't be CI-verified here, wiring points below): in-flight thermal
+re-tuning during decode (`nativeSetThreads` + the decode loop), Android Vulkan GPU offload, and per-tier
+`n_batch`/`n_ubatch` tuning. See _On-device milestones_.
+
 ## Do now (verifiable)
 
 | Priority | Change | Files | Impact |

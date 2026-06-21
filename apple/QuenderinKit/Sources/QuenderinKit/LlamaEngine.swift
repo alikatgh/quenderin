@@ -122,6 +122,12 @@ public actor LlamaEngine: InferenceEngine {
 
         var modelParams = llama_model_default_params()
         modelParams.n_gpu_layers = 999   // offload every layer to the GPU (Metal on Apple)
+        // Jetsam guard for this project's target class (memory-tight phones under background
+        // pressure): mmap keeps the weights pageable (fast cold start, reclaimable by the OS), and
+        // mlock is explicitly OFF — wiring multi-GB of weights resident is exactly what gets the app
+        // jetsam-killed when the user switches to music/maps. Pin the safe default so it can't regress.
+        modelParams.use_mmap = true
+        modelParams.use_mlock = false
 
         guard let m = llama_model_load_from_file(path, modelParams) else {
             throw InferenceError.loadFailed(reason: "llama_model_load_from_file returned null for \(entry.filename)")

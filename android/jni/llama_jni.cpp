@@ -121,6 +121,11 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
 
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0; // CPU on mobile by default; Vulkan/GPU offload is a later tuning step
+    // Jetsam/LMK guard (this project's target class — memory-tight phones under background pressure):
+    // mmap keeps weights pageable (fast cold start, OS-reclaimable); mlock is explicitly OFF so we
+    // never wire multi-GB resident, which is exactly what triggers a low-memory kill on app switch.
+    mp.use_mmap = true;
+    mp.use_mlock = false;
     llama_model* model = llama_model_load_from_file(path, mp);
     env->ReleaseStringUTFChars(model_path, path);
     if (!model) { LOGE("model load failed"); return 0; }
