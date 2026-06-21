@@ -30,6 +30,13 @@ public enum HardwareProbe {
         )
     }
 
+    /// Logical performance-core count (Apple Silicon exposes its P-core cluster as `perflevel0`).
+    /// `nil` on devices/Macs where the key is absent — the caller falls back to a heuristic.
+    public static func performanceCoreCount() -> Int? {
+        if let p = sysctlInt("hw.perflevel0.logicalcpu"), p > 0 { return p }
+        return nil
+    }
+
     // MARK: - sysctl helpers
 
     private static func sysctlString(_ name: String) -> String? {

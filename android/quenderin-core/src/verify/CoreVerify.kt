@@ -591,6 +591,26 @@ fun main() {
         ContextWindow.recommend(3.0) == 1024 && ContextWindow.recommend(4.0) == 2048 &&
             ContextWindow.recommend(5.9) == 2048 && ContextWindow.recommend(8.0) == 4096)
 
+    // ThreadPlanner: inference threads = performance (big) cores, not all cores.
+    check("ThreadPlanner.recommend uses P-cores, clamps, and falls back",
+        ThreadPlanner.recommend(4, 8) == 4 && ThreadPlanner.recommend(null, 8) == 7 &&
+            ThreadPlanner.recommend(0, 8) == 7 && ThreadPlanner.recommend(99, 8) == 7 &&
+            ThreadPlanner.recommend(4, 0) == 1)
+    check("ThreadPlanner.performanceCoreCount counts big cores from cpufreq", run {
+        val dir = java.nio.file.Files.createTempDirectory("cpus").toFile()
+        try {
+            // 8 cores: 4 LITTLE @ 1.80 GHz, 4 big @ 2.84 GHz → expect 4 big cores.
+            listOf(1_804_800L, 1_804_800L, 1_804_800L, 1_804_800L, 2_841_600L, 2_841_600L, 2_841_600L, 2_841_600L)
+                .forEachIndexed { i, f ->
+                    val cf = java.io.File(dir, "cpu$i/cpufreq").also { it.mkdirs() }
+                    java.io.File(cf, "cpuinfo_max_freq").writeText(f.toString())
+                }
+            ThreadPlanner.performanceCoreCount(dir) == 4
+        } finally {
+            dir.deleteRecursively()
+        }
+    })
+
     // Conversation history — file persistence round-trip + coordinator lifecycle (twin of iOS).
     check("FileConversationPersistence round-trips a transcript + index", run {
         val dir = java.nio.file.Files.createTempDirectory("convtest").toFile()

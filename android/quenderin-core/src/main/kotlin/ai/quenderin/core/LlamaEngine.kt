@@ -51,7 +51,10 @@ class LlamaEngine(
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
-        handle = nativeLoad(filePath, contextTokens, threads)
+        // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
+        val t = if (threads > 0) threads
+        else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
+        handle = nativeLoad(filePath, contextTokens, t)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }
