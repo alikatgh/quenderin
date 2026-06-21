@@ -87,6 +87,14 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
 
 LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
 
+// Throw a Java OutOfMemoryError (returns nullptr) so a marshaling failure surfaces as an error
+// the UI can show, instead of a silent empty reply (audit L3).
+jstring throw_oom(JNIEnv* env, const char* msg) {
+    jclass cls = env->FindClass("java/lang/OutOfMemoryError");
+    if (cls) env->ThrowNew(cls, msg);
+    return nullptr;
+}
+
 } // namespace
 
 extern "C" {
@@ -124,7 +132,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject /*thiz*/,
     LlamaHandle* h = as_handle(handle);
     if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
-    if (!p) return env->NewStringUTF("");   // OOM (H4)
+    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
     std::string out = generate(h, std::string(p), max_tokens, nullptr, nullptr);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());
@@ -137,7 +145,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
     LlamaHandle* h = as_handle(handle);
     if (!h) return env->NewStringUTF("");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
-    if (!p) return env->NewStringUTF("");   // OOM (H4)
+    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
     std::string out = generate(h, std::string(p), max_tokens, env, sink);
     env->ReleaseStringUTFChars(prompt, p);
     return env->NewStringUTF(out.c_str());

@@ -19,7 +19,19 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
     private val indexFile get() = File(dir, "index.tsv")
 
     override fun saveTranscript(id: String, messages: List<ChatMessage>) {
-        runCatching { transcriptFile(id).writeText(store.encode(messages)) }
+        runCatching { atomicWrite(transcriptFile(id), store.encode(messages)) }
+    }
+
+    /** Write via a temp file + atomic rename so a crash/power-loss mid-write can't truncate or
+     *  corrupt the target (parity with iOS `.atomic`; audit L1). */
+    private fun atomicWrite(target: File, text: String) {
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        tmp.writeText(text)
+        if (!tmp.renameTo(target)) {
+            // Rename can fail in rare cases (e.g. target on a different mount); fall back + clean up.
+            target.writeText(text)
+            tmp.delete()
+        }
     }
 
     override fun loadTranscript(id: String): List<ChatMessage> {
@@ -34,7 +46,7 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
 
     override fun saveIndex(summaries: List<ConversationSummary>) {
         val text = summaries.joinToString("\n") { "${it.id}\t${escape(it.title)}\t${it.updatedAt}" }
-        runCatching { indexFile.writeText(text) }
+        runCatching { atomicWrite(indexFile, text) }
     }
 
     override fun loadIndex(): List<ConversationSummary> {

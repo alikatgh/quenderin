@@ -14,9 +14,10 @@ import Foundation
 /// available engine" without `#if canImport(llama)` scattered across the codebase.
 public enum DefaultInferenceEngine {
     /// The best on-device engine available in this build (real when linked, mock otherwise).
-    public static func make() -> InferenceEngine {
+    /// - Parameter contextTokens: device-tuned `n_ctx` (see `ContextWindow`); the mock ignores it.
+    public static func make(contextTokens: Int32 = 4096) -> InferenceEngine {
         #if canImport(llama)
-        return LlamaEngine()
+        return LlamaEngine(contextTokens: contextTokens)
         #else
         return MockInferenceEngine()
         #endif

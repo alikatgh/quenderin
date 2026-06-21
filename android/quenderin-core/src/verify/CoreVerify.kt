@@ -586,6 +586,11 @@ fun main() {
         !ChatMessage(Role.ASSISTANT, "The capital of France is Paris.").isFlagged)
     check("flagged-output notice is non-empty", SupportContact.FLAGGED_OUTPUT_NOTICE.isNotEmpty())
 
+    // M1: context window scales with device RAM (smaller KV cache on memory-tight phones).
+    check("ContextWindow scales n_ctx with device RAM (M1)",
+        ContextWindow.recommend(3.0) == 1024 && ContextWindow.recommend(4.0) == 2048 &&
+            ContextWindow.recommend(5.9) == 2048 && ContextWindow.recommend(8.0) == 4096)
+
     // Conversation history — file persistence round-trip + coordinator lifecycle (twin of iOS).
     check("FileConversationPersistence round-trips a transcript + index", run {
         val dir = java.nio.file.Files.createTempDirectory("convtest").toFile()

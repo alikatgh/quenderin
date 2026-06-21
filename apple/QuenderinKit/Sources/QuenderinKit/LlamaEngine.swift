@@ -32,6 +32,8 @@ import llama
 public actor LlamaEngine: InferenceEngine {
 
     private var loaded: String?
+    /// Context window (`n_ctx`); device-tuned so the KV cache doesn't OOM memory-tight phones (M1).
+    private let contextTokens: Int32
 
     #if canImport(llama)
     private var model: OpaquePointer?     // llama_model *
@@ -40,7 +42,9 @@ public actor LlamaEngine: InferenceEngine {
     private var backendInitialized = false  // llama_backend_init is "once per process" — gate it (L1)
     #endif
 
-    public init() {}
+    public init(contextTokens: Int32 = 4096) {
+        self.contextTokens = contextTokens
+    }
 
     public func loadedModelID() async -> String? { loaded }
 
@@ -70,7 +74,7 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         var ctxParams = llama_context_default_params()
-        ctxParams.n_ctx = 4096
+        ctxParams.n_ctx = UInt32(contextTokens)   // device-tuned (M1), not a fixed 4096
         let threads = Int32(max(1, ProcessInfo.processInfo.activeProcessorCount - 1))
         ctxParams.n_threads = threads
         ctxParams.n_threads_batch = threads

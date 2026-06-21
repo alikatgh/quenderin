@@ -23,6 +23,21 @@ model has gaps that will bite on memory-tight devices and long generations. None
 
 **Counts: 1 HIGH · 3 MEDIUM · 4 LOW.**
 
+## Resolution (2026-06-20)
+
+| # | Status | Notes |
+|---|--------|-------|
+| **H1** | ✅ **Fixed** | Recoverable switch — a failed load restores the previously-working model. Tests both platforms. (merged) |
+| **M1** | ✅ **Fixed** | `ContextWindow.recommend(totalRAMGB)` scales `n_ctx` (1024/2048/4096) by device RAM; wired into both engines + app construction. Tested. |
+| **L1** | ✅ **Fixed** | Android conversation writes are now atomic (temp-file + rename), parity with iOS `.atomic`. |
+| **L3** | ✅ **Fixed** | JNI throws `OutOfMemoryError` on a marshaling failure instead of returning `""` (on-device-cliff code; reviewed, not CI-compiled). |
+| **M2** | ⏸ **Deferred (by design)** | The actor holding the executor for a generation is *load-bearing for memory safety* — it's what stops `load()` freeing the context mid-decode. A non-blocking redesign needs a separate generation-in-progress guard and **on-device verification**; shipping it blind would risk a use-after-free (worse than the responsiveness nit). Tracked. |
+| **M3** | ⏸ **Deferred** | Mid-generation switch cancellation needs the *native* decode loop to poll a cancellation flag (a channel separate from the engine lock) + on-device verification. Current "switch waits for the reply to finish" is correct, just not instant. |
+| **L2** | ⏸ **Deferred (proportionate)** | Per-turn rewrite of a small text transcript is negligible; append-only is a shared-format change disproportionate to the impact. Revisit if transcripts grow large. |
+| **L4** | 🎯 **Milestone** | Android Vulkan/GPU offload needs a Vulkan-enabled llama.cpp build + on-device tuning — the top Android perf milestone, not a quick fix. Tracked in `apple/REALITY.md`-style perf notes. |
+
+**Engineering note:** M2/M3/L4 touch the native engine path that *no CI compiles* (iOS `#if canImport(llama)`, the JNI `.cpp`, the Vulkan build). Rewriting safety-critical native threading without an on-device build + run is how you turn a MEDIUM into a process-crash. The world-class call is to fix what is verifiable now (H1/M1/L1/L3) and schedule M2/M3/L4 behind real device verification — not to ship unverifiable changes to satisfy a checklist.
+
 ---
 
 ## HIGH
