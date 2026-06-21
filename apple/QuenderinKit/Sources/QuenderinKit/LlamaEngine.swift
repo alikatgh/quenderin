@@ -31,8 +31,9 @@ import llama
 public actor LlamaEngine: InferenceEngine {
 
     private var loaded: String?
-    /// Context window (`n_ctx`); device-tuned so the KV cache doesn't OOM memory-tight phones (M1).
-    private let contextTokens: Int32
+    /// Device app-memory budget (GB); `n_ctx` is sized from this + the model's footprint at load so
+    /// the KV cache doesn't OOM memory-tight phones (M1 + footprint-aware).
+    private let deviceBudgetGB: Double
 
     #if canImport(llama)
     nonisolated(unsafe) private var model: OpaquePointer?     // llama_model *
@@ -45,8 +46,8 @@ public actor LlamaEngine: InferenceEngine {
     private let cancelState = OSAllocatedUnfairLock(initialState: false)
     #endif
 
-    public init(contextTokens: Int32 = 4096) {
-        self.contextTokens = contextTokens
+    public init(deviceBudgetGB: Double = 4.0) {
+        self.deviceBudgetGB = deviceBudgetGB
     }
 
     public func loadedModelID() async -> String? { loaded }
@@ -127,7 +128,10 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         var ctxParams = llama_context_default_params()
-        ctxParams.n_ctx = UInt32(contextTokens)   // device-tuned (M1), not a fixed 4096
+        // n_ctx from the real app-memory budget AND this model's footprint (footprint-aware M1):
+        // a 1B gets a big context, a 7B on the same phone is capped tight.
+        let nctx = ContextWindow.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
+        ctxParams.n_ctx = UInt32(nctx)
         // Performance-core count, not all cores — E-cores slow + heat up mobile decode.
         let threads = Int32(ThreadPlanner.recommend(
             performanceCores: HardwareProbe.performanceCoreCount(),

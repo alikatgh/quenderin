@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// What we can learn about the device before deciding which modules to fetch.
 public struct HardwareProfile: Sendable, Equatable {
@@ -28,6 +29,17 @@ public enum HardwareProbe {
             chip: chip,
             isAppleSilicon: isAppleSilicon
         )
+    }
+
+    /// The app's memory budget in GB — bytes this process may allocate before the OS low-memory
+    /// killer (iOS jetsam). This, not total RAM, is the real constraint for fitting a model + its KV
+    /// cache. Falls back to total RAM on macOS/tests (where the API is unavailable).
+    public static func appMemoryBudgetGB() -> Double {
+        #if os(iOS)
+        let bytes = os_proc_available_memory()
+        if bytes > 0 { return Double(bytes) / 1_073_741_824.0 }
+        #endif
+        return current().totalRAMGB
     }
 
     /// Logical performance-core count (Apple Silicon exposes its P-core cluster as `perflevel0`).

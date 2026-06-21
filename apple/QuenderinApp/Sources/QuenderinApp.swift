@@ -17,9 +17,9 @@ struct QuenderinApp: App {
     @StateObject private var agent: AgentSession
 
     init() {
-        // Device-tuned context window so the KV cache doesn't OOM memory-tight phones (audit M1).
-        let contextTokens = Int32(ContextWindow.recommend(totalRAMGB: HardwareProbe.current().totalRAMGB))
-        let engine: InferenceEngine = DefaultInferenceEngine.make(contextTokens: contextTokens) // real LlamaEngine when llama.cpp is linked, else mock
+        // Pass the device's app-memory budget (jetsam headroom) so the engine sizes n_ctx from it +
+        // the chosen model's footprint at load — no KV-cache OOM on memory-tight phones (M1).
+        let engine: InferenceEngine = DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
         // Chat + on-device conversation history: the coordinator owns the ChatModel, restores the
