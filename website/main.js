@@ -77,4 +77,33 @@
     });
   }
 
+  // Scroll-aware header: a touch more presence once you leave the hero
+  var header = document.querySelector(".site-header");
+  if (header) {
+    var onScroll = function () { header.classList.toggle("scrolled", window.scrollY > 8); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
+
+  // Scroll-spy: highlight the nav link for the section currently in view
+  var spyLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-menu a[href^="#"]'));
+  var spySections = spyLinks
+    .map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); })
+    .filter(Boolean);
+  if ("IntersectionObserver" in window && spySections.length) {
+    var spy = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var id = entry.target.id;
+          spyLinks.forEach(function (a) {
+            a.classList.toggle("is-active", a.getAttribute("href") === "#" + id);
+          });
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 }
+    );
+    spySections.forEach(function (s) { spy.observe(s); });
+  }
+
 })();
