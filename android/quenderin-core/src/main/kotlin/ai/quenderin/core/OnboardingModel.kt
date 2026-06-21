@@ -50,10 +50,16 @@ class OnboardingModel(
         phase = OnboardingPhase.Probing
         val sel = AndroidModelSelector.select(profile)
         selection = sel
+        if (sel.confidence == SelectionConfidence.UNSUPPORTED) {
+            // Even the smallest model can't run here — fail honestly, don't push a doomed download.
+            phase = OnboardingPhase.Failed(sel.rationale)
+            return
+        }
         val severity = when (sel.confidence) {
             SelectionConfidence.COMFORTABLE -> MemorySeverity.SAFE
             SelectionConfidence.TIGHT -> MemorySeverity.WARNING
             SelectionConfidence.FORCED -> MemorySeverity.CRITICAL
+            SelectionConfidence.UNSUPPORTED -> MemorySeverity.CRITICAL   // handled above; here for exhaustiveness
         }
         phase = OnboardingPhase.Recommended(
             sel.model,

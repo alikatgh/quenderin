@@ -6,7 +6,11 @@ public enum SelectionConfidence: String, Sendable, Codable {
     case comfortable   // clears every gate with healthy headroom
     case tight         // viable, but close on memory or speed
     case forced        // nothing ideal cleared the gates; using the smallest model
+    case unsupported   // even the smallest model can't run here — don't load anything
 }
+
+/// Below this, on-device inference is too slow to be usable — flag the device unsupported.
+let absoluteMinTokensPerSecond = 3.0
 
 /// A model considered during selection, with why it was (or wasn't) chosen.
 public struct ModelOption: Sendable, Equatable, Codable {
@@ -176,6 +180,10 @@ public enum IPhoneModelSelector {
             let sm = ModelCatalog.smallest
             let runtime = estimatedRuntimeGB(sm)
             let tokS = estimatedTokensPerSecond(sm, chip: device.chip)
+            // If even the smallest model won't fit in the RAW budget (the absolute jetsam ceiling, not
+            // the comfort-discounted usable figure) or would be too slow, the device is UNSUPPORTED —
+            // say so honestly instead of loading something the OS will jetsam-kill (the any-phone floor).
+            let runnable = runtime <= device.appMemoryBudgetGB && tokS >= absoluteMinTokensPerSecond
             return ModelSelection(
                 model: sm,
                 estimatedTokensPerSecond: tokS,
@@ -184,9 +192,12 @@ public enum IPhoneModelSelector {
                 usableMemoryGB: usableGB,
                 memoryHeadroomGB: max(0.0, usableGB - runtime),  // clamp: negative headroom is meaningless (forced path)
                 thermalBattery: ThermalBattery.estimate(for: sm, chip: device.chip, batteryMAh: device.batteryMAh, peakTokensPerSecond: tokS),
-                confidence: .forced,
-                rationale: "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). "
-                    + "Using the smallest model, \(sm.label), so it stays responsive and is never jetsam-killed.",
+                confidence: runnable ? .forced : .unsupported,
+                rationale: runnable
+                    ? "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). "
+                        + "Using the smallest model, \(sm.label), so it stays responsive and is never jetsam-killed."
+                    : "\(device.deviceName) doesn't have enough memory to run on-device AI (~\(fmt(usableGB)) GB "
+                        + "usable; even \(sm.label) needs ~\(fmt(runtime)) GB). On-device inference isn't supported here.",
                 device: device,
                 alternatives: options   // everything considered, for transparency
             )

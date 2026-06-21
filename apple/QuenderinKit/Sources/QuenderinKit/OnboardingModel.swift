@@ -53,15 +53,20 @@ public final class OnboardingModel: ObservableObject {
         if let profile = deviceProfile ?? Self.liveProfile() {
             let sel = IPhoneModelSelector.select(for: profile)
             selection = sel
-            let fitness = MemoryCheckResult(
-                canLoad: true,
-                severity: sel.confidence == .comfortable ? .safe : (sel.confidence == .tight ? .warning : .critical),
-                availableMemoryGB: sel.usableMemoryGB,
-                requiredMemoryGB: sel.estimatedRuntimeGB,
-                remainingAfterLoadGB: sel.memoryHeadroomGB,
-                message: sel.rationale
-            )
-            phase = .recommended(sel.model, hardware, fitness)
+            if sel.confidence == .unsupported {
+                // Even the smallest model can't run here — fail honestly, don't push a doomed download.
+                phase = .failed(sel.rationale)
+            } else {
+                let fitness = MemoryCheckResult(
+                    canLoad: true,
+                    severity: sel.confidence == .comfortable ? .safe : (sel.confidence == .tight ? .warning : .critical),
+                    availableMemoryGB: sel.usableMemoryGB,
+                    requiredMemoryGB: sel.estimatedRuntimeGB,
+                    remainingAfterLoadGB: sel.memoryHeadroomGB,
+                    message: sel.rationale
+                )
+                phase = .recommended(sel.model, hardware, fitness)
+            }
         } else {
             let model = ModelRecommender.recommendedModel(forTotalRAMGB: hardware.totalRAMGB)
             phase = .recommended(model, hardware, MemoryFitness.check(for: model))

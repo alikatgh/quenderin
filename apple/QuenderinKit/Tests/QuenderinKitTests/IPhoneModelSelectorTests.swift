@@ -100,6 +100,15 @@ final class IPhoneModelSelectorTests: XCTestCase {
         XCTAssertEqual(sel.confidence, .forced)
     }
 
+    func testUnsupportedWhenEvenSmallestModelCantFit() {
+        // Almost no app-memory budget — even the smallest model won't fit → unsupported, not forced.
+        let device = IOSDeviceProfile(
+            deviceName: "Ancient", identifier: "z", chip: .a12, totalRAMGB: 1,
+            appMemoryBudgetGB: 0.2, freeDiskGB: 32, isKnownDevice: false
+        )
+        XCTAssertEqual(IPhoneModelSelector.select(for: device).confidence, .unsupported)
+    }
+
     // MARK: - Estimators
 
     func testRuntimeAndSpeedAreMonotonic() {
