@@ -10,11 +10,13 @@ import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
 import ai.quenderin.core.ModelDownloader
+import ai.quenderin.core.ThermalMonitor
 import java.io.File
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.StatFs
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,7 +38,14 @@ class MainActivity : ComponentActivity() {
                 val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 val totalRamGb = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
                     .totalMem / (1024.0 * 1024.0 * 1024.0)
-                LlamaEngine(deviceBudgetGb = AndroidSoc.nativeMemoryBudgetGB(totalRamGb))
+                LlamaEngine(deviceBudgetGb = AndroidSoc.nativeMemoryBudgetGB(totalRamGb)).also {
+                    // Seed the engine with the device's current thermal pressure so the first model
+                    // load already sheds threads if the phone is hot (PowerManager is API 29+).
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                        it.thermalLevel = ThermalMonitor.levelFromStatus(pm.currentThermalStatus)
+                    }
+                }
             } else {
                 MockInferenceEngine()
             }
