@@ -27,7 +27,7 @@ needed:
 KOTLINC="/Applications/Android Studio.app/Contents/plugins/Kotlin/kotlinc/bin/kotlinc"
 cd android/quenderin-core
 bash "$KOTLINC" src/main/kotlin/ai/quenderin/core/*.kt src/verify/CoreVerify.kt -include-runtime -d core.jar
-java -jar core.jar      # → 18 checks, ALL PASSED
+java -jar core.jar      # → 139 checks, ALL PASSED
 ```
 
 Or, in Android Studio / with Gradle: `./gradlew test` (runs `src/test` JUnit).
