@@ -221,6 +221,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Desktop `unit_convert` chat tool (cross-platform parity; PR #33, rebased + greened).
+  Symptom: mobile (iOS/Android) ships a `units` agent tool but the desktop chat tool loop had none. Fix:
+  `src/services/tools/unitConvert.ts` mirrors the mobile `UnitConverter` engine (same factors/aliases/
+  affine temps), wired into `registry.ts` + `handlers.ts`; 22 tests. The PR had been red since 2026-06-22
+  purely from a stale base — a rebase onto current main made it green (no code change needed). En route it
+  had fixed a `no-useless-escape` lint error in `utils/notes.ts` (`[..._\-]` → `[..._-]`). Lesson: a
+  trailing `-` in a regex char class is already literal — escaping it trips eslint `no-useless-escape`;
+  and a long-stale PR's red CI is often just a stale base, not a real failure — rebase before debugging.
+
 - 2026-06-27 — UI robustness (UI deep-hunt): (1) `useAgentSocket` had no `ws.onerror` — socket errors
   were swallowed (reconnect is onclose-driven + bounded, but the error never surfaced); added one.
   (2) `data.data.progress` read without optional chaining (caught by the try, but now `data.data?.progress

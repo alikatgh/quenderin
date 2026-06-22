@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { availableMemBytes } from '../../utils/memory.js';
 import { safeCalculate, CalculatorError } from './calculator.js';
+import { runUnitConversion } from './unitConvert.js';
 import { ToolCall, ToolResult, AVAILABLE_TOOLS } from './registry.js';
 import { getSharedMemoryService } from '../memory.service.js';
 import logger from '../../utils/logger.js';
@@ -77,6 +78,17 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
                 }
                 const result = safeCalculate(expression);
                 return { tool: 'calculator', success: true, result: String(result) };
+            }
+
+            case 'unit_convert': {
+                const expression = String(call.args.expression ?? '').trim();
+                if (!expression) {
+                    return { tool: 'unit_convert', success: false, result: '', error: 'Missing expression parameter' };
+                }
+                // runUnitConversion never throws — it degrades garbage input to a hint —
+                // so a successful tool result always carries a human-readable string.
+                const result = runUnitConversion(expression);
+                return { tool: 'unit_convert', success: true, result };
             }
 
             case 'datetime': {
