@@ -72,6 +72,13 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
         description: 'List all saved notes with their titles, creation dates, and first 100 characters of content.',
         parameters: []
     },
+    {
+        name: 'unit_convert',
+        description: 'Convert between common units fully offline — length (m, km, cm, mm, mi, ft, in, yd), mass (g, kg, mg, lb, oz), volume (l, ml, gal, floz), speed (mps, kph, mph), and temperature (C, F, K). Phrase the request as "<value> <from> to <to>", e.g. "20 km to mi", "30 C in F", "5 kg to lb".',
+        parameters: [
+            { name: 'expression', type: 'string', description: 'The conversion to perform, e.g. "20 km to mi"', required: true }
+        ]
+    },
 ];
 
 /** Build a tool description block for the system prompt */
