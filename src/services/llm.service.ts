@@ -130,6 +130,30 @@ function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; pat
     return null;
 }
 
+/**
+ * Honor a pinned activeModelId when its file exists; otherwise fall back to auto-selection.
+ */
+function selectPinnedOrBestModel(
+    activeModelId: string,
+    memorySafetyEnabled: boolean
+): { entry: ModelEntry; path: string; degraded: boolean } | null {
+    const pinned = MODEL_CATALOG.find((m) => m.id === activeModelId);
+    if (pinned) {
+        const filePath = modelPath(pinned.id);
+        if (fs.existsSync(filePath)) {
+            if (!memorySafetyEnabled) {
+                return { entry: pinned, path: filePath, degraded: false };
+            }
+            const memCheck = checkMemoryForModel(pinned);
+            if (memCheck.canLoad) {
+                return { entry: pinned, path: filePath, degraded: false };
+            }
+            return { entry: pinned, path: filePath, degraded: true };
+        }
+    }
+    return selectBestModel(memorySafetyEnabled);
+}
+
 export class LlmService extends EventEmitter implements ILlmProvider {
     private modelInstance: LlamaModel | null = null;
     private contextInstance: LlamaContext | null = null;
@@ -137,6 +161,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private isDownloading: boolean = false;
     private generalChatSession: LlamaChatSession | null = null;
     private isGeneratingChat: boolean = false;
+    /** Agent/daemon generateAction calls share the same model but do not use the chat session. */
+    private isGeneratingAction: boolean = false;
     private tokenBuffer: string = "";
     private activeModelId: string = MODEL_CATALOG[0].id;
     private activePreset: Preset = getPresetById('general');
@@ -201,7 +227,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             const totalGb = os.totalmem() / (1024 ** 3);
             const usageRatio = 1 - (freeGb / totalGb);
 
-            if (usageRatio > HW.memoryBudgetHard && !this.isGeneratingChat) {
+            if (usageRatio > HW.memoryBudgetHard && !this.isInferenceBusy()) {
                 logger.warn(`[Memory] Pressure critical (${(usageRatio * 100).toFixed(0)}% used, ${freeGb.toFixed(1)}GB free). Unloading model to prevent OOM.`);
                 this.unloadModel();
             } else if (usageRatio > HW.memoryBudgetHard * 0.95) {
@@ -226,8 +252,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return clampedMinutes * 60 * 1000;
     }
 
+    private isInferenceBusy(): boolean {
+        return this.isGeneratingChat || this.isGeneratingAction;
+    }
+
     public isCurrentlyGenerating(): { isGenerating: boolean, buffer: string } {
-        return { isGenerating: this.isGeneratingChat, buffer: this.tokenBuffer };
+        return { isGenerating: this.isInferenceBusy(), buffer: this.tokenBuffer };
     }
 
     /** Switch the active preset (persona). Resets chat session so the new system prompt takes effect. */
@@ -295,7 +325,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private resetIdleTimer(): void {
         if (this.idleTimer) clearTimeout(this.idleTimer);
         this.idleTimer = setTimeout(() => {
-            if (!this.isGeneratingChat && !this.initPromise && this.modelInstance) {
+            if (!this.isInferenceBusy() && !this.initPromise && this.modelInstance) {
                 logger.log(`[Lifecycle] Unloading model after ${this.idleTimeoutMs / 60000}min idle to free RAM`);
                 this.unloadModel();
             }
@@ -325,11 +355,22 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     /** Switch to a specific model by ID. Unloads current model if different. */
     public async switchModel(modelId: string): Promise<void> {
-        if (this.isGeneratingChat) {
+        const entry = MODEL_CATALOG.find((m) => m.id === modelId);
+        if (!entry) {
+            throw new Error(`Unknown model id: ${modelId}`);
+        }
+        const filePath = modelPath(modelId);
+        if (!fs.existsSync(filePath)) {
+            const err = new Error('MODEL_MISSING');
+            (err as NodeJS.ErrnoException).code = 'MODEL_MISSING';
+            throw err;
+        }
+        if (this.isInferenceBusy()) {
             logger.warn('[Lifecycle] Cannot switch model during active generation');
             return;
         }
         if (this.loadedModelId === modelId) {
+            this.activeModelId = modelId;
             logger.log(`[Lifecycle] Model ${modelId} already loaded, skipping`);
             return;
         }
@@ -343,7 +384,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return {
             loadedModelId: this.loadedModelId,
             loadedSinceMs: this.modelLoadTimestamp > 0 ? Date.now() - this.modelLoadTimestamp : 0,
-            isGenerating: this.isGeneratingChat,
+            isGenerating: this.isInferenceBusy(),
             gpuBackend: this.gpuBackendUsed,
             flashAttention: this.flashAttentionActive,
         };
@@ -371,8 +412,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         const promise = (async () => {
             try {
-                // Auto-select the best model that fits available RAM
-                const selected = selectBestModel(this.currentSettings.memorySafetyEnabled);
+                // Use pinned activeModelId when its file exists; otherwise auto-select
+                const selected = selectPinnedOrBestModel(
+                    this.activeModelId,
+                    this.currentSettings.memorySafetyEnabled
+                );
 
                 if (!selected) {
                     // No model file exists on disk at all — ask user to download one
@@ -396,7 +440,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     logger.warn(`[Lifecycle] RAM is tight — loading ${selected.entry.label} in degraded mode (minimal context). Performance may be reduced.`);
                 }
 
-                this.activeModelId = selected.entry.id;
+                // Keep an explicitly pinned id; only update when auto-selecting
+                if (selected.entry.id !== this.activeModelId) {
+                    this.activeModelId = selected.entry.id;
+                }
                 this.activeModelEntry = selected.entry;
                 logger.log(`[LLM] Loading ${selected.entry.label} (~${selected.entry.ramGb}GB RAM)`);
 
@@ -868,28 +915,33 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string> {
-        const { context } = await this.getModelAndContext();
-        // Use a new sequence per call — dispose it when done to free KV cache slots
-        const sequence = context.getSequence();
-        const session = this.createChatSession({
-            contextSequence: sequence,
-            systemPrompt: systemPrompt || undefined
-        });
-
-        // If a vision path was provided, notify the LLM this is a multimodal query (pseudo-implementation since node-llama-cpp's exact vision wrapper syntax varies by binding version)
-        const finalPrompt = imagePath
-            ? `${userPrompt}\n[IMAGE UPLOADED: ${imagePath}]`
-            : userPrompt;
-
+        this.isGeneratingAction = true;
         try {
-            const response = await session.prompt(finalPrompt, {
-                maxTokens: options.maxTokens || HW.actionMaxTokens,
-                temperature: options.temperature || 0.1
+            const { context } = await this.getModelAndContext();
+            // Use a new sequence per call — dispose it when done to free KV cache slots
+            const sequence = context.getSequence();
+            const session = this.createChatSession({
+                contextSequence: sequence,
+                systemPrompt: systemPrompt || undefined
             });
-            return response.trim();
+
+            // If a vision path was provided, notify the LLM this is a multimodal query (pseudo-implementation since node-llama-cpp's exact vision wrapper syntax varies by binding version)
+            const finalPrompt = imagePath
+                ? `${userPrompt}\n[IMAGE UPLOADED: ${imagePath}]`
+                : userPrompt;
+
+            try {
+                const response = await session.prompt(finalPrompt, {
+                    maxTokens: options.maxTokens || HW.actionMaxTokens,
+                    temperature: options.temperature || 0.1
+                });
+                return response.trim();
+            } finally {
+                try { sequence.dispose(); } catch { /* already disposed */ }
+            }
         } finally {
+            this.isGeneratingAction = false;
             this.touchActivity();
-            try { sequence.dispose(); } catch { /* already disposed */ }
         }
     }
 
@@ -985,7 +1037,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 toolCallsMade = true;
                 const calls = parseToolCalls(finalResponse);
                 if (calls.length > 0) {
-                    const results = executeToolCalls(calls);
+                    const results = await executeToolCalls(calls);
                     const resultContext = formatToolResults(results);
 
                     // Re-prompt with tool results
@@ -1041,7 +1093,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     public updateSettings(settings: { contextSize: number, memorySafetyEnabled: boolean }) {
         this.currentSettings = settings;
         // Don't yank the model out from under an active generation — defer reset
-        if (this.isGeneratingChat) {
+        if (this.isInferenceBusy()) {
             logger.warn('[LLM] Settings updated but model reset deferred (generation in progress)');
             return;
         }

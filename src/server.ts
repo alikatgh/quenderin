@@ -16,7 +16,7 @@ import { LlmService } from './services/llm.service.js';
 import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
-import { MemoryService } from './services/memory.service.js';
+import { MemoryService, setSharedMemoryService } from './services/memory.service.js';
 import { SessionService } from './services/session.service.js';
 import { setHealthLlmService } from './routes/health.js';
 import { resetReadinessForStartup, setReadiness } from './services/readiness.service.js';
@@ -120,8 +120,14 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const metricsService = new MetricsService();
     const ocrService = new OcrService();
     const memoryService = new MemoryService();
+    setSharedMemoryService(memoryService);
     const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
-    const backgroundDaemon = new BackgroundDaemonService(deviceProvider, llmService, metricsService);
+    const backgroundDaemon = new BackgroundDaemonService(
+        deviceProvider,
+        llmService,
+        metricsService,
+        () => llmService.isCurrentlyGenerating().isGenerating || agentService.isRunning,
+    );
     const voiceService = new VoiceService();
     const sessionService = new SessionService();
 

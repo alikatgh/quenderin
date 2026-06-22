@@ -7,16 +7,10 @@ import path from 'path';
 import { availableMemBytes } from '../../utils/memory.js';
 import { safeCalculate, CalculatorError } from './calculator.js';
 import { ToolCall, ToolResult, AVAILABLE_TOOLS } from './registry.js';
+import { getSharedMemoryService } from '../memory.service.js';
 import logger from '../../utils/logger.js';
 
-const NOTES_DIR = path.join(os.homedir(), '.quenderin', 'notes');
 const MAX_FILE_READ_BYTES = 8_000;
-
-function ensureNotesDir(): void {
-    if (!fs.existsSync(NOTES_DIR)) {
-        fs.mkdirSync(NOTES_DIR, { recursive: true });
-    }
-}
 
 /**
  * Safety check: ensure a resolved path stays inside the user's home dir.
@@ -29,7 +23,7 @@ function isInsideHome(filePath: string): boolean {
 }
 
 /** Execute a single tool call */
-export function executeTool(call: ToolCall): ToolResult {
+export async function executeTool(call: ToolCall): Promise<ToolResult> {
     // Validate tool exists
     const toolDef = AVAILABLE_TOOLS.find(t => t.name === call.tool);
     if (!toolDef) {
@@ -124,41 +118,20 @@ export function executeTool(call: ToolCall): ToolResult {
             }
 
             case 'note_save': {
-                const title = String(call.args.title ?? '').trim();
-                const content = String(call.args.content ?? '').trim();
-                if (!title) return { tool: 'note_save', success: false, result: '', error: 'Missing title parameter' };
-                if (!content) return { tool: 'note_save', success: false, result: '', error: 'Missing content parameter' };
-                // Sanitise title for use as filename
-                const safeTitle = title.replace(/[^a-zA-Z0-9\s\-_]/g, '').trim().replace(/\s+/g, '_').slice(0, 80);
-                // An all-special/non-ASCII title (e.g. "!!!", "日本語") sanitises to "" → a hidden
-                // ".md" file that silently collides/overwrites across all such titles (M14).
-                if (!safeTitle) return { tool: 'note_save', success: false, result: '', error: 'Title has no filename-safe characters; use letters, digits, spaces, - or _' };
-                ensureNotesDir();
-                const notePath = path.join(NOTES_DIR, `${safeTitle}.md`);
-                const header = `# ${title}\n_Saved: ${new Date().toISOString()}_\n\n`;
-                fs.writeFileSync(notePath, header + content, 'utf8');
-                return { tool: 'note_save', success: true, result: `Note saved to ${notePath}` };
+                const title = String(call.args.title ?? '');
+                const content = String(call.args.content ?? '');
+                const saved = await getSharedMemoryService().saveNote(title, content);
+                if ('error' in saved) {
+                    return { tool: 'note_save', success: false, result: '', error: saved.error };
+                }
+                return { tool: 'note_save', success: true, result: `Note saved to ${saved.path}` };
             }
 
             case 'note_list': {
-                ensureNotesDir();
-                const files = fs.readdirSync(NOTES_DIR).filter(f => f.endsWith('.md'));
-                if (files.length === 0) {
+                const notes = await getSharedMemoryService().listNotesForTool();
+                if (notes.length === 0) {
                     return { tool: 'note_list', success: true, result: 'No notes saved yet.' };
                 }
-                const notes = files.map(f => {
-                    const notePath = path.join(NOTES_DIR, f);
-                    const stat = fs.statSync(notePath);
-                    let preview = '';
-                    try {
-                        const buf = Buffer.alloc(200);
-                        const fd = fs.openSync(notePath, 'r');
-                        const n = fs.readSync(fd, buf, 0, 200, 0);
-                        fs.closeSync(fd);
-                        preview = buf.slice(0, n).toString('utf8').replace(/\n/g, ' ').slice(0, 100);
-                    } catch { /* non-fatal */ }
-                    return { title: f.replace(/\.md$/, ''), modified: stat.mtime.toISOString(), preview };
-                });
                 return { tool: 'note_list', success: true, result: JSON.stringify(notes, null, 2) };
             }
 
@@ -173,8 +146,12 @@ export function executeTool(call: ToolCall): ToolResult {
 }
 
 /** Execute multiple tool calls (with safety limits) */
-export function executeToolCalls(calls: ToolCall[]): ToolResult[] {
+export async function executeToolCalls(calls: ToolCall[]): Promise<ToolResult[]> {
     const MAX_CALLS = 5;
     const limited = calls.slice(0, MAX_CALLS);
-    return limited.map(executeTool);
+    const results: ToolResult[] = [];
+    for (const call of limited) {
+        results.push(await executeTool(call));
+    }
+    return results;
 }

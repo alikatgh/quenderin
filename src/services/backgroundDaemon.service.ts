@@ -27,7 +27,9 @@ export class BackgroundDaemonService extends EventEmitter {
     constructor(
         private deviceProvider: IDeviceProvider,
         private llmProvider: ILlmProvider,
-        private metricsService: MetricsService
+        private metricsService: MetricsService,
+        /** Optional hook so server can also defer when the agent loop is active. */
+        private isInferenceBusy?: () => boolean,
     ) {
         super();
         const envPoll = Number(process.env.QUENDERIN_POLL_INTERVAL_MS);
@@ -104,6 +106,13 @@ export class BackgroundDaemonService extends EventEmitter {
         }
     }
 
+    private shouldDeferInference(): boolean {
+        if (this.isInferenceBusy?.()) {
+            return true;
+        }
+        return this.llmProvider.isCurrentlyGenerating().isGenerating;
+    }
+
     private async pollLoop() {
         while (this.isRunning) {
             try {
@@ -121,26 +130,31 @@ export class BackgroundDaemonService extends EventEmitter {
                 // 3. LLM Processing if screen changed significantly
                 if (diffRatio > this.diffThreshold) {
                     this.idleCycleCount = 0; // Reset backoff — screen is active
-                    logger.debug(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
 
-                    // We don't provide a UI struct here. Pure zero-shot vision.
-                    // Assuming the provider (like LLaVA) accepts an imagePath and ignores system prompt if empty
-                    const description = await this.llmProvider.generateAction(
-                        "Describe what the user is doing right now in one sentence.",
-                        "",
-                        { maxTokens: 100, temperature: 0.2 },
-                        screenshotPath
-                    );
+                    if (this.shouldDeferInference()) {
+                        logger.debug('[Observer] Screen changed but LLM busy (chat/agent) — skipping habit inference.');
+                    } else {
+                        logger.debug(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
 
-                    logger.debug(`[Observer] ${description}`);
+                        // We don't provide a UI struct here. Pure zero-shot vision.
+                        // Assuming the provider (like LLaVA) accepts an imagePath and ignores system prompt if empty
+                        const description = await this.llmProvider.generateAction(
+                            "Describe what the user is doing right now in one sentence.",
+                            "",
+                            { maxTokens: 100, temperature: 0.2 },
+                            screenshotPath
+                        );
 
-                    // 4. Log to Habit Tracker Database
-                    await this.metricsService.appendHabitLog({
-                        id: Date.now().toString(),
-                        timestamp: new Date().toISOString(),
-                        diff_score: parseFloat(diffRatio.toFixed(3)),
-                        description: description
-                    });
+                        logger.debug(`[Observer] ${description}`);
+
+                        // 4. Log to Habit Tracker Database
+                        await this.metricsService.appendHabitLog({
+                            id: Date.now().toString(),
+                            timestamp: new Date().toISOString(),
+                            diff_score: parseFloat(diffRatio.toFixed(3)),
+                            description: description
+                        });
+                    }
                 } else {
                     this.idleCycleCount++;
                 }

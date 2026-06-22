@@ -46,6 +46,6 @@ nsis:
 files:
   - dist/**/*
   - node_modules/**/*
-  - ui/dist/**/*
+  - public/**/*
   - package.json
 asar: false

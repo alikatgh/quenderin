@@ -9,7 +9,7 @@ import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
-import { MemoryService } from './services/memory.service.js';
+import { MemoryService, setSharedMemoryService } from './services/memory.service.js';
 
 const program = new Command();
 
@@ -34,6 +34,7 @@ program
       const metricsService = new MetricsService();
       const ocrService = new OcrService();
       const memoryService = new MemoryService();
+      setSharedMemoryService(memoryService);
       const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
 
       const emitter = new AgentEventEmitter();

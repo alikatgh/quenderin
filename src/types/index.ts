@@ -46,6 +46,8 @@ export interface IDeviceProvider extends EventEmitter {
 export interface ILlmProvider extends EventEmitter {
     generalChat(prompt: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }>;
     generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
+    /** True while chat or agent/action inference holds the shared model (GPU/CPU). */
+    isCurrentlyGenerating(): { isGenerating: boolean; buffer: string };
 }
 
 export interface AgentAction {

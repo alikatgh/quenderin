@@ -4,6 +4,7 @@ import path from 'path';
 import * as fs from 'fs/promises';
 import fsSync from 'fs';
 import * as os from 'os';
+import { sanitizeNoteFilename } from './utils/notes.js';
 import { MemoryService } from './services/memory.service.js';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
@@ -133,6 +134,25 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const requestedModelId = modelId ?? fallbackModelId;
             llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });
+        });
+
+        /** Switch active model (pins selection until changed again) */
+        app.post('/api/models/switch', async (req, res) => {
+            const modelId = req.body?.modelId as string | undefined;
+            if (!modelId || !MODEL_CATALOG.some(m => m.id === modelId)) {
+                return res.status(400).json({ error: 'Unknown or missing modelId' });
+            }
+            const filePath = getModelPath(modelId);
+            if (!fsSync.existsSync(filePath)) {
+                return res.status(404).json({ error: 'Model file not found on disk. Download it first.' });
+            }
+            try {
+                await llmService.switchModel(modelId);
+                res.json({ message: 'Model switched.', modelId, activeModel: llmService.getActiveModelLabel() });
+            } catch (err) {
+                logger.error('Failed to switch model:', err);
+                res.status(500).json({ error: 'Failed to switch model.' });
+            }
         });
 
         /** Delete a downloaded model file */
@@ -268,74 +288,38 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         }
     });
 
-    /** Notes API — browse/delete notes written by the note_save tool */
-    const NOTES_DIR = path.join(os.homedir(), '.quenderin', 'notes');
+    /** Notes + agent memory API — all I/O through MemoryService (single write lock) */
+    if (memoryService) {
+        app.get('/api/notes', async (_req, res) => {
+            try {
+                const notes = await memoryService.listNotes();
+                res.json({ notes });
+            } catch {
+                res.status(500).json({ error: 'Failed to list notes' });
+            }
+        });
 
-    app.get('/api/notes', async (_req, res) => {
-        try {
-            await fs.mkdir(NOTES_DIR, { recursive: true });
-            const files = await fs.readdir(NOTES_DIR);
-            const notes = await Promise.all(
-                files.filter(f => f.endsWith('.md')).map(async (file) => {
-                    const filePath = path.join(NOTES_DIR, file);
-                    const stat = await fs.stat(filePath);
-                    const content = await fs.readFile(filePath, 'utf-8').catch(() => '');
-                    const preview = content.split('\n').slice(0, 3).join(' ').slice(0, 200);
-                    return {
-                        filename: file,
-                        title: file.replace(/\.md$/, '').replace(/_/g, ' '),
-                        preview,
-                        modifiedAt: stat.mtimeMs,
-                        sizeBytes: stat.size,
-                    };
-                })
-            );
-            notes.sort((a, b) => b.modifiedAt - a.modifiedAt);
-            res.json({ notes });
-        } catch {
-            res.status(500).json({ error: 'Failed to list notes' });
-        }
-    });
-
-    app.get('/api/notes/:filename', async (req, res) => {
-        const safe = path.basename(req.params.filename);
-        if (!safe.endsWith('.md')) return res.status(400).json({ error: 'Invalid filename' });
-        const filePath = path.join(NOTES_DIR, safe);
-        try {
-            const content = await fs.readFile(filePath, 'utf-8');
+        app.get('/api/notes/:filename', async (req, res) => {
+            const safe = sanitizeNoteFilename(req.params.filename);
+            if (!safe) return res.status(400).json({ error: 'Invalid filename' });
+            const content = await memoryService.getNote(safe);
+            if (content === null) return res.status(404).json({ error: 'Note not found' });
             res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
             res.send(content);
-        } catch {
-            res.status(404).json({ error: 'Note not found' });
-        }
-    });
+        });
 
-    app.delete('/api/notes/:filename', async (req, res) => {
-        const safe = path.basename(req.params.filename);
-        if (!safe.endsWith('.md')) return res.status(400).json({ error: 'Invalid filename' });
-        const filePath = path.join(NOTES_DIR, safe);
-        try {
-            await fs.unlink(filePath);
+        app.delete('/api/notes/:filename', async (req, res) => {
+            const safe = sanitizeNoteFilename(req.params.filename);
+            if (!safe) return res.status(400).json({ error: 'Invalid filename' });
+            const deleted = await memoryService.deleteNote(safe);
+            if (!deleted) return res.status(404).json({ error: 'Note not found' });
             res.json({ message: 'Note deleted.' });
-        } catch {
-            res.status(404).json({ error: 'Note not found' });
-        }
-    });
+        });
 
-    /** Agent Memory API — recent learned trajectories */
-    if (memoryService) {
         app.get('/api/memory/trajectories', async (_req, res) => {
             try {
-                const memPath = path.join(os.homedir(), '.quenderin', 'memory.json');
-                const raw = await fs.readFile(memPath, 'utf-8').catch(() => '[]');
-                const records = JSON.parse(raw);
-                // Return last 20, newest first, without full action arrays for brevity
-                const summary = [...records].reverse().slice(0, 20).map((r: any) => ({
-                    goal: r.goal,
-                    actionCount: r.actions?.length ?? 0,
-                    timestamp: r.timestamp,
-                }));
-                res.json({ trajectories: summary, total: records.length });
+                const { trajectories, total } = await memoryService.listTrajectories();
+                res.json({ trajectories, total });
             } catch {
                 res.status(500).json({ error: 'Failed to read memory' });
             }
@@ -343,8 +327,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
         app.delete('/api/memory/trajectories', async (_req, res) => {
             try {
-                const memPath = path.join(os.homedir(), '.quenderin', 'memory.json');
-                await fs.writeFile(memPath, '[]', 'utf-8');
+                await memoryService.clearTrajectories();
                 res.json({ message: 'Agent memory cleared.' });
             } catch {
                 res.status(500).json({ error: 'Failed to clear memory' });

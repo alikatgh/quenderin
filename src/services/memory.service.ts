@@ -3,6 +3,21 @@ import path from 'path';
 import os from 'os';
 import { pipeline, env } from '@xenova/transformers';
 import logger from '../utils/logger.js';
+import { sanitizeNoteFilename, sanitizeNoteTitle } from '../utils/notes.js';
+
+export interface NoteSummary {
+    filename: string;
+    title: string;
+    preview: string;
+    modifiedAt: number;
+    sizeBytes: number;
+}
+
+export interface TrajectorySummary {
+    goal: string;
+    actionCount: number;
+    timestamp: string;
+}
 
 // Setup Xenova for Node environment
 env.allowLocalModels = false;
@@ -22,9 +37,24 @@ export interface CorrectionEntry {
     timestamp: string;
 }
 
+/** Process-wide singleton so HTTP routes and tool handlers share one write lock. */
+let sharedMemoryService: MemoryService | null = null;
+
+export function getSharedMemoryService(): MemoryService {
+    if (!sharedMemoryService) {
+        sharedMemoryService = new MemoryService();
+    }
+    return sharedMemoryService;
+}
+
+export function setSharedMemoryService(service: MemoryService): void {
+    sharedMemoryService = service;
+}
+
 export class MemoryService {
     private memoryPath: string;
     private correctionsPath: string;
+    private notesDir: string;
     private extractor: any = null;
     /** Awaited by all read/write methods to ensure dirs/files exist */
     private initPromise: Promise<void>;
@@ -39,6 +69,7 @@ export class MemoryService {
         const configDir = path.join(homeDir, '.quenderin');
         this.memoryPath = path.join(configDir, 'memory.json');
         this.correctionsPath = path.join(configDir, 'corrections.json');
+        this.notesDir = path.join(configDir, 'notes');
 
         this.initPromise = this.initialize(configDir);
     }
@@ -46,6 +77,7 @@ export class MemoryService {
     private async initialize(configDir: string): Promise<void> {
         try {
             await fs.mkdir(configDir, { recursive: true });
+            await fs.mkdir(this.notesDir, { recursive: true });
             await fs.access(this.memoryPath).catch(() =>
                 fs.writeFile(this.memoryPath, JSON.stringify([]), 'utf-8')
             );
@@ -157,6 +189,126 @@ export class MemoryService {
                 logger.error('Failed to inject manual override memory:', error);
             }
         });
+    }
+
+    public async listTrajectories(limit = 20): Promise<{ trajectories: TrajectorySummary[]; total: number }> {
+        await this.initPromise;
+        try {
+            const data = await fs.readFile(this.memoryPath, 'utf-8');
+            const records: TrajectoryEntry[] = JSON.parse(data);
+            const trajectories = [...records].reverse().slice(0, limit).map((r) => ({
+                goal: r.goal,
+                actionCount: r.actions?.length ?? 0,
+                timestamp: r.timestamp,
+            }));
+            return { trajectories, total: records.length };
+        } catch {
+            return { trajectories: [], total: 0 };
+        }
+    }
+
+    public async clearTrajectories(): Promise<void> {
+        await this.initPromise;
+        await this.withWriteLock(async () => {
+            await fs.writeFile(this.memoryPath, '[]', 'utf-8');
+        });
+    }
+
+    public async listNotes(): Promise<NoteSummary[]> {
+        await this.initPromise;
+        await fs.mkdir(this.notesDir, { recursive: true });
+        const files = await fs.readdir(this.notesDir);
+        const notes = await Promise.all(
+            files.filter((f) => f.endsWith('.md')).map(async (file) => {
+                const filePath = path.join(this.notesDir, file);
+                const stat = await fs.stat(filePath);
+                const content = await fs.readFile(filePath, 'utf-8').catch(() => '');
+                const preview = content.split('\n').slice(0, 3).join(' ').slice(0, 200);
+                return {
+                    filename: file,
+                    title: file.replace(/\.md$/, '').replace(/_/g, ' '),
+                    preview,
+                    modifiedAt: stat.mtimeMs,
+                    sizeBytes: stat.size,
+                };
+            })
+        );
+        notes.sort((a, b) => b.modifiedAt - a.modifiedAt);
+        return notes;
+    }
+
+    public async getNote(filename: string): Promise<string | null> {
+        await this.initPromise;
+        const safe = sanitizeNoteFilename(filename);
+        if (!safe) return null;
+        const filePath = path.join(this.notesDir, safe);
+        try {
+            return await fs.readFile(filePath, 'utf-8');
+        } catch {
+            return null;
+        }
+    }
+
+    public async deleteNote(filename: string): Promise<boolean> {
+        await this.initPromise;
+        const safe = sanitizeNoteFilename(filename);
+        if (!safe) return false;
+        const filePath = path.join(this.notesDir, safe);
+        try {
+            await this.withWriteLock(async () => {
+                await fs.unlink(filePath);
+            });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    public async saveNote(title: string, content: string): Promise<{ path: string } | { error: string }> {
+        await this.initPromise;
+        const trimmedTitle = title.trim();
+        const trimmedContent = content.trim();
+        if (!trimmedTitle) return { error: 'Missing title parameter' };
+        if (!trimmedContent) return { error: 'Missing content parameter' };
+
+        const safeTitle = sanitizeNoteTitle(trimmedTitle);
+        if (!safeTitle) {
+            return {
+                error: 'Title has no filename-safe characters; use letters, digits, spaces, - or _',
+            };
+        }
+
+        const notePath = path.join(this.notesDir, `${safeTitle}.md`);
+        const header = `# ${trimmedTitle}\n_Saved: ${new Date().toISOString()}_\n\n`;
+
+        await this.withWriteLock(async () => {
+            await fs.mkdir(this.notesDir, { recursive: true });
+            await fs.writeFile(notePath, header + trimmedContent, 'utf-8');
+        });
+
+        return { path: notePath };
+    }
+
+    public async listNotesForTool(): Promise<{ title: string; modified: string; preview: string }[]> {
+        await this.initPromise;
+        await fs.mkdir(this.notesDir, { recursive: true });
+        const files = (await fs.readdir(this.notesDir)).filter((f) => f.endsWith('.md'));
+        const notes: { title: string; modified: string; preview: string }[] = [];
+        for (const f of files) {
+            const notePath = path.join(this.notesDir, f);
+            try {
+                const [stat, content] = await Promise.all([
+                    fs.stat(notePath),
+                    fs.readFile(notePath, 'utf-8'),
+                ]);
+                notes.push({
+                    title: f.replace(/\.md$/, ''),
+                    modified: stat.mtime.toISOString(),
+                    preview: content.replace(/\n/g, ' ').slice(0, 100),
+                });
+            } catch { /* non-fatal */ }
+        }
+        return notes;
     }
 
     public async findSimilarGoal(goal: string): Promise<TrajectoryEntry | null> {
