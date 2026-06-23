@@ -233,5 +233,14 @@
   "gs.title": "Up and running in four lines.",
   "gs.intro": "It's open source and runs from GitHub right now — on macOS or Linux.",
   "gs.copy": "Copy",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> today · <strong>iOS</strong> &amp; <strong>Android</strong> in active development"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> today · <strong>iOS</strong> &amp; <strong>Android</strong> in active development",
+
+  "uc.eyebrow": "Made for",
+  "uc.title": "When the cloud isn't an option.",
+  "uc.1t": "Off the grid",
+  "uc.1b": "Planes, trains through tunnels, trails, ships, field work — anywhere a signal can't follow you, your assistant still does.",
+  "uc.2t": "Private by necessity",
+  "uc.2b": "Legal, medical, journalism, research — work that simply can't be sent to someone else's server. Nothing leaves the device.",
+  "uc.3t": "Free for everyone",
+  "uc.3b": "Students, hobbyists, the curious — a capable assistant with no subscription, no token meter, no account to create."
 }
