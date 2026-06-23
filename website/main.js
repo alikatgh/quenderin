@@ -148,6 +148,18 @@
   toggleToTop();
   window.addEventListener("scroll", toggleToTop, { passive: true });
 
+  // Copy-to-clipboard buttons (brief ✓ feedback, language-agnostic)
+  document.querySelectorAll(".copy-btn[data-copy-target]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var t = document.getElementById(btn.getAttribute("data-copy-target"));
+      if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.textContent.trim()).then(function () {
+        btn.classList.add("copied");
+        setTimeout(function () { btn.classList.remove("copied"); }, 1600);
+      }).catch(function () {});
+    });
+  });
+
   // Scroll-progress bar (injected) — a thin brand line tracking read progress
   var prog = document.createElement("div");
   prog.className = "scroll-progress";

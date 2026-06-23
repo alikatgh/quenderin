@@ -227,5 +227,11 @@
   "cmp.r5b": "Required",
   "cmp.r6": "Open source",
   "cmp.r6a": "Yes — MIT",
-  "cmp.r6b": "Closed"
+  "cmp.r6b": "Closed",
+
+  "gs.eyebrow": "Run it today",
+  "gs.title": "Up and running in four lines.",
+  "gs.intro": "It's open source and runs from GitHub right now — on macOS or Linux.",
+  "gs.copy": "Copy",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> today · <strong>iOS</strong> &amp; <strong>Android</strong> in active development"
 }
