@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
+<style>html[dir="rtl"] .checklist,html[dir="rtl"] .steplist{text-align:right}</style>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -22,17 +23,17 @@
   "mainEntity": [
     { "@type": "Question", "name": "Is it really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware — so there are no token costs and no subscription." } },
     { "@type": "Question", "name": "Is my data sent anywhere?", "acceptedAnswer": { "@type": "Answer", "text": "No. After the one-time model download, Quenderin makes no network calls. There are no analytics, accounts, or telemetry. Because it is open source, you can verify this yourself." } },
-    { "@type": "Question", "name": "What devices does it run on?", "acceptedAnswer": { "@type": "Answer", "text": "The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development — the same hardware-detection and model-selection engine, rebuilt natively for performance." } },
-    { "@type": "Question", "name": "Do I need a powerful phone?", "acceptedAnswer": { "@type": "Answer", "text": "No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs — down to a 0.4 GB ultra-light build." } },
+    { "@type": "Question", "name": "What devices does it run on?", "acceptedAnswer": { "@type": "Answer", "text": "The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development." } },
+    { "@type": "Question", "name": "Do I need a powerful phone?", "acceptedAnswer": { "@type": "Answer", "text": "No. Quenderin scales from a Raspberry Pi to an M-series Mac, down to a 0.4 GB ultra-light build." } },
     { "@type": "Question", "name": "Which models can it run?", "acceptedAnswer": { "@type": "Answer", "text": "Any GGUF model on llama.cpp — Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face." } },
-    { "@type": "Question", "name": "Can it actually do things, or just chat?", "acceptedAnswer": { "@type": "Answer", "text": "It includes a tool-using agent for small tasks, with a hard safety blocklist it cannot override: it will never autonomously pay, delete, transfer money, or touch credentials." } },
-    { "@type": "Question", "name": "When can I install it?", "acceptedAnswer": { "@type": "Answer", "text": "It is open source and runnable from GitHub today. The polished mobile apps are on the way — star or watch the repo on GitHub to hear the moment they land." } }
+    { "@type": "Question", "name": "Can it actually do things, or just chat?", "acceptedAnswer": { "@type": "Answer", "text": "It includes a tool-using agent with a hard safety blocklist: it will never autonomously pay, delete, transfer money, or touch credentials." } },
+    { "@type": "Question", "name": "When can I install it?", "acceptedAnswer": { "@type": "Answer", "text": "It is open source and runnable from GitHub today. The polished mobile apps are on the way." } }
   ]
 }
 </script>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
 
 <header class="site-header" id="top">
   <div class="container container-wide header-inner">
@@ -41,6 +42,24 @@
       <span class="brand-name">Quenderin</span>
     </a>
     <nav class="nav" aria-label="Primary">
+      <div class="lang-picker">
+        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="bn">বাংলা</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <svg class="lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
       <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -55,46 +74,46 @@
   <section class="section">
     <div class="container split faq-split">
       <div class="split-copy">
-        <p class="eyebrow">FAQ</p>
-        <h2>Questions, answered.</h2>
-        <p>It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here's the rest.</p>
+        <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
+        <h2 data-i18n="faq.title">Questions, answered.</h2>
+        <p data-i18n="faq.intro">It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here's the rest.</p>
         <div class="faq-cta">
-          <p>Still have a question?</p>
-          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener">Ask on GitHub</a>
+          <p data-i18n="faq.cta.q">Still have a question?</p>
+          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener" data-i18n="faq.cta.link">Ask on GitHub</a>
         </div>
       </div>
       <div class="faq">
         <details open>
-          <summary>Is it really free?</summary>
-          <p>Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription. The only thing a model "costs" is the one-time download and the storage it takes up.</p>
+          <summary data-i18n="faq.q1">Is it really free?</summary>
+          <p data-i18n="faq.a1">Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription.</p>
         </details>
         <details>
-          <summary>Is my data sent anywhere?</summary>
-          <p>No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it's open source, you don't have to take our word for it&mdash;you can read the code and watch the network yourself.</p>
+          <summary data-i18n="faq.q2">Is my data sent anywhere?</summary>
+          <p data-i18n="faq.a2">No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it's open source, you can verify this yourself.</p>
         </details>
         <details>
-          <summary>What devices does it run on?</summary>
-          <p>The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
+          <summary data-i18n="faq.q3">What devices does it run on?</summary>
+          <p data-i18n="faq.a3">The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
         </details>
         <details>
-          <summary>Do I need a powerful phone?</summary>
-          <p>No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build. A mid-range phone runs a genuinely useful assistant.</p>
+          <summary data-i18n="faq.q4">Do I need a powerful phone?</summary>
+          <p data-i18n="faq.a4">No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build.</p>
         </details>
         <details>
-          <summary>Which models can it run?</summary>
-          <p>Any <strong>GGUF</strong> model on llama.cpp&mdash;Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face. See the <a href="models.html">model catalog</a> for the curated shortlist it recommends from.</p>
+          <summary data-i18n="fq.q.models">Which models can it run?</summary>
+          <p data-i18n-html="fq.a.models">Any <strong>GGUF</strong> model on llama.cpp&mdash;Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face. See the <a href="models.html">model catalog</a> for the curated shortlist it recommends from.</p>
         </details>
         <details>
-          <summary>Can it actually do things, or just chat?</summary>
-          <p>It includes a tool-using agent for small tasks, with a <strong>hard safety blocklist</strong> it cannot override on its own: it will never autonomously pay, delete, transfer money, or touch credentials. Anything sensitive is surfaced for you to confirm.</p>
+          <summary data-i18n="fq.q.agent">Can it actually do things, or just chat?</summary>
+          <p data-i18n-html="fq.a.agent">It includes a tool-using agent for small tasks, with a <strong>hard safety blocklist</strong> it cannot override on its own: it will never autonomously pay, delete, transfer money, or touch credentials. Anything sensitive is surfaced for you to confirm.</p>
         </details>
         <details>
-          <summary>How big is a model download?</summary>
-          <p>Your choice&mdash;from about 0.4&nbsp;GB for the ultra-light build to 9&nbsp;GB for the flagship. It downloads once over Wi-Fi and resumes in the background if interrupted.</p>
+          <summary data-i18n="fq.q.size">How big is a model download?</summary>
+          <p data-i18n="fq.a.size">Your choice&mdash;from about 0.4&nbsp;GB for the ultra-light build to 9&nbsp;GB for the flagship. It downloads once over Wi-Fi and resumes in the background if interrupted.</p>
         </details>
         <details>
-          <summary>When can I install it?</summary>
-          <p>It's open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star or watch the repo on GitHub to hear the moment they land.</p>
+          <summary data-i18n="faq.q5">When can I install it?</summary>
+          <p data-i18n="faq.a5">It's open source and runnable from GitHub today. The polished mobile apps are on the way&mdash;star or watch the repo on GitHub to hear the moment they land.</p>
         </details>
       </div>
     </div>
@@ -103,11 +122,11 @@
   <section class="cta-band" data-theme="dark">
     <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
     <div class="container cta-inner">
-      <h2>Bring your AI offline.</h2>
-      <p>It's open source and runs from GitHub today. Star the repo to follow along.</p>
+      <h2 data-i18n="cta.title">Bring your AI offline.</h2>
+      <p data-i18n="md.cta.b">It's open source and runs from GitHub today. Star the repo to follow along.</p>
       <div class="cta-row">
-        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener">Star on GitHub</a>
-        <a class="btn btn-ghost" href="how-it-works.html">How it works &rarr;</a>
+        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="cta.btn1">Star on GitHub</a>
+        <a class="btn btn-ghost" href="how-it-works.html" data-i18n="fq.cta.b2">How it works &rarr;</a>
       </div>
     </div>
   </section>
@@ -119,42 +138,43 @@
     <div class="footer-brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Quenderin</span>
-      <p class="footer-tag">Offline, private, on-device AI.</p>
-      <p class="footer-status"><span class="dot dot-live"></span> Open source &middot; in active development</p>
+      <p class="footer-tag" data-i18n="foot.tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
     </div>
     <nav class="footer-cols" aria-label="Footer">
       <div class="footer-col">
-        <h3>Product</h3>
-        <a href="how-it-works.html">How it works</a>
-        <a href="features.html">Features</a>
-        <a href="models.html">Models</a>
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="how-it-works.html" data-i18n="nav.how">How it works</a>
+        <a href="features.html" data-i18n="nav.features">Features</a>
+        <a href="models.html" data-i18n="nav.models">Models</a>
       </div>
       <div class="footer-col">
-        <h3>Project</h3>
+        <h3 data-i18n="foot.col.project">Project</h3>
         <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
-        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">Releases</a>
-        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener">License (MIT)</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
       </div>
       <div class="footer-col">
-        <h3>Learn</h3>
-        <a href="privacy.html">Privacy</a>
-        <a href="faq.html">FAQ</a>
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
+        <a href="faq.html" data-i18n="nav.faq">FAQ</a>
       </div>
     </nav>
   </div>
   <div class="container container-wide footer-base">
-    <p>&copy; <span id="year">2026</span> Quenderin. MIT licensed.</p>
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
     <nav class="footer-legal" aria-label="Legal">
-      <a href="privacy.html">Privacy</a>
-      <a href="terms.html">Terms</a>
-      <a href="legal.html">Legal Notice</a>
-      <a href="accessibility.html">Accessibility</a>
+      <a href="privacy.html" data-i18n="foot.legal.privacy">Privacy</a>
+      <a href="terms.html" data-i18n="foot.legal.terms">Terms</a>
+      <a href="legal.html" data-i18n="foot.legal.legal">Legal Notice</a>
+      <a href="accessibility.html" data-i18n="foot.legal.a11y">Accessibility</a>
     </nav>
-    <p class="footer-note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
   </div>
 </footer>
 
 <script src="gradient.js" defer></script>
 <script src="main.js" defer></script>
+<script src="i18n.js" defer></script>
 </body>
 </html>
