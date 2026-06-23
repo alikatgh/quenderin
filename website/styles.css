@@ -608,6 +608,9 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 .gs-platforms { text-align: center; margin-top: 1.4rem; font-size: 0.9rem; color: var(--text-secondary); }
 .gs-platforms strong { color: var(--text); font-weight: 500; }
 
+/* Global keyboard-focus ring (a11y) — visible focus on every interactive element */
+a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 3px; }
+
 /* Subtle card hover (color only — never geometry) */
 .cell { transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
 .cell:hover { border-color: var(--accent-border); }
