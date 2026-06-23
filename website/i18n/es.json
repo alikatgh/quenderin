@@ -222,5 +222,15 @@
   "uc.2t": "Privado por necesidad",
   "uc.2b": "Derecho, medicina, periodismo, investigación: trabajo que sencillamente no se puede enviar al servidor de otra persona. Nada sale del dispositivo.",
   "uc.3t": "Gratis para todos",
-  "uc.3b": "Estudiantes, aficionados, curiosos: un asistente capaz sin suscripción, sin contador de tokens y sin cuenta que crear."
+  "uc.3b": "Estudiantes, aficionados, curiosos: un asistente capaz sin suscripción, sin contador de tokens y sin cuenta que crear.",
+  "gl.eyebrow": "En lenguaje sencillo",
+  "gl.title": "La jerga, descifrada.",
+  "gl.1t": "En el dispositivo",
+  "gl.1b": "El modelo se ejecuta en tu propio teléfono o portátil, no en el servidor de una empresa.",
+  "gl.2t": "GGUF",
+  "gl.2b": "El formato de archivo de modelo que carga Quenderin. Miles de modelos abiertos se distribuyen en él.",
+  "gl.3t": "Cuantización (Q4_K_M)",
+  "gl.3b": "Una forma de reducir un modelo a aproximadamente una cuarta parte de su tamaño conservando casi toda su calidad, lo que permite que quepa en un teléfono.",
+  "gl.4t": "llama.cpp",
+  "gl.4b": "El motor de código abierto que ejecuta estos modelos de forma rápida y eficiente en hardware corriente."
 }

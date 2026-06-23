@@ -222,5 +222,15 @@
   "uc.2t": "Privat karena keharusan",
   "uc.2b": "Hukum, medis, jurnalistik, riset — pekerjaan yang memang tak boleh dikirim ke server orang lain. Tidak ada yang meninggalkan perangkat.",
   "uc.3t": "Gratis untuk semua",
-  "uc.3b": "Pelajar, penghobi, mereka yang penasaran — asisten andal tanpa langganan, tanpa hitungan token, tanpa akun yang harus dibuat."
+  "uc.3b": "Pelajar, penghobi, mereka yang penasaran — asisten andal tanpa langganan, tanpa hitungan token, tanpa akun yang harus dibuat.",
+  "gl.eyebrow": "Bahasa Sederhana",
+  "gl.title": "Istilah teknis, dijelaskan.",
+  "gl.1t": "Di Perangkat",
+  "gl.1b": "Model berjalan langsung di ponsel atau laptop Anda sendiri — bukan di server sebuah perusahaan.",
+  "gl.2t": "GGUF",
+  "gl.2b": "Format file model yang dimuat Quenderin. Ribuan model terbuka tersedia dalam format ini.",
+  "gl.3t": "Kuantisasi (Q4_K_M)",
+  "gl.3b": "Cara mengecilkan model menjadi sekitar seperempat dari ukuran aslinya sambil mempertahankan hampir seluruh kualitasnya — inilah yang membuatnya muat di ponsel.",
+  "gl.4t": "llama.cpp",
+  "gl.4b": "Mesin sumber terbuka yang menjalankan model-model ini dengan cepat dan efisien di perangkat sehari-hari."
 }

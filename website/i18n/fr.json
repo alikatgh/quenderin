@@ -222,5 +222,15 @@
   "uc.2t": "Confidentiel par obligation",
   "uc.2b": "Droit, médecine, journalisme, recherche — un travail qui ne peut tout simplement pas être confié au serveur de quelqu'un d'autre. Rien ne quitte l'appareil.",
   "uc.3t": "Gratuit pour tous",
-  "uc.3b": "Étudiants, passionnés, curieux — un assistant performant, sans abonnement, sans compteur de jetons, sans compte à créer."
+  "uc.3b": "Étudiants, passionnés, curieux — un assistant performant, sans abonnement, sans compteur de jetons, sans compte à créer.",
+  "gl.eyebrow": "En clair",
+  "gl.title": "Le jargon, décodé.",
+  "gl.1t": "Sur l'appareil",
+  "gl.1b": "Le modèle s'exécute sur votre propre téléphone ou ordinateur portable — et non sur le serveur d'une entreprise.",
+  "gl.2t": "GGUF",
+  "gl.2b": "Le format de fichier de modèle que Quenderin charge. Des milliers de modèles ouverts sont distribués dans ce format.",
+  "gl.3t": "Quantification (Q4_K_M)",
+  "gl.3b": "Une méthode pour réduire un modèle à environ un quart de sa taille tout en préservant la quasi-totalité de sa qualité — ce qui lui permet de tenir sur un téléphone.",
+  "gl.4t": "llama.cpp",
+  "gl.4b": "Le moteur open source qui exécute ces modèles de façon rapide et efficace sur du matériel grand public."
 }
