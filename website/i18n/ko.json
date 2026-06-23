@@ -214,5 +214,13 @@
   "gs.title": "네 줄이면 바로 시작.",
   "gs.intro": "오픈 소스이며 지금 바로 GitHub에서 실행할 수 있습니다 — macOS 또는 Linux에서.",
   "gs.copy": "복사",
-  "gs.platforms": "오늘은 <strong>macOS</strong> &amp; <strong>Linux</strong> · <strong>iOS</strong> &amp; <strong>Android</strong>는 활발히 개발 중"
+  "gs.platforms": "오늘은 <strong>macOS</strong> &amp; <strong>Linux</strong> · <strong>iOS</strong> &amp; <strong>Android</strong>는 활발히 개발 중",
+  "uc.eyebrow": "이런 분들을 위해",
+  "uc.title": "클라우드가 답이 아닐 때.",
+  "uc.1t": "오프라인 환경",
+  "uc.1b": "비행기, 터널을 지나는 기차, 등산로, 선박, 현장 작업까지 — 신호가 닿지 않는 곳에서도 AI 비서는 여러분 곁을 지킵니다.",
+  "uc.2t": "보안이 필수인 작업",
+  "uc.2b": "법률, 의료, 저널리즘, 연구 — 남의 서버로는 결코 보낼 수 없는 작업. 그 어떤 데이터도 기기를 벗어나지 않습니다.",
+  "uc.3t": "누구에게나 무료",
+  "uc.3b": "학생, 취미로 즐기는 분, 호기심 많은 분 — 구독료도, 토큰 요금도, 만들 계정도 없는 든든한 AI 비서."
 }

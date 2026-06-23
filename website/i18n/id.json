@@ -214,5 +214,13 @@
   "gs.title": "Siap digunakan dalam empat baris.",
   "gs.intro": "Sumber terbuka dan langsung berjalan dari GitHub sekarang juga — di macOS atau Linux.",
   "gs.copy": "Salin",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hari ini · <strong>iOS</strong> &amp; <strong>Android</strong> dalam pengembangan aktif"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hari ini · <strong>iOS</strong> &amp; <strong>Android</strong> dalam pengembangan aktif",
+  "uc.eyebrow": "Dibuat untuk",
+  "uc.title": "Saat cloud bukan pilihan.",
+  "uc.1t": "Jauh dari jangkauan sinyal",
+  "uc.1b": "Pesawat, kereta yang melintasi terowongan, jalur pendakian, kapal, kerja lapangan — di mana pun sinyal tak bisa mengikutimu, asistenmu tetap bisa.",
+  "uc.2t": "Privat karena keharusan",
+  "uc.2b": "Hukum, medis, jurnalistik, riset — pekerjaan yang memang tak boleh dikirim ke server orang lain. Tidak ada yang meninggalkan perangkat.",
+  "uc.3t": "Gratis untuk semua",
+  "uc.3b": "Pelajar, penghobi, mereka yang penasaran — asisten andal tanpa langganan, tanpa hitungan token, tanpa akun yang harus dibuat."
 }

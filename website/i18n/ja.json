@@ -214,5 +214,13 @@
   "gs.title": "わずか4行ですぐに動きます。",
   "gs.intro": "オープンソースで、今すぐGitHubから実行できます。macOSでもLinuxでも。",
   "gs.copy": "コピー",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> に今すぐ対応 · <strong>iOS</strong> &amp; <strong>Android</strong> も鋭意開発中"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> に今すぐ対応 · <strong>iOS</strong> &amp; <strong>Android</strong> も鋭意開発中",
+  "uc.eyebrow": "こんな場面のために",
+  "uc.title": "クラウドに頼れないときも。",
+  "uc.1t": "電波の届かない場所で",
+  "uc.1b": "飛行機、トンネルを抜ける電車、登山道、船上、フィールドワーク。電波が追いつけない場所でも、あなたのアシスタントはついてきます。",
+  "uc.2t": "プライバシーが欠かせない仕事に",
+  "uc.2b": "法務、医療、報道、研究。他人のサーバーには絶対に送れないデータを扱う仕事に。何ひとつ端末の外には出ません。",
+  "uc.3t": "誰でも無料で",
+  "uc.3b": "学生も、趣味で使う人も、ちょっと気になる人も。サブスクなし、トークン課金なし、アカウント登録もなしの本格アシスタント。"
 }

@@ -214,5 +214,13 @@
   "gs.title": "Opérationnel en quatre lignes.",
   "gs.intro": "C'est open source et ça tourne depuis GitHub dès maintenant — sur macOS ou Linux.",
   "gs.copy": "Copier",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> aujourd'hui · <strong>iOS</strong> &amp; <strong>Android</strong> en cours de développement"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> aujourd'hui · <strong>iOS</strong> &amp; <strong>Android</strong> en cours de développement",
+  "uc.eyebrow": "Conçu pour",
+  "uc.title": "Quand le cloud n'est pas une option.",
+  "uc.1t": "Loin de tout",
+  "uc.1b": "Avions, trains qui traversent des tunnels, sentiers, navires, missions sur le terrain — partout où le réseau ne vous suit plus, votre assistant, lui, reste à vos côtés.",
+  "uc.2t": "Confidentiel par obligation",
+  "uc.2b": "Droit, médecine, journalisme, recherche — un travail qui ne peut tout simplement pas être confié au serveur de quelqu'un d'autre. Rien ne quitte l'appareil.",
+  "uc.3t": "Gratuit pour tous",
+  "uc.3b": "Étudiants, passionnés, curieux — un assistant performant, sans abonnement, sans compteur de jetons, sans compte à créer."
 }

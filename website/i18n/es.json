@@ -214,5 +214,13 @@
   "gs.title": "Listo y funcionando en cuatro líneas.",
   "gs.intro": "Es de código abierto y funciona desde GitHub ahora mismo, en macOS o Linux.",
   "gs.copy": "Copiar",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hoy · <strong>iOS</strong> &amp; <strong>Android</strong> en desarrollo activo"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hoy · <strong>iOS</strong> &amp; <strong>Android</strong> en desarrollo activo",
+  "uc.eyebrow": "Hecho para",
+  "uc.title": "Cuando la nube no es una opción.",
+  "uc.1t": "Sin conexión",
+  "uc.1b": "Aviones, trenes que cruzan túneles, senderos, barcos, trabajo de campo: allí donde la señal no llega, tu asistente sí.",
+  "uc.2t": "Privado por necesidad",
+  "uc.2b": "Derecho, medicina, periodismo, investigación: trabajo que sencillamente no se puede enviar al servidor de otra persona. Nada sale del dispositivo.",
+  "uc.3t": "Gratis para todos",
+  "uc.3b": "Estudiantes, aficionados, curiosos: un asistente capaz sin suscripción, sin contador de tokens y sin cuenta que crear."
 }

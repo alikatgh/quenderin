@@ -214,5 +214,13 @@
   "gs.title": "Pronto para usar em quatro linhas.",
   "gs.intro": "É código aberto e roda direto do GitHub agora mesmo — no macOS ou no Linux.",
   "gs.copy": "Copiar",
-  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hoje · <strong>iOS</strong> &amp; <strong>Android</strong> em desenvolvimento ativo"
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hoje · <strong>iOS</strong> &amp; <strong>Android</strong> em desenvolvimento ativo",
+  "uc.eyebrow": "Feito para",
+  "uc.title": "Quando a nuvem não é uma opção.",
+  "uc.1t": "Longe da rede",
+  "uc.1b": "Aviões, trens em túneis, trilhas, navios, trabalho de campo — onde quer que o sinal não consiga te acompanhar, seu assistente continua acompanhando.",
+  "uc.2t": "Privado por necessidade",
+  "uc.2b": "Direito, medicina, jornalismo, pesquisa — trabalho que simplesmente não pode ir parar no servidor de outra pessoa. Nada sai do dispositivo.",
+  "uc.3t": "Gratuito para todos",
+  "uc.3b": "Estudantes, entusiastas, curiosos — um assistente capaz, sem assinatura, sem cobrança por token, sem conta para criar."
 }
