@@ -209,5 +209,10 @@
   "cmp.r5b": "必須",
   "cmp.r6": "オープンソース",
   "cmp.r6a": "はい — MIT",
-  "cmp.r6b": "クローズド"
+  "cmp.r6b": "クローズド",
+  "gs.eyebrow": "今日から使い始める",
+  "gs.title": "わずか4行ですぐに動きます。",
+  "gs.intro": "オープンソースで、今すぐGitHubから実行できます。macOSでもLinuxでも。",
+  "gs.copy": "コピー",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> に今すぐ対応 · <strong>iOS</strong> &amp; <strong>Android</strong> も鋭意開発中"
 }

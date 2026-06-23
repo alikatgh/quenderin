@@ -209,5 +209,10 @@
   "cmp.r5b": "必须",
   "cmp.r6": "开源",
   "cmp.r6a": "是 — MIT 许可",
-  "cmp.r6b": "闭源"
+  "cmp.r6b": "闭源",
+  "gs.eyebrow": "立即运行",
+  "gs.title": "四行命令即可启动运行。",
+  "gs.intro": "它是开源的，现在就能从 GitHub 上运行——在 macOS 或 Linux 上。",
+  "gs.copy": "复制",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> 现已支持 · <strong>iOS</strong> &amp; <strong>Android</strong> 正在积极开发中"
 }

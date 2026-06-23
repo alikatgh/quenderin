@@ -209,5 +209,10 @@
   "cmp.r5b": "Обязателен",
   "cmp.r6": "Открытый код",
   "cmp.r6a": "Да — MIT",
-  "cmp.r6b": "Закрытый"
+  "cmp.r6b": "Закрытый",
+  "gs.eyebrow": "Запустите прямо сегодня",
+  "gs.title": "Всё работает в четыре строки.",
+  "gs.intro": "Это открытый исходный код, и его можно запустить прямо сейчас из GitHub — на macOS или Linux.",
+  "gs.copy": "Копировать",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> уже сегодня · <strong>iOS</strong> &amp; <strong>Android</strong> в активной разработке"
 }

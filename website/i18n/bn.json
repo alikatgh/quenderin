@@ -209,5 +209,10 @@
   "cmp.r5b": "আবশ্যক",
   "cmp.r6": "ওপেন সোর্স",
   "cmp.r6a": "হ্যাঁ — MIT",
-  "cmp.r6b": "ক্লোজড"
+  "cmp.r6b": "ক্লোজড",
+  "gs.eyebrow": "আজই চালান",
+  "gs.title": "মাত্র চার লাইনে চালু হয়ে যান।",
+  "gs.intro": "এটি ওপেন সোর্স এবং এখনই GitHub থেকে চলে — macOS বা Linux-এ।",
+  "gs.copy": "কপি করুন",
+  "gs.platforms": "আজ <strong>macOS</strong> &amp; <strong>Linux</strong> · <strong>iOS</strong> &amp; <strong>Android</strong> সক্রিয়ভাবে তৈরি হচ্ছে"
 }

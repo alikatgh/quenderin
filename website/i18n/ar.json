@@ -209,5 +209,10 @@
   "cmp.r5b": "مطلوب",
   "cmp.r6": "مفتوح المصدر",
   "cmp.r6a": "نعم — برخصة MIT",
-  "cmp.r6b": "مغلق"
+  "cmp.r6b": "مغلق",
+  "gs.eyebrow": "شغّله اليوم",
+  "gs.title": "جاهز للعمل في أربعة أسطر.",
+  "gs.intro": "إنه مفتوح المصدر ويعمل من GitHub الآن — على macOS أو Linux.",
+  "gs.copy": "نسخ",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> اليوم · <strong>iOS</strong> &amp; <strong>Android</strong> قيد التطوير النشط"
 }

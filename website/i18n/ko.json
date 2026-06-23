@@ -209,5 +209,10 @@
   "cmp.r5b": "필수",
   "cmp.r6": "오픈 소스",
   "cmp.r6a": "예 — MIT",
-  "cmp.r6b": "비공개"
+  "cmp.r6b": "비공개",
+  "gs.eyebrow": "지금 바로 실행하세요",
+  "gs.title": "네 줄이면 바로 시작.",
+  "gs.intro": "오픈 소스이며 지금 바로 GitHub에서 실행할 수 있습니다 — macOS 또는 Linux에서.",
+  "gs.copy": "복사",
+  "gs.platforms": "오늘은 <strong>macOS</strong> &amp; <strong>Linux</strong> · <strong>iOS</strong> &amp; <strong>Android</strong>는 활발히 개발 중"
 }

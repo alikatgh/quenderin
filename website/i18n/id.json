@@ -209,5 +209,10 @@
   "cmp.r5b": "Wajib",
   "cmp.r6": "Sumber terbuka",
   "cmp.r6a": "Ya — MIT",
-  "cmp.r6b": "Tertutup"
+  "cmp.r6b": "Tertutup",
+  "gs.eyebrow": "Jalankan hari ini",
+  "gs.title": "Siap digunakan dalam empat baris.",
+  "gs.intro": "Sumber terbuka dan langsung berjalan dari GitHub sekarang juga — di macOS atau Linux.",
+  "gs.copy": "Salin",
+  "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> hari ini · <strong>iOS</strong> &amp; <strong>Android</strong> dalam pengembangan aktif"
 }
