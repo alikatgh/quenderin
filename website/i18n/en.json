@@ -205,5 +205,27 @@
   "calc.title": "What runs on your device?",
   "calc.intro": "Slide to your device's memory and see what Quenderin would recommend.",
   "calc.label": "Device memory",
-  "calc.rec": "Recommended"
+  "calc.rec": "Recommended",
+
+  "cmp.eyebrow": "The difference",
+  "cmp.title": "Quenderin vs. a cloud assistant.",
+  "cmp.cloud": "Cloud assistant",
+  "cmp.r1": "Where it runs",
+  "cmp.r1a": "On your device",
+  "cmp.r1b": "A remote data center",
+  "cmp.r2": "Works offline",
+  "cmp.r2a": "Always",
+  "cmp.r2b": "Never",
+  "cmp.r3": "Your conversations",
+  "cmp.r3a": "Stay on your device",
+  "cmp.r3b": "Sent to a server",
+  "cmp.r4": "Cost",
+  "cmp.r4a": "Free — no tokens",
+  "cmp.r4b": "Subscription + per-token",
+  "cmp.r5": "Account",
+  "cmp.r5a": "None",
+  "cmp.r5b": "Required",
+  "cmp.r6": "Open source",
+  "cmp.r6a": "Yes — MIT",
+  "cmp.r6b": "Closed"
 }

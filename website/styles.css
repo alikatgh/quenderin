@@ -589,3 +589,9 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 /* Scroll-progress bar */
 .scroll-progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--brand); transform: scaleX(0); transform-origin: left center; z-index: 60; transition: transform 0.05s linear; }
 @media (prefers-reduced-motion: reduce) { .scroll-progress { transition: none; } }
+
+/* Comparison table */
+.compare-table td { font-family: var(--font-sans); white-space: normal; }
+.compare-table td:first-child { color: var(--text-secondary); }
+.compare-table th:nth-child(2), .compare-table td:nth-child(2) { color: var(--brand); font-weight: 500; }
+.compare-table td.compare-no { color: var(--text-muted); }
