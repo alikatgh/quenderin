@@ -585,3 +585,7 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 .to-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .to-top:hover { border-color: var(--brand); color: var(--brand); }
 .to-top:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Scroll-progress bar */
+.scroll-progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--brand); transform: scaleX(0); transform-origin: left center; z-index: 60; transition: transform 0.05s linear; }
+@media (prefers-reduced-motion: reduce) { .scroll-progress { transition: none; } }

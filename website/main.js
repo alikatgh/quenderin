@@ -148,4 +148,18 @@
   toggleToTop();
   window.addEventListener("scroll", toggleToTop, { passive: true });
 
+  // Scroll-progress bar (injected) — a thin brand line tracking read progress
+  var prog = document.createElement("div");
+  prog.className = "scroll-progress";
+  prog.setAttribute("aria-hidden", "true");
+  document.body.appendChild(prog);
+  var updateProg = function () {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    prog.style.transform = "scaleX(" + (max > 0 ? (h.scrollTop / max).toFixed(4) : 0) + ")";
+  };
+  updateProg();
+  window.addEventListener("scroll", updateProg, { passive: true });
+  window.addEventListener("resize", updateProg, { passive: true });
+
 })();
