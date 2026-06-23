@@ -242,5 +242,16 @@
   "uc.2t": "Private by necessity",
   "uc.2b": "Legal, medical, journalism, research — work that simply can't be sent to someone else's server. Nothing leaves the device.",
   "uc.3t": "Free for everyone",
-  "uc.3b": "Students, hobbyists, the curious — a capable assistant with no subscription, no token meter, no account to create."
+  "uc.3b": "Students, hobbyists, the curious — a capable assistant with no subscription, no token meter, no account to create.",
+
+  "gl.eyebrow": "Plain English",
+  "gl.title": "The jargon, decoded.",
+  "gl.1t": "On-device",
+  "gl.1b": "The model runs on your own phone or laptop — not on a company's server.",
+  "gl.2t": "GGUF",
+  "gl.2b": "The model file format Quenderin loads. Thousands of open models ship in it.",
+  "gl.3t": "Quantization (Q4_K_M)",
+  "gl.3b": "A way of shrinking a model to roughly a quarter of its size while keeping almost all of its quality — what makes it fit on a phone.",
+  "gl.4t": "llama.cpp",
+  "gl.4b": "The open-source engine that runs these models fast and efficiently on everyday hardware."
 }
