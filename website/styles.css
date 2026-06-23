@@ -423,7 +423,7 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
   html { scroll-behavior: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .hero-gradient::before, .hero-gradient::after, .dot-live { animation: none; }
-  .btn, .step, .cell { transition: none; }
+  .btn, .step, .cell, .fit-bar-fill { transition: none; }
 }
 
 /* ---------- Responsive ---------- */
