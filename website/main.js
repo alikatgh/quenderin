@@ -106,4 +106,46 @@
     spySections.forEach(function (s) { spy.observe(s); });
   }
 
+  // Model-fit calculator — RAM -> recommended model (mirrors the on-device recommender bands)
+  var fitRam = document.getElementById("fit-ram");
+  if (fitRam) {
+    var FIT_BANDS = [
+      { max: 2, model: "Llama 3.2 1B", dl: "0.4 GB" },
+      { max: 4, model: "Llama 3.2 1B", dl: "0.8 GB" },
+      { max: 10, model: "Qwen3 4B", dl: "2.4 GB" },
+      { max: 1e9, model: "Qwen3 14B", dl: "9.0 GB" }
+    ];
+    var fitOut = document.getElementById("fit-ram-out");
+    var fitModel = document.getElementById("fit-model");
+    var fitDl = document.getElementById("fit-dl");
+    var renderFit = function () {
+      var gb = parseInt(fitRam.value, 10);
+      if (fitOut) fitOut.textContent = gb + " GB";
+      var b = FIT_BANDS.filter(function (x) { return gb < x.max; })[0] || FIT_BANDS[FIT_BANDS.length - 1];
+      if (fitModel) fitModel.textContent = b.model;
+      if (fitDl) fitDl.textContent = b.dl;
+    };
+    fitRam.addEventListener("input", renderFit);
+    renderFit();
+  }
+
+  // Service worker — make the site itself work offline (fitting for an offline-first product)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+
+  // Back-to-top — injected so it lives on every page without per-page markup
+  var toTop = document.createElement("button");
+  toTop.className = "to-top";
+  toTop.type = "button";
+  toTop.setAttribute("aria-label", "Back to top");
+  toTop.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  document.body.appendChild(toTop);
+  toTop.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+  var toggleToTop = function () { toTop.classList.toggle("show", window.scrollY > 600); };
+  toggleToTop();
+  window.addEventListener("scroll", toggleToTop, { passive: true });
+
 })();

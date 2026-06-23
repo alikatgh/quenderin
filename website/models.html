@@ -102,6 +102,30 @@
     </div>
   </section>
 
+  <section class="section" id="fit">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow" data-i18n="calc.eyebrow">Find your model</p>
+        <h2 data-i18n="calc.title">What runs on your device?</h2>
+        <p data-i18n="calc.intro">Slide to your device's memory and see what Quenderin would recommend.</p>
+      </header>
+      <div class="fit-widget reveal">
+        <div class="fit-control">
+          <label for="fit-ram" data-i18n="calc.label">Device memory</label>
+          <div class="fit-slider-row">
+            <input type="range" id="fit-ram" min="1" max="32" step="1" value="8" />
+            <output id="fit-ram-out">8 GB</output>
+          </div>
+        </div>
+        <div class="fit-result" aria-live="polite">
+          <p class="fit-rec" data-i18n="calc.rec">Recommended</p>
+          <div class="fit-model" id="fit-model">Qwen3 4B</div>
+          <div class="fit-specs"><span id="fit-dl">2.4 GB</span> &middot; Q4_K_M</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="cta-band" data-theme="dark">
     <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
     <div class="container cta-inner">

@@ -1,0 +1,36 @@
+{
+  "q": [
+    "¿Cuál es el mejor nudo para un refugio con lona?",
+    "¿Cómo evito que la pasta se pegue?",
+    "¿Qué hago ante una quemadura leve?",
+    "¿Por qué el cielo es azul?",
+    "¿\"Afectar\" o \"efecto\"?",
+    "¿Qué es una condición de carrera?",
+    "¿Cómo leo un acorde como Cmaj7?",
+    "¿Por qué se enroscan las hojas de mis tomateras?",
+    "¿Qué es el interés compuesto?",
+    "Mi coche no arranca y solo hace clic: ¿por qué?",
+    "¿Por qué cayó el Imperio romano?",
+    "¿Por qué flota el hielo?",
+    "¿Cuánto debo descansar un músculo entre entrenamientos?",
+    "¿Forma rápida de saber si un número es divisible entre 3?",
+    "¿Cómo supero el jet lag?"
+  ],
+  "a": [
+    "Un <strong>nudo dinámico (taut-line hitch)</strong> en la cuerda de cumbrera: agarra bajo carga pero se desliza para volver a tensar cuando arrecia el viento. Para las esquinas, un nudo prusik te deja ajustar sin tener que desatar.",
+    "Sala bien el agua y remueve durante el primer minuto, cuando el almidón está más pegajoso. <strong>No le eches aceite</strong>: solo recubre los fideos y hace que la salsa resbale. Reserva un poco del agua de cocción para ligar la salsa.",
+    "Enfríala bajo <strong>agua corriente durante 20 minutos</strong>: nada de hielo ni mantequilla. Cúbrela sin apretar con film transparente o un paño limpio. Si la ampolla es más grande que tu palma, o está en la cara o las manos, acude al médico.",
+    "El aire dispersa las <strong>longitudes de onda azules cortas</strong> mucho más que las rojas: es la dispersión de Rayleigh. Al atardecer la luz atraviesa más aire, el azul se dispersa y los rojos cálidos llegan a tus ojos.",
+    "<strong>\"Afectar\"</strong> es casi siempre el verbo (te afecta); <strong>\"efecto\"</strong> es casi siempre el sustantivo (el efecto de ello). Regla mnemotécnica: la Acción Afecta, el resultado final es el Efecto.",
+    "Ocurre cuando dos tareas acceden a los mismos datos a la vez y el resultado depende del momento exacto. Se soluciona <strong>serializando el acceso</strong> (un cerrojo, una cola o una operación atómica) para que solo una acceda a la vez.",
+    "Apila las notas 1.ª, 3.ª, 5.ª y 7.ª de la escala de do mayor: <strong>do – mi – sol – si</strong> (C – E – G – B). El \"maj7\" indica que la séptima queda medio tono por debajo de la octava, lo que da ese sonido cálido y abierto.",
+    "Suele ser <strong>estrés por calor o falta de agua</strong>, no una enfermedad: la hoja se enrosca para perder menos agua. Pon acolchado, riega a fondo por la mañana y descarta el viento o la deriva de herbicida antes de tratar nada.",
+    "Interés que genera interés. 1000 $ al 5 % se convierten en 1050 $; al año siguiente ganas el 5 % sobre 1050 $, no sobre 1000 $. A lo largo de décadas, esa <strong>bola de nieve</strong> eclipsa lo que pusiste al principio.",
+    "Un chasquido rápido suele ser una <strong>batería descargada</strong> o un borne flojo, no el motor de arranque. Comprueba que los bornes estén limpios y apretados, y prueba a arrancar con pinzas. Un único golpe seco apunta más bien al motor de arranque.",
+    "No hubo una sola causa: décadas de <strong>sobreextensión</strong>, moneda devaluada, guerras civiles y la presión de pueblos migrantes. La mitad occidental cayó en el 476 d. C.; la oriental (bizantina) duró otros mil años.",
+    "El agua es <strong>más densa a 4 °C</strong>. Al congelarse, las moléculas se traban en una red hexagonal abierta que ocupa más espacio, así que el hielo es un 9 % menos denso que el agua líquida, y flota.",
+    "Dale a un grupo muscular <strong>unas 48 horas</strong> antes de volver a entrenarlo a fondo: es cuando ocurren la reparación y el crecimiento. Entrena otros grupos entre medias si quieres seguir.",
+    "Suma los dígitos; si esa <strong>suma es divisible entre 3</strong>, el número también lo es. Para 1233: 1+2+3+3 = 9, que es divisible entre 3, así que 1233 también lo es.",
+    "Ajústate al horario del destino unos días antes de volar, recibe <strong>luz natural al llegar</strong> y no eches siestas: aguanta despierto hasta la hora local de acostarte. Hidrátate y evita el alcohol en el avión."
+  ]
+}

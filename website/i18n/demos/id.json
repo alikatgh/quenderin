@@ -1,0 +1,36 @@
+{
+  "q": [
+    "Simpul terbaik untuk tenda terpal?",
+    "Bagaimana caranya supaya pasta tidak lengket?",
+    "Apa yang harus kulakukan untuk luka bakar ringan?",
+    "Kenapa langit berwarna biru?",
+    "Affect atau effect?",
+    "Apa itu race condition?",
+    "Bagaimana cara membaca akor seperti Cmaj7?",
+    "Kenapa daun tomatku menggulung?",
+    "Apa itu bunga majemuk?",
+    "Mobilku tidak mau hidup dan hanya bunyi klik — kenapa?",
+    "Kenapa Kekaisaran Romawi runtuh?",
+    "Kenapa es mengapung?",
+    "Berapa lama otot perlu diistirahatkan di antara latihan?",
+    "Cara cepat mengecek apakah sebuah angka habis dibagi 3?",
+    "Bagaimana cara mengatasi jet lag?"
+  ],
+  "a": [
+    "Pakai <strong>taut-line hitch</strong> pada tali punggungan — simpul ini mencengkeram saat ada beban tapi bisa digeser untuk menyetel ulang tegangan ketika angin menguat. Untuk sudut-sudutnya, lilitan prusik memungkinkan Anda menyesuaikan tanpa membuka simpul.",
+    "Beri garam yang cukup pada airnya dan aduk pada menit pertama, saat patinya paling lengket. <strong>Jangan tambahkan minyak</strong> — itu cuma melapisi helai pasta sehingga sausnya melorot. Sisakan sedikit air rebusan pasta untuk menyatukan saus.",
+    "Dinginkan di bawah <strong>air mengalir selama 20 menit</strong> — tanpa es, tanpa mentega. Tutup longgar dengan plastik bening atau kain bersih. Kalau lepuhnya lebih besar dari telapak tangan Anda, atau berada di wajah atau tangan, periksakan ke dokter.",
+    "Udara menghamburkan <strong>gelombang biru</strong> yang pendek jauh lebih banyak daripada merah — itu hamburan Rayleigh. Saat matahari terbenam cahaya menempuh lebih banyak udara, biru terhambur menjauh, dan merah hangatnya sampai ke mata Anda.",
+    "<strong>Affect</strong> hampir selalu kata kerja (it affects you); <strong>effect</strong> hampir selalu kata benda (the effect of it). Pengait ingatan: yang Aksi adalah Affect, yang hasil akhir (End) adalah Effect.",
+    "Ketika dua tugas mengakses data bersama pada saat yang sama dan hasilnya bergantung pada waktu. Anda memperbaikinya dengan <strong>menserialisasi akses</strong> — sebuah lock, antrean, atau operasi atomik — sehingga hanya satu yang mengaksesnya pada satu waktu.",
+    "Susun nada ke-1, ke-3, ke-5, dan ke-7 dari tangga nada C mayor: <strong>C – E – G – B</strong>. 'maj7' berarti nada ketujuh berada setengah laras di bawah oktaf, menghasilkan suara hangat dan terbuka itu.",
+    "Biasanya karena <strong>panas atau stres air</strong>, bukan penyakit — daun menggulung untuk mengurangi penguapan air. Beri mulsa, siram dalam-dalam pada pagi hari, dan singkirkan kemungkinan angin atau cipratan herbisida sebelum mengobati apa pun.",
+    "Bunga yang menghasilkan bunga lagi. $1.000 dengan bunga 5% menjadi $1.050; tahun berikutnya Anda dapat 5% dari $1.050, bukan $1.000. Selama puluhan tahun, <strong>efek bola salju</strong> itu jauh melampaui yang pertama Anda setorkan.",
+    "Bunyi klik cepat biasanya berarti <strong>aki tekor</strong> atau terminal kendur, bukan motor starter. Periksa apakah terminalnya bersih dan kencang, lalu coba jump start. Satu bunyi 'cluk' keras justru menunjuk ke starter.",
+    "Tidak ada penyebab tunggal — puluhan tahun <strong>ekspansi berlebihan</strong>, mata uang yang merosot nilainya, perang saudara, dan tekanan dari bangsa-bangsa yang bermigrasi. Belahan barat runtuh pada 476 M; belahan timur (Byzantium) bertahan seribu tahun lagi.",
+    "Air <strong>paling padat pada suhu 4°C</strong>. Saat membeku, molekulnya terkunci menjadi kisi heksagonal terbuka yang memakan lebih banyak ruang, sehingga es kira-kira 9% kurang padat daripada air cair — dan mengapung.",
+    "Beri kelompok otot waktu <strong>sekitar 48 jam</strong> sebelum melatihnya berat lagi — saat itulah perbaikan dan pertumbuhan terjadi. Latih kelompok otot lain di sela-selanya kalau Anda ingin terus berlatih.",
+    "Jumlahkan angka-angkanya; kalau <strong>jumlah itu habis dibagi 3</strong>, maka bilangannya juga. Untuk 1.233: 1+2+3+3 = 9, yang habis dibagi 3 — jadi 1.233 pun begitu.",
+    "Geser jadwal ke jam tujuan beberapa hari sebelum terbang, dapatkan <strong>sinar matahari saat tiba</strong>, dan jangan tidur siang — bertahanlah sampai jam tidur setempat. Cukupi cairan tubuh, dan hindari alkohol di pesawat."
+  ]
+}

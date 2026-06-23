@@ -566,3 +566,22 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
   .faq-split { grid-template-columns: 1fr; }
   .faq-split .split-copy { position: static; }
 }
+
+/* Model-fit calculator */
+.fit-widget { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1.25rem; max-width: 720px; margin: 2.5rem auto 0; }
+.fit-control { background: var(--surface-tint); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; }
+.fit-control label { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); letter-spacing: 0.02em; }
+.fit-slider-row { display: flex; align-items: center; gap: 1rem; margin-top: 1.1rem; }
+.fit-slider-row input[type="range"] { flex: 1; accent-color: var(--brand); cursor: pointer; }
+.fit-slider-row output { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; min-width: 4.5ch; text-align: right; }
+.fit-result { background: var(--ink-900); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r-xl); padding: 1.5rem; color: #fff; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+.fit-rec { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.09em; text-transform: uppercase; color: #89B3D7; }
+.fit-model { font-size: 1.55rem; font-weight: 600; line-height: 1.1; margin-top: 0.5rem; }
+.fit-specs { margin-top: 0.45rem; font-family: var(--font-mono); font-size: 0.82rem; color: #89B3D7; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .fit-widget { grid-template-columns: 1fr; } }
+
+/* Back-to-top */
+.to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 40; width: 42px; height: 42px; border-radius: var(--r-full); border: 1px solid var(--border); background: color-mix(in srgb, var(--n-000) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(10,37,64,0.12); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+.to-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.to-top:hover { border-color: var(--brand); color: var(--brand); }
+.to-top:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }

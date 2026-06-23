@@ -1,0 +1,36 @@
+{
+  "q": [
+    "Quel est le meilleur nœud pour un abri en bâche ?",
+    "Comment empêcher les pâtes de coller ?",
+    "Que faire pour une petite brûlure ?",
+    "Pourquoi le ciel est-il bleu ?",
+    "« Affect » ou « effect » ?",
+    "C'est quoi, une condition de concurrence ?",
+    "Comment lire un accord comme Cmaj7 ?",
+    "Pourquoi les feuilles de mes tomates s'enroulent-elles ?",
+    "Qu'est-ce que les intérêts composés ?",
+    "Ma voiture ne démarre pas et ne fait que cliqueter — pourquoi ?",
+    "Pourquoi l'Empire romain s'est-il effondré ?",
+    "Pourquoi la glace flotte-t-elle ?",
+    "Combien de temps faut-il laisser reposer un muscle entre deux séances ?",
+    "Une astuce rapide pour savoir si un nombre est divisible par 3 ?",
+    "Comment vaincre le décalage horaire ?"
+  ],
+  "a": [
+    "Un <strong>nœud de taut-line</strong> sur la faîtière — il tient sous charge mais coulisse pour retendre quand le vent se lève. Pour les coins, une boucle prusik vous permet d'ajuster sans dénouer.",
+    "Salez bien l'eau et remuez dès la première minute, quand l'amidon est le plus collant. <strong>N'ajoutez pas d'huile</strong> — elle ne fait qu'enrober les pâtes, et la sauce glisse dessus. Réservez un peu d'eau de cuisson pour lier la sauce.",
+    "Refroidissez sous <strong>l'eau courante pendant 20 minutes</strong> — pas de glace, pas de beurre. Couvrez sans serrer avec un film alimentaire ou un linge propre. Si la cloque est plus grande que votre paume, ou si elle se trouve sur le visage ou les mains, consultez un médecin.",
+    "L'air diffuse les courtes <strong>longueurs d'onde bleues</strong> bien plus que les rouges — c'est la diffusion de Rayleigh. Au coucher du soleil, la lumière traverse plus d'air, le bleu se disperse, et les rouges chauds atteignent vos yeux.",
+    "<strong>Affect</strong> est presque toujours le verbe (it affects you, « cela vous affecte ») ; <strong>effect</strong> est presque toujours le nom (the effect of it, « l'effet de la chose »). Moyen mnémotechnique : Action pour Affect, résultat (End result) pour Effect.",
+    "C'est quand deux tâches manipulent les mêmes données en même temps et que le résultat dépend du moment. On corrige cela en <strong>sérialisant les accès</strong> — un verrou, une file d'attente ou une opération atomique — pour qu'une seule y touche à la fois.",
+    "Empilez les 1re, 3e, 5e et 7e notes de la gamme de do majeur : <strong>do – mi – sol – si</strong>. Le « maj7 » signifie que la septième se situe un demi-ton sous l'octave, d'où ce son chaud et ouvert.",
+    "Le plus souvent, c'est un <strong>stress dû à la chaleur ou au manque d'eau</strong>, pas une maladie — la feuille s'enroule pour perdre moins d'eau. Paillez, arrosez en profondeur le matin, et écartez le vent ou la dérive d'un désherbant avant de traiter quoi que ce soit.",
+    "Des intérêts qui rapportent des intérêts. 1 000 $ à 5 % deviennent 1 050 $ ; l'année suivante, vous gagnez 5 % sur 1 050 $, et non sur 1 000 $. Sur plusieurs décennies, cet <strong>effet boule de neige</strong> dépasse de loin votre mise de départ.",
+    "Un cliquetis rapide vient en général d'une <strong>batterie à plat</strong> ou d'une cosse desserrée, pas du démarreur. Vérifiez que les cosses sont propres et bien serrées, puis tentez un démarrage à l'aide de câbles. Un seul gros « clunk » désigne plutôt le démarreur.",
+    "Aucune cause unique — des décennies de <strong>surextension</strong>, une monnaie dévaluée, des guerres civiles et la pression de peuples en migration. La moitié occidentale est tombée en 476 de notre ère ; la moitié orientale (byzantine) a tenu encore mille ans.",
+    "L'eau est la <strong>plus dense à 4 degC</strong>. En gelant, les molécules se figent dans un réseau hexagonal ouvert qui occupe plus de place, si bien que la glace est environ 9 % moins dense que l'eau liquide — et flotte.",
+    "Accordez à un groupe musculaire <strong>environ 48 heures</strong> avant de le solliciter de nouveau intensément — c'est le moment où la réparation et la croissance se produisent. Travaillez d'autres groupes entre-temps si vous voulez continuer.",
+    "Additionnez les chiffres ; si cette <strong>somme est divisible par 3</strong>, le nombre l'est aussi. Pour 1 233 : 1+2+3+3 = 9, qui est divisible par 3 — donc 1 233 l'est également.",
+    "Décalez-vous vers l'horloge de votre destination quelques jours avant le départ, exposez-vous à la <strong>lumière du jour à l'arrivée</strong>, et ne faites pas de sieste — tenez jusqu'à l'heure locale du coucher. Hydratez-vous, et évitez l'alcool dans l'avion."
+  ]
+}

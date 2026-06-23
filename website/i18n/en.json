@@ -199,5 +199,11 @@
   "fq.a.agent": "It includes a tool-using agent for small tasks, with a <strong>hard safety blocklist</strong> it cannot override on its own: it will never autonomously pay, delete, transfer money, or touch credentials. Anything sensitive is surfaced for you to confirm.",
   "fq.q.size": "How big is a model download?",
   "fq.a.size": "Your choice—from about 0.4 GB for the ultra-light build to 9 GB for the flagship. It downloads once over Wi-Fi and resumes in the background if interrupted.",
-  "fq.cta.b2": "How it works →"
+  "fq.cta.b2": "How it works →",
+
+  "calc.eyebrow": "Find your model",
+  "calc.title": "What runs on your device?",
+  "calc.intro": "Slide to your device's memory and see what Quenderin would recommend.",
+  "calc.label": "Device memory",
+  "calc.rec": "Recommended"
 }

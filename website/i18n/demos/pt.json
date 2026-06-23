@@ -1,0 +1,36 @@
+{
+  "q": [
+    "Melhor nó para um abrigo de lona?",
+    "Como evitar que a massa grude?",
+    "O que fazer numa queimadura leve?",
+    "Por que o céu é azul?",
+    "Mas ou mais?",
+    "O que é uma condição de corrida?",
+    "Como ler um acorde como Cmaj7?",
+    "Por que as folhas do meu tomateiro estão enrolando?",
+    "O que são juros compostos?",
+    "Meu carro não dá partida e só faz tique-tique — por quê?",
+    "Por que o Império Romano caiu?",
+    "Por que o gelo flutua?",
+    "Quanto tempo devo descansar um músculo entre os treinos?",
+    "Jeito rápido de saber se um número é divisível por 3?",
+    "Como vencer o jet lag?"
+  ],
+  "a": [
+    "Um <strong>nó de catraca</strong> na cumeeira — ele segura sob carga, mas desliza para retensionar quando o vento aperta. Para os cantos, um laço prusik permite ajustar sem desamarrar.",
+    "Salgue bem a água e mexa no primeiro minuto, quando o amido está mais grudento. <strong>Não coloque óleo</strong> — ele só reveste a massa e faz o molho escorregar. Reserve um pouco da água do cozimento para encorpar o molho.",
+    "Resfrie em <strong>água corrente por 20 minutos</strong> — sem gelo, sem manteiga. Cubra sem apertar com filme plástico ou um pano limpo. Se a bolha for maior que a palma da mão, ou se for no rosto ou nas mãos, procure um médico.",
+    "O ar dispersa os <strong>comprimentos de onda azuis</strong>, mais curtos, muito mais do que os vermelhos — é o espalhamento de Rayleigh. No pôr do sol a luz atravessa mais ar, o azul se dispersa e os vermelhos quentes chegam aos seus olhos.",
+    "<strong>Mas</strong> indica oposição (estudei, mas não passei); <strong>mais</strong> indica quantidade ou soma (quero mais um). Dica: se dá para trocar por \"porém\", é com S; se é o oposto de \"menos\", é com I.",
+    "É quando duas tarefas mexem nos mesmos dados ao mesmo tempo e o resultado depende do tempo de execução. Você corrige <strong>serializando o acesso</strong> — um lock, uma fila ou uma operação atômica — para que apenas uma mexa por vez.",
+    "Empilhe a 1ª, a 3ª, a 5ª e a 7ª notas da escala de dó maior: <strong>C – E – G – B</strong>. O \"maj7\" significa que a sétima fica um semitom abaixo da oitava, dando aquele som quente e aberto.",
+    "Geralmente é <strong>estresse por calor ou falta de água</strong>, não doença — a folha enrola para perder menos água. Faça cobertura morta, regue fundo de manhã e descarte vento ou deriva de herbicida antes de tratar qualquer coisa.",
+    "Juros que rendem juros. R$ 1.000 a 5% viram R$ 1.050; no ano seguinte você rende 5% sobre R$ 1.050, não sobre R$ 1.000. Ao longo de décadas, esse <strong>efeito bola de neve</strong> supera de longe o que você investiu no começo.",
+    "Um tique-tique rápido normalmente é <strong>bateria descarregada</strong> ou um terminal solto, não o motor de partida. Veja se os terminais estão limpos e firmes e então tente uma chupeta. Já um \"toc\" único e forte aponta para o motor de partida.",
+    "Não houve uma causa única — décadas de <strong>expansão excessiva</strong>, moeda desvalorizada, guerras civis e pressão de povos migrantes. A metade ocidental caiu em 476 d.C.; a oriental (bizantina) durou mais mil anos.",
+    "A água é <strong>mais densa a 4°C</strong>. Ao congelar, as moléculas se travam numa rede hexagonal aberta que ocupa mais espaço, então o gelo é cerca de 9% menos denso que a água líquida — e flutua.",
+    "Dê a um grupo muscular <strong>cerca de 48 horas</strong> antes de treiná-lo pesado de novo — é nesse intervalo que ocorrem o reparo e o crescimento. Treine outros grupos no meio-tempo se quiser continuar.",
+    "Some os algarismos; se essa <strong>soma for divisível por 3</strong>, o número também é. Para 1.233: 1+2+3+3 = 9, que é divisível por 3 — então 1.233 também é.",
+    "Comece a ajustar seu relógio para o fuso do destino alguns dias antes de viajar, pegue <strong>luz do dia ao chegar</strong> e não cochile — fique acordado até a hora de dormir local. Hidrate-se e evite álcool no avião."
+  ]
+}
