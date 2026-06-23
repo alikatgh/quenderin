@@ -110,20 +110,29 @@
   var fitRam = document.getElementById("fit-ram");
   if (fitRam) {
     var FIT_BANDS = [
-      { max: 2, model: "Llama 3.2 1B", dl: "0.4 GB" },
-      { max: 4, model: "Llama 3.2 1B", dl: "0.8 GB" },
-      { max: 10, model: "Qwen3 4B", dl: "2.4 GB" },
-      { max: 1e9, model: "Qwen3 14B", dl: "9.0 GB" }
+      { max: 2, model: "Llama 3.2 1B", dl: "0.4 GB", ram: 1.2 },
+      { max: 4, model: "Llama 3.2 1B", dl: "0.8 GB", ram: 1.5 },
+      { max: 10, model: "Qwen3 4B", dl: "2.4 GB", ram: 4 },
+      { max: 1e9, model: "Qwen3 14B", dl: "9.0 GB", ram: 11 }
     ];
     var fitOut = document.getElementById("fit-ram-out");
     var fitModel = document.getElementById("fit-model");
     var fitDl = document.getElementById("fit-dl");
+    var fitBar = document.getElementById("fit-bar-fill");
+    var fitFootGb = document.getElementById("fit-foot-gb");
+    var fitFootDev = document.getElementById("fit-foot-dev");
     var renderFit = function () {
       var gb = parseInt(fitRam.value, 10);
       if (fitOut) fitOut.textContent = gb + " GB";
       var b = FIT_BANDS.filter(function (x) { return gb < x.max; })[0] || FIT_BANDS[FIT_BANDS.length - 1];
       if (fitModel) fitModel.textContent = b.model;
       if (fitDl) fitDl.textContent = b.dl;
+      if (fitBar) {
+        fitBar.style.width = Math.min(100, Math.round((b.ram / gb) * 100)) + "%";
+        fitBar.classList.toggle("tight", b.ram / gb > 0.85);
+      }
+      if (fitFootGb) fitFootGb.textContent = "~" + b.ram;
+      if (fitFootDev) fitFootDev.textContent = gb;
     };
     fitRam.addEventListener("input", renderFit);
     renderFit();
