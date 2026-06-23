@@ -20,6 +20,17 @@
       try { localStorage.setItem("quenderin_theme", next); } catch (e) { /* private mode */ }
       sync();
     });
+    // Follow the OS theme live — but only until the user makes an explicit choice
+    if (window.matchMedia) {
+      var mq = window.matchMedia("(prefers-color-scheme: dark)");
+      var onOsTheme = function (e) {
+        try { if (localStorage.getItem("quenderin_theme")) return; } catch (err) { /* private mode */ }
+        root.setAttribute("data-theme-mode", e.matches ? "dark" : "light");
+        sync();
+      };
+      if (mq.addEventListener) mq.addEventListener("change", onOsTheme);
+      else if (mq.addListener) mq.addListener(onOsTheme);
+    }
   }
 
   // Mobile nav toggle
