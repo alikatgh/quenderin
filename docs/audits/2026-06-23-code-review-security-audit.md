@@ -34,9 +34,17 @@ The three native-mobile / integrity HIGHs (the ones on-thesis for the privacy-fi
 - **#10 `verifyModelIntegrity` magic-only downgrade** → ✅ **FIXED (root cause).** `check_catalog_parity.py` (CI "Model catalog parity" gate) now **fails the build** when any catalog entry lacks a pinned `sha256`, so a hashless model is unshippable and the forgeable magic-only branch is never the sole defense. All 11 current entries pass.
 - **#4 `read_file` $HOME secret exfiltration** → ✅ **FIXED (denylist).** `read_file` (`src/services/tools/handlers.ts`) now refuses known credential stores inside `$HOME` (`~/.ssh`, `~/.aws`, `~/.gnupg`, gcloud/gh tokens, browser profile dirs, `.netrc`/`.npmrc`/`.env`, private-key/`*.pem`/`*secret*`/`*credential*` names) — checked **both** before any filesystem touch (no existence oracle) **and** after symlink resolution (a benign name can't symlink to `~/.ssh/id_rsa`). 14-case boundary test added (`tests/read-file-handler.test.ts`). Per-call user confirmation (the audit's secondary suggestion) is a larger UX/IPC change, tracked separately.
 
+- **#2 WS origin check bypassed when `Origin` absent** → ✅ **HARDENED (stopgap).** `isAllowedLocalWsOrigin()` now rejects a **missing** Origin (was allowed) — the legitimate renderer is HTTP-served (`win.loadURL('http://localhost:…')`) so it always sends one; only a non-browser client (curl, a malicious local process) omits it. Closes the most direct exploit path. Pure + unit-tested (`tests/ws-origin-gate.test.ts`). **NOT** full auth — an Origin is spoofable; the complete fix is #1.
+
 Also cleared the pre-existing red `main` CI in passing: `npm audit fix` (2 high CVEs — undici TLS-bypass/header-injection, form-data CRLF) and a `no-useless-escape` lint error in `src/utils/notes.ts`.
 
-Remaining HIGHs (#1–#3, #5, #9) are in the **Electron desktop prototype** (local-server/WS auth, `asar`/signing, stale `dist/main.js`, privacy-lock) — a separate subsystem, tracked for a follow-up pass. #6 (Apple byte-by-byte download) is perf, not security.
+Remaining HIGHs (#1, #3, #5, #9) are in the **Electron desktop prototype** and need the **running app** (or signing certs) to fix safely — shipping blind risks bricking the UI:
+- **#1 per-launch WS/HTTP token auth** — threads a secret main→preload→renderer→WS; must verify the real renderer still connects end-to-end (can't be done headlessly here).
+- **#3 stale `dist/electron/main.js`** — regenerate from `electron/main.ts` and verify the packaged build carries the sandbox/nav guards.
+- **#9 `asar:false` + unsigned** — `asar:true` needs `asarUnpack` for the native modules (node-llama-cpp/sharp); signing/notarization needs developer certs (user-only).
+- **#5 privacy-lock plaintext** — the audit itself down-rates this to MEDIUM for a single-user desktop app.
+
+#6 (Apple byte-by-byte download) is perf, not security.
 
 ## Severity summary
 
