@@ -70,8 +70,10 @@ def parse_desktop_models(text: str) -> list[dict]:
                 "paramsBillions": n("paramsBillions"),
                 "quantization": s("quantization"),
                 "url": s("url"),
-                # Optional: a model may be added to constants.ts before refresh_model_hashes.py
-                # runs → emit null rather than crashing; integrity falls back to magic-only.
+                # A model may be added to constants.ts before refresh_model_hashes.py runs → emit
+                # null rather than crashing mid-export. A null is NOT shippable: check_catalog_parity.py
+                # (CI gate) fails the build on any missing sha256, so the runtime magic-only fallback
+                # can never be the sole integrity defense for a cataloged model (security audit HIGH).
                 "sha256": s_opt("sha256"),
             }
         )

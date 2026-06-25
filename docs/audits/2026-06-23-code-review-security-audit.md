@@ -25,6 +25,16 @@ The findings below are **agent-self-reported**. After the run I re-read the cite
 
 **Net: 8/10 HIGHs are confirmed true positives; 1 is over-rated (privacy-lock); 1 is real-but-latent (magic fallback).** Low false-positive rate. The MEDIUM/LOW/INFO tiers were not individually re-verified.
 
+## Resolution (2026-06-25) — mobile + integrity HIGHs fixed
+
+The three native-mobile / integrity HIGHs (the ones on-thesis for the privacy-first on-device launcher and CI-verifiable) are fixed; each behind Android core verification + the catalog parity gate:
+
+- **#7 Android backup uploads chat data** → ✅ **FIXED.** `conversations/` is now excluded from `<cloud-backup>` and `<device-transfer>` in `data_extraction_rules.xml` (API 31+) and from `backup_rules.xml` (API ≤30). Transcripts never reach Google's cloud or a second device — the "nothing you type leaves your phone" promise now holds.
+- **#8 Android downloader no HTTPS enforcement** → ✅ **FIXED.** `JvmHttpRangeClient.open()` rejects any non-`https` scheme (`http://`, `file://`, …) before opening a connection — the single choke point for fresh/resumed/restored transfers. CoreVerify test added.
+- **#10 `verifyModelIntegrity` magic-only downgrade** → ✅ **FIXED (root cause).** `check_catalog_parity.py` (CI "Model catalog parity" gate) now **fails the build** when any catalog entry lacks a pinned `sha256`, so a hashless model is unshippable and the forgeable magic-only branch is never the sole defense. All 11 current entries pass.
+
+Remaining HIGHs (#1–#5, #9) are in the **Electron desktop prototype** (local-server/WS auth, `read_file` $HOME exfiltration, `asar`/signing, stale `dist/main.js`, privacy-lock) — a separate subsystem, tracked for a follow-up pass. #6 (Apple byte-by-byte download) is perf, not security.
+
 ## Severity summary
 
 | Severity | Count |

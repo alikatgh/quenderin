@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- API 31+ backup/transfer rules. Exclude downloaded GGUF models (filesDir/models, 0.4–9 GB):
-     far over the 25 MB cloud-backup cap and freely re-downloadable from the catalog. -->
+<!-- API 31+ backup/transfer rules.
+     - models/        : downloaded GGUFs (0.4–9 GB), over the 25 MB cloud cap & re-downloadable.
+     - conversations/ : chat transcripts + index. The app promises "nothing you type leaves your
+       phone" (SettingsScreen), so this is excluded from BOTH cloud backup AND device transfer —
+       the user's most sensitive data must never reach Google's cloud or a second device. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="models/" />
+        <exclude domain="file" path="conversations/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="models/" />
+        <exclude domain="file" path="conversations/" />
     </device-transfer>
 </data-extraction-rules>

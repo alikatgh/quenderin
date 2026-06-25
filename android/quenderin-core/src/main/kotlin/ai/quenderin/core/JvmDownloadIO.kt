@@ -20,6 +20,15 @@ class JvmHttpRangeClient(
 ) : HttpRangeClient {
 
     override fun open(url: String, offsetBytes: Long): RangeResponse {
+        // Enforce the TLS contract ModelIntegrity documents: a multi-GB model must only ever be
+        // fetched over HTTPS. Reject http:// / file:// / anything else BEFORE opening a connection,
+        // so a stray catalog/resume URL can't stream weights in cleartext over an attacker-modifiable
+        // channel (the optional SHA-256 is the only other line of defense). The choke point for every
+        // transfer — fresh, resumed, and restored-from-disk — passes through here.
+        val scheme = URI(url).scheme
+        if (!"https".equals(scheme, ignoreCase = true)) {
+            throw DownloadException("refusing non-HTTPS model URL (scheme=$scheme): $url")
+        }
         val conn = (URI(url).toURL().openConnection() as HttpURLConnection).apply {
             instanceFollowRedirects = true
             connectTimeout = connectTimeoutMs

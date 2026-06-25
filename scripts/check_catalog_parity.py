@@ -105,6 +105,23 @@ def load_canonical() -> Catalog:
     return catalog
 
 
+def check_sha256_pinned(canonical: Catalog) -> bool:
+    """Integrity gate (security audit HIGH). Every SHIPPED model must pin a sha256: when one is
+    absent the runtime integrity check (desktop `modelIntegrity.ts`, Android `ModelDownloadEngine`,
+    iOS) silently downgrades to a forgeable 4-byte 'GGUF' magic-only sniff — exactly the
+    poisoned-mirror / TLS-MITM case the gate exists to stop. Fail the build here so the magic-only
+    branch is only ever a corruption sniff, never the sole defense against a substituted file.
+    Run `scripts/refresh_model_hashes.py` to pin a missing hash."""
+    missing = sorted(mid for mid, (_p, _q, sha) in canonical.items() if not sha)
+    if not missing:
+        print(f"  ok   integrity: all {len(canonical)} models pin a sha256")
+        return True
+    print("  FAIL integrity: models missing a pinned sha256 (run scripts/refresh_model_hashes.py):")
+    for mid in missing:
+        print(f"        '{mid}' → integrity would fall back to a forgeable magic-only check")
+    return False
+
+
 def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
     missing = set(reference) - set(catalog)
     extra = set(catalog) - set(reference)
@@ -129,7 +146,7 @@ def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
 def main() -> int:
     canonical = load_canonical()
     print(f"Catalog parity — canonical: shared/model-catalog.json ({len(canonical)} models)\n")
-    ok = True
+    ok = check_sha256_pinned(canonical)
     for name, path in SOURCES.items():
         ok = compare(name, load(name, path), canonical) and ok
 
