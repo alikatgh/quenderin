@@ -1,11 +1,15 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.ConversationPersistence
+import ai.quenderin.core.FileModelStorage
+import ai.quenderin.core.InstalledModel
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.ModelManager
 import ai.quenderin.core.SupportContact
 import android.content.Intent
 import android.net.Uri
+import android.text.format.Formatter
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,8 +27,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +57,18 @@ fun SettingsScreen(
     val conversationCount = remember { persistence.loadIndex().size }
     var showPicker by remember { mutableStateOf(false) }
 
+    // Downloaded-model storage management (twin of iOS SettingsView). The files on disk are the
+    // source of truth, so a fresh ModelManager each access reflects the current state.
+    val modelsDir = remember { java.io.File(context.filesDir, "models") }
+    var installedModels by remember { mutableStateOf(emptyList<InstalledModel>()) }
+    var totalModelBytes by remember { mutableStateOf(0L) }
+    fun reloadModels() {
+        val mgr = ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+        installedModels = mgr.installed()
+        totalModelBytes = mgr.totalBytesUsed
+    }
+    LaunchedEffect(model.id) { reloadModels() }
+
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
@@ -65,6 +83,43 @@ fun SettingsScreen(
             SectionHeader("Storage")
             LabeledRow("Saved conversations", conversationCount.toString())
             Caption("Browse, switch, or clear conversations from the History button in Chat.")
+
+            SectionHeader("Downloaded models")
+            if (installedModels.isEmpty()) {
+                Caption("No models downloaded yet.")
+            } else {
+                installedModels.forEach { installed ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(installed.model.label)
+                            if (installed.isActive) {
+                                Text(
+                                    "Active",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                        Text(
+                            Formatter.formatShortFileSize(context, installed.sizeBytes),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (!installed.isActive) {
+                            TextButton(onClick = {
+                                ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+                                    .delete(installed.id)
+                                reloadModels()
+                            }) { Text("Delete") }
+                        }
+                    }
+                }
+                LabeledRow("Total on device", Formatter.formatShortFileSize(context, totalModelBytes))
+            }
+            Caption("Delete a model to free space — the active model is protected.")
 
             SectionHeader("Privacy & support")
             Caption(SupportContact.AI_DISCLAIMER)

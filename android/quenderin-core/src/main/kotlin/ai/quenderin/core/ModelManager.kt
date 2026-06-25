@@ -29,6 +29,26 @@ class InMemoryModelStorage(initial: Map<String, Long> = emptyMap()) : ModelStora
 }
 
 /**
+ * Real [ModelStorage] over the on-disk models directory (`filesDir/models`, where the downloader
+ * writes). The impl the app uses to drive [ModelManager] — without it the manager could only run
+ * against the in-memory test double. Pure `java.io.File` calls, so it's unit-testable against a temp
+ * dir (no Android SDK). Twin of Swift `FileManagerModelStorage`.
+ */
+class FileModelStorage(private val directory: java.io.File) : ModelStorage {
+    override fun installedFilenames(): List<String> =
+        directory.listFiles { f -> f.isFile && !f.isHidden }?.map { it.name } ?: emptyList()
+
+    override fun sizeBytes(filename: String): Long {
+        val f = java.io.File(directory, filename)
+        return if (f.isFile) f.length() else 0L
+    }
+
+    override fun delete(filename: String) {
+        java.io.File(directory, filename).delete()
+    }
+}
+
+/**
  * Manages the set of on-device models: which are installed, which is active, how much disk they
  * use, switching the active one, and deleting one to reclaim space — a real constraint on a
  * phone with several multi-GB models. Pure logic over a [ModelStorage] seam + the catalog, so

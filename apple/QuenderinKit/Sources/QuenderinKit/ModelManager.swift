@@ -29,6 +29,38 @@ public final class InMemoryModelStorage: ModelStorage {
     public func delete(_ filename: String) { files[filename] = nil }
 }
 
+/// Real `ModelStorage` over the on-disk models directory (the same dir the downloader writes to and
+/// `OnboardingModel` loads from). This is the impl the app uses to drive `ModelManager` — without it
+/// the manager could only run against the in-memory test double. Pure FileManager calls, so it's
+/// unit-testable against a temp directory. Twin of Android `FileModelStorage`.
+public final class FileManagerModelStorage: ModelStorage {
+    private let directory: URL
+    private let fileManager: FileManager
+
+    public init(directory: URL, fileManager: FileManager = .default) {
+        self.directory = directory
+        self.fileManager = fileManager
+    }
+
+    public func installedFilenames() -> [String] {
+        let urls = (try? fileManager.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])) ?? []
+        return urls
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false }
+            .map { $0.lastPathComponent }
+    }
+
+    public func sizeBytes(of filename: String) -> Int64 {
+        let url = directory.appendingPathComponent(filename)
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        return Int64(size)
+    }
+
+    public func delete(_ filename: String) {
+        try? fileManager.removeItem(at: directory.appendingPathComponent(filename))
+    }
+}
+
 /// Manages the set of on-device models: which are installed, which is active, how much disk
 /// they use, switching the active one, and deleting one to reclaim space — a real constraint
 /// on a phone with several multi-GB models. Pure logic over a `ModelStorage` seam + the

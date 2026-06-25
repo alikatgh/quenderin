@@ -11,11 +11,37 @@ public struct SettingsView: View {
     private let onSelectModel: (ModelEntry) -> Void
     @Environment(\.openURL) private var openURL
     @State private var showPicker = false
+    @State private var installedModels: [InstalledModel] = []
+    @State private var totalModelBytes: Int64 = 0
 
     public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.coordinator = coordinator
         self.model = model
         self.onSelectModel = onSelectModel
+    }
+
+    /// A fresh manager over the on-disk models dir each access — the files on disk are the source of
+    /// truth, so a new instance always reflects the current state (the active model is pinned + protected).
+    private var modelManager: ModelManager {
+        ModelManager(
+            storage: FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()),
+            activeModelID: model.id)
+    }
+
+    private func reloadModelStorage() {
+        let mgr = modelManager
+        installedModels = mgr.installed()
+        totalModelBytes = mgr.totalBytesUsed
+    }
+
+    private func deleteModel(_ installed: InstalledModel) {
+        guard !installed.isActive else { return }   // never delete the loaded model
+        _ = modelManager.delete(installed.model.id)
+        reloadModelStorage()
+    }
+
+    private func fileSize(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
     public var body: some View {
@@ -33,6 +59,29 @@ public struct SettingsView: View {
             Section("Storage") {
                 LabeledRow(title: "Saved conversations", value: "\(coordinator.summaries.count)")
                 Text("Browse, switch, or clear conversations from the History button in Chat.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            Section("Downloaded models") {
+                if installedModels.isEmpty {
+                    Text("No models downloaded yet.").font(.footnote).foregroundStyle(.secondary)
+                } else {
+                    ForEach(installedModels) { installed in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(installed.model.label)
+                                if installed.isActive {
+                                    Text("Active").font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text(fileSize(installed.sizeBytes)).foregroundStyle(.secondary)
+                        }
+                        .deleteDisabled(installed.isActive)   // the loaded model can't be removed
+                    }
+                    .onDelete { offsets in offsets.forEach { deleteModel(installedModels[$0]) } }
+                    LabeledRow(title: "Total on device", value: fileSize(totalModelBytes))
+                }
+                Text("Swipe a model to delete it and free space — the active model is protected.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section("Privacy") {
@@ -55,6 +104,7 @@ public struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .onAppear { reloadModelStorage() }
         .sheet(isPresented: $showPicker) {
             NavigationStack {
                 // Reuses the fitness-aware picker (disables models that won't fit, explains why).
