@@ -123,9 +123,36 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `LLAMA_FLASH_ATTN_TYPE_AUTO` (-1) → llama.cpp enables FA where the backend supports it. Forcing
   `ENABLED` is a no-op at best, unsafe where AUTO would disable it. Read the header's default before
   setting any `*_default_params()` field. (flash-attn AUTO)
+- **`$HOME` containment is NOT a secret-read denylist.** A file-read tool driven by untrusted model
+  output (prompt injection) that gates only on home-containment + symlink still exposes `~/.ssh`,
+  `~/.aws`, browser cookie DBs, `.netrc`/`.env` — they all live inside `$HOME`. Add an explicit
+  sensitive-path denylist, checked BOTH before any `fs` call (no existence oracle) AND after
+  `realpathSync` (a benign name can symlink to `~/.ssh/id_rsa`). (read_file denylist, audit #4)
+- **An Origin check written `if (origin && !allowed)` is bypassed by OMITTING Origin.** Non-browser
+  clients (curl, a malicious local process) send no Origin, so the guard never runs → full access.
+  Gate on `!isAllowed(origin)` with missing⇒reject; safe because a legit http-served renderer always
+  sends Origin. (Still not auth — Origin is spoofable; the real fix is a per-launch token.) (WS origin, audit #2)
+- **A security gate that "downgrades when X is absent" must fail-closed at BUILD time, not warn at
+  runtime.** `verifyModelIntegrity` silently fell back to a forgeable 4-byte magic check when `sha256`
+  was null. The durable fix isn't a runtime log — it's a CI/parity gate that makes the absent case
+  UNSHIPPABLE (fail the build on any null hash), so the weak branch is never the sole defense. (integrity gate, audit #10)
+- **Backup rules are an allowlist-by-omission: anything under `filesDir` not excluded IS uploaded.**
+  Excluding only `models/` still shipped `conversations/` to Google cloud backup + device-transfer,
+  breaking an "on-device only" promise. Exclude sensitive dirs from BOTH `<cloud-backup>` and
+  `<device-transfer>` (API 31+) AND `backup_rules.xml` (API ≤30). (Android backup, audit #7)
+- **Red CI on a PUBLIC repo is always a real signal — and one red step MASKS the next.** A failing
+  `npm audit` step hid a downstream `no-useless-escape` lint error; fixing audit exposed lint, then
+  tests. Run the CI job's steps locally IN ORDER (`audit → lint → check → test → build`) before
+  pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-25 — Security-audit HIGH fixes (PRs #34–36, report `docs/audits/2026-06-23-code-review-security-audit.md`).
+  Fixed 5/10 HIGHs: #7 Android backup excluded `conversations/` · #8 `JvmHttpRangeClient` HTTPS-only ·
+  #10 catalog parity fails the build on a missing `sha256` (root of the magic-only downgrade) · #4 `read_file`
+  secret-store denylist (pre-fs + post-symlink) · #2 WS rejects missing Origin. Also un-redded `main`: `npm audit
+  fix` (undici/form-data CVEs) + a masked `no-useless-escape`. #1/#3/#9 need the running Electron app/certs.
+  iOS 173 / core 150 / desktop vitest 91 green. Lessons: see the 6 security patterns above.
 - 2026-06-21 — Phone hardware-adaptation batch (PRs #22–31, plan `docs/audits/2026-06-20-phone-hardware-adaptation-plan.md`).
   Shipped: P-core threads (`ThreadPlanner`) · footprint-aware `n_ctx` · honest `unsupported` exit · thermal-adaptive
   threads + in-flight `ThermalGovernor` (iOS calls `llama_set_n_threads` every 32 tokens) · q8_0 KV cache
