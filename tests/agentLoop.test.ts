@@ -352,13 +352,15 @@ describe('AgentService — pause / resume', () => {
 });
 
 describe('app.ts — pause/resume HTTP routes', () => {
+    const TEST_TOKEN = 'test-auth-token-deadbeef';
+    const AUTH = { 'X-Auth-Token': TEST_TOKEN };   // state-changing routes require the launch token (HIGH #1)
     let agentStub: { pause: ReturnType<typeof vi.fn>; resume: ReturnType<typeof vi.fn> };
     let baseUrl: string;
     let server: import('http').Server;
 
     beforeEach(async () => {
         agentStub = { pause: vi.fn(), resume: vi.fn() };
-        const app = createApp(undefined, agentStub as unknown as AgentService);
+        const app = createApp(undefined, agentStub as unknown as AgentService, undefined, undefined, undefined, TEST_TOKEN);
         await new Promise<void>((resolve) => {
             server = app.listen(0, () => resolve());
         });
@@ -372,7 +374,7 @@ describe('app.ts — pause/resume HTTP routes', () => {
     });
 
     it('POST /api/agent/intervene pauses the agent', async () => {
-        const res = await fetch(`${baseUrl}/api/agent/intervene`, { method: 'POST' });
+        const res = await fetch(`${baseUrl}/api/agent/intervene`, { method: 'POST', headers: AUTH });
         const body = await res.json();
         expect(res.status).toBe(200);
         expect(body.message).toContain('paused');
@@ -382,7 +384,7 @@ describe('app.ts — pause/resume HTTP routes', () => {
     it('POST /api/agent/resume resumes and forwards a string manualAction', async () => {
         const res = await fetch(`${baseUrl}/api/agent/resume`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', ...AUTH },
             body: JSON.stringify({ manualAction: 'tap the Continue button' }),
         });
         const body = await res.json();
@@ -395,7 +397,7 @@ describe('app.ts — pause/resume HTTP routes', () => {
     it('POST /api/agent/resume ignores a non-string manualAction (injection guard, M7/L7)', async () => {
         const res = await fetch(`${baseUrl}/api/agent/resume`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', ...AUTH },
             body: JSON.stringify({ manualAction: { evil: 'object' } }),
         });
         const body = await res.json();
@@ -409,12 +411,23 @@ describe('app.ts — pause/resume HTTP routes', () => {
         const huge = 'a'.repeat(5000);
         const res = await fetch(`${baseUrl}/api/agent/resume`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', ...AUTH },
             body: JSON.stringify({ manualAction: huge }),
         });
         await res.json();
         expect(res.status).toBe(200);
         const forwarded = agentStub.resume.mock.calls[0][0] as string;
         expect(forwarded.length).toBe(4000);
+    });
+
+    it('rejects a state-changing request without the auth token (HIGH #1)', async () => {
+        const noToken = await fetch(`${baseUrl}/api/agent/intervene`, { method: 'POST' });
+        expect(noToken.status).toBe(401);
+        const badToken = await fetch(`${baseUrl}/api/agent/intervene`, { method: 'POST', headers: { 'X-Auth-Token': 'wrong' } });
+        expect(badToken.status).toBe(401);
+        expect(agentStub.pause).not.toHaveBeenCalled();   // never reached the handler
+        // ?token= query also works (the opened-URL/browser delivery path).
+        const viaQuery = await fetch(`${baseUrl}/api/agent/intervene?token=${TEST_TOKEN}`, { method: 'POST' });
+        expect(viaQuery.status).toBe(200);
     });
 });

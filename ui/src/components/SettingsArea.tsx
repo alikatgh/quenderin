@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, BrainCircuit, Download, Trash2, HardDrive, Zap, Cpu, FileText, Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { apiFetch } from '../lib/api.js';
 
 interface Settings {
     contextSize: number;
@@ -110,7 +111,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     const handleDeleteNote = async (filename: string) => {
         setDeletingNote(filename);
-        await fetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
+        await apiFetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
         setNotes(prev => prev.filter(n => n.filename !== filename));
         setDeletingNote(null);
     };
@@ -118,7 +119,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const handleClearMemory = async () => {
         if (!confirm('Clear all agent learned trajectories? The agent will start fresh without any prior experience.')) return;
         setClearingMemory(true);
-        await fetch('/api/memory/trajectories', { method: 'DELETE' }).catch(() => {});
+        await apiFetch('/api/memory/trajectories', { method: 'DELETE' }).catch(() => {});
         setTrajectories([]);
         setMemoryTotal(0);
         setClearingMemory(false);
@@ -150,7 +151,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         setModelActionId(modelId);
         setModelActionType('download');
         try {
-            await fetch('/api/models/download', {
+            await apiFetch('/api/models/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ modelId }),
@@ -168,7 +169,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         setModelActionId(modelId);
         setModelActionType('delete');
         try {
-            await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
+            await apiFetch(`/api/models/${modelId}`, { method: 'DELETE' });
         } finally {
             setTimeout(refreshCatalog, 500);
             setModelActionId(null);
