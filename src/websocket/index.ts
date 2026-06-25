@@ -25,6 +25,26 @@ function sanitizeAttachments(raw: unknown): { name: string; content: string }[] 
     return result;
 }
 
+/**
+ * A WebSocket connection is accepted only from a LOCAL browser origin, and a MISSING Origin header
+ * is rejected (audit HIGH #2). The literal "null" origin (sandboxed iframes, file://) fails the URL
+ * hostname check, so it's rejected too.
+ *
+ * NOTE: an Origin header is trivially spoofable by a non-browser client, so this is NOT real
+ * authentication — it only removes the trivial "omit Origin → full access" path. The complete fix is
+ * a per-launch token required on the WS upgrade (audit HIGH #1), which needs the running renderer to
+ * verify end-to-end and is tracked separately.
+ */
+export function isAllowedLocalWsOrigin(origin: string | undefined): boolean {
+    if (!origin) return false;
+    try {
+        const parsed = new URL(origin);
+        return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
 export class WebSocketManager {
     private wss: WebSocketServer;
     private activeWs: WebSocket | null = null;
@@ -83,22 +103,16 @@ export class WebSocketManager {
         this.heartbeatInterval.unref(); // Don't block process exit
     }
 
-    private isAllowedLocalOrigin(origin: string): boolean {
-        // Literal "null" origin (sandboxed iframes, file://) is NOT trusted (M2).
-        try {
-            const parsed = new URL(origin);
-            return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
-        } catch {
-            return false;
-        }
-    }
-
     private setupConnection() {
         this.wss.on('connection', (ws, request) => {
             const origin = request.headers.origin;
-            if (origin && !this.isAllowedLocalOrigin(origin)) {
-                logger.warn(`[WebSocket] Rejected connection from disallowed origin: ${origin}`);
-                ws.close(1008, 'Origin not allowed');
+            // Reject a MISSING Origin too (was previously allowed — audit HIGH #2): browsers always
+            // send Origin on a WS handshake from an http(s) page, and the Electron renderer is served
+            // over http://localhost, so only a non-browser client (curl, a malicious local process)
+            // omits it — which was the most direct exploit path to driving the agent.
+            if (!isAllowedLocalWsOrigin(origin)) {
+                logger.warn(`[WebSocket] Rejected connection (origin=${origin ?? 'absent'}); a local browser Origin is required`);
+                ws.close(1008, 'Origin required');
                 return;
             }
 
