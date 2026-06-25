@@ -187,6 +187,25 @@ describe('AgentService.runAgentLoop — integration', () => {
         expect(events.decide.length).toBe(2);
     });
 
+    it('stops with a wall-clock timeout before exhausting the step budget', async () => {
+        // generateAction would keep clicking forever; the wall-clock budget (0 ms = already past)
+        // must stop the loop before a single step runs. (Audit: no overall wall-clock timeout.)
+        const generateAction = vi.fn().mockResolvedValue('{"action":"click","id":1}');
+        const llm = createLlmStub({ generateAction });
+        const { agent, metrics } = buildAgent({ llm });
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+
+        await agent.runAgentLoop('Do something slow', emitter, [], 5, 0);
+
+        expect(events.done.length).toBe(1);
+        expect(events.error.some((e: unknown) => String(e).includes('Timed Out'))).toBe(true);
+        // Bailed before any step → 0 steps, failure metric recorded once.
+        const lastMetric = (metrics.appendMetrics as any).mock.calls.at(-1)?.[0];
+        expect(lastMetric).toMatchObject({ success: false, total_steps: 0 });
+        expect(agent.isRunning).toBe(false);
+    });
+
     it('refuses a destructive goal before any step runs', async () => {
         const llm = createLlmStub();
         const { agent, metrics } = buildAgent({ llm });

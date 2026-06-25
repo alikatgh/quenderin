@@ -103,7 +103,16 @@ export class AgentService {
         return 15;
     }
 
-    public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps()): Promise<void> {
+    /** Overall wall-clock budget for one mission. The step cap alone can't bound runtime when each
+     *  step is slow (large model on a constrained device), so a long-running loop could pin the
+     *  device for many minutes. Override via QUENDERIN_MAX_AGENT_MS. (Audit: no wall-clock timeout.) */
+    private static resolveDefaultMaxWallClockMs(): number {
+        const envMs = Number(process.env.QUENDERIN_MAX_AGENT_MS);
+        if (Number.isFinite(envMs) && envMs >= 0) return envMs;
+        return 8 * 60 * 1000; // 8 minutes — generous; never fires in a normal interactive session
+    }
+
+    public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps(), maxWallClockMs: number = AgentService.resolveDefaultMaxWallClockMs()): Promise<void> {
         if (this._isRunning) {
             logger.warn('[AgentService] Agent loop already running — ignoring duplicate start.');
             return;
@@ -120,13 +129,13 @@ export class AgentService {
         // try/finally guarantees the running flag clears on EVERY exit — a throw used to leave it
         // stuck `true`, permanently dead-locking all future runAgentLoop() calls (H7).
         try {
-            await this._runAgentLoop(goal, emitter, attachments, maxSteps);
+            await this._runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs);
         } finally {
             this._isRunning = false;
         }
     }
 
-    private async _runAgentLoop(goal: string, emitter: AgentEventEmitter, attachments: { name: string, content: string }[], maxSteps: number): Promise<void> {
+    private async _runAgentLoop(goal: string, emitter: AgentEventEmitter, attachments: { name: string, content: string }[], maxSteps: number, maxWallClockMs: number): Promise<void> {
         logger.info(`[AgentService] Starting mission: ${goal}`);
         if (attachments.length > 0) {
             logger.info(`[AgentService] Context enriched with ${attachments.length} attachments.`);
@@ -180,7 +189,11 @@ export class AgentService {
             logger.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
         }
 
+        let timedOut = false;
         while (step < maxSteps && !isDone) {
+            // Overall wall-clock budget — the step cap alone can't bound a loop whose individual
+            // steps are slow. Checked before each step so a long mission stops cleanly (audit).
+            if (Date.now() - startTimeMs >= maxWallClockMs) { timedOut = true; break; }
             step++;
             emitter.emit('status', `--- Step ${step} ---`);
 
@@ -346,8 +359,10 @@ export class AgentService {
             }
         }
 
-        if (step >= maxSteps && !isDone) {
-            emitter.emit('error', `**Task Too Complex (Timeout)**\nI took too many steps without reaching the goal. To fix this:\n1. Break your goal down into smaller, simpler instructions.\n2. Look at the device screen and guide me step-by-step.\n3. E.g., instead of "Book a flight," try "Open the travel app."`);
+        if ((step >= maxSteps || timedOut) && !isDone) {
+            emitter.emit('error', timedOut
+                ? `**Task Timed Out**\nI ran out of time before reaching the goal. To fix this:\n1. Break your goal down into smaller, simpler instructions.\n2. Look at the device screen and guide me step-by-step.\n3. E.g., instead of "Book a flight," try "Open the travel app."`
+                : `**Task Too Complex (Timeout)**\nI took too many steps without reaching the goal. To fix this:\n1. Break your goal down into smaller, simpler instructions.\n2. Look at the device screen and guide me step-by-step.\n3. E.g., instead of "Book a flight," try "Open the travel app."`);
             emitter.emit('done');
             await this.metricsService.appendMetrics({
                 id: Date.now().toString(),
