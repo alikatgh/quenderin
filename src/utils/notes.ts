@@ -20,6 +20,6 @@ export function sanitizeNoteFilename(filename: string): string | null {
     const stem = base.slice(0, -3);
     if (!stem || stem.includes('..')) return null;
     // Reject hidden files and names that don't match our sanitizer output
-    if (!/^[a-zA-Z0-9_\-]+$/.test(stem)) return null;
+    if (!/^[a-zA-Z0-9_-]+$/.test(stem)) return null;
     return base;
 }
