@@ -132,6 +132,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   clients (curl, a malicious local process) send no Origin, so the guard never runs → full access.
   Gate on `!isAllowed(origin)` with missing⇒reject; safe because a legit http-served renderer always
   sends Origin. (Still not auth — Origin is spoofable; the real fix is a per-launch token.) (WS origin, audit #2)
+- **Loopback binding (`127.0.0.1`) is NOT an authorization boundary on a shared machine, and a token
+  any `GET /` can fetch isn't a secret.** A local server/WS that drives an agent needs a per-launch
+  token — but deliver it via a channel the attacker's process CAN'T read: Electron `webPreferences.
+  additionalArguments` → preload (not another process's argv), or the trusted-client's opened URL
+  `?token=`. A cookie/served-HTML token fails: a malicious local process just does `GET /` to receive
+  it. Require the token on the WS upgrade AND every mutating route; empty token ⇒ fail closed. Constant-
+  time compare. (WS/HTTP token auth, audit #1)
 - **A security gate that "downgrades when X is absent" must fail-closed at BUILD time, not warn at
   runtime.** `verifyModelIntegrity` silently fell back to a forgeable 4-byte magic check when `sha256`
   was null. The durable fix isn't a runtime log — it's a CI/parity gate that makes the absent case
@@ -147,12 +154,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
-- 2026-06-25 — Security-audit HIGH fixes (PRs #34–36, report `docs/audits/2026-06-23-code-review-security-audit.md`).
-  Fixed 5/10 HIGHs: #7 Android backup excluded `conversations/` · #8 `JvmHttpRangeClient` HTTPS-only ·
-  #10 catalog parity fails the build on a missing `sha256` (root of the magic-only downgrade) · #4 `read_file`
-  secret-store denylist (pre-fs + post-symlink) · #2 WS rejects missing Origin. Also un-redded `main`: `npm audit
-  fix` (undici/form-data CVEs) + a masked `no-useless-escape`. #1/#3/#9 need the running Electron app/certs.
-  iOS 173 / core 150 / desktop vitest 91 green. Lessons: see the 6 security patterns above.
+- 2026-06-25 — Native features (PRs #47–48). Model storage management: `ModelManager` over a real
+  `FileManagerModelStorage`/`FileModelStorage` + a Settings "Downloaded models" section (per-model size,
+  total, swipe-to-delete; active protected). Conversation export: `ConversationExporter` → portable
+  Markdown, shared via iOS `ShareLink` / Android `ACTION_SEND`. Both platforms, CI-verified (core unit-
+  tested; SwiftUI compiled by `swift test`, Compose by `assembleDebug`). STATUS.md updated. iOS 177 / core green.
+- 2026-06-25 — Security-audit fixes, full batch (PRs #34–45, report `docs/audits/2026-06-23-code-review-security-audit.md`).
+  ALL 10 HIGHs addressed: #1 per-launch token auth on WS upgrade + every mutating `/api` route (#43/#44; live-
+  verify pending) · #2 WS rejects missing Origin · #3 clean builds (stale-dist root cause) · #4 `read_file`
+  secret denylist · #7 Android backup excludes `conversations/` · #8 HTTPS-only download · #9 asar (signing=certs)
+  · #10 catalog build-gate on missing `sha256`. Plus MEDIUM/LOW: CI supply-chain (least-priv token, kotlin
+  checksum, SHA-pinned actions #38) · agent coordinate-click blocklist (#39) · agent wall-clock timeout ·
+  cancellable Android download · truncated-download mitigated by the mandatory hash. Un-redded `main` (undici/
+  form-data CVEs + a masked lint error). #1 live-verify, #9 signing, #5 privacy-lock need you. Lessons: 7 security patterns above.
 - 2026-06-21 — Phone hardware-adaptation batch (PRs #22–31, plan `docs/audits/2026-06-20-phone-hardware-adaptation-plan.md`).
   Shipped: P-core threads (`ThreadPlanner`) · footprint-aware `n_ctx` · honest `unsupported` exit · thermal-adaptive
   threads + in-flight `ThermalGovernor` (iOS calls `llama_set_n_threads` every 32 tokens) · q8_0 KV cache
