@@ -48,4 +48,20 @@ files:
   - node_modules/**/*
   - public/**/*
   - package.json
-asar: false
+# Enable the asar archive (audit HIGH #9): app source ships as a single read-only archive instead
+# of loose, trivially-modifiable files. Native addons (*.node) and the modules that load them can't
+# run from inside an asar, so unpack them — the **/*.node catch-all plus the known native packages.
+asar: true
+asarUnpack:
+  - "**/*.node"
+  - "node_modules/node-llama-cpp/**"
+  - "node_modules/@node-llama-cpp/**"
+  - "node_modules/sharp/**"
+  - "node_modules/@img/**"
+  - "node_modules/hnswlib-node/**"
+  - "node_modules/tesseract.js/**"
+  - "node_modules/tesseract.js-core/**"
+# Code signing + notarization (rest of audit HIGH #9) require YOUR developer certificates and can't
+# be committed: macOS → set CSC_LINK / CSC_KEY_PASSWORD and add `mac.notarize: true` with
+# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID; Windows → CSC_LINK for an Authenticode cert.
+# Until then builds are unsigned (Gatekeeper/SmartScreen will warn).

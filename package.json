@@ -28,6 +28,8 @@
     "check:recommendation": "npm run typecheck:src && npm run test:recommendation",
     "gen:catalog": "python3 scripts/export_catalog.py",
     "check:catalog-parity": "python3 scripts/check_catalog_parity.py",
+    "clean": "rimraf dist",
+    "prebuild:tsc": "rimraf dist",
     "build:tsc": "tsc",
     "build:ui": "cd ui && npm run build",
     "build": "npm run build:tsc && npm run build:ui",
