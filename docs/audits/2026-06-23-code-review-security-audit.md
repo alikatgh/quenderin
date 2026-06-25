@@ -36,6 +36,11 @@ The three native-mobile / integrity HIGHs (the ones on-thesis for the privacy-fi
 
 - **#2 WS origin check bypassed when `Origin` absent** → ✅ **HARDENED (stopgap).** `isAllowedLocalWsOrigin()` now rejects a **missing** Origin (was allowed) — the legitimate renderer is HTTP-served (`win.loadURL('http://localhost:…')`) so it always sends one; only a non-browser client (curl, a malicious local process) omits it. Closes the most direct exploit path. Pure + unit-tested (`tests/ws-origin-gate.test.ts`). **NOT** full auth — an Origin is spoofable; the complete fix is #1.
 
+**CI / supply-chain MEDIUMs** → ✅ **FIXED** (all self-verify in CI):
+- Least-privilege `GITHUB_TOKEN` — workflow now defaults to `permissions: contents: read`; the `coverage` job opts into `id-token: write` for codecov OIDC only.
+- Kotlin compiler download now sha256-verified (pinned `0352c0a4…bcf2a`, fail-closed) — was fetched + run unverified.
+- The two **third-party** actions (`codecov/codecov-action`, `android-actions/setup-android`) pinned to commit SHAs (first-party `actions/*` left on tags, with a version comment for Dependabot).
+
 Also cleared the pre-existing red `main` CI in passing: `npm audit fix` (2 high CVEs — undici TLS-bypass/header-injection, form-data CRLF) and a `no-useless-escape` lint error in `src/utils/notes.ts`.
 
 Remaining HIGHs (#1, #3, #5, #9) are in the **Electron desktop prototype** and need the **running app** (or signing certs) to fix safely — shipping blind risks bricking the UI:
