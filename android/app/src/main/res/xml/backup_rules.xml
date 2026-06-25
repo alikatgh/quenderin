@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- API <=30 backup rules (android:fullBackupContent). Exclude downloaded GGUF models
-     (filesDir/models, 0.4-9 GB) — over the cloud-backup cap and re-downloadable. -->
+<!-- API <=30 backup rules (android:fullBackupContent).
+     - models/        : downloaded GGUFs (0.4-9 GB) — over the cloud cap & re-downloadable.
+     - conversations/ : chat transcripts — excluded so the "nothing you type leaves your phone"
+       promise holds on legacy Auto Backup too (the API 31+ twin lives in data_extraction_rules.xml). -->
 <full-backup-content>
     <exclude domain="file" path="models/" />
+    <exclude domain="file" path="conversations/" />
 </full-backup-content>

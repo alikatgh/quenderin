@@ -545,6 +545,13 @@ fun main() {
         }
         result.exceptionOrNull() is DownloadException && sink.files[partFile] == null && sink.files[finalFile] == null
     })
+    // The real JVM client refuses a non-HTTPS model URL before opening any connection (TLS contract).
+    check("JvmHttpRangeClient.open refuses http:// (and file://) before connecting", run {
+        val client = JvmHttpRangeClient()
+        val http = runCatching { client.open("http://evil.example/model.gguf", 0) }
+        val file = runCatching { client.open("file:///etc/passwd", 0) }
+        http.exceptionOrNull() is DownloadException && file.exceptionOrNull() is DownloadException
+    })
 
     // ── Content-safety surface (Generative-AI store policy). Twin of iOS SupportContactTests. ──
     check("report mailto targets the support address", run {
