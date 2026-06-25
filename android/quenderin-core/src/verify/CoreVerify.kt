@@ -332,6 +332,24 @@ fun main() {
             val mgr = ModelManager(InMemoryModelStorage().apply { install(small.filename, 300) })
             mgr.delete("qwen3-14b") == 0L && mgr.totalBytesUsed == 300L
         })
+        // The real File-backed storage the app uses (twin of Swift FileManagerModelStorageTests).
+        check("FileModelStorage reads real on-disk sizes, lists models, and deletes", run {
+            val dir = java.nio.file.Files.createTempDirectory("models").toFile()
+            try {
+                java.io.File(dir, small.filename).writeBytes(ByteArray(300))
+                java.io.File(dir, mid.filename).writeBytes(ByteArray(4000))
+                java.io.File(dir, ".hidden").writeBytes(ByteArray(9))   // ignored
+                val mgr = ModelManager(FileModelStorage(dir), initialActiveModelId = mid.id)
+                val listed = mgr.installed().map { it.id }.toSet() == setOf(small.id, mid.id)
+                val preTotal = mgr.totalBytesUsed == 4300L      // both files, before any delete
+                val preReclaim = mgr.reclaimableBytes == 300L   // only the non-active small is reclaimable
+                val freed = mgr.delete(small.id)
+                val postDelete = freed == 300L && !java.io.File(dir, small.filename).exists() && mgr.totalBytesUsed == 4000L
+                listed && preTotal && preReclaim && postDelete
+            } finally {
+                dir.deleteRecursively()
+            }
+        })
     }
 
     // --- Android SoC resolution + native-heap memory model ---
