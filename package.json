@@ -28,6 +28,7 @@
     "check:recommendation": "npm run typecheck:src && npm run test:recommendation",
     "gen:catalog": "python3 scripts/export_catalog.py",
     "check:catalog-parity": "python3 scripts/check_catalog_parity.py",
+    "check:catalog-urls": "python3 scripts/check_catalog_urls.py",
     "clean": "rimraf dist",
     "prebuild:tsc": "rimraf dist",
     "build:tsc": "tsc",
