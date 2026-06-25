@@ -22,6 +22,44 @@ function isInsideHome(filePath: string): boolean {
     return resolved.startsWith(home + path.sep) || resolved === home;
 }
 
+// Well-known credential/secret stores that live INSIDE $HOME. `read_file`'s path comes from
+// untrusted model output (prompt injection), so home-containment alone is not enough — ~/.ssh,
+// ~/.aws, browser cookie DBs, token dotfiles etc. are all inside home and would otherwise be
+// readable into the model context / chat UI. Deny them. (Security audit HIGH, handlers.ts read_file.)
+const SENSITIVE_DIR_PREFIXES = [
+    '.ssh', '.aws', '.gnupg', '.gpg', '.azure', '.kube', '.docker', '.quenderin',
+    '.config/gcloud', '.config/gh', '.config/google-chrome', '.config/chromium',
+    '.mozilla', '.electrum', '.ethereum', '.bitcoin',
+    'library/keychains',
+    'library/application support/google/chrome',
+    'library/application support/chromium',
+    'library/application support/firefox',
+];
+const SENSITIVE_BASENAMES = new Set([
+    '.netrc', '.npmrc', '.pypirc', '.git-credentials', '.dockercfg',
+    '.bash_history', '.zsh_history', '.python_history', '.mysql_history',
+    'credentials', '.env',
+]);
+// Private keys, cert/key material, env files, and anything that names itself a secret/credential.
+const SENSITIVE_NAME_PATTERN =
+    /^(id_(rsa|dsa|ecdsa|ed25519)|.*\.(pem|key|p12|pfx|keystore)|\.env(\..+)?|.*secret.*|.*credential.*)$/i;
+
+/**
+ * True if `realResolved` (an absolute, symlink-resolved path already known to be inside $HOME) names
+ * a known secret store. Compared case-insensitively (macOS/Windows FS), against a path relative to
+ * home, so `.SSH` or a nested `.config/gcloud/...` is still caught.
+ */
+function isSensitivePath(realResolved: string): boolean {
+    const home = os.homedir();
+    const rel = path.relative(home, realResolved).split(path.sep).join('/').toLowerCase();
+    if (rel === '' || rel.startsWith('..')) return false; // not under home — caller already gates this
+    for (const prefix of SENSITIVE_DIR_PREFIXES) {
+        if (rel === prefix || rel.startsWith(prefix + '/')) return true;
+    }
+    const base = path.basename(realResolved).toLowerCase();
+    return SENSITIVE_BASENAMES.has(base) || SENSITIVE_NAME_PATTERN.test(base);
+}
+
 /** Execute a single tool call */
 export async function executeTool(call: ToolCall): Promise<ToolResult> {
     // Validate tool exists
@@ -77,6 +115,11 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
                 if (!isInsideHome(resolved)) {
                     return { tool: 'read_file', success: false, result: '', error: 'Access denied: only files inside your home directory can be read.' };
                 }
+                // Deny known secret stores BEFORE touching the filesystem — so a prompt-injected
+                // read can't exfiltrate credentials, and can't even probe whether they exist.
+                if (isSensitivePath(resolved)) {
+                    return { tool: 'read_file', success: false, result: '', error: 'Access denied: this is a sensitive credential/secret location and cannot be read by the assistant.' };
+                }
                 if (!fs.existsSync(resolved)) {
                     return { tool: 'read_file', success: false, result: '', error: `File not found: ${resolved}` };
                 }
@@ -92,6 +135,11 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
                 }
                 if (!isInsideHome(realResolved)) {
                     return { tool: 'read_file', success: false, result: '', error: 'Access denied: path resolves (via symlink) to a location outside your home directory.' };
+                }
+                // Re-check after symlink resolution: a benign-looking name inside $HOME could be a
+                // symlink to ~/.ssh/id_rsa. The real target must not be a secret store either.
+                if (isSensitivePath(realResolved)) {
+                    return { tool: 'read_file', success: false, result: '', error: 'Access denied: path resolves (via symlink) to a sensitive credential/secret location.' };
                 }
                 const stat = fs.statSync(realResolved);
                 if (!stat.isFile()) {

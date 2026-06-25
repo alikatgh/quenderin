@@ -32,8 +32,11 @@ The three native-mobile / integrity HIGHs (the ones on-thesis for the privacy-fi
 - **#7 Android backup uploads chat data** → ✅ **FIXED.** `conversations/` is now excluded from `<cloud-backup>` and `<device-transfer>` in `data_extraction_rules.xml` (API 31+) and from `backup_rules.xml` (API ≤30). Transcripts never reach Google's cloud or a second device — the "nothing you type leaves your phone" promise now holds.
 - **#8 Android downloader no HTTPS enforcement** → ✅ **FIXED.** `JvmHttpRangeClient.open()` rejects any non-`https` scheme (`http://`, `file://`, …) before opening a connection — the single choke point for fresh/resumed/restored transfers. CoreVerify test added.
 - **#10 `verifyModelIntegrity` magic-only downgrade** → ✅ **FIXED (root cause).** `check_catalog_parity.py` (CI "Model catalog parity" gate) now **fails the build** when any catalog entry lacks a pinned `sha256`, so a hashless model is unshippable and the forgeable magic-only branch is never the sole defense. All 11 current entries pass.
+- **#4 `read_file` $HOME secret exfiltration** → ✅ **FIXED (denylist).** `read_file` (`src/services/tools/handlers.ts`) now refuses known credential stores inside `$HOME` (`~/.ssh`, `~/.aws`, `~/.gnupg`, gcloud/gh tokens, browser profile dirs, `.netrc`/`.npmrc`/`.env`, private-key/`*.pem`/`*secret*`/`*credential*` names) — checked **both** before any filesystem touch (no existence oracle) **and** after symlink resolution (a benign name can't symlink to `~/.ssh/id_rsa`). 14-case boundary test added (`tests/read-file-handler.test.ts`). Per-call user confirmation (the audit's secondary suggestion) is a larger UX/IPC change, tracked separately.
 
-Remaining HIGHs (#1–#5, #9) are in the **Electron desktop prototype** (local-server/WS auth, `read_file` $HOME exfiltration, `asar`/signing, stale `dist/main.js`, privacy-lock) — a separate subsystem, tracked for a follow-up pass. #6 (Apple byte-by-byte download) is perf, not security.
+Also cleared the pre-existing red `main` CI in passing: `npm audit fix` (2 high CVEs — undici TLS-bypass/header-injection, form-data CRLF) and a `no-useless-escape` lint error in `src/utils/notes.ts`.
+
+Remaining HIGHs (#1–#3, #5, #9) are in the **Electron desktop prototype** (local-server/WS auth, `asar`/signing, stale `dist/main.js`, privacy-lock) — a separate subsystem, tracked for a follow-up pass. #6 (Apple byte-by-byte download) is perf, not security.
 
 ## Severity summary
 
