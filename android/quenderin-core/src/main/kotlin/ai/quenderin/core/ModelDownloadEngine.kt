@@ -44,7 +44,12 @@ interface FileSink {
 }
 
 /** Thrown when a download cannot complete; carries a clear, surfaceable reason. */
-class DownloadException(message: String) : Exception(message)
+open class DownloadException(message: String) : Exception(message)
+
+/** A cooperative cancel (WorkManager stop / model switch), NOT a failure: the `.part` is kept and the
+ *  row left PAUSED so the next launch resumes. A subtype of [DownloadException] so existing callers
+ *  that catch the base type are unaffected. */
+class DownloadCancelledException(message: String) : DownloadException(message)
 
 /**
  * Resumable model downloader. Implements the same [ModelDownloader] seam the mock and the
@@ -59,6 +64,10 @@ class ModelDownloadEngine(
     private val destinationDir: String,
     /** Report progress at most once per this fraction, to avoid flooding the UI (mirrors iOS' 1%). */
     private val progressStep: Double = 0.01,
+    /** Polled each chunk so a WorkManager stop / model switch can cooperatively abort a multi-GB
+     *  transfer (the WorkManager worker passes `{ isStopped }`). Default never-cancel keeps the mock
+     *  and onboarding callers unchanged. (Audit: chunk loop not cancellable.) */
+    private val isCancelled: () -> Boolean = { false },
 ) : ModelDownloader {
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
@@ -92,6 +101,12 @@ class ModelDownloadEngine(
             var lastReported = if (total > 0) (downloaded.toDouble() / total).coerceIn(0.0, 1.0) else 0.0
 
             for (chunk in response.body) {
+                if (isCancelled()) {
+                    // Cooperative abort (model switch / WorkManager stop). The catch keeps the .part on
+                    // disk and marks the row PAUSED so the next launch RESUMES — unlike an integrity
+                    // failure, which discards. (Audit: chunk loop not cancellable.)
+                    throw DownloadCancelledException("download cancelled for ${model.filename}")
+                }
                 if (chunk.isEmpty()) continue
                 sink.append(tempPath, chunk)
                 downloaded += chunk.size
@@ -141,6 +156,12 @@ class ModelDownloadEngine(
             store.remove(model.id)
             return finalPath
         } catch (t: Throwable) {
+            // A cooperative cancel is not a failure: keep the .part and leave the row PAUSED so the
+            // next launch resumes from here. Don't truncate the final file or mark FAILED.
+            if (t is DownloadCancelledException) {
+                store.setState(model.id, PersistedDownload.State.PAUSED)
+                throw t
+            }
             // Clear any partially-written final file (e.g. a cross-filesystem copy that failed
             // after the rename fallback) so no half-written model is left behind a passed gate (C3-4).
             runCatching { sink.truncate(finalPath) }

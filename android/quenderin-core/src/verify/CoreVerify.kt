@@ -562,6 +562,24 @@ fun main() {
         result.exceptionOrNull() is DownloadException && sink.files[finalFile] == null
     })
 
+    // A WorkManager stop / model switch can cooperatively abort a multi-GB transfer mid-stream; the
+    // .part is kept and the row marked PAUSED so the next launch resumes (audit: loop not cancellable).
+    check("download aborts on cancel, preserving the .part and marking PAUSED for resume", run {
+        val sink = FakeFileSink()
+        val store = DownloadStore()
+        var checks = 0
+        val engine = ModelDownloadEngine(
+            FakeHttpRangeClient(payload, supportsResume = true), sink, store, "/models",
+            isCancelled = { checks++ >= 2 } // let two chunks land, then cancel
+        )
+        val result = runCatching { engine.download(sampleModel) {} }
+        val part = sink.files[partFile]
+        result.exceptionOrNull() is DownloadException &&
+            part != null && part.isNotEmpty() && part.size < payload.size &&  // partial kept, not full
+            sink.files[finalFile] == null &&                                  // never finalized
+            store.get(sampleModel.id)?.state == PersistedDownload.State.PAUSED // resumable
+    })
+
     // The real JVM client refuses a non-HTTPS model URL before opening any connection (TLS contract).
     check("JvmHttpRangeClient.open refuses http:// (and file://) before connecting", run {
         val client = JvmHttpRangeClient()
