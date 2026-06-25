@@ -51,6 +51,10 @@ Remaining HIGHs (#1, #3, #5, #9) are in the **Electron desktop prototype** and n
 
 #6 (Apple byte-by-byte download) is perf, not security.
 
+**Agent / tool MEDIUMs:**
+- **Agent action blocklist — coordinate-click bypass** → ✅ **FIXED.** A raw `x/y` click skipped `checkSafety` entirely (only element-targeted clicks ran it), so the agent could tap a "confirm transfer" button by pixel. `ActionExecutor.execute()` now hit-tests the coordinate against the UI snapshot (`elementsContaining`) and re-applies the blocklist to every element under the point. Unit-tested (`tests/action-executor-safety.test.ts`). The deeper "substring matching is bypassable by adversarial renaming" weakness is inherent to a denylist heuristic.
+- **`note_save` filename traversal** → ✅ **already resolved** — `MemoryService.saveNote` runs `sanitizeNoteTitle` (strips `/`, `\`, `..`, non-`[A-Za-z0-9_-]`, caps 80) before building the path; no fix needed.
+
 ## Severity summary
 
 | Severity | Count |

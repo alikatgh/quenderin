@@ -37,6 +37,15 @@ export class ActionExecutor {
         }
     }
 
+    /** Every UI element whose bounding box contains the point — used to re-apply the safety blocklist
+     *  to a raw coordinate click (which has no target element of its own). */
+    private elementsContaining(x: number, y: number, elements: UIElement[]): UIElement[] {
+        return elements.filter(e =>
+            e.rect &&
+            x >= e.rect.x && x <= e.rect.x + e.rect.width &&
+            y >= e.rect.y && y <= e.rect.y + e.rect.height);
+    }
+
     /** Refuse a blatantly destructive GOAL before the agent loop starts (H10). Throws SafetyViolationError. */
     public assertGoalSafe(goal: string): void {
         this.checkSafety(undefined, goal);
@@ -90,6 +99,13 @@ export class ActionExecutor {
                     }
                 } else if (actionObj.x !== undefined && actionObj.y !== undefined) {
                     emitter.emit('status', `Using spatial vision to locate target...`);
+
+                    // A coordinate (x/y) click otherwise BYPASSES the element-level blocklist — the
+                    // agent could tap a "confirm transfer" button by raw pixel instead of by id and
+                    // dodge checkSafety. Re-apply it to every UI element the point falls inside (audit MEDIUM).
+                    for (const el of this.elementsContaining(actionObj.x, actionObj.y, elements)) {
+                        this.checkSafety(el);
+                    }
 
                     if (actionType === 'click') {
                         emitter.emit('status', `Tapping spatial coordinate...`);
