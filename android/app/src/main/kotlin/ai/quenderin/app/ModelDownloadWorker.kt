@@ -48,6 +48,9 @@ class ModelDownloadWorker(
             sink = JvmFileSink(),
             store = DownloadStore(),
             destinationDir = applicationContext.filesDir.resolve("models").absolutePath,
+            // WorkManager flips isStopped on cancel / constraint loss → abort the chunk loop
+            // cooperatively instead of streaming a multi-GB file to /dev/null.
+            isCancelled = { isStopped },
         )
 
         try {

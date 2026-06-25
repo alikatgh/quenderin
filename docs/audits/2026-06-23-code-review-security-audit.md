@@ -55,8 +55,9 @@ Remaining HIGHs (#1, #3, #5, #9) are in the **Electron desktop prototype** and n
 - **Agent action blocklist — coordinate-click bypass** → ✅ **FIXED.** A raw `x/y` click skipped `checkSafety` entirely (only element-targeted clicks ran it), so the agent could tap a "confirm transfer" button by pixel. `ActionExecutor.execute()` now hit-tests the coordinate against the UI snapshot (`elementsContaining`) and re-applies the blocklist to every element under the point. Unit-tested (`tests/action-executor-safety.test.ts`). The deeper "substring matching is bypassable by adversarial renaming" weakness is inherent to a denylist heuristic.
 - **`note_save` filename traversal** → ✅ **already resolved** — `MemoryService.saveNote` runs `sanitizeNoteTitle` (strips `/`, `\`, `..`, non-`[A-Za-z0-9_-]`, caps 80) before building the path; no fix needed.
 
-**Download-robustness MEDIUM:**
+**Download-robustness MEDIUM/LOW:**
 - **Truncated download with no Content-Length** → ✅ **mitigated + tested.** Now that every model pins a `sha256` (the #10 build gate), a truncated body — even with no Content-Length to byte-check against — fails the mandatory hash and the partial is discarded. Locked by a CoreVerify boundary test (`total=-1`, 60/100 bytes → `DownloadException`), which also covers the audit's "no test for the missing-length boundary" LOW. The sibling **redirect-to-any-https-host** MEDIUM is mitigated the same way (a swapped body fails the now-mandatory hash).
+- **Chunk loop not cancellable** → ✅ **FIXED.** `ModelDownloadEngine` takes an `isCancelled` callback polled each chunk; the `ModelDownloadWorker` passes `{ isStopped }`, so a WorkManager stop / model switch cooperatively aborts a multi-GB transfer instead of streaming it to completion. A cancel (new `DownloadCancelledException`) keeps the `.part` and marks the row `PAUSED` (resumable) rather than `FAILED`/discarded. CoreVerify test added.
 
 ## Severity summary
 
