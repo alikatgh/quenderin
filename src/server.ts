@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import { createApp } from './app.js';
 import { WebSocketManager } from './websocket/index.js';
+import { generateAuthToken } from './security/authToken.js';
 import { AgentService } from './services/agent.service.js';
 import { AgentEventEmitter } from './services/agent.service.js';
 import { AndroidProvider } from './services/providers/android.provider.js';
@@ -86,9 +87,13 @@ async function findAvailablePort(startPort: number, maxTries: number = 20): Prom
     throw new Error(`No available port found in range ${startPort}-${startPort + maxTries - 1}`);
 }
 
-export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<number> {
+export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<{ port: number; authToken: string }> {
     resetReadinessForStartup('Dashboard startup initiated');
     setReadiness(false, 'initializing-services', 'Initializing core services');
+
+    // Per-launch auth token (audit HIGH #1) — required on the WS upgrade + state-changing routes,
+    // and handed only to the trusted renderer (Electron preload / the CLI's opened URL).
+    const authToken = generateAuthToken();
 
     const selectedPort = await findAvailablePort(port);
     if (selectedPort !== port) {
@@ -184,7 +189,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     process.once('SIGINT', shutdown);
 
     // 4. Boot Server
-    return new Promise<number>((resolve, reject) => {
+    return new Promise<{ port: number; authToken: string }>((resolve, reject) => {
         server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
                 logger.error(`[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
@@ -201,18 +206,20 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
         server.listen(selectedPort, BIND_HOST, async () => {
-            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService);
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken);
             setReadiness(true, 'serving', `Listening on ${BIND_HOST}:${selectedPort}`);
             logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {
                 try {
-                    await open(`http://localhost:${selectedPort}`);
+                    // The CLI's browser has no preload — deliver the token via the opened URL (the
+                    // renderer reads `?token=` from location.search). A local attacker never sees it.
+                    await open(`http://localhost:${selectedPort}/?token=${authToken}`);
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
                     logger.warn(`[Server] Failed to auto-open browser: ${message}`);
                 }
             }
-            resolve(selectedPort);
+            resolve({ port: selectedPort, authToken });
         });
     });
 }

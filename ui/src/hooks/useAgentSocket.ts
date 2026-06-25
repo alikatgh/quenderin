@@ -53,7 +53,14 @@ export function useAgentSocket() {
 
         function connect() {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+        // Per-launch auth token (audit HIGH #1): Electron delivers it via the preload
+        // (window.quenderinAuth); the CLI/browser path via the opened URL's ?token=. Required on the
+        // WS upgrade — without it the local server rejects the connection.
+        const authToken = (window as { quenderinAuth?: { token?: string } }).quenderinAuth?.token
+            || new URLSearchParams(window.location.search).get('token')
+            || '';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`;
+        const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
