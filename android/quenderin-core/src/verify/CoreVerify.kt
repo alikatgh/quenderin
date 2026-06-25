@@ -545,6 +545,23 @@ fun main() {
         }
         result.exceptionOrNull() is DownloadException && sink.files[partFile] == null && sink.files[finalFile] == null
     })
+    // A truncated transfer with NO Content-Length (total=-1) slips past the byte-count completeness
+    // check, but the mandatory sha256 catches it (audit MEDIUM + the untested-boundary LOW).
+    check("truncated download with no Content-Length is caught by sha256, partial discarded", run {
+        val sink = FakeFileSink()
+        val truncatedNoLength = object : HttpRangeClient {
+            override fun open(url: String, offsetBytes: Long): RangeResponse {
+                // 60 of 100 bytes, magic intact so it reaches the checksum gate; total=-1 (no length).
+                val body = payload.copyOfRange(0, 60).toList().chunked(8).map { it.toByteArray() }.asSequence()
+                return RangeResponse(totalBytes = -1L, resumed = false, body = body)
+            }
+        }
+        val result = runCatching {
+            ModelDownloadEngine(truncatedNoLength, sink, DownloadStore(), "/models").download(sampleModel) {}
+        }
+        result.exceptionOrNull() is DownloadException && sink.files[finalFile] == null
+    })
+
     // The real JVM client refuses a non-HTTPS model URL before opening any connection (TLS contract).
     check("JvmHttpRangeClient.open refuses http:// (and file://) before connecting", run {
         val client = JvmHttpRangeClient()
