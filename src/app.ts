@@ -18,6 +18,7 @@ import { MODEL_CATALOG, modelPath as getModelPath, getRecommendedModelIdForTotal
 import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
+import { isAuthorized } from './security/authToken.js';
 import logger from './utils/logger.js';
 
 /** Pre-built goal templates to help users get started quickly */
@@ -32,7 +33,7 @@ const GOAL_TEMPLATES = [
     { id: 'navigate-settings', category: 'Navigation',   label: 'Change a setting',       template: 'Go to Settings and turn on {setting name}' },
 ];
 
-export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService): Express {
+export function createApp(metricsService?: MetricsService, agentService?: AgentService, llmService?: LlmService, sessionService?: SessionService, memoryService?: MemoryService, authToken: string = ''): Express {
     const app = express();
 
     const isAllowedLocalOrigin = (origin: string): boolean => {
@@ -75,6 +76,20 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         : path.join(__dirname, '..', 'public');
 
     app.use(express.static(publicPath));
+
+    // State-changing-request auth (audit HIGH #1 / the unauthenticated-routes MEDIUM): every
+    // POST/PUT/PATCH/DELETE under /api/ requires the per-launch token (X-Auth-Token header, or
+    // ?token= for the opened-URL/browser path). Read-only GETs stay open. Empty token ⇒ fail closed,
+    // so a missing token never silently allows. The renderer sends it via ui/src/lib/api.ts.
+    const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    app.use((req, res, next) => {
+        if (!req.path.startsWith('/api/') || !MUTATING_METHODS.has(req.method)) return next();
+        const provided = req.get('X-Auth-Token') || (typeof req.query.token === 'string' ? req.query.token : null);
+        if (!isAuthorized(provided, authToken)) {
+            return res.status(401).json({ error: 'Unauthorized: missing or invalid auth token' });
+        }
+        next();
+    });
 
     // Routes
     app.use('/', healthRoute);

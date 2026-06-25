@@ -159,7 +159,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
 
     // 2. Setup Express
     setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
-    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService);
+    const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken);
     const server = createServer(app);
 
     // 2b. Start periodic temp file cleanup (every 30 min)

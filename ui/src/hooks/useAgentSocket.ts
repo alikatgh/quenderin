@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { UIElement, LogEntry, RequiredAction } from '../types/index.js';
+import { authToken } from '../lib/api.js';
 
 /** Default settings with safe defaults — used for merge on load and reset */
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -53,13 +54,10 @@ export function useAgentSocket() {
 
         function connect() {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // Per-launch auth token (audit HIGH #1): Electron delivers it via the preload
-        // (window.quenderinAuth); the CLI/browser path via the opened URL's ?token=. Required on the
-        // WS upgrade — without it the local server rejects the connection.
-        const authToken = (window as { quenderinAuth?: { token?: string } }).quenderinAuth?.token
-            || new URLSearchParams(window.location.search).get('token')
-            || '';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`;
+        // Per-launch auth token (audit HIGH #1), required on the WS upgrade — see lib/api.ts for how
+        // it's sourced (Electron preload / opened-URL). Without it the local server rejects the upgrade.
+        const token = authToken();
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Download, CheckCircle2, BrainCircuit, Mic } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
+import { apiFetch } from './lib/api.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ChatArea } from './components/ChatArea.js';
@@ -32,7 +33,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
   const handleDownloadModel = async () => {
     setIsModelDownloading(true);
     try {
-      const res = await fetch('/api/models/download', { method: 'POST' });
+      const res = await apiFetch('/api/models/download', { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
       setIsModelDownloading(false);
@@ -48,7 +49,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
         setVoiceDownloadProgress(p => p >= 90 ? 90 : p + 10);
       }, 500);
 
-      const res = await fetch('/api/voice/download', { method: 'POST' });
+      const res = await apiFetch('/api/voice/download', { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       clearInterval(interval);
@@ -416,7 +417,7 @@ function AppContent() {
 
   const handleTriggerDownload = async (modelId?: string) => {
     try {
-      await fetch('/api/models/download', {
+      await apiFetch('/api/models/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modelId: modelId ?? healthData?.recommendedModelId ?? 'llama32-1b' })

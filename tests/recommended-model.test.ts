@@ -41,7 +41,8 @@ describe('getRecommendedModelIdForTotalRam', () => {
             getActivePresetId: () => 'general',
         } as any;
 
-        const app = createApp(undefined, undefined, llmServiceMock);
+        const TEST_TOKEN = 'test-auth-token-deadbeef';
+        const app = createApp(undefined, undefined, llmServiceMock, undefined, undefined, TEST_TOKEN);
         const server = app.listen(0);
         const port = (server.address() as AddressInfo).port;
 
@@ -52,7 +53,7 @@ describe('getRecommendedModelIdForTotalRam', () => {
 
             const downloadRes = await fetch(`http://127.0.0.1:${port}/api/models/download`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Auth-Token': TEST_TOKEN },
                 body: JSON.stringify({}),
             });
             expect(downloadRes.ok).toBe(true);
