@@ -66,6 +66,20 @@ Cloudflare Pages) and **wired into the apps** — see section A.
       then update `AppleChip.inferenceScore` / `AndroidSoc` + the tables in `apple/REALITY.md`.
       (The Mac/sim/emulator numbers are host-CPU ceilings, clearly labeled as estimates today.)
 
+### F. Desktop (Electron prototype) — security audit `2026-06-23` (only you can finish)
+The native apps above are the store targets; the Electron desktop is the working prototype. Its
+HIGH-severity audit findings are **fixed in code** but two need *your* environment to finalize
+(full ledger: `docs/audits/2026-06-23-code-review-security-audit.md`):
+- [ ] **Live-verify the per-launch auth token (#1).** Launch the app (or `npm run dashboard`) and
+      confirm the agent connects **and** model download/switch/delete still work — the renderer now
+      sends the token; the server rejects un-tokened WS upgrades + mutating `/api` requests. (Pure
+      logic is unit-tested + CI-green; only the live renderer round-trip can't be checked headlessly.)
+- [ ] **Code-sign + notarize the desktop build (#9).** `asar` is on; signing needs your certs —
+      macOS `CSC_LINK`/`CSC_KEY_PASSWORD` + `mac.notarize` (`APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/
+      `APPLE_TEAM_ID`); Windows `CSC_LINK`. Steps are documented inline in `electron-builder.yaml`.
+- [ ] *(Optional)* the privacy-lock passphrase is stored in `localStorage` (audit down-rates to
+      MEDIUM for a single-user desktop app) — harden with a KDF if you ship the desktop build widely.
+
 ---
 
 ## How to read "100%"
