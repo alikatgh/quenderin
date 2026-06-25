@@ -110,6 +110,10 @@ class ModelDownloadEngine(
                     "incomplete download for ${model.filename}: got $downloaded of $total bytes"
                 )
             }
+            // When the server sends NO Content-Length (total <= 0) completeness can't be byte-verified —
+            // the mandatory sha256 gate below IS the completeness guarantee (a truncated body won't match
+            // the pinned hash). Every shipped model pins a sha256 (enforced by check_catalog_parity.py),
+            // so a no-Content-Length transfer is never left to the magic-only check. (Audit MEDIUM.)
 
             // Integrity gate (C3): verify the assembled bytes BEFORE promoting .part → final,
             // so a MITM / poisoned-mirror / truncated file never becomes the active model. A
