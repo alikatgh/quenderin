@@ -107,6 +107,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   serialization is load-bearing for safety (it stops `load()` freeing the context mid-decode), so to move
   the loop off the pool you must REPLACE that guarantee with a lock (`NSLock` + `nonisolated(unsafe)`),
   not just remove it. (audit M2)
+- **A PERSISTENT llama context + a stateless "decode the full prompt" API silently ACCUMULATES the KV
+  cache.** Each chat turn re-tokenized the whole history and `llama_decode`d it into the *same* context
+  that already held the prior turn → duplicated context + full re-prefill every turn (time-to-first-token
+  grows with length, SoC re-chews the same tokens). Fix: track the tokens resident in the KV; when the
+  new prompt is a strict-prefix EXTENSION of them, decode only the suffix (`KVCacheReuse`); otherwise
+  `llama_memory_clear` + reprefill. Fail-safe — a non-append mismatch reprefills (correct, no speedup),
+  never corrupts. Keep the mirror in lockstep (append each sampled token; reset on load/unload). (chat KV reuse)
 - **iOS engine (Swift) and Android engine (JNI `.cpp`) silently diverge.** Android decoded with
   `llama_sampler_init_greedy()` (repetitive output) while iOS sampled `top_p → temp → dist` the whole
   time — no test caught it because the kotlinc core check NEVER compiles `jni/llama_jni.cpp` and the
@@ -154,6 +161,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-25 — Chat KV-cache reuse (efficiency / "close to the metal"). Both engines kept ONE persistent
+  context but re-decoded the full conversation every turn → KV accumulated duplicated history and
+  time-to-first-token grew with length. Fix: `KVCacheReuse` (pure, tested both platforms) — decode only
+  the new suffix on a strict-prefix append, else `llama_memory_clear` + reprefill (fail-safe). iOS engine
+  wired (native calls proven compiled via bogus-probe; swift test 181) + Android JNI mirror (on-device).
+  Real-device validation owed (the speedup + output-identity). Lesson: see the persistent-context KV pattern above.
 - 2026-06-25 — Native features (PRs #47–48). Model storage management: `ModelManager` over a real
   `FileManagerModelStorage`/`FileModelStorage` + a Settings "Downloaded models" section (per-model size,
   total, swipe-to-delete; active protected). Conversation export: `ConversationExporter` → portable

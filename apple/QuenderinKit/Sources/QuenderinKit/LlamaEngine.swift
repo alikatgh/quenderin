@@ -43,6 +43,10 @@ public actor LlamaEngine: InferenceEngine {
     /// The unthrottled (P-core) thread count chosen at load — the governor's baseline for in-flight
     /// thermal re-tuning during generation. Set under `nativeLock`; read at the start of a decode.
     nonisolated(unsafe) private var loadedBaseThreads = 1
+    /// The exact token sequence currently resident in the context's KV cache (prior prompt + reply).
+    /// Lets a new chat turn reuse the cache and decode only the new suffix instead of re-prefilling the
+    /// whole history (`KVCacheReuse`). Kept in lockstep with the KV by construction; reset on load/unload.
+    nonisolated(unsafe) private var cachedTokens: [llama_token] = []
     /// Serializes every native access (load/unload/generate) so freeing can't race a decode (C1/C2).
     private let nativeLock = NSLock()
     /// Set true to interrupt a running generation (model switch / explicit cancel) — M3.
@@ -171,6 +175,7 @@ public actor LlamaEngine: InferenceEngine {
         model = m
         context = ctx
         vocab = llama_model_get_vocab(m)
+        cachedTokens = []   // fresh context ⇒ empty KV cache
     }
 
     /// The native unload, under `nativeLock` (synchronous).
@@ -182,6 +187,7 @@ public actor LlamaEngine: InferenceEngine {
         context = nil
         model = nil
         vocab = nil
+        cachedTokens = []
         if backendInitialized { llama_backend_free(); backendInitialized = false }  // symmetric with the gated init (L1)
     }
 
@@ -201,8 +207,8 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         // 1) Prompt → tokens.
-        var tokens = tokenize(text: prompt, addBOS: true)
-        guard !tokens.isEmpty else {
+        let newTokens = tokenize(text: prompt, addBOS: true)
+        guard !newTokens.isEmpty else {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "tokenizer produced no tokens"))
             return
         }
@@ -224,10 +230,20 @@ public actor LlamaEngine: InferenceEngine {
             }
         }
 
-        if !decode(&tokens) {
+        // Reuse the KV cache from the prior turn: decode only the tokens NOT already cached, so
+        // time-to-first-token doesn't grow with conversation length (KVCacheReuse). Fail-safe — any
+        // divergence from a pure append wipes the cache and reprefills from scratch (correct, no speedup).
+        let plan = KVCacheReuse.plan(cached: cachedTokens, new: newTokens)
+        if plan.clearCache {
+            llama_memory_clear(llama_get_memory(context), true)
+            cachedTokens = []
+        }
+        var toPrefill = Array(newTokens[plan.decodeFrom...])
+        if !decode(&toPrefill) {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
             return
         }
+        cachedTokens = newTokens   // the KV cache now holds exactly `newTokens`
 
         // In-flight thermal governor: as a long generation heats the SoC, shed threads so it
         // sustains instead of throttling to a crawl. Sampled every 32 tokens (the read is cheap and
@@ -254,6 +270,7 @@ public actor LlamaEngine: InferenceEngine {
                 continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
                 return
             }
+            cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
         continuation.finish()
     }

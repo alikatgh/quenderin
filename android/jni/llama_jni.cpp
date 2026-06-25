@@ -25,6 +25,10 @@ struct LlamaHandle {
     llama_model*   model   = nullptr;
     llama_context* ctx     = nullptr;
     llama_sampler* sampler = nullptr;
+    // The exact tokens resident in the KV cache (prior prompt + reply) — lets the next chat turn
+    // decode only the new suffix instead of re-prefilling the whole history (mirrors KVCacheReuse).
+    // Empty on a fresh handle (each load); reset implicitly because nativeFree deletes the handle.
+    std::vector<llama_token> cached;
 };
 
 std::once_flag g_backend_once;  // llama_backend_init exactly once per process, race-free (H6)
@@ -52,8 +56,28 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
                      JNIEnv* env, jobject sink, jobject thiz) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
-    std::vector<llama_token> tokens = tokenize(vocab, prompt, true);
-    llama_batch batch = llama_batch_get_one(tokens.data(), (int32_t) tokens.size());
+    std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
+    if (newTokens.empty()) return std::string();
+
+    // KV-cache reuse (mirror of the tested KVCacheReuse spec): decode only the tokens NOT already in
+    // the cache when the new prompt is a strict-prefix extension of the prior one (the common "append
+    // a turn" case) — so time-to-first-token doesn't grow with conversation length. Fail-safe: any
+    // divergence wipes the cache and reprefills from scratch (correct, just no speedup).
+    size_t reuse = 0;
+    if (!h->cached.empty() && h->cached.size() < newTokens.size()) {
+        bool isPrefix = true;
+        for (size_t i = 0; i < h->cached.size(); ++i) {
+            if (h->cached[i] != newTokens[i]) { isPrefix = false; break; }
+        }
+        if (isPrefix) reuse = h->cached.size();
+    }
+    if (reuse == 0) {
+        llama_memory_clear(llama_get_memory(h->ctx), true);
+    }
+    // Keep `toDecode` alive for the whole function — llama_batch_get_one only borrows its pointer.
+    std::vector<llama_token> toDecode(newTokens.begin() + reuse, newTokens.end());
+    h->cached = newTokens;   // the KV cache will hold exactly newTokens after the prefill below
+    llama_batch batch = llama_batch_get_one(toDecode.data(), (int32_t) toDecode.size());
 
     jmethodID on_token = nullptr;
     if (env && sink) {
@@ -92,6 +116,7 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
             // is UB and ART aborts the whole process. Stop the loop so it propagates cleanly (C3).
             if (env->ExceptionCheck()) break;
         }
+        h->cached.push_back(next);   // this reply token gets decoded next iteration → keep the mirror in sync
         batch = llama_batch_get_one(&next, 1);
     }
     return out;
