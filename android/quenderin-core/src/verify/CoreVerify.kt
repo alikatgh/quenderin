@@ -352,6 +352,18 @@ fun main() {
         })
     }
 
+    // --- KVCacheReuse (incremental decode planning; twin of Swift; the JNI loop mirrors this spec) ---
+    check("KVCacheReuse reuses a strict-prefix append and reprefills on any divergence", run {
+        val append = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 2, 3, 4, 5))
+        val first = KVCacheReuse.plan(intArrayOf(), intArrayOf(1, 2, 3))
+        val diverged = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 9, 3, 4))
+        val identical = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 2, 3))   // not STRICT prefix
+        val shrank = KVCacheReuse.plan(intArrayOf(1, 2, 3, 4), intArrayOf(1, 2))
+        append == KVCacheReuse.Plan(false, 3) && first == KVCacheReuse.Plan(true, 0) &&
+            diverged == KVCacheReuse.Plan(true, 0) && identical == KVCacheReuse.Plan(true, 0) &&
+            shrank == KVCacheReuse.Plan(true, 0)
+    })
+
     // --- ConversationExporter (transcript → portable markdown; twin of Swift) ---
     check("ConversationExporter renders a markdown transcript with speakers + plural count", run {
         val md = ConversationExporter.markdown(
