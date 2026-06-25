@@ -1,6 +1,7 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.ChatMessage
+import ai.quenderin.core.ConversationExporter
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
 import ai.quenderin.core.ConversationPersistence
@@ -83,6 +84,18 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
             TopAppBar(
                 title = { Text(model.label) },
                 actions = {
+                    if (messages.isNotEmpty()) {
+                        TextButton(onClick = {
+                            // Export the transcript as Markdown; the user shares it on THEIR terms.
+                            val md = ConversationExporter.markdown(messages, model.label)
+                            val share = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Quenderin conversation")
+                                putExtra(Intent.EXTRA_TEXT, md)
+                            }
+                            runCatching { context.startActivity(Intent.createChooser(share, "Share conversation")) }
+                        }) { Text("Share") }
+                    }
                     TextButton(onClick = { showHistory = true }) { Text("History") }
                     TextButton(onClick = { coordinator.startNew() }) { Text("New") }
                 },
