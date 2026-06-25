@@ -38,7 +38,9 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   source, the generated `shared/model-catalog.json`, AND the generator + parity checker. Use
   `scripts/refresh_model_hashes.py` + `npm run gen:catalog`; `check_catalog_parity.py` guards drift.
 - **Pinned mirror URLs rot.** A catalog HF URL can 404 (lmstudio-community ships no Q2_K). Verify
-  download URLs actually resolve; prefer a mirror that hosts the exact quant.
+  download URLs actually resolve; prefer a mirror that hosts the exact quant. Run
+  `npm run check:catalog-urls` (1-byte Range GET per URL) before a release to catch rot before a
+  user hits a 404 mid-download.
 - **Cached/pre-existing files are still untrusted.** An "already downloaded, skip" fast-path that
   returns without re-verifying re-opens the integrity hole on every launch. Verify the cached
   artifact too; delete + re-fetch on failure. (C3-1)
