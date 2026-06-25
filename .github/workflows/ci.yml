@@ -11,6 +11,12 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+# Least-privilege GITHUB_TOKEN (audit MEDIUM): default to read-only for every job. A compromised
+# action/dependency then can't push commits, open PRs, or mutate releases with the workflow token.
+# Jobs that need more (e.g. codecov OIDC) opt in explicitly.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
@@ -51,6 +57,9 @@ jobs:
     name: Coverage
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
+      id-token: write   # codecov v4 tokenless upload (OIDC)
 
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +77,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4 — pinned to SHA (audit MEDIUM: third-party action)
         with:
           fail_ci_if_error: false
 
@@ -99,6 +108,9 @@ jobs:
       - name: Install Kotlin compiler
         run: |
           curl -sSLO https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+          # Verify the download before trusting it (audit MEDIUM: a network-fetched toolchain ran
+          # unverified). Pinned sha256 of the official v2.0.21 release asset; fail closed on mismatch.
+          echo "0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a  kotlin-compiler-2.0.21.zip" | sha256sum -c -
           unzip -q kotlin-compiler-2.0.21.zip -d "$HOME/kotlin"
           echo "$HOME/kotlin/kotlinc/bin" >> "$GITHUB_PATH"
       - name: Compile + run the pure-Kotlin core verification
@@ -121,7 +133,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3 — pinned to SHA (audit MEDIUM: third-party action)
       - name: Build the debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --console=plain
