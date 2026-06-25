@@ -9,6 +9,7 @@ import { ALLOWED_CONTEXT_SIZES, MAX_GOAL_LENGTH, MAX_CHAT_LENGTH, MAX_SEND_BUFFE
 import { classifyIntent } from '../services/intentClassifier.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import logger from '../utils/logger.js';
+import { extractWsToken, isAuthorized } from '../security/authToken.js';
 
 /** Validate and sanitize attachment arrays from WebSocket messages */
 function sanitizeAttachments(raw: unknown): { name: string; content: string }[] {
@@ -73,7 +74,10 @@ export class WebSocketManager {
         private deviceProvider: IDeviceProvider,
         private llmService: LlmService,
         private voiceService: VoiceService,
-        private sessionService?: SessionService
+        private sessionService?: SessionService,
+        /** Per-launch auth token required on the WS upgrade (audit HIGH #1). Empty ⇒ fail closed
+         *  (every connection rejected) — never fail open. */
+        private authToken: string = ''
     ) {
         // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
         this.wss = new WebSocketServer({ server, path: '/ws' });
@@ -113,6 +117,14 @@ export class WebSocketManager {
             if (!isAllowedLocalWsOrigin(origin)) {
                 logger.warn(`[WebSocket] Rejected connection (origin=${origin ?? 'absent'}); a local browser Origin is required`);
                 ws.close(1008, 'Origin required');
+                return;
+            }
+
+            // Per-launch token auth (audit HIGH #1) — the real authentication. An Origin is spoofable;
+            // only the trusted renderer (which got the token via the preload / opened URL) has this.
+            if (!isAuthorized(extractWsToken(request.url), this.authToken)) {
+                logger.warn('[WebSocket] Rejected connection: missing or invalid auth token');
+                ws.close(1008, 'Unauthorized');
                 return;
             }
 

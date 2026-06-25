@@ -44,8 +44,8 @@ The three native-mobile / integrity HIGHs (the ones on-thesis for the privacy-fi
 Also cleared the pre-existing red `main` CI in passing: `npm audit fix` (2 high CVEs — undici TLS-bypass/header-injection, form-data CRLF) and a `no-useless-escape` lint error in `src/utils/notes.ts`.
 
 Remaining HIGHs (#1, #3, #5, #9) are in the **Electron desktop prototype** and need the **running app** (or signing certs) to fix safely — shipping blind risks bricking the UI:
-- **#1 per-launch WS/HTTP token auth** — threads a secret main→preload→renderer→WS; must verify the real renderer still connects end-to-end (can't be done headlessly here).
-- **#3 stale `dist/electron/main.js`** — regenerate from `electron/main.ts` and verify the packaged build carries the sandbox/nav guards.
+- **#1 per-launch WS token auth** → 🟡 **IMPLEMENTED, awaiting live verify.** `startDashboardServer` mints a 256-bit token, handed ONLY to the trusted renderer (Electron: preload `additionalArguments` → `window.quenderinAuth`; CLI browser: the opened URL's `?token=`). The WS upgrade now requires it (`isAuthorized(extractWsToken(url), token)`, constant-time) on top of the Origin check — so a local attacker that omits/forges the token is rejected. Pure validation logic unit-tested (`tests/auth-token.test.ts`); **you verify** the real renderer still drives the agent (launch the app / `npm run dashboard`). The **HTTP state-changing routes** (the sibling MEDIUM) are the immediate follow-up — they need a central token-fetch helper across the ~6 scattered UI `fetch` calls, done together so model-management doesn't break.
+- **#3 stale `dist/electron/main.js`** — regenerate from `electron/main.ts` and verify the packaged build carries the sandbox/nav guards (note: `src/electron/main.ts` is the audit's dead/divergent twin).
 - **#9 `asar:false` + unsigned** — `asar:true` needs `asarUnpack` for the native modules (node-llama-cpp/sharp); signing/notarization needs developer certs (user-only).
 - **#5 privacy-lock plaintext** — the audit itself down-rates this to MEDIUM for a single-user desktop app.
 

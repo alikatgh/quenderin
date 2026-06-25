@@ -6,7 +6,7 @@ import { startDashboardServer } from '../src/server.js'; // Adjust path based on
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function createWindow(port: number) {
+async function createWindow(port: number, authToken: string) {
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -15,7 +15,11 @@ async function createWindow(port: number) {
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
-            preload: path.join(__dirname, '..', 'src', 'electron', 'preload.js')
+            preload: path.join(__dirname, '..', 'src', 'electron', 'preload.js'),
+            // Hand the per-launch auth token ONLY to the trusted renderer, via the preload — a local
+            // attacker process can't read additionalArguments (audit HIGH #1). The preload re-exposes
+            // it on window.quenderinAuth; the renderer sends it on the WS upgrade + mutating fetches.
+            additionalArguments: [`--quenderin-auth=${authToken}`]
         }
     });
 
@@ -44,12 +48,12 @@ app.whenReady().then(async () => {
     // Start the local Quenderin backend *before* opening the window
     console.log("Starting bundled Quenderin backend...");
     try {
-        const port = await startDashboardServer(3000);
-        await createWindow(port);
+        const { port, authToken } = await startDashboardServer(3000);
+        await createWindow(port, authToken);
 
         app.on('activate', async () => {
             if (BrowserWindow.getAllWindows().length === 0) {
-                await createWindow(port);
+                await createWindow(port, authToken);
             }
         });
     } catch (err) {
