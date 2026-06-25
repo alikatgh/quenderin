@@ -352,6 +352,22 @@ fun main() {
         })
     }
 
+    // --- ConversationExporter (transcript → portable markdown; twin of Swift) ---
+    check("ConversationExporter renders a markdown transcript with speakers + plural count", run {
+        val md = ConversationExporter.markdown(
+            listOf(ChatMessage(Role.USER, "Hello there"), ChatMessage(Role.ASSISTANT, "Hi!")),
+            "My chat",
+        )
+        md.startsWith("# My chat\n") && md.contains("**You:**\nHello there") &&
+            md.contains("**Quenderin:**\nHi!") && md.contains("2 messages")
+    })
+    check("ConversationExporter falls back to default title + singular count, no empty speakers", run {
+        val one = ConversationExporter.markdown(listOf(ChatMessage(Role.USER, "Only one")), null)
+        val none = ConversationExporter.markdown(emptyList(), "  ")
+        one.startsWith("# Conversation\n") && one.contains("1 message.") &&
+            none.startsWith("# Conversation\n") && none.contains("0 messages") && !none.contains("**You:**")
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)

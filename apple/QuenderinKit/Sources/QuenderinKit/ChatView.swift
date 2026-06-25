@@ -41,6 +41,19 @@ public struct ChatView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
         }
+        .toolbar {
+            // Export the transcript as Markdown the user can share/save — their data leaves on THEIR
+            // terms, never silently. Shown only once there's something to share.
+            if !model.messages.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(item: ConversationExporter.markdown(model.messages),
+                              subject: Text("Quenderin conversation"),
+                              message: Text("Exported from Quenderin (on-device)")) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
     }
 }
 
