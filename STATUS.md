@@ -1,8 +1,9 @@
 # Quenderin — cross-platform status
 
-An offline, on-device AI agent. The desktop app is the working prototype; native **iOS**
-and **Android** are the destination. This is the one map of where everything stands and
-how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
+A private, **offline, on-device AI chat assistant**. The native **iOS** and **Android** apps are the
+product; the desktop Electron app is a research prototype, not shipped. **What it is and who it's for:
+[`docs/PRODUCT.md`](docs/PRODUCT.md)** (the identity + wedge decision). This is the one map of where
+everything stands and how to verify it. (Deeper docs: `apple/REALITY.md`, `apple/MODEL_SELECTION.md`,
 `apple/ARCHITECTURE.md`, `android/README.md`, `docs/`.)
 
 ## Platforms
