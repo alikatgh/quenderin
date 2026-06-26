@@ -60,6 +60,30 @@ final class AgentToolTests: XCTestCase {
         XCTAssertTrue(byZero.contains("Couldn't evaluate"), "modulo by zero must be rejected")
     }
 
+    func testCalculatorFunctionsAndConstants() async throws {
+        let calc = CalculatorTool()
+        let cases: [(input: String, expected: String)] = [
+            ("sqrt(16)", "4"),
+            ("sqrt(9)", "3"),
+            ("abs(-7)", "7"),
+            ("floor(2.7)", "2"),
+            ("ceil(2.1)", "3"),
+            ("floor(pi)", "3"),       // constant pi + floor
+            ("floor(e)", "2"),        // constant e + floor
+            ("2 * sqrt(9)", "6"),     // function inside an expression
+            ("sqrt(9) ^ 2", "9"),     // function then power
+        ]
+        for (input, expected) in cases {
+            let result = try await calc.run(input)
+            XCTAssertEqual(result, expected, "for \(input)")
+        }
+        // sqrt of a negative is NaN → rejected; unsupported names (incl. log, which we DON'T add) → rejected.
+        for bad in ["sqrt(-1)", "foo(2)", "log(10)"] {
+            let out = try await calc.run(bad)
+            XCTAssertTrue(out.contains("Couldn't evaluate"), "for \(bad)")
+        }
+    }
+
     func testCalculatorRejectsGarbageWithoutCrashing() async throws {
         let calc = CalculatorTool()
         for bad in ["2 +* 2", "delete everything", "1 / 0", "()", "((1)"] {
