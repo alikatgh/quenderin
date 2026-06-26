@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                 val soc = AndroidSoc.fromSocModel(socModelStr)
                 val gpuLayers = GpuOffloadPlanner.recommend(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)
                 android.util.Log.i("Quenderin",
-                    "GpuOffloadPlanner: ${GpuOffloadPlanner.rationale(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)}")
+                    "gpuLayers=$gpuLayers, rationale: ${GpuOffloadPlanner.rationale(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)}")
 
                 LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers).also {
                     // Seed the engine with the device's current thermal pressure so the first model

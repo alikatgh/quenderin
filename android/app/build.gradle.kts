@@ -34,15 +34,26 @@ android {
     namespace = "ai.quenderin.app"
     compileSdk = 35
 
+    val enableVulkan = project.hasProperty("quenderin.vulkan") && project.property("quenderin.vulkan") == "true"
+
     defaultConfig {
         applicationId = "ai.quenderin.app"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        
+        buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
 
         if (nativeLlama) {
             ndk { abiFilters += listOf("arm64-v8a") }   // add "x86_64" for x86 emulators
+            externalNativeBuild {
+                cmake {
+                    if (enableVulkan) {
+                        arguments += "-DQUENDERIN_VULKAN=ON"
+                    }
+                }
+            }
         }
     }
 
@@ -59,22 +70,6 @@ android {
     buildFeatures { 
         compose = true
         buildConfig = true
-    }
-
-    val enableVulkan = project.hasProperty("quenderin.vulkan") && project.property("quenderin.vulkan") == "true"
-
-    // Pass Vulkan flag to C++ and to Kotlin so the app knows it's enabled.
-    defaultConfig {
-        buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
-        if (nativeLlama) {
-            externalNativeBuild {
-                cmake {
-                    if (enableVulkan) {
-                        arguments += "-DQUENDERIN_VULKAN=ON"
-                    }
-                }
-            }
-        }
     }
 
     signingConfigs {
