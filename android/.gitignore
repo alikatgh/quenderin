@@ -7,6 +7,12 @@ build/
 *.iml
 local.properties
 .idea/
+
+# Release signing — NEVER commit the keystore or its passwords (see docs/RELEASE.md).
+keystore.properties
+*.jks
+*.keystore
+*.p12
 captures/
 .cxx/
 

@@ -54,7 +54,9 @@ Cloudflare Pages) and **wired into the apps** — see section A.
 
 ### D. Accounts, signing, assets (only you can)
 - [ ] Apple Developer Program + Google Play Console accounts.
-- [ ] Signing: iOS distribution cert/profile; Android upload/app-signing keystore.
+- [ ] Signing: iOS distribution cert/profile; Android upload/app-signing keystore. **Scaffolded** — the
+      Android build reads a gitignored `keystore.properties` and signs `release` automatically; the full
+      step-by-step (keystore generation + both stores' console steps) is in **`docs/RELEASE.md`**.
 - [ ] Build the iOS xcframework + `xcodegen` the app target (`apple/QuenderinApp/INTEGRATION.md`);
       add `jni/llama.cpp` for the Android real-inference APK.
 - [ ] Screenshots + store-listing copy. **Use app-specific copy** — describe the offline chat +
