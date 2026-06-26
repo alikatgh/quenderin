@@ -70,21 +70,50 @@ int main(int argc, char** argv) {
     llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
 
-    // --- Part 1: single-turn coherence + tok/s, driven through the shared production loop. ---
+    // --- Part 1: PREFILL vs DECODE throughput, measured SEPARATELY. This is the whole point of a GPU
+    // A/B: the offload signal lives in PREFILL (compute-bound, parallel — GPU should win), while DECODE
+    // is memory-bandwidth bound and barely moves (CPU and GPU share the RAM bus). Reporting one blended
+    // number would hide exactly the thing you're trying to measure. A long prompt makes prefill
+    // meaningful — a 12-token prompt is noise, so pad to >= 256 tokens with neutral filler. ---
     llama_context* ctx = makeCtx();
     if (!ctx) { printf("FAIL: context\n"); return 1; }
-    std::vector<llama_token> cached;
-    std::vector<llama_token> p0 = tokenize(vocab, userTurn(userText), true);
-    if (p0.empty()) { printf("FAIL: tokenize\n"); return 1; }
 
-    auto t1 = std::chrono::steady_clock::now();
-    std::string out = quenderin::generateWithKVReuse(ctx, vocab, smpl, p0, maxTokens, cached, noEmit, noCancel);
-    double dt = std::chrono::duration<double>(std::chrono::steady_clock::now() - t1).count();
-    int gen = (int) (cached.size() - p0.size());   // mirror grew by exactly the decoded reply tokens
+    std::string benchText = userText;
+    const std::string filler = " The sky appears blue because shorter wavelengths scatter more.";
+    std::vector<llama_token> promptTokens = tokenize(vocab, userTurn(benchText), true);
+    while ((int) promptTokens.size() < 256) {
+        benchText += filler;
+        promptTokens = tokenize(vocab, userTurn(benchText), true);
+    }
+
+    // Prefill: decode the entire prompt in one batch, timed on its own.
+    auto pf0 = std::chrono::steady_clock::now();
+    {
+        llama_batch pf = llama_batch_get_one(promptTokens.data(), (int32_t) promptTokens.size());
+        if (llama_decode(ctx, pf) != 0) { printf("FAIL: prefill decode\n"); return 1; }
+    }
+    double prefillSec = std::chrono::duration<double>(std::chrono::steady_clock::now() - pf0).count();
+
+    // Decode: generate maxTokens, timed on its own (sample → feed back → repeat).
+    std::string out;
+    int gen = 0;
+    auto dc0 = std::chrono::steady_clock::now();
+    for (int i = 0; i < maxTokens; ++i) {
+        llama_token next = llama_sampler_sample(smpl, ctx, -1);
+        if (llama_vocab_is_eog(vocab, next)) break;
+        char buf[256];
+        int c = llama_token_to_piece(vocab, next, buf, sizeof(buf), 0, true);
+        if (c > 0) out.append(buf, c);
+        gen++;
+        llama_batch one = llama_batch_get_one(&next, 1);
+        if (llama_decode(ctx, one) != 0) break;
+    }
+    double decodeSec = std::chrono::duration<double>(std::chrono::steady_clock::now() - dc0).count();
 
     printf("ANSWER: %s\n", out.c_str());
-    printf("REAL: decode %d tokens in %.2fs = %.1f tok/s [Android arm64, CPU]\n",
-           gen, dt, gen / (dt > 0 ? dt : 1e-6));
+    printf("REAL: prefill %zu tok in %.3fs = %.1f tok/s | decode %d tok in %.2fs = %.1f tok/s [%s]\n",
+           promptTokens.size(), prefillSec, promptTokens.size() / (prefillSec > 0 ? prefillSec : 1e-6),
+           gen, decodeSec, gen / (decodeSec > 0 ? decodeSec : 1e-6), nGpuLayers > 0 ? "GPU" : "CPU");
     llama_free(ctx);
 
     // --- Part 2: multi-turn KV-reuse equivalence (regression guard for the KV-mirror desync). ---
