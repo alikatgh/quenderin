@@ -512,6 +512,13 @@ fun main() {
     })
     check("calculator: non-finite results don't leak (NaN/Inf → couldn't evaluate)",
         ArithmeticParser.evaluate("(-2)^0.5") == null && ArithmeticParser.evaluate("2^9999") == null)
+    check("calculator: modulo (% at the * / level, left-assoc, div-by-zero safe)", run {
+        ArithmeticParser.evaluate("10 % 3") == 1.0 &&
+            ArithmeticParser.evaluate("2 * 3 % 4") == 2.0 &&   // (2*3)%4 = 6%4 = 2
+            ArithmeticParser.evaluate("-10 % 3") == -1.0 &&
+            ArithmeticParser.evaluate("10 % 0") == null &&     // modulo by zero rejected
+            CalculatorTool().run("10 % 3") == "1"
+    })
     check("units converts length", UnitConverterTool().run("1 km to m") == "1 km = 1000 m")
     check("units handles affine temperature", UnitConverterTool().run("30 C to F") == "30 c = 86 f")
     check("units converts time (h/min/day, with spelled-out aliases)", run {
