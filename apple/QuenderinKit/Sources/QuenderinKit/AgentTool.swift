@@ -31,7 +31,7 @@ public struct EchoTool: AgentTool {
 public struct CalculatorTool: AgentTool {
     public init() {}
     public let name = "calculator"
-    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ % and parentheses)."
+    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\", \"2^10\", or \"sqrt(16)\" (+ - * / ^ %, parentheses, sqrt/abs/floor/ceil, pi/e)."
 
     public func run(_ input: String) async throws -> String {
         guard let value = ArithmeticParser.evaluate(input) else {
@@ -57,15 +57,24 @@ enum ArithmeticParser {
     private static func tokenize(_ text: String) -> [String] {
         var tokens: [String] = []
         var number = ""
+        var ident = ""   // a function name (sqrt) or constant (pi) — runs of letters
+        func flush() {
+            if !number.isEmpty { tokens.append(number); number = "" }
+            if !ident.isEmpty { tokens.append(ident); ident = "" }
+        }
         for char in text where !char.isWhitespace {
             if char.isNumber || char == "." {
+                if !ident.isEmpty { flush() }        // letter→digit boundary
                 number.append(char)
+            } else if char.isLetter {
+                if !number.isEmpty { flush() }        // digit→letter boundary
+                ident += String(char).lowercased()
             } else {
-                if !number.isEmpty { tokens.append(number); number = "" }
+                flush()
                 if "+-*/^%()".contains(char) { tokens.append(String(char)) } else { return [] }
             }
         }
-        if !number.isEmpty { tokens.append(number) }
+        flush()
         return tokens
     }
 
@@ -127,7 +136,16 @@ enum ArithmeticParser {
             return pow(base, exponent)
         }
 
-        // primary = number | '(' expression ')'
+        // Parity-safe single-arg functions + constants — IDENTICAL across Swift/Kotlin/JS. Deliberately
+        // NOT round / log / ln / sin / cos / tan: their half-rounding + domain/precision behavior differs
+        // across stdlibs, which would re-introduce the cross-platform divergences this project keeps fixing.
+        private static let functions: [String: @Sendable (Double) -> Double] = [
+            "sqrt": { Foundation.sqrt($0) }, "abs": { Swift.abs($0) },
+            "floor": { Foundation.floor($0) }, "ceil": { Foundation.ceil($0) },
+        ]
+        private static let constants: [String: Double] = ["pi": .pi, "e": M_E]
+
+        // primary = number | constant | function '(' expression ')' | '(' expression ')'
         private mutating func parsePrimary(_ depth: Int) -> Double? {
             if depth > Self.maxDepth { return nil }
             guard let token = peek() else { return nil }
@@ -137,6 +155,15 @@ enum ArithmeticParser {
                 _ = advance()
                 return value
             }
+            if let fn = Self.functions[token] {                       // function call: name '(' expr ')'
+                _ = advance()
+                guard peek() == "(" else { return nil }
+                _ = advance()
+                guard let arg = parseExpression(depth + 1), peek() == ")" else { return nil }
+                _ = advance()
+                return fn(arg)
+            }
+            if let constant = Self.constants[token] { _ = advance(); return constant }
             if let number = Double(token) { _ = advance(); return number }
             return nil
         }

@@ -512,6 +512,15 @@ fun main() {
     })
     check("calculator: non-finite results don't leak (NaN/Inf → couldn't evaluate)",
         ArithmeticParser.evaluate("(-2)^0.5") == null && ArithmeticParser.evaluate("2^9999") == null)
+    check("calculator: parity-safe functions + constants (sqrt/abs/floor/ceil, pi/e)", run {
+        ArithmeticParser.evaluate("sqrt(16)") == 4.0 && ArithmeticParser.evaluate("abs(-7)") == 7.0 &&
+            ArithmeticParser.evaluate("floor(2.7)") == 2.0 && ArithmeticParser.evaluate("ceil(2.1)") == 3.0 &&
+            ArithmeticParser.evaluate("floor(pi)") == 3.0 && ArithmeticParser.evaluate("floor(e)") == 2.0 &&
+            ArithmeticParser.evaluate("2 * sqrt(9)") == 6.0 && ArithmeticParser.evaluate("sqrt(9) ^ 2") == 9.0 &&
+            // sqrt(-1) = NaN rejected; unsupported names (incl. log, which we DON'T add) rejected
+            ArithmeticParser.evaluate("sqrt(-1)") == null && ArithmeticParser.evaluate("foo(2)") == null &&
+            ArithmeticParser.evaluate("log(10)") == null && CalculatorTool().run("sqrt(16)") == "4"
+    })
     check("calculator: modulo (% at the * / level, left-assoc, div-by-zero safe)", run {
         ArithmeticParser.evaluate("10 % 3") == 1.0 &&
             ArithmeticParser.evaluate("2 * 3 % 4") == 2.0 &&   // (2*3)%4 = 6%4 = 2
