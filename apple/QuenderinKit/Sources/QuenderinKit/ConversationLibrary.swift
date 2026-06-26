@@ -54,7 +54,12 @@ public final class ConversationLibrary {
         guard !trimmed.isEmpty else { return "New conversation" }
         let collapsed = trimmed.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         let limit = 40
-        guard collapsed.count > limit else { return collapsed }
-        return String(collapsed.prefix(limit)) + "…"
+        // Truncate by Unicode scalar (code point), NOT grapheme — so the cut matches Kotlin's
+        // code-point cut (offsetByCodePoints) exactly. Swift's default `.count`/`.prefix` is
+        // grapheme-based and would truncate an emoji/CJK title at a different point than Android's
+        // UTF-16 `substring`, breaking the cross-platform title parity. (Both never split a scalar.)
+        let scalars = Array(collapsed.unicodeScalars)
+        guard scalars.count > limit else { return collapsed }
+        return String(String.UnicodeScalarView(scalars.prefix(limit))) + "…"
     }
 }

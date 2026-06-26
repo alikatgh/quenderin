@@ -281,6 +281,11 @@ fun main() {
             ConversationLibrary.titleFromFirstUserMessage("  hello   there  ") == "hello there" &&
             ConversationLibrary.titleFromFirstUserMessage("x".repeat(60)).let { it.length == 41 && it.endsWith("…") }
     })
+    // Truncation is by CODE POINT → an emoji title cuts at the same point as iOS's scalar-based cut
+    // (cross-platform parity) and never leaves a lone surrogate.
+    check("conversation title truncates by code point (emoji parity with iOS)", run {
+        ConversationLibrary.titleFromFirstUserMessage("😀" + "a".repeat(45)) == "😀" + "a".repeat(39) + "…"
+    })
 
     // --- ConversationManager (capstone: lifecycle over library + persistence; twin of Swift) ---
     check("conversation manager startNew creates a titled, current, listed conversation", run {
