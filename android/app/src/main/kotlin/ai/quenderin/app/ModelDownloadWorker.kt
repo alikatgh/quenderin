@@ -1,5 +1,6 @@
 package ai.quenderin.app
 
+import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadStore
 import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.JvmHttpRangeClient
@@ -60,6 +61,13 @@ class ModelDownloadWorker(
                 notify(fraction, model.label)
             }
             Result.success(workDataOf(KEY_PATH to path))
+        } catch (t: DownloadCancelledException) {
+            // Cooperative stop — WorkManager flipped isStopped (constraint loss like Wi-Fi off, or an
+            // explicit cancel). The engine kept the `.part` + a PAUSED row, so ask WorkManager to RETRY:
+            // it re-runs (and the engine resumes from the existing bytes) once constraints return.
+            // Result.failure() here would be TERMINAL — the download would never auto-resume. (If the
+            // work was explicitly cancelled, WorkManager ignores this Result anyway.)
+            Result.retry()
         } catch (t: Throwable) {
             Result.failure(errorData(t.message ?: "download failed"))
         }
