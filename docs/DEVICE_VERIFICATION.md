@@ -19,6 +19,29 @@ at the bottom and update `apple/REALITY.md` if reality differs.
 
 ---
 
+## Automated correctness gate — run this before the perf pass
+
+Before measuring tok/s, prove the real decode path is *correct* on your hardware. Both are one
+command and need only a model file (no signing, no store accounts). They validate the shipped
+**multi-turn KV-cache reuse** — an incremental (reused) turn must be byte-identical to a
+from-scratch full prefill, or the reuse logic is corrupting context:
+
+- **iOS** — set a model and run the gated XCTest against the real engine (not a replica):
+  ```sh
+  QUENDERIN_LLAMA_DIR=/path/to/llama.cpp QUENDERIN_LLAMA_MODEL=/path/to/model.gguf \
+    sh -c 'cd apple/QuenderinKit && swift test --filter LlamaEngineRealInferenceTests'
+  ```
+  `testKVCacheReuseOutputMatchesFullPrefill` asserts reuse == full prefill (greedy);
+  `testMultiTurnChatStaysCoherentAndPrintsTiming` prints per-turn time (should stay flat, not climb).
+- **Android** — `android/verify-llama-link.sh` (emulator or attached device) builds the real
+  `libllama`, compiles `jni/llama_jni.cpp`, and runs `llama-smoketest`, which now drives the **same
+  shared decode loop the JNI ships** (`jni/llama_generate.h`) and asserts the KV-reuse equivalence
+  on-device. The script greps the result and **fails on any desync** — a green run means it's correct.
+
+These gate *correctness*; the sections below capture *performance* (tok/s, battery, thermals).
+
+---
+
 ## iOS (physical iPhone)
 
 **You need:** a physical iPhone, a Mac with Xcode 16+, and an Apple ID (a *free* one gives
