@@ -22,6 +22,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the type union, and the executor in lockstep. (C8, C9)
 - **Device/host shell re-tokenization.** `adb shell input text "$x"` is re-parsed by the
   DEVICE shell — single-argv is NOT enough; escape metacharacters + encode spaces. (H1, M9)
+- **`spawn()` needs a `proc.on('error')` handler.** If the binary is missing (`ENOENT`, e.g. adb /
+  platform-tools not installed) `spawn` emits `'error'`, NOT `'close'` — unhandled, Node re-throws it
+  as an uncaught exception, and a Promise that only settles on `'close'` HANGS until an unrelated
+  timeout (misleading "timed out" for "not installed"). Always handle `'error'`: clear the timer,
+  reject with a meaningful code. (adb spawn error handler)
 - **Resume/Range trust.** A `Range:` request can be answered `200` (server ignores it) — reset
   byte counters; verify a `206`'s `Content-Range` start before appending. (H9)
 - **Untrusted XML/entities.** Device/network-sourced XML needs `processEntities:false`. (H34)
@@ -209,6 +214,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-06-26 — `AndroidProvider.spawnAdb` had no `proc.on('error')` handler
+  (`src/services/providers/android.provider.ts`). When adb isn't installed (ENOENT — platform-tools is
+  a separate install), Node emits `'error'` (not `'close'`): unhandled it re-throws as an uncaught
+  exception, and the Promise — which only settled on `'close'` — hung until the ~15s ADB_TIMEOUT, so the
+  user saw "timed out" for "not installed". Fix: an `'error'` handler that clears the timer and rejects
+  with code ADB_MISSING (already routed by the websocket + daemon to a user-facing setup prompt).
+  Regression test mocks `child_process.spawn` to emit ENOENT/EACCES. Lesson: every `spawn()` needs an
+  `'error'` handler — ENOENT never reaches `'close'`.
 
 - 2026-06-26 — Desktop `unloadModel()` leaked the native model+context (`src/services/llm.service.ts`).
   It nulled `modelInstance`/`contextInstance` but never `.dispose()`d them — and it's the "free RAM"

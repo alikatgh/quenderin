@@ -70,6 +70,22 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
                     reject(error);
                 }
             });
+
+            proc.on('error', (err: Error & { code?: string }) => {
+                clearTimeout(timer);
+                if (killed) return;   // timeout already rejected; ignore the late spawn error
+                // spawn() itself failed — almost always ENOENT: adb / Android platform-tools not
+                // installed or not on PATH. Without this handler the 'error' event is unhandled (Node
+                // re-throws it as an uncaught exception) and 'close' never fires, so the promise would
+                // otherwise hang until the misleading ADB_TIMEOUT. Route it through ADB_MISSING handling.
+                const error = new Error(
+                    err.code === 'ENOENT'
+                        ? 'Android tooling (adb) not found — install Android platform-tools or add adb to PATH.'
+                        : `Failed to launch adb: ${err.message}`
+                ) as Error & { code?: string };
+                error.code = 'ADB_MISSING';
+                reject(error);
+            });
         });
     }
 
