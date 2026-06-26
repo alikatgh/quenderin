@@ -14,6 +14,7 @@
 #include <vector>
 #include <mutex>
 #include "llama.h"
+#include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
 
 #define LOG_TAG "QuenderinLlama"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -41,59 +42,20 @@ std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& t
     return tokens;
 }
 
-std::string piece(const llama_vocab* vocab, llama_token tok) {
-    char buf[256];
-    int n = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
-    if (n < 0) return std::string();
-    return std::string(buf, n);
-}
-
 // Run generation with the handle's sampler (top-p + temperature, built in nativeLoad). If
 // `env`/`sink` are non-null, push each piece to sink.onToken().
 // `thiz` is the LlamaEngine instance; its boolean `cancelRequested` field is polled each token so
 // a model switch can interrupt a running generation (audit M3).
+//
+// The decode loop itself (KV-reuse + strict mirror lockstep) lives in the shared `generateWithKVReuse`
+// (llama_generate.h) so the on-device smoke test runs the EXACT same code. This function is the thin
+// JNI adapter: tokenize, resolve the Java callbacks, and supply emit/cancel lambdas.
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
                      JNIEnv* env, jobject sink, jobject thiz) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
     std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
     if (newTokens.empty()) return std::string();
-
-    // KV-cache reuse (mirror of the tested KVCacheReuse spec): decode only the tokens NOT already in
-    // the cache when the new prompt is a strict-prefix extension of the prior one (the common "append
-    // a turn" case) — so time-to-first-token doesn't grow with conversation length. Fail-safe: any
-    // divergence wipes the cache and reprefills from scratch (correct, just no speedup).
-    size_t reuse = 0;
-    if (!h->cached.empty() && h->cached.size() < newTokens.size()) {
-        bool isPrefix = true;
-        for (size_t i = 0; i < h->cached.size(); ++i) {
-            if (h->cached[i] != newTokens[i]) { isPrefix = false; break; }
-        }
-        if (isPrefix) reuse = h->cached.size();
-    }
-    if (reuse == 0) {
-        llama_memory_clear(llama_get_memory(h->ctx), true);
-    }
-    // Keep `toDecode` alive across the prefill — llama_batch_get_one only borrows its pointer.
-    std::vector<llama_token> toDecode(newTokens.begin() + reuse, newTokens.end());
-
-    std::string out;
-
-    // Prefill: decode the new (suffix) tokens into the KV cache. Update the cache mirror to match the
-    // KV *only after* the decode succeeds; on failure, wipe the KV + mirror so the NEXT turn does a
-    // clean full reprefill. Setting h->cached before this (or leaving it set on failure) would let the
-    // next turn's KVCacheReuse prefix-match reuse a cache the mirror lies about → silent corruption.
-    // (iOS LlamaEngine assigns its mirror only after a successful prefill — this keeps the twins honest.)
-    {
-        llama_batch prefill = llama_batch_get_one(toDecode.data(), (int32_t) toDecode.size());
-        if (llama_decode(h->ctx, prefill) != 0) {
-            LOGE("llama_decode (prefill) failed");
-            llama_memory_clear(llama_get_memory(h->ctx), true);
-            h->cached.clear();
-            return out;   // empty reply — surfaced to the UI as a failed generation
-        }
-    }
-    h->cached = newTokens;   // the KV cache now holds exactly newTokens
 
     jmethodID on_token = nullptr;
     if (env && sink) {
@@ -110,35 +72,23 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         env->DeleteLocalRef(tcls);
     }
 
-    for (int i = 0; i < max_tokens; ++i) {
-        if (cancel_fid && env->GetBooleanField(thiz, cancel_fid)) break;   // interrupted (M3)
-        llama_token next = llama_sampler_sample(h->sampler, h->ctx, -1);
-        if (llama_vocab_is_eog(vocab, next)) break;
+    auto emit = [&](const std::string& p) -> bool {
+        if (!on_token) return true;                     // non-streaming (nativeComplete): accumulate only
+        jstring js = env->NewStringUTF(p.c_str());      // null on OOM (H5) — skip, keep going
+        if (js) {
+            env->CallVoidMethod(sink, on_token, js);
+            env->DeleteLocalRef(js);
+        }
+        // If onToken threw, a JNI exception is now pending; the next JNI call would be UB and ART aborts
+        // the whole process. Stop so it propagates cleanly (C3).
+        return !env->ExceptionCheck();
+    };
+    auto cancelled = [&]() -> bool {
+        return cancel_fid && env->GetBooleanField(thiz, cancel_fid);   // interrupted by a switch/cancel (M3)
+    };
 
-        std::string p = piece(vocab, next);
-        out += p;
-        if (on_token) {
-            jstring js = env->NewStringUTF(p.c_str());   // null on OOM (H5)
-            if (js) {
-                env->CallVoidMethod(sink, on_token, js);
-                env->DeleteLocalRef(js);
-            }
-            // If onToken threw, a JNI exception is now pending; the next JNI call (NewStringUTF)
-            // is UB and ART aborts the whole process. Stop the loop so it propagates cleanly (C3).
-            if (env->ExceptionCheck()) break;
-        }
-        // Feed the sampled token back to extend the KV for the next step. Decode BEFORE recording it in
-        // the mirror, and push only on success — so h->cached never claims a token the KV doesn't hold.
-        // (The old code pushed then decoded next iteration, so a max_tokens/cancel exit left the mirror
-        //  one token ahead of the KV → next turn's reuse skipped a real token and corrupted the context.)
-        llama_batch one = llama_batch_get_one(&next, 1);
-        if (llama_decode(h->ctx, one) != 0) {
-            LOGE("llama_decode failed");
-            break;
-        }
-        h->cached.push_back(next);
-    }
-    return out;
+    return quenderin::generateWithKVReuse(h->ctx, vocab, h->sampler, newTokens, max_tokens,
+                                          h->cached, emit, cancelled);
 }
 
 LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
