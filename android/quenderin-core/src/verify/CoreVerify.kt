@@ -108,8 +108,12 @@ fun main() {
         AgentDecisionParser.parse("{\"answer\":\"a\\tb\\nc\"}") == AgentDecision.FinalAnswer("a\tb\nc"))
     check("parity: M9 word boundaries don't false-block",
         listOf("please repay the favor", "in my opinion", "the company went bankrupt").none { SafetyBlocklist.isBlocked(it) })
+    // Java's `\b` is ASCII-only by default, so it saw 'é' as a boundary and fired "pin" on "piné" /
+    // "épin" — which iOS's ICU `\b` never did. The (?U) flag makes them agree (accented text = word char).
+    check("parity: Unicode word boundary — accented-adjacent text doesn't false-block (iOS ICU parity)",
+        listOf("piné", "épin").none { SafetyBlocklist.isBlocked(it) })
     check("parity: genuine dangerous actions still blocked",
-        listOf("tap Pay to continue", "send money now", "delete the file").all { SafetyBlocklist.isBlocked(it) })
+        listOf("tap Pay to continue", "send money now", "delete the file", "enter your pin").all { SafetyBlocklist.isBlocked(it) })
 
     // --- Inference seam (mock) ---
     val engine = MockInferenceEngine(cannedReply = "one two three")
