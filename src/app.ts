@@ -284,7 +284,12 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                                 return;
                             }
                             fsMod.mkdirSync(pathMod.dirname(dest), { recursive: true });
-                            entry.pipe(fsMod.createWriteStream(dest));
+                            const out = fsMod.createWriteStream(dest);
+                            // A per-file write error (ENOSPC/permission) emits 'error' on THIS stream;
+                            // the outer pipeline's 'error' below doesn't cover it, so without this
+                            // handler it's an unhandled 'error' event → uncaught exception → process exit.
+                            out.on('error', (e: Error) => logger.error(`Failed to write extracted file ${dest}:`, e));
+                            entry.pipe(out);
                         })
                         .on('close', () => logger.info('Voice model extracted.'))
                         .on('error', (e: Error) => logger.error('Failed to extract voice model:', e));
