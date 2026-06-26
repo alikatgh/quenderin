@@ -336,9 +336,18 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** Explicitly unload model to free RAM */
     public unloadModel(): void {
         const wasLoaded = this.modelInstance !== null;
+        // Dispose the native handles BEFORE dropping the references. node-llama-cpp models/contexts
+        // hold native memory that GC won't promptly reclaim, so nulling alone left the model (~GBs)
+        // allocated — this "free RAM" path (incl. the idle-timer + memory-pressure auto-unload) freed
+        // nothing. Capture refs, null synchronously so the service reads as unloaded, then fire-and-
+        // forget dispose: session first (holds a context sequence), then context, then model.
+        const model = this.modelInstance;
+        const context = this.contextInstance;
         this.modelInstance = null;
         this.contextInstance = null;
         this.disposeChatSession();
+        void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
+        void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
         this.chatTurnCount = 0;
         this.initPromise = null;
         this.loadedModelId = null;
@@ -411,6 +420,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
 
         const promise = (async () => {
+            // Hoisted so the catch can dispose a partially-built load (model loaded, context failed).
+            let model: LlamaModel | undefined;
+            let context: LlamaContext | undefined;
             try {
                 // Use pinned activeModelId when its file exists; otherwise auto-select
                 const selected = selectPinnedOrBestModel(
@@ -523,7 +535,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // ─── 2. Load model with GPU offload + AbortController ────────
                 // AbortController actually cancels native operations (unlike
                 // bare Promise.race which only races the JS promise).
-                let model: LlamaModel;
                 const loadWithGpu = (gpuLayers: "max" | number) => {
                     const ac = new AbortController();
                     const timer = setTimeout(() => ac.abort(), this.modelInitTimeoutMs);
@@ -576,7 +587,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     }).finally(() => clearTimeout(timer));
                 };
 
-                let context: LlamaContext;
                 const requestedCtx = effectiveCtx;
                 try {
                     // Attempt 1: full context + flash attention
@@ -629,6 +639,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     logger.error("Failed to load LLaMA model:", error);
                 }
 
+                // Dispose any native handle built before the failure. A model that loaded (~GBs) but
+                // whose context creation then failed (the OOM fallback chain above) would otherwise leak
+                // until process exit, compounding on every retry on exactly the memory-tight devices that
+                // hit this path. Both are undefined for the pre-load throws (MODEL_MISSING/bindings) — no-op.
+                void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
+                void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
                 this.initPromise = null;
                 throw error;
             }
