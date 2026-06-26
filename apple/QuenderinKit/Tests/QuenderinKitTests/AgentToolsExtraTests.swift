@@ -67,4 +67,17 @@ final class DateCalcToolTests: XCTestCase {
             XCTAssertTrue(out.contains("Couldn't read"), "expected rejection for \"\(bad)\", got \(out)")
         }
     }
+
+    /// Calendar-invalid dates must be REJECTED, not silently rolled over. DateFormatter would turn
+    /// 2026-02-30 into 2026-03-02 (and a non-leap 2026-02-29 into 2026-03-01) and compute from a date
+    /// the user never typed — and disagree with Android's strict java.time.LocalDate. Parity contract.
+    func testRejectsCalendarInvalidDates() async throws {
+        for bad in ["days between 2026-02-30 and 2026-12-25", "2026-06-31 plus 5 days", "2026-02-29 plus 1 day"] {
+            let out = try await tool.run(bad)
+            XCTAssertTrue(out.contains("Couldn't read"), "invalid date should be rejected, not rolled over: \"\(bad)\" → \(out)")
+        }
+        // A real leap day (2024) stays valid on both platforms.
+        let leap = try await tool.run("2024-02-29 plus 1 day")
+        XCTAssertEqual(leap, "2024-03-01")
+    }
 }
