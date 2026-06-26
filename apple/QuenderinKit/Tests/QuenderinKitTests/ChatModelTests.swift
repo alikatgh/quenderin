@@ -43,6 +43,34 @@ final class ChatModelTests: XCTestCase {
         XCTAssertTrue(chat.messages.isEmpty)
     }
 
+    /// Tapping Clear WHILE the assistant is streaming must not crash. `send` is @MainActor but yields
+    /// the actor at each `await`, so `reset()` can empty `messages` mid-stream; a captured index would
+    /// then be out of range. The spin-wait makes it deterministic: reset runs after `send` appended
+    /// both messages and suspended at the engine actor hop, before the token writes.
+    func testResetDuringGenerationDoesNotCrash() async {
+        let chat = ChatModel(engine: await loadedMock("one two three four five"))
+        let task = Task { await chat.send("hello") }
+        while chat.messages.count < 2 { await Task.yield() }   // wait until user+assistant are appended
+        chat.reset()
+        await task.value                                       // must finish without an OOB crash
+        XCTAssertTrue(chat.messages.isEmpty)                   // reset won; the abandoned stream wrote nothing
+        XCTAssertFalse(chat.isGenerating)
+    }
+
+    /// Opening a saved conversation (`restore`) mid-stream must not leak the in-flight reply into it.
+    /// Pre-fix the captured index (still in range) overwrote the restored assistant message; now the
+    /// id lookup finds no match and stops — the restored transcript is left exactly as loaded.
+    func testRestoreDuringGenerationDoesNotCorruptRestoredConversation() async {
+        let chat = ChatModel(engine: await loadedMock("a b c d e"))
+        let saved = [ChatMessage(role: .user, text: "old q"), ChatMessage(role: .assistant, text: "old a")]
+        let task = Task { await chat.send("new question") }
+        while chat.messages.count < 2 { await Task.yield() }
+        chat.restore(saved)
+        await task.value
+        XCTAssertEqual(chat.messages, saved)                  // no streamed token leaked into the restored chat
+        XCTAssertFalse(chat.isGenerating)
+    }
+
     /// The amnesia fix, end to end: the prompt sent on the second turn must carry the
     /// first turn's content — both the prior user line and the prior assistant reply.
     func testSecondTurnCarriesPriorHistory() async {
