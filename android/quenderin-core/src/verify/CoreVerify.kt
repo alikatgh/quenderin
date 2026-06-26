@@ -548,6 +548,18 @@ fun main() {
         session.answer == "4" && session.steps.size == 2 && !session.isRunning &&
             session.haltReason == AgentRun.HaltReason.ANSWERED && changes > 0
     })
+    // End-to-end: the SHIPPED export path (loop → session.run → exportMarkdown → AgentRunExporter),
+    // not just the exporter in isolation — catches glue bugs like lastGoal not being stored.
+    check("agent session exports the REAL run as a walkthrough (end-to-end)", run {
+        val engine = ScriptedInferenceEngine(listOf("""{"tool":"calculator","input":"2+2"}""", """{"answer":"4"}"""))
+        val session = AgentSession(engine, listOf(CalculatorTool()))
+        val before = session.exportMarkdown()          // nothing run yet → null
+        session.run("What is 2+2?")
+        val md = session.exportMarkdown()
+        before == null && md != null &&
+            md.contains("# Agent walkthrough: What is 2+2?") &&   // lastGoal stored + used as heading
+            md.contains("`calculator`(2+2)") && md.contains("**Answer:** 4")
+    })
 
     // --- M3 resume bookkeeping (DownloadStore) ---
     check("download store tracks fraction complete", run {

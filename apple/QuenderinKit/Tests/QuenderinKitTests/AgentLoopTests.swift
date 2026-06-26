@@ -42,6 +42,26 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertFalse(session.isRunning)
     }
 
+    /// End-to-end: the SHIPPED export path (loop → session.run → exportMarkdown → AgentRunExporter),
+    /// not just the exporter in isolation — catches glue bugs like `lastGoal` not being stored.
+    @MainActor
+    func testExportMarkdownReflectsTheRealRun() async {
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"calculator","input":"2 + 2"}"#,
+            #"{"answer":"4"}"#,
+        ])
+        let session = AgentSession(engine: engine, tools: [CalculatorTool()])
+        XCTAssertNil(session.exportMarkdown)   // nothing run yet → nil
+
+        await session.run(goal: "What is 2+2?")
+
+        let md = session.exportMarkdown
+        XCTAssertNotNil(md)
+        XCTAssertTrue(md!.contains("# Agent walkthrough: What is 2+2?"))   // lastGoal stored + used
+        XCTAssertTrue(md!.contains("`calculator`(2 + 2)"))                // the real tool step
+        XCTAssertTrue(md!.contains("**Answer:** 4"))                      // the real answer
+    }
+
     func testRunsToolThenAnswers() async {
         let engine = ScriptedInferenceEngine(replies: [
             #"{"tool":"calculator","input":"20 + 22"}"#,
