@@ -49,4 +49,13 @@ final class ConversationLibraryTests: XCTestCase {
         XCTAssertEqual(title.count, 41, "40 chars + the ellipsis")
         XCTAssertTrue(title.hasSuffix("…"))
     }
+
+    /// Truncation is by CODE POINT, so an emoji title cuts at the same point as Kotlin's
+    /// offsetByCodePoints (cross-platform parity) and never splits a surrogate pair.
+    func testTitleTruncatesByCodePointForParity() {
+        let emoji = "😀" + String(repeating: "a", count: 45)   // 46 code points
+        XCTAssertEqual(
+            ConversationLibrary.title(fromFirstUserMessage: emoji),
+            "😀" + String(repeating: "a", count: 39) + "…")     // 40 code points + ellipsis
+    }
 }

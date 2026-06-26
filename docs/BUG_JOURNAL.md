@@ -41,6 +41,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `2026-02-30` into `2026-03-02` (and a non-leap `2026-02-29` → `03-01`) and computes from a date the
   user never typed; `java.time.LocalDate` rejects them. Validate a lenient parse by ROUND-TRIPPING —
   format the parsed date back and reject it if it ≠ the input. (date roll-over)
+- **String length/truncation: Swift graphemes vs Kotlin UTF-16 (twin drift).** Swift `String.count`/
+  `.prefix` count extended grapheme clusters; Kotlin `length`/`substring` count UTF-16 code units. So a
+  truncated title/label cuts at a different point on each platform for emoji/CJK/combining text (and a
+  naive Kotlin `substring` can split a surrogate pair → invalid UTF-16). Truncate by **code points** on
+  both (`unicodeScalars.prefix` / `offsetByCodePoints`) for parity + safety. (title truncation)
 - **ICU vs Java regex `\b`/`\w` (twin drift).** iOS `NSRegularExpression` (ICU) treats accented/Unicode
   letters as word chars in `\b` BY DEFAULT; Android `java.util.regex` is ASCII-only unless you add the
   `(?U)` inline flag. A shared safety/validation regex WILL diverge on non-ASCII text — `\bpin\b` fired
