@@ -864,33 +864,53 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
             let lastEmittedProgress = -1;
             const fileStream = fs.createWriteStream(dest, isResume ? { flags: 'a' } : undefined);
+            // A write error (e.g. ENOSPC — realistic mid-download for a multi-GB model on a tight disk)
+            // emits 'error' on fileStream. Capture it so it surfaces as a thrown error the catch below
+            // handles, instead of an unhandled 'error' event → uncaught exception → process exit. The
+            // drain/end waits also resolve on 'error' so they can't hang once the stream is broken.
+            // All additions are inert on the happy path (no error → streamError stays null).
+            let streamError: Error | null = null;
+            fileStream.on('error', (e) => { streamError = e; });
 
-            const reader = response.body.getReader();
+            try {
+                const reader = response.body.getReader();
 
-            while (true) {
-                const { done, value } = await reader.read();
+                while (true) {
+                    if (streamError) throw streamError;
+                    const { done, value } = await reader.read();
 
-                if (done) {
-                    break;
-                }
+                    if (done) {
+                        break;
+                    }
 
-                receivedBytes += value.length;
-                if (totalBytes > 0) {
-                    const progress = Math.round((receivedBytes / totalBytes) * 100);
-                    if (progress !== lastEmittedProgress) {
-                        this.emit('model_download_progress', { progress, modelId: entry.id });
-                        lastEmittedProgress = progress;
+                    receivedBytes += value.length;
+                    if (totalBytes > 0) {
+                        const progress = Math.round((receivedBytes / totalBytes) * 100);
+                        if (progress !== lastEmittedProgress) {
+                            this.emit('model_download_progress', { progress, modelId: entry.id });
+                            lastEmittedProgress = progress;
+                        }
+                    }
+
+                    // Respect backpressure so we don't buffer the whole file in memory
+                    const canContinue = fileStream.write(value);
+                    if (!canContinue) {
+                        await new Promise<void>(resolve => {
+                            fileStream.once('drain', resolve);
+                            fileStream.once('error', () => resolve());
+                        });
                     }
                 }
 
-                // Respect backpressure so we don't buffer the whole file in memory
-                const canContinue = fileStream.write(value);
-                if (!canContinue) {
-                    await new Promise<void>(resolve => fileStream.once('drain', resolve));
-                }
+                await new Promise<void>(resolve => {
+                    fileStream.end(() => resolve());
+                    fileStream.once('error', () => resolve());
+                });
+                if (streamError) throw streamError;
+            } finally {
+                // Free the OS file handle on every path; destroy() is idempotent + safe after end().
+                fileStream.destroy();
             }
-
-            await new Promise<void>(resolve => fileStream.end(resolve));
 
             // ─── Integrity verification (C3) ────────────────────────────────
             // The bytes are on disk but unverified: a TLS-MITM, poisoned mirror, or

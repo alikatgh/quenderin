@@ -22,11 +22,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the type union, and the executor in lockstep. (C8, C9)
 - **Device/host shell re-tokenization.** `adb shell input text "$x"` is re-parsed by the
   DEVICE shell — single-argv is NOT enough; escape metacharacters + encode spaces. (H1, M9)
-- **`spawn()` needs a `proc.on('error')` handler.** If the binary is missing (`ENOENT`, e.g. adb /
-  platform-tools not installed) `spawn` emits `'error'`, NOT `'close'` — unhandled, Node re-throws it
-  as an uncaught exception, and a Promise that only settles on `'close'` HANGS until an unrelated
-  timeout (misleading "timed out" for "not installed"). Always handle `'error'`: clear the timer,
-  reject with a meaningful code. (adb spawn error handler)
+- **`spawn()` / write streams need an `'error'` handler (or it's an uncaught exception).** If a
+  `spawn`'d binary is missing (`ENOENT`, e.g. adb / platform-tools) it emits `'error'`, NOT `'close'` —
+  unhandled, Node re-throws it as an uncaught exception, and a Promise that only settles on `'close'`
+  HANGS until an unrelated timeout (misleading "timed out" for "not installed"). A `fs.createWriteStream`
+  that errors mid-write (`ENOSPC` on a tight disk, permission) does the same. Always handle `'error'`;
+  for a write loop also unblock the `drain`/`end` waits on `'error'` (else they hang) and `destroy()` the
+  stream in a `finally` to free the handle. (adb spawn error handler; download/extract stream handlers)
 - **Resume/Range trust.** A `Range:` request can be answered `200` (server ignores it) — reset
   byte counters; verify a `206`'s `Content-Range` start before appending. (H9)
 - **Untrusted XML/entities.** Device/network-sourced XML needs `processEntities:false`. (H34)
@@ -214,6 +216,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-06-26 — Two download/extract write streams had no `'error'` handler (`src/app.ts` voice-model
+  extract; `src/services/llm.service.ts` model download). A mid-write `ENOSPC` (realistic: multi-GB
+  model on a ~2-5GB-free disk) emits `'error'` on the write stream → unhandled → uncaught exception →
+  process exit; the download loop could also hang at `drain`/`end` once the stream broke, and leaked the
+  file handle on a thrown read error. Fix: per-file `'error'` handler in app.ts; in llm.service capture
+  the error, resolve `drain`/`end` on `'error'`, throw it so the catch keeps the partial for resume, and
+  `destroy()` in a `finally`. Inert on the happy path. Lesson: same as the spawn `'error'` rule — every
+  stream/child-process needs an `'error'` handler, and write loops must not hang once the sink errors.
 
 - 2026-06-26 — `AndroidProvider.spawnAdb` had no `proc.on('error')` handler
   (`src/services/providers/android.provider.ts`). When adb isn't installed (ENOENT — platform-tools is
