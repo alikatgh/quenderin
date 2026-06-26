@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Template for `xcodebuild -exportArchive` (CLI / CI release builds). See docs/RELEASE.md.
+  Replace YOUR_TEAM_ID with your 10-char Apple Developer Team ID (Membership tab; not a secret).
+  `method` is `app-store-connect` on Xcode 15.3+; older Xcode uses `app-store`.
+  Distribution certs/profiles stay in your keychain — nothing secret is committed here.
+-->
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

@@ -59,10 +59,19 @@ cd apple/QuenderinApp && xcodegen generate        # project.yml → Quenderin.xc
 open Quenderin.xcodeproj
 ```
 
-### 2. Sign + archive (Xcode, your Apple Developer account)
+### 2. Sign + archive (your Apple Developer account)
 - Target → *Signing & Capabilities* → pick your Team (automatic signing is fine).
-- *Product → Archive* → *Distribute App → App Store Connect*. Signing certs/profiles are Xcode-managed;
-  nothing about them lives in this repo.
+- **GUI:** *Product → Archive* → *Distribute App → App Store Connect*.
+- **CLI / CI (reproducible):** fill `YOUR_TEAM_ID` in `apple/QuenderinApp/ExportOptions.plist`, then:
+  ```sh
+  cd apple/QuenderinApp
+  xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Release \
+    -archivePath build/Quenderin.xcarchive archive
+  xcodebuild -exportArchive -archivePath build/Quenderin.xcarchive \
+    -exportOptionsPlist ExportOptions.plist -exportPath build/export
+  # upload: xcrun altool / notarytool, or Transporter, with an App Store Connect API key
+  ```
+Signing certs/profiles stay in your keychain — nothing secret lives in this repo (the Team ID isn't a secret).
 
 ### 3. App Store Connect (your account)
 - **Privacy policy URL:** `https://quenderin.org/privacy` (paste into App Information).
