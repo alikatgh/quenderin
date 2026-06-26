@@ -61,13 +61,17 @@ android {
         buildConfig = true
     }
 
+    val enableVulkan = project.hasProperty("quenderin.vulkan") && project.property("quenderin.vulkan") == "true"
+
     // Pass Vulkan flag to C++ and to Kotlin so the app knows it's enabled.
     defaultConfig {
-        buildConfigField("boolean", "QUENDERIN_VULKAN", "true")
+        buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
         if (nativeLlama) {
             externalNativeBuild {
                 cmake {
-                    arguments += "-DQUENDERIN_VULKAN=ON"
+                    if (enableVulkan) {
+                        arguments += "-DQUENDERIN_VULKAN=ON"
+                    }
                 }
             }
         }
