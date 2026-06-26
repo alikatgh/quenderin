@@ -199,6 +199,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Intent-classifier cache leaked unbounded via the LLM-fallback path
+  (`src/services/intentClassifier.ts`). `classifyIntent` evicted-then-set to honor MAX_CACHE_SIZE=200,
+  but `classifyWithLlmFallback` did a bare `cache.set` with NO eviction → a long session of distinct
+  low-confidence inputs grew the Map without bound (slow memory leak). Fix: a shared `setCached`
+  (evict-when-full) used by BOTH write paths. Pinned with a 260-insert bound test. Lesson: a bounded
+  cache with TWO write paths must funnel both through one bounded setter — grep every `.set(` for the unguarded one.
+
 - 2026-06-26 — Desktop agent dropped a valid JSON action when the model added a trailing brace
   (`src/services/agent.service.ts`). The action parser used `indexOf('{')`..`lastIndexOf('}')` — the same
   H13 first-`{`..last-`}` bug the mobile `AgentDecisionParser` already fixed. A second object or a `}` in

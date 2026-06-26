@@ -50,6 +50,17 @@ function cacheKey(input: string): string {
     return input.toLowerCase().trim().slice(0, 200);
 }
 
+/** Bounded insert — evict the oldest entry when full so the cache can't grow past MAX_CACHE_SIZE.
+ *  BOTH write paths (regex + LLM fallback) must go through this; the LLM-fallback path used to
+ *  `cache.set` directly and leaked the cache unbounded on a long session of low-confidence inputs. */
+function setCached(key: string, result: ClassificationResult): void {
+    if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
+        const firstKey = cache.keys().next().value;
+        if (firstKey !== undefined) cache.delete(firstKey);
+    }
+    cache.set(key, result);
+}
+
 // ─── Classifier ─────────────────────────────────────────────────────────────
 
 /** Classify a user message intent using regex patterns (fast, no LLM needed) */
@@ -59,13 +70,7 @@ export function classifyIntent(input: string): ClassificationResult {
     if (cached) return cached;
 
     const result = runRegexClassification(input);
-
-    // Cache result (evict oldest if full)
-    if (cache.size >= MAX_CACHE_SIZE) {
-        const firstKey = cache.keys().next().value;
-        if (firstKey !== undefined) cache.delete(firstKey);
-    }
-    cache.set(key, result);
+    setCached(key, result);
 
     logger.log(`[Intent] "${input.slice(0, 60)}..." → ${result.intent} (${result.confidence}, ${result.source})`);
     return result;
@@ -137,8 +142,7 @@ Reply with exactly one word: ACTION, CODE, CHAT, MATH, or IMAGE.`;
         const mapped = intentMap[parsed];
         if (mapped) {
             const result: ClassificationResult = { intent: mapped, confidence: 'medium', source: 'llm' };
-            const key = cacheKey(input);
-            cache.set(key, result);
+            setCached(cacheKey(input), result);   // bounded — was a bare cache.set (unbounded leak)
             return result;
         }
     } catch (err) {
@@ -151,4 +155,9 @@ Reply with exactly one word: ACTION, CODE, CHAT, MATH, or IMAGE.`;
 /** Clear the classification cache (useful on preset switch) */
 export function clearIntentCache(): void {
     cache.clear();
+}
+
+/** Current cache size — exported so tests can assert the MAX_CACHE_SIZE bound holds on both paths. */
+export function intentCacheSize(): number {
+    return cache.size;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyIntent } from '../src/services/intentClassifier.js';
+import { classifyIntent, classifyWithLlmFallback, clearIntentCache, intentCacheSize } from '../src/services/intentClassifier.js';
 
 describe('classifyIntent', () => {
     describe('action intents', () => {
@@ -49,5 +49,17 @@ describe('classifyIntent', () => {
             expect(r1.intent).toBe(r2.intent);
             expect(r1.confidence).toBe(r2.confidence);
         });
+    });
+});
+
+describe('cache is bounded on BOTH write paths', () => {
+    it('LLM-fallback inserts never grow the cache past MAX_CACHE_SIZE (no leak)', async () => {
+        clearIntentCache();
+        // Each input is low-confidence (no regex pattern matches) → the LLM fallback runs and caches.
+        const llm = async () => 'CHAT';
+        for (let i = 0; i < 260; i++) {
+            await classifyWithLlmFallback(`ambiguous freeform phrase number ${i} here`, llm);
+        }
+        expect(intentCacheSize()).toBeLessThanOrEqual(200);
     });
 });
