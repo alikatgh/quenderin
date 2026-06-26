@@ -391,6 +391,28 @@ fun main() {
             none.startsWith("# Conversation\n") && none.contains("0 messages") && !none.contains("**You:**")
     })
 
+    // --- AgentRunExporter (agent run → portable markdown walkthrough; twin of Swift) ---
+    check("AgentRunExporter renders steps + answer for an answered run", run {
+        val r = AgentRun(
+            listOf(
+                AgentStep(AgentDecision.UseTool("calculator", "2+2"), "4"),
+                AgentStep(AgentDecision.FinalAnswer("The answer is 4."), null),
+            ),
+            "The answer is 4.",
+            AgentRun.HaltReason.ANSWERED,
+        )
+        val md = AgentRunExporter.markdown(r, "What is 2+2?")
+        md.contains("# Agent walkthrough: What is 2+2?") && md.contains("2 steps") &&
+            md.contains("**1. Used `calculator`(2+2)** → 4") && md.contains("**2. Final answer**") &&
+            md.contains("**Answer:** The answer is 4.") && !md.contains("Halted:")
+    })
+    check("AgentRunExporter shows the halt reason (not an answer) when the agent didn't finish", run {
+        val r = AgentRun(listOf(AgentStep(AgentDecision.UseTool("echo", "hi"), "hi")), null, AgentRun.HaltReason.MAX_STEPS)
+        val md = AgentRunExporter.markdown(r, "")
+        md.contains("# Agent walkthrough: Agent run") && md.contains("1 step.") &&
+            md.contains("**Halted:** The agent reached its step limit") && !md.contains("**Answer:**")
+    })
+
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
