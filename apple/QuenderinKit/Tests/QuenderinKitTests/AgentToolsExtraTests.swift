@@ -14,6 +14,9 @@ final class UnitConverterToolTests: XCTestCase {
             ("30 C to F", "30 c = 86 f"),       // affine temperature
             ("32 F to C", "32 f = 0 c"),
             ("100 cm in m", "100 cm = 1 m"),    // "in" separator
+            ("2 hours to minutes", "2 h = 120 min"),   // time (spelled-out aliases)
+            ("90 min to h", "90 min = 1.5 h"),
+            ("1 day to hours", "1 day = 24 h"),
         ]
         for (input, expected) in cases {
             let result = try await tool.run(input)

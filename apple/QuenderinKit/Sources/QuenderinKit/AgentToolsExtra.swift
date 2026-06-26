@@ -11,7 +11,7 @@ import Foundation
 public struct UnitConverterTool: AgentTool {
     public init() {}
     public let name = "units"
-    public let purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\"."
+    public let purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\"."
 
     public func run(_ input: String) async throws -> String {
         guard let req = UnitConverter.parse(input) else {
@@ -43,6 +43,9 @@ enum UnitConverter {
         "gal": ("vol", 3.785411784), "floz": ("vol", 0.0295735295625),
         // speed — base: metre/second
         "mps": ("spd", 1), "kph": ("spd", 0.277777778), "mph": ("spd", 0.44704),
+        // time — base: second
+        "s": ("time", 1), "ms": ("time", 0.001), "min": ("time", 60), "h": ("time", 3600),
+        "day": ("time", 86400), "week": ("time", 604800),
     ]
 
     // spelled-out / alternate spellings → canonical symbol
@@ -60,6 +63,11 @@ enum UnitConverter {
         "gallon": "gal", "gallons": "gal",
         "celsius": "c", "centigrade": "c", "fahrenheit": "f", "kelvin": "k",
         "kmh": "kph", "km/h": "kph", "mi/h": "mph", "m/s": "mps",
+        "sec": "s", "secs": "s", "second": "s", "seconds": "s",
+        "millisecond": "ms", "milliseconds": "ms", "msec": "ms",
+        "minute": "min", "minutes": "min", "mins": "min",
+        "hr": "h", "hrs": "h", "hour": "h", "hours": "h",
+        "days": "day", "weeks": "week",
     ]
 
     static func canonical(_ unit: String) -> String {

@@ -14,7 +14,7 @@ import kotlin.math.abs
  *  Parses "20 km to mi", "30 C in F", "5 kg to lb". */
 class UnitConverterTool : AgentTool {
     override val name = "units"
-    override val purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\"."
+    override val purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\"."
     override fun run(input: String): String {
         val req = UnitConverter.parse(input)
             ?: return "Couldn't read a conversion from \"$input\". Try \"20 km to mi\"."
@@ -38,6 +38,9 @@ object UnitConverter {
         "l" to ("vol" to 1.0), "ml" to ("vol" to 0.001),
         "gal" to ("vol" to 3.785411784), "floz" to ("vol" to 0.0295735295625),
         "mps" to ("spd" to 1.0), "kph" to ("spd" to 0.277777778), "mph" to ("spd" to 0.44704),
+        // time — base: second
+        "s" to ("time" to 1.0), "ms" to ("time" to 0.001), "min" to ("time" to 60.0), "h" to ("time" to 3600.0),
+        "day" to ("time" to 86400.0), "week" to ("time" to 604800.0),
     )
 
     private val alias: Map<String, String> = mapOf(
@@ -54,6 +57,11 @@ object UnitConverter {
         "gallon" to "gal", "gallons" to "gal",
         "celsius" to "c", "centigrade" to "c", "fahrenheit" to "f", "kelvin" to "k",
         "kmh" to "kph", "km/h" to "kph", "mi/h" to "mph", "m/s" to "mps",
+        "sec" to "s", "secs" to "s", "second" to "s", "seconds" to "s",
+        "millisecond" to "ms", "milliseconds" to "ms", "msec" to "ms",
+        "minute" to "min", "minutes" to "min", "mins" to "min",
+        "hr" to "h", "hrs" to "h", "hour" to "h", "hours" to "h",
+        "days" to "day", "weeks" to "week",
     )
 
     fun canonical(unit: String): String {
