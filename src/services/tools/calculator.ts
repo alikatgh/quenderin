@@ -111,12 +111,12 @@ class Parser {
         return result;
     }
 
-    /** term = exponent (('*' | '/' | '%') exponent)* */
+    /** term = unary (('*' | '/' | '%') unary)* */
     private parseTerm(): number {
-        let result = this.parseExponent();
+        let result = this.parseUnary();
         while (this.peek()?.type === 'operator' && ('*/%'.includes(this.peek()!.value))) {
             const op = this.consume().value;
-            const right = this.parseExponent();
+            const right = this.parseUnary();
             if (op === '*') result *= right;
             else if (op === '/') {
                 if (right === 0) throw new CalculatorError('Division by zero');
@@ -127,25 +127,30 @@ class Parser {
         return result;
     }
 
-    /** exponent = unary ('^' unary)* (right-associative) */
-    private parseExponent(): number {
-        let result = this.parseUnary();
-        if (this.peek()?.type === 'operator' && this.peek()!.value === '^') {
-            this.consume();
-            const right = this.parseExponent(); // right-associative recursion
-            result = Math.pow(result, right);
-        }
-        return result;
-    }
-
-    /** unary = ('+' | '-')? primary */
+    /**
+     * unary = ('+' | '-') unary | exponent
+     * Unary minus binds LOOSER than '^', so -2^2 = -(2^2) = -4 — the standard math convention
+     * (Python/Wolfram/TI; Excel's (-2)^2=4 is the outlier). This matches the iOS/Android twins'
+     * ArithmeticParser exactly; previously this was inside parseExponent and gave -2^2 = 4.
+     */
     private parseUnary(): number {
         if (this.peek()?.type === 'operator' && (this.peek()!.value === '+' || this.peek()!.value === '-')) {
             const op = this.consume().value;
-            const val = this.parsePrimary();
+            const val = this.parseUnary();
             return op === '-' ? -val : val;
         }
-        return this.parsePrimary();
+        return this.parseExponent();
+    }
+
+    /** exponent = primary ('^' unary)?   (right-associative; binds TIGHTER than unary minus) */
+    private parseExponent(): number {
+        const base = this.parsePrimary();
+        if (this.peek()?.type === 'operator' && this.peek()!.value === '^') {
+            this.consume();
+            const right = this.parseUnary(); // RHS via unary → right-associative + negative exponents (2^-1)
+            return Math.pow(base, right);
+        }
+        return base;
     }
 
     /** primary = number | constant | function '(' expr ')' | '(' expr ')' */
