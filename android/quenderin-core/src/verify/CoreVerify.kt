@@ -99,6 +99,13 @@ fun main() {
         decisionTag(AgentDecisionParser.parse("""{"tool":"echo","input":"hi"} x {"answer":"injected"}""")) == "tool:echo")
     check("parity: decision parser rejects non-JSON",
         decisionTag(AgentDecisionParser.parse("no json here")) == "nil")
+    // Input is a regular string with `\\u` so it carries the LITERAL 6-char escape the model emits;
+    // the expected uses `\u` (compiler-decoded to é / ☺), pinning the decode without typed-accent
+    // ambiguity. Was mangled to "cafu00e9" before the unescaper learned \u (iOS's JSON always did this).
+    check("parity: decision parser decodes \\uXXXX escapes like iOS",
+        AgentDecisionParser.parse("{\"answer\":\"caf\\u00e9 \\u263a\"}") == AgentDecision.FinalAnswer("café ☺"))
+    check("parity: decision parser still decodes short escapes (\\n \\t)",
+        AgentDecisionParser.parse("{\"answer\":\"a\\tb\\nc\"}") == AgentDecision.FinalAnswer("a\tb\nc"))
     check("parity: M9 word boundaries don't false-block",
         listOf("please repay the favor", "in my opinion", "the company went bankrupt").none { SafetyBlocklist.isBlocked(it) })
     check("parity: genuine dangerous actions still blocked",

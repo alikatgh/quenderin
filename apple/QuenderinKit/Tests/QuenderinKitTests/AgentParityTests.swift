@@ -21,6 +21,10 @@ final class AgentParityTests: XCTestCase {
         // H13: two JSON objects — take the FIRST complete one; don't merge or borrow the 2nd's key.
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"tool":"echo","input":"hi"} x {"answer":"injected"}"#)), "tool:echo")
         XCTAssertEqual(tag(AgentDecisionParser.parse("no json here")), "nil")
+        // \uXXXX decoding parity: the raw-string input carries the literal escape the model emits; the
+        // expected uses Swift's \u{...} (→ é / ☺). Android's hand-rolled unescaper had to learn \u to
+        // match this — without it, non-ASCII answers rendered as "cafu00e9" on Android only.
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"answer":"caf\u00e9 \u263a"}"#)), "answer:caf\u{00e9} \u{263a}")
     }
 
     func testSafetyBlocklistParity() {
