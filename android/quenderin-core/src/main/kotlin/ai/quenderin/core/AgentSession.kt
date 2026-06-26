@@ -30,6 +30,22 @@ class AgentSession(
     var haltReason: AgentRun.HaltReason? = null
         private set
 
+    /** Goal of the most recent run — kept (volatile, for the main-thread Compose reader) so the run can
+     *  be exported with its prompt as the heading. */
+    @Volatile
+    private var lastGoal: String = ""
+
+    /**
+     * The completed run as a shareable Markdown walkthrough ([AgentRunExporter]), or null while a run is
+     * in flight or before anything has run. Lets the screen export what the agent did — on the user's
+     * terms, fully on-device — mirroring chat's ConversationExporter share. Twin of iOS `exportMarkdown`.
+     */
+    fun exportMarkdown(): String? {
+        val reason = haltReason ?: return null
+        if (isRunning) return null
+        return AgentRunExporter.markdown(AgentRun(steps, answer, reason), lastGoal)
+    }
+
     /**
      * Run the agent to completion. Blocking; call off-main. Streams steps live.
      * Fields are @Volatile so the Compose reader on the main thread sees the background writes
@@ -41,6 +57,7 @@ class AgentSession(
             if (isRunning) return
             isRunning = true
         }
+        lastGoal = goal
         try {
             steps = emptyList()
             answer = null

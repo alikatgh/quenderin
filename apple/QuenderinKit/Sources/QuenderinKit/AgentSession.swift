@@ -11,6 +11,8 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var isRunning = false
     @Published public private(set) var answer: String?
     @Published public private(set) var haltReason: AgentRun.HaltReason?
+    /// The goal of the most recent run — kept so the run can be exported with its prompt as the heading.
+    private var lastGoal = ""
 
     private let loop: AgentLoop
 
@@ -22,6 +24,7 @@ public final class AgentSession: ObservableObject {
     /// `onStep`; this view-model sets the final transcript, which is enough for the UI and
     /// avoids cross-actor step plumbing — adopt `AsyncStream` later for token-by-token.)
     public func run(goal: String) async {
+        lastGoal = goal
         steps = []
         answer = nil
         haltReason = nil
@@ -32,6 +35,15 @@ public final class AgentSession: ObservableObject {
         steps = result.steps
         answer = result.answer
         haltReason = result.haltReason
+    }
+
+    /// The completed run as a shareable Markdown walkthrough (``AgentRunExporter``), or nil while a run
+    /// is in flight or before anything has run. Lets the screen export what the agent did — on the
+    /// user's terms, fully on-device — mirroring chat's `ConversationExporter` share.
+    public var exportMarkdown: String? {
+        guard !isRunning, let reason = haltReason else { return nil }
+        return AgentRunExporter.markdown(
+            AgentRun(steps: steps, answer: answer, haltReason: reason), goal: lastGoal)
     }
 
     /// Clear the transcript so the screen returns to its empty state. No-op while a run is in
