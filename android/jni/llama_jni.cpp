@@ -108,14 +108,18 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,
-                                              jint kv_cache_quant, jfloat temperature, jfloat top_p) {
+                                              jint kv_cache_quant, jfloat temperature, jfloat top_p,
+                                              jint gpu_layers) {
     std::call_once(g_backend_once, [] { llama_backend_init(); });   // race-free, once per process (H6)
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
     if (!path) return 0;   // OOM (H4)
 
     llama_model_params mp = llama_model_default_params();
-    mp.n_gpu_layers = 0; // CPU on mobile by default; Vulkan/GPU offload is a later tuning step
+    // GPU layers come from the Kotlin GpuOffloadPlanner (Adreno → all layers, else 0/CPU). A CPU-only
+    // build (no Vulkan backend) clamps to 0 via the planner; even if it didn't, llama.cpp treats a
+    // positive n_gpu_layers with no GPU backend as a no-op, so this can't fail a CPU build.
+    mp.n_gpu_layers = gpu_layers; // mobile uses unified memory → all-or-nothing, no VRAM fit problem
     // Jetsam/LMK guard (this project's target class — memory-tight phones under background pressure):
     // mmap keeps weights pageable (fast cold start, OS-reclaimable); mlock is explicitly OFF so we
     // never wire multi-GB resident, which is exactly what triggers a low-memory kill on app switch.

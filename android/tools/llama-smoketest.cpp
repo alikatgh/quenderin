@@ -40,15 +40,21 @@ auto noCancel  = []() { return false; };
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc < 2) { printf("usage: llama-smoketest <model.gguf> [prompt] [maxTokens]\n"); return 2; }
+    if (argc < 2) { printf("usage: llama-smoketest <model.gguf> [prompt] [maxTokens] [nGpuLayers]\n"); return 2; }
     const char* modelPath = argv[1];
     std::string userText = argc >= 3 ? argv[2] : "Write three sentences about why the sky is blue.";
     int maxTokens = argc >= 4 ? atoi(argv[3]) : 96;
+    // 4th arg = n_gpu_layers, so a real device can A/B CPU (0) vs Vulkan GPU offload (999). Needs a .so
+    // built with -DGGML_VULKAN=ON to have any effect; on a CPU-only build a positive value is a no-op.
+    int nGpuLayers = argc >= 5 ? atoi(argv[4]) : 0;
 
     llama_backend_init();
+    printf("MODE: %s (n_gpu_layers=%d, gpu_offload_supported=%s)\n",
+           nGpuLayers > 0 ? "GPU-offload" : "CPU", nGpuLayers,
+           llama_supports_gpu_offload() ? "yes" : "no");
 
     llama_model_params mp = llama_model_default_params();
-    mp.n_gpu_layers = 0;  // CPU
+    mp.n_gpu_layers = nGpuLayers;
     llama_model* model = llama_model_load_from_file(modelPath, mp);
     if (!model) { printf("FAIL: model load\n"); return 1; }
     const llama_vocab* vocab = llama_model_get_vocab(model);

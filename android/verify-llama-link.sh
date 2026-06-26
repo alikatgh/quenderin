@@ -45,11 +45,19 @@ mkdir -p "$WORK"; cd "$WORK"
 echo "==> 1/5  Clone llama.cpp (shallow)"
 [ -d llama.cpp ] || git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
 
-echo "==> 2/5  Build libllama for Android ($ABI, CPU) via the NDK toolchain"
+# GPU offload (Vulkan) is opt-in: `QUENDERIN_VULKAN=1 ./verify-llama-link.sh` builds the Vulkan backend
+# and runs the on-device smoke with n_gpu_layers=999 so you can A/B against the CPU baseline on a real
+# device (e.g. a Snapdragon/Adreno S23). Default = CPU build, unchanged.
+if [ "${QUENDERIN_VULKAN:-0}" = "1" ]; then
+  GPU_CMAKE="-DGGML_VULKAN=ON"; SMOKE_GPU_LAYERS=999; MODE="CPU + Vulkan GPU"
+else
+  GPU_CMAKE="";                 SMOKE_GPU_LAYERS=0;   MODE="CPU"
+fi
+echo "==> 2/5  Build libllama for Android ($ABI, $MODE) via the NDK toolchain"
 cmake -S llama.cpp -B llama.cpp/build-android \
   -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
   -DANDROID_ABI="$ABI" -DANDROID_PLATFORM="android-$API" \
-  -DCMAKE_BUILD_TYPE=Release -DGGML_OPENMP=OFF \
+  -DCMAKE_BUILD_TYPE=Release -DGGML_OPENMP=OFF $GPU_CMAKE \
   -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF \
   -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF >/dev/null
 cmake --build llama.cpp/build-android --target llama -j"$(sysctl -n hw.ncpu 2>/dev/null || nproc)" >/dev/null
@@ -85,7 +93,7 @@ LIBCXX="$NDK/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/aarch64-linux-an
 echo "--------------------------------------------------------------------"
 # Capture the run so we can gate on its result explicitly (adb shell exit-code propagation is
 # historically unreliable). The smoke test prints PASS/FAIL for the KV-reuse equivalence check.
-SMOKE_OUT="$("$ADB" shell "cd $DEV && LD_LIBRARY_PATH=$DEV ./smoketest model.gguf")" || true
+SMOKE_OUT="$("$ADB" shell "cd $DEV && LD_LIBRARY_PATH=$DEV ./smoketest model.gguf 'Write three sentences about why the sky is blue.' 96 $SMOKE_GPU_LAYERS")" || true
 echo "$SMOKE_OUT"
 echo "--------------------------------------------------------------------"
 if echo "$SMOKE_OUT" | grep -q "FAIL:"; then

@@ -400,6 +400,22 @@ fun main() {
     })
     check("Android handles 16 GB tiers no iPhone has", AndroidSoc.nativeMemoryBudgetGB(16.0) >= 11.0)
 
+    // --- GPU offload (Vulkan) planner: safe-by-default, device-aware ---
+    check("GPU: a CPU-only build never offloads, whatever the SoC",
+        GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_ELITE, vulkanAvailable = false) == GpuOffloadPlanner.CPU_ONLY)
+    check("GPU: Adreno (Snapdragon, incl. the S23's 8 Gen 2) offloads all layers when Vulkan is built",
+        GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_GEN_2, vulkanAvailable = true) == GpuOffloadPlanner.ALL_LAYERS &&
+        GpuOffloadPlanner.gpuClass(AndroidSoc.SNAPDRAGON_8_GEN_2) == GpuOffloadPlanner.GpuClass.ADRENO)
+    check("GPU: Mali (Dimensity/Tensor) stays on CPU until benchmarked",
+        GpuOffloadPlanner.recommend(AndroidSoc.DIMENSITY_9300, vulkanAvailable = true) == GpuOffloadPlanner.CPU_ONLY &&
+        GpuOffloadPlanner.recommend(AndroidSoc.TENSOR_G4, vulkanAvailable = true) == GpuOffloadPlanner.CPU_ONLY)
+    check("GPU: unknown/Xclipse SoCs stay on CPU (conservative)",
+        GpuOffloadPlanner.recommend(AndroidSoc.UNKNOWN, vulkanAvailable = true) == GpuOffloadPlanner.CPU_ONLY &&
+        GpuOffloadPlanner.recommend(AndroidSoc.EXYNOS_2400, vulkanAvailable = true) == GpuOffloadPlanner.CPU_ONLY)
+    check("GPU: forceGpu override offloads an untrusted GPU (for benchmarking) — but not without a Vulkan build",
+        GpuOffloadPlanner.recommend(AndroidSoc.DIMENSITY_9400, vulkanAvailable = true, forceGpu = true) == GpuOffloadPlanner.ALL_LAYERS &&
+        GpuOffloadPlanner.recommend(AndroidSoc.DIMENSITY_9400, vulkanAvailable = false, forceGpu = true) == GpuOffloadPlanner.CPU_ONLY)
+
     // --- Android model selector: device-aware, jetsam-free picks ---
     fun androidProfile(name: String, soc: AndroidSoc, ram: Double) =
         AndroidDeviceProfile(name, soc, ram, AndroidSoc.nativeMemoryBudgetGB(ram), freeDiskGb = 128.0, batteryMAh = 4500.0)
