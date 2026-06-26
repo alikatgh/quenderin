@@ -152,3 +152,5 @@ jobs:
           git diff --exit-code shared/model-catalog.json
       - name: All three platform catalogs agree (ids, params, quant, sha256)
         run: python3 scripts/check_catalog_parity.py
+      - name: Agent-logic parity suites cover the same vectors (iOS + Android)
+        run: python3 scripts/check_agent_parity.py
