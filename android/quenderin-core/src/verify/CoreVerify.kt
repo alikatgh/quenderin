@@ -514,6 +514,12 @@ fun main() {
         ArithmeticParser.evaluate("(-2)^0.5") == null && ArithmeticParser.evaluate("2^9999") == null)
     check("units converts length", UnitConverterTool().run("1 km to m") == "1 km = 1000 m")
     check("units handles affine temperature", UnitConverterTool().run("30 C to F") == "30 c = 86 f")
+    check("units converts time (h/min/day, with spelled-out aliases)", run {
+        UnitConverterTool().run("2 hours to minutes") == "2 h = 120 min" &&
+            UnitConverterTool().run("90 min to h") == "90 min = 1.5 h" &&
+            UnitConverterTool().run("1 day to hours") == "1 day = 24 h"
+    })
+    check("units rejects cross-dimension time (h vs km)", UnitConverterTool().run("5 h to km").contains("Can't convert"))
     check("units resolves spelled-out aliases", UnitConverterTool().run("5 kilometers to miles").contains("3.10"))
     check("units rejects cross-dimension", UnitConverterTool().run("5 kg to mi").contains("Can't convert"))
     check("units rejects garbage", UnitConverterTool().run("hello world").contains("Couldn't read"))
