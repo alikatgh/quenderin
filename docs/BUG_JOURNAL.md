@@ -199,6 +199,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Desktop calculator disagreed with the mobile twins + standard math on `-2^2`
+  (`src/services/tools/calculator.ts`). It put unary minus INSIDE `parseExponent` (`exponent = unary
+  ('^' unary)*`) → `-2^2 = (-2)^2 = 4` (the Excel convention); iOS/Android `ArithmeticParser` and
+  Python/Wolfram/TI give `-(2^2) = -4`. Fix: hoist unary ABOVE exponent (`unary = ('±') unary |
+  exponent`; `exponent = primary ('^' unary)?`) so all three platforms agree on -4. No test pinned the
+  old value; added a precedence-parity test. Lesson: the desktop is the "reference" the mobile twins
+  were ported from — but the port can FIX a bug the reference still carries; re-diff back to the reference.
+
 - 2026-06-26 — Android background download didn't auto-resume after a constraint drop
   (`ModelDownloadWorker.kt`). WorkManager flips `isStopped` on constraint loss (e.g. Wi-Fi off); the
   engine throws `DownloadCancelledException`, but the worker's generic `catch` returned `Result.failure()`

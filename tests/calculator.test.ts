@@ -20,6 +20,18 @@ describe('safeCalculate', () => {
         expect(safeCalculate('round(2.5)')).toBe(3);
     });
 
+    // Exponent precedence/associativity — kept IDENTICAL to the iOS/Android `ArithmeticParser` twins.
+    // Unary minus binds LOOSER than '^' (standard math: -2^2 = -(2^2) = -4, not Excel's (-2)^2 = 4).
+    it('evaluates exponent with standard precedence (parity with the mobile twins)', () => {
+        expect(safeCalculate('2 ^ 10')).toBe(1024);
+        expect(safeCalculate('2 ^ 3 ^ 2')).toBe(512);   // right-associative: 2^(3^2), not (2^3)^2 = 64
+        expect(safeCalculate('2 * 3 ^ 2')).toBe(18);     // ^ binds tighter than *
+        expect(safeCalculate('-2 ^ 2')).toBe(-4);        // unary minus looser than ^: -(2^2)
+        expect(safeCalculate('(-2) ^ 2')).toBe(4);
+        expect(safeCalculate('2 ^ -1')).toBe(0.5);       // negative exponent
+        expect(safeCalculate('10 % 3')).toBe(1);         // modulo, at the * / level
+    });
+
     // H6: tokenizable-but-unconsumed trailing input must error, not silently return a partial answer.
     // (Whitespace is stripped before tokenizing, so these use tokens that remain *after* a complete
     // parse — e.g. "(1+2)4" leaves a trailing "4"; "2 3" would collapse to the number 23, not garbage.)
