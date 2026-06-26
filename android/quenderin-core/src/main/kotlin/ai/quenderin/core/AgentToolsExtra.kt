@@ -121,7 +121,7 @@ object UnitConverter {
  *  LocalDate, so results are calendar-correct and deterministic. */
 class DateCalcTool : AgentTool {
     override val name = "date"
-    override val purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\" or \"2026-06-08 plus 90 days\"."
+    override val purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", or \"what day of the week is 2026-12-25\"."
     override fun run(input: String): String =
         DateCalc.evaluate(input)
             ?: "Couldn't read a date calculation from \"$input\". Use ISO dates, e.g. 2026-06-08."
@@ -151,6 +151,12 @@ object DateCalc {
         }
 
         if (dates.size == 1) {
+            // "what day of the week is <date>" → the weekday name. Specific triggers so it can't
+            // collide with an offset query like "90 days after <date>". (Identical names to iOS.)
+            if (lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week")) {
+                val names = arrayOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+                return names[dates[0].dayOfWeek.value - 1]   // DayOfWeek: MONDAY=1 … SUNDAY=7
+            }
             val stripped = text.replace(isoRegex, " ")
             val n = firstInteger(stripped) ?: return null
             val isMinus = lower.contains("minus") || lower.contains("subtract") || lower.contains("before")

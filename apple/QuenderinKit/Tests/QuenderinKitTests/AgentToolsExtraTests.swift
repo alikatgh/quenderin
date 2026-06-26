@@ -64,6 +64,16 @@ final class DateCalcToolTests: XCTestCase {
         XCTAssertEqual(minus, "2026-12-11")
     }
 
+    func testWeekday() async throws {
+        let fri = try await tool.run("what day of the week is 2026-12-25")
+        XCTAssertEqual(fri, "Friday")
+        let mon = try await tool.run("weekday of 2026-06-08")
+        XCTAssertEqual(mon, "Monday")
+        // The weekday trigger must NOT hijack an offset query that happens to contain "day".
+        let plus = try await tool.run("2026-06-08 plus 90 days")
+        XCTAssertEqual(plus, "2026-09-06")
+    }
+
     func testRejectsGarbage() async throws {
         for bad in ["hello", "what time is it", "2026-06-08 sideways 3 days"] {
             let out = try await tool.run(bad)

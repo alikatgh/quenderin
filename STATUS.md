@@ -11,8 +11,8 @@ everything stands and how to verify it. (Deeper docs: `apple/REALITY.md`, `apple
 | Platform | What's there | Engine | Verification |
 |----------|--------------|--------|--------------|
 | **Desktop** (Electron/TS) | Shipping prototype — full agent + chat | `node-llama-cpp` (real) | `npm run lint && npm run typecheck && npm run test:recommendation` |
-| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **193 tests** (incl. model-gated real-inference + multi-turn KV-reuse equivalence tests that run through the actual engine when a model is linked) |
-| **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **175 checks**; `./gradlew :app:assembleDebug` → APK |
+| **iOS** (Swift) | M1–M4 brain + picker + SwiftUI; **app builds + runs on the simulator**; mock by default, **real `LlamaEngine` when llama.cpp is linked** | `LlamaEngine` (real llama.cpp C-API — **links + runs via xcframework**; `DefaultInferenceEngine.make()` picks it when `canImport(llama)`, else mock) | `cd apple/QuenderinKit && swift test` → **194 tests** (incl. model-gated real-inference + multi-turn KV-reuse equivalence tests that run through the actual engine when a model is linked) |
+| **Android** (Kotlin) | M1–M4 brain + picker; mock by default, **real `LlamaEngine` when `jni/llama.cpp` is present** | `LlamaEngine` (JNI to llama.cpp — **builds + runs**; `build.gradle.kts` auto-detects `jni/llama.cpp` → ships `libquenderin_llama.so`, else mock) | `android/quenderin-core` via bundled `kotlinc` → **176 checks**; `./gradlew :app:assembleDebug` → APK |
 
 ## Milestone parity (mobile brain — both run on mocks, fully tested)
 
