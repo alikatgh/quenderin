@@ -24,8 +24,11 @@ object SafetyBlocklist {
         return blockedKeywords.filter { keyword ->
             // Multi-word phrases ("send money") are specific enough as substrings; single words need
             // word boundaries so "pay" doesn't fire on "repay", "pin" on "opinion", etc. (M9)
+            // `(?U)` makes Java's `\b` Unicode-aware so accented text counts as word chars — without it,
+            // ASCII `\b` saw 'é' as a boundary and fired "pin" on "piné", which iOS's ICU `\b`
+            // (NSRegularExpression) never did. Keeps the safety gate IDENTICAL across platforms.
             if (keyword.contains(" ")) haystack.contains(keyword)
-            else Regex("\\b${Regex.escape(keyword)}\\b").containsMatchIn(haystack)
+            else Regex("(?U)\\b${Regex.escape(keyword)}\\b").containsMatchIn(haystack)
         }
     }
 }

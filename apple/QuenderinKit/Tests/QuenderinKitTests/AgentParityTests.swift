@@ -33,8 +33,14 @@ final class AgentParityTests: XCTestCase {
             XCTAssertFalse(SafetyBlocklist.isBlocked(safe), "should not block: \(safe)")
         }
         // Genuine dangerous actions that MUST block.
-        for danger in ["tap Pay to continue", "send money now", "delete the file"] {
+        for danger in ["tap Pay to continue", "send money now", "delete the file", "enter your pin"] {
             XCTAssertTrue(SafetyBlocklist.isBlocked(danger), "should block: \(danger)")
+        }
+        // Unicode word boundary: an accented letter adjacent to a keyword makes a DIFFERENT word, so it
+        // must NOT block. ICU's `\b` (NSRegularExpression) does this natively; Android's Java `\b` only
+        // matches after gaining the `(?U)` flag — this pins the cross-platform contract.
+        for accented in ["piné", "épin"] {
+            XCTAssertFalse(SafetyBlocklist.isBlocked(accented), "should not block (Unicode boundary): \(accented)")
         }
     }
 }

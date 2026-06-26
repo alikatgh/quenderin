@@ -24,6 +24,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `\f` (mangling non-ASCII + emoji, e.g. `café` → `cafu00e9`) while the lib decodes them. Decode
   the FULL JSON escape set on the hand-rolled side; pin it with a cross-platform parity test whose
   INPUT is a literal escape and whose EXPECTED is the decoded char. (agent parser \u)
+- **ICU vs Java regex `\b`/`\w` (twin drift).** iOS `NSRegularExpression` (ICU) treats accented/Unicode
+  letters as word chars in `\b` BY DEFAULT; Android `java.util.regex` is ASCII-only unless you add the
+  `(?U)` inline flag. A shared safety/validation regex WILL diverge on non-ASCII text — `\bpin\b` fired
+  on `piné`/`épin` on Android but not iOS. Force the same word semantics: `(?U)` on the Java side. (regex \b parity)
 - **Bind address + "localhost" logs.** `server.listen(port)` binds all interfaces; the log
   saying `localhost` lies. Bind `127.0.0.1` explicitly. (C1)
 - **Docs describing a different product.** Security/feature docs that claim ports, rate limits,
@@ -173,6 +177,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — SafetyBlocklist `\b` diverged across platforms (`SafetyBlocklist.kt`). The safety gate's
+  single-word matcher uses `\b` on both, but iOS ICU `\b` is Unicode-aware while Android Java `\b` is
+  ASCII-only — so `pin` fired on `piné`/`épin` on Android only (a false-block; iOS correctly didn't).
+  Fix: `(?U)` on the Android regex makes `\b` Unicode-aware = iOS parity; real keywords + M9 cases
+  unchanged. Pinned both platforms (CoreVerify +1 → 159; iOS `AgentParityTests`). Lesson: ICU-vs-Java `\b` pattern above.
 - 2026-06-26 — Android agent answers mangled non-ASCII (`AgentDecision.kt` `extractString`). iOS parses
   the planner JSON with `JSONSerialization`; the Android core hand-rolls value extraction (no JSON lib)
   and its one-char unescaper only knew `\n \t \" \\` — so a model that escapes non-ASCII (`café`,
