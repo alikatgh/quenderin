@@ -161,6 +161,51 @@ final class OnboardingModelTests: XCTestCase {
             return XCTFail("unsupported device must fail onboarding, got \(onboarding.phase)")
         }
     }
+
+    /// A second `install` fired while one is in flight (rapid double-tap / Settings switch during a
+    /// download) must be IGNORED, not race `phase` + `engine.load` onto the wrong model. The gated
+    /// engine holds install(a) inside `load`, so install(b) is provably concurrent.
+    func testConcurrentInstallIsIgnored() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let a = ModelCatalog.smallest
+        let b = ModelCatalog.models.first { $0.id != a.id }!
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Pre-create both files so install skips download and parks straight in engine.load.
+        FileManager.default.createFile(atPath: dir.appendingPathComponent(a.filename).path, contents: Data())
+        FileManager.default.createFile(atPath: dir.appendingPathComponent(b.filename).path, contents: Data())
+
+        let engine = GatedLoadEngine()
+        let model = OnboardingModel(downloader: MockModelDownloader(), engine: engine, modelsDir: dir)
+
+        let taskA = Task { await model.install(a) }
+        while !model.isInstalling { await Task.yield() }   // install(a) is in flight
+        await model.install(b)                              // concurrent → the guard makes this a no-op
+        await engine.release()                              // let install(a)'s load complete
+        await taskA.value
+
+        let loaded = await engine.loadedModelID()
+        XCTAssertEqual(loaded, a.id, "the concurrent second install must be ignored; the first model wins")
+        XCTAssertFalse(model.isInstalling)
+    }
+}
+
+/// Engine whose `load` blocks until `release()` — lets a test hold an `install` mid-flight and fire a
+/// second concurrent `install` to prove the guard serializes them. `release()` before the park is fine.
+private actor GatedLoadEngine: InferenceEngine {
+    private var loaded: String?
+    private var released = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    func loadedModelID() async -> String? { loaded }
+    func load(model: ModelEntry, at fileURL: URL) async throws {
+        if !released { await withCheckedContinuation { waiter = $0 } }
+        loaded = model.id
+    }
+    func release() { released = true; waiter?.resume(); waiter = nil }
+    func unload() async { loaded = nil }
+    func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
 }
 
 /// Test engine that loads any model except `failingID`, which throws — exercises the failed-switch
