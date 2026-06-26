@@ -6,6 +6,7 @@ import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.AndroidSoc
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileConversationPersistence
+import ai.quenderin.core.GpuOffloadPlanner
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
@@ -38,7 +39,14 @@ class MainActivity : ComponentActivity() {
                 val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 val totalRamGb = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
                     .totalMem / (1024.0 * 1024.0 * 1024.0)
-                LlamaEngine(deviceBudgetGb = AndroidSoc.nativeMemoryBudgetGB(totalRamGb)).also {
+                val budget = AndroidSoc.nativeMemoryBudgetGB(totalRamGb)
+                val socModelStr = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL else Build.HARDWARE
+                val soc = AndroidSoc.fromSocModel(socModelStr)
+                val gpuLayers = GpuOffloadPlanner.recommend(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)
+                android.util.Log.i("Quenderin",
+                    "GpuOffloadPlanner: ${GpuOffloadPlanner.rationale(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)}")
+
+                LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers).also {
                     // Seed the engine with the device's current thermal pressure so the first model
                     // load already sheds threads if the phone is hot (PowerManager is API 29+).
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
