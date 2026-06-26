@@ -25,6 +25,9 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Resume/Range trust.** A `Range:` request can be answered `200` (server ignores it) — reset
   byte counters; verify a `206`'s `Content-Range` start before appending. (H9)
 - **Untrusted XML/entities.** Device/network-sourced XML needs `processEntities:false`. (H34)
+- **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
+  Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
+  Catch the cancel exception separately from real errors. (workmanager retry vs failure)
 - **Hand-rolled unescaper vs a real JSON parser (twin drift).** One platform parses with a JSON lib,
   its twin hand-extracts string values — the hand-rolled side silently drops `\uXXXX` / `\r` / `\b` /
   `\f` (mangling non-ASCII + emoji, e.g. `café` → `cafu00e9`) while the lib decodes them. Decode
@@ -187,6 +190,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Android background download didn't auto-resume after a constraint drop
+  (`ModelDownloadWorker.kt`). WorkManager flips `isStopped` on constraint loss (e.g. Wi-Fi off); the
+  engine throws `DownloadCancelledException`, but the worker's generic `catch` returned `Result.failure()`
+  — TERMINAL, so the download never auto-resumed (user had to reopen the app). Fix: catch the cancel
+  separately → `Result.retry()`, so WorkManager re-runs (engine resumes from the `.part`) when constraints
+  return. :app isn't kotlinc-core-tested → verified by CI `assembleDebug`. Lesson: WorkManager pattern above.
 - 2026-06-26 — iOS `install()` had no concurrency guard (`OnboardingModel.swift`). A second install fired
   while one was in flight (rapid double-tap, or a Settings model-switch during a download) raced `phase`
   and both called `engine.load` → whichever load finished last won → the WRONG model loaded. Fix: an
