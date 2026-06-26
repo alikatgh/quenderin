@@ -11,6 +11,29 @@ import { MetricsService } from "./metrics.service.js";
 import { getHardwareProfile } from "../utils/hardware.js";
 import logger from "../utils/logger.js";
 
+/**
+ * Extract the FIRST complete, balanced `{ … }` object from text, walking braces and skipping quoted
+ * strings — NOT `indexOf('{')`..`lastIndexOf('}')`, which over-extends the moment the model emits a
+ * second object or a trailing `}` in prose, making `JSON.parse` throw and silently dropping a valid
+ * first action (audit H13). Mirrors the mobile `AgentDecisionParser.firstJSONObject`.
+ */
+export function firstJsonObject(text: string): string | null {
+    const start = text.indexOf('{');
+    if (start === -1) return null;
+    let depth = 0, inString = false, escaped = false;
+    for (let i = start; i < text.length; i++) {
+        const c = text[i];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (c === '\\') escaped = true;
+            else if (c === '"') inString = false;
+        } else if (c === '"') inString = true;
+        else if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return text.substring(start, i + 1); }
+    }
+    return null;
+}
+
 const HW = getHardwareProfile();
 
 const SYSTEM_PROMPT = `You are an autonomous Android testing agent. Your goal is to accomplish the user's objective.
@@ -270,10 +293,9 @@ export class AgentService {
                 // 6. Parse and Execute Action (Universal Tool Loop)
                 let actionObj: ParsedAgentAction | null = null;
                 try {
-                    const jsonStart = commandText.indexOf('{');
-                    const jsonEnd = commandText.lastIndexOf('}');
-                    if (jsonStart !== -1 && jsonEnd !== -1) {
-                        actionObj = JSON.parse(commandText.substring(jsonStart, jsonEnd + 1)) as ParsedAgentAction;
+                    const jsonStr = firstJsonObject(commandText);   // first COMPLETE object, not first-{..last-} (H13)
+                    if (jsonStr) {
+                        actionObj = JSON.parse(jsonStr) as ParsedAgentAction;
                     } else {
                         throw new Error("No JSON object found.");
                     }

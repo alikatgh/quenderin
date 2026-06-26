@@ -199,6 +199,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Desktop agent dropped a valid JSON action when the model added a trailing brace
+  (`src/services/agent.service.ts`). The action parser used `indexOf('{')`..`lastIndexOf('}')` — the same
+  H13 first-`{`..last-`}` bug the mobile `AgentDecisionParser` already fixed. A second object or a `}` in
+  prose over-extended the span → `JSON.parse` threw → the valid first action fell through to the
+  (usually-failing) XML fallback → the step was lost. Fix: a brace-walking `firstJsonObject` (skips
+  strings) takes the FIRST complete object; exported + unit-tested. Lesson: the H13 pattern lived in
+  THREE platforms — re-grep `indexOf('{')`/`lastIndexOf('}')` everywhere when a parser bug is found.
+
 - 2026-06-26 — Desktop calculator disagreed with the mobile twins + standard math on `-2^2`
   (`src/services/tools/calculator.ts`). It put unary minus INSIDE `parseExponent` (`exponent = unary
   ('^' unary)*`) → `-2^2 = (-2)^2 = 4` (the Excel convention); iOS/Android `ArithmeticParser` and

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { AgentService, AgentEventEmitter } from '../src/services/agent.service.js';
+import { AgentService, AgentEventEmitter, firstJsonObject } from '../src/services/agent.service.js';
 import type { ILlmProvider, IDeviceProvider, UIElement } from '../src/types/index.js';
 import type { UiParserService } from '../src/services/uiParser.service.js';
 import type { MetricsService } from '../src/services/metrics.service.js';
@@ -429,5 +429,25 @@ describe('app.ts — pause/resume HTTP routes', () => {
         // ?token= query also works (the opened-URL/browser delivery path).
         const viaQuery = await fetch(`${baseUrl}/api/agent/intervene?token=${TEST_TOKEN}`, { method: 'POST' });
         expect(viaQuery.status).toBe(200);
+    });
+});
+
+// firstJsonObject: the action-parsing fix (H13). The model often wraps its JSON action in prose or
+// emits more than one object; first-`{`..last-`}` over-extends and JSON.parse throws, dropping a valid
+// action. Walking braces takes the FIRST complete object — matching the mobile AgentDecisionParser.
+describe('firstJsonObject', () => {
+    it('extracts the first complete object, ignoring a trailing second object or prose', () => {
+        expect(firstJsonObject('{"action":"tap","id":5} then {"action":"done"}'))
+            .toBe('{"action":"tap","id":5}');
+        expect(firstJsonObject('Here is my action: {"action":"swipe","direction":"up"}. Done.'))
+            .toBe('{"action":"swipe","direction":"up"}');
+    });
+    it('handles nested objects and braces inside strings', () => {
+        expect(firstJsonObject('{"action":"type","text":"a } b","meta":{"k":1}}'))
+            .toBe('{"action":"type","text":"a } b","meta":{"k":1}}');
+    });
+    it('returns null when there is no object / no closing brace', () => {
+        expect(firstJsonObject('no json here')).toBeNull();
+        expect(firstJsonObject('{"action":"tap"')).toBeNull();   // unterminated
     });
 });
