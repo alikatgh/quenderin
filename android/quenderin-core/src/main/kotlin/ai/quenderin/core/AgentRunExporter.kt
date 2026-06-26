@@ -16,6 +16,21 @@ object AgentRunExporter {
         sb.append("_Exported from Quenderin — on-device, ").append(n)
             .append(" step").append(if (n == 1) "" else "s").append("._\n\n")
 
+        // A glanceable verification summary up top: the outcome + which tools the agent actually used.
+        // Agentic-IDE artifacts (e.g. Google Antigravity) lead with this so a reader can verify the run
+        // at a glance instead of reading to the end. ASCII-only + identical wording to the iOS twin.
+        val status = when (run.haltReason) {
+            AgentRun.HaltReason.ANSWERED -> "answered"
+            AgentRun.HaltReason.MAX_STEPS -> "stopped at the step limit"
+            AgentRun.HaltReason.BLOCKED -> "stopped by the safety filter"
+            AgentRun.HaltReason.PLAN_ERROR -> "stopped (could not form a plan)"
+        }
+        val toolsUsed = LinkedHashSet<String>()
+        run.steps.forEach { step -> (step.decision as? AgentDecision.UseTool)?.let { toolsUsed.add(it.name) } }
+        val toolsLine = if (toolsUsed.isEmpty()) "No tools used."
+            else "Tools used: " + toolsUsed.joinToString(", ") + "."
+        sb.append("**Outcome: ").append(status).append(".** ").append(toolsLine).append("\n\n")
+
         run.steps.forEachIndexed { i, step ->
             val num = i + 1
             when (val d = step.decision) {

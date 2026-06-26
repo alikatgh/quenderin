@@ -408,6 +408,8 @@ fun main() {
         )
         val md = AgentRunExporter.markdown(r, "What is 2+2?")
         md.contains("# Agent walkthrough: What is 2+2?") && md.contains("2 steps") &&
+            // Glanceable verification summary up top — outcome + tools used (identical to iOS twin).
+            md.contains("**Outcome: answered.** Tools used: calculator.") &&
             md.contains("**1. Used `calculator`(2+2)** → 4") && md.contains("**2. Final answer**") &&
             md.contains("**Answer:** The answer is 4.") && !md.contains("Halted:")
     })
@@ -415,7 +417,21 @@ fun main() {
         val r = AgentRun(listOf(AgentStep(AgentDecision.UseTool("echo", "hi"), "hi")), null, AgentRun.HaltReason.MAX_STEPS)
         val md = AgentRunExporter.markdown(r, "")
         md.contains("# Agent walkthrough: Agent run") && md.contains("1 step.") &&
+            md.contains("**Outcome: stopped at the step limit.** Tools used: echo.") &&
             md.contains("**Halted:** The agent reached its step limit") && !md.contains("**Answer:**")
+    })
+    check("AgentRunExporter summary reports 'No tools used' for a direct answer + dedups repeated tools", run {
+        val direct = AgentRun(listOf(AgentStep(AgentDecision.FinalAnswer("Paris."), null)), "Paris.", AgentRun.HaltReason.ANSWERED)
+        val repeated = AgentRun(
+            listOf(
+                AgentStep(AgentDecision.UseTool("calculator", "2+2"), "4"),
+                AgentStep(AgentDecision.UseTool("calculator", "4*4"), "16"),
+                AgentStep(AgentDecision.FinalAnswer("Done."), null),
+            ),
+            "Done.", AgentRun.HaltReason.ANSWERED,
+        )
+        AgentRunExporter.markdown(direct, "Capital of France?").contains("**Outcome: answered.** No tools used.") &&
+            AgentRunExporter.markdown(repeated, "math").contains("**Outcome: answered.** Tools used: calculator.")
     })
 
     // --- Android SoC resolution + native-heap memory model ---
