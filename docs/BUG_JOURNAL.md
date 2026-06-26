@@ -11,6 +11,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   array at N+1 forever. Use `arr.slice(-(N-1))` before pushing. (M7)
 - **In-place array mutation on a parsed/shared array.** `records.reverse()` mutates; copy
   first (`[...records].reverse()`) — becomes a real bug the moment the parse is cached. (M15)
+- **Array index captured before an `await`, used after.** On `@MainActor`, every `await` yields the
+  actor, so a concurrent mutation (a Clear/`reset` or History/`restore` tap during a streamed reply)
+  invalidates a captured index → out-of-bounds crash or a write to the wrong element. Identify the row
+  by a STABLE id and re-look-it-up after each await; stop if it's gone. (chat streaming reentrancy)
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
@@ -181,6 +185,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — iOS chat streaming crashed on Clear/History mid-reply (`ChatModel.swift` `send`).
+  Captured `let index = messages.count-1`, then wrote `messages[index]` inside `for try await token`.
+  `send` is @MainActor but yields at each await, so `reset()` (Clear) or `restore()` (open History)
+  could empty/replace `messages` mid-stream → index-out-of-range CRASH (reset) or overwrite the restored
+  chat (restore). Fix: track the assistant message by UUID, look it up each token, stop if gone. Android
+  core is synchronous (no stream) → unaffected. 2 deterministic race tests (iOS 184→186). Lesson: stale-index-across-await pattern above.
 - 2026-06-26 — iOS date tool silently rolled over invalid dates (`AgentToolsExtra.swift` `isoDates`).
   Foundation `DateFormatter` accepts `2026-02-30` (→ Mar 2), `2026-06-31` (→ Jul 1), a non-leap
   `2026-02-29` (→ Mar 1) and computed a day count from a date the user never typed — diverging from

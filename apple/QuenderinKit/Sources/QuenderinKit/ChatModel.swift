@@ -50,7 +50,7 @@ public final class ChatModel: ObservableObject {
         let enginePrompt = context.build(history: messages)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
-        let index = messages.count - 1
+        let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
 
         isGenerating = true
         defer { isGenerating = false }
@@ -59,11 +59,16 @@ public final class ChatModel: ObservableObject {
             let stream = try await engine.generate(prompt: enginePrompt, options: options)
             for try await token in stream {
                 assistant.text += token
-                messages[index] = assistant
+                // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
+                // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
+                // message up by id each token: a captured index would crash (out of range) or write
+                // to the wrong message. If it's gone, the user moved on — stop streaming into it.
+                guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
+                messages[i] = assistant
             }
         } catch {
             assistant.text = "⚠️ " + OnboardingModel.describe(error)
-            messages[index] = assistant
+            if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
         }
     }
 
