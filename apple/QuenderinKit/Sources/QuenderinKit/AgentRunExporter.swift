@@ -13,6 +13,25 @@ public enum AgentRunExporter {
         var out = "# Agent walkthrough: \(heading)\n\n"
         out += "_Exported from Quenderin — on-device, \(n) step\(n == 1 ? "" : "s")._\n\n"
 
+        // A glanceable verification summary up top: the outcome + which tools the agent actually used.
+        // Agentic-IDE artifacts (e.g. Google Antigravity) lead with this so a reader can verify the run
+        // at a glance instead of reading to the end. ASCII-only + identical wording to the Android twin.
+        let status: String
+        switch run.haltReason {
+        case .answered:  status = "answered"
+        case .maxSteps:  status = "stopped at the step limit"
+        case .blocked:   status = "stopped by the safety filter"
+        case .planError: status = "stopped (could not form a plan)"
+        }
+        var toolsUsed: [String] = []
+        for step in run.steps {
+            if case let .useTool(name, _) = step.decision, !toolsUsed.contains(name) {
+                toolsUsed.append(name)
+            }
+        }
+        let toolsLine = toolsUsed.isEmpty ? "No tools used." : "Tools used: \(toolsUsed.joined(separator: ", "))."
+        out += "**Outcome: \(status).** \(toolsLine)\n\n"
+
         for (i, step) in run.steps.enumerated() {
             let num = i + 1
             switch step.decision {
