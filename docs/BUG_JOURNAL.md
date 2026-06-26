@@ -92,9 +92,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   throws `MissingForegroundServiceTypeException` on API 34+. Declare `<service
   android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType=…
   tools:node="merge"/>` even though you never author the service class yourself.
-- **Native handle lifecycle: free-before-reassign + serialize access.** Re-`load()` that overwrites a
+- **Native handle lifecycle: free-before-reassign AND free-before-drop/null.** Re-`load()` that overwrites a
   `llama_model*`/`llama_context*` without freeing leaks multi-GB until process exit (C1); a free on one
-  thread during a native call on another is a use-after-free — serialize load/unload/complete (C2).
+  thread during a native call on another is a use-after-free — serialize load/unload/complete (C2). Same
+  trap in JS: a native-backed handle (node-llama-cpp `LlamaModel`/`LlamaContext`) must be `.dispose()`d
+  before you set its field to `null` — GC won't promptly reclaim native memory, so an "unload to free RAM"
+  that only nulls frees NOTHING, and a partially-built load (model loaded, context creation then failed)
+  leaks the model unless the catch disposes it. Grep every `Instance = null` / handle-drop for a missing
+  `.dispose()`. (llm.service unloadModel + init-fail leak)
 - **Recursive-descent parser on untrusted input needs a depth cap.** A Swift stack overflow is NOT a
   catchable `Error` (deep nesting hard-crashes); the JVM raises a catchable `StackOverflowError` → silent
   crash-vs-graceful parity break. Thread a depth limit through both. (C4)
@@ -204,6 +209,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-06-26 — Desktop `unloadModel()` leaked the native model+context (`src/services/llm.service.ts`).
+  It nulled `modelInstance`/`contextInstance` but never `.dispose()`d them — and it's the "free RAM"
+  path, fired by the idle-timer + memory-pressure auto-unload, so the headline RAM-freeing op freed
+  nothing (node-llama-cpp native memory isn't GC-reclaimed promptly); on a long session it grew every
+  idle cycle. Same root in the init catch: a model that loaded but whose context creation then failed
+  (the OOM fallback chain) leaked because the `model` local was out of the catch's scope. Fix: dispose
+  before null in unloadModel; hoist `model`/`context` so the catch disposes a partial load. Regression
+  test (inject fake handles, assert dispose+null). Lesson: a native-backed handle must be disposed before
+  it's dropped/nulled, not just reassigned — grep every `Instance = null` for a missing `.dispose()`.
 
 - 2026-06-26 — Cross-platform parity SUITES had drifted: Kotlin `CoreVerify.kt` pinned the `\t`/`\n`
   short-escape JSON decode as a parity case; Swift `AgentParityTests.swift` did not (iOS decoded it fine
