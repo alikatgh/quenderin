@@ -45,6 +45,21 @@ final class AgentToolTests: XCTestCase {
         }
     }
 
+    func testCalculatorModulo() async throws {
+        let calc = CalculatorTool()
+        let cases: [(input: String, expected: String)] = [
+            ("10 % 3", "1"),
+            ("2 * 3 % 4", "2"),    // (2*3)%4 = 6%4 = 2 (left-assoc, same level as *)
+            ("-10 % 3", "-1"),
+        ]
+        for (input, expected) in cases {
+            let result = try await calc.run(input)
+            XCTAssertEqual(result, expected, "for \(input)")
+        }
+        let byZero = try await calc.run("10 % 0")
+        XCTAssertTrue(byZero.contains("Couldn't evaluate"), "modulo by zero must be rejected")
+    }
+
     func testCalculatorRejectsGarbageWithoutCrashing() async throws {
         let calc = CalculatorTool()
         for bad in ["2 +* 2", "delete everything", "1 / 0", "()", "((1)"] {

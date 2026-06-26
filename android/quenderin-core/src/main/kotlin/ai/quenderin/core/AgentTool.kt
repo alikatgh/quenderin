@@ -31,7 +31,7 @@ class EchoTool : AgentTool {
  *  null on malformed input rather than throwing — the input comes from an LLM. */
 class CalculatorTool : AgentTool {
     override val name = "calculator"
-    override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ and parentheses)."
+    override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ % and parentheses)."
     override fun run(input: String): String {
         val value = ArithmeticParser.evaluate(input) ?: return "Couldn't evaluate \"$input\"."
         return if (value == Math.rint(value) && abs(value) < 1e15) value.toLong().toString() else value.toString()
@@ -57,7 +57,7 @@ object ArithmeticParser {
                 number.append(c)
             } else {
                 if (number.isNotEmpty()) { tokens.add(number.toString()); number = StringBuilder() }
-                if (c in "+-*/^()") tokens.add(c.toString()) else return null
+                if (c in "+-*/^%()") tokens.add(c.toString()) else return null
             }
         }
         if (number.isNotEmpty()) tokens.add(number.toString())
@@ -84,20 +84,19 @@ object ArithmeticParser {
             return value
         }
 
-        // term = factor (('*' | '/') factor)*
+        // term = factor (('*' | '/' | '%') factor)*
         private fun parseTerm(depth: Int): Double? {
             if (depth > MAX_DEPTH) return null
             var value = parseFactor(depth + 1) ?: return null
             while (true) {
                 val op = peek()
-                if (op != "*" && op != "/") break
+                if (op != "*" && op != "/" && op != "%") break
                 advance()
                 val rhs = parseFactor(depth + 1) ?: return null
-                if (op == "/") {
-                    if (rhs == 0.0) return null
-                    value /= rhs
-                } else {
-                    value *= rhs
+                when (op) {
+                    "/" -> { if (rhs == 0.0) return null; value /= rhs }
+                    "%" -> { if (rhs == 0.0) return null; value %= rhs }
+                    else -> value *= rhs
                 }
             }
             return value

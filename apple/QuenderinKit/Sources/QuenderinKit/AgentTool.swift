@@ -31,7 +31,7 @@ public struct EchoTool: AgentTool {
 public struct CalculatorTool: AgentTool {
     public init() {}
     public let name = "calculator"
-    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ and parentheses)."
+    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ % and parentheses)."
 
     public func run(_ input: String) async throws -> String {
         guard let value = ArithmeticParser.evaluate(input) else {
@@ -62,7 +62,7 @@ enum ArithmeticParser {
                 number.append(char)
             } else {
                 if !number.isEmpty { tokens.append(number); number = "" }
-                if "+-*/^()".contains(char) { tokens.append(String(char)) } else { return [] }
+                if "+-*/^%()".contains(char) { tokens.append(String(char)) } else { return [] }
             }
         }
         if !number.isEmpty { tokens.append(number) }
@@ -93,14 +93,18 @@ enum ArithmeticParser {
             return value
         }
 
-        // term = factor (('*' | '/') factor)*
+        // term = factor (('*' | '/' | '%') factor)*
         private mutating func parseTerm(_ depth: Int) -> Double? {
             if depth > Self.maxDepth { return nil }
             guard var value = parseFactor(depth + 1) else { return nil }
-            while let op = peek(), op == "*" || op == "/" {
+            while let op = peek(), op == "*" || op == "/" || op == "%" {
                 _ = advance()
                 guard let rhs = parseFactor(depth + 1) else { return nil }
-                if op == "/" { guard rhs != 0 else { return nil }; value /= rhs } else { value *= rhs }
+                switch op {
+                case "/": guard rhs != 0 else { return nil }; value /= rhs
+                case "%": guard rhs != 0 else { return nil }; value = value.truncatingRemainder(dividingBy: rhs)
+                default:  value *= rhs
+                }
             }
             return value
         }
