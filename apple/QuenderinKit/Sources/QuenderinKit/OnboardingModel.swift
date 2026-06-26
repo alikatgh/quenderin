@@ -30,6 +30,11 @@ public final class OnboardingModel: ObservableObject {
     /// came from `IPhoneModelSelector`. Nil on platforms that use the RAM-band path.
     @Published public private(set) var selection: ModelSelection?
 
+    /// True while an `install` is in flight. Guards against a second concurrent install (a rapid
+    /// double-tap, or a Settings model-switch during a download) racing `phase` + `engine.load` and
+    /// landing on the wrong model. The UI can also bind this to disable the install/switch control.
+    @Published public private(set) var isInstalling = false
+
     public init(
         downloader: ModelDownloader,
         engine: InferenceEngine,
@@ -85,6 +90,10 @@ public final class OnboardingModel: ObservableObject {
     /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH
     /// whose new model fails to load, the previously-working model is restored (H1).
     public func install(_ model: ModelEntry) async {
+        guard !isInstalling else { return }   // serialize: a concurrent install would race phase + engine.load
+        isInstalling = true
+        defer { isInstalling = false }
+
         // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
         let previousID = await engine.loadedModelID()
         let destination = modelsDir.appendingPathComponent(model.filename)

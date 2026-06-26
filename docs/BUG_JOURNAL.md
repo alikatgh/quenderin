@@ -11,10 +11,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   array at N+1 forever. Use `arr.slice(-(N-1))` before pushing. (M7)
 - **In-place array mutation on a parsed/shared array.** `records.reverse()` mutates; copy
   first (`[...records].reverse()`) — becomes a real bug the moment the parse is cached. (M15)
-- **Array index captured before an `await`, used after.** On `@MainActor`, every `await` yields the
-  actor, so a concurrent mutation (a Clear/`reset` or History/`restore` tap during a streamed reply)
-  invalidates a captured index → out-of-bounds crash or a write to the wrong element. Identify the row
-  by a STABLE id and re-look-it-up after each await; stop if it's gone. (chat streaming reentrancy)
+- **`@MainActor` + `await` = reentrancy.** Every `await` yields the actor, so other UI actions run mid-
+  method. Two shapes: (a) an array index captured before an await and used after — a concurrent mutation
+  (Clear/`reset`, History/`restore` during a streamed reply) makes it out-of-bounds (crash) or points at
+  the wrong element; identify the row by a STABLE id, re-look-it-up each await, stop if it's gone. (b) a
+  method that can be RE-TRIGGERED before it finishes (install/switch/submit) racing shared state + side
+  effects — add a `guard !inFlight` re-entrancy guard. (chat streaming reentrancy; install guard)
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
@@ -185,6 +187,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — iOS `install()` had no concurrency guard (`OnboardingModel.swift`). A second install fired
+  while one was in flight (rapid double-tap, or a Settings model-switch during a download) raced `phase`
+  and both called `engine.load` → whichever load finished last won → the WRONG model loaded. Fix: an
+  `isInstalling` re-entrancy guard (mirrors `ChatModel.isGenerating`). Test: a gated-load engine holds
+  install(a) so a provably-concurrent install(b) is ignored. iOS 186→187. Lesson: @MainActor reentrancy pattern above.
 - 2026-06-26 — iOS chat streaming crashed on Clear/History mid-reply (`ChatModel.swift` `send`).
   Captured `let index = messages.count-1`, then wrote `messages[index]` inside `for try await token`.
   `send` is @MainActor but yields at each await, so `reset()` (Clear) or `restore()` (open History)
