@@ -19,6 +19,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Resume/Range trust.** A `Range:` request can be answered `200` (server ignores it) — reset
   byte counters; verify a `206`'s `Content-Range` start before appending. (H9)
 - **Untrusted XML/entities.** Device/network-sourced XML needs `processEntities:false`. (H34)
+- **Hand-rolled unescaper vs a real JSON parser (twin drift).** One platform parses with a JSON lib,
+  its twin hand-extracts string values — the hand-rolled side silently drops `\uXXXX` / `\r` / `\b` /
+  `\f` (mangling non-ASCII + emoji, e.g. `café` → `cafu00e9`) while the lib decodes them. Decode
+  the FULL JSON escape set on the hand-rolled side; pin it with a cross-platform parity test whose
+  INPUT is a literal escape and whose EXPECTED is the decoded char. (agent parser \u)
 - **Bind address + "localhost" logs.** `server.listen(port)` binds all interfaces; the log
   saying `localhost` lies. Bind `127.0.0.1` explicitly. (C1)
 - **Docs describing a different product.** Security/feature docs that claim ports, rate limits,
@@ -168,6 +173,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Android agent answers mangled non-ASCII (`AgentDecision.kt` `extractString`). iOS parses
+  the planner JSON with `JSONSerialization`; the Android core hand-rolls value extraction (no JSON lib)
+  and its one-char unescaper only knew `\n \t \" \\` — so a model that escapes non-ASCII (`café`,
+  emoji) rendered as `cafu00e9` on Android only. Fix: a real unescaper handling `\uXXXX` (+ `\r\b\f\/`;
+  surrogate pairs free). Pinned both platforms (CoreVerify +2 → 158; iOS `AgentParityTests`). Lesson:
+  real-parser-vs-hand-rolled-extractor twins drift on escapes — see the hand-rolled-unescaper pattern above.
 - 2026-06-26 — Closed the coverage gap that HID the KV-mirror desync below. The JNI `generate()` had no
   on-device test — the smoke test was separate code. Extracted the KV-reuse loop into a shared header
   (`android/jni/llama_generate.h`) called by BOTH the JNI bridge and `tools/llama-smoketest.cpp`, so the
