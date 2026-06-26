@@ -138,6 +138,21 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     enabled = !running,
                 )
                 Spacer(Modifier.width(8.dp))
+                // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
+                // mirroring chat's Share. The agent's reasoning leaves the device on the user's terms.
+                if (!running && haltReason != null) {
+                    TextButton(onClick = {
+                        session.exportMarkdown()?.let { md ->
+                            val share = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Quenderin agent run")
+                                putExtra(Intent.EXTRA_TEXT, md)
+                            }
+                            runCatching { context.startActivity(Intent.createChooser(share, "Share walkthrough")) }
+                        }
+                    }) { Text("Share") }
+                    Spacer(Modifier.width(8.dp))
+                }
                 Button(
                     enabled = !running && goal.isNotBlank(),
                     onClick = {

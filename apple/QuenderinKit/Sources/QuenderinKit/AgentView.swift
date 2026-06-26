@@ -50,6 +50,16 @@ public struct AgentView: View {
                 Button { session.clear() } label: { Image(systemName: "trash") }
                     .disabled(session.isRunning || (session.steps.isEmpty && session.answer == nil && session.haltReason == nil))
                     .accessibilityLabel("Clear")
+                // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
+                // mirroring chat's ShareLink. The agent's reasoning leaves the device on the user's terms.
+                if let walkthrough = session.exportMarkdown {
+                    ShareLink(item: walkthrough,
+                              subject: Text("Quenderin agent run"),
+                              message: Text("Exported from Quenderin (on-device)")) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share walkthrough")
+                }
                 TextField("Give the agent a goal…", text: $goal)
                     .textFieldStyle(.roundedBorder)
                     .disabled(session.isRunning)
