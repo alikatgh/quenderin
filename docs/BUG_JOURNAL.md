@@ -68,6 +68,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Hand-synced catalog = one field in 5 places.** A new model field lives in TS + Swift + Kotlin
   source, the generated `shared/model-catalog.json`, AND the generator + parity checker. Use
   `scripts/refresh_model_hashes.py` + `npm run gen:catalog`; `check_catalog_parity.py` guards drift.
+- **Hand-mirrored parity SUITES drift like a hand-synced catalog.** Two test files that pin the same
+  cross-platform contract ("keep this in lockstep with the Kotlin mirror") WILL drift — Kotlin pinned the
+  `\t`/`\n` short-escape decode; Swift's `AgentParityTests` silently didn't. A comment can't enforce a
+  bijection. Make the vectors a language-neutral `shared/*.json` with stable `id`s, tag each platform's
+  assertion `// parity:<id>`, and let `check_agent_parity.py` (CI) fail on any missing/orphan id. Same
+  guardrail shape as `check_catalog_parity.py`. (agent parity coverage)
 - **Pinned mirror URLs rot.** A catalog HF URL can 404 (lmstudio-community ships no Q2_K). Verify
   download URLs actually resolve; prefer a mirror that hosts the exact quant. Run
   `npm run check:catalog-urls` (1-byte Range GET per URL) before a release to catch rot before a
@@ -198,6 +204,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-06-26 — Cross-platform parity SUITES had drifted: Kotlin `CoreVerify.kt` pinned the `\t`/`\n`
+  short-escape JSON decode as a parity case; Swift `AgentParityTests.swift` did not (iOS decoded it fine
+  via `JSONDecoder` — just untested, so the contract wasn't pinned both sides). The two files were kept
+  "in lockstep" by a comment only. Fix: added the missing Swift case, made the vectors canonical in
+  `shared/agent-parity-vectors.json` (stable `id`s), tagged each assertion `// parity:<id>`, and added
+  `scripts/check_agent_parity.py` + a CI step asserting the bijection. Lesson: a hand-mirrored parity
+  suite drifts like a hand-synced catalog — enforce coverage with a checker, not a "keep in sync" comment.
 
 - 2026-06-26 — Intent-classifier cache leaked unbounded via the LLM-fallback path
   (`src/services/intentClassifier.ts`). `classifyIntent` evicted-then-set to honor MAX_CACHE_SIZE=200,

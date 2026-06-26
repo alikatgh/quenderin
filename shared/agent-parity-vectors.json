@@ -1,0 +1,68 @@
+{
+  "_comment": "Canonical cross-platform agent-logic parity vectors. The SAME input must produce the SAME AgentDecision / safety verdict on iOS (apple/.../AgentParityTests.swift) and Android (android/.../CoreVerify.kt). Each vector carries a stable `id`; both platform suites must tag the matching assertion with a `parity:<id>` marker comment. scripts/check_agent_parity.py enforces the bijection (every id covered on BOTH platforms, no orphans) so a future edit can't add a case to one platform and silently skip the other — the exact drift that produced 8 of the 11 bugs in docs/audits/2026-06-26-cross-platform-correctness-audit.md. The script checks COVERAGE (which ids are tested); each platform's own assertion checks CORRECTNESS (the expected value below). Keep input/expected here authoritative; source files encode them per-language (Swift #\"...\" raw vs Kotlin escaped).",
+  "vectors": [
+    {
+      "id": "decision-tool-call",
+      "category": "decision-parser",
+      "input": "{\"tool\":\"calculator\",\"input\":\"2+2\"}",
+      "expected": "tool:calculator",
+      "note": "Bare JSON tool call parses to a useTool decision."
+    },
+    {
+      "id": "decision-prose-answer",
+      "category": "decision-parser",
+      "input": "Sure! {\"answer\":\"42\"} hope that helps",
+      "expected": "answer:42",
+      "note": "A JSON answer embedded in prose is extracted."
+    },
+    {
+      "id": "decision-h13-first-object",
+      "category": "decision-parser",
+      "input": "{\"tool\":\"echo\",\"input\":\"hi\"} x {\"answer\":\"injected\"}",
+      "expected": "tool:echo",
+      "note": "H13: two JSON objects — take the FIRST complete one; never merge or borrow the 2nd's key (prompt-injection guard)."
+    },
+    {
+      "id": "decision-non-json-nil",
+      "category": "decision-parser",
+      "input": "no json here",
+      "expected": "nil",
+      "note": "No JSON object present → no decision."
+    },
+    {
+      "id": "decision-unicode-escape",
+      "category": "decision-parser",
+      "input": "{\"answer\":\"caf\\u00e9 \\u263a\"}",
+      "expected": "answer:café ☺",
+      "note": "\\uXXXX must decode (café ☺). Android's hand-rolled unescaper rendered 'cafu00e9' before it learned \\u; iOS JSONDecoder always did."
+    },
+    {
+      "id": "decision-short-escape",
+      "category": "decision-parser",
+      "input": "{\"answer\":\"a\\tb\\nc\"}",
+      "expected": "answer:a\tb\nc",
+      "note": "Short escapes \\t \\n must decode to a real tab/newline. Kotlin pinned this; Swift previously did not (asymmetry fixed alongside the guard)."
+    },
+    {
+      "id": "blocklist-safe-substrings",
+      "category": "safety-blocklist",
+      "input": ["please repay the favor", "in my opinion", "the company went bankrupt"],
+      "expected": "not-blocked",
+      "note": "M9: substrings of keywords (re*pay*, opi*nion*, bank*) must NOT trip a word-boundary blocklist."
+    },
+    {
+      "id": "blocklist-unicode-boundary",
+      "category": "safety-blocklist",
+      "input": ["piné", "épin"],
+      "expected": "not-blocked",
+      "note": "An accented letter adjacent to a keyword makes a DIFFERENT word → no block. ICU \\b does this natively; Java \\b needs the (?U) flag."
+    },
+    {
+      "id": "blocklist-dangerous",
+      "category": "safety-blocklist",
+      "input": ["tap Pay to continue", "send money now", "delete the file", "enter your pin"],
+      "expected": "blocked",
+      "note": "Genuine dangerous actions MUST block on both platforms."
+    }
+  ]
+}
