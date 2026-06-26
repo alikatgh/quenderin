@@ -23,6 +23,10 @@ class LlamaEngine(
      *  loops/repeats). `temperature <= 0` falls back to deterministic greedy in the native sampler. */
     private val temperature: Double = 0.7,
     private val topP: Double = 0.95,
+    /** Layers to offload to the GPU (llama.cpp `n_gpu_layers`). The app computes this with
+     *  [GpuOffloadPlanner] from `Build.SOC_MODEL` + whether the `.so` carries the Vulkan backend; the
+     *  core stays `android.os`-free. Default 0 → CPU, so the JVM tests and CPU builds are unchanged. */
+    private val gpuLayers: Int = GpuOffloadPlanner.CPU_ONLY,
 ) : InferenceEngine {
 
     override var loadedModelId: String? = null
@@ -76,7 +80,7 @@ class LlamaEngine(
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
         val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType)
-        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat())
+        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }
@@ -111,7 +115,7 @@ class LlamaEngine(
     }
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
-    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float): Long
+    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeFree(handle: Long)

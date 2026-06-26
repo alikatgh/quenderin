@@ -59,6 +59,26 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
 if the build breaks, diff against `jni/llama.cpp/include/llama.h` at your pinned commit
 and adjust (same discipline as the iOS adapter, which was checked against `llama.h`).
 
+### Optional — GPU offload (Vulkan)
+CPU is the default and is stable everywhere. To build the **Vulkan** backend, configure the
+native build with `-DQUENDERIN_VULKAN=ON` (the flag is in `jni/CMakeLists.txt`):
+```kotlin
+// android/app/build.gradle.kts → externalNativeBuild { cmake { ... } }
+arguments += "-DQUENDERIN_VULKAN=ON"
+buildConfigField("boolean", "QUENDERIN_VULKAN", "true")   // tell Kotlin the .so has the backend
+```
+Then let `GpuOffloadPlanner` decide **per SoC** whether to actually offload, and pass the result to
+the engine — so a Vulkan build stays safe on every device (Adreno offloads; Mali/Xclipse stay on CPU):
+```kotlin
+val soc = AndroidSoc.fromSocModel(Build.SOC_MODEL)           // API 31+
+val gpuLayers = GpuOffloadPlanner.recommend(soc, vulkanAvailable = BuildConfig.QUENDERIN_VULKAN)
+val engine = LlamaEngine(deviceBudgetGb = budget, gpuLayers = gpuLayers)
+```
+**Why a decision and not just "all layers":** Android Vulkan driver quality is heterogeneous, and on
+mobile **decode is memory-bandwidth bound** — GPU offload mainly speeds **prefill** (long-prompt
+time-to-first-token), not steady tok/s. Background + measured rationale: `docs/NPU_NEURAL_ENGINE.md`.
+A/B it on your device with `QUENDERIN_VULKAN=1 ./verify-llama-link.sh` (see `docs/DEVICE_VERIFICATION.md`).
+
 ## Step 3 — get a model onto the device
 
 `MockModelDownloader` returns a fake path. The real downloader (next milestone) is a

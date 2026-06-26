@@ -100,6 +100,26 @@ device; you only need the paid program to ship — see `STORE_SUBMISSION.md`).
    - **battery** — `adb shell dumpsys batterystats --charged ai.quenderin.app` (or Battery Historian).
    - **thermals** — `adb shell dumpsys thermalservice` (watch the throttling status during the loop).
 
+### GPU offload A/B (Vulkan) — Snapdragon/Adreno, e.g. the Galaxy S23
+
+On a Snapdragon device (S23 = 8 Gen 2 → Adreno 740, a proven Vulkan target), measure whether GPU
+offload actually wins. The smoke test prints `REAL: decode … tok/s` and now also a `MODE:` line:
+
+```sh
+# 1) CPU baseline (default)
+android/verify-llama-link.sh                       # MODE: CPU
+
+# 2) Vulkan GPU offload (builds GGML_VULKAN, runs smoke with n_gpu_layers=999)
+QUENDERIN_VULKAN=1 android/verify-llama-link.sh     # MODE: GPU-offload
+```
+
+Compare both runs. **Expect the GPU win mostly in PREFILL** (time-to-first-token on the prompt), not
+in decode tok/s — decode is memory-bandwidth bound and both paths share the same RAM bus
+(`docs/NPU_NEURAL_ENGINE.md`). If GPU decode is *slower* or it crashes, that's a real finding: the
+`GpuOffloadPlanner` default (Adreno = offload) should be revised for that driver/model, and Mali/
+Xclipse should stay CPU-only (their default). Record the verdict below so the planner's defaults become
+*measured*, not assumed.
+
 ---
 
 ## Results
@@ -111,6 +131,8 @@ Fill this in per device; then reconcile `apple/REALITY.md` (iOS) / the Android S
 |--------|-----------|------------|-------------:|-------------:|--------------------------:|--------------------|------------------|
 | _e.g. iPhone 16 Pro_ | A18 Pro | qwen3-4b | | | | | |
 | _e.g. Pixel 9 Pro_ | Tensor G4 | qwen3-4b | | | | | |
+| Galaxy S23 (CPU) | SD 8 Gen 2 / Adreno 740 | qwen3-4b | | | | | |
+| Galaxy S23 (Vulkan GPU) | SD 8 Gen 2 / Adreno 740 | qwen3-4b | | | | | |
 | | | | | | | | |
 
 **Pass criteria (suggested):** decode tok/s usable for chat (≳10), agent loop sustainable

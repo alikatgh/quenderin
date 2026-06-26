@@ -12,11 +12,22 @@ if(NOT DEFINED LLAMA_DIR)
     set(LLAMA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp")
 endif()
 
-# Mobile-friendly llama.cpp options (no host tools/tests; CPU build).
+# Mobile-friendly llama.cpp options (no host tools/tests).
 set(LLAMA_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER   OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP          OFF CACHE BOOL "" FORCE)
+
+# GPU offload (Vulkan) — opt-in: configure with -DQUENDERIN_VULKAN=ON. Default OFF keeps a stable
+# CPU build. When ON, the .so carries the Vulkan backend; the Kotlin GpuOffloadPlanner still decides
+# PER-SoC whether to actually offload (Adreno → yes; Mali/Xclipse → only with the forceGpu benchmark
+# override), so a Vulkan build is safe on every device. The Android NDK ships libvulkan.so (API 24+),
+# so llama.cpp's own find_package(Vulkan) resolves without extra linkage here.
+option(QUENDERIN_VULKAN "Build llama.cpp with the Vulkan GPU backend" OFF)
+if(QUENDERIN_VULKAN)
+    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+    message(STATUS "quenderin: Vulkan GPU backend ENABLED (GpuOffloadPlanner gates offload per SoC)")
+endif()
 
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 

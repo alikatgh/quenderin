@@ -25,6 +25,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Resume/Range trust.** A `Range:` request can be answered `200` (server ignores it) — reset
   byte counters; verify a `206`'s `Content-Range` start before appending. (H9)
 - **Untrusted XML/entities.** Device/network-sourced XML needs `processEntities:false`. (H34)
+- **Don't blindly `n_gpu_layers = 999` on Android.** Vulkan driver quality is heterogeneous — Adreno
+  (Snapdragon) is proven; Mali/Xclipse can be slower-than-CPU or crash on llama.cpp's compute shaders.
+  Gate offload per-SoC (`GpuOffloadPlanner`), default CPU, and remember decode is bandwidth-bound so the
+  GPU win is mostly prefill — measure before trusting it. (android gpu offload)
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
