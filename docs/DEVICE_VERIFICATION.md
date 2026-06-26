@@ -103,7 +103,13 @@ device; you only need the paid program to ship — see `STORE_SUBMISSION.md`).
 ### GPU offload A/B (Vulkan) — Snapdragon/Adreno, e.g. the Galaxy S23
 
 On a Snapdragon device (S23 = 8 Gen 2 → Adreno 740, a proven Vulkan target), measure whether GPU
-offload actually wins. The smoke test prints `REAL: decode … tok/s` and now also a `MODE:` line:
+offload actually wins. The smoke test reports **prefill and decode tok/s separately** — exactly the
+split that matters here — plus a `MODE:` line:
+
+```
+MODE: GPU-offload (n_gpu_layers=999, gpu_offload_supported=yes)
+REAL: prefill 268 tok in 0.41s = 654 tok/s | decode 96 tok in 5.10s = 18.8 tok/s [GPU]
+```
 
 ```sh
 # 1) CPU baseline (default)
@@ -113,12 +119,13 @@ android/verify-llama-link.sh                       # MODE: CPU
 QUENDERIN_VULKAN=1 android/verify-llama-link.sh     # MODE: GPU-offload
 ```
 
-Compare both runs. **Expect the GPU win mostly in PREFILL** (time-to-first-token on the prompt), not
-in decode tok/s — decode is memory-bandwidth bound and both paths share the same RAM bus
-(`docs/NPU_NEURAL_ENGINE.md`). If GPU decode is *slower* or it crashes, that's a real finding: the
-`GpuOffloadPlanner` default (Adreno = offload) should be revised for that driver/model, and Mali/
-Xclipse should stay CPU-only (their default). Record the verdict below so the planner's defaults become
-*measured*, not assumed.
+Compare the two runs **per metric**. **Expect the GPU win in PREFILL tok/s** (compute-bound prompt
+pass), and **decode tok/s to barely move** — decode is memory-bandwidth bound and both paths share the
+same RAM bus (`docs/NPU_NEURAL_ENGINE.md`). If GPU decode is *slower* than CPU, or the GPU run crashes,
+that's a real finding: the `GpuOffloadPlanner` default (Adreno = offload) should be revised for that
+driver/model, and Mali/Xclipse should stay CPU-only (their default). Record both numbers below so the
+planner's defaults become *measured*, not assumed — fill the **Prompt tok/s** (prefill) and **Decode
+tok/s** columns for the CPU and Vulkan rows.
 
 ---
 
