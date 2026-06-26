@@ -83,6 +83,19 @@ LIBCXX="$NDK/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/aarch64-linux-an
 "$ADB" push model.gguf "$DEV"/ >/dev/null
 "$ADB" shell "chmod +x $DEV/smoketest"
 echo "--------------------------------------------------------------------"
-"$ADB" shell "cd $DEV && LD_LIBRARY_PATH=$DEV ./smoketest model.gguf"
+# Capture the run so we can gate on its result explicitly (adb shell exit-code propagation is
+# historically unreliable). The smoke test prints PASS/FAIL for the KV-reuse equivalence check.
+SMOKE_OUT="$("$ADB" shell "cd $DEV && LD_LIBRARY_PATH=$DEV ./smoketest model.gguf")" || true
+echo "$SMOKE_OUT"
 echo "--------------------------------------------------------------------"
-echo "OK — llama.cpp builds for Android, jni/llama_jni.cpp compiles, inference runs on-device."
+if echo "$SMOKE_OUT" | grep -q "FAIL:"; then
+  echo "ERROR: on-device smoke test reported a FAILURE (see above)." >&2
+  exit 1
+fi
+if ! echo "$SMOKE_OUT" | grep -q "PASS: KV-reuse"; then
+  echo "ERROR: smoke test did not reach the KV-reuse equivalence PASS — the shipped decode path was" >&2
+  echo "       not validated end-to-end. Check the run output above." >&2
+  exit 1
+fi
+echo "OK — llama.cpp builds for Android, jni/llama_jni.cpp compiles, inference runs on-device,"
+echo "     and the shared KV-reuse decode path matches a full prefill (multi-turn equivalence)."

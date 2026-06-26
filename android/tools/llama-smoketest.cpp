@@ -6,19 +6,44 @@
 //   usage: llama-smoketest <model.gguf> [prompt] [maxTokens]
 //
 // CPU by default (Android GPU offload via Vulkan/OpenCL is a later tuning step).
+//
+// It drives generation through the SHARED loop in jni/llama_generate.h — the exact code the JNI
+// bridge ships — so this on-device run actually exercises the production decode path (the JNI's own
+// generate() has no other on-device coverage). Part 2 is a multi-turn KV-reuse equivalence check:
+// a regression guard for the KV-mirror desync bug (docs/BUG_JOURNAL.md). Non-zero exit on any failure.
 #include "llama.h"
+#include "../jni/llama_generate.h"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
 
+namespace {
+
+std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& text, bool add_bos) {
+    int n = -llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), nullptr, 0, add_bos, true);
+    if (n <= 0) return {};
+    std::vector<llama_token> tokens(n);
+    llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), tokens.data(), n, add_bos, true);
+    return tokens;
+}
+
+// Chat-template a single user turn (matches the JNI/iOS prompt shape closely enough for the proof).
+std::string userTurn(const std::string& text) {
+    return "<|im_start|>user\n" + text + "<|im_end|>\n<|im_start|>assistant\n";
+}
+
+auto noEmit    = [](const std::string&) { return true; };
+auto noCancel  = []() { return false; };
+
+} // namespace
+
 int main(int argc, char** argv) {
     if (argc < 2) { printf("usage: llama-smoketest <model.gguf> [prompt] [maxTokens]\n"); return 2; }
     const char* modelPath = argv[1];
     std::string userText = argc >= 3 ? argv[2] : "Write three sentences about why the sky is blue.";
     int maxTokens = argc >= 4 ? atoi(argv[3]) : 96;
-    std::string prompt = "<|im_start|>user\n" + userText + "<|im_end|>\n<|im_start|>assistant\n";
 
     llama_backend_init();
 
@@ -26,50 +51,72 @@ int main(int argc, char** argv) {
     mp.n_gpu_layers = 0;  // CPU
     llama_model* model = llama_model_load_from_file(modelPath, mp);
     if (!model) { printf("FAIL: model load\n"); return 1; }
-
-    llama_context_params cp = llama_context_default_params();
-    cp.n_ctx = 2048;
-    llama_context* ctx = llama_init_from_model(model, cp);
-    if (!ctx) { printf("FAIL: context\n"); return 1; }
     const llama_vocab* vocab = llama_model_get_vocab(model);
 
-    int nMax = (int)prompt.size() + 16;
-    std::vector<llama_token> tokens(nMax);
-    int n = llama_tokenize(vocab, prompt.c_str(), (int)prompt.size(), tokens.data(), nMax, true, true);
-    if (n <= 0) { printf("FAIL: tokenize (%d)\n", n); return 1; }
-    tokens.resize(n);
+    auto makeCtx = [&]() -> llama_context* {
+        llama_context_params cp = llama_context_default_params();
+        cp.n_ctx = 2048;
+        return llama_init_from_model(model, cp);
+    };
 
+    // Greedy is stateless (argmax), so one sampler is safe across contexts — and greedy makes the
+    // multi-turn equivalence check below deterministic.
     llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
     llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
 
-    auto piece = [&](llama_token tok) -> std::string {
-        char buf[256];
-        int c = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
-        return c > 0 ? std::string(buf, c) : std::string();
-    };
+    // --- Part 1: single-turn coherence + tok/s, driven through the shared production loop. ---
+    llama_context* ctx = makeCtx();
+    if (!ctx) { printf("FAIL: context\n"); return 1; }
+    std::vector<llama_token> cached;
+    std::vector<llama_token> p0 = tokenize(vocab, userTurn(userText), true);
+    if (p0.empty()) { printf("FAIL: tokenize\n"); return 1; }
 
-    llama_batch batch = llama_batch_get_one(tokens.data(), (int)tokens.size());
-    if (llama_decode(ctx, batch) != 0) { printf("FAIL: prompt decode\n"); return 1; }
-
-    std::string out;
-    int gen = 0;
     auto t1 = std::chrono::steady_clock::now();
-    while (gen < maxTokens) {
-        llama_token tok = llama_sampler_sample(smpl, ctx, -1);
-        if (llama_vocab_is_eog(vocab, tok)) break;
-        out += piece(tok);
-        gen++;
-        batch = llama_batch_get_one(&tok, 1);
-        if (llama_decode(ctx, batch) != 0) break;
-    }
+    std::string out = quenderin::generateWithKVReuse(ctx, vocab, smpl, p0, maxTokens, cached, noEmit, noCancel);
     double dt = std::chrono::duration<double>(std::chrono::steady_clock::now() - t1).count();
+    int gen = (int) (cached.size() - p0.size());   // mirror grew by exactly the decoded reply tokens
 
     printf("ANSWER: %s\n", out.c_str());
-    printf("REAL: decode %d tokens in %.2fs = %.1f tok/s [Android arm64, CPU]\n", gen, dt, gen / (dt > 0 ? dt : 1e-6));
+    printf("REAL: decode %d tokens in %.2fs = %.1f tok/s [Android arm64, CPU]\n",
+           gen, dt, gen / (dt > 0 ? dt : 1e-6));
+    llama_free(ctx);
+
+    // --- Part 2: multi-turn KV-reuse equivalence (regression guard for the KV-mirror desync). ---
+    // Build turn 2 by APPENDING new tokens to the post-turn-1 cache, so the reuse path is GUARANTEED
+    // exercised (cache is a strict prefix). The same turn-2 prompt is then full-prefilled on a fresh
+    // context. With greedy decoding the two outputs MUST be byte-identical; if the mirror ever ran
+    // ahead of the KV (the bug), the reuse path would decode at the wrong positions and diverge.
+    llama_context* ctxA = makeCtx();   // persistent: turn 1, then turn 2 via KV reuse
+    llama_context* ctxB = makeCtx();   // fresh: turn 2 via full prefill (ground truth)
+    if (!ctxA || !ctxB) { printf("FAIL: context (equivalence)\n"); return 1; }
+
+    std::vector<llama_token> cachedA, cachedB;
+    std::vector<llama_token> q1 = tokenize(vocab, userTurn("Name one primary color."), true);
+    std::string r1 = quenderin::generateWithKVReuse(ctxA, vocab, smpl, q1, 24, cachedA, noEmit, noCancel);
+
+    // turn-2 tokens = the exact KV contents after turn 1 ++ a new user turn (no re-BOS).
+    std::vector<llama_token> suffix =
+        tokenize(vocab, "<|im_end|>\n" + userTurn("Name a different one."), /*add_bos*/ false);
+    std::vector<llama_token> q2 = cachedA;
+    q2.insert(q2.end(), suffix.begin(), suffix.end());
+
+    std::string a2Reuse = quenderin::generateWithKVReuse(ctxA, vocab, smpl, q2, 24, cachedA, noEmit, noCancel);
+    std::string a2Fresh = quenderin::generateWithKVReuse(ctxB, vocab, smpl, q2, 24, cachedB, noEmit, noCancel);
+
+    int rc = 0;
+    if (a2Reuse == a2Fresh) {
+        printf("PASS: KV-reuse turn-2 output identical to full prefill (%zu prompt tokens, %zu reused)\n",
+               q2.size(), q2.size() - suffix.size());
+    } else {
+        printf("FAIL: KV-reuse desync — turn-2 reuse output differs from full prefill\n");
+        printf("  reuse: %s\n  fresh: %s\n", a2Reuse.c_str(), a2Fresh.c_str());
+        rc = 1;
+    }
 
     llama_sampler_free(smpl);
-    llama_free(ctx);
+    llama_free(ctxA);
+    llama_free(ctxB);
     llama_model_free(model);
     llama_backend_free();
-    return 0;
+    return rc;
 }

@@ -124,7 +124,9 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   time — no test caught it because the kotlinc core check NEVER compiles `jni/llama_jni.cpp` and the
   Compose app build only compiles the Kotlin `external fun` decl, not its C++ body. When you change one
   platform's engine, diff the twin; keep the sampler/param choices identical. Thread params through the
-  Kotlin side (CI-compiled) and mirror the *verified* iOS native sequence in the `.cpp`. (android sampling parity)
+  Kotlin side (CI-compiled) and mirror the *verified* iOS native sequence in the `.cpp`. Structural remedy:
+  the JNI decode loop now lives in `jni/llama_generate.h`, shared with the on-device smoke test, so a
+  multi-turn equivalence check exercises the EXACT shipped loop (the smoke run gates on it). (android sampling parity)
 - **Verify a `#if canImport(X)` / conditional-compile branch is ACTUALLY compiled before trusting it.**
   `swift test` only compiles `LlamaEngine`'s `#if canImport(llama)` body when the vendored
   `Frameworks/llama.xcframework` is present (or `$QUENDERIN_LLAMA_DIR` is set) — otherwise the mock path
@@ -166,6 +168,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Closed the coverage gap that HID the KV-mirror desync below. The JNI `generate()` had no
+  on-device test — the smoke test was separate code. Extracted the KV-reuse loop into a shared header
+  (`android/jni/llama_generate.h`) called by BOTH the JNI bridge and `tools/llama-smoketest.cpp`, so the
+  smoke run now exercises the EXACT shipped loop. Added a multi-turn equivalence check (reuse output ==
+  fresh full prefill, greedy) that `verify-llama-link.sh` greps PASS/FAIL and fails on. Both `.cpp`
+  syntax-checked vs real `llama.h`. Lesson: test the SHIPPED loop, not a twin replica (test≠shipped above).
 - 2026-06-26 — Android KV-mirror desync (silent multi-turn corruption; `android/jni/llama_jni.cpp:79,119`).
   The JNI twin of the KV-reuse change set `h->cached = newTokens` BEFORE the prefill decode and `push_back`'d
   each sampled token then decoded it the NEXT iteration → on every max_tokens/cancel exit the mirror ran one
