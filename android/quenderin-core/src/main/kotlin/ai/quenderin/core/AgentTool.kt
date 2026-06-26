@@ -1,6 +1,7 @@
 package ai.quenderin.core
 
 import kotlin.math.abs
+import kotlin.math.pow
 
 /**
  * A capability the agent can invoke during its loop. On-device and offline — math, text
@@ -30,7 +31,7 @@ class EchoTool : AgentTool {
  *  null on malformed input rather than throwing — the input comes from an LLM. */
 class CalculatorTool : AgentTool {
     override val name = "calculator"
-    override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\"."
+    override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ and parentheses)."
     override fun run(input: String): String {
         val value = ArithmeticParser.evaluate(input) ?: return "Couldn't evaluate \"$input\"."
         return if (value == Math.rint(value) && abs(value) < 1e15) value.toLong().toString() else value.toString()
@@ -43,7 +44,8 @@ object ArithmeticParser {
         val tokens = tokenize(text) ?: return null
         val parser = Parser(tokens)
         val value = parser.parseExpression() ?: return null
-        return if (parser.isAtEnd) value else null
+        // reject NaN/Inf (e.g. (-2)^0.5, 2^9999) → "Couldn't evaluate", not "NaN"/"Infinity"
+        return if (parser.isAtEnd && value.isFinite()) value else null
     }
 
     private fun tokenize(text: String): List<String>? {
@@ -55,7 +57,7 @@ object ArithmeticParser {
                 number.append(c)
             } else {
                 if (number.isNotEmpty()) { tokens.add(number.toString()); number = StringBuilder() }
-                if (c in "+-*/()") tokens.add(c.toString()) else return null
+                if (c in "+-*/^()") tokens.add(c.toString()) else return null
             }
         }
         if (number.isNotEmpty()) tokens.add(number.toString())
@@ -101,11 +103,28 @@ object ArithmeticParser {
             return value
         }
 
-        // factor = number | '(' expression ')' | '-' factor
+        // factor = '-' factor | power   (unary minus binds LOOSER than '^', so -2^2 = -(2^2) = -4)
         private fun parseFactor(depth: Int): Double? {
             if (depth > MAX_DEPTH) return null
+            if (peek() == "-") { advance(); val f = parseFactor(depth + 1) ?: return null; return -f }
+            return parsePower(depth + 1)
+        }
+
+        // power = primary ('^' factor)?   (right-associative, binds TIGHTER than '*'/'/': 2^3^2 = 2^9,
+        // 2*3^2 = 2*9; the RHS recurses through factor so a unary/negative exponent like 2^-1 works)
+        private fun parsePower(depth: Int): Double? {
+            if (depth > MAX_DEPTH) return null
+            val base = parsePrimary(depth + 1) ?: return null
+            if (peek() != "^") return base
+            advance()
+            val exponent = parseFactor(depth + 1) ?: return null
+            return base.pow(exponent)
+        }
+
+        // primary = number | '(' expression ')'
+        private fun parsePrimary(depth: Int): Double? {
+            if (depth > MAX_DEPTH) return null
             val token = peek() ?: return null
-            if (token == "-") { advance(); val f = parseFactor(depth + 1) ?: return null; return -f }
             if (token == "(") {
                 advance()
                 val value = parseExpression(depth + 1) ?: return null

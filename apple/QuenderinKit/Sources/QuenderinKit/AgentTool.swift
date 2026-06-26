@@ -31,7 +31,7 @@ public struct EchoTool: AgentTool {
 public struct CalculatorTool: AgentTool {
     public init() {}
     public let name = "calculator"
-    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\"."
+    public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\" or \"2^10\" (supports + - * / ^ and parentheses)."
 
     public func run(_ input: String) async throws -> String {
         guard let value = ArithmeticParser.evaluate(input) else {
@@ -50,8 +50,8 @@ public struct CalculatorTool: AgentTool {
 enum ArithmeticParser {
     static func evaluate(_ text: String) -> Double? {
         var parser = Parser(tokens: tokenize(text))
-        guard let value = parser.parseExpression(), parser.isAtEnd else { return nil }
-        return value
+        guard let value = parser.parseExpression(), parser.isAtEnd, value.isFinite else { return nil }
+        return value   // reject NaN/Inf (e.g. (-2)^0.5, 2^9999) → "Couldn't evaluate", not "nan"/"inf"
     }
 
     private static func tokenize(_ text: String) -> [String] {
@@ -62,7 +62,7 @@ enum ArithmeticParser {
                 number.append(char)
             } else {
                 if !number.isEmpty { tokens.append(number); number = "" }
-                if "+-*/()".contains(char) { tokens.append(String(char)) } else { return [] }
+                if "+-*/^()".contains(char) { tokens.append(String(char)) } else { return [] }
             }
         }
         if !number.isEmpty { tokens.append(number) }
@@ -105,11 +105,28 @@ enum ArithmeticParser {
             return value
         }
 
-        // factor = number | '(' expression ')' | '-' factor
+        // factor = '-' factor | power   (unary minus binds LOOSER than '^', so -2^2 = -(2^2) = -4)
         private mutating func parseFactor(_ depth: Int) -> Double? {
             if depth > Self.maxDepth { return nil }
+            if peek() == "-" { _ = advance(); guard let f = parseFactor(depth + 1) else { return nil }; return -f }
+            return parsePower(depth + 1)
+        }
+
+        // power = primary ('^' factor)?   (right-associative, binds TIGHTER than '*'/'/': 2^3^2 = 2^9,
+        // 2*3^2 = 2*9; the RHS recurses through factor so a unary/negative exponent like 2^-1 works)
+        private mutating func parsePower(_ depth: Int) -> Double? {
+            if depth > Self.maxDepth { return nil }
+            guard let base = parsePrimary(depth + 1) else { return nil }
+            guard peek() == "^" else { return base }
+            _ = advance()
+            guard let exponent = parseFactor(depth + 1) else { return nil }
+            return pow(base, exponent)
+        }
+
+        // primary = number | '(' expression ')'
+        private mutating func parsePrimary(_ depth: Int) -> Double? {
+            if depth > Self.maxDepth { return nil }
             guard let token = peek() else { return nil }
-            if token == "-" { _ = advance(); guard let f = parseFactor(depth + 1) else { return nil }; return -f }
             if token == "(" {
                 _ = advance()
                 guard let value = parseExpression(depth + 1), peek() == ")" else { return nil }

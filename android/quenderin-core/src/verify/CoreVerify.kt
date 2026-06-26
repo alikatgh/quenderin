@@ -501,6 +501,17 @@ fun main() {
     check("arithmetic parser rejects malformed input", ArithmeticParser.evaluate("2 +* 3") == null)
     check("arithmetic parser rejects divide-by-zero", ArithmeticParser.evaluate("4 / 0") == null)
     check("calculator renders integers cleanly", CalculatorTool().run("20 + 22") == "42")
+    check("calculator: exponent — right-assoc, binds tighter than * /, unary minus looser", run {
+        ArithmeticParser.evaluate("2^10") == 1024.0 &&
+            ArithmeticParser.evaluate("2^3^2") == 512.0 &&   // right-assoc: 2^(3^2) = 2^9, not (2^3)^2=64
+            ArithmeticParser.evaluate("2*3^2") == 18.0 &&    // ^ before *: 2*(3^2)
+            ArithmeticParser.evaluate("-2^2") == -4.0 &&     // unary minus looser: -(2^2)
+            ArithmeticParser.evaluate("(-2)^2") == 4.0 &&
+            ArithmeticParser.evaluate("2^-1") == 0.5 &&      // negative exponent
+            CalculatorTool().run("2^10") == "1024"
+    })
+    check("calculator: non-finite results don't leak (NaN/Inf → couldn't evaluate)",
+        ArithmeticParser.evaluate("(-2)^0.5") == null && ArithmeticParser.evaluate("2^9999") == null)
     check("units converts length", UnitConverterTool().run("1 km to m") == "1 km = 1000 m")
     check("units handles affine temperature", UnitConverterTool().run("30 C to F") == "30 c = 86 f")
     check("units resolves spelled-out aliases", UnitConverterTool().run("5 kilometers to miles").contains("3.10"))
