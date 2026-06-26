@@ -78,3 +78,25 @@ is the ad-hoc `parity:` tests, which this pass extended.
 
 The shared-logic surface is, as of this report, audited end-to-end and pristine-green
 (iOS 195 tests / Android 177 core checks / desktop suite + lint + typecheck; catalog parity across all three).
+
+## Addendum (2026-06-27) — deeper read of the desktop resource/error paths
+
+The "Desktop surface verified clean" claim above rested on a **pattern sweep** (Maps/Sets, timers,
+off-by-N, `JSON.parse`). A subsequent line-by-line read of the resource-heavy services — which the sweep
+did NOT do — found **4 more real bugs**, all now fixed + tested + merged. The pattern was uniform:
+**an async resource (native handle / child process / stream) dropped or errored without cleanup.**
+
+| Bug | File | Why it bit | PR |
+|-----|------|-----------|----|
+| `unloadModel()` nulled `modelInstance`/`contextInstance` without `.dispose()` — the "free RAM" path (idle + memory-pressure auto-unload) freed nothing (native mem isn't GC-reclaimed); init OOM-fail leaked the loaded model too | `llm.service.ts` | High | #86 |
+| `spawnAdb` had no `proc.on('error')` → adb-not-installed (ENOENT) threw an uncaught exception + hung until a misleading `ADB_TIMEOUT` | `android.provider.ts` | High | #87 |
+| download + voice-extract write streams had no `'error'` handler → an `ENOSPC` mid-write (realistic on a ~2-5GB-free disk) crashed the process; the download loop could also hang/leak the handle | `llm.service.ts`, `app.ts` | Medium | #88 |
+
+Verified clean on the same read (no fix needed): `modelIntegrity.sha256File` (read stream has `on('error')`),
+`ocr.service` (cached worker, idle-terminate, explicit `terminate()`), `backgroundDaemon.pollLoop`
+(stoppable, per-iteration try/catch, temp cleanup, ADB_MISSING noise suppression — which #87 makes
+reachable), websocket heartbeat (`unref`'d), `memory`/`session`/`readiness` services.
+
+**Lesson generalized into the journal:** every `spawn()`/stream/native-handle needs an `'error'`/dispose
+path, and an "unload to free RAM" that only nulls frees nothing. The pattern sweep is necessary but not
+sufficient for resource-lifecycle bugs — those need a read of the create→use→error→cleanup arc.
