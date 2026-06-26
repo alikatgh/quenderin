@@ -120,7 +120,7 @@ enum UnitConverter {
 public struct DateCalcTool: AgentTool {
     public init() {}
     public let name = "date"
-    public let purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\" or \"2026-06-08 plus 90 days\"."
+    public let purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", or \"what day of the week is 2026-12-25\"."
 
     public func run(_ input: String) async throws -> String {
         guard let result = DateCalc.evaluate(input) else {
@@ -179,6 +179,14 @@ enum DateCalc {
         }
 
         if dates.count == 1 {
+            // "what day of the week is <date>" → the weekday name (deterministic, UTC). Specific
+            // triggers so it can't collide with an offset query like "90 days after <date>".
+            if lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week") {
+                let weekday = utcCalendar().component(.weekday, from: dates[0])   // 1 = Sunday … 7 = Saturday
+                let names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                guard weekday >= 1, weekday <= 7 else { return nil }
+                return names[weekday - 1]
+            }
             // strip the date out, then read the offset count from what remains
             let stripped = text.replacingOccurrences(of: #"\d{4}-\d{2}-\d{2}"#, with: " ", options: .regularExpression)
             guard let n = firstInteger(in: stripped) else { return nil }

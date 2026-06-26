@@ -534,6 +534,11 @@ fun main() {
     check("date adds days across months", DateCalcTool().run("2026-06-08 plus 90 days") == "2026-09-06")
     check("date subtracts days", DateCalcTool().run("2026-12-25 minus 14 days") == "2026-12-11")
     check("date rejects garbage", DateCalcTool().run("what time is it").contains("Couldn't read"))
+    check("date: day of the week (deterministic, parity with iOS names)", run {
+        DateCalcTool().run("what day of the week is 2026-12-25") == "Friday" &&
+            DateCalcTool().run("weekday of 2026-06-08") == "Monday" &&
+            DateCalcTool().run("2026-06-08 plus 90 days") == "2026-09-06"   // offset query not hijacked
+    })
     // Calendar-invalid dates must be rejected, not silently rolled over (iOS DateFormatter did the
     // latter; round-trip validation now makes it strict too). java.time.LocalDate is strict already.
     check("date rejects calendar-invalid dates (iOS strict parity)",
