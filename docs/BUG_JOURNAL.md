@@ -115,7 +115,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   grows with length, SoC re-chews the same tokens). Fix: track the tokens resident in the KV; when the
   new prompt is a strict-prefix EXTENSION of them, decode only the suffix (`KVCacheReuse`); otherwise
   `llama_memory_clear` + reprefill. Fail-safe — a non-append mismatch reprefills (correct, no speedup),
-  never corrupts. Keep the mirror in lockstep (append each sampled token; reset on load/unload). (chat KV reuse)
+  never corrupts. Keep the mirror in **strict** lockstep: record a token in the mirror ONLY *after* its
+  `llama_decode` returns 0 — decode-then-record, never record-then-decode-next-iteration; assign the
+  prefill mirror only after the prefill decode succeeds; on ANY decode failure clear KV **and** mirror.
+  A mirror even ONE token ahead of the real KV silently corrupts every later reuse. (chat KV reuse)
 - **iOS engine (Swift) and Android engine (JNI `.cpp`) silently diverge.** Android decoded with
   `llama_sampler_init_greedy()` (repetitive output) while iOS sampled `top_p → temp → dist` the whole
   time — no test caught it because the kotlinc core check NEVER compiles `jni/llama_jni.cpp` and the
@@ -163,6 +166,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — Android KV-mirror desync (silent multi-turn corruption; `android/jni/llama_jni.cpp:79,119`).
+  The JNI twin of the KV-reuse change set `h->cached = newTokens` BEFORE the prefill decode and `push_back`'d
+  each sampled token then decoded it the NEXT iteration → on every max_tokens/cancel exit the mirror ran one
+  token ahead of the KV, so the next turn's `KVCacheReuse` prefix-match skipped a real token and corrupted the
+  context (and a prefill failure left the mirror lying). iOS was correct (records only after a successful
+  decode). Fix: port iOS's order — prefill-decode → mirror; sample → decode → push; clear KV+mirror on failure.
+  Syntax-checked vs the real `llama.h`; C++ body isn't CI-compiled (see android sampling-parity bullet). Lesson: strict-lockstep bullet above.
 - 2026-06-25 — Chat KV-cache reuse (efficiency / "close to the metal"). Both engines kept ONE persistent
   context but re-decoded the full conversation every turn → KV accumulated duplicated history and
   time-to-first-token grew with length. Fix: `KVCacheReuse` (pure, tested both platforms) — decode only
