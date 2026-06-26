@@ -74,10 +74,26 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     if (reuse == 0) {
         llama_memory_clear(llama_get_memory(h->ctx), true);
     }
-    // Keep `toDecode` alive for the whole function — llama_batch_get_one only borrows its pointer.
+    // Keep `toDecode` alive across the prefill — llama_batch_get_one only borrows its pointer.
     std::vector<llama_token> toDecode(newTokens.begin() + reuse, newTokens.end());
-    h->cached = newTokens;   // the KV cache will hold exactly newTokens after the prefill below
-    llama_batch batch = llama_batch_get_one(toDecode.data(), (int32_t) toDecode.size());
+
+    std::string out;
+
+    // Prefill: decode the new (suffix) tokens into the KV cache. Update the cache mirror to match the
+    // KV *only after* the decode succeeds; on failure, wipe the KV + mirror so the NEXT turn does a
+    // clean full reprefill. Setting h->cached before this (or leaving it set on failure) would let the
+    // next turn's KVCacheReuse prefix-match reuse a cache the mirror lies about → silent corruption.
+    // (iOS LlamaEngine assigns its mirror only after a successful prefill — this keeps the twins honest.)
+    {
+        llama_batch prefill = llama_batch_get_one(toDecode.data(), (int32_t) toDecode.size());
+        if (llama_decode(h->ctx, prefill) != 0) {
+            LOGE("llama_decode (prefill) failed");
+            llama_memory_clear(llama_get_memory(h->ctx), true);
+            h->cached.clear();
+            return out;   // empty reply — surfaced to the UI as a failed generation
+        }
+    }
+    h->cached = newTokens;   // the KV cache now holds exactly newTokens
 
     jmethodID on_token = nullptr;
     if (env && sink) {
@@ -94,13 +110,8 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         env->DeleteLocalRef(tcls);
     }
 
-    std::string out;
     for (int i = 0; i < max_tokens; ++i) {
         if (cancel_fid && env->GetBooleanField(thiz, cancel_fid)) break;   // interrupted (M3)
-        if (llama_decode(h->ctx, batch) != 0) {
-            LOGE("llama_decode failed");
-            break;
-        }
         llama_token next = llama_sampler_sample(h->sampler, h->ctx, -1);
         if (llama_vocab_is_eog(vocab, next)) break;
 
@@ -116,8 +127,16 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
             // is UB and ART aborts the whole process. Stop the loop so it propagates cleanly (C3).
             if (env->ExceptionCheck()) break;
         }
-        h->cached.push_back(next);   // this reply token gets decoded next iteration → keep the mirror in sync
-        batch = llama_batch_get_one(&next, 1);
+        // Feed the sampled token back to extend the KV for the next step. Decode BEFORE recording it in
+        // the mirror, and push only on success — so h->cached never claims a token the KV doesn't hold.
+        // (The old code pushed then decoded next iteration, so a max_tokens/cancel exit left the mirror
+        //  one token ahead of the KV → next turn's reuse skipped a real token and corrupted the context.)
+        llama_batch one = llama_batch_get_one(&next, 1);
+        if (llama_decode(h->ctx, one) != 0) {
+            LOGE("llama_decode failed");
+            break;
+        }
+        h->cached.push_back(next);
     }
     return out;
 }
