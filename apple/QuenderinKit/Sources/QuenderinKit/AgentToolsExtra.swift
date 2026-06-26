@@ -143,7 +143,15 @@ enum DateCalc {
         let ns = text as NSString
         let f = formatter()
         return re.matches(in: text, range: NSRange(location: 0, length: ns.length))
-            .compactMap { f.date(from: ns.substring(with: $0.range)) }
+            .compactMap { match -> Date? in
+                let s = ns.substring(with: match.range)
+                // DateFormatter silently ROLLS OVER invalid dates (2026-02-30 → 2026-03-02, a non-leap
+                // 2026-02-29 → 2026-03-01), which would compute a day count from a date the user never
+                // typed — and diverge from Android's strict java.time.LocalDate, which rejects them.
+                // Round-trip the parsed date back to a string and reject anything that didn't survive.
+                guard let d = f.date(from: s), f.string(from: d) == s else { return nil }
+                return d
+            }
     }
 
     private static func firstInteger(in text: String) -> Int? {

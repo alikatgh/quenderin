@@ -467,6 +467,13 @@ fun main() {
     check("date adds days across months", DateCalcTool().run("2026-06-08 plus 90 days") == "2026-09-06")
     check("date subtracts days", DateCalcTool().run("2026-12-25 minus 14 days") == "2026-12-11")
     check("date rejects garbage", DateCalcTool().run("what time is it").contains("Couldn't read"))
+    // Calendar-invalid dates must be rejected, not silently rolled over (iOS DateFormatter did the
+    // latter; round-trip validation now makes it strict too). java.time.LocalDate is strict already.
+    check("date rejects calendar-invalid dates (iOS strict parity)",
+        DateCalcTool().run("days between 2026-02-30 and 2026-12-25").contains("Couldn't read") &&
+        DateCalcTool().run("2026-02-29 plus 1 day").contains("Couldn't read"))
+    check("date accepts a real leap day (2024-02-29)",
+        DateCalcTool().run("2024-02-29 plus 1 day") == "2024-03-01")
     check("decision parser reads a tool call",
         AgentDecisionParser.parse("""{"tool":"calculator","input":"2+2"}""") == AgentDecision.UseTool("calculator", "2+2"))
     check("decision parser reads a final answer wrapped in prose",

@@ -24,6 +24,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `\f` (mangling non-ASCII + emoji, e.g. `café` → `cafu00e9`) while the lib decodes them. Decode
   the FULL JSON escape set on the hand-rolled side; pin it with a cross-platform parity test whose
   INPUT is a literal escape and whose EXPECTED is the decoded char. (agent parser \u)
+- **Lenient date parser silently rolls over invalid dates.** Foundation `DateFormatter` turns
+  `2026-02-30` into `2026-03-02` (and a non-leap `2026-02-29` → `03-01`) and computes from a date the
+  user never typed; `java.time.LocalDate` rejects them. Validate a lenient parse by ROUND-TRIPPING —
+  format the parsed date back and reject it if it ≠ the input. (date roll-over)
 - **ICU vs Java regex `\b`/`\w` (twin drift).** iOS `NSRegularExpression` (ICU) treats accented/Unicode
   letters as word chars in `\b` BY DEFAULT; Android `java.util.regex` is ASCII-only unless you add the
   `(?U)` inline flag. A shared safety/validation regex WILL diverge on non-ASCII text — `\bpin\b` fired
@@ -177,6 +181,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-26 — iOS date tool silently rolled over invalid dates (`AgentToolsExtra.swift` `isoDates`).
+  Foundation `DateFormatter` accepts `2026-02-30` (→ Mar 2), `2026-06-31` (→ Jul 1), a non-leap
+  `2026-02-29` (→ Mar 1) and computed a day count from a date the user never typed — diverging from
+  Android's strict `java.time.LocalDate`, which rejects them. Fix: round-trip validation — reject any
+  parse whose `string(from:)` ≠ the input. Pinned both (iOS `DateCalcToolTests`; CoreVerify +2 → 161).
+  Lesson: the date-roll-over pattern above. (This one was the iOS side being wrong, not Android.)
 - 2026-06-26 — SafetyBlocklist `\b` diverged across platforms (`SafetyBlocklist.kt`). The safety gate's
   single-word matcher uses `\b` on both, but iOS ICU `\b` is Unicode-aware while Android Java `\b` is
   ASCII-only — so `pin` fired on `piné`/`épin` on Android only (a false-block; iOS correctly didn't).
