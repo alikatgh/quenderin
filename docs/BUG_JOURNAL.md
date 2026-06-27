@@ -217,6 +217,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Electron hardening (deep-hunt batch, `src/electron/main.ts`): (1) the window had NO
+  `setWindowOpenHandler` / `will-navigate` guard, so reflected/injected untrusted content could navigate
+  it to a remote or `file://` URL and escape the boundary — pinned all navigation + new-window to the
+  local origin. (2) `app.on('activate')` re-ran the FULL `bootstrap()` on a macOS dock re-activate →
+  a SECOND backend server (new port) + a leaked Tray + double-registered global shortcuts — split out
+  `createWindow()` so re-activate only remakes the window. (3) `findFreePort` recursed with no bound and
+  retried EVERY error → infinite port-bumping on EACCES — bounded it (100 tries / >65535) and only retry
+  EADDRINUSE, reject otherwise; `bootstrap()` failure now exits cleanly instead of an unhandled rejection.
+  Refuted on re-read: the `contextBridge` authToken exposure (intended design; the renderer needs it +
+  the nav guard mitigates XSS). Lesson: an Electron window that renders ANY untrusted content needs a
+  navigation allowlist + window-open deny; per-activate setup must be idempotent.
+
 - 2026-06-26 — Two download/extract write streams had no `'error'` handler (`src/app.ts` voice-model
   extract; `src/services/llm.service.ts` model download). A mid-write `ENOSPC` (realistic: multi-GB
   model on a ~2-5GB-free disk) emits `'error'` on the write stream → unhandled → uncaught exception →
