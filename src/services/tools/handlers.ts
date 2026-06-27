@@ -148,8 +148,15 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
                 // Read up to MAX_FILE_READ_BYTES to protect context window
                 const buf = Buffer.alloc(MAX_FILE_READ_BYTES);
                 const fd = fs.openSync(realResolved, 'r');
-                const bytesRead = fs.readSync(fd, buf, 0, MAX_FILE_READ_BYTES, 0);
-                fs.closeSync(fd);
+                // try/finally so a readSync failure (EIO on a network mount, a device file, a perms
+                // change between stat and read) can't leak the fd — repeated failures would exhaust the
+                // process fd table (EMFILE) and take down the server (deep-hunt HIGH).
+                let bytesRead: number;
+                try {
+                    bytesRead = fs.readSync(fd, buf, 0, MAX_FILE_READ_BYTES, 0);
+                } finally {
+                    fs.closeSync(fd);
+                }
                 const content = buf.slice(0, bytesRead).toString('utf8');
                 const truncated = bytesRead === MAX_FILE_READ_BYTES && stat.size > MAX_FILE_READ_BYTES;
                 return {

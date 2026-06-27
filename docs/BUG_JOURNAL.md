@@ -217,6 +217,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Tool-loop hardening (deep-hunt): (1) `read_file` leaked a file descriptor —
+  `openSync`/`readSync`/`closeSync` with no `try/finally`, so a `readSync` throw (EIO/perms change)
+  skipped the close; repeated failures exhaust the fd table (EMFILE) and down the server. Wrapped in
+  `try/finally` (`src/services/tools/handlers.ts`). (2) The calculator tokenizer accepted `1.2.3` as one
+  number → `parseFloat` silently returns `1.2` (NOT NaN), a wrong answer instead of an error; reject >1
+  decimal point (`calculator.ts`). (3) `hasToolCalls` matched only the OPENING `<tool_call>`, so an
+  unclosed tag returned true while `parseToolCalls` (needs the pair) found none → loop spins on
+  unexecutable output; require a complete pair (`toolLoop.ts`). Tests added. Lesson: `openSync` needs
+  `try/finally` like any handle; `parseFloat` is not a validator; a "has X" probe must agree with the
+  parser that consumes X.
+
 - 2026-06-27 — Prompt-injection hardening (deep-hunt, `src/services/agent/promptBuilder.ts`): the
   UNTRUSTED DATA fence could be CLOSED EARLY by its own content — `wrapUntrustedData` embedded device
   XML / vision text / attachment names+bodies / corrections verbatim, so a hostile screen showing the

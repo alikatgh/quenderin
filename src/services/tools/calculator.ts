@@ -36,6 +36,12 @@ function tokenize(expr: string): Token[] {
             while (i < s.length && /[\d.]/.test(s[i])) {
                 num += s[i++];
             }
+            // Reject malformed numbers with >1 decimal point. parseFloat('1.2.3') silently returns 1.2
+            // (NOT NaN), so without this a typo'd literal would evaluate to a wrong answer instead of an
+            // error — unacceptable for a calculator (deep-hunt).
+            if ((num.match(/\./g) || []).length > 1) {
+                throw new CalculatorError(`Invalid number: ${num}`);
+            }
             tokens.push({ type: 'number', value: num });
             continue;
         }
