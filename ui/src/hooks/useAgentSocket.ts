@@ -44,7 +44,17 @@ export function useAgentSocket() {
     const [settings, setSettings] = useState<AppSettings>(() => {
         try {
             const saved = localStorage.getItem('quenderin_settings');
-            return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
+            if (!saved) return { ...DEFAULT_SETTINGS };
+            const parsed = JSON.parse(saved);
+            // Coerce numeric fields: a corrupt localStorage value (e.g. contextSize: "abc") would otherwise
+            // spread in verbatim as a string and break the context-size UI / numeric comparisons (deep-hunt).
+            const num = (v: unknown, fallback: number) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+            return {
+                ...DEFAULT_SETTINGS,
+                ...parsed,
+                contextSize: num(parsed.contextSize, DEFAULT_SETTINGS.contextSize),
+                chatLogDedupeMs: num(parsed.chatLogDedupeMs, DEFAULT_SETTINGS.chatLogDedupeMs),
+            };
         } catch { return { ...DEFAULT_SETTINGS }; }
     });
     const wsRef = useRef<WebSocket | null>(null);
@@ -156,7 +166,7 @@ export function useAgentSocket() {
                     setRequiredAction(data.data);
                     return; // Don't add to general logs, this is an interactive modal trigger
                 } else if (data.type === 'model_download_progress') {
-                    setDownloadProgress(data.data.progress);
+                    setDownloadProgress(data.data?.progress ?? 0);
                     return;
                 } else if (data.type === 'preset_changed') {
                     setActivePresetId(data.presetId);
@@ -172,6 +182,12 @@ export function useAgentSocket() {
             } catch (e) {
                 console.error("Invalid WS message", e);
             }
+        };
+
+        // Surface socket errors. Reconnect is driven by onclose (bounded by MAX_RECONNECT_ATTEMPTS +
+        // backoff); without an onerror handler the error was swallowed silently (deep-hunt).
+        ws.onerror = (ev) => {
+            console.error('[WS] socket error', ev);
         };
 
         ws.onclose = () => {

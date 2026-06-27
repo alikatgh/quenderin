@@ -42,22 +42,26 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 
   const handleDownloadVoice = async () => {
     setIsVoiceDownloading(true);
+    // Hoisted + cleared in finally: the progress-simulator interval was only cleared on the success
+    // path, so a throw from apiFetch left it running forever (firing setState every 500ms) (deep-hunt).
+    let interval: ReturnType<typeof setInterval> | undefined;
     try {
       // Simulate progress since unzipper progress is complex, the whole zip is just 50MB
       setVoiceDownloadProgress(10);
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setVoiceDownloadProgress(p => p >= 90 ? 90 : p + 10);
       }, 500);
 
       const res = await apiFetch('/api/voice/download', { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      clearInterval(interval);
       setVoiceDownloadProgress(100);
       setTimeout(() => setIsVoiceDownloading(false), 1000);
     } catch {
       setIsVoiceDownloading(false);
       setVoiceDownloadProgress(0);
+    } finally {
+      if (interval) clearInterval(interval);
     }
   };
 

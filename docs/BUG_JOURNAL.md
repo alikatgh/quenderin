@@ -221,6 +221,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — UI robustness (UI deep-hunt): (1) `useAgentSocket` had no `ws.onerror` — socket errors
+  were swallowed (reconnect is onclose-driven + bounded, but the error never surfaced); added one.
+  (2) `data.data.progress` read without optional chaining (caught by the try, but now `data.data?.progress
+  ?? 0`). (3) the settings localStorage init spread parsed values verbatim — a corrupt `contextSize:"abc"`
+  broke the context-size UI; coerce numeric fields. (4) `Inspector` rendered the crosshair at `(NaN,NaN)`
+  on a malformed TAP command; guard NaN. (5) the WelcomeWizard voice-download progress interval was cleared
+  only on success, so an apiFetch throw leaked a repeating interval; clear it in `finally`. Lesson: every
+  socket needs an `onerror`; coerce numeric values from localStorage; clear intervals in `finally`.
+
 - 2026-06-27 — UI privacy/secrets (UI deep-hunt, CRITICAL+HIGH): (1) `PrivacyLock` auto-unlocked — an
   effect called `onUnlock()` whenever `!isEnabled || !expectedPassphrase`, and an empty passphrase `''`
   is falsy, so a settings-sync race that momentarily emptied the passphrase BYPASSED the lock with no
