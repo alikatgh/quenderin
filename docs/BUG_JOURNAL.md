@@ -217,6 +217,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Untrusted UI-dump parsing bounded (deep-hunt, `src/services/uiParser.service.ts`): the
+  device XML (`/sdcard/window_dump.xml`) is attacker-controllable, but `traverse` recursed with no depth
+  bound and `stateMap` grew with no size bound — a deeply-nested or huge dump could overflow the stack or
+  exhaust memory. Added MAX_TREE_DEPTH=500 + MAX_ELEMENTS=5000 caps (fast-xml-parser's own nesting limit
+  is a catchable second layer). Also (`uiVerifier.ts`): a non-numeric LLM `target_id` parsed to NaN and
+  reported a misleading "ID NaN not found" — now flagged as an invalid id. The prompt-injection angle on
+  UI text was already mitigated (JSON.stringify + the UI_STATE fence, whose escape was closed yesterday).
+  Tests added. Lesson: every walk over untrusted tree data needs a depth AND a size cap, independent of
+  whatever the parser happens to enforce.
+
 - 2026-06-27 — Tool-loop hardening (deep-hunt): (1) `read_file` leaked a file descriptor —
   `openSync`/`readSync`/`closeSync` with no `try/finally`, so a `readSync` throw (EIO/perms change)
   skipped the close; repeated failures exhaust the fd table (EMFILE) and down the server. Wrapped in
