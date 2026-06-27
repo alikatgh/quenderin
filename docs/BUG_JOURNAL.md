@@ -217,6 +217,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — HTTP-server hardening (deep-hunt): (1) the graceful-shutdown handler stopped the daemon,
+  voice + OCR services but never unloaded the native llama model/context (`src/server.ts`) — the one
+  heavyweight handle left dangling on SIGTERM / in-process restart; now calls `llmService.unloadModel()`.
+  (2) `--port` was `parseInt`'d with no validation → a non-numeric value reached `server.listen(NaN)` and
+  surfaced a cryptic `ERR_SOCKET_BAD_PORT` (`src/index.ts`); now validated 1-65535 with a clear message.
+  (3) the per-launch auth token rides in the opened URL (`?token=`), so added `Referrer-Policy:
+  no-referrer` (`src/app.ts`) to keep it out of the Referer. Refuted: the isPortFree→listen TOCTOU (the
+  `server.once('error')` EADDRINUSE handler already rejects cleanly). Test added. Lesson: a graceful
+  shutdown must dispose EVERY heavyweight handle, and CLI numeric args need range validation.
+
 - 2026-06-27 — Action-executor input validation (deep-hunt, `src/services/agent/actionExecutor.ts`): a
   non-numeric LLM `target_id` parsed to NaN (fell through to a confusing "id NaN not found") — now
   rejected explicitly; raw coordinate clicks were piped straight into `adb input tap` with NO validation,

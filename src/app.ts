@@ -52,6 +52,9 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             'Content-Security-Policy',
             "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
         );
+        // The CLI delivers the per-launch auth token in the opened URL (`?token=`). Suppress the
+        // Referer so that token can't leak to any cross-origin resource the page might request.
+        res.setHeader('Referrer-Policy', 'no-referrer');
         next();
     });
     // Restrict CORS to same-machine origins only — this is a local-only server
