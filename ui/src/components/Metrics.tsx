@@ -95,10 +95,18 @@ function MiniLineChart({ values, color = '#6366f1', height = 60 }: {
     );
 }
 
+// CSV formula-injection guard: a cell that starts with = + - @ (or a control char) is executed as a
+// formula by Excel/Sheets. goal_text is LLM/user-controlled, so prefix those with a single quote before
+// quoting. (deep-hunt)
+function csvCell(value: string): string {
+    const escaped = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    return `"${escaped.replace(/"/g, '""')}"`;
+}
+
 function exportMetricsCsv(metrics: MetricRecord[]) {
     const header = 'timestamp,goal,success,steps,duration_s,retries\n';
     const rows = metrics.map(m =>
-        `"${m.timestamp}","${m.goal_text.replace(/"/g, '""')}",${m.success},${m.total_steps},${(m.duration_ms / 1000).toFixed(2)},${m.total_retries}`
+        `${csvCell(m.timestamp)},${csvCell(m.goal_text)},${m.success},${m.total_steps},${(m.duration_ms / 1000).toFixed(2)},${m.total_retries}`
     ).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
