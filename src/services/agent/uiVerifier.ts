@@ -140,6 +140,11 @@ export class UiVerifier {
         }
 
         const targetId = typeof targetIdRaw === 'string' ? parseInt(targetIdRaw, 10) : targetIdRaw;
+        // A non-numeric LLM target_id (e.g. "submit") parses to NaN; NaN !== every id, so it would
+        // report a misleading "ID NaN not found". Flag the malformed id explicitly instead (deep-hunt).
+        if (typeof targetId !== 'number' || Number.isNaN(targetId)) {
+            return `[Warning] Action had an invalid non-numeric target id (${JSON.stringify(targetIdRaw)}); cannot verify the target.`;
+        }
 
         // Find the node in the PRE state to know what we interacted with
         const preNode = preStateElements.find(e => e.id === targetId);

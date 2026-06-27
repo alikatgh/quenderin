@@ -23,6 +23,12 @@ export class UiParserService {
         return this.xmlParser.parse(xmlContent);
     }
 
+    // The XML is device-sourced + untrusted. Bound the walk so a maliciously deep or huge dump can't
+    // overflow the stack (deep recursion) or exhaust memory (unbounded element map). Real Android view
+    // hierarchies are rarely > ~50 deep or > a few hundred nodes; these caps are far above legitimate use.
+    private static readonly MAX_TREE_DEPTH = 500;
+    private static readonly MAX_ELEMENTS = 5000;
+
     public buildStateMap(rawTree: any): Map<number, UIElement> {
         const stateMap = new Map<number, UIElement>();
         let idCounter = 0;
@@ -48,13 +54,15 @@ export class UiParserService {
             return { center: { x: 0, y: 0 }, rect: { x: 0, y: 0, width: 0, height: 0 } };
         };
 
-        const traverse = (node: any) => {
-            if (!node) return;
+        const traverse = (node: any, depth: number) => {
+            // Bail on a too-deep or already-full tree — an adversarial dump must not overflow the stack
+            // or grow the map without bound.
+            if (!node || depth > UiParserService.MAX_TREE_DEPTH || stateMap.size >= UiParserService.MAX_ELEMENTS) return;
 
             if (node.node) {
                 const children = Array.isArray(node.node) ? node.node : [node.node];
                 for (const child of children) {
-                    traverse(child);
+                    traverse(child, depth + 1);
                 }
             }
 
@@ -97,7 +105,7 @@ export class UiParserService {
         };
 
         if (rawTree && rawTree.hierarchy) {
-            traverse(rawTree.hierarchy);
+            traverse(rawTree.hierarchy, 0);
         }
 
         return stateMap;
