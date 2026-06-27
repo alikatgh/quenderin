@@ -13,7 +13,11 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
     const lastDecide = [...logs].reverse().find(l => l.type === 'decide');
     if (lastDecide && lastDecide.command?.startsWith('TAP')) {
         const parts = lastDecide.command.split(' ');
-        targetTap = { x: parseInt(parts[1], 10), y: parseInt(parts[2], 10) }
+        const x = parseInt(parts[1], 10);
+        const y = parseInt(parts[2], 10);
+        // Guard NaN: a malformed TAP command would otherwise position the crosshair at (NaN, NaN),
+        // silently breaking the indicator (deep-hunt).
+        if (!Number.isNaN(x) && !Number.isNaN(y)) targetTap = { x, y };
     }
 
     return (
