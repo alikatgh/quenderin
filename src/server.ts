@@ -175,6 +175,9 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         clearInterval(cleanupTimer);
         backgroundDaemon.stop();
         voiceService.shutdown();
+        // Free the native llama model/context (the other long-lived services are stopped above; this
+        // was the one heavyweight handle left dangling on a graceful shutdown / in-process restart).
+        try { llmService.unloadModel(); } catch (e) { logger.debug('[Shutdown] model unload error:', e); }
         ocrService.terminate().catch((e) => logger.debug('[Shutdown] OCR terminate error:', e));
         // Final cleanup of temp files on shutdown
         cleanupOrphanedTempFiles().catch((e) => logger.debug('[Shutdown] Temp cleanup error:', e));

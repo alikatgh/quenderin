@@ -56,7 +56,13 @@ program
   .option('--no-open', 'Do not auto-open browser window')
   .action(async (options) => {
     try {
-      await startDashboardServer(parseInt(options.port, 10), options.open);
+      const port = parseInt(options.port, 10);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        console.error(`Invalid --port "${options.port}": must be an integer 1-65535.`);
+        process.exitCode = 1;
+        return;
+      }
+      await startDashboardServer(port, options.open);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("Failed to start dashboard server:", message);
