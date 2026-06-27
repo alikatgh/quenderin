@@ -217,6 +217,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Prompt-injection hardening (deep-hunt, `src/services/agent/promptBuilder.ts`): the
+  UNTRUSTED DATA fence could be CLOSED EARLY by its own content — `wrapUntrustedData` embedded device
+  XML / vision text / attachment names+bodies / corrections verbatim, so a hostile screen showing the
+  literal `<<<END UNTRUSTED DATA>>>` (or a `<<<UNTRUSTED DATA:` to spoof a new fence) escaped the fence
+  and smuggled the rest out as trusted instructions. Fix: neutralize both markers inside content before
+  wrapping. Also: the cross-run trajectory (`pastMemory.actions`) was injected as a trusted `[SYSTEM
+  WARNING]` — but it's derived from past runs over untrusted screens, so a poisoned "winning" sequence
+  replayed as trusted; now fenced as a PAST_TRAJECTORY_HINT (execution still passes the action gate).
+  Tests added. Lesson: a trust-fence is only as good as its delimiter — always strip the sentinel from
+  untrusted content, and don't elevate stored agent output to trusted just because the agent authored it.
+
 - 2026-06-27 — Electron hardening (deep-hunt batch, `src/electron/main.ts`): (1) the window had NO
   `setWindowOpenHandler` / `will-navigate` guard, so reflected/injected untrusted content could navigate
   it to a remote or `file://` URL and escape the boundary — pinned all navigation + new-window to the
