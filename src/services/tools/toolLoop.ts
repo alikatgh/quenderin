@@ -32,9 +32,12 @@ export function parseToolCalls(text: string): ToolCall[] {
     return calls;
 }
 
-/** Check if LLM output contains any tool call tags */
+/** Check if LLM output contains a COMPLETE tool call tag pair.
+ *  Must agree with parseToolCalls (which needs the closing tag): matching only the opening `<tool_call>`
+ *  returned true for unclosed/truncated output, so the outer loop would treat it as having tool calls
+ *  while parseToolCalls extracted none — spinning on unexecutable output (deep-hunt). */
 export function hasToolCalls(text: string): boolean {
-    return /<tool_call>/i.test(text);
+    return /<tool_call>[\s\S]*?<\/tool_call>/i.test(text);
 }
 
 /** Strip tool call XML from the response text, keeping the rest */

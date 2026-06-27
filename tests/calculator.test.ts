@@ -53,4 +53,13 @@ describe('safeCalculate', () => {
     it('rejects non-finite results', () => {
         expect(() => safeCalculate('1 / 0')).toThrow(CalculatorError);
     });
+
+    it('rejects malformed multi-dot numbers instead of silently truncating (1.2.3 -> 1.2)', () => {
+        // parseFloat('1.2.3') returns 1.2, NOT NaN — so a typo'd literal would otherwise compute a
+        // wrong answer instead of erroring. The tokenizer now rejects >1 decimal point.
+        expect(() => safeCalculate('1.2.3')).toThrow(CalculatorError);
+        expect(() => safeCalculate('1.2.3 + 1')).toThrow(CalculatorError);
+        expect(() => safeCalculate('5..5')).toThrow(CalculatorError);
+        expect(safeCalculate('1.5 + 2.5')).toBe(4); // valid single-dot decimals still work
+    });
 });
