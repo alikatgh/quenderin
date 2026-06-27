@@ -66,4 +66,23 @@ describe('ActionExecutor coordinate-click safety', () => {
         await expect(run(exec, { action: 'click', target_id: 7 } as AgentAction, els))
             .rejects.toBeInstanceOf(SafetyViolationError);
     });
+
+    it('rejects a non-numeric target id instead of dispatching a NaN lookup', async () => {
+        const { provider, clicks } = deviceStub();
+        const exec = new ActionExecutor(provider);
+        const els = [uiElement(1, 'Settings')];
+        const ok = await run(exec, { action: 'click', target_id: 'submit' } as unknown as AgentAction, els);
+        expect(ok).toBe(false);
+        expect(clicks).toHaveLength(0);
+    });
+
+    it('refuses out-of-range coordinates (negative / absurd / non-finite) before reaching the device', async () => {
+        const { provider, clicks } = deviceStub();
+        const exec = new ActionExecutor(provider);
+        for (const [x, y] of [[-5, 10], [10, -5], [999999, 10], [Number.NaN, 10], [Infinity, 0]]) {
+            const ok = await run(exec, { action: 'click', x, y } as AgentAction, []);
+            expect(ok).toBe(false);
+        }
+        expect(clicks).toHaveLength(0);
+    });
 });

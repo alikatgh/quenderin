@@ -217,6 +217,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — Action-executor input validation (deep-hunt, `src/services/agent/actionExecutor.ts`): a
+  non-numeric LLM `target_id` parsed to NaN (fell through to a confusing "id NaN not found") — now
+  rejected explicitly; raw coordinate clicks were piped straight into `adb input tap` with NO validation,
+  so a negative/non-finite/absurd coordinate (hallucination/injection) reached the device — now refuses
+  out-of-range coords. Considered + KEPT as-is: the `enter`-key gate scanning ALL on-screen elements
+  (deliberate over-block — enter can confirm a dialog the agent was blocked from clicking) and the
+  missing-rect coordinate-gate concern (the parser always populates `rect`; a rect-less element has no
+  clickable area, so a coordinate can't target one). Tests added. Lesson: validate every LLM-supplied
+  id/coordinate at the executor boundary before it reaches a device action.
+
 - 2026-06-27 — Untrusted UI-dump parsing bounded (deep-hunt, `src/services/uiParser.service.ts`): the
   device XML (`/sdcard/window_dump.xml`) is attacker-controllable, but `traverse` recursed with no depth
   bound and `stateMap` grew with no size bound — a deeply-nested or huge dump could overflow the stack or

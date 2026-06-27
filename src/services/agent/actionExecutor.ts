@@ -70,6 +70,12 @@ export class ActionExecutor {
 
                 if (targetIdRaw !== undefined && targetIdRaw !== null) {
                     const targetId = typeof targetIdRaw === 'string' ? parseInt(targetIdRaw, 10) : targetIdRaw;
+                    // A non-numeric LLM target_id parses to NaN; NaN !== every element id, so it would
+                    // fall through to a confusing "id NaN not found". Reject it explicitly (deep-hunt).
+                    if (typeof targetId !== 'number' || Number.isNaN(targetId)) {
+                        emitter.emit('error', `Invalid non-numeric target id: ${JSON.stringify(targetIdRaw)}.`);
+                        return false;
+                    }
 
                     // Translation Layer
                     const el = elements.find(e => e.id === targetId);
@@ -98,23 +104,32 @@ export class ActionExecutor {
                         return false;
                     }
                 } else if (actionObj.x !== undefined && actionObj.y !== undefined) {
+                    // Validate the LLM-supplied coordinate before it reaches the device. A non-finite or
+                    // negative/absurd coordinate (hallucination or injection) should be refused, not piped
+                    // into `adb input tap` (deep-hunt). 100000px is far beyond any real display.
+                    const { x, y } = actionObj;
+                    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > 100000 || y > 100000) {
+                        emitter.emit('error', `Refusing coordinate action with out-of-range coordinates (${x}, ${y}).`);
+                        return false;
+                    }
+
                     emitter.emit('status', `Using spatial vision to locate target...`);
 
                     // A coordinate (x/y) click otherwise BYPASSES the element-level blocklist — the
                     // agent could tap a "confirm transfer" button by raw pixel instead of by id and
                     // dodge checkSafety. Re-apply it to every UI element the point falls inside (audit MEDIUM).
-                    for (const el of this.elementsContaining(actionObj.x, actionObj.y, elements)) {
+                    for (const el of this.elementsContaining(x, y, elements)) {
                         this.checkSafety(el);
                     }
 
                     if (actionType === 'click') {
                         emitter.emit('status', `Tapping spatial coordinate...`);
-                        await this.deviceProvider.click(actionObj.x, actionObj.y);
+                        await this.deviceProvider.click(x, y);
                         return true;
                     } else {
                         const text = actionObj.text || '';
                         emitter.emit('status', `Typing at spatial coordinate...`);
-                        await this.deviceProvider.click(actionObj.x, actionObj.y);
+                        await this.deviceProvider.click(x, y);
                         await new Promise(res => setTimeout(res, 500));
                         await this.deviceProvider.type(text);
                         return true;
