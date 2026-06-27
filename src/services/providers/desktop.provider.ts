@@ -21,8 +21,8 @@ interface ScreenshotLike {
 export class DesktopProvider extends EventEmitter implements IDeviceProvider {
     private robot: RobotJsLike | null = null;
     private robotLoaded = false;
-    private screenshotFn: ScreenshotLike | null = null;
-    private screenshotLoaded = false;
+    // Memoize the in-flight init PROMISE, not a boolean flag — see getScreenshotFn (deep-hunt race fix).
+    private screenshotFnPromise: Promise<ScreenshotLike> | null = null;
 
     constructor() {
         super();
@@ -52,22 +52,28 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
      * (screencapture on macOS, import/gnome-screenshot on Linux, PowerShell on Windows)
      * when the native module isn't available.
      */
-    private async getScreenshotFn(): Promise<ScreenshotLike> {
-        if (this.screenshotLoaded && this.screenshotFn) return this.screenshotFn;
-        this.screenshotLoaded = true;
+    private getScreenshotFn(): Promise<ScreenshotLike> {
+        // Memoize the in-flight init PROMISE so concurrent callers await the SAME import. The old boolean
+        // flag was set BEFORE the async import resolved, so a second concurrent caller saw "loaded" but a
+        // still-undefined fn and double-initialized (deep-hunt race).
+        if (!this.screenshotFnPromise) {
+            this.screenshotFnPromise = this.loadScreenshotFn();
+        }
+        return this.screenshotFnPromise;
+    }
 
+    private async loadScreenshotFn(): Promise<ScreenshotLike> {
         try {
             const mod = await import('screenshot-desktop');
             const fn = mod.default ?? mod;
-            this.screenshotFn = (opts: { filename: string; format: string }) =>
+            return (opts: { filename: string; format: string }) =>
                 fn({ filename: opts.filename, format: opts.format as 'png' | 'jpg' });
-            return this.screenshotFn;
         } catch {
             logger.warn("[DesktopProvider] 'screenshot-desktop' unavailable, using platform-native fallback.");
         }
 
         // Platform-native fallback — no native module needed
-        this.screenshotFn = async (opts: { filename: string; format: string }) => {
+        return async (opts: { filename: string; format: string }) => {
             const { filename } = opts;
             const platform = process.platform;
             try {
@@ -107,7 +113,6 @@ $bitmap.Dispose()`;
                 );
             }
         };
-        return this.screenshotFn;
     }
 
     public async click(x: number, y: number): Promise<void> {

@@ -277,15 +277,21 @@ export class AgentService {
             emitter.emit('status', " Deciding next action...");
 
             // 5. Generate LLM Action
-            const commandText = await this.llmProvider.generateAction(
-                step === 1 ? SYSTEM_PROMPT : "",
-                prompt,
-                { maxTokens: 150, temperature: 0.1 },
-                state.screenshotPath
-            );
-            // Screenshot has been consumed by both LLM calls — delete it to free /tmp space (2–5 MB per frame)
-            if (state.screenshotPath) {
-                fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
+            let commandText: string;
+            try {
+                commandText = await this.llmProvider.generateAction(
+                    step === 1 ? SYSTEM_PROMPT : "",
+                    prompt,
+                    { maxTokens: 150, temperature: 0.1 },
+                    state.screenshotPath
+                );
+            } finally {
+                // Screenshot has been consumed by the LLM calls — delete it to free /tmp space (2–5 MB
+                // per frame) on EVERY path. A throw in generateAction previously skipped the unlink and
+                // leaked the file until the periodic temp sweep (deep-hunt).
+                if (state.screenshotPath) {
+                    fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
+                }
             }
             emitter.emit('decide', commandText);
 
