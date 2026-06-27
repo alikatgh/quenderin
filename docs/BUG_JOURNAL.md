@@ -221,6 +221,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-27 — UI privacy/secrets (UI deep-hunt, CRITICAL+HIGH): (1) `PrivacyLock` auto-unlocked — an
+  effect called `onUnlock()` whenever `!isEnabled || !expectedPassphrase`, and an empty passphrase `''`
+  is falsy, so a settings-sync race that momentarily emptied the passphrase BYPASSED the lock with no
+  user action. Removed the side-effect (the render-`null` gate is enough; `onUnlock` now fires only on a
+  correct passphrase). (2) `App.tsx` re-locked on every settings sync — now engages only on the
+  transition to "configured" via a ref, so a sync can't re-lock an app the user already unlocked.
+  (3) `privacyPassphrase` was broadcast in EVERY `settings_update` WS frame — a client-side UI secret the
+  server has no use for; stripped it from all 3 send paths (`useAgentSocket.ts`). (4) functional updater
+  for `failedAttempts`. Lesson: a component must NEVER call an unlock/auth callback as a side-effect of a
+  prop change (falsy `''` makes it fire spuriously); drive lock state from the parent on real transitions.
+
 - 2026-06-27 — Desktop provider/agent cleanup (deep-hunt, final batch): (1) the agent loop deleted the
   per-step screenshot only on the happy path — a throw in `generateAction` skipped the unlink and leaked
   the 2-5MB frame until the periodic temp sweep; moved the unlink into a `finally` (`agent.service.ts`).

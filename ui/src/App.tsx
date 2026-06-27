@@ -368,12 +368,18 @@ function AppContent() {
     }
   }, [settings.themePreference, setDarkMode]);
 
+  const lockConfiguredRef = useRef(false);
   useEffect(() => {
-    if (settings.privacyLockEnabled && settings.privacyPassphrase) {
+    const configured = settings.privacyLockEnabled && !!settings.privacyPassphrase;
+    // Engage the lock only on the TRANSITION to "configured" (initial mount with the lock on, or the
+    // user newly enabling it) — not on every settings sync, which would re-lock an app the user has
+    // already unlocked mid-session (deep-hunt). Disabling the lock always unlocks.
+    if (configured && !lockConfiguredRef.current) {
       setIsLocked(true);
-    } else {
+    } else if (!configured) {
       setIsLocked(false);
     }
+    lockConfiguredRef.current = configured;
   }, [settings.privacyLockEnabled, settings.privacyPassphrase]);
 
   useEffect(() => {
