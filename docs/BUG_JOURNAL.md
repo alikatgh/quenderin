@@ -20,6 +20,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
+- **Lazy-init memoized by a FLAG flips before the `await` resolves → double-init race.** `if (loaded)
+  return x; loaded = true; x = await import(...)` — a second concurrent caller sees `loaded === true` but
+  `x` still undefined and runs the init AGAIN. Memoize the in-flight **PROMISE** (`if (!p) p = init();
+  return p`), not a boolean. (desktop.provider screenshot/robot init)
 - **Device/host shell re-tokenization.** `adb shell input text "$x"` is re-parsed by the
   DEVICE shell — single-argv is NOT enough; escape metacharacters + encode spaces. (H1, M9)
 - **`spawn()` / write streams need an `'error'` handler (or it's an uncaught exception).** If a
@@ -216,6 +220,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-06-27 — Desktop provider/agent cleanup (deep-hunt, final batch): (1) the agent loop deleted the
+  per-step screenshot only on the happy path — a throw in `generateAction` skipped the unlink and leaked
+  the 2-5MB frame until the periodic temp sweep; moved the unlink into a `finally` (`agent.service.ts`).
+  (2) `getScreenshotFn` set a boolean `loaded` flag BEFORE the async import resolved, so a concurrent
+  caller saw "loaded" + an undefined fn and double-initialized — memoize the in-flight PROMISE instead
+  (`desktop.provider.ts`). Refuted: the `health.ts` `historyLimit=0` "falsy-zero" — the code uses
+  `Number.isFinite` + `Math.max(1, …)`, so 0 is handled correctly. Lesson: memoize the init PROMISE not a
+  flag (a flag flips before the await resolves), and clean up per-iteration temp files in a `finally`.
 
 - 2026-06-27 — HTTP-server hardening (deep-hunt): (1) the graceful-shutdown handler stopped the daemon,
   voice + OCR services but never unloaded the native llama model/context (`src/server.ts`) — the one
