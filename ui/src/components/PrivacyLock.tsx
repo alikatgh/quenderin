@@ -20,11 +20,12 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
     const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
     const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
-    useEffect(() => {
-        if (!isEnabled || !expectedPassphrase) {
-            onUnlock();
-        }
-    }, [isEnabled, expectedPassphrase, onUnlock]);
+    // NOTE: this component must NEVER call onUnlock() as a side-effect of a prop change. It used to
+    // auto-unlock whenever `!isEnabled || !expectedPassphrase` — but an empty passphrase ('') is falsy,
+    // so a settings-sync race that momentarily emptied the passphrase auto-unlocked the lock with NO
+    // user action (deep-hunt CRITICAL). The render gate below (`return null`) hides the overlay when the
+    // lock isn't applicable; the PARENT owns the locked/unlocked state and onUnlock() now fires ONLY from
+    // handleSubmit on a correct passphrase.
 
     // Countdown timer during lockout
     useEffect(() => {
@@ -59,17 +60,20 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
             setLockoutUntil(null);
             onUnlock();
         } else {
-            const newAttempts = failedAttempts + 1;
-            setFailedAttempts(newAttempts);
             setError(true);
             setTimeout(() => setError(false), 800);
             setPassphrase('');
-
-            if (newAttempts >= MAX_FAILED_ATTEMPTS) {
-                setLockoutUntil(Date.now() + LOCKOUT_DURATION_MS);
-            }
+            // Functional updater so the attempt count can't regress under a rapid double-submit (the
+            // old `failedAttempts + 1` read a stale closure value) (deep-hunt).
+            setFailedAttempts(prev => {
+                const next = prev + 1;
+                if (next >= MAX_FAILED_ATTEMPTS) {
+                    setLockoutUntil(Date.now() + LOCKOUT_DURATION_MS);
+                }
+                return next;
+            });
         }
-    }, [passphrase, expectedPassphrase, onUnlock, failedAttempts, lockoutUntil]);
+    }, [passphrase, expectedPassphrase, onUnlock, lockoutUntil]);
 
     if (!isEnabled || !expectedPassphrase) return null;
 

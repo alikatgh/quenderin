@@ -21,6 +21,15 @@ export interface AppSettings {
     privacyPassphrase: string;
 }
 
+/** Build a `settings_update` WS frame WITHOUT the privacy passphrase. The passphrase is a client-side
+ *  UI-lock secret the server has no use for; broadcasting it in every settings_update frame leaked it
+ *  to the server logs / any WS observer (deep-hunt HIGH). It stays only in the client (state + localStorage). */
+function settingsUpdateFrame(s: AppSettings): string {
+    const { privacyPassphrase: _omit, ...safe } = s;
+    void _omit;
+    return JSON.stringify({ type: 'settings_update', ...safe });
+}
+
 export function useAgentSocket() {
     const MAX_LOG_ENTRIES = 300;
     const capLogs = (next: LogEntry[]) => next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
@@ -80,7 +89,7 @@ export function useAgentSocket() {
 
                 // Apply settings on initial connection — use ref to avoid stale closure
                 if (data.type === 'log' && data.message.includes('Connected')) {
-                    ws.send(JSON.stringify({ type: 'settings_update', ...settingsRef.current }));
+                    ws.send(settingsUpdateFrame(settingsRef.current));
                 }
 
                 if (data.type === 'status') {
@@ -281,7 +290,7 @@ export function useAgentSocket() {
         setSettings(newSettings);
         try { localStorage.setItem('quenderin_settings', JSON.stringify(newSettings)); } catch { /* best-effort */ }
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'settings_update', ...newSettings }));
+            wsRef.current.send(settingsUpdateFrame(newSettings));
         }
     };
 
@@ -290,7 +299,7 @@ export function useAgentSocket() {
         setSettings(fresh);
         try { localStorage.setItem('quenderin_settings', JSON.stringify(fresh)); } catch { /* best-effort */ }
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'settings_update', ...fresh }));
+            wsRef.current.send(settingsUpdateFrame(fresh));
         }
     };
 
