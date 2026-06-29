@@ -17,6 +17,10 @@ export class ErrorBoundary extends Component<Props, State> {
         return { hasError: true, error };
     }
 
+    componentDidCatch(error: Error, info: { componentStack: string }) {
+        console.error(`[ErrorBoundary] ${this.props.fallbackLabel ?? 'section'} crashed:`, error, info.componentStack);
+    }
+
     handleRetry = () => {
         this.setState({ hasError: false, error: null });
     };
@@ -24,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
+                <div role="alert" className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         {this.props.fallbackLabel ?? 'This section'} failed to load.
                     </p>

@@ -51,7 +51,7 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                         )}
 
                         {currentUI.length === 0 ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 animate-entrance">
+                            <div role="status" aria-live="polite" className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 animate-entrance">
                                 <TerminalSquare className="w-8 h-8 mb-4 opacity-20 text-blue-500" />
                                 <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500/50">Waiting for sync</span>
                             </div>

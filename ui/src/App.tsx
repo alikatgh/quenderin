@@ -349,6 +349,12 @@ function AppContent() {
 
   const { setDarkMode } = useTheme();
 
+  const applyTheme = (pref: string) => {
+    if (pref === 'dark') setDarkMode(true);
+    else if (pref === 'light') setDarkMode(false);
+    else setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+  };
+
   useEffect(() => {
     if (typeof readiness?.ready !== 'boolean') return;
     const wasReady = previousReadyRef.current;
@@ -378,12 +384,7 @@ function AppContent() {
   }, [showRecoveryBanner]);
 
   useEffect(() => {
-    if (settings.themePreference === 'dark') setDarkMode(true);
-    else if (settings.themePreference === 'light') setDarkMode(false);
-    else {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setDarkMode(isDark);
-    }
+    applyTheme(settings.themePreference);
   }, [settings.themePreference, setDarkMode]);
 
   const lockConfiguredRef = useRef(false);
@@ -531,7 +532,7 @@ function AppContent() {
                     setCurrentView('settings');
                     setShowRecoveryBanner(false);
                   }}
-                  className="px-2 py-0.5 rounded-md border border-emerald-400/40 dark:border-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                  className="px-2 py-0.5 rounded-md border border-emerald-400/40 dark:border-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   Open Settings
                 </button>
@@ -562,7 +563,7 @@ function AppContent() {
             >
               {isInspectorOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">Inspector</span>
-              {currentUI.length > 0 && <span className="flex w-1.5 h-1.5 rounded-full bg-blue-500 ml-0.5 animate-pulse" />}
+              {currentUI.length > 0 && <span className="flex w-1.5 h-1.5 rounded-full bg-blue-500 ml-0.5 motion-safe:animate-pulse" />}
             </button>
           </header>
 
@@ -587,9 +588,7 @@ function AppContent() {
               readinessStage={readiness?.stage}
               onThemeChange={(pref) => {
                 // Apply immediately to DOM
-                if (pref === 'dark') setDarkMode(true);
-                else if (pref === 'light') setDarkMode(false);
-                else setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+                applyTheme(pref);
                 // Also persist immediately — don't wait for "Apply Changes"
                 updateSettings({ ...settings, themePreference: pref });
               }}

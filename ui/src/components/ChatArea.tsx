@@ -83,7 +83,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             <div className="grid sm:grid-cols-2 gap-2.5 w-full max-w-lg">
                                 <button
                                     onClick={() => setCurrentView('docs')}
-                                    className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all col-span-full group"
+                                    className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all col-span-full group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
                                 >
                                     <div className="flex items-center gap-2">
                                         <BookOpen className="w-4 h-4 text-zinc-400" />
@@ -96,7 +96,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                     <button
                                         key={t.id}
                                         onClick={() => setGoal(t.template)}
-                                        className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group"
+                                        className="text-left p-3.5 border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
                                     >
                                         <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">{t.label}</p>
                                         <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 truncate">{t.template}</p>

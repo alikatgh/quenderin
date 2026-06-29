@@ -148,19 +148,16 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         setSettings(currentSettings);
     }, [currentSettings]);
 
-    useEffect(() => {
-        fetch('/api/models/catalog')
-            .then(r => r.json())
-            .then(d => setModelCatalog(d.catalog ?? []))
-            .catch(() => {});
-    }, []);
-
     const refreshCatalog = () => {
         fetch('/api/models/catalog')
             .then(r => r.json())
             .then(d => setModelCatalog(d.catalog ?? []))
             .catch(() => {});
     };
+
+    useEffect(() => {
+        refreshCatalog();
+    }, []);
 
     const handleDownloadModel = async (modelId: string) => {
         setModelActionId(modelId);

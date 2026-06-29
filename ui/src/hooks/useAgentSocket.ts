@@ -21,6 +21,10 @@ export interface AppSettings {
     privacyPassphrase: string;
 }
 
+/** Shape of a single file attachment sent with a goal or chat message. Named so
+ *  `sendGoal` and `sendChatMessage` share one source of truth for the attachment fields. */
+export interface Attachment { name: string; content: string; }
+
 /** Build a `settings_update` WS frame WITHOUT the privacy passphrase. The passphrase is a client-side
  *  UI-lock secret the server has no use for; broadcasting it in every settings_update frame leaked it
  *  to the server logs / any WS observer (deep-hunt HIGH). It stays only in the client (state + localStorage). */
@@ -263,7 +267,7 @@ export function useAgentSocket() {
         return null;
     };
 
-    const sendGoal = (goal: string, attachments: { name: string, content: string }[] = []) => {
+    const sendGoal = (goal: string, attachments: Attachment[] = []) => {
         const ws = ensureSocketOpen();
         if (!ws) return false;
 
@@ -276,7 +280,7 @@ export function useAgentSocket() {
         return true;
     };
 
-    const sendChatMessage = (msg: string, attachments: { name: string, content: string }[] = []) => {
+    const sendChatMessage = (msg: string, attachments: Attachment[] = []) => {
         const ws = ensureSocketOpen();
         if (!ws) return false;
 
@@ -321,7 +325,7 @@ export function useAgentSocket() {
 
     const clearRequiredAction = () => setRequiredAction(null);
 
-    const updateSettings = (newSettings: typeof settings) => {
+    const updateSettings = (newSettings: AppSettings) => {
         setSettings(newSettings);
         try { localStorage.setItem('quenderin_settings', JSON.stringify(newSettings)); } catch { /* best-effort */ }
         if (wsRef.current?.readyState === WebSocket.OPEN) {
