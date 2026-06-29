@@ -1,6 +1,19 @@
 import { XMLParser } from 'fast-xml-parser';
 import { UIElement } from '../types/index.js';
 
+// Derive center + rect from an `[x1,y1][x2,y2]` style box. Shared so the XML hierarchy parser
+// (extractBounds) and OcrService's synthetic nodes produce geometrically consistent UIElements
+// off a single rounding rule. Inputs are assumed integral (pixel coords); center is rounded.
+export function boxToGeometry(x1: number, y1: number, x2: number, y2: number) {
+    return {
+        center: {
+            x: Math.round(x1 + (x2 - x1) / 2),
+            y: Math.round(y1 + (y2 - y1) / 2)
+        },
+        rect: { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
+    };
+}
+
 type RawXmlNode = {
     node?: RawXmlNode | RawXmlNode[];
     text?: string; 'content-desc'?: string; bounds?: string;
@@ -52,13 +65,7 @@ export class UiParserService {
                 const y1 = parseInt(match[2], 10);
                 const x2 = parseInt(match[3], 10);
                 const y2 = parseInt(match[4], 10);
-                return {
-                    center: {
-                        x: Math.round(x1 + (x2 - x1) / 2),
-                        y: Math.round(y1 + (y2 - y1) / 2)
-                    },
-                    rect: { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
-                };
+                return boxToGeometry(x1, y1, x2, y2);
             }
             return { center: { x: 0, y: 0 }, rect: { x: 0, y: 0, width: 0, height: 0 } };
         };

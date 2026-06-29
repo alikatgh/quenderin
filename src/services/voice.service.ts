@@ -18,11 +18,13 @@ interface PvRecorderLike {
     release(): void;
 }
 
+type VoiceState = 'IDLE' | 'RECORDING' | 'TRANSCRIBING';
+
 export class VoiceService extends EventEmitter {
     private porcupine: PorcupineLike | null = null;
     private recorder: PvRecorderLike | null = null;
     private isListening = false;
-    private STATE = 'IDLE'; // IDLE | RECORDING | TRANSCRIBING
+    private STATE: VoiceState = 'IDLE'; // IDLE | RECORDING | TRANSCRIBING
     private voiceAvailable = false;
 
     // We enforce exactly 10 seconds of speech

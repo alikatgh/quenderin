@@ -54,6 +54,11 @@ function errCode(e: unknown): string | undefined {
     return e instanceof Error ? (e as NodeJS.ErrnoException).code : undefined;
 }
 
+/** Error carrying a structured `code` plus optional model hints for action_required events. */
+interface TaggedError extends NodeJS.ErrnoException {
+    fittingModels?: unknown;
+}
+
 // ─── Hardware-adaptive profile (detected once at startup) ───────────────────
 const HW = getHardwareProfile();
 
@@ -306,8 +311,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             promise,
             new Promise<T>((_, reject) => {
                 setTimeout(() => {
-                    const err = new Error(`${label} timed out after ${Math.round(this.modelInitTimeoutMs / 1000)}s`);
-                    (err as any).code = 'LLM_INIT_TIMEOUT';
+                    const err = new Error(`${label} timed out after ${Math.round(this.modelInitTimeoutMs / 1000)}s`) as NodeJS.ErrnoException;
+                    err.code = 'LLM_INIT_TIMEOUT';
                     reject(err);
                 }, this.modelInitTimeoutMs);
             })
@@ -438,9 +443,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         const used = totalRamGb - freeRamGb;
                         return (m.ramGb + used) <= totalRamGb * 0.85;
                     });
-                    const err = new Error("MODEL_MISSING");
-                    (err as any).code = "MODEL_MISSING";
-                    (err as any).fittingModels = fittingModels.length > 0 ? fittingModels : MODEL_CATALOG;
+                    const err = new Error("MODEL_MISSING") as TaggedError;
+                    err.code = "MODEL_MISSING";
+                    err.fittingModels = fittingModels.length > 0 ? fittingModels : MODEL_CATALOG;
                     throw err;
                 }
 
@@ -486,8 +491,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     const err = new Error(
                         `LLM bindings not available on ${process.arch}/${process.platform}. ` +
                         (_llamaImportError ? _llamaImportError.message : 'Unknown import failure.')
-                    );
-                    (err as any).code = 'LLM_BINDINGS_UNAVAILABLE';
+                    ) as NodeJS.ErrnoException;
+                    err.code = 'LLM_BINDINGS_UNAVAILABLE';
                     this.emit('action_required', {
                         code: 'LLM_BINDINGS_UNAVAILABLE',
                         title: 'Platform Not Supported for Local AI',
