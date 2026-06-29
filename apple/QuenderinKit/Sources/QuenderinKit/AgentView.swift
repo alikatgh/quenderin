@@ -47,7 +47,7 @@ public struct AgentView: View {
             }
             Divider()
             HStack(spacing: 8) {
-                Button { session.clear() } label: { Image(systemName: "trash") }
+                Button(role: .destructive) { session.clear() } label: { Image(systemName: "trash") }
                     .disabled(session.isRunning || (session.steps.isEmpty && session.answer == nil && session.haltReason == nil))
                     .accessibilityLabel("Clear")
                 // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
@@ -128,6 +128,7 @@ private struct AgentHaltBanner: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
+                .accessibilityHidden(true)
             Text(message)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

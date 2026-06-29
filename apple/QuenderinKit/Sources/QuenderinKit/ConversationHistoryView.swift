@@ -55,6 +55,8 @@ struct ConversationHistoryView: View {
                     Text("No conversations yet")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel("No conversations yet")
+                        .accessibilityHint("Start chatting on the Chat tab and your conversations will appear here.")
                 } else {
                     List {
                         ForEach(coordinator.summaries) { summary in
@@ -69,6 +71,7 @@ struct ConversationHistoryView: View {
                                     Text(Self.relativeDate(summary.updatedAt))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                        .accessibilityLabel("Updated " + Self.relativeDateFull(summary.updatedAt))
                                 }
                             }
                         }
@@ -100,6 +103,13 @@ struct ConversationHistoryView: View {
         let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private static func relativeDateFull(_ epochMillis: Int64) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
