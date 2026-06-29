@@ -1,11 +1,11 @@
 # Quenderin
 
-Quenderin is a proof-of-concept for **Offline, Autonomous Computer Usage**. Think of it as autonomous driving, but for your desktop and mobile OS.
+> Product identity: see `docs/PRODUCT.md` — the mobile apps are an offline chat assistant, NOT an autonomous device controller.
 
-The ultimate vision is for Quenderin to sit quietly, watching how you work and learning from your daily interactions. It operates as a voice-controlled assistant that takes over your tedious tasks—doing them faster and better, using local LLMs, screen parsing, and voice control to drive Android and Desktop interfaces autonomously.
+Quenderin is a **private, offline, on-device AI chat assistant**. The native **iOS/Android** apps are the product; the desktop Electron app (`src/`+`ui/`) is the research prototype/testbed. The model runs fully on your device — no cloud, no API keys, no telemetry. (The desktop prototype additionally explores an autonomous device-driver agent; per `docs/PRODUCT.md` that capability is deliberately desktop-only and never shipped to the store apps.)
 
 **The Quenderin Paradox:**
-This entire system infrastructure is explicitly and exclusively written by Google models. However, the agent itself runs **exclusively on local, offline models**, guaranteeing absolute data privacy and zero token costs for the end user.
+This entire system infrastructure is explicitly and exclusively written by Google models. However, the assistant itself runs **exclusively on local, offline models**, guaranteeing absolute data privacy and zero token costs for the end user.
 
 ---
 
@@ -37,9 +37,11 @@ Following this audit, the following robust features were immediately implemented
 
 ## How it Works
 
-Quenderin interacts with interfaces using three main components:
+The shipped product is an on-device chat assistant: your prompt is fed into a locally-running GGUF LLM (powered by `node-llama-cpp`) and the response is generated entirely on your machine.
+
+The **desktop research prototype** additionally explores an autonomous device-driver agent (desktop-only, never shipped to the store apps — see `docs/PRODUCT.md`). That agent interacts with interfaces using three main components:
 1. **Perception**: Extracts the current screen context (e.g., via Android ADB view hierarchies).
-2. **LLM Inference**: Feeds the context into a locally-running GGUF LLM (powered by `node-llama-cpp`), which plans the next action in a concise JSON format.
+2. **LLM Inference**: Feeds the context into the locally-running GGUF LLM, which plans the next action in a concise JSON format.
 3. **Execution**: Translates the LLM's planned action into concrete UI inputs (e.g., adb shell input tap).
 
 **Privacy & Offline-First:**
