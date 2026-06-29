@@ -124,7 +124,14 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                     <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Knowledge...</span>
                     <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
                   </div>
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-4 overflow-hidden">
+                  <div
+                    className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-4 overflow-hidden"
+                    role="progressbar"
+                    aria-label="Model download progress"
+                    aria-valuenow={downloadProgress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div
                       className="bg-emerald-500 h-2 transition-all duration-300 ease-out"
                       style={{ width: `${downloadProgress}%` }}
@@ -184,7 +191,14 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                     <span className="text-blue-600 dark:text-blue-400">Installing Voice Helper...</span>
                     <span className="text-zinc-500 dark:text-zinc-400">{voiceDownloadProgress}%</span>
                   </div>
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-2 overflow-hidden">
+                  <div
+                    className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-2 overflow-hidden"
+                    role="progressbar"
+                    aria-label="Voice model download progress"
+                    aria-valuenow={voiceDownloadProgress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div
                       className="bg-blue-500 h-2 transition-all duration-300 ease-out"
                       style={{ width: `${voiceDownloadProgress}%` }}
@@ -509,7 +523,7 @@ function AppContent() {
         <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors">
 
           {showRecoveryBanner && (
-            <div className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
+            <div role="status" aria-live="polite" className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
               <span>Backend recovered and ready{lastOutageMs > 0 ? ` (${outageSeconds}s outage)` : ''}</span>
               {shouldShowSettingsShortcut && (
                 <button
