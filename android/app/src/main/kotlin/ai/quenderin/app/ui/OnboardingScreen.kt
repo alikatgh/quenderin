@@ -29,6 +29,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -127,14 +131,18 @@ fun OnboardingScreen(
                 }
 
                 is OnboardingPhase.Downloading -> {
+                    val pct = (phase.fraction * 100).toInt()
                     Text("Downloading ${phase.model.label}…")
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(
                         progress = { phase.fraction.toFloat() },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            progressBarRangeInfo = ProgressBarRangeInfo(phase.fraction.toFloat(), 0f..1f)
+                            stateDescription = "Downloading ${phase.model.label}, $pct percent"
+                        },
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text("${(phase.fraction * 100).toInt()}%")
+                    Text("$pct%")
                 }
 
                 is OnboardingPhase.Loading -> {
