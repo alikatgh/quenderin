@@ -35,6 +35,18 @@ function makeLog(overrides: Partial<HabitLog> = {}): HabitLog {
     };
 }
 
+function makeMetric(i: number): AgentMetrics {
+    return {
+        id: 'm' + i,
+        goal_text: 'g' + i,
+        success: true,
+        total_steps: 1,
+        duration_ms: 1,
+        total_retries: 0,
+        timestamp: new Date(2026, 0, 1, 0, 0, i % 60).toISOString(),
+    };
+}
+
 describe('MetricsService.appendHabitLog', () => {
     let configDir: string;
     let habitsPath: string;
@@ -195,5 +207,19 @@ describe('MetricsService.appendHabitLog', () => {
 
         const read = await service.getMetrics();
         expect(read).toEqual([metrics]);
+    });
+
+    it('appendMetrics caps telemetry at 1000 records, evicting the oldest and keeping the newest', async () => {
+        const seed = Array.from({ length: 1000 }, (_, i) => makeMetric(i));
+        await fs.writeFile(telemetryPath, JSON.stringify(seed, null, 2), 'utf-8');
+
+        const service = new MetricsService();
+        await service.appendMetrics(makeMetric(1000));
+
+        const all = await service.getMetrics();
+        expect(all).toHaveLength(1000);               // exactly the cap, not 1001
+        expect(all[all.length - 1].id).toBe('m1000'); // newest retained
+        expect(all.find(m => m.id === 'm0')).toBeUndefined(); // oldest evicted
+        expect(all[0].id).toBe('m1');                 // slice(-999) of 1000 keeps the last 999 (drops only m0) before the push
     });
 });

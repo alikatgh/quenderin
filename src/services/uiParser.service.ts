@@ -1,6 +1,15 @@
 import { XMLParser } from 'fast-xml-parser';
 import { UIElement } from '../types/index.js';
 
+type RawXmlNode = {
+    node?: RawXmlNode | RawXmlNode[];
+    text?: string; 'content-desc'?: string; bounds?: string;
+    'resource-id'?: string; class?: string;
+    clickable?: string; scrollable?: string; focusable?: string;
+    enabled?: string; visible?: string; displayed?: string;
+};
+type RawXmlTree = { hierarchy?: RawXmlNode };
+
 export class UiParserService {
     private xmlParser = new XMLParser({
         ignoreAttributes: false,
@@ -19,8 +28,8 @@ export class UiParserService {
         return { elements, textRepresentation };
     }
 
-    public parseRawTree(xmlContent: string): any {
-        return this.xmlParser.parse(xmlContent);
+    public parseRawTree(xmlContent: string): RawXmlTree {
+        return this.xmlParser.parse(xmlContent) as RawXmlTree;
     }
 
     // The XML is device-sourced + untrusted. Bound the walk so a maliciously deep or huge dump can't
@@ -29,7 +38,7 @@ export class UiParserService {
     private static readonly MAX_TREE_DEPTH = 500;
     private static readonly MAX_ELEMENTS = 5000;
 
-    public buildStateMap(rawTree: any): Map<number, UIElement> {
+    public buildStateMap(rawTree: RawXmlTree): Map<number, UIElement> {
         const stateMap = new Map<number, UIElement>();
         let idCounter = 0;
 
@@ -54,7 +63,7 @@ export class UiParserService {
             return { center: { x: 0, y: 0 }, rect: { x: 0, y: 0, width: 0, height: 0 } };
         };
 
-        const traverse = (node: any, depth: number) => {
+        const traverse = (node: RawXmlNode | undefined, depth: number) => {
             // Bail on a too-deep or already-full tree — an adversarial dump must not overflow the stack
             // or grow the map without bound.
             if (!node || depth > UiParserService.MAX_TREE_DEPTH || stateMap.size >= UiParserService.MAX_ELEMENTS) return;
