@@ -440,6 +440,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={settings.memorySafetyEnabled}
+                                    aria-label="Memory Safety Warnings"
                                     onClick={() => setSettings({ ...settings, memorySafetyEnabled: !settings.memorySafetyEnabled })}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.memorySafetyEnabled ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                                 >
@@ -484,6 +488,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             <div className="flex items-center justify-between">
                                 <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Enable Application Lock</div>
                                 <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={settings.privacyLockEnabled}
+                                    aria-label="Enable Application Lock"
                                     onClick={() => setSettings({ ...settings, privacyLockEnabled: !settings.privacyLockEnabled })}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.privacyLockEnabled ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                                 >
@@ -493,9 +501,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                             {settings.privacyLockEnabled && (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Passphrase</label>
+                                    <label htmlFor="privacy-passphrase" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Passphrase</label>
                                     <input
+                                        id="privacy-passphrase"
                                         type="password"
+                                        autoComplete="new-password"
                                         value={settings.privacyPassphrase}
                                         onChange={(e) => setSettings({ ...settings, privacyPassphrase: e.target.value })}
                                         placeholder="Enter passphrase"
@@ -641,6 +651,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     {/* Notes Panel */}
                     <section className="premium-card p-6">
                         <button
+                            type="button"
+                            aria-expanded={notesOpen}
                             onClick={() => setNotesOpen(o => !o)}
                             className="w-full flex items-center justify-between"
                         >
@@ -684,6 +696,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     {/* Agent Memory Panel */}
                     <section className="premium-card p-6">
                         <button
+                            type="button"
+                            aria-expanded={memoryOpen}
                             onClick={() => setMemoryOpen(o => !o)}
                             className="w-full flex items-center justify-between"
                         >
