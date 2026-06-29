@@ -30,6 +30,23 @@ function settingsUpdateFrame(s: AppSettings): string {
     return JSON.stringify({ type: 'settings_update', ...safe });
 }
 
+/** Discriminated union of every inbound WS frame the agent emits. Typing the parsed
+ *  message turns the ~20 field accesses in `onmessage` into compiler-checked reads,
+ *  catching typos and missing fields at build time (was implicit `any` via JSON.parse). */
+type AgentMessage =
+    | { type: 'log'; message: string }
+    | { type: 'status'; message: string }
+    | { type: 'observe'; elements?: UIElement[] }
+    | { type: 'decide'; command: string }
+    | { type: 'action'; message: string }
+    | { type: 'chat_stream'; text: string }
+    | { type: 'chat_response'; message: string; meta?: LogEntry['meta'] }
+    | { type: 'error'; message: string }
+    | { type: 'done' }
+    | { type: 'action_required'; data: RequiredAction }
+    | { type: 'model_download_progress'; data?: { progress?: number } }
+    | { type: 'preset_changed'; presetId: string };
+
 export function useAgentSocket() {
     const MAX_LOG_ENTRIES = 300;
     const capLogs = (next: LogEntry[]) => next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
@@ -87,12 +104,15 @@ export function useAgentSocket() {
 
         ws.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
+                const data = JSON.parse(event.data) as AgentMessage;
                 const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                 const entry: LogEntry = {
                     id: Math.random().toString(36).substr(2, 9),
-                    type: data.type,
+                    // `entry` is built upfront for every frame but only PUSHED for log-bearing types; the
+                    // non-log frames (action_required / model_download_progress / preset_changed) return
+                    // early and never use `entry`, so narrowing the union to LogEntry['type'] here is safe.
+                    type: data.type as LogEntry['type'],
                     message: '',
                     timestamp: time
                 };
