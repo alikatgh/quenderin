@@ -38,7 +38,9 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
         if (logsEndRef.current) {
             logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [agentLogs]);
+        // Depend on STABLE primitives (count + last-entry id), not the freshly-filtered `agentLogs`
+        // array reference (a new array every render) — which fired a scroll on every render (opus backlog).
+    }, [agentLogs.length, agentLogs.at(-1)?.id]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -207,6 +209,9 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                     />
                     <div className="absolute right-3 bottom-2.5 flex items-center gap-2">
                         <button
+                            type="button"
+                            aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
+                            aria-pressed={isRecording}
                             onMouseDown={() => { setIsRecording(true); onVoiceStart() }}
                             onMouseUp={() => { setIsRecording(false); onVoiceStop() }}
                             onMouseLeave={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
@@ -215,6 +220,8 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             <Mic className="w-[18px] h-[18px]" />
                         </button>
                         <button
+                            type="button"
+                            aria-label="Run agent goal"
                             onClick={handleStart}
                             disabled={status === 'running' || !goal.trim()}
                             className={`p-2 rounded-xl transition-all ${(status === 'running' || !goal.trim()) ? 'text-zinc-300 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95'}`}
