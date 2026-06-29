@@ -24,7 +24,7 @@ function MiniBarChart({ values, colors, labels, height = 80 }: {
     const totalW = values.length * (barW + 2);
 
     return (
-        <svg width={totalW} height={height} className="overflow-visible">
+        <svg width={totalW} height={height} className="overflow-visible" role="img" aria-label={`Bar chart, ${values.length} runs`}>
             {values.map((v, i) => {
                 const barH = Math.max(2, Math.round((v / max) * (height - 16)));
                 const x = i * (barW + 2);
@@ -57,10 +57,11 @@ function MiniBarChart({ values, colors, labels, height = 80 }: {
 }
 
 /** Inline SVG line chart */
-function MiniLineChart({ values, color = '#6366f1', height = 60 }: {
+function MiniLineChart({ values, color = '#6366f1', height = 60, label }: {
     values: number[];
     color?: string;
     height?: number;
+    label?: string;
 }) {
     if (values.length < 2) return null;
     const max = Math.max(...values, 1);
@@ -73,7 +74,7 @@ function MiniLineChart({ values, color = '#6366f1', height = 60 }: {
     }).join(' ');
 
     return (
-        <svg width={w} height={height} className="overflow-visible">
+        <svg width={w} height={height} className="overflow-visible" role="img" aria-label={label ?? `Line chart, ${values.length} points`}>
             <polyline
                 points={points}
                 fill="none"
@@ -161,7 +162,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                 <div className="flex items-center justify-between mb-8">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Back
@@ -169,7 +170,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                     {metrics.length > 0 && (
                         <button
                             onClick={() => exportMetricsCsv(metrics)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             <Download className="w-3.5 h-3.5" /> Export CSV
                         </button>
@@ -217,7 +218,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                         <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5">
                             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Duration (seconds)</h3>
                             <div className="overflow-x-auto">
-                                <MiniLineChart values={durationValues} color="#6366f1" height={70} />
+                                <MiniLineChart values={durationValues} color="#6366f1" height={70} label={`Duration per run in seconds, ${durationValues.length} runs, average ${avgDurationSec}s`} />
                             </div>
                             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-3">Each point = one task run</p>
                         </div>
@@ -225,7 +226,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                         <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-5">
                             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Steps per Task</h3>
                             <div className="overflow-x-auto">
-                                <MiniLineChart values={stepsValues} color="#f59e0b" height={70} />
+                                <MiniLineChart values={stepsValues} color="#f59e0b" height={70} label={`Steps per task, ${stepsValues.length} runs, average ${avgSteps}`} />
                             </div>
                             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-3">Fewer steps = more efficient</p>
                         </div>

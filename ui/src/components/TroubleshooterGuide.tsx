@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Smartphone, Settings, CheckCircle2, AlertTriangle, BrainCircuit, Download, RefreshCw, X, AlertCircle, Monitor, Cpu } from 'lucide-react';
 import type { ModelOption } from '../types/index.js';
 
@@ -22,6 +22,15 @@ interface TroubleshooterGuideProps {
 
 export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, downloadProgress = 0, recommendedModelId }: TroubleshooterGuideProps) {
     const [downloadingModelId, setDownloadingModelId] = useState<string | null>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!action) return;
+        dialogRef.current?.focus();
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onResolved(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [action, onResolved]);
 
     if (!action) return null;
 
@@ -340,7 +349,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Troubleshooter">
-            <div className="bg-white dark:bg-[#18181b] w-full max-w-lg rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
+            <div ref={dialogRef} tabIndex={-1} className="bg-white dark:bg-[#18181b] w-full max-w-lg rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col focus:outline-none">
 
                 {/* Header */}
                 <div className="px-5 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
@@ -348,10 +357,12 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                         Action Required
                     </h3>
                     <button
+                        type="button"
                         onClick={onResolved}
+                        aria-label="Close troubleshooter"
                         className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 rounded-lg transition-colors"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-4 h-4" aria-hidden="true" />
                     </button>
                 </div>
 

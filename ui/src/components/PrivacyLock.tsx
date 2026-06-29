@@ -91,7 +91,7 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
                 <h2 className="text-xl font-semibold text-center text-zinc-900 dark:text-white mb-1.5 tracking-tight">
                     {isLockedOut ? 'Too Many Attempts' : 'Locked'}
                 </h2>
-                <p className="text-center text-[13px] text-zinc-500 dark:text-zinc-400 mb-6">
+                <p role="status" aria-live="polite" className="text-center text-[13px] text-zinc-500 dark:text-zinc-400 mb-6">
                     {isLockedOut
                         ? `Locked for ${Math.floor(lockoutRemaining / 60)}:${(lockoutRemaining % 60).toString().padStart(2, '0')}. Please wait.`
                         : failedAttempts > 0
@@ -103,13 +103,14 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
                     <input
                         type="password"
                         autoFocus
+                        aria-label="Passphrase"
                         value={passphrase}
                         onChange={e => { setPassphrase(e.target.value); setError(false); }}
                         placeholder="Passphrase"
                         disabled={isLockedOut}
                         className={`w-full bg-zinc-50 dark:bg-[#09090b] border ${error ? 'border-red-500 ring-2 ring-red-500/20 text-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-purple-500/10 text-zinc-900 dark:text-zinc-100'} rounded-xl py-3 pl-5 pr-14 text-center tracking-[0.25em] font-mono text-base placeholder:tracking-normal placeholder:font-sans placeholder:text-zinc-400 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
                     />
-                    <button type="submit" className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100" disabled={!passphrase || isLockedOut}>
+                    <button type="submit" className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-200 active:bg-zinc-600 dark:active:bg-zinc-300 transition-colors disabled:opacity-50" disabled={!passphrase || isLockedOut}>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </form>
