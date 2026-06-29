@@ -25,33 +25,36 @@ public struct OnboardingView: View {
 
                     if let sel = model.selection {
                         // World-class iPhone pick: device + chip + speed + confidence + alternatives.
-                        Text(sel.device.deviceName)
-                            .font(.caption).foregroundStyle(.secondary)
-                        Label("~\(Int(sel.estimatedTokensPerSecond.rounded())) tok/s · \(sel.device.chip.displayName)",
-                              systemImage: "bolt.fill")
-                            .font(.caption.monospacedDigit())
-                        Group {
-                            switch sel.confidence {
-                            case .comfortable: Text("Great fit").foregroundStyle(.green)
-                            case .tight:       Text("Tight fit").foregroundStyle(.orange)
-                            case .forced:      Text("Limited device").foregroundStyle(.orange)
-                            case .unsupported: Text("Not supported").foregroundStyle(.red)   // onboarding shows .failed instead
+                        VStack(spacing: 4) {
+                            Text(sel.device.deviceName)
+                                .font(.caption).foregroundStyle(.secondary)
+                            Label("~\(Int(sel.estimatedTokensPerSecond.rounded())) tok/s · \(sel.device.chip.displayName)",
+                                  systemImage: "bolt.fill")
+                                .font(.caption.monospacedDigit())
+                            Group {
+                                switch sel.confidence {
+                                case .comfortable: Text("Great fit").foregroundStyle(.green)
+                                case .tight:       Text("Tight fit").foregroundStyle(.orange)
+                                case .forced:      Text("Limited device").foregroundStyle(.orange)
+                                case .unsupported: Text("Not supported").foregroundStyle(.red)   // onboarding shows .failed instead
+                                }
                             }
+                            .font(.caption2.weight(.semibold))
+                            Text(sel.rationale)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            // Honest heat + battery expectation (advisory, not a gate).
+                            Label(sel.thermalBattery.chatVerdict, systemImage: "battery.100bolt")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Text(sel.thermalBattery.sustainedVerdict)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
-                        .font(.caption2.weight(.semibold))
-                        Text(sel.rationale)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        // Honest heat + battery expectation (advisory, not a gate).
-                        Label(sel.thermalBattery.chatVerdict, systemImage: "battery.100bolt")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        Text(sel.thermalBattery.sustainedVerdict)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                        .accessibilityElement(children: .combine)
                         if !sel.alternatives.isEmpty {
                             DisclosureGroup("Other options") {
                                 ForEach(sel.alternatives, id: \.model.id) { opt in
@@ -87,9 +90,12 @@ public struct OnboardingView: View {
                 VStack(spacing: 8) {
                     Text("Downloading \(entry.label)…")
                     ProgressView(value: progress)
+                        .accessibilityLabel("Download progress")
+                        .accessibilityValue("\(Int(progress * 100)) percent")
                     Text("\(Int(progress * 100))%")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                 }
 
             case let .loading(entry):

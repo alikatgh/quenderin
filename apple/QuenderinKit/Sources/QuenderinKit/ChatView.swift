@@ -10,6 +10,14 @@ public struct ChatView: View {
         self.model = model
     }
 
+    // Mirrors the Send button's .disabled guard so Return-to-send adds no new behavior.
+    private func send() {
+        let prompt = draft.trimmingCharacters(in: .whitespaces)
+        guard !prompt.isEmpty, !model.isGenerating else { return }
+        draft = ""
+        Task { await model.send(prompt) }
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -24,11 +32,9 @@ public struct ChatView: View {
             HStack(spacing: 8) {
                 TextField("Ask anything…", text: $draft)
                     .textFieldStyle(.roundedBorder)
-                Button("Send") {
-                    let prompt = draft
-                    draft = ""
-                    Task { await model.send(prompt) }
-                }
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                Button("Send") { send() }
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || model.isGenerating)
             }
             .padding(.horizontal)
@@ -50,6 +56,7 @@ public struct ChatView: View {
                               subject: Text("Quenderin conversation"),
                               message: Text("Exported from Quenderin (on-device)")) {
                         Image(systemName: "square.and.arrow.up")
+                            .accessibilityLabel("Share conversation")
                     }
                 }
             }
@@ -78,6 +85,7 @@ private struct ChatBubble: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+        .accessibilityElement(children: .combine)
 
         // Report affordance on AI responses only (Generative-AI content policy).
         if message.role == .assistant, !message.text.isEmpty {

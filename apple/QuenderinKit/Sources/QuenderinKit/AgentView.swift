@@ -63,6 +63,14 @@ public struct AgentView: View {
                 TextField("Give the agent a goal…", text: $goal)
                     .textFieldStyle(.roundedBorder)
                     .disabled(session.isRunning)
+                    .submitLabel(.go)
+                    .onSubmit {
+                        guard !session.isRunning,
+                              !goal.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        let g = goal
+                        goal = ""
+                        Task { await session.run(goal: g) }
+                    }
                 Button {
                     let g = goal
                     goal = ""
@@ -71,6 +79,7 @@ public struct AgentView: View {
                     if session.isRunning { ProgressView() } else { Text("Run") }
                 }
                 .disabled(session.isRunning || goal.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel(session.isRunning ? "Running" : "Run")
             }
             .padding(.horizontal)
             .padding(.top, 8)
@@ -102,6 +111,7 @@ private struct AgentEmptyState: View {
                 Label(example, systemImage: "arrow.turn.down.right")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel(example)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,6 +157,7 @@ private struct AgentStepRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 #endif
