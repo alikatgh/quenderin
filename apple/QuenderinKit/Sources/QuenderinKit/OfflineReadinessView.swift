@@ -15,9 +15,12 @@ public struct OfflineReadinessView: View {
             HStack(spacing: 8) {
                 Image(systemName: checklist.isReadyForOffline ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(checklist.isReadyForOffline ? .green : .orange)
+                    .accessibilityHidden(true)
                 Text(checklist.isReadyForOffline ? "Ready to go offline" : "Not ready yet")
                     .font(.headline)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
             Text(checklist.readiness.message)
                 .font(.subheadline)
@@ -45,11 +48,16 @@ public struct OfflineReadinessView: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: ok ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(ok ? .green : .secondary)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline)
                 Text(detail).font(.caption).foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityValue(ok ? "Ready" : "Not ready")
+        .accessibilityHint(detail)
     }
 }
 #endif

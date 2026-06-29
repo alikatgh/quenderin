@@ -34,6 +34,7 @@ public struct ModelPickerView: View {
                     if option.fitness.severity == .safe {
                         Image(systemName: "checkmark.circle")
                             .foregroundStyle(.green)
+                            .accessibilityLabel("Fits this device")
                     }
                 }
             }
