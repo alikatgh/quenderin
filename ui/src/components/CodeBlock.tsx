@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-export function CodeBlock({ children, language, ...props }: any) {
+interface CodeBlockProps {
+    children?: ReactNode;
+    language?: string;
+    [key: string]: unknown;
+}
+
+export function CodeBlock({ children, language, ...props }: CodeBlockProps) {
     const [copied, setCopied] = useState(false);
+    const code = String(children).replace(/\n$/, '');
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
+        navigator.clipboard.writeText(code);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -37,7 +44,7 @@ export function CodeBlock({ children, language, ...props }: any) {
             </div>
             <SyntaxHighlighter
                 {...props}
-                children={String(children).replace(/\n$/, '')}
+                children={code}
                 style={vscDarkPlus}
                 language={language}
                 PreTag="div"

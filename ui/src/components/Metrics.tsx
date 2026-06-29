@@ -185,10 +185,10 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                 {/* KPI Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     {[
-                        { icon: Target, label: 'Total Runs', value: String(totalRuns), color: 'blue' },
-                        { icon: Trophy, label: 'Success Rate', value: `${successRate}%`, sub: `${successRuns}/${totalRuns}`, color: successRate >= 70 ? 'emerald' : successRate >= 40 ? 'amber' : 'red' },
-                        { icon: Clock, label: 'Avg Duration', value: `${avgDurationSec}s`, color: 'purple' },
-                        { icon: Zap, label: 'Avg Steps', value: String(avgSteps), sub: `${avgRetries} retries/run`, color: 'orange' },
+                        { icon: Target, label: 'Total Runs', value: String(totalRuns) },
+                        { icon: Trophy, label: 'Success Rate', value: `${successRate}%`, sub: `${successRuns}/${totalRuns}` },
+                        { icon: Clock, label: 'Avg Duration', value: `${avgDurationSec}s` },
+                        { icon: Zap, label: 'Avg Steps', value: String(avgSteps), sub: `${avgRetries} retries/run` },
                     ].map(({ icon: Icon, label, value, sub }) => (
                         <div key={label} className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4">
                             <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500 mb-2">
@@ -254,12 +254,12 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                         <table className="min-w-[700px] w-full text-left text-sm text-zinc-600 dark:text-zinc-300">
                             <thead className="bg-zinc-50 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
                                 <tr>
-                                    <th className="px-4 py-3 font-semibold">Goal</th>
-                                    <th className="px-4 py-3 font-semibold w-24">Status</th>
-                                    <th className="px-4 py-3 font-semibold w-20">Steps</th>
-                                    <th className="px-4 py-3 font-semibold w-24">Duration</th>
-                                    <th className="px-4 py-3 font-semibold w-20">Retries</th>
-                                    <th className="px-4 py-3 font-semibold w-36 hidden md:table-cell">Time</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold">Goal</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold w-24">Status</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold w-20">Steps</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold w-24">Duration</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold w-20">Retries</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold w-36 hidden md:table-cell">Time</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">

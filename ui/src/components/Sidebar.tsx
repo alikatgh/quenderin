@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, BookOpen, BrainCircuit, Smartphone, SlidersHorizontal, Clock, MessageSquareText, BarChart3 } from 'lucide-react';
+import { Sparkles, BookOpen, BrainCircuit, Smartphone, SlidersHorizontal, Clock, MessageSquareText, BarChart3, type LucideIcon } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 
 interface SessionSummary {
@@ -49,13 +49,14 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
     const navItem = (
         view: typeof currentView,
         label: string,
-        Icon: any,
+        Icon: LucideIcon,
     ) => {
         const active = currentView === view;
         return (
             <button
                 key={view}
                 onClick={() => setCurrentView(view)}
+                aria-current={active ? 'page' : undefined}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-lg transition-all duration-150 ${
                     active
                         ? 'bg-zinc-200/80 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100'

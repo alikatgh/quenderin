@@ -82,7 +82,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
       <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
 
         {/* Header Progress Bar */}
-        <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
+        <div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label="Setup step" className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
           <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
         </div>
 
@@ -122,7 +122,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                 <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
                   <div className="flex justify-between text-xs font-semibold mb-2">
                     <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Knowledge...</span>
-                    <span className="text-zinc-500 dark:text-zinc-400">{downloadProgress}%</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">{downloadProgress}%</span>
                   </div>
                   <div
                     className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-4 overflow-hidden"
@@ -189,7 +189,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                 <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
                   <div className="flex justify-between text-xs font-semibold mb-2">
                     <span className="text-blue-600 dark:text-blue-400">Installing Voice Helper...</span>
-                    <span className="text-zinc-500 dark:text-zinc-400">{voiceDownloadProgress}%</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">{voiceDownloadProgress}%</span>
                   </div>
                   <div
                     className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-2 overflow-hidden"
@@ -481,7 +481,7 @@ function AppContent() {
         />
       }
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
@@ -524,7 +524,7 @@ function AppContent() {
 
           {showRecoveryBanner && (
             <div role="status" aria-live="polite" className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
-              <span>Backend recovered and ready{lastOutageMs > 0 ? ` (${outageSeconds}s outage)` : ''}</span>
+              <span className="tabular-nums">Backend recovered and ready{lastOutageMs > 0 ? ` (${outageSeconds}s outage)` : ''}</span>
               {shouldShowSettingsShortcut && (
                 <button
                   onClick={() => {

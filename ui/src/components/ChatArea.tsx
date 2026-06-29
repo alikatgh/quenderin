@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, ArrowUpRight, Mic } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
@@ -25,10 +26,12 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
     const [templates, setTemplates] = useState<GoalTemplate[]>([]);
 
     useEffect(() => {
+        let cancelled = false;
         fetch('/api/templates')
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d?.templates) setTemplates(d.templates); })
+            .then(d => { if (!cancelled && d?.templates) setTemplates(d.templates); })
             .catch(() => {});
+        return () => { cancelled = true; };
     }, []);
 
     // Filter to only agent-type logs — ignore chat entries from General Chat
@@ -138,7 +141,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                                             <ReactMarkdown
                                                                 remarkPlugins={[remarkGfm]}
                                                                 components={{
-                                                                    code({ node, inline, className, children, ...props }: any) {
+                                                                    code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: ReactNode }) {
                                                                         const match = /language-(\w+)/.exec(className || '')
                                                                         return (!inline && match) ? (
                                                                             <CodeBlock
@@ -212,9 +215,10 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             type="button"
                             aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
                             aria-pressed={isRecording}
-                            onMouseDown={() => { setIsRecording(true); onVoiceStart() }}
-                            onMouseUp={() => { setIsRecording(false); onVoiceStop() }}
-                            onMouseLeave={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
+                            onPointerDown={() => { setIsRecording(true); onVoiceStart() }}
+                            onPointerUp={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
+                            onPointerLeave={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
+                            onBlur={() => { if (isRecording) { setIsRecording(false); onVoiceStop() } }}
                             className={`p-2 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                         >
                             <Mic className="w-[18px] h-[18px]" />
@@ -224,7 +228,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                             aria-label="Run agent goal"
                             onClick={handleStart}
                             disabled={status === 'running' || !goal.trim()}
-                            className={`p-2 rounded-xl transition-all ${(status === 'running' || !goal.trim()) ? 'text-zinc-300 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 active:scale-95'}`}
+                            className={`p-2 rounded-xl transition-colors ${(status === 'running' || !goal.trim()) ? 'text-zinc-300 dark:text-zinc-600 bg-transparent' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-200 active:bg-zinc-800 dark:active:bg-zinc-300'}`}
                         >
                             {status === 'running' ? <Activity className="w-[18px] h-[18px] animate-spin" /> : <ArrowUpRight className="w-[18px] h-[18px]" />}
                         </button>
