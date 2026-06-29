@@ -11,9 +11,7 @@
 ## Install
 
 ```bash
-npm install            # backend deps
-cd ui && npm install   # UI deps
-cd ..
+npm install            # backend + UI deps (postinstall runs `cd ui && npm install`)
 ```
 
 ## Run
@@ -38,7 +36,7 @@ cd ..
 
 | Command | Checks |
 |---------|--------|
-| `npm run check` | typecheck + lint + recommendation test (the full gate) |
+| `npm run check` | typecheck + lint + `npm audit` (high) + recommendation test (the full gate) |
 | `npm run typecheck` | `tsc --noEmit` for both `src/` and `ui/` |
 | `npm run lint` | ESLint (`--max-warnings=0`) for `src/` and `ui/` |
 | `npm run test:recommendation` | The model-recommendation/parity test (`vitest`) |

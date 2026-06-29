@@ -58,6 +58,7 @@ The `Inspector` panel overlays the agent view to show live `observe`/`decide`/
 | `quenderin_setup_complete` | Whether the WelcomeWizard has been dismissed |
 | `quenderin_sidebar_open` | Sidebar collapsed/expanded |
 | `quenderin_last_outage` | Last backend-outage summary (for reconnection UX) |
+| `quenderin_settings` | Persisted UI settings — theme + runtime settings (e.g. `contextSize`); read by `ThemeContext` and `useAgentSocket` |
 
 ## Running the UI
 
