@@ -134,6 +134,11 @@ export class MemoryService {
         return Array.from(output.data);
     }
 
+    /** Keep the newest (cap-1) records so a subsequent push lands exactly at `cap`. */
+    private capForPush<T>(records: T[], cap: number): T[] {
+        return records.length >= cap ? records.slice(-(cap - 1)) : records;
+    }
+
     public async saveTrajectory(goal: string, actions: string[]): Promise<void> {
         await this.initPromise;
         await this.withWriteLock(async () => {
@@ -144,9 +149,7 @@ export class MemoryService {
                 // Limit memory to the last 50 successful trajectories to prevent bloating
                 // Keep the most recent 49 so the push below lands exactly at the 50 cap.
                 // (The old `slice(1)` dropped only ONE element, pinning the file at 51 forever.)
-                if (records.length >= 50) {
-                    records = records.slice(-(50 - 1));
-                }
+                records = this.capForPush(records, 50);
 
                 records.push({
                     goal,
@@ -170,9 +173,7 @@ export class MemoryService {
 
                 // Keep the most recent 49 so the push below lands exactly at the 50 cap.
                 // (The old `slice(1)` dropped only ONE element, pinning the file at 51 forever.)
-                if (records.length >= 50) {
-                    records = records.slice(-(50 - 1));
-                }
+                records = this.capForPush(records, 50);
 
                 const cleanedHistory = actionsHistory.filter(a => a.startsWith('[Success]'));
                 cleanedHistory.push(`[Success] (MANUAL OVERRIDE) ${manualAction}`);
@@ -354,9 +355,7 @@ export class MemoryService {
                 // Evict the oldest entries when we hit the cap.
                 // Each correction stores a 384-dim float vector (~3 KB as JSON).
                 // 500 entries ≈ 1.5 MB on disk — a safe ceiling for low-RAM hosts.
-                if (records.length >= this.MAX_CORRECTIONS) {
-                    records = records.slice(-(this.MAX_CORRECTIONS - 1));
-                }
+                records = this.capForPush(records, this.MAX_CORRECTIONS);
 
                 records.push({
                     id: Date.now().toString(),

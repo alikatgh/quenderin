@@ -62,7 +62,8 @@ export class MetricsService {
     public async getMetrics(): Promise<AgentMetrics[]> {
         try {
             const data = await fs.readFile(this.telemetryPath, 'utf-8');
-            return JSON.parse(data);
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed as AgentMetrics[] : [];
         } catch {
             return [];
         }
