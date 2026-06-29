@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -99,8 +100,16 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
                             runCatching { context.startActivity(Intent.createChooser(share, "Share conversation")) }
                         }) { Text("Share") }
                     }
-                    TextButton(onClick = { showHistory = true }) { Text("History") }
-                    TextButton(onClick = { coordinator.startNew() }) { Text("New") }
+                    // Terse single-word labels are clear visually but ambiguous when TalkBack
+                    // reads the action row linearly; spell out the intent without widening the chip.
+                    TextButton(
+                        onClick = { showHistory = true },
+                        modifier = Modifier.semantics { contentDescription = "Conversation history" },
+                    ) { Text("History") }
+                    TextButton(
+                        onClick = { coordinator.startNew() },
+                        modifier = Modifier.semantics { contentDescription = "New conversation" },
+                    ) { Text("New") }
                 },
             )
         },
