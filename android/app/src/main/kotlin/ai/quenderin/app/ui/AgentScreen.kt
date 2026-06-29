@@ -41,6 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,17 +95,23 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 items(steps) { step -> AgentStepRow(step) }
                 answer?.let { a ->
                     item {
+                        // Long-press the answer to report it (Generative-AI flag mechanism).
+                        // Hoisted so TalkBack can reach it via a semantics custom action too.
+                        val reportAnswer = {
+                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(a, "agent")))
+                            runCatching { context.startActivity(intent) }
+                            Unit
+                        }
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = RoundedCornerShape(12.dp),
-                            // Long-press the answer to report it (Generative-AI flag mechanism).
-                            modifier = Modifier.combinedClickable(
-                                onClick = {},
-                                onLongClick = {
-                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(a, "agent")))
-                                    runCatching { context.startActivity(intent) }
+                            modifier = Modifier
+                                .combinedClickable(onClick = {}, onLongClick = reportAnswer)
+                                .semantics {
+                                    customActions = listOf(
+                                        CustomAccessibilityAction("Report this answer") { reportAnswer(); true },
+                                    )
                                 },
-                            ),
                         ) {
                             Text(a, modifier = Modifier.padding(12.dp))
                         }
@@ -178,8 +188,12 @@ private fun AgentHaltBanner(message: String) {
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-            Text("⚠️")
+        Row(
+            Modifier.padding(12.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.Top,
+        ) {
+            // Decorative alert glyph — hidden from TalkBack so the message is read once, not "warning sign".
+            Text("⚠️", modifier = Modifier.clearAndSetSemantics {})
             Spacer(Modifier.width(8.dp))
             Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
         }

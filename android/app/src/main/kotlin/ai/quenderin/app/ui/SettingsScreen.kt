@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
@@ -109,11 +111,14 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (!installed.isActive) {
-                            TextButton(onClick = {
-                                ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
-                                    .delete(installed.id)
-                                reloadModels()
-                            }) { Text("Delete") }
+                            TextButton(
+                                onClick = {
+                                    ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+                                        .delete(installed.id)
+                                    reloadModels()
+                                },
+                                modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
+                            ) { Text("Delete") }
                         }
                     }
                 }
@@ -199,7 +204,10 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun LabeledRow(title: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Text(title)
         Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 
 /**
  * The post-onboarding shell: Chat + Agent tabs sharing the loaded model/engine. The Compose
@@ -40,19 +41,19 @@ fun MainTabs(
                 NavigationBarItem(
                     selected = tab == 0,
                     onClick = { tab = 0 },
-                    icon = { Text("💬") },
+                    icon = { Text("💬", modifier = Modifier.clearAndSetSemantics {}) },
                     label = { Text("Chat") },
                 )
                 NavigationBarItem(
                     selected = tab == 1,
                     onClick = { tab = 1 },
-                    icon = { Text("🤖") },
+                    icon = { Text("🤖", modifier = Modifier.clearAndSetSemantics {}) },
                     label = { Text("Agent") },
                 )
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
-                    icon = { Text("⚙️") },
+                    icon = { Text("⚙️", modifier = Modifier.clearAndSetSemantics {}) },
                     label = { Text("Settings") },
                 )
             }

@@ -48,6 +48,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -140,8 +143,10 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
                     onClick = {
                         val text = input.trim()
                         input = ""
+                        // Set busy synchronously on the calling (main) thread so a rapid
+                        // double-tap can't enqueue a second send before IO flips the flag.
+                        busy = true
                         scope.launch(Dispatchers.IO) {
-                            busy = true
                             try {
                                 chat.send(text)
                             } catch (_: Throwable) {
@@ -217,7 +222,13 @@ private fun ConversationHistoryList(
 private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     val mine = msg.role == Role.USER
     val reportable = !mine && msg.text.isNotBlank()
-    Column(Modifier.fillMaxWidth()) {
+    // Group the bubble + flagged notice so TalkBack reads them as one unit and the
+    // warning's meaning no longer depends on color alone.
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(if (msg.isFlagged) Modifier.semantics(mergeDescendants = true) {} else Modifier)
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
@@ -226,7 +237,17 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                 color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(14.dp),
                 // Long-press an AI response to report it (Generative-AI flag mechanism).
-                modifier = if (reportable) Modifier.combinedClickable(onClick = {}, onLongClick = onReport) else Modifier,
+                // TalkBack can't surface long-press, so also expose it as a semantics
+                // custom action in the screen-reader actions menu.
+                modifier = if (reportable)
+                    Modifier
+                        .combinedClickable(onClick = {}, onLongClick = onReport)
+                        .semantics {
+                            customActions = listOf(
+                                CustomAccessibilityAction("Report this response") { onReport(); true }
+                            )
+                        }
+                else Modifier,
             ) {
                 Text(
                     text = msg.text,
