@@ -139,13 +139,13 @@ export function Metrics({ onBack }: { onBack: () => void }) {
     const successRate = totalRuns ? Math.round((successRuns / totalRuns) * 100) : 0;
     const avgRetries = successRuns
         ? (metrics.filter(m => m.success).reduce((a, m) => a + m.total_retries, 0) / successRuns).toFixed(1)
-        : 0;
+        : '0.0';
     const avgDurationSec = totalRuns
         ? (metrics.reduce((a, m) => a + m.duration_ms, 0) / totalRuns / 1000).toFixed(1)
-        : 0;
+        : '0.0';
     const avgSteps = totalRuns
         ? (metrics.reduce((a, m) => a + m.total_steps, 0) / totalRuns).toFixed(1)
-        : 0;
+        : '0.0';
 
     // Chart data — last 20 runs
     const recent = metrics.slice(0, 20).reverse();

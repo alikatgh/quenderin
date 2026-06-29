@@ -79,6 +79,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
             </div>
 
             <button
+                type="button"
                 onClick={onResolved}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors text-[13px]"
             >
@@ -143,6 +144,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                                     <span className="text-xs text-zinc-500 tabular-nums">{m.sizeLabel} download</span>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => handleDownload(m.id)}
                                     disabled={downloadProgress > 0}
                                     className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold rounded-lg hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -156,11 +158,11 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                 )}
 
                 {downloadProgress === 100 && (
-                    <button onClick={() => window.location.reload()} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <button type="button" onClick={() => window.location.reload()} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
                         <RefreshCw className="w-4 h-4" aria-hidden="true" /> Start Using AI
                     </button>
                 )}
-                <button onClick={onResolved} className="w-full mt-3 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium py-2 rounded-xl transition-colors text-sm">
+                <button type="button" onClick={onResolved} className="w-full mt-3 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium py-2 rounded-xl transition-colors text-sm">
                     Dismiss
                 </button>
             </div>
@@ -200,6 +202,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
             </div>
 
             <button
+                type="button"
                 onClick={onResolved}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors text-[13px]"
             >
@@ -234,6 +237,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
             </div>
 
             <button
+                type="button"
                 onClick={onResolved}
                 className="w-full bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2 px-4 rounded-xl transition-colors text-[13px]"
             >
@@ -279,7 +283,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
 
                 <div className="space-y-3 mb-6">
                     {allModels.map(m => {
-                        const isDownloaded = (action.downloadedModels ?? []).some((d: ModelOption) => d.id === m.id);
+                        const isDownloaded = (action.downloadedModels ?? []).some(d => d.id === m.id);
                         return (
                             <div key={m.id} className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                                 isDownloaded ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/5' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -295,6 +299,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                                 </div>
                                 {!isDownloaded ? (
                                     <button
+                                        type="button"
                                         onClick={() => handleDownload(m.id)}
                                         disabled={downloadProgress > 0}
                                         className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold rounded-lg hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -304,6 +309,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                                     </button>
                                 ) : (
                                     <button
+                                        type="button"
                                         onClick={onResolved}
                                         className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-all"
                                     >
@@ -315,7 +321,7 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                     })}
                 </div>
 
-                <button onClick={onResolved} className="w-full text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium py-2 rounded-xl transition-colors text-sm">
+                <button type="button" onClick={onResolved} className="w-full text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium py-2 rounded-xl transition-colors text-sm">
                     Dismiss
                 </button>
             </div>
@@ -352,10 +358,10 @@ export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, dow
                     </div>
                 </div>
             </div>
-            <button onClick={() => window.location.reload()} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-[13px]">
+            <button type="button" onClick={() => window.location.reload()} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-[13px]">
                 <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Restart System
             </button>
-            <button onClick={onResolved} className="w-full mt-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 font-medium py-1.5 rounded-xl transition-colors text-[13px]">
+            <button type="button" onClick={onResolved} className="w-full mt-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 font-medium py-1.5 rounded-xl transition-colors text-[13px]">
                 Dismiss
             </button>
         </div>

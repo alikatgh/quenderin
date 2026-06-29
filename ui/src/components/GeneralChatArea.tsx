@@ -4,6 +4,7 @@ import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock.js';
+import { AnimatedEntrance } from './AnimatedEntrance.js';
 
 interface GeneralChatAreaProps {
     logs: LogEntry[];
@@ -35,13 +36,11 @@ const SUGGESTIONS = [
     { text: 'Summarize the key ideas of stoicism', icon: FileText },
 ];
 
-import { AnimatedEntrance } from './AnimatedEntrance.js';
-
 /** Strip <tool_call>...</tool_call> XML from rendered text */
+const TOOL_CALL_BLOCK_RE = /<tool_call>[\s\S]*?<\/tool_call>\s*/g;
+const TOOL_CALL_TRAILING_RE = /<tool_call>[\s\S]*$/;
 function stripToolCallXml(text: string): string {
-    let result = text.replace(/<tool_call>[\s\S]*?<\/tool_call>\s*/g, '');
-    result = result.replace(/<tool_call>[\s\S]*$/, '');
-    return result;
+    return text.replace(TOOL_CALL_BLOCK_RE, '').replace(TOOL_CALL_TRAILING_RE, '');
 }
 
 
