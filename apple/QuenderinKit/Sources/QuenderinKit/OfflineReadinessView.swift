@@ -31,8 +31,11 @@ public struct OfflineReadinessView: View {
                     ForEach(checklist.blockers, id: \.self) { blocker in
                         Label(blocker, systemImage: "arrow.right.circle")
                             .font(.caption)
+                            .labelStyle(.titleAndIcon)
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("To get ready, resolve: " + checklist.blockers.joined(separator: ", "))
             }
 
             Divider()

@@ -35,6 +35,7 @@ public struct ChatView: View {
                     .submitLabel(.send)
                     .onSubmit { send() }
                 Button("Send") { send() }
+                .frame(minWidth: 44, minHeight: 44)
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || model.isGenerating)
             }
             .padding(.horizontal)

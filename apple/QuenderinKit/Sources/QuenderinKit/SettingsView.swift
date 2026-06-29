@@ -76,6 +76,7 @@ public struct SettingsView: View {
                             Spacer()
                             Text(fileSize(installed.sizeBytes)).foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
                         .deleteDisabled(installed.isActive)   // the loaded model can't be removed
                     }
                     .onDelete { offsets in offsets.forEach { deleteModel(installedModels[$0]) } }
@@ -134,6 +135,7 @@ private struct LabeledRow: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.trailing)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 #endif

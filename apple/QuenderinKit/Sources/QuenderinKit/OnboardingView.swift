@@ -20,6 +20,7 @@ public struct OnboardingView: View {
                 VStack(spacing: 10) {
                     Text("Recommended for your device")
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
                     Text(entry.label)
                         .font(.title3.weight(.semibold))
 
@@ -105,6 +106,7 @@ public struct OnboardingView: View {
                 VStack(spacing: 8) {
                     Text("Ready")
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
                     Text("\(entry.label) is running fully on-device.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -114,6 +116,7 @@ public struct OnboardingView: View {
                 VStack(spacing: 8) {
                     Text("Something went wrong")
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
                     Text(message)
                         .font(.caption)
                         .foregroundStyle(.red)
