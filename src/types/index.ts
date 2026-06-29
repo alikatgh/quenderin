@@ -8,6 +8,13 @@ export interface GenerationMeta {
     timeToFirstTokenMs: number;
 }
 
+/** Options accepted by generateAction (all optional). */
+export interface GenerationOptions {
+    maxTokens?: number;
+    temperature?: number;
+    onTextChunk?: (chunk: string) => void;
+}
+
 export interface UIElement {
     id: number;
     text: string;
@@ -32,7 +39,7 @@ export interface AgentEvents {
     action: (msg: string) => void;
     done: () => void;
     action_required: (payload: { code: string, title: string, message: string }) => void;
-    model_download_progress: (payload: { progress: number }) => void;
+    model_download_progress: (payload: { progress: number; modelId?: string }) => void;
 }
 
 export interface IDeviceProvider extends EventEmitter {
@@ -45,7 +52,7 @@ export interface IDeviceProvider extends EventEmitter {
 
 export interface ILlmProvider extends EventEmitter {
     generalChat(prompt: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }>;
-    generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string>;
+    generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string): Promise<string>;
     /** True while chat or agent/action inference holds the shared model (GPU/CPU). */
     isCurrentlyGenerating(): { isGenerating: boolean; buffer: string };
 }
