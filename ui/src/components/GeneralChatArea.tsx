@@ -310,7 +310,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                         </div>
                                                     </div>
                                                     {!log.isStreaming && log.meta && (
-                                                        <div className="mt-3 flex items-center gap-2.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                                                        <div className="mt-3 flex items-center gap-2.5 text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
                                                             <span>{log.meta.tokensPerSecond} tok/s</span>
                                                             <span className="text-zinc-300 dark:text-zinc-700">&middot;</span>
                                                             <span>{log.meta.tokenCount} tokens</span>
@@ -411,7 +411,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                     <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/70 dark:border-zinc-700/70 text-[11px]">
                                         <FileText className="w-3 h-3 text-zinc-400" />
                                         <span className="font-medium text-zinc-600 dark:text-zinc-300 max-w-[100px] truncate">{file.name}</span>
-                                        <button onClick={() => removeAttachment(i)} className="p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors">
+                                        <button type="button" aria-label={`Remove ${file.name}`} onClick={() => removeAttachment(i)} className="p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors">
                                             <X className="w-3 h-3 text-zinc-400" />
                                         </button>
                                     </div>

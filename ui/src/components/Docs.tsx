@@ -65,6 +65,7 @@ export function Docs({ onBack }: DocsProps) {
                         <button
                             key={item.file}
                             onClick={() => setActiveFile(item.file)}
+                            aria-current={activeFile === item.file ? 'page' : undefined}
                             className={`flex items-center gap-3 w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${activeFile === item.file
                                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium'
                                 : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-300'

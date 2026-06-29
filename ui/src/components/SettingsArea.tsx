@@ -72,6 +72,21 @@ const downloadDiagnosticsJson = (payload: string, diagnosticsId?: string | null)
     URL.revokeObjectURL(url);
 };
 
+function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
+            onClick={onChange}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+        >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+    );
+}
+
 export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [isSaved, setIsSaved] = useState(false);
@@ -284,7 +299,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     <div className="flex items-center gap-4">
                         <button
                             onClick={onBack}
-                            className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
                         >
                             <ArrowLeft className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                         </button>
@@ -346,7 +361,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 }`}
                                         >
                                             <div className="font-semibold text-base mb-1">{label}</div>
-                                            <div className="text-[11px] opacity-70 mb-2">{size} Tokens</div>
+                                            <div className="text-[11px] opacity-70 mb-2 tabular-nums">{size} Tokens</div>
                                             <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                 <div className={`h-full bg-blue-500 transition-all`} style={{ width: `${pct}%` }}></div>
                                             </div>
@@ -376,12 +391,15 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                         ? `${diagCopiedFromFallback ? 'Copied from fallback' : 'Copied!'} • ID: ${shortDiagnosticsId ?? 'n/a'}`
                                                         : 'Copy diagnostics'}
                                             </button>
-                                            <button
-                                                onClick={onClearOutageHistory}
-                                                className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
-                                            >
-                                                Clear history
-                                            </button>
+                                            {onClearOutageHistory && (
+                                                <button
+                                                    type="button"
+                                                    onClick={onClearOutageHistory}
+                                                    className="text-[11px] font-semibold px-2 py-1 rounded-md border border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors text-amber-700 dark:text-amber-300"
+                                                >
+                                                    Clear history
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-1">
@@ -439,16 +457,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         <div className="text-xs text-zinc-500 dark:text-zinc-500">Warn me when system RAM is dangerously low.</div>
                                     </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={settings.memorySafetyEnabled}
-                                    aria-label="Memory Safety Warnings"
-                                    onClick={() => setSettings({ ...settings, memorySafetyEnabled: !settings.memorySafetyEnabled })}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.memorySafetyEnabled ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.memorySafetyEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
+                                <ToggleSwitch label="Memory Safety Warnings" checked={settings.memorySafetyEnabled} onChange={() => setSettings({ ...settings, memorySafetyEnabled: !settings.memorySafetyEnabled })} />
                             </div>
 
                             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
@@ -463,7 +472,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                                                 }`}
                                         >
-                                            <div className="font-semibold text-sm">{ms}ms</div>
+                                            <div className="font-semibold text-sm tabular-nums">{ms}ms</div>
                                         </button>
                                     ))}
                                 </div>
@@ -487,16 +496,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Enable Application Lock</div>
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={settings.privacyLockEnabled}
-                                    aria-label="Enable Application Lock"
-                                    onClick={() => setSettings({ ...settings, privacyLockEnabled: !settings.privacyLockEnabled })}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.privacyLockEnabled ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.privacyLockEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
+                                <ToggleSwitch label="Enable Application Lock" checked={settings.privacyLockEnabled} onChange={() => setSettings({ ...settings, privacyLockEnabled: !settings.privacyLockEnabled })} />
                             </div>
 
                             {settings.privacyLockEnabled && (
@@ -581,9 +581,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                                <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{m.paramsBillions}B params</span>
-                                                <span className="flex items-center gap-1"><HardDrive className="w-3 h-3" />~{m.ramGb}GB RAM</span>
-                                                {fileSizeGb && <span>{fileSizeGb}GB on disk</span>}
+                                                <span className="flex items-center gap-1 tabular-nums"><Zap className="w-3 h-3" />{m.paramsBillions}B params</span>
+                                                <span className="flex items-center gap-1 tabular-nums"><HardDrive className="w-3 h-3" />~{m.ramGb}GB RAM</span>
+                                                {fileSizeGb && <span className="tabular-nums">{fileSizeGb}GB on disk</span>}
                                                 {!m.isDownloaded && <span className="text-zinc-400">{m.sizeLabel}</span>}
                                                 <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">{m.quantization}</span>
                                             </div>
@@ -641,7 +641,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                 {hardwareCpuCores && (
                                     <div className="bg-zinc-50 dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
                                         <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">CPU Cores</div>
-                                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{hardwareCpuCores}</div>
+                                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{hardwareCpuCores}</div>
                                     </div>
                                 )}
                             </div>
@@ -654,7 +654,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             type="button"
                             aria-expanded={notesOpen}
                             onClick={() => setNotesOpen(o => !o)}
-                            className="w-full flex items-center justify-between"
+                            className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
                         >
                             <div className="flex items-center gap-3">
                                 <FileText className="w-5 h-5 text-blue-500" />
@@ -676,7 +676,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{note.title}</p>
                                                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{note.preview}</p>
-                                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">{new Date(note.modifiedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {(note.sizeBytes / 1024).toFixed(1)} KB</p>
+                                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 tabular-nums">{new Date(note.modifiedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {(note.sizeBytes / 1024).toFixed(1)} KB</p>
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteNote(note.filename)}
@@ -699,7 +699,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             type="button"
                             aria-expanded={memoryOpen}
                             onClick={() => setMemoryOpen(o => !o)}
-                            className="w-full flex items-center justify-between"
+                            className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
                         >
                             <div className="flex items-center gap-3">
                                 <Brain className="w-5 h-5 text-purple-500" />
@@ -730,9 +730,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                 ) : (
                                     <div className="space-y-2">
                                         {trajectories.map((t, i) => (
-                                            <div key={i} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                                            <div key={`${t.timestamp}-${i}`} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                                                 <p className="text-[13px] font-medium text-zinc-800 dark:text-zinc-200 leading-snug">{t.goal}</p>
-                                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">{t.actionCount} actions · {new Date(t.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 tabular-nums">{t.actionCount} actions · {new Date(t.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
                                             </div>
                                         ))}
                                     </div>

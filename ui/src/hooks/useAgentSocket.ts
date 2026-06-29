@@ -108,7 +108,7 @@ export function useAgentSocket() {
                 const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                 const entry: LogEntry = {
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: Math.random().toString(36).slice(2, 11),
                     // `entry` is built upfront for every frame but only PUSHED for log-bearing types; the
                     // non-log frames (action_required / model_download_progress / preset_changed) return
                     // early and never use `entry`, so narrowing the union to LogEntry['type'] here is safe.
@@ -250,36 +250,35 @@ export function useAgentSocket() {
         };
     }, []);
 
+    // Shared socket-not-open guard for sendGoal/sendChatMessage — single-sources the
+    // 'System Sleeping' user-facing copy so a wording fix lives in one place.
+    const ensureSocketOpen = (): WebSocket | null => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) return wsRef.current;
+        setLogs(prev => capLogs([...prev, {
+            id: 'err',
+            type: 'error',
+            message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
+            timestamp: new Date().toLocaleTimeString()
+        }]));
+        return null;
+    };
+
     const sendGoal = (goal: string, attachments: { name: string, content: string }[] = []) => {
-        if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            setLogs(prev => capLogs([...prev, {
-                id: 'err',
-                type: 'error',
-                message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
-                timestamp: new Date().toLocaleTimeString()
-            }]));
-            return false;
-        }
+        const ws = ensureSocketOpen();
+        if (!ws) return false;
 
         setStatus('running');
         setLogs([{
             id: 'start', type: 'status', message: `Goal set: ${goal}${attachments.length > 0 ? ` (with ${attachments.length} attachments)` : ''}`, timestamp: new Date().toLocaleTimeString()
         }]);
         setCurrentUI([]);
-        wsRef.current.send(JSON.stringify({ type: 'start', goal, attachments }));
+        ws.send(JSON.stringify({ type: 'start', goal, attachments }));
         return true;
     };
 
     const sendChatMessage = (msg: string, attachments: { name: string, content: string }[] = []) => {
-        if (wsRef.current?.readyState !== WebSocket.OPEN) {
-            setLogs(prev => capLogs([...prev, {
-                id: 'err',
-                type: 'error',
-                message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
-                timestamp: new Date().toLocaleTimeString()
-            }]));
-            return false;
-        }
+        const ws = ensureSocketOpen();
+        if (!ws) return false;
 
         setStatus('running');
         const normalized = msg.trim();
@@ -291,12 +290,12 @@ export function useAgentSocket() {
 
         if (!recentlyLoggedDuplicate) {
             setLogs(prev => capLogs([...prev, {
-                id: Math.random().toString(36).substr(2, 9), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
+                id: Math.random().toString(36).slice(2, 11), type: 'chat', message: msg, timestamp: new Date().toLocaleTimeString()
             }]));
             lastUserChatLogRef.current = { message: normalized, at: now };
         }
 
-        wsRef.current.send(JSON.stringify({ type: 'chat', message: msg, attachments }));
+        ws.send(JSON.stringify({ type: 'chat', message: msg, attachments }));
         return true;
     };
 
