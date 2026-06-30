@@ -6,6 +6,17 @@
 
 After resolving all 10 HIGH-severity findings recorded in the 2026-06-30 audit cycle, a full re-sweep of the 52 medium and low findings across 9 subsystems was completed against the current state of `main`. Of 52 findings, 16 are fully fixed, 6 are partially addressed (mitigated but not closed), and 30 remain open and unchanged from the original audit. The fixed findings span Android core (cancellable downloads, truncation test coverage), iOS foreground downloader cleanup, Electron HTTP auth and WebSocket isolation, LLM service (agent safety bypass, note sanitization, wall-clock timeout), React UI (CSV injection, WS guard), and two CI/supply-chain items (GITHUB_TOKEN permissions, Kotlin compiler checksum). No regressions were found; all open items are carryovers from the original audit with no code change observed.
 
+## Fixed in the follow-up pass (2026-06-30, after this re-sweep)
+
+The status counts below are the re-sweep snapshot. A follow-up pass then closed the highest-value
+open items (each verified before commit — see `git log` for the full set):
+
+- **Voice PII + temp-WAV leak** — stop logging transcribed speech verbatim; `finally`-unlink the temp WAV (`src/services/voice.service.ts`, `7a1995a`).
+- **Web hardening** — CSP enforcing first-party-only; SW caches only same-origin 200s; `sw.js` no-cache (`website/_headers`, `website/sw.js`, `6cb3853`).
+- **stripControlTokens** — strip Gemma / Phi-3 / Mistral turn markers, +3 tests (`src/utils/stripControlTokens.ts`, `8b5fbdb`).
+- **Docker non-root** — runtime stage drops to an unprivileged user (`Dockerfile`, `8b5fbdb`; needs a `docker build` smoke test).
+- Further LOW items closed in subsequent commits this session.
+
 ## Status Count
 
 | Status  | Count |
