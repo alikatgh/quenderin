@@ -1,0 +1,924 @@
+{
+  "date": "2026-06-30",
+  "byStatus": {
+    "open": 30,
+    "fixed": 16,
+    "partial": 6
+  },
+  "subsystems": [
+    {
+      "subsystem": "Android app layer (Kotlin UI, WorkManager downloader, manifest, backup/network XML, build.gradle.kts)",
+      "verdicts": [
+        {
+          "title": "Downloader busy-poll loop hangs the caller indefinitely and ignores cancellation/interruption",
+          "originalSeverity": "medium",
+          "file": "android/app/src/main/kotlin/ai/quenderin/app/WorkManagerModelDownloader.kt:50-68",
+          "status": "open",
+          "evidence": "WorkManagerModelDownloader.kt:50-68 — the loop is unchanged: `while (true) { ... onProgress(...) ... else -> Thread.sleep(pollMs) }`. No `Thread.interrupted()` check, no coroutine `isActive` guard, no timeout. `getWorkInfosForUniqueWork(...).get()` will also block indefinitely on executor stall without catching `ExecutionException`/`InterruptedException`.",
+          "fix": "At minimum, add `if (Thread.interrupted()) throw DownloadException(\"download interrupted for ${model.id}\")` at the top of the loop body, and wrap the `.get()` call in a try/catch that translates `InterruptedException` and `ExecutionException` into `DownloadException`. For the full fix, migrate to `WorkManager.getWorkInfosForUniqueWorkFlow()` observed in a coroutine with `collect` so cancellation is automatic."
+        },
+        {
+          "title": "Model-generated text flows unvalidated into Uri.parse() for a SENDTO intent (prompt-injection -> intent data control)",
+          "originalSeverity": "low",
+          "file": "android/app/src/main/kotlin/ai/quenderin/app/ui/ChatScreen.kt:124",
+          "status": "fixed",
+          "evidence": "SupportContact.kt:30-41 — `reportMailtoUri` now percent-encodes all interpolated text via `URLEncoder.encode(s, \"UTF-8\").replace(\"+\", \"%20\")` before placing it in the `subject=` and `body=` query params. The base URI is a fixed `mailto:REPORT_EMAIL?subject=…&body=…` string with no model-controlled structural segments. ChatScreen.kt:124 and AgentScreen.kt:101 both call this function."
+        },
+        {
+          "title": "Terminal SUCCEEDED never reports progress=1.0; final progress fraction is dropped",
+          "originalSeverity": "low",
+          "file": "android/app/src/main/kotlin/ai/quenderin/app/WorkManagerModelDownloader.kt:54-59",
+          "status": "open",
+          "evidence": "WorkManagerModelDownloader.kt:54 — `onProgress(info.progress.getDouble(ModelDownloadWorker.KEY_PROGRESS, 0.0))` is called unconditionally before the `when` block. On the SUCCEEDED iteration WorkManager clears the progress WorkData, so `getDouble` returns the 0.0 default and that is emitted to the caller. Line 57-59 then returns the path with no preceding `onProgress(1.0)` call.",
+          "fix": "Reorder the SUCCEEDED branch to call `onProgress(1.0)` before returning: `WorkInfo.State.SUCCEEDED -> { onProgress(1.0); return info.outputData.getString(…) ?: throw … }`. Move the unconditional `onProgress` call to only fire on non-terminal states (inside the `else` branch or after a guard)."
+        },
+        {
+          "title": "No explicit network security config; HTTPS-only for model downloads relies solely on the API-28 platform default",
+          "originalSeverity": "low",
+          "file": "android/app/src/main/AndroidManifest.xml:14-20",
+          "status": "open",
+          "evidence": "AndroidManifest.xml:14-20 — `<application>` still has no `android:networkSecurityConfig` attribute. `res/xml/` contains only `backup_rules.xml` and `data_extraction_rules.xml`; no `network_security_config.xml` exists. The app relies on the API-28+ platform default (cleartext blocked by default, no pinning).",
+          "fix": "Create `res/xml/network_security_config.xml` with `<network-security-config><base-config cleartextTrafficPermitted=\"false\"/></network-security-config>` and add `android:networkSecurityConfig=\"@xml/network_security_config\"` to the `<application>` element. Optionally add a `<domain-config>` with `<pin-set>` for the model-catalog host for MITM resistance."
+        }
+      ],
+      "summary": "Of 4 findings, 1 is fixed, 3 remain open. The URI injection risk (finding 2) is resolved: SupportContact.reportMailtoUri now percent-encodes all model-generated text via URLEncoder before placing it in mailto query parameters, so arbitrary model output cannot break the URI structure. The busy-poll loop (finding 1) is unchanged — no interruption check, no coroutine cancellation support. The SUCCEEDED/progress=1.0 drop (finding 3) is unchanged — onProgress is still called unconditionally before the terminal branch, emitting 0.0 on completion. The missing network security config (finding 4) is unchanged — the manifest has no android:networkSecurityConfig attribute and no network_security_config.xml exists in res/xml/."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "verdicts": [
+        {
+          "title": "Redirects followed to any https host without re-pinning host; only SHA-256 (which is optional) catches a swap",
+          "originalSeverity": "medium",
+          "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/JvmDownloadIO.kt",
+          "status": "partial",
+          "evidence": "JvmDownloadIO.kt:28-31 — a scheme check now rejects non-HTTPS before any connection opens: `val scheme = URI(url).scheme; if (!\"https\".equals(scheme, ignoreCase = true)) { throw DownloadException(\"refusing non-HTTPS model URL ...\") }`. However, `instanceFollowRedirects = true` (line 33) is unchanged and no host-allowlist check is applied after redirects. A redirect from a valid HTTPS host to a different HTTPS host is still silently followed. The sha256 is still the only backstop for a redirected-to poisoned mirror, and sha256=null entries remain accepted (ModelDownloadEngine.kt:140-148: `val expectedSha = model.sha256; if (expectedSha != null) { ... }`).",
+          "fix": "Either (a) set `instanceFollowRedirects = false` and re-validate the scheme + host on each redirect manually, or (b) capture `conn.url.host` after the response and assert it matches the original URL's host. Additionally, enforce sha256 != null at catalog construction or at the start of `ModelDownloadEngine.download()` to eliminate the magic-only path for production entries."
+        },
+        {
+          "title": "Truncated download with no Content-Length bypasses the completeness check (only SHA-256 catches it)",
+          "originalSeverity": "medium",
+          "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelDownloadEngine.kt",
+          "status": "fixed",
+          "evidence": "ModelDownloadEngine.kt:123-131 — the byte-count completeness check for `total > 0` is still present (line 123-126), and the code comment at lines 129-131 now explicitly documents the no-Content-Length case: `// When the server sends NO Content-Length (total <= 0) completeness can't be byte-verified — the mandatory sha256 gate below IS the completeness guarantee`. CoreVerify.kt:723-736 adds a test: `truncated download with no Content-Length is caught by sha256, partial discarded` — it passes a 60-of-100 byte body with `totalBytes=-1`, confirms the sha256 gate fires and `finalFile == null`. The chosen approach (documented, tested, sha256 is the guarantee) is an accepted risk, not a gap."
+        },
+        {
+          "title": "Download chunk loop is not cancellable — WorkManager stop / model switch can't cooperatively abort a multi-GB transfer",
+          "originalSeverity": "low",
+          "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelDownloadEngine.kt",
+          "status": "fixed",
+          "evidence": "ModelDownloadEngine.kt:67-70 — `ModelDownloadEngine` now accepts an `isCancelled: () -> Boolean = { false }` constructor parameter. Lines 103-109: the chunk loop checks `if (isCancelled()) { throw DownloadCancelledException(...) }` on every chunk. `DownloadCancelledException` (line 52) is a `DownloadException` subtype; the catch block at line 161-163 keeps the `.part` and marks state PAUSED for resume. CoreVerify.kt:740-754 tests this end-to-end: two chunks land, then cancel fires; part is non-empty, finalFile is absent, store state is PAUSED."
+        },
+        {
+          "title": "JvmFileSink.append reopens RandomAccessFile + seeks to EOF on every 64 KiB chunk",
+          "originalSeverity": "low",
+          "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/JvmDownloadIO.kt",
+          "status": "open",
+          "evidence": "JvmDownloadIO.kt:90-97 — `append()` still opens and closes a `RandomAccessFile` on every call: `RandomAccessFile(file, \"rw\").use { raf -> raf.seek(raf.length()); raf.write(bytes) }`. No `begin()`/`close()` lifecycle was added; one fd is still opened and closed per 64 KiB chunk for a multi-GB file.",
+          "fix": "Introduce `begin(path: String): AutoCloseable` on `FileSink` that returns an open append handle, make `append` write to that handle, and add `close()` so the engine holds one fd for the duration of the download. `JvmFileSink` implements it with a `FileOutputStream(file, true)` held open across all chunk calls."
+        },
+        {
+          "title": "Integrity / download paths have no automated test for the security boundaries (scheme, redirect, missing-length, magic-only swap)",
+          "originalSeverity": "low",
+          "file": "android/quenderin-core/src/test/kotlin/ai/quenderin/core/CoreTest.kt",
+          "status": "fixed",
+          "evidence": "CoreVerify.kt:757-762 now tests scheme rejection: `JvmHttpRangeClient.open refuses http:// (and file://) before connecting` — asserts both throw `DownloadException`. Lines 723-736 test the missing-Content-Length + sha256 catch path. Lines 705-711 test magic-only rejection (sha256=null entry with non-GGUF body). Lines 713-720 test checksum mismatch + discard. Lines 740-754 test the cancellation path. The coverage gap cited in the original finding is now filled in CoreVerify.kt; redirect-to-different-host is the one remaining untested boundary (tied to finding #1's partial fix)."
+        }
+      ],
+      "summary": "Four of five findings have been addressed since the original audit. The scheme check (http/file rejection) is implemented and tested, closing the clearest attack surface from finding #1, but a redirect to a different HTTPS host is still silently followed with no host re-validation — the finding is partial. The no-Content-Length / truncation path is now explicitly documented and has a dedicated test that confirms sha256 acts as the completeness guarantee — fixed by accepted-risk documentation and test coverage. The chunk-loop cancellation is fully implemented via `isCancelled` callback and `DownloadCancelledException`, with a test that verifies the `.part` is preserved and the store is marked PAUSED — fixed. The `JvmFileSink.append` per-chunk fd open/close remains unchanged — still open. The test coverage gap is closed: CoreVerify.kt now has tests for scheme rejection, missing Content-Length, magic-only gate, checksum mismatch, and cancellation; the only gap still linked to finding #5 is a redirect-to-different-host test, which tracks with the partial fix in finding #1."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "verdicts": [
+        {
+          "title": "BackgroundModelDownloader can silently drop a completed download after app relaunch (taskIdentifier is session-local, continuation maps are in-memory)",
+          "originalSeverity": "medium",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/BackgroundModelDownloader.swift",
+          "status": "partial",
+          "evidence": "BackgroundModelDownloader.swift:19-24 — class is explicitly documented as NOT the shipping default ('NOT the shipping default. QuenderinApp wires the foreground URLSessionModelDownloader, so this class is never instantiated at runtime'). The in-memory destinations/continuations maps (lines 29-31) still have no relaunch rehydration, and handleEventsForBackgroundURLSession is still not implemented. However, the doc comment now explicitly calls this out as a prerequisite before shipping.",
+          "fix": "Still needs: (1) implement application(_:handleEventsForBackgroundURLSession:completionHandler:) in the app delegate, (2) on relaunch reconstruct destinations from store.resumable() keyed by originalRequest URL rather than taskIdentifier. The class should not be wired into production until these are in place."
+        },
+        {
+          "title": "Integrity gate downgrades to magic-only when no SHA-256 is found, with no defense against a swapped-but-valid GGUF",
+          "originalSeverity": "low",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/ModelIntegrity.swift",
+          "status": "open",
+          "evidence": "ModelIntegrity.swift:46-51 — 'if let expected = expectedSHA256, !expected.isEmpty { ... }' — nil or empty SHA256 silently falls through to magic-only check. Both BackgroundModelDownloader (line 153) and URLSessionModelDownloader/ChunkedDownloadDelegate (line 137) pass nil SHA when the catalog entry has no sha256 field, triggering the soft downgrade.",
+          "fix": "For catalog-originated downloads, treat a nil sha256 in the catalog entry as a configuration error and throw rather than silently downgrading. Keep magic-only for explicitly user-sideloaded files only."
+        },
+        {
+          "title": "OfflineReadiness reports 'ready' for a truncated file at >=85% of an *estimated* size",
+          "originalSeverity": "low",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/OfflineReadiness.swift",
+          "status": "open",
+          "evidence": "OfflineReadiness.swift:41-44 — 'let expected = DiskSpace.estimatedDownloadBytes(for: model) / if Double(fileSizeBytes) >= Double(expected) * 0.85 { return OfflineReadiness(model: model, status: .ready) }' — still uses an estimated size with an 85% threshold. No exact byte count is persisted from Content-Length or integrity verification.",
+          "fix": "Persist the real Content-Length from the download response in PersistedDownload.totalBytes (already stored) and use that as the comparison target, requiring fileSizeBytes == expected (or tie .ready to a passed integrity verify) instead of the 0.85 heuristic."
+        },
+        {
+          "title": "DownloadStore swallows decode/persist errors, can lose the resumable-download table",
+          "originalSeverity": "low",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/DownloadStore.swift",
+          "status": "open",
+          "evidence": "DownloadStore.swift:48-53 — 'if let data = try? Data(contentsOf: fileURL), let decoded = try? JSONDecoder()... { ... } else { self.records = [:] }' — a decode failure silently zeros all state. persist() at lines 89-92 uses 'try? data.write(to: fileURL, options: .atomic)' with no error surfacing.",
+          "fix": "Distinguish file-absent (legitimate empty start) from decode-failed (quarantine/rename the corrupt file and log via os_log). Surface persist write failures via os_log at minimum so progress loss is not invisible."
+        },
+        {
+          "title": "SafetyBlocklist is substring/word-boundary keyword matching — trivially bypassed and English-only",
+          "originalSeverity": "low",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/SafetyBlocklist.swift",
+          "status": "open",
+          "evidence": "SafetyBlocklist.swift:23-38 — 'public static func isBlocked(_ text: String) -> Bool { !matches(in: text).isEmpty }' with '\\bkeyword\\b on lowercased text' — unchanged. Word-boundary regex on lowercased English text; no defense-in-depth documentation visible in the source.",
+          "fix": "Add a doc comment stating this is defense-in-depth only, not the sole gate. Any tool with side effects must require explicit per-action user confirmation at the tool layer (capability-based), independent of SafetyBlocklist screening."
+        },
+        {
+          "title": "Stale partial file left behind on failed/cancelled foreground download",
+          "originalSeverity": "low",
+          "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/ModelDownloader.swift",
+          "status": "fixed",
+          "evidence": "ModelDownloader.swift:121-126 (ChunkedDownloadDelegate.urlSession(_:task:didCompleteWithError:)) — 'if let error { try? FileManager.default.removeItem(at: partial) ... }' explicitly removes the partial file on all error/cancel paths. Write errors in didReceive (lines 110-113) call dataTask.cancel() which routes through didCompleteWithError where partial is cleaned up via the same guard."
+        }
+      ],
+      "summary": "6 findings re-verified against current code. 1 is fixed (partial file cleanup in foreground downloader). 4 remain open: integrity soft-downgrade on nil SHA, OfflineReadiness 85%-of-estimate heuristic, DownloadStore silent error swallowing, and SafetyBlocklist keyword-only screening. 1 is partial: BackgroundModelDownloader relaunch continuity is unchanged architecturally but the class is now explicitly documented as non-shipping and gated behind manual wiring, reducing the live-bug risk to zero until someone intentionally enables it."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "verdicts": [
+        {
+          "title": "Third-party GitHub Actions pinned to mutable tags, not commit SHAs",
+          "originalSeverity": "medium",
+          "file": ".github/workflows/ci.yml, .github/workflows/deploy-website.yml",
+          "status": "partial",
+          "evidence": "ci.yml:80 — codecov/codecov-action is now SHA-pinned: `uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4`. ci.yml:136 — android-actions/setup-android is now SHA-pinned: `uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3`. Still on mutable tags: ci.yml:30,65,91 `actions/checkout@v4`; ci.yml:33,68 `actions/setup-node@v4`; ci.yml:104,131 `actions/setup-java@v4`; ci.yml:146 `actions/setup-python@v5`; deploy-website.yml:29,30,31,35 `actions/checkout@v4`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`.",
+          "fix": "Pin the remaining first-party actions to commit SHAs: e.g. `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`. All GitHub-org actions can be pinned too — use SHA + inline comment for readability. Dependabot will keep them current."
+        },
+        {
+          "title": "CI workflows do not set least-privilege GITHUB_TOKEN permissions",
+          "originalSeverity": "medium",
+          "file": ".github/workflows/ci.yml:17",
+          "status": "fixed",
+          "evidence": "ci.yml:14-18 — comment explains the fix and `permissions: contents: read` is now set at workflow level. The coverage job at line 60-62 further opts in `id-token: write` for OIDC only. deploy-website.yml:13-16 already had scoped permissions."
+        },
+        {
+          "title": "Kotlin compiler downloaded in CI over network without checksum verification",
+          "originalSeverity": "medium",
+          "file": ".github/workflows/ci.yml:110",
+          "status": "fixed",
+          "evidence": "ci.yml:111-113 — sha256 check now runs before unzip: `echo \"0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a  kotlin-compiler-2.0.21.zip\" | sha256sum -c -`. The comment at line 111-112 explicitly cites the audit finding."
+        },
+        {
+          "title": "Docker runtime image runs as root with no non-root USER",
+          "originalSeverity": "medium",
+          "file": "Dockerfile:35",
+          "status": "open",
+          "evidence": "Dockerfile:35-69 — `FROM node:20-slim AS runtime`, no `USER` directive present anywhere in the file. The runtime stage still uses `VOLUME /root/.quenderin` (line 62) and runs as root.",
+          "fix": "In the runtime stage, add after the apt-get block: `RUN useradd -m -u 10001 -s /bin/false app && mkdir -p /home/app/.quenderin && chown -R app:app /app /home/app/.quenderin` then `USER app`. Change `VOLUME /root/.quenderin` to `VOLUME /home/app/.quenderin` and update the run-command comment on line 6."
+        },
+        {
+          "title": "Dockerfile uses npm install (not npm ci) and silently swallows install failures",
+          "originalSeverity": "low",
+          "file": "Dockerfile:24",
+          "status": "open",
+          "evidence": "Dockerfile:24 — `RUN npm install --ignore-scripts=false || true`; Dockerfile:25 — `RUN cd ui && npm install`; Dockerfile:31 — `RUN npx tsc || true`. All three still present unchanged.",
+          "fix": "Replace lines 24-25 with `RUN npm ci --ignore-scripts=false` and `RUN npm ci --prefix ui`. Change line 31 to `RUN npx tsc` (remove `|| true`). If native optional modules genuinely fail on some arches, selectively ignore them with `--omit=optional` rather than swallowing all errors."
+        },
+        {
+          "title": "Base images and Docker layers pinned only to floating major tag",
+          "originalSeverity": "low",
+          "file": "Dockerfile:10",
+          "status": "open",
+          "evidence": "Dockerfile:10 — `FROM node:20-slim AS builder`; Dockerfile:35 — `FROM node:20-slim AS runtime`. No digest pinning on either stage.",
+          "fix": "Pin to digest: `FROM node:20-slim@sha256:<current-digest> AS builder` and the same for the runtime stage. Get the digest via `docker pull node:20-slim && docker inspect node:20-slim --format '{{index .RepoDigests 0}}'`. Add a Dependabot/Renovate rule to auto-bump it."
+        },
+        {
+          "title": "Abandoned native optional dependency robotjs@^0.6.0",
+          "originalSeverity": "low",
+          "file": "package.json:63",
+          "status": "open",
+          "evidence": "package.json:63 — `\"robotjs\": \"^0.6.0\"` still present in optionalDependencies. The package has had no release since 2020 and does not support Node 20+ natively.",
+          "fix": "Replace with `@nut-tree-fork/nut-js` (actively maintained) or `@hurdlegroup/robotjs`. If desktop-control is off by default, gate behind an explicit runtime flag and document the risk. Confirm the replacement builds with `node>=20` before removing robotjs."
+        },
+        {
+          "title": "Root postinstall runs a second npm install in ui/ — fragility and surface",
+          "originalSeverity": "low",
+          "file": "package.json:13",
+          "status": "open",
+          "evidence": "package.json:13 — `\"postinstall\": \"cd ui && npm install\"` unchanged. Runs on every `npm install`/`npm ci` of the root package, ignores the lockfile, and runs as a side-effect of root installs.",
+          "fix": "Replace with `\"postinstall\": \"npm ci --prefix ui\"` to honor the lockfile, or adopt npm workspaces so the ui install is handled automatically and the postinstall hook can be deleted entirely."
+        }
+      ],
+      "summary": "Of 8 findings, 2 are fully fixed and 1 is partially fixed; 5 remain open. The two confirmed fixes are the GITHUB_TOKEN least-privilege permissions (ci.yml:17 now has `permissions: contents: read`) and the Kotlin compiler checksum verification (ci.yml:113 now runs sha256sum before unzip). The two highest-risk third-party actions (codecov, android-actions/setup-android) are now SHA-pinned, but six other actions in ci.yml and all four actions in deploy-website.yml remain on mutable version tags. The five open issues (Docker runs as root, npm install with swallowed errors, floating base-image tags, abandoned robotjs, postinstall npm install) are unchanged from the original audit."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "verdicts": [
+        {
+          "title": "State-changing HTTP routes (agent intervene/resume, model download/switch/delete, memory clear) are unauthenticated and not CSRF-protected",
+          "originalSeverity": "medium",
+          "file": "src/app.ts",
+          "status": "fixed",
+          "evidence": "src/app.ts:83-95 — a middleware on every POST/PUT/PATCH/DELETE /api/* route extracts X-Auth-Token or ?token= and calls isAuthorized(provided, authToken); returns 401 if missing or invalid. manualAction also receives type+length sanitization at app.ts:121-122."
+        },
+        {
+          "title": "CORS allows all requests with no Origin header, weakening the local-only guarantee",
+          "originalSeverity": "low",
+          "file": "src/app.ts",
+          "status": "partial",
+          "evidence": "src/app.ts:63-64 — `if (!origin) return callback(null, true);` is unchanged. However, the original concern was that CORS was the only gate; the per-launch auth token middleware now enforces real authorization on all state-changing routes, so the no-Origin path no longer grants unauthenticated access to mutating endpoints. The comment at line 62-64 documents the intent. The no-Origin allowance on GETs (e.g. /health, /diagnostics) remains a residual exposure.",
+          "fix": "No change required for mutating routes (token auth covers them). For full defence-in-depth, the no-origin pass-through could be restricted to non-/api/ paths, but this is low-value given the auth token layer."
+        },
+        {
+          "title": "/api/health/diagnostics discloses process internals without authentication",
+          "originalSeverity": "low",
+          "file": "src/routes/health.ts",
+          "status": "open",
+          "evidence": "src/routes/health.ts:46 — `router.get('/diagnostics', (req, res) => { ... res.json({ process: { pid, nodeVersion, ... }, buildInfo: { commitSha, nodeEnv }, hardware: {...} }) })`. Mounted at app.ts:98 as `app.use('/', healthRoute)` before the auth middleware, which only guards POST/PUT/PATCH/DELETE /api/* routes. A GET /diagnostics from any local process returns full process internals with no token required.",
+          "fix": "Add `app.get('/diagnostics', requiresToken, ...)` or move the auth middleware to also cover GET /diagnostics specifically, e.g.: `if (req.path === '/diagnostics') { /* token check */ }`. Alternatively strip pid/commitSha/exact versions from the unauthenticated response."
+        },
+        {
+          "title": "resolveCommitSha runs execSync('git ...') at module import time",
+          "originalSeverity": "low",
+          "file": "src/routes/health.ts",
+          "status": "partial",
+          "evidence": "src/routes/health.ts:16-28 — resolveCommitSha() still runs execSync at module load (line 28: `const commitSha = resolveCommitSha()`). The env-var short-circuit at lines 17-18 (`const fromEnv = process.env.QUENDERIN_GIT_SHA ?? process.env.GITHUB_SHA; if (fromEnv) return fromEnv.slice(0, 12);`) skips execSync when either var is set, mitigating the issue in CI/packaged builds. In dev without those vars, execSync still fires on import.",
+          "fix": "Wrap the execSync call so it only runs lazily on first /diagnostics hit: convert `const commitSha` to a `let commitSha: string | null = null` and populate it inside the route handler on first call, or accept the env-var-only path and remove the execSync fallback entirely for packaged builds."
+        },
+        {
+          "title": "WebSocket session is created server-side per connection but accepted with no per-client isolation; a second connection silently hijacks shared service listeners",
+          "originalSeverity": "low",
+          "file": "src/websocket/index.ts",
+          "status": "fixed",
+          "evidence": "src/websocket/index.ts:117-129 — connections without a local Origin are now rejected (ws.close(1008)); connections without the per-launch auth token are also rejected before any listener registration. For legitimate reconnects, lines 135-143 explicitly remove the previous connection's action_required and download_progress listeners before registering new ones, preventing listener accumulation regardless of whether the old ws emitted 'close'."
+        }
+      ],
+      "summary": "Two of the five findings are fully fixed (auth token on mutating HTTP routes; WebSocket auth + listener cleanup on reconnect). One is open (/diagnostics still unauthenticated GET). One is partial with good mitigation (CORS no-origin pass-through remains but is now behind the token layer for mutating routes). One is partial (execSync at import time is skipped when env vars are set, but still fires in dev without them)."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "verdicts": [
+        {
+          "title": "note_save passes model-controlled title straight to filesystem as a filename with no sanitization at the tool boundary",
+          "originalSeverity": "medium",
+          "file": "src/services/tools/handlers.ts:187-194",
+          "status": "fixed",
+          "evidence": "handlers.ts:188-190 still reads `const title = String(call.args.title ?? '')` and passes it directly to `getSharedMemoryService().saveNote(title, content)`. However, saveNote (memory.service.ts:275) now calls `sanitizeNoteTitle(trimmedTitle)` from src/utils/notes.ts:7-14, which strips everything except `[a-zA-Z0-9\\s\\-_]`, collapses whitespace to underscores, and slices to 80 chars — returning null on an empty result. Path is always constructed with `path.join(this.notesDir, \\`${safeTitle}.md\\`)` (memory.service.ts:282), so path traversal is blocked at the service layer. The downstream service does sanitize; the finding's assumption was wrong."
+        },
+        {
+          "title": "Agent action safety blocklist is trivially bypassable substring matching; coordinate clicks and icon buttons evade it entirely",
+          "originalSeverity": "medium",
+          "file": "src/services/agent/actionExecutor.ts:40-47, 118-123",
+          "status": "fixed",
+          "evidence": "actionExecutor.ts:40-47 adds `elementsContaining(x, y, elements)` which returns all UI elements whose bounding rect contains the tapped coordinate. Lines 121-123 iterate those elements and call `checkSafety(el)` on each before executing a coordinate click. Line 26 now also includes `el?.resourceId` in the text candidates, catching icon buttons with empty labels but descriptive resource IDs. Both gaps (coordinate bypass and icon-button bypass) from the original finding are now covered."
+        },
+        {
+          "title": "Chat tool follow-up streams model output to the user without stripping tool-call XML (data-leak / confusing UI on follow-up failure path)",
+          "originalSeverity": "low",
+          "file": "src/services/llm.service.ts:1092-1102",
+          "status": "open",
+          "evidence": "llm.service.ts:1092-1097: the follow-up `onTextChunk` callback calls only `stripControlTokensWithOptions(chunk, { trim: false })` and emits directly to `onToken`. It does NOT strip tool-call XML from streamed chunks. `finalResponse` is correctly stripped at line 1102 with `stripToolCalls(stripControlTokens(followUp.trim()))`, but any tool-call XML that appears mid-stream is emitted raw to the user before that final strip runs.",
+          "fix": "Either buffer the follow-up tokens instead of streaming them (emit only from the stripped `finalResponse`), or apply `stripToolCalls` incrementally in the `onTextChunk` callback. Simplest: remove `onTextChunk` from the follow-up prompt options and after `finalResponse` is computed, emit it token-by-token to `onToken` in one pass."
+        },
+        {
+          "title": "generateAction creates a chat session but never disposes it on the prompt path, only the sequence",
+          "originalSeverity": "low",
+          "file": "src/services/llm.service.ts:958-987",
+          "status": "fixed",
+          "evidence": "llm.service.ts:974-982: the `try/finally` disposes `sequence` via `sequence.dispose()` (line 981). The `LlamaChatSession` created at line 964 holds only a reference to the sequence; it has no independent KV-cache allocation beyond the sequence itself. Disposing the sequence reclaims the underlying resource. There is no separate `session.dispose()` method exposed by node-llama-cpp for LlamaChatSession (it does not own the sequence). The finding's recommendation is not applicable to this API surface."
+        },
+        {
+          "title": "Agent loop has no overall wall-clock timeout; only a step count cap",
+          "originalSeverity": "low",
+          "file": "src/services/agent.service.ts:138, 173, 215-219",
+          "status": "fixed",
+          "evidence": "agent.service.ts:138 adds `maxWallClockMs` parameter with a default from `resolveDefaultMaxWallClockMs()`. Line 173: `const startTimeMs = Date.now()`. Line 219: `if (Date.now() - startTimeMs >= maxWallClockMs) { timedOut = true; break; }` checked at the top of every loop iteration. Lines 390-391 emit a distinct timeout error message. The wall-clock cap is fully implemented."
+        }
+      ],
+      "summary": "4 of 5 findings are fixed in the current code. One low-severity issue remains open: the follow-up tool-call streaming path still emits raw chunks (including potential tool-call XML) via onToken before the final stripToolCalls pass runs on the buffered response. The coordinate-click safety bypass and icon-button bypass are both patched. The note_save filename sanitization is now done inside MemoryService.saveNote via sanitizeNoteTitle. The generateAction session leak is not applicable to the node-llama-cpp API (sequence disposal is sufficient). The agent loop wall-clock timeout is fully implemented."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "verdicts": [
+        {
+          "title": "Pinned SHA-256 hashes trust the HuggingFace LFS pointer, not the actual downloaded bytes",
+          "originalSeverity": "medium",
+          "file": "scripts/refresh_model_hashes.py:10-14",
+          "status": "open",
+          "evidence": "refresh_model_hashes.py:10-14 still reads: \"The hashes are the HuggingFace LFS object ids ... fetched WITHOUT downloading the multi-GB blobs — every GGUF on HF is git-lfs, so the pointer at `<repo>/raw/main/<file>` carries `oid sha256:<hex>`\". The HASHES dict is still hand-pasted constants derived from LFS pointer metadata, not from computing sha256 over the actual downloaded blob.",
+          "fix": "Add a one-time verification step to the script or its docstring: download each blob once on a trusted machine, compute sha256 locally (`sha256sum`), and record both the HF commit SHA and the locally-computed hash. Pin the HF revision in the URL (resolve/<commit-sha>) so a pointer change is detectable. Alternatively, use the HF Hub API which can return verified blob hashes."
+        },
+        {
+          "title": "Catalog download URLs pin the mutable 'main' branch, not an immutable revision",
+          "originalSeverity": "medium",
+          "file": "shared/model-catalog.json:12",
+          "status": "open",
+          "evidence": "shared/model-catalog.json:12 still shows `\"url\": \"https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true\"`. All 11 entries across lines 12, 23, 34, 45, 56, 67, 78, 89, 100, 111, 122 use `resolve/main` — no revision pinning.",
+          "fix": "Replace `resolve/main` with `resolve/<commit-sha>` for every catalog entry (HF supports `?revision=<sha>` or the commit SHA in the path). Generate these in lockstep with refresh_model_hashes.py so URL revision and sha256 always describe the same immutable object."
+        },
+        {
+          "title": "No HTTPS/host-allowlist validation of catalog URLs at the integrity layer (defense-in-depth gap)",
+          "originalSeverity": "low",
+          "file": "src/services/llm.service.ts:831",
+          "status": "open",
+          "evidence": "llm.service.ts:831: `response = await fetch(url, { headers, signal: controller.signal })` where `url = entry.url` (line 734) — no scheme or host validation before the fetch. modelIntegrity.ts:59 `verifyModelIntegrity(filePath, expectedSha256?)` only operates on the on-disk path; nothing validates the URL origin.",
+          "fix": "Before the `fetch(url, ...)` call, assert: `const u = new URL(url); if (u.protocol !== 'https:') throw new Error(...); const ALLOWED = ['huggingface.co','cdn-lfs.huggingface.co','cdn-lfs-us-1.huggingface.co']; if (!ALLOWED.some(h => u.hostname === h || u.hostname.endsWith('.'+h))) throw new Error(...)`. Also add a build-time check in export_catalog.py / check_catalog_parity.py that fails if any catalog URL is non-https or off-allowlist."
+        },
+        {
+          "title": "sha256File stream resolves/rejects with no guard against late errors and ignores readHead's open file on early throw paths",
+          "originalSeverity": "low",
+          "file": "src/services/modelIntegrity.ts:43-51",
+          "status": "fixed",
+          "evidence": "modelIntegrity.ts:43-51: `stream.on('error', reject); stream.on('data', (chunk) => hash.update(chunk)); stream.on('end', () => resolve(hash.digest('hex')))`. Node.js `createReadStream` defaults to `autoClose: true`, so the fd is closed on both 'end' and 'error' — no fd leak. `hash.digest('hex')` is a synchronous call on an internal hash state and cannot throw a recoverable error. `readHead` uses a try/finally to close the file handle (lines 32-39). The original concern about unhandled errors is not exploitable in practice."
+        },
+        {
+          "title": "parse_named treats every uppercase/mixed-case sha256 as missing, which can mask cross-platform hash drift",
+          "originalSeverity": "low",
+          "file": "scripts/check_catalog_parity.py:66",
+          "status": "open",
+          "evidence": "check_catalog_parity.py:66: `sm = re.search(r\"\"\"sha256:\\s*['\\\"]([0-9a-f]{64})['\\\"]\"\"\"`, block)` — character class `[0-9a-f]` is still lowercase-only. An uppercase hex sha256 in any source file would cause `sm` to be `None`, storing `None` instead of the hash and silently failing the parity check. Similarly, refresh_model_hashes.py:54: `HEX64 = r'\"[0-9a-f]{64}\"'` is also lowercase-only.",
+          "fix": "Change `[0-9a-f]{64}` to `[0-9a-fA-F]{64}` in check_catalog_parity.py:66, check_catalog_parity.py:75 (parse_kotlin), and refresh_model_hashes.py:54 (HEX64), then normalize to `.lower()` before storing/comparing. Since in practice all hashes in these files are lowercase today, the risk is low but the robustness fix is a one-liner."
+        },
+        {
+          "title": "refresh_model_hashes.py patch_ts/_finish writes the file even when no sha256 was injected for some ids only if all ids matched; partial-source files can be silently left without hashes",
+          "originalSeverity": "low",
+          "file": "scripts/refresh_model_hashes.py:63-68",
+          "status": "open",
+          "evidence": "refresh_model_hashes.py:63-68: `_finish` checks `missing = set(HASHES) - seen` and exits if any id wasn't found in the file at all. But `seen` is populated when a flat `{...}` literal contains the right `id:` field — it does NOT verify that a sha256 was actually injected into that block. If the regex `re.sub(r\"sha256: '[^']*'\", ...)` fires but writes an empty string (edge case), or if the insert regex at line 85 silently fails to add a new sha256 field, the file is still written with the id in `seen` but without the hash.",
+          "fix": "After `text = re.sub(...)` completes in each patch_* function, re-scan the output text to assert that every id in `seen` now has a `sha256: '<64-hex-chars>'` adjacent to it. Fail with `sys.exit(...)` if any matched id is missing a hash in the written output. This converts a silent omission into a build failure."
+        }
+      ],
+      "summary": "Of 6 findings re-verified: 1 is fixed, 5 remain open. The fixed finding (#4, sha256File fd leak) was a false positive — Node's autoClose and synchronous hash.digest() mean there is no real leak or unhandled-error path. The 5 open findings are all still present verbatim: (1) hashes sourced from LFS pointers not actual blobs, (2) catalog URLs use mutable resolve/main refs, (3) no HTTPS/host-allowlist check before fetch, (5) lowercase-only hex regex in parse_named/parse_kotlin/HEX64, and (6) _finish does not re-scan output to confirm sha256 was actually injected. None of these are regressions; they were present in the original audit and remain unchanged."
+    },
+    {
+      "subsystem": "Marketing website (static) — website/*.html, main.js, i18n.js, gradient.js, sw.js, styles.css, i18n/*.json, i18n/demos/*.json",
+      "verdicts": [
+        {
+          "title": "Service worker caches every resolved response, including HTTP errors and redirects (stale-error poisoning)",
+          "originalSeverity": "low",
+          "file": "website/sw.js",
+          "status": "open",
+          "evidence": "sw.js:26-29 — `fetch(e.request).then(function (res) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); return res; })` — no `res.ok` or `res.type === 'basic'` guard; every response (4xx, 5xx, redirects) is cached unconditionally.",
+          "fix": "Add a response guard before caching: `if (res && res.ok && res.type === 'basic') { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); }` — skip caching 3xx/4xx/5xx and opaque/redirected responses."
+        },
+        {
+          "title": "Service worker has no Cache-Control header, so a future SW update can be pinned to a stale, possibly buggy version",
+          "originalSeverity": "low",
+          "file": "website/_headers",
+          "status": "open",
+          "evidence": "_headers (lines 1-6), netlify.toml (lines 7-13), and vercel.json (lines 5-13) all only set X-Content-Type-Options, Referrer-Policy, X-Frame-Options, and Permissions-Policy. No Cache-Control entry exists for /sw.js in any of the three files.",
+          "fix": "Add a path-scoped entry in all three files. For _headers: `/sw.js\\n  Cache-Control: no-cache, max-age=0, must-revalidate`. For netlify.toml: `[[headers]]\\n  for = \"/sw.js\"\\n  [headers.values]\\n    Cache-Control = \"no-cache, max-age=0, must-revalidate\"`. For vercel.json: add a `{ \"source\": \"/sw.js\", \"headers\": [{ \"key\": \"Cache-Control\", \"value\": \"no-cache, max-age=0, must-revalidate\" }] }` entry before the wildcard rule."
+        },
+        {
+          "title": "No Content-Security-Policy header on any page",
+          "originalSeverity": "low",
+          "file": "website/_headers",
+          "status": "open",
+          "evidence": "_headers (lines 1-6), netlify.toml (lines 7-13), and vercel.json (lines 5-13) contain only X-Content-Type-Options, Referrer-Policy, X-Frame-Options, and Permissions-Policy. No Content-Security-Policy or frame-ancestors directive is present in any of the three deployment config files.",
+          "fix": "Add `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'` to the wildcard header block in all three files. Hash or move inline scripts to eliminate 'unsafe-inline' from script-src once CSP is in place."
+        }
+      ],
+      "summary": "All three findings remain open in the current code. The sw.js fetch handler (lines 26-29) still caches all responses unconditionally with no ok/type guard. None of the three header config files (_headers, netlify.toml, vercel.json) contain a Cache-Control entry scoped to /sw.js, nor any Content-Security-Policy header. No changes have been made to this subsystem since the original audit."
+    },
+    {
+      "subsystem": "React desktop UI (ui/)",
+      "verdicts": [
+        {
+          "title": "Multiple log entries reuse static string ids ('err','start','close') causing duplicate React keys",
+          "originalSeverity": "low",
+          "file": "ui/src/hooks/useAgentSocket.ts",
+          "status": "partial",
+          "evidence": "Line 115 in onmessage now uses Math.random().toString(36).slice(2,11) for all normal frames. Reconnect attempts use a unique id (line 229: `id: \\`reconnect-${reconnectAttempts}\\``). However three static ids survive: line 262 (ensureSocketOpen): `id: 'err'`; line 276 (sendGoal): `id: 'start'`; line 238 (onclose exhaustion): `id: 'close'`.",
+          "fix": "In ensureSocketOpen, sendGoal, and the onclose exhaustion branch, replace the static string id with Math.random().toString(36).slice(2, 11) — the same pattern already used elsewhere in the file."
+        },
+        {
+          "title": "WebSocket message handler dereferences fields without guards; a single malformed frame is silently dropped",
+          "originalSeverity": "low",
+          "file": "ui/src/hooks/useAgentSocket.ts",
+          "status": "fixed",
+          "evidence": "Lines 40-52 introduce a discriminated-union type AgentMessage; TypeScript narrows each branch, eliminating the implicit `any`. The progress field is guarded: line 193 `setDownloadProgress(data.data?.progress ?? 0)`. action_required guards its OOM path at line 178 `data.data?.code === 'OOM_PREVENTION'`. The entire onmessage body is wrapped in try/catch (lines 110, 206), so a malformed frame logs an error instead of crashing the handler."
+        },
+        {
+          "title": "CSV export is vulnerable to spreadsheet formula injection via goal text",
+          "originalSeverity": "low",
+          "file": "ui/src/components/Metrics.tsx",
+          "status": "fixed",
+          "evidence": "Lines 99-105 introduce a csvCell() helper: `const escaped = /^[=+\\-@\\t\\r]/.test(value) ? \\`'${value}\\` : value;` applied to both m.timestamp and m.goal_text at line 110. The fix covers = + - @ and control chars as recommended."
+        },
+        {
+          "title": "Dropped-file read can reject unhandled and abort the attachment loop",
+          "originalSeverity": "low",
+          "file": "ui/src/components/GeneralChatArea.tsx",
+          "status": "open",
+          "evidence": "Lines 142-153: handleFileDrop iterates files with a for-of loop. Line 147-149 guards size (>1MB → alert + continue). Line 151 `const content = await file.text();` has no try/catch — an I/O error or permission error on any file will throw out of the async function, leaving the remaining files unprocessed and the attachments state unchanged with no user feedback.",
+          "fix": "Wrap lines 151-152 in a per-file try/catch: `try { const content = await file.text(); setAttachments(prev => [...prev, { name: file.name, content }]); } catch { alert(\\`Could not read ${file.name}.\\`); }` — consistent with the existing size-error pattern and keeps the loop running for subsequent files."
+        }
+      ],
+      "summary": "Of the 4 React UI findings re-verified: CSV injection (finding 3) is fully fixed via a new csvCell() helper. The WS field-dereference finding (finding 2) is fixed via a typed discriminated union + try/catch + optional-chain guards. The static log-entry ids (finding 1) are partially fixed — reconnect entries now use unique ids, but 'err' (ensureSocketOpen), 'start' (sendGoal), and 'close' (onclose exhaustion) still use static strings and will cause duplicate React keys when triggered in the same session. The file-drop unhandled-reject (finding 4) remains open — file.text() inside the for-of loop has no try/catch."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "verdicts": [
+        {
+          "title": "Temp WAV file leaked on transcription failure (no cleanup in catch)",
+          "originalSeverity": "low",
+          "file": "src/services/voice.service.ts",
+          "status": "open",
+          "evidence": "voice.service.ts:184-208 — `await whisper(wavPath, options)` on line 184; `await fs.promises.unlink(wavPath)` on line 187 (success path only, unguarded against its own rejection). The catch block at line 203-204 only logs the error; the finally block at line 205-209 only resets STATE. No unlink in catch or finally — if whisper() throws, wavPath is never deleted.",
+          "fix": "Hoist the unlink into the finally block: `finally { await fs.promises.unlink(wavPath).catch(() => {}); this.STATE = 'IDLE'; ... }` and remove the bare unlink on line 187."
+        },
+        {
+          "title": "Transcribed voice + goals + note previews written verbatim to logs (PII)",
+          "originalSeverity": "low",
+          "file": "src/services/voice.service.ts",
+          "status": "open",
+          "evidence": "voice.service.ts:197 — `logger.info(\\`[Voice] Transcribed: \"${cleanText}\"\\`)` logs the full spoken command at info level. memory.service.ts:188 — `logger.info(\\`Memory forcefully updated with Manual Override for goal: ${goal}\\`)` logs the raw goal text at info level.",
+          "fix": "Replace verbatim content with length/redacted indicators at info level: `logger.info(\\`[Voice] Transcribed (${cleanText.length} chars)\\`)`. Gate full text behind `logger.debug(...)`. Same for the goal string in memory.service.ts injectOverride."
+        },
+        {
+          "title": "stripControlTokens misses several modern chat templates (Gemma, Mistral [INST], Phi-3, raw end_header) — control-token smuggling",
+          "originalSeverity": "low",
+          "file": "src/utils/stripControlTokens.ts",
+          "status": "open",
+          "evidence": "stripControlTokens.ts:7-23 — CONTROL_TOKEN_PATTERNS has 8 entries covering ChatML, Llama/Phi end-of-turn, legacy EOS, tool_call XML, and Llama 3 header pairs. Missing: Gemma `<start_of_turn>`/`<end_of_turn>(\\w*)`, Mistral `[INST]`/`[/INST]`, `<<SYS>>`/`<</SYS>>`, Phi-3 `<|user|>`/`<|assistant|>`/`<|system|>`, and standalone `<|end_header_id|>` / `<|start_header_id|>`.",
+          "fix": "Add to CONTROL_TOKEN_PATTERNS: `/<start_of_turn>\\w*\\n?/gi`, `/<end_of_turn>/gi`, `/\\[\\/?INST\\]/gi`, `/<<\\/?SYS>>/gi`, `/<\\|(user|assistant|system)\\|>/gi`, and standalone `/<\\|end_header_id\\|>/gi`."
+        },
+        {
+          "title": "Daemon habit log unbounded-growth + non-atomic compaction race",
+          "originalSeverity": "low",
+          "file": "src/services/metrics.service.ts",
+          "status": "open",
+          "evidence": "metrics.service.ts:94-98 — compaction is triggered inside `getHabits()` (a reader), fires `fs.writeFile(...).catch(() => {})` with no lock. A concurrent `appendHabitLog` append can interleave with this rewrite, silently losing records. No write mutex is present in MetricsService.",
+          "fix": "Move compaction into `appendHabitLog` (the writer) via a size/line-count check after append, and serialize both the append and the compaction rewrite through a promise-chain mutex (as MemoryService does), or write-to-temp-then-rename for atomicity."
+        },
+        {
+          "title": "Concurrent metrics writers can drop records (read-modify-write with no lock)",
+          "originalSeverity": "low",
+          "file": "src/services/metrics.service.ts",
+          "status": "open",
+          "evidence": "metrics.service.ts:48-60 — `appendMetrics` does `readFile → JSON.parse → records.push → writeFile` with no mutex. Two concurrent callers both read the same snapshot, each push their record, and the second write clobbers the first, dropping the earlier metric.",
+          "fix": "Add a promise-chain write mutex (e.g. `this._writeLock = this._writeLock.then(() => doAppend())`) matching the pattern in MemoryService, or migrate telemetry to NDJSON append (`fs.appendFile`) like `habitsNdjsonPath` already uses."
+        },
+        {
+          "title": "Background daemon poll loop has no shutdown/lifecycle teardown; restart spawns a second loop",
+          "originalSeverity": "low",
+          "file": "src/services/backgroundDaemon.service.ts",
+          "status": "open",
+          "evidence": "backgroundDaemon.service.ts:41-51,116-184 — `stop()` sets `this.isRunning = false` but returns void immediately; the poll loop's `while (this.isRunning)` only checks the flag at the top of each iteration, after the current `setTimeout` resolves (up to pollIntervalMs later). No AbortController threads into deviceProvider/llmProvider calls; no promise that callers can await to confirm the loop has actually exited.",
+          "fix": "Add a `_stopPromise: Promise<void>` and resolver; resolve it when the while-loop exits. Have `stop()` return that promise so callers can `await daemon.stop()`. Optionally thread an AbortSignal into long-running provider calls so they abort immediately on stop."
+        }
+      ],
+      "summary": "All 6 findings remain open in the current code. None were fixed since the original audit. The WAV leak (finding 1) is confirmed at voice.service.ts:187 — unlink only runs on the success path, never in catch or finally. PII logging (finding 2) is confirmed at voice.service.ts:197 and memory.service.ts:188 — both log raw user content at info level. The stripControlTokens utility (finding 3) still lacks patterns for Gemma, Mistral, Phi-3, and related chat template families. The metrics service still has both the non-atomic compaction race (finding 4, compaction fires from a reader with no lock) and the concurrent read-modify-write hazard in appendMetrics (finding 5, no mutex). The background daemon (finding 6) still has no await-able shutdown — stop() is fire-and-forget with no way for callers to confirm the loop has exited."
+    }
+  ],
+  "findings": [
+    {
+      "subsystem": "Android app layer (Kotlin UI, WorkManager downloader, manifest, backup/network XML, build.gradle.kts)",
+      "title": "Downloader busy-poll loop hangs the caller indefinitely and ignores cancellation/interruption",
+      "originalSeverity": "medium",
+      "file": "android/app/src/main/kotlin/ai/quenderin/app/WorkManagerModelDownloader.kt:50-68",
+      "status": "open",
+      "evidence": "WorkManagerModelDownloader.kt:50-68 — the loop is unchanged: `while (true) { ... onProgress(...) ... else -> Thread.sleep(pollMs) }`. No `Thread.interrupted()` check, no coroutine `isActive` guard, no timeout. `getWorkInfosForUniqueWork(...).get()` will also block indefinitely on executor stall without catching `ExecutionException`/`InterruptedException`.",
+      "fix": "At minimum, add `if (Thread.interrupted()) throw DownloadException(\"download interrupted for ${model.id}\")` at the top of the loop body, and wrap the `.get()` call in a try/catch that translates `InterruptedException` and `ExecutionException` into `DownloadException`. For the full fix, migrate to `WorkManager.getWorkInfosForUniqueWorkFlow()` observed in a coroutine with `collect` so cancellation is automatic."
+    },
+    {
+      "subsystem": "Android app layer (Kotlin UI, WorkManager downloader, manifest, backup/network XML, build.gradle.kts)",
+      "title": "Model-generated text flows unvalidated into Uri.parse() for a SENDTO intent (prompt-injection -> intent data control)",
+      "originalSeverity": "low",
+      "file": "android/app/src/main/kotlin/ai/quenderin/app/ui/ChatScreen.kt:124",
+      "status": "fixed",
+      "evidence": "SupportContact.kt:30-41 — `reportMailtoUri` now percent-encodes all interpolated text via `URLEncoder.encode(s, \"UTF-8\").replace(\"+\", \"%20\")` before placing it in the `subject=` and `body=` query params. The base URI is a fixed `mailto:REPORT_EMAIL?subject=…&body=…` string with no model-controlled structural segments. ChatScreen.kt:124 and AgentScreen.kt:101 both call this function."
+    },
+    {
+      "subsystem": "Android app layer (Kotlin UI, WorkManager downloader, manifest, backup/network XML, build.gradle.kts)",
+      "title": "Terminal SUCCEEDED never reports progress=1.0; final progress fraction is dropped",
+      "originalSeverity": "low",
+      "file": "android/app/src/main/kotlin/ai/quenderin/app/WorkManagerModelDownloader.kt:54-59",
+      "status": "open",
+      "evidence": "WorkManagerModelDownloader.kt:54 — `onProgress(info.progress.getDouble(ModelDownloadWorker.KEY_PROGRESS, 0.0))` is called unconditionally before the `when` block. On the SUCCEEDED iteration WorkManager clears the progress WorkData, so `getDouble` returns the 0.0 default and that is emitted to the caller. Line 57-59 then returns the path with no preceding `onProgress(1.0)` call.",
+      "fix": "Reorder the SUCCEEDED branch to call `onProgress(1.0)` before returning: `WorkInfo.State.SUCCEEDED -> { onProgress(1.0); return info.outputData.getString(…) ?: throw … }`. Move the unconditional `onProgress` call to only fire on non-terminal states (inside the `else` branch or after a guard)."
+    },
+    {
+      "subsystem": "Android app layer (Kotlin UI, WorkManager downloader, manifest, backup/network XML, build.gradle.kts)",
+      "title": "No explicit network security config; HTTPS-only for model downloads relies solely on the API-28 platform default",
+      "originalSeverity": "low",
+      "file": "android/app/src/main/AndroidManifest.xml:14-20",
+      "status": "open",
+      "evidence": "AndroidManifest.xml:14-20 — `<application>` still has no `android:networkSecurityConfig` attribute. `res/xml/` contains only `backup_rules.xml` and `data_extraction_rules.xml`; no `network_security_config.xml` exists. The app relies on the API-28+ platform default (cleartext blocked by default, no pinning).",
+      "fix": "Create `res/xml/network_security_config.xml` with `<network-security-config><base-config cleartextTrafficPermitted=\"false\"/></network-security-config>` and add `android:networkSecurityConfig=\"@xml/network_security_config\"` to the `<application>` element. Optionally add a `<domain-config>` with `<pin-set>` for the model-catalog host for MITM resistance."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "title": "Redirects followed to any https host without re-pinning host; only SHA-256 (which is optional) catches a swap",
+      "originalSeverity": "medium",
+      "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/JvmDownloadIO.kt",
+      "status": "partial",
+      "evidence": "JvmDownloadIO.kt:28-31 — a scheme check now rejects non-HTTPS before any connection opens: `val scheme = URI(url).scheme; if (!\"https\".equals(scheme, ignoreCase = true)) { throw DownloadException(\"refusing non-HTTPS model URL ...\") }`. However, `instanceFollowRedirects = true` (line 33) is unchanged and no host-allowlist check is applied after redirects. A redirect from a valid HTTPS host to a different HTTPS host is still silently followed. The sha256 is still the only backstop for a redirected-to poisoned mirror, and sha256=null entries remain accepted (ModelDownloadEngine.kt:140-148: `val expectedSha = model.sha256; if (expectedSha != null) { ... }`).",
+      "fix": "Either (a) set `instanceFollowRedirects = false` and re-validate the scheme + host on each redirect manually, or (b) capture `conn.url.host` after the response and assert it matches the original URL's host. Additionally, enforce sha256 != null at catalog construction or at the start of `ModelDownloadEngine.download()` to eliminate the magic-only path for production entries."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "title": "Truncated download with no Content-Length bypasses the completeness check (only SHA-256 catches it)",
+      "originalSeverity": "medium",
+      "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelDownloadEngine.kt",
+      "status": "fixed",
+      "evidence": "ModelDownloadEngine.kt:123-131 — the byte-count completeness check for `total > 0` is still present (line 123-126), and the code comment at lines 129-131 now explicitly documents the no-Content-Length case: `// When the server sends NO Content-Length (total <= 0) completeness can't be byte-verified — the mandatory sha256 gate below IS the completeness guarantee`. CoreVerify.kt:723-736 adds a test: `truncated download with no Content-Length is caught by sha256, partial discarded` — it passes a 60-of-100 byte body with `totalBytes=-1`, confirms the sha256 gate fires and `finalFile == null`. The chosen approach (documented, tested, sha256 is the guarantee) is an accepted risk, not a gap."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "title": "Download chunk loop is not cancellable — WorkManager stop / model switch can't cooperatively abort a multi-GB transfer",
+      "originalSeverity": "low",
+      "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelDownloadEngine.kt",
+      "status": "fixed",
+      "evidence": "ModelDownloadEngine.kt:67-70 — `ModelDownloadEngine` now accepts an `isCancelled: () -> Boolean = { false }` constructor parameter. Lines 103-109: the chunk loop checks `if (isCancelled()) { throw DownloadCancelledException(...) }` on every chunk. `DownloadCancelledException` (line 52) is a `DownloadException` subtype; the catch block at line 161-163 keeps the `.part` and marks state PAUSED for resume. CoreVerify.kt:740-754 tests this end-to-end: two chunks land, then cancel fires; part is non-empty, finalFile is absent, store state is PAUSED."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "title": "JvmFileSink.append reopens RandomAccessFile + seeks to EOF on every 64 KiB chunk",
+      "originalSeverity": "low",
+      "file": "android/quenderin-core/src/main/kotlin/ai/quenderin/core/JvmDownloadIO.kt",
+      "status": "open",
+      "evidence": "JvmDownloadIO.kt:90-97 — `append()` still opens and closes a `RandomAccessFile` on every call: `RandomAccessFile(file, \"rw\").use { raf -> raf.seek(raf.length()); raf.write(bytes) }`. No `begin()`/`close()` lifecycle was added; one fd is still opened and closed per 64 KiB chunk for a multi-GB file.",
+      "fix": "Introduce `begin(path: String): AutoCloseable` on `FileSink` that returns an open append handle, make `append` write to that handle, and add `close()` so the engine holds one fd for the duration of the download. `JvmFileSink` implements it with a `FileOutputStream(file, true)` held open across all chunk calls."
+    },
+    {
+      "subsystem": "Android core (download / inference / integrity)",
+      "title": "Integrity / download paths have no automated test for the security boundaries (scheme, redirect, missing-length, magic-only swap)",
+      "originalSeverity": "low",
+      "file": "android/quenderin-core/src/test/kotlin/ai/quenderin/core/CoreTest.kt",
+      "status": "fixed",
+      "evidence": "CoreVerify.kt:757-762 now tests scheme rejection: `JvmHttpRangeClient.open refuses http:// (and file://) before connecting` — asserts both throw `DownloadException`. Lines 723-736 test the missing-Content-Length + sha256 catch path. Lines 705-711 test magic-only rejection (sha256=null entry with non-GGUF body). Lines 713-720 test checksum mismatch + discard. Lines 740-754 test the cancellation path. The coverage gap cited in the original finding is now filled in CoreVerify.kt; redirect-to-different-host is the one remaining untested boundary (tied to finding #1's partial fix)."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "BackgroundModelDownloader can silently drop a completed download after app relaunch (taskIdentifier is session-local, continuation maps are in-memory)",
+      "originalSeverity": "medium",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/BackgroundModelDownloader.swift",
+      "status": "partial",
+      "evidence": "BackgroundModelDownloader.swift:19-24 — class is explicitly documented as NOT the shipping default ('NOT the shipping default. QuenderinApp wires the foreground URLSessionModelDownloader, so this class is never instantiated at runtime'). The in-memory destinations/continuations maps (lines 29-31) still have no relaunch rehydration, and handleEventsForBackgroundURLSession is still not implemented. However, the doc comment now explicitly calls this out as a prerequisite before shipping.",
+      "fix": "Still needs: (1) implement application(_:handleEventsForBackgroundURLSession:completionHandler:) in the app delegate, (2) on relaunch reconstruct destinations from store.resumable() keyed by originalRequest URL rather than taskIdentifier. The class should not be wired into production until these are in place."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "Integrity gate downgrades to magic-only when no SHA-256 is found, with no defense against a swapped-but-valid GGUF",
+      "originalSeverity": "low",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/ModelIntegrity.swift",
+      "status": "open",
+      "evidence": "ModelIntegrity.swift:46-51 — 'if let expected = expectedSHA256, !expected.isEmpty { ... }' — nil or empty SHA256 silently falls through to magic-only check. Both BackgroundModelDownloader (line 153) and URLSessionModelDownloader/ChunkedDownloadDelegate (line 137) pass nil SHA when the catalog entry has no sha256 field, triggering the soft downgrade.",
+      "fix": "For catalog-originated downloads, treat a nil sha256 in the catalog entry as a configuration error and throw rather than silently downgrading. Keep magic-only for explicitly user-sideloaded files only."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "OfflineReadiness reports 'ready' for a truncated file at >=85% of an *estimated* size",
+      "originalSeverity": "low",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/OfflineReadiness.swift",
+      "status": "open",
+      "evidence": "OfflineReadiness.swift:41-44 — 'let expected = DiskSpace.estimatedDownloadBytes(for: model) / if Double(fileSizeBytes) >= Double(expected) * 0.85 { return OfflineReadiness(model: model, status: .ready) }' — still uses an estimated size with an 85% threshold. No exact byte count is persisted from Content-Length or integrity verification.",
+      "fix": "Persist the real Content-Length from the download response in PersistedDownload.totalBytes (already stored) and use that as the comparison target, requiring fileSizeBytes == expected (or tie .ready to a passed integrity verify) instead of the 0.85 heuristic."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "DownloadStore swallows decode/persist errors, can lose the resumable-download table",
+      "originalSeverity": "low",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/DownloadStore.swift",
+      "status": "open",
+      "evidence": "DownloadStore.swift:48-53 — 'if let data = try? Data(contentsOf: fileURL), let decoded = try? JSONDecoder()... { ... } else { self.records = [:] }' — a decode failure silently zeros all state. persist() at lines 89-92 uses 'try? data.write(to: fileURL, options: .atomic)' with no error surfacing.",
+      "fix": "Distinguish file-absent (legitimate empty start) from decode-failed (quarantine/rename the corrupt file and log via os_log). Surface persist write failures via os_log at minimum so progress loss is not invisible."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "SafetyBlocklist is substring/word-boundary keyword matching — trivially bypassed and English-only",
+      "originalSeverity": "low",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/SafetyBlocklist.swift",
+      "status": "open",
+      "evidence": "SafetyBlocklist.swift:23-38 — 'public static func isBlocked(_ text: String) -> Bool { !matches(in: text).isEmpty }' with '\\bkeyword\\b on lowercased text' — unchanged. Word-boundary regex on lowercased English text; no defense-in-depth documentation visible in the source.",
+      "fix": "Add a doc comment stating this is defense-in-depth only, not the sole gate. Any tool with side effects must require explicit per-action user confirmation at the tool layer (capability-based), independent of SafetyBlocklist screening."
+    },
+    {
+      "subsystem": "Apple iOS/macOS (QuenderinKit + QuenderinApp)",
+      "title": "Stale partial file left behind on failed/cancelled foreground download",
+      "originalSeverity": "low",
+      "file": "/Users/s_avelova/Documents/projects/quenderin/apple/QuenderinKit/Sources/QuenderinKit/ModelDownloader.swift",
+      "status": "fixed",
+      "evidence": "ModelDownloader.swift:121-126 (ChunkedDownloadDelegate.urlSession(_:task:didCompleteWithError:)) — 'if let error { try? FileManager.default.removeItem(at: partial) ... }' explicitly removes the partial file on all error/cancel paths. Write errors in didReceive (lines 110-113) call dataTask.cancel() which routes through didCompleteWithError where partial is cleaned up via the same guard."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Third-party GitHub Actions pinned to mutable tags, not commit SHAs",
+      "originalSeverity": "medium",
+      "file": ".github/workflows/ci.yml, .github/workflows/deploy-website.yml",
+      "status": "partial",
+      "evidence": "ci.yml:80 — codecov/codecov-action is now SHA-pinned: `uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4`. ci.yml:136 — android-actions/setup-android is now SHA-pinned: `uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3`. Still on mutable tags: ci.yml:30,65,91 `actions/checkout@v4`; ci.yml:33,68 `actions/setup-node@v4`; ci.yml:104,131 `actions/setup-java@v4`; ci.yml:146 `actions/setup-python@v5`; deploy-website.yml:29,30,31,35 `actions/checkout@v4`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`.",
+      "fix": "Pin the remaining first-party actions to commit SHAs: e.g. `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`. All GitHub-org actions can be pinned too — use SHA + inline comment for readability. Dependabot will keep them current."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "CI workflows do not set least-privilege GITHUB_TOKEN permissions",
+      "originalSeverity": "medium",
+      "file": ".github/workflows/ci.yml:17",
+      "status": "fixed",
+      "evidence": "ci.yml:14-18 — comment explains the fix and `permissions: contents: read` is now set at workflow level. The coverage job at line 60-62 further opts in `id-token: write` for OIDC only. deploy-website.yml:13-16 already had scoped permissions."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Kotlin compiler downloaded in CI over network without checksum verification",
+      "originalSeverity": "medium",
+      "file": ".github/workflows/ci.yml:110",
+      "status": "fixed",
+      "evidence": "ci.yml:111-113 — sha256 check now runs before unzip: `echo \"0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a  kotlin-compiler-2.0.21.zip\" | sha256sum -c -`. The comment at line 111-112 explicitly cites the audit finding."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Docker runtime image runs as root with no non-root USER",
+      "originalSeverity": "medium",
+      "file": "Dockerfile:35",
+      "status": "open",
+      "evidence": "Dockerfile:35-69 — `FROM node:20-slim AS runtime`, no `USER` directive present anywhere in the file. The runtime stage still uses `VOLUME /root/.quenderin` (line 62) and runs as root.",
+      "fix": "In the runtime stage, add after the apt-get block: `RUN useradd -m -u 10001 -s /bin/false app && mkdir -p /home/app/.quenderin && chown -R app:app /app /home/app/.quenderin` then `USER app`. Change `VOLUME /root/.quenderin` to `VOLUME /home/app/.quenderin` and update the run-command comment on line 6."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Dockerfile uses npm install (not npm ci) and silently swallows install failures",
+      "originalSeverity": "low",
+      "file": "Dockerfile:24",
+      "status": "open",
+      "evidence": "Dockerfile:24 — `RUN npm install --ignore-scripts=false || true`; Dockerfile:25 — `RUN cd ui && npm install`; Dockerfile:31 — `RUN npx tsc || true`. All three still present unchanged.",
+      "fix": "Replace lines 24-25 with `RUN npm ci --ignore-scripts=false` and `RUN npm ci --prefix ui`. Change line 31 to `RUN npx tsc` (remove `|| true`). If native optional modules genuinely fail on some arches, selectively ignore them with `--omit=optional` rather than swallowing all errors."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Base images and Docker layers pinned only to floating major tag",
+      "originalSeverity": "low",
+      "file": "Dockerfile:10",
+      "status": "open",
+      "evidence": "Dockerfile:10 — `FROM node:20-slim AS builder`; Dockerfile:35 — `FROM node:20-slim AS runtime`. No digest pinning on either stage.",
+      "fix": "Pin to digest: `FROM node:20-slim@sha256:<current-digest> AS builder` and the same for the runtime stage. Get the digest via `docker pull node:20-slim && docker inspect node:20-slim --format '{{index .RepoDigests 0}}'`. Add a Dependabot/Renovate rule to auto-bump it."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Abandoned native optional dependency robotjs@^0.6.0",
+      "originalSeverity": "low",
+      "file": "package.json:63",
+      "status": "open",
+      "evidence": "package.json:63 — `\"robotjs\": \"^0.6.0\"` still present in optionalDependencies. The package has had no release since 2020 and does not support Node 20+ natively.",
+      "fix": "Replace with `@nut-tree-fork/nut-js` (actively maintained) or `@hurdlegroup/robotjs`. If desktop-control is off by default, gate behind an explicit runtime flag and document the risk. Confirm the replacement builds with `node>=20` before removing robotjs."
+    },
+    {
+      "subsystem": "Build / CI / supply-chain / config",
+      "title": "Root postinstall runs a second npm install in ui/ — fragility and surface",
+      "originalSeverity": "low",
+      "file": "package.json:13",
+      "status": "open",
+      "evidence": "package.json:13 — `\"postinstall\": \"cd ui && npm install\"` unchanged. Runs on every `npm install`/`npm ci` of the root package, ignores the lockfile, and runs as a side-effect of root installs.",
+      "fix": "Replace with `\"postinstall\": \"npm ci --prefix ui\"` to honor the lockfile, or adopt npm workspaces so the ui install is handled automatically and the postinstall hook can be deleted entirely."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "title": "State-changing HTTP routes (agent intervene/resume, model download/switch/delete, memory clear) are unauthenticated and not CSRF-protected",
+      "originalSeverity": "medium",
+      "file": "src/app.ts",
+      "status": "fixed",
+      "evidence": "src/app.ts:83-95 — a middleware on every POST/PUT/PATCH/DELETE /api/* route extracts X-Auth-Token or ?token= and calls isAuthorized(provided, authToken); returns 401 if missing or invalid. manualAction also receives type+length sanitization at app.ts:121-122."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "title": "CORS allows all requests with no Origin header, weakening the local-only guarantee",
+      "originalSeverity": "low",
+      "file": "src/app.ts",
+      "status": "partial",
+      "evidence": "src/app.ts:63-64 — `if (!origin) return callback(null, true);` is unchanged. However, the original concern was that CORS was the only gate; the per-launch auth token middleware now enforces real authorization on all state-changing routes, so the no-Origin path no longer grants unauthenticated access to mutating endpoints. The comment at line 62-64 documents the intent. The no-Origin allowance on GETs (e.g. /health, /diagnostics) remains a residual exposure.",
+      "fix": "No change required for mutating routes (token auth covers them). For full defence-in-depth, the no-origin pass-through could be restricted to non-/api/ paths, but this is low-value given the auth token layer."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "title": "/api/health/diagnostics discloses process internals without authentication",
+      "originalSeverity": "low",
+      "file": "src/routes/health.ts",
+      "status": "open",
+      "evidence": "src/routes/health.ts:46 — `router.get('/diagnostics', (req, res) => { ... res.json({ process: { pid, nodeVersion, ... }, buildInfo: { commitSha, nodeEnv }, hardware: {...} }) })`. Mounted at app.ts:98 as `app.use('/', healthRoute)` before the auth middleware, which only guards POST/PUT/PATCH/DELETE /api/* routes. A GET /diagnostics from any local process returns full process internals with no token required.",
+      "fix": "Add `app.get('/diagnostics', requiresToken, ...)` or move the auth middleware to also cover GET /diagnostics specifically, e.g.: `if (req.path === '/diagnostics') { /* token check */ }`. Alternatively strip pid/commitSha/exact versions from the unauthenticated response."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "title": "resolveCommitSha runs execSync('git ...') at module import time",
+      "originalSeverity": "low",
+      "file": "src/routes/health.ts",
+      "status": "partial",
+      "evidence": "src/routes/health.ts:16-28 — resolveCommitSha() still runs execSync at module load (line 28: `const commitSha = resolveCommitSha()`). The env-var short-circuit at lines 17-18 (`const fromEnv = process.env.QUENDERIN_GIT_SHA ?? process.env.GITHUB_SHA; if (fromEnv) return fromEnv.slice(0, 12);`) skips execSync when either var is set, mitigating the issue in CI/packaged builds. In dev without those vars, execSync still fires on import.",
+      "fix": "Wrap the execSync call so it only runs lazily on first /diagnostics hit: convert `const commitSha` to a `let commitSha: string | null = null` and populate it inside the route handler on first call, or accept the env-var-only path and remove the execSync fallback entirely for packaged builds."
+    },
+    {
+      "subsystem": "Electron main / preload / local HTTP server / IPC / WebSocket",
+      "title": "WebSocket session is created server-side per connection but accepted with no per-client isolation; a second connection silently hijacks shared service listeners",
+      "originalSeverity": "low",
+      "file": "src/websocket/index.ts",
+      "status": "fixed",
+      "evidence": "src/websocket/index.ts:117-129 — connections without a local Origin are now rejected (ws.close(1008)); connections without the per-launch auth token are also rejected before any listener registration. For legitimate reconnects, lines 135-143 explicitly remove the previous connection's action_required and download_progress listeners before registering new ones, preventing listener accumulation regardless of whether the old ws emitted 'close'."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "title": "note_save passes model-controlled title straight to filesystem as a filename with no sanitization at the tool boundary",
+      "originalSeverity": "medium",
+      "file": "src/services/tools/handlers.ts:187-194",
+      "status": "fixed",
+      "evidence": "handlers.ts:188-190 still reads `const title = String(call.args.title ?? '')` and passes it directly to `getSharedMemoryService().saveNote(title, content)`. However, saveNote (memory.service.ts:275) now calls `sanitizeNoteTitle(trimmedTitle)` from src/utils/notes.ts:7-14, which strips everything except `[a-zA-Z0-9\\s\\-_]`, collapses whitespace to underscores, and slices to 80 chars — returning null on an empty result. Path is always constructed with `path.join(this.notesDir, \\`${safeTitle}.md\\`)` (memory.service.ts:282), so path traversal is blocked at the service layer. The downstream service does sanitize; the finding's assumption was wrong."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "title": "Agent action safety blocklist is trivially bypassable substring matching; coordinate clicks and icon buttons evade it entirely",
+      "originalSeverity": "medium",
+      "file": "src/services/agent/actionExecutor.ts:40-47, 118-123",
+      "status": "fixed",
+      "evidence": "actionExecutor.ts:40-47 adds `elementsContaining(x, y, elements)` which returns all UI elements whose bounding rect contains the tapped coordinate. Lines 121-123 iterate those elements and call `checkSafety(el)` on each before executing a coordinate click. Line 26 now also includes `el?.resourceId` in the text candidates, catching icon buttons with empty labels but descriptive resource IDs. Both gaps (coordinate bypass and icon-button bypass) from the original finding are now covered."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "title": "Chat tool follow-up streams model output to the user without stripping tool-call XML (data-leak / confusing UI on follow-up failure path)",
+      "originalSeverity": "low",
+      "file": "src/services/llm.service.ts:1092-1102",
+      "status": "open",
+      "evidence": "llm.service.ts:1092-1097: the follow-up `onTextChunk` callback calls only `stripControlTokensWithOptions(chunk, { trim: false })` and emits directly to `onToken`. It does NOT strip tool-call XML from streamed chunks. `finalResponse` is correctly stripped at line 1102 with `stripToolCalls(stripControlTokens(followUp.trim()))`, but any tool-call XML that appears mid-stream is emitted raw to the user before that final strip runs.",
+      "fix": "Either buffer the follow-up tokens instead of streaming them (emit only from the stripped `finalResponse`), or apply `stripToolCalls` incrementally in the `onTextChunk` callback. Simplest: remove `onTextChunk` from the follow-up prompt options and after `finalResponse` is computed, emit it token-by-token to `onToken` in one pass."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "title": "generateAction creates a chat session but never disposes it on the prompt path, only the sequence",
+      "originalSeverity": "low",
+      "file": "src/services/llm.service.ts:958-987",
+      "status": "fixed",
+      "evidence": "llm.service.ts:974-982: the `try/finally` disposes `sequence` via `sequence.dispose()` (line 981). The `LlamaChatSession` created at line 964 holds only a reference to the sequence; it has no independent KV-cache allocation beyond the sequence itself. Disposing the sequence reclaims the underlying resource. There is no separate `session.dispose()` method exposed by node-llama-cpp for LlamaChatSession (it does not own the sequence). The finding's recommendation is not applicable to this API surface."
+    },
+    {
+      "subsystem": "LLM service + agent loop + tool/action execution",
+      "title": "Agent loop has no overall wall-clock timeout; only a step count cap",
+      "originalSeverity": "low",
+      "file": "src/services/agent.service.ts:138, 173, 215-219",
+      "status": "fixed",
+      "evidence": "agent.service.ts:138 adds `maxWallClockMs` parameter with a default from `resolveDefaultMaxWallClockMs()`. Line 173: `const startTimeMs = Date.now()`. Line 219: `if (Date.now() - startTimeMs >= maxWallClockMs) { timedOut = true; break; }` checked at the top of every loop iteration. Lines 390-391 emit a distinct timeout error message. The wall-clock cap is fully implemented."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "Pinned SHA-256 hashes trust the HuggingFace LFS pointer, not the actual downloaded bytes",
+      "originalSeverity": "medium",
+      "file": "scripts/refresh_model_hashes.py:10-14",
+      "status": "open",
+      "evidence": "refresh_model_hashes.py:10-14 still reads: \"The hashes are the HuggingFace LFS object ids ... fetched WITHOUT downloading the multi-GB blobs — every GGUF on HF is git-lfs, so the pointer at `<repo>/raw/main/<file>` carries `oid sha256:<hex>`\". The HASHES dict is still hand-pasted constants derived from LFS pointer metadata, not from computing sha256 over the actual downloaded blob.",
+      "fix": "Add a one-time verification step to the script or its docstring: download each blob once on a trusted machine, compute sha256 locally (`sha256sum`), and record both the HF commit SHA and the locally-computed hash. Pin the HF revision in the URL (resolve/<commit-sha>) so a pointer change is detectable. Alternatively, use the HF Hub API which can return verified blob hashes."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "Catalog download URLs pin the mutable 'main' branch, not an immutable revision",
+      "originalSeverity": "medium",
+      "file": "shared/model-catalog.json:12",
+      "status": "open",
+      "evidence": "shared/model-catalog.json:12 still shows `\"url\": \"https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true\"`. All 11 entries across lines 12, 23, 34, 45, 56, 67, 78, 89, 100, 111, 122 use `resolve/main` — no revision pinning.",
+      "fix": "Replace `resolve/main` with `resolve/<commit-sha>` for every catalog entry (HF supports `?revision=<sha>` or the commit SHA in the path). Generate these in lockstep with refresh_model_hashes.py so URL revision and sha256 always describe the same immutable object."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "No HTTPS/host-allowlist validation of catalog URLs at the integrity layer (defense-in-depth gap)",
+      "originalSeverity": "low",
+      "file": "src/services/llm.service.ts:831",
+      "status": "open",
+      "evidence": "llm.service.ts:831: `response = await fetch(url, { headers, signal: controller.signal })` where `url = entry.url` (line 734) — no scheme or host validation before the fetch. modelIntegrity.ts:59 `verifyModelIntegrity(filePath, expectedSha256?)` only operates on the on-disk path; nothing validates the URL origin.",
+      "fix": "Before the `fetch(url, ...)` call, assert: `const u = new URL(url); if (u.protocol !== 'https:') throw new Error(...); const ALLOWED = ['huggingface.co','cdn-lfs.huggingface.co','cdn-lfs-us-1.huggingface.co']; if (!ALLOWED.some(h => u.hostname === h || u.hostname.endsWith('.'+h))) throw new Error(...)`. Also add a build-time check in export_catalog.py / check_catalog_parity.py that fails if any catalog URL is non-https or off-allowlist."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "sha256File stream resolves/rejects with no guard against late errors and ignores readHead's open file on early throw paths",
+      "originalSeverity": "low",
+      "file": "src/services/modelIntegrity.ts:43-51",
+      "status": "fixed",
+      "evidence": "modelIntegrity.ts:43-51: `stream.on('error', reject); stream.on('data', (chunk) => hash.update(chunk)); stream.on('end', () => resolve(hash.digest('hex')))`. Node.js `createReadStream` defaults to `autoClose: true`, so the fd is closed on both 'end' and 'error' — no fd leak. `hash.digest('hex')` is a synchronous call on an internal hash state and cannot throw a recoverable error. `readHead` uses a try/finally to close the file handle (lines 32-39). The original concern about unhandled errors is not exploitable in practice."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "parse_named treats every uppercase/mixed-case sha256 as missing, which can mask cross-platform hash drift",
+      "originalSeverity": "low",
+      "file": "scripts/check_catalog_parity.py:66",
+      "status": "open",
+      "evidence": "check_catalog_parity.py:66: `sm = re.search(r\"\"\"sha256:\\s*['\\\"]([0-9a-f]{64})['\\\"]\"\"\"`, block)` — character class `[0-9a-f]` is still lowercase-only. An uppercase hex sha256 in any source file would cause `sm` to be `None`, storing `None` instead of the hash and silently failing the parity check. Similarly, refresh_model_hashes.py:54: `HEX64 = r'\"[0-9a-f]{64}\"'` is also lowercase-only.",
+      "fix": "Change `[0-9a-f]{64}` to `[0-9a-fA-F]{64}` in check_catalog_parity.py:66, check_catalog_parity.py:75 (parse_kotlin), and refresh_model_hashes.py:54 (HEX64), then normalize to `.lower()` before storing/comparing. Since in practice all hashes in these files are lowercase today, the risk is low but the robustness fix is a one-liner."
+    },
+    {
+      "subsystem": "Model download + integrity + providers + catalog",
+      "title": "refresh_model_hashes.py patch_ts/_finish writes the file even when no sha256 was injected for some ids only if all ids matched; partial-source files can be silently left without hashes",
+      "originalSeverity": "low",
+      "file": "scripts/refresh_model_hashes.py:63-68",
+      "status": "open",
+      "evidence": "refresh_model_hashes.py:63-68: `_finish` checks `missing = set(HASHES) - seen` and exits if any id wasn't found in the file at all. But `seen` is populated when a flat `{...}` literal contains the right `id:` field — it does NOT verify that a sha256 was actually injected into that block. If the regex `re.sub(r\"sha256: '[^']*'\", ...)` fires but writes an empty string (edge case), or if the insert regex at line 85 silently fails to add a new sha256 field, the file is still written with the id in `seen` but without the hash.",
+      "fix": "After `text = re.sub(...)` completes in each patch_* function, re-scan the output text to assert that every id in `seen` now has a `sha256: '<64-hex-chars>'` adjacent to it. Fail with `sys.exit(...)` if any matched id is missing a hash in the written output. This converts a silent omission into a build failure."
+    },
+    {
+      "subsystem": "Marketing website (static) — website/*.html, main.js, i18n.js, gradient.js, sw.js, styles.css, i18n/*.json, i18n/demos/*.json",
+      "title": "Service worker caches every resolved response, including HTTP errors and redirects (stale-error poisoning)",
+      "originalSeverity": "low",
+      "file": "website/sw.js",
+      "status": "open",
+      "evidence": "sw.js:26-29 — `fetch(e.request).then(function (res) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); return res; })` — no `res.ok` or `res.type === 'basic'` guard; every response (4xx, 5xx, redirects) is cached unconditionally.",
+      "fix": "Add a response guard before caching: `if (res && res.ok && res.type === 'basic') { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); }` — skip caching 3xx/4xx/5xx and opaque/redirected responses."
+    },
+    {
+      "subsystem": "Marketing website (static) — website/*.html, main.js, i18n.js, gradient.js, sw.js, styles.css, i18n/*.json, i18n/demos/*.json",
+      "title": "Service worker has no Cache-Control header, so a future SW update can be pinned to a stale, possibly buggy version",
+      "originalSeverity": "low",
+      "file": "website/_headers",
+      "status": "open",
+      "evidence": "_headers (lines 1-6), netlify.toml (lines 7-13), and vercel.json (lines 5-13) all only set X-Content-Type-Options, Referrer-Policy, X-Frame-Options, and Permissions-Policy. No Cache-Control entry exists for /sw.js in any of the three files.",
+      "fix": "Add a path-scoped entry in all three files. For _headers: `/sw.js\\n  Cache-Control: no-cache, max-age=0, must-revalidate`. For netlify.toml: `[[headers]]\\n  for = \"/sw.js\"\\n  [headers.values]\\n    Cache-Control = \"no-cache, max-age=0, must-revalidate\"`. For vercel.json: add a `{ \"source\": \"/sw.js\", \"headers\": [{ \"key\": \"Cache-Control\", \"value\": \"no-cache, max-age=0, must-revalidate\" }] }` entry before the wildcard rule."
+    },
+    {
+      "subsystem": "Marketing website (static) — website/*.html, main.js, i18n.js, gradient.js, sw.js, styles.css, i18n/*.json, i18n/demos/*.json",
+      "title": "No Content-Security-Policy header on any page",
+      "originalSeverity": "low",
+      "file": "website/_headers",
+      "status": "open",
+      "evidence": "_headers (lines 1-6), netlify.toml (lines 7-13), and vercel.json (lines 5-13) contain only X-Content-Type-Options, Referrer-Policy, X-Frame-Options, and Permissions-Policy. No Content-Security-Policy or frame-ancestors directive is present in any of the three deployment config files.",
+      "fix": "Add `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'` to the wildcard header block in all three files. Hash or move inline scripts to eliminate 'unsafe-inline' from script-src once CSP is in place."
+    },
+    {
+      "subsystem": "React desktop UI (ui/)",
+      "title": "Multiple log entries reuse static string ids ('err','start','close') causing duplicate React keys",
+      "originalSeverity": "low",
+      "file": "ui/src/hooks/useAgentSocket.ts",
+      "status": "partial",
+      "evidence": "Line 115 in onmessage now uses Math.random().toString(36).slice(2,11) for all normal frames. Reconnect attempts use a unique id (line 229: `id: \\`reconnect-${reconnectAttempts}\\``). However three static ids survive: line 262 (ensureSocketOpen): `id: 'err'`; line 276 (sendGoal): `id: 'start'`; line 238 (onclose exhaustion): `id: 'close'`.",
+      "fix": "In ensureSocketOpen, sendGoal, and the onclose exhaustion branch, replace the static string id with Math.random().toString(36).slice(2, 11) — the same pattern already used elsewhere in the file."
+    },
+    {
+      "subsystem": "React desktop UI (ui/)",
+      "title": "WebSocket message handler dereferences fields without guards; a single malformed frame is silently dropped",
+      "originalSeverity": "low",
+      "file": "ui/src/hooks/useAgentSocket.ts",
+      "status": "fixed",
+      "evidence": "Lines 40-52 introduce a discriminated-union type AgentMessage; TypeScript narrows each branch, eliminating the implicit `any`. The progress field is guarded: line 193 `setDownloadProgress(data.data?.progress ?? 0)`. action_required guards its OOM path at line 178 `data.data?.code === 'OOM_PREVENTION'`. The entire onmessage body is wrapped in try/catch (lines 110, 206), so a malformed frame logs an error instead of crashing the handler."
+    },
+    {
+      "subsystem": "React desktop UI (ui/)",
+      "title": "CSV export is vulnerable to spreadsheet formula injection via goal text",
+      "originalSeverity": "low",
+      "file": "ui/src/components/Metrics.tsx",
+      "status": "fixed",
+      "evidence": "Lines 99-105 introduce a csvCell() helper: `const escaped = /^[=+\\-@\\t\\r]/.test(value) ? \\`'${value}\\` : value;` applied to both m.timestamp and m.goal_text at line 110. The fix covers = + - @ and control chars as recommended."
+    },
+    {
+      "subsystem": "React desktop UI (ui/)",
+      "title": "Dropped-file read can reject unhandled and abort the attachment loop",
+      "originalSeverity": "low",
+      "file": "ui/src/components/GeneralChatArea.tsx",
+      "status": "open",
+      "evidence": "Lines 142-153: handleFileDrop iterates files with a for-of loop. Line 147-149 guards size (>1MB → alert + continue). Line 151 `const content = await file.text();` has no try/catch — an I/O error or permission error on any file will throw out of the async function, leaving the remaining files unprocessed and the attachments state unchanged with no user feedback.",
+      "fix": "Wrap lines 151-152 in a per-file try/catch: `try { const content = await file.text(); setAttachments(prev => [...prev, { name: file.name, content }]); } catch { alert(\\`Could not read ${file.name}.\\`); }` — consistent with the existing size-error pattern and keeps the loop running for subsequent files."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "Temp WAV file leaked on transcription failure (no cleanup in catch)",
+      "originalSeverity": "low",
+      "file": "src/services/voice.service.ts",
+      "status": "open",
+      "evidence": "voice.service.ts:184-208 — `await whisper(wavPath, options)` on line 184; `await fs.promises.unlink(wavPath)` on line 187 (success path only, unguarded against its own rejection). The catch block at line 203-204 only logs the error; the finally block at line 205-209 only resets STATE. No unlink in catch or finally — if whisper() throws, wavPath is never deleted.",
+      "fix": "Hoist the unlink into the finally block: `finally { await fs.promises.unlink(wavPath).catch(() => {}); this.STATE = 'IDLE'; ... }` and remove the bare unlink on line 187."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "Transcribed voice + goals + note previews written verbatim to logs (PII)",
+      "originalSeverity": "low",
+      "file": "src/services/voice.service.ts",
+      "status": "open",
+      "evidence": "voice.service.ts:197 — `logger.info(\\`[Voice] Transcribed: \"${cleanText}\"\\`)` logs the full spoken command at info level. memory.service.ts:188 — `logger.info(\\`Memory forcefully updated with Manual Override for goal: ${goal}\\`)` logs the raw goal text at info level.",
+      "fix": "Replace verbatim content with length/redacted indicators at info level: `logger.info(\\`[Voice] Transcribed (${cleanText.length} chars)\\`)`. Gate full text behind `logger.debug(...)`. Same for the goal string in memory.service.ts injectOverride."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "stripControlTokens misses several modern chat templates (Gemma, Mistral [INST], Phi-3, raw end_header) — control-token smuggling",
+      "originalSeverity": "low",
+      "file": "src/utils/stripControlTokens.ts",
+      "status": "open",
+      "evidence": "stripControlTokens.ts:7-23 — CONTROL_TOKEN_PATTERNS has 8 entries covering ChatML, Llama/Phi end-of-turn, legacy EOS, tool_call XML, and Llama 3 header pairs. Missing: Gemma `<start_of_turn>`/`<end_of_turn>(\\w*)`, Mistral `[INST]`/`[/INST]`, `<<SYS>>`/`<</SYS>>`, Phi-3 `<|user|>`/`<|assistant|>`/`<|system|>`, and standalone `<|end_header_id|>` / `<|start_header_id|>`.",
+      "fix": "Add to CONTROL_TOKEN_PATTERNS: `/<start_of_turn>\\w*\\n?/gi`, `/<end_of_turn>/gi`, `/\\[\\/?INST\\]/gi`, `/<<\\/?SYS>>/gi`, `/<\\|(user|assistant|system)\\|>/gi`, and standalone `/<\\|end_header_id\\|>/gi`."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "Daemon habit log unbounded-growth + non-atomic compaction race",
+      "originalSeverity": "low",
+      "file": "src/services/metrics.service.ts",
+      "status": "open",
+      "evidence": "metrics.service.ts:94-98 — compaction is triggered inside `getHabits()` (a reader), fires `fs.writeFile(...).catch(() => {})` with no lock. A concurrent `appendHabitLog` append can interleave with this rewrite, silently losing records. No write mutex is present in MetricsService.",
+      "fix": "Move compaction into `appendHabitLog` (the writer) via a size/line-count check after append, and serialize both the append and the compaction rewrite through a promise-chain mutex (as MemoryService does), or write-to-temp-then-rename for atomicity."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "Concurrent metrics writers can drop records (read-modify-write with no lock)",
+      "originalSeverity": "low",
+      "file": "src/services/metrics.service.ts",
+      "status": "open",
+      "evidence": "metrics.service.ts:48-60 — `appendMetrics` does `readFile → JSON.parse → records.push → writeFile` with no mutex. Two concurrent callers both read the same snapshot, each push their record, and the second write clobbers the first, dropping the earlier metric.",
+      "fix": "Add a promise-chain write mutex (e.g. `this._writeLock = this._writeLock.then(() => doAppend())`) matching the pattern in MemoryService, or migrate telemetry to NDJSON append (`fs.appendFile`) like `habitsNdjsonPath` already uses."
+    },
+    {
+      "subsystem": "Remaining src services + utils (memory, session, ocr, voice, metrics, backgroundDaemon, readiness, uiParser, presets, hardware, logger, memory util, notes, stripControlTokens)",
+      "title": "Background daemon poll loop has no shutdown/lifecycle teardown; restart spawns a second loop",
+      "originalSeverity": "low",
+      "file": "src/services/backgroundDaemon.service.ts",
+      "status": "open",
+      "evidence": "backgroundDaemon.service.ts:41-51,116-184 — `stop()` sets `this.isRunning = false` but returns void immediately; the poll loop's `while (this.isRunning)` only checks the flag at the top of each iteration, after the current `setTimeout` resolves (up to pollIntervalMs later). No AbortController threads into deviceProvider/llmProvider calls; no promise that callers can await to confirm the loop has actually exited.",
+      "fix": "Add a `_stopPromise: Promise<void>` and resolver; resolve it when the while-loop exits. Have `stop()` return that promise so callers can `await daemon.stop()`. Optionally thread an AbortSignal into long-running provider calls so they abort immediately on stop."
+    }
+  ]
+}
