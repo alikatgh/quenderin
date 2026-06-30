@@ -235,7 +235,9 @@ export function useAgentSocket() {
                 reconnectTimer = setTimeout(connect, effectiveDelay);
             } else {
                 setLogs((prev) => capLogs([...prev, {
-                    id: 'close',
+                    // Unique id — a static 'close' collides as a React key if a second
+                    // connection cycle also fails after retries (audit re-sweep).
+                    id: `close-${crypto.randomUUID()}`,
                     type: 'error',
                     message: "**Connection Lost**\nThe interface lost connection to Quenderin after multiple attempts.\n**How to fix this:**\n1. Check your computer window where Quenderin is running.\n2. If it closed, please restart the application.\n3. Once it's running again, refresh this page.",
                     timestamp: ''
@@ -259,7 +261,8 @@ export function useAgentSocket() {
     const ensureSocketOpen = (): WebSocket | null => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return wsRef.current;
         setLogs(prev => capLogs([...prev, {
-            id: 'err',
+            // Unique id — every failed send appends a row; a static 'err' would duplicate the key.
+            id: `err-${crypto.randomUUID()}`,
             type: 'error',
             message: "**System Sleeping**\nYou're trying to send a command, but the Quenderin system isn't active.\n**How to fix this:**\n1. Ensure the Quenderin application window is open and active on your computer.\n2. If it's not open, please start the application.\n3. Once the system is active, try your request again.",
             timestamp: new Date().toLocaleTimeString()

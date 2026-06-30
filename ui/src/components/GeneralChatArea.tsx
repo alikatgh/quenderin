@@ -148,8 +148,14 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                 alert(`File ${file.name} is too large. Max 1MB.`);
                 continue;
             }
-            const content = await file.text();
-            setAttachments(prev => [...prev, { name: file.name, content }]);
+            // Read each file defensively — a reject (e.g. a dropped directory) must not abort the
+            // whole loop or surface as an unhandled rejection; skip the bad one and keep going.
+            try {
+                const content = await file.text();
+                setAttachments(prev => [...prev, { name: file.name, content }]);
+            } catch {
+                alert(`Could not read ${file.name} — skipping it.`);
+            }
         }
     };
 
