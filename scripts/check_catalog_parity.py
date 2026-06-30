@@ -63,8 +63,10 @@ def parse_named(text: str) -> Catalog:
         qm = re.search(r"""quantization:\s*['"]([\w_]+)['"]""", block)
         if not (idm and pm and qm):
             continue  # a stray `id:` that isn't a model entry
-        sm = re.search(r"""sha256:\s*['"]([0-9a-f]{64})['"]""", block)
-        catalog[idm.group(1)] = (float(pm.group(1)), qm.group(1), sm.group(1) if sm else None)
+        # Hex is case-insensitive; accept mixed/upper-case and normalize, so a hand-pasted
+        # uppercase hash is never read as missing (which would mask drift / trip the integrity gate).
+        sm = re.search(r"""sha256:\s*['"]([0-9a-fA-F]{64})['"]""", block)
+        catalog[idm.group(1)] = (float(pm.group(1)), qm.group(1), sm.group(1).lower() if sm else None)
     return catalog
 
 
@@ -72,11 +74,12 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-f]{64})")?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?\s*\)""",
         text,
     ):
         mid, params, quant = m.group(1), float(m.group(2)), m.group(3)
-        catalog[mid] = (params, quant, m.group(4))  # group(4) is None when sha256 is omitted
+        # Normalize hex case so an uppercase Kotlin literal still matches the (lowercase) manifest.
+        catalog[mid] = (params, quant, m.group(4).lower() if m.group(4) else None)
     return catalog
 
 
@@ -99,7 +102,7 @@ def load_canonical() -> Catalog:
     if not CANONICAL.exists():
         sys.exit(f"FATAL: {CANONICAL} not found — run: python3 scripts/export_catalog.py")
     data = json.loads(CANONICAL.read_text(encoding="utf-8"))
-    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"], m.get("sha256")) for m in data.get("models", [])}
+    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"], (m.get("sha256") or "").lower() or None) for m in data.get("models", [])}
     if not catalog:
         sys.exit(f"FATAL: {CANONICAL} has no models")
     return catalog
