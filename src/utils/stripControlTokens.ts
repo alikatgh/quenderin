@@ -20,6 +20,14 @@ const CONTROL_TOKEN_PATTERNS: RegExp[] = [
     /<s>/gi,
     // Header tokens from Llama 3+
     /<\|start_header_id\|>[\s\S]*?<\|end_header_id\|>\s*\n?/gi,
+    // Gemma 2/3 turn markers
+    /<start_of_turn>\s*(?:model|user)?\s*\n?/gi,
+    /<end_of_turn>\s*\n?/gi,
+    // Phi-3/3.5 role markers (<|end|> already handled above)
+    /<\|(?:user|assistant|system)\|>\s*\n?/gi,
+    // Mistral / Llama-2 instruction markers
+    /\[\/?INST\]\s*/gi,
+    /<<\/?SYS>>\s*\n?/gi,
 ];
 
 export function stripControlTokens(content: string): string {

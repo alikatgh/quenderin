@@ -94,6 +94,25 @@ describe('stripControlTokens', () => {
         expect(stripControlTokens(input)).toBe('Hi!');
     });
 
+    it('removes Gemma turn markers (<start_of_turn>/<end_of_turn>)', () => {
+        expect(stripControlTokens('<start_of_turn>model\nHello')).toBe('Hello');
+        expect(stripControlTokens('Answer<end_of_turn>')).toBe('Answer');
+        expect(stripControlTokens('<start_of_turn>model\nThe sky is blue.<end_of_turn>')).toBe(
+            'The sky is blue.'
+        );
+    });
+
+    it('removes Phi-3 role markers (<|user|>/<|assistant|>/<|system|>)', () => {
+        expect(stripControlTokens('<|assistant|>\nHi there')).toBe('Hi there');
+        expect(stripControlTokens('<|system|>\nYou are helpful<|end|>')).toBe('You are helpful');
+    });
+
+    it('removes Mistral / Llama-2 instruction markers ([INST]/[/INST]/<<SYS>>)', () => {
+        expect(stripControlTokens('[INST] do the thing [/INST]answer')).toBe('do the thing answer');
+        // <</SYS>>\s*\n? eats the following newline (same as the <|im_end|> pattern), so "ok" joins.
+        expect(stripControlTokens('<<SYS>>be terse<</SYS>>\nok')).toBe('be terseok');
+    });
+
     it('is case-insensitive for the marker tokens', () => {
         expect(stripControlTokens('text</S>')).toBe('text');
         expect(stripControlTokens('<|IM_END|>kept')).toBe('kept');

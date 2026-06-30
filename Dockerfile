@@ -3,8 +3,8 @@
 # Suitable for x86_64 and ARM64 hosts (Raspberry Pi 4+, cloud VMs, etc.)
 #
 # Build:   docker build -t quenderin .
-# Run:     docker run -p 3000:3000 -v quenderin-models:/root/.quenderin quenderin
-# With GPU: docker run --gpus all -p 3000:3000 -v quenderin-models:/root/.quenderin quenderin
+# Run:     docker run -p 3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
+# With GPU: docker run --gpus all -p 3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────────────
 FROM node:20-slim AS builder
@@ -48,6 +48,14 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
+# Drop root (audit MEDIUM: runtime ran as root). Create an unprivileged user, give it the app dir
+# and its model-storage home, then switch to it before launching — a container breakout or RCE then
+# lands as uid 10001, not root.
+RUN useradd -m -u 10001 -s /usr/sbin/nologin app \
+    && mkdir -p /home/app/.quenderin \
+    && chown -R app:app /app /home/app/.quenderin
+USER app
+
 # Container environment markers
 ENV QUENDERIN_CONTAINER=1
 ENV QUENDERIN_NO_BROWSER=1
@@ -58,8 +66,8 @@ ENV NODE_ENV=production
 # Override with: docker run -e NODE_OPTIONS="--max-old-space-size=1024" ...
 ENV NODE_OPTIONS="--max-old-space-size=512"
 
-# Model storage — mount a volume here to persist models across restarts
-VOLUME /root/.quenderin
+# Model storage — mount a volume here to persist models across restarts (owned by the non-root user)
+VOLUME /home/app/.quenderin
 
 EXPOSE 3000
 
