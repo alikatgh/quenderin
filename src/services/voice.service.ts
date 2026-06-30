@@ -155,13 +155,16 @@ export class VoiceService extends EventEmitter {
     }
 
     private async processAudioBuffer() {
+        // Hoisted so the `finally` can always remove the temp WAV — previously a throw from
+        // whisper() skipped the success-path unlink and leaked the file (audit re-sweep, voice).
+        let wavPath: string | null = null;
         try {
             // Trim actual recorded length if it ended early (though currently we force 10s)
             const recordedFrames = this.audioBuffer.slice(0, this.currentSampleIndex);
 
             // whisper-node requires a physical .wav file on disk.
             // We must manually encode the PCM Int16 raw frames to standard WAV.
-            const wavPath = path.join(os.tmpdir(), `quenderin_voice_${crypto.randomUUID()}.wav`);
+            wavPath = path.join(os.tmpdir(), `quenderin_voice_${crypto.randomUUID()}.wav`);
             this.writeWavFile(wavPath, recordedFrames, 16000, 1);
 
             // 3. Offline Transcription Phase
@@ -172,7 +175,6 @@ export class VoiceService extends EventEmitter {
                 whisper = whisperModule.default || whisperModule.whisper;
             } catch {
                 logger.info('[Voice] whisper-node not available — speech-to-text disabled.');
-                await fs.promises.unlink(wavPath).catch((e) => logger.debug('[Voice] WAV cleanup failed:', e));
                 return;
             }
 
@@ -183,9 +185,6 @@ export class VoiceService extends EventEmitter {
 
             const transcripts = await whisper(wavPath, options);
 
-            // Clean up the temporary file
-            await fs.promises.unlink(wavPath);
-
             // whisper-node returns an array of objects: {start, end, speech}
             let fullText = "";
             for (const t of transcripts) {
@@ -194,7 +193,9 @@ export class VoiceService extends EventEmitter {
             const cleanText = fullText.trim();
 
             if (cleanText.length > 0) {
-                logger.info(`[Voice] Transcribed: "${cleanText}"`);
+                // Privacy: the transcript IS the user's private speech — never write the content to
+                // logs (audit re-sweep, PII). Length only; the command itself goes only to the agent.
+                logger.info(`[Voice] Transcribed ${cleanText.length} chars — emitting command.`);
                 this.emit('command', cleanText); // Pipe to AgentService!
             } else {
                 logger.debug('[Voice] Empty transcription — no command emitted.');
@@ -203,6 +204,10 @@ export class VoiceService extends EventEmitter {
         } catch (err: unknown) {
             logger.error('[Voice] Transcription error:', err);
         } finally {
+            // Always remove the temp WAV — even on the whisper-throw path that previously leaked it.
+            if (wavPath) {
+                await fs.promises.unlink(wavPath).catch(() => { /* already removed or never written */ });
+            }
             // Return to IDLE
             this.STATE = 'IDLE';
             logger.debug('[Voice] Returning to idle state.');
