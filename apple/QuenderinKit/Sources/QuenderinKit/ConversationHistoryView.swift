@@ -76,7 +76,11 @@ struct ConversationHistoryView: View {
                             }
                         }
                         .onDelete { offsets in
-                            offsets.map { coordinator.summaries[$0].id }.forEach(coordinator.delete)
+                            // Snapshot the IDs against the *current* array before deleting — each
+                            // delete() calls refresh() and mutates `summaries`, so deleting by a
+                            // stable id (not a shifting index) is required for correctness.
+                            let ids = offsets.map { coordinator.summaries[$0].id }
+                            for id in ids { coordinator.delete(id) }
                         }
                     }
                 }

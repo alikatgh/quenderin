@@ -221,6 +221,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-30 — iOS/macOS build broken on main (`swift build` exit 1, ConversationHistoryView.swift:79).
+  Symptom: `.onDelete { offsets.map{...}.forEach(coordinator.delete) }` → "call can throw, not marked 'try'".
+  Cause: Swift 6 rejects a bare `@MainActor` method reference passed to the rethrows `forEach` (landed in
+  a11y commit 3e3805e). Fix: explicit loop, snapshot ids first — `let ids = offsets.map{...}; for id in ids
+  { coordinator.delete(id) }`. Lesson: in Swift 6 pass an explicit closure (not a method reference) to rethrows HOFs.
+
 - 2026-06-27 — Desktop `unit_convert` chat tool (cross-platform parity; PR #33, rebased + greened).
   Symptom: mobile (iOS/Android) ships a `units` agent tool but the desktop chat tool loop had none. Fix:
   `src/services/tools/unitConvert.ts` mirrors the mobile `UnitConverter` engine (same factors/aliases/
