@@ -444,6 +444,12 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
   .nav-menu li { width: 100%; }
   .nav-menu a { display: block; padding-block: 0.7rem; }
   .nav-menu a.btn { margin-top: 0.5rem; }
+  /* Compact the lang-picker so the navbar fits a phone (was overflowing ~21px past 375): globe-only,
+     the closed "English" label is hidden but the native dropdown still lists all 12 languages on tap
+     (option color is set separately, so the menu stays readable). Tighter nav gap too. */
+  .nav { gap: 0.4rem; }
+  .lang-select { width: 3rem; color: transparent; padding: 0.46rem 0.4rem 0.46rem 1.85rem; }
+  .lang-picker .lang-chev { display: none; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
 }
 
