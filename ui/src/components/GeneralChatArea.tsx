@@ -409,7 +409,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                         ))}
                     </div>
 
-                    <div className="claude-input-wrapper">
+                    <div className="chat-input-wrapper">
                         {attachments.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 px-3.5 pt-3 pb-0">
                                 {attachments.map((file, i) => (
@@ -426,7 +426,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
 
                         <textarea
                             ref={textareaRef}
-                            className="claude-textarea"
+                            className="chat-textarea"
                             placeholder={status === 'running' ? "AI is thinking... type to queue a follow-up" : "Ask anything..."}
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}

@@ -197,10 +197,10 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white dark:from-[#18181b] dark:via-[#18181b] to-transparent pt-12 pb-6 px-4 pointer-events-none">
-                <div className="claude-input-wrapper pointer-events-auto">
+                <div className="chat-input-wrapper pointer-events-auto">
                     <textarea
                         ref={textareaRef}
-                        className="claude-textarea"
+                        className="chat-textarea"
                         placeholder="How can I automate for you today?"
                         value={goal}
                         onChange={(e) => setGoal(e.target.value)}
