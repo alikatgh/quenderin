@@ -255,6 +255,7 @@ one trick that beats the single-stream bandwidth wall — the next thing to expl
 | Native architecture, engine-vs-model | `apple/ARCHITECTURE.md` |
 | How inference works (deep) | `docs/INFERENCE_101.md` |
 | Mobile performance & hardware adaptation (deep) | `docs/MOBILE_PERFORMANCE_101.md` |
+| llama.cpp C++ engine internals (deep) | `docs/LLAMA_CPP_101.md` |
 | Backend services + utils | `docs/BACKEND.md` |
 | Frontend (React UI) | `docs/FRONTEND.md` |
 | WS/REST API catalog | `docs/API.md` |
