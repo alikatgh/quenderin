@@ -24,8 +24,12 @@ self.addEventListener("fetch", function (e) {
   e.respondWith(
     fetch(e.request)
       .then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        // Cache ONLY a genuine same-origin 200. Caching an error page (404/500), a redirect, or an
+        // opaque response would pin it as the offline fallback — stale-error poisoning (audit re-sweep).
+        if (res && res.ok && res.status === 200 && res.type === "basic") {
+          var copy = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+        }
         return res;
       })
       .catch(function () {

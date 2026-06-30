@@ -3,3 +3,9 @@
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
   Permissions-Policy: interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+# The service worker must always be revalidated, so a new deploy's SW is never pinned to a stale
+# (possibly buggy) cached version that then controls the whole origin (audit re-sweep).
+/sw.js
+  Cache-Control: no-cache
