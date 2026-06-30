@@ -221,6 +221,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-06-30 — Apple model download pegged a CPU core / capped throughput on multi-GB GGUFs (perf HIGH #6).
+  Symptom: `for try await byte in bytes { chunk.append(byte) }` over `URLSession.bytes` = one async
+  suspension PER BYTE → billions for a 9 GB file. Fix: a `URLSessionDataDelegate` writing native ~16–64 KB
+  `Data` chunks (ModelDownloader.swift), keeping progress + the C3 integrity gate; added a URLProtocol
+  integration test (199 tests green). Lesson: never iterate `URLSession.bytes` byte-wise for large files — use a data delegate.
+
 - 2026-06-30 — iOS/macOS build broken on main (`swift build` exit 1, ConversationHistoryView.swift:79).
   Symptom: `.onDelete { offsets.map{...}.forEach(coordinator.delete) }` → "call can throw, not marked 'try'".
   Cause: Swift 6 rejects a bare `@MainActor` method reference passed to the rethrows `forEach` (landed in
