@@ -93,6 +93,41 @@ final class LlamaEngineRealInferenceTests: XCTestCase {
         await engineA.unload(); await engineB.unload()
     }
 
+    /// The acid test for the **context-shift** path (perf/kv-context-shift): drive a chat whose prompt
+    /// evolves by DROPPING its oldest turn from the front (as `ConversationContext` does once the budget
+    /// fills), then assert that the KV-reused reply is byte-identical to a from-scratch full prefill of the
+    /// same prompt. Because a front-drop diverges right after the shared prefix, this exercises
+    /// `llama_memory_seq_rm` + `llama_memory_seq_add` (evict the dropped middle, RoPE-shift the survivors) —
+    /// the exact mechanism whose correctness needed validation on real llama.cpp. Greedy (temp 0) makes any
+    /// divergence a real bug, not sampling noise.
+    func testContextShiftOutputMatchesFullPrefill() async throws {
+        let url = try realModelURL()
+        let greedy = GenerationOptions(maxTokens: 24, temperature: 0)
+
+        // Build a stable system-prefixed prompt, generate a few turns to fill the cache, then form the
+        // NEXT prompt by dropping the oldest user/assistant turn — so the cache holds `sys + t1 + t2`
+        // while the new prompt is `sys + t2 + t3`: a front-drop that must go through the context-shift.
+        let sys = "System: You are a terse assistant.\n"
+        let t1 = "User: Name a primary color.\nAssistant: Red.\n"
+        let t2 = "User: Name a fruit.\nAssistant: Apple.\n"
+        let t3 = "User: Name a country.\nAssistant:"
+
+        // Persistent engine: prime the cache with `sys + t1 + t2 + <a partial turn>`, then ask `sys + t2 + t3`.
+        let engineA = LlamaEngine()
+        try await load(engineA, url)
+        _ = try await engineA.complete(prompt: sys + t1 + t2 + "User: Warm up.\nAssistant:", options: greedy)
+        let shifted = sys + t2 + t3                       // oldest turn (t1) dropped from the front
+        let a = try await engineA.complete(prompt: shifted, options: greedy)
+
+        // Fresh engine: same prompt from an empty cache — the ground truth (no reuse, no shift).
+        let engineB = LlamaEngine()
+        try await load(engineB, url)
+        let b = try await engineB.complete(prompt: shifted, options: greedy)
+
+        XCTAssertEqual(a, b, "context-shift (front-drop) output must equal a from-scratch full prefill")
+        await engineA.unload(); await engineB.unload()
+    }
+
     /// Drives a multi-turn chat on ONE persistent engine (the real product path) and prints per-turn wall
     /// time. With KV reuse, later turns re-decode only the new tokens, so time-to-first-token should stay
     /// roughly flat instead of climbing with conversation length. Asserts every turn stays coherent.

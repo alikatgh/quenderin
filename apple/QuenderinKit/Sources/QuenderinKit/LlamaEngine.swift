@@ -235,21 +235,39 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         // Reuse the KV cache from the prior turn: decode only the tokens NOT already cached, so
-        // time-to-first-token doesn't grow with conversation length (KVCacheReuse). Fail-safe — any
-        // divergence from a pure append wipes the cache and reprefills from scratch (correct, no speedup).
+        // time-to-first-token doesn't grow with conversation length (KVCacheReuse). Beyond a pure
+        // append, a front-drop (the context window slid and evicted the oldest turn) is handled by a
+        // context-shift — physically evict the dropped middle and shift the survivors' positions down —
+        // instead of re-prefilling the whole window every turn. Fail-safe: the reused region is always
+        // token-for-token identical to the new prompt, and if the cache type can't do a partial
+        // removal (e.g. SWA) we fall back to a clean full reprefill. Twin of llama_generate.h.
+        let mem = llama_get_memory(context)
         let plan = KVCacheReuse.plan(cached: cachedTokens, new: newTokens)
+        var reuse = plan.decodeFrom
         if plan.clearCache {
-            llama_memory_clear(llama_get_memory(context), true)
-            cachedTokens = []
+            llama_memory_clear(mem, true)
+            reuse = 0
+        } else if plan.evictFrom < plan.evictTo {
+            // seq_rm drops the evicted middle; seq_add shifts [evictTo, ∞) down to close the gap
+            // (RoPE-corrected). seq_rm returns false when partial removal isn't supported → full reprefill.
+            let from = llama_pos(plan.evictFrom)
+            let to = llama_pos(plan.evictTo)
+            if llama_memory_seq_rm(mem, 0, from, to) {
+                llama_memory_seq_add(mem, 0, to, -1, -(to - from))
+            } else {
+                llama_memory_clear(mem, true)
+                reuse = 0
+            }
         }
-        var toPrefill = Array(newTokens[plan.decodeFrom...])
+        var toPrefill = Array(newTokens[reuse...])
         var prefillRC = decode(&toPrefill)
-        if prefillRC == 1 && plan.decodeFrom > 0 {
+        if prefillRC == 1 && reuse > 0 {
             // Cache full with the reused prefix in play — drop reuse and reprefill the whole
-            // turn fresh (mirrors llama_generate.h:83-90).
-            llama_memory_clear(llama_get_memory(context), true)
+            // turn fresh (mirrors llama_generate.h).
+            llama_memory_clear(mem, true)
             cachedTokens = []
             toPrefill = newTokens
+            reuse = 0
             prefillRC = decode(&toPrefill)
         }
         if prefillRC != 0 {

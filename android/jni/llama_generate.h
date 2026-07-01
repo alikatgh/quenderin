@@ -17,20 +17,57 @@
 
 namespace quenderin {
 
-// How many leading tokens of `newTokens` are ALREADY resident in the KV cache, given `cached` is the
-// exact token sequence the cache holds. Reuse only on a strict-prefix extension (the common "append a
-// turn" case); any divergence ⇒ 0 (full reprefill). Mirrors the tested KVCacheReuse spec (Swift/Kotlin
-// twins) — strict `cached.size() < newTokens.size()` so an identical prompt reprefills, never a 0-length
-// decode.
-inline size_t kvReuseCount(const std::vector<llama_token>& cached,
-                           const std::vector<llama_token>& newTokens) {
-    if (!cached.empty() && cached.size() < newTokens.size()) {
-        for (size_t i = 0; i < cached.size(); ++i) {
-            if (cached[i] != newTokens[i]) return 0;
+// The KV-reuse decision for a new prompt, given `cached` is the exact token sequence the cache holds.
+// Mirrors the tested KVCacheReuse spec (Swift/Kotlin twins — see KVCacheReuse.kt for the full rationale).
+// Four outcomes, all via the same fields:
+//   - append  → clearCache=false, evict range empty, decodeFrom = cached.size (strict-prefix extension).
+//   - shift   → clearCache=false, evict [evictFrom, evictTo); the executor removes that middle chunk and
+//               shifts the survivors down so the cache stays contiguous — the front-drop case that used to
+//               force a full reprefill of the whole window every turn.
+//   - prefix  → clearCache=false, evict [p, cache.size); keep only the common prefix, decode the rest.
+//   - full    → clearCache=true; nothing usable, reprefill from scratch.
+// The reused region is always token-for-token identical to the new prompt, so it can never corrupt context.
+struct KVReusePlan {
+    bool   clearCache;   // full reprefill
+    size_t decodeFrom;   // index into newTokens where decoding starts (== reused token count)
+    size_t evictFrom;    // KV positions [evictFrom, evictTo) to remove before shifting; == evictTo ⇒ none
+    size_t evictTo;
+};
+
+// Cap on how many dropped tokens we scan for a tail realignment (mirrors KVCacheReuse.MAX_EVICT_SCAN).
+inline constexpr size_t kKVMaxEvictScan = 2048;
+
+inline KVReusePlan kvReusePlan(const std::vector<llama_token>& cached,
+                               const std::vector<llama_token>& newTokens) {
+    const size_t nc = cached.size();
+    const size_t nn = newTokens.size();
+
+    size_t p = 0;                                   // longest common prefix length
+    const size_t lim = nc < nn ? nc : nn;
+    while (p < lim && cached[p] == newTokens[p]) p++;
+
+    // append: a non-empty cache that is a strict prefix of the new prompt.
+    if (nc > 0 && p == nc && nc < nn) return {false, nc, 0, 0};
+
+    if (p < nc) {
+        // shift: smallest gap g>0 s.t. cached[p+g, nc) == newTokens[p, p+tailLen) — a dropped middle chunk.
+        const size_t maxG = (nc - p) < kKVMaxEvictScan ? (nc - p) : kKVMaxEvictScan;
+        for (size_t g = 1; g <= maxG; ++g) {
+            const size_t tailLen = nc - p - g;
+            if (tailLen == 0) break;
+            if (p + tailLen < nn) {                 // ≥1 genuinely new token to decode
+                bool eq = true;
+                for (size_t i = 0; i < tailLen; ++i) {
+                    if (cached[p + g + i] != newTokens[p + i]) { eq = false; break; }
+                }
+                if (eq) return {false, p + tailLen, p, p + g};
+            }
         }
-        return cached.size();
+        // prefix-only: keep the common prefix, drop the rest.
+        if (p >= 1 && p < nn) return {false, p, p, nc};
     }
-    return 0;
+
+    return {true, 0, 0, 0};                          // full reprefill
 }
 
 // Decode `newTokens` — reusing the KV from a prior turn when it's a strict-prefix extension — then
@@ -73,9 +110,27 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     if (failed) *failed = false;
     if (newTokens.empty()) return out;
 
-    const size_t reuse = kvReuseCount(cached, newTokens);
-    if (reuse == 0) {
-        llama_memory_clear(llama_get_memory(ctx), true);
+    llama_memory_t mem = llama_get_memory(ctx);
+    const KVReusePlan plan = kvReusePlan(cached, newTokens);
+    size_t reuse = plan.decodeFrom;
+
+    if (plan.clearCache) {
+        llama_memory_clear(mem, true);
+        reuse = 0;
+    } else if (plan.evictFrom < plan.evictTo) {
+        // Context-shift: physically drop the evicted middle [evictFrom, evictTo) from the KV, then shift
+        // the survivors' positions DOWN by (evictTo-evictFrom) so the cache stays contiguous at
+        // [0, decodeFrom). seq_add is RoPE-corrected. seq_rm returns false when a cache type can't do a
+        // partial removal (e.g. SWA) — fall back to a clean full reprefill so correctness never depends
+        // on the shift succeeding. (Append case: evictFrom==evictTo → nothing to evict, reuse==cache.size.)
+        const llama_pos from = (llama_pos) plan.evictFrom;
+        const llama_pos to   = (llama_pos) plan.evictTo;
+        if (llama_memory_seq_rm(mem, 0, from, to)) {
+            llama_memory_seq_add(mem, 0, to, -1, -(to - from));   // shift [to, ∞) down to close the gap
+        } else {
+            llama_memory_clear(mem, true);
+            reuse = 0;
+        }
     }
 
     // Prefill: decode the new (suffix) tokens. Keep `toDecode` alive across the decode —

@@ -56,6 +56,20 @@ private class FakeHttpRangeClient(
     }
 }
 
+/**
+ * Purely on the token mirror, reproduce what the native executor does for a [KVCacheReuse.Plan]:
+ * evict `[evictFrom, evictTo)`, shift the survivors down (concatenation models the position shift),
+ * then "decode" the remaining `new[decodeFrom:]`. Returns the token sequence the cache should hold
+ * afterward, or null if the plan is internally inconsistent (the retained region's length doesn't
+ * match `decodeFrom`). A correct plan always reconstructs `new` exactly — that's the safety invariant.
+ */
+private fun simulateReuse(cached: IntArray, new: IntArray, plan: KVCacheReuse.Plan): IntArray? {
+    if (plan.clearCache) return new.copyOf()                    // cleared → decode the whole prompt
+    val kept = cached.copyOfRange(0, plan.evictFrom) + cached.copyOfRange(plan.evictTo, cached.size)
+    if (kept.size != plan.decodeFrom) return null               // inconsistent: reused count must equal decodeFrom
+    return kept + new.copyOfRange(plan.decodeFrom, new.size)     // reused KV + freshly decoded tail
+}
+
 fun main() {
     println("QuenderinCore (Android / Kotlin) verification\n")
 
@@ -387,15 +401,52 @@ fun main() {
     }
 
     // --- KVCacheReuse (incremental decode planning; twin of Swift; the JNI loop mirrors this spec) ---
-    check("KVCacheReuse reuses a strict-prefix append and reprefills on any divergence", run {
+    check("KVCacheReuse: append keeps the cache, first turn / identical / shrank reprefill", run {
         val append = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 2, 3, 4, 5))
         val first = KVCacheReuse.plan(intArrayOf(), intArrayOf(1, 2, 3))
-        val diverged = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 9, 3, 4))
         val identical = KVCacheReuse.plan(intArrayOf(1, 2, 3), intArrayOf(1, 2, 3))   // not STRICT prefix
-        val shrank = KVCacheReuse.plan(intArrayOf(1, 2, 3, 4), intArrayOf(1, 2))
-        append == KVCacheReuse.Plan(false, 3) && first == KVCacheReuse.Plan(true, 0) &&
-            diverged == KVCacheReuse.Plan(true, 0) && identical == KVCacheReuse.Plan(true, 0) &&
-            shrank == KVCacheReuse.Plan(true, 0)
+        val shrank = KVCacheReuse.plan(intArrayOf(1, 2, 3, 4), intArrayOf(1, 2))       // new is a prefix of cached
+        append == KVCacheReuse.Plan(false, 3, 0, 0) && first == KVCacheReuse.Plan(true, 0, 0, 0) &&
+            identical == KVCacheReuse.Plan(true, 0, 0, 0) && shrank == KVCacheReuse.Plan(true, 0, 0, 0)
+    })
+    check("KVCacheReuse: context-shift reuses the surviving tail after the oldest turn is dropped", run {
+        // system=[1,2], dropped turn=[3,4], surviving turns=[5,6,7], new turn appended=[8].
+        // cache = system+dropped+surviving; new = system+surviving+newturn.
+        val cached = intArrayOf(1, 2, 3, 4, 5, 6, 7)
+        val new = intArrayOf(1, 2, 5, 6, 7, 8)
+        val plan = KVCacheReuse.plan(cached, new)
+        // Evict cache positions [2,4) (the dropped turn), shift survivors [5,6,7] down by 2, decode only new[5:]=[8].
+        // Reuses 5 of 6 tokens instead of the old behaviour (full reprefill of all 6).
+        plan == KVCacheReuse.Plan(false, 5, 2, 4)
+    })
+    check("KVCacheReuse: picks the SMALLEST gap (maximal reuse) when several tails align", run {
+        // After prefix [1,8], dropping g=1 ([8]) realigns the tail [2,2]; dropping g=2 ([8,2]) also
+        // realigns ([2]) but reuses less. The plan must take the smaller gap (more tokens kept).
+        val cached = intArrayOf(1, 8, 8, 2, 2)
+        val new = intArrayOf(1, 8, 2, 2, 9)
+        val plan = KVCacheReuse.plan(cached, new)
+        // p=2 ([1,8]), evict [2,3) (one [8]), shift [2,2] down, decode new[4:]=[9]; reuses 4 of 5.
+        plan == KVCacheReuse.Plan(false, 4, 2, 3) && simulateReuse(cached, new, plan)?.toList() == new.toList()
+    })
+    check("KVCacheReuse: falls back to prefix-only reuse when no tail aligns", run {
+        // Only the leading [1,2] survives; the rest of the cache diverges with no realignable tail.
+        val cached = intArrayOf(1, 2, 3, 4)
+        val new = intArrayOf(1, 2, 8, 9, 10)
+        val plan = KVCacheReuse.plan(cached, new)
+        // Keep prefix [0,2), evict [2,4), decode new[2:] — better than a full reprefill (saves the prefix).
+        plan == KVCacheReuse.Plan(false, 2, 2, 4)
+    })
+    check("KVCacheReuse: a changed system prompt (no common prefix) still fully reprefills", run {
+        val plan = KVCacheReuse.plan(intArrayOf(1, 2, 3, 4), intArrayOf(9, 2, 3, 4, 5))
+        plan == KVCacheReuse.Plan(true, 0, 0, 0)   // p==0 → nothing to reuse
+    })
+    check("KVCacheReuse: context-shift result reconstructs the new prompt exactly (invariant)", run {
+        // Simulate the native executor purely on the token mirror and assert cache == new afterward.
+        val cached = intArrayOf(10, 11, 20, 21, 22, 30, 31, 32, 33)  // sys[10,11] + drop[20,21,22] + keep[30,31,32,33]
+        val new = intArrayOf(10, 11, 30, 31, 32, 33, 40)             // sys + keep + newturn[40]
+        val plan = KVCacheReuse.plan(cached, new)
+        val simulated = simulateReuse(cached, new, plan)
+        simulated != null && simulated.toList() == new.toList()
     })
 
     // --- ConversationExporter (transcript → portable markdown; twin of Swift) ---

@@ -43,6 +43,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
+- **Strict-prefix KV reuse silently dies on a front-drop.** Reusing the KV cache only when it's a strict
+  *prefix* of the new prompt breaks the instant `ConversationContext` drops the OLDEST turn (budget full):
+  the prompt becomes `sys + [t2..tN]` vs the cached `sys + [t1..t_{N-1}]`, the common prefix collapses to
+  the system prompt, and EVERY later turn full-reprefills the whole window — the flat-TTFT promise inverts
+  exactly when chats get long (a single-shot smoke test never hits it). Fix = KV **context-shift**:
+  `llama_memory_seq_rm` the dropped middle + `llama_memory_seq_add` to shift survivors down (RoPE-corrected).
+  `seq_rm` returns false on SWA caches → fall back to full reprefill (pure speedup, never a correctness risk).
+  Validate the shift produces byte-identical output to a full prefill under greedy decode. (kv context-shift)
+- **`#if canImport(X)` un-verifies a `swift build`.** Code behind a `canImport` guard for an unlinked lib is
+  skipped by the compiler — a green build proves nothing about it. To actually type-check llama-linked code,
+  build llama.cpp locally and pass `QUENDERIN_LLAMA_DIR` (Route C in `Package.swift`); to actually run it,
+  also set `QUENDERIN_LLAMA_MODEL` to a GGUF. A model can be pulled off the device with
+  `adb exec-out run-as ai.quenderin.app cat files/models/<x>.gguf > local.gguf`. (canImport unverified build)
 - **Cross-platform "twin" parity gap.** Android (Kotlin) and iOS (Swift) ship parallel implementations of
   the same feature — the recurring real bug shape is one platform having a check/fix/recoverable-error-path
   the other lacks (an "already downloaded" fast path that skips integrity verification on one platform but
@@ -240,6 +253,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-01 — KV-cache reuse cliff → context-shifting (perf; branch `perf/kv-context-shift`, NOT yet merged).
+  Symptom: strict-prefix-only KV reuse (`KVCacheReuse` + `generateWithKVReuse`) fell to zero the moment
+  `ConversationContext` dropped the oldest turn, so long chats full-reprefilled the whole window every turn.
+  Fix: unified append/shift/prefix/full plan + native `seq_rm`+`seq_add` context-shift (SWA-safe fallback),
+  mirrored Kotlin/Swift/C++. Validated byte-identical to full prefill on real qwen3-4B/Metal; S23 TTFT A/B
+  still owed before merge (see `docs/audits/2026-07-01-kv-cache-reuse-cliff.md`). Lesson in patterns above.
 
 - 2026-07-01 — Full mobile bug review (6 subsystems, Android+iOS): 9 confirmed, 9 fixed. See
   `docs/audits/2026-07-01-quenderin-mobile-bug-review.md` for full details of each. Method: per-subsystem
