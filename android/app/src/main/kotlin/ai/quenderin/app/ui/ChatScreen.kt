@@ -13,6 +13,7 @@ import ai.quenderin.core.SupportContact
 import ai.quenderin.core.isFlagged
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -70,6 +71,10 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (e.g. the engine
+    // not loaded, or a native decode error) looks identical to "the app is ignoring me". Surface the
+    // reason inline and log it so it's diagnosable on-device.
+    var sendError by remember { mutableStateOf<String?>(null) }
     // The coordinator owns the ChatModel and restores the most recent conversation in its init.
     // Construct it with no-op listeners so that restore doesn't write Compose state *during*
     // composition; sync the initial values and wire live updates in the LaunchedEffect below.
@@ -127,6 +132,19 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
                 }
             }
 
+            // A failed generation is shown here instead of being silently dropped.
+            sendError?.let { err ->
+                Text(
+                    "⚠️ Couldn't generate a reply: $err",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .semantics { contentDescription = "Generation error: $err" },
+                )
+            }
+
             // AI-content disclaimer (Generative-AI content policy).
             Text(
                 SupportContact.AI_DISCLAIMER,
@@ -155,11 +173,17 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
                         // Set busy synchronously on the calling (main) thread so a rapid
                         // double-tap can't enqueue a second send before IO flips the flag.
                         busy = true
+                        sendError = null
                         scope.launch(Dispatchers.IO) {
                             try {
                                 chat.send(text)
-                            } catch (_: Throwable) {
-                                // Surfaced in a fuller UI; swallowed here to keep the shell minimal.
+                            } catch (t: Throwable) {
+                                // Do NOT swallow: surface the reason to the user and log it. A silent
+                                // catch here makes a real failure (engine not loaded, native decode
+                                // error) indistinguishable from the app ignoring the message.
+                                Log.e("Quenderin", "chat.send failed", t)
+                                sendError = t.message?.takeIf { it.isNotBlank() }
+                                    ?: "${t.javaClass.simpleName}: generation failed"
                             } finally {
                                 coordinator.persist()   // save the turn so it survives relaunch
                                 busy = false
