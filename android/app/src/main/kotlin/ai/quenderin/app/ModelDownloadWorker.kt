@@ -6,6 +6,7 @@ import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.JvmHttpRangeClient
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelDownloadEngine
+import ai.quenderin.core.PersistedDownload
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.pm.ServiceInfo
@@ -16,6 +17,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -44,10 +46,19 @@ class ModelDownloadWorker(
         // Promote to a foreground service so a large GGUF keeps downloading while the app is away.
         setForeground(foregroundInfo(0.0, model.label))
 
+        // DownloadStore's own doc comment promises progress "survives the app being suspended or
+        // killed" via a persisted snapshot restored through the constructor (the iOS twin is a
+        // file-backed actor) — load that snapshot here and wire onChange to write it back out, so a
+        // relaunch's WorkInfo/DownloadStore query actually sees mid-flight state instead of an
+        // always-empty table.
+        val storeFile = File(applicationContext.filesDir, "download_store.txt")
+        val store = DownloadStore(initial = loadSnapshot(storeFile))
+        store.onChange = { saveSnapshot(storeFile, it) }
+
         val engine = ModelDownloadEngine(
             http = JvmHttpRangeClient(),
             sink = JvmFileSink(),
-            store = DownloadStore(),
+            store = store,
             destinationDir = applicationContext.filesDir.resolve("models").absolutePath,
             // WorkManager flips isStopped on cancel / constraint loss → abort the chunk loop
             // cooperatively instead of streaming a multi-GB file to /dev/null.
@@ -109,6 +120,40 @@ class ModelDownloadWorker(
     }
 
     private fun errorData(message: String) = workDataOf(KEY_ERROR to message)
+
+    /**
+     * Restore [DownloadStore]'s snapshot from disk (tab-delimited, one record per line — no JSON
+     * dependency in this module). A missing/corrupt file just means "nothing to resume", not a
+     * crash, since the on-disk `.part` file remains the source of truth for actual bytes.
+     */
+    private fun loadSnapshot(file: File): List<PersistedDownload> {
+        if (!file.isFile) return emptyList()
+        return file.readLines().mapNotNull { line ->
+            val f = line.split('\t')
+            if (f.size != 7) return@mapNotNull null
+            runCatching {
+                PersistedDownload(
+                    modelId = f[0],
+                    fileName = f[1],
+                    urlString = f[2],
+                    destinationPath = f[3],
+                    bytesDownloaded = f[4].toLong(),
+                    totalBytes = f[5].toLong(),
+                    state = PersistedDownload.State.valueOf(f[6]),
+                )
+            }.getOrNull()
+        }
+    }
+
+    /** Write [DownloadStore]'s snapshot back out — called from [DownloadStore.onChange]. */
+    private fun saveSnapshot(file: File, records: List<PersistedDownload>) {
+        val text = records.joinToString("\n") { r ->
+            listOf(r.modelId, r.fileName, r.urlString, r.destinationPath, r.bytesDownloaded, r.totalBytes, r.state.name)
+                .joinToString("\t")
+        }
+        file.parentFile?.mkdirs()
+        file.writeText(text)
+    }
 
     companion object {
         const val KEY_MODEL_ID = "model_id"

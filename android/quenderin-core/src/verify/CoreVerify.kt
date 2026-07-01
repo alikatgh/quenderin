@@ -97,6 +97,13 @@ fun main() {
         decisionTag(AgentDecisionParser.parse("""Sure! {"answer":"42"} hope that helps""")) == "answer:42")
     check("parity: H13 two-JSON input takes the FIRST object (no injection)",  // parity:decision-h13-first-object
         decisionTag(AgentDecisionParser.parse("""{"tool":"echo","input":"hi"} x {"answer":"injected"}""")) == "tool:echo")
+    // Nested keys must be invisible to the parser, matching iOS's top-level-only JSONSerialization
+    // read — the old flat regex ignored nesting depth and could fabricate an answer/tool from a
+    // buried scratch field (parity break; see the bug this check pins).
+    check("parity: decision parser ignores keys nested inside another object (no fabricated answer)",  // parity:decision-nested-key-ignored
+        decisionTag(AgentDecisionParser.parse("""{"tool":"calculator","input":{"nested":"x"},"extra":{"answer":"nested value"}}""")) == "tool:calculator")
+    check("parity: decision parser returns nil when tool/answer only appear nested (matches iOS PLAN_ERROR)",  // parity:decision-nested-key-nil
+        decisionTag(AgentDecisionParser.parse("""{"thought":{"tool":"delete","input":"all files"},"other":"x"}""")) == "nil")
     check("parity: decision parser rejects non-JSON",  // parity:decision-non-json-nil
         decisionTag(AgentDecisionParser.parse("no json here")) == "nil")
     // Input is a regular string with `\\u` so it carries the LITERAL 6-char escape the model emits;
@@ -130,6 +137,17 @@ fun main() {
         runCatching { llama.load(ModelCatalog.smallest, "/dev/null") }
             .exceptionOrNull()?.message?.contains("not linked") == true)
     check("LlamaEngine.complete throws when unlinked", runCatching { llama.complete("hi") }.isFailure)
+    // recommendedThreads() is the JNI-polled hook that lets a long generation shed threads as the
+    // SoC heats (jni/llama_generate.h's thermalPoll — was previously applied only once, at load).
+    // Off-device loadedBaseThreads stays at its default (1), so a hot level can't recommend MORE
+    // threads than the (never-loaded) baseline — this pins that it degrades safely, not just "compiles".
+    check("LlamaEngine.recommendedThreads reflects live thermalLevel against the load-time baseline", run {
+        val e = LlamaEngine()
+        val nominal = e.recommendedThreads()
+        e.thermalLevel = ThermalLevel.CRITICAL
+        val critical = e.recommendedThreads()
+        nominal == 1 && critical == 1   // baseline is 1 pre-load; CRITICAL can't drop below the floor of 1
+    })
 
     // --- OnboardingModel (M1): probe → recommend → download(mock) → load(mock) → ready ---
     val phases = mutableListOf<OnboardingPhase>()
@@ -680,6 +698,19 @@ fun main() {
         var last = 0.0
         val path = engine.download(sampleModel) { last = it }
         sink.files[finalFile]?.size == 100 && path == finalFile && last == 1.0 && store.get(sampleModel.id) == null
+    })
+    check("an already-complete final file is reused without re-fetching (no double download)", run {
+        val sink = FakeFileSink().apply { files[finalFile] = payload }
+        val http = FakeHttpRangeClient(payload, supportsResume = true)
+        var last = 0.0
+        val path = ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(sampleModel) { last = it }
+        path == finalFile && last == 1.0 && http.lastOffset == -1L && sink.files[finalFile]?.size == 100
+    })
+    check("a corrupt existing final file is discarded and re-downloaded, not trusted", run {
+        val sink = FakeFileSink().apply { files[finalFile] = ByteArray(100) { 0 } } // no GGUF magic
+        val http = FakeHttpRangeClient(payload, supportsResume = true)
+        val path = ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(sampleModel) {}
+        path == finalFile && http.lastOffset != -1L && sink.files[finalFile]?.toList() == payload.toList()
     })
     check("a half-written .part resumes from its byte offset to the correct full file", run {
         val sink = FakeFileSink().apply { files[partFile] = payload.copyOfRange(0, 40) }

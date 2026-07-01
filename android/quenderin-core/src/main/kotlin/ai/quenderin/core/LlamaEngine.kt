@@ -35,6 +35,12 @@ class LlamaEngine(
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
 
+    /** The unthrottled (big-core) thread count chosen at load — the governor's baseline for
+     *  [recommendedThreads]'s in-flight thermal re-tuning during generation (mirrors iOS
+     *  `loadedBaseThreads`). Set under [lock] in [load]; read by the native decode loop via JNI. */
+    @Volatile
+    private var loadedBaseThreads: Int = 1
+
     /**
      * Cancellation flag the native decode loop polls each token (`jni/llama_jni.cpp`). `@Volatile`
      * + lock-free on purpose: [requestCancel] must signal a running [complete] WITHOUT taking [lock]
@@ -63,6 +69,14 @@ class LlamaEngine(
     /** True only when the native library actually loaded — i.e. a real device build. */
     fun available(): Boolean = NATIVE_AVAILABLE
 
+    /**
+     * Called from the native decode loop every ~32 tokens (`jni/llama_generate.h`'s `thermalPoll`)
+     * so a long generation sheds threads as the SoC heats, instead of staying pinned at the
+     * load-time count for the whole reply — mirrors iOS's in-flight `ThermalGovernor` sampling
+     * (`LlamaEngine.swift`'s `runGeneration`). Lock-free/read-only, same as [cancelRequested]'s poll.
+     */
+    fun recommendedThreads(): Int = ThermalThrottle.recommendedThreads(thermalLevel, loadedBaseThreads)
+
     /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
     override fun requestCancel() { cancelRequested = true }
 
@@ -72,6 +86,7 @@ class LlamaEngine(
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
         val base = if (threads > 0) threads
         else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
+        loadedBaseThreads = base   // governor baseline for in-flight thermal re-tuning (recommendedThreads)
         // If the device is already thermally throttling, start with fewer threads (heat is the
         // sustained-load ceiling on a phone, not memory).
         val t = ThermalThrottle.recommendedThreads(thermalLevel, base)

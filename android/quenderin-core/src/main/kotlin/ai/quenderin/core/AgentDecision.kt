@@ -52,10 +52,54 @@ object AgentDecisionParser {
         return null
     }
 
+    /**
+     * "key" : "value-with-escapes" — but ONLY at depth 1 (i.e. a direct top-level member of the
+     * outer `{...}` passed in), never inside a nested object/array value. The old flat regex scanned
+     * the whole string regardless of nesting, so a key buried inside a nested object/array (e.g. a
+     * "reasoning": {...} scratch field) was indistinguishable from the real top-level key — Android
+     * could pick a totally different decision than iOS's JSONSerialization, which only ever reads
+     * top-level keys (parity break). Track depth the same way firstJsonObject does; only test a
+     * `"key":` match when depth == 1 right after the opening `{`.
+     */
     private fun extractString(json: String, key: String): String? {
-        // "key" : "value-with-escapes"
-        val m = Regex(""""$key"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(json) ?: return null
-        return unescapeJsonString(m.groupValues[1])
+        val quotedKey = "\"$key\""
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = 0
+        while (i < json.length) {
+            val c = json[i]
+            if (inString) {
+                when {
+                    escaped -> escaped = false
+                    c == '\\' -> escaped = true
+                    c == '"' -> inString = false
+                }
+                i++
+                continue
+            }
+            when (c) {
+                '"' -> {
+                    inString = true
+                    if (depth == 1 && json.startsWith(quotedKey, i)) {
+                        var j = i + quotedKey.length
+                        while (j < json.length && json[j].isWhitespace()) j++
+                        if (j < json.length && json[j] == ':') {
+                            j++
+                            while (j < json.length && json[j].isWhitespace()) j++
+                            if (j < json.length && json[j] == '"') {
+                                val m = Regex(""""((?:[^"\\]|\\.)*)"""").find(json, j) ?: return null
+                                return unescapeJsonString(m.groupValues[1])
+                            }
+                        }
+                    }
+                }
+                '{', '[' -> depth++
+                '}', ']' -> depth--
+            }
+            i++
+        }
+        return null
     }
 
     /**

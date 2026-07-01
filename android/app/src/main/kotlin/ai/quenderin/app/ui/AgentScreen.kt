@@ -168,6 +168,9 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     onClick = {
                         val g = goal.trim()
                         goal = ""
+                        // Set running synchronously on the calling (main) thread so a rapid
+                        // double-tap can't enqueue a second run before IO flips the flag.
+                        running = true
                         scope.launch(Dispatchers.IO) { session.run(g) }
                     },
                 ) { Text("Run") }

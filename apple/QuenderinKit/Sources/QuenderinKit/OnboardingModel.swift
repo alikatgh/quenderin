@@ -98,6 +98,17 @@ public final class OnboardingModel: ObservableObject {
         let previousID = await engine.loadedModelID()
         let destination = modelsDir.appendingPathComponent(model.filename)
 
+        // A file already at `destination` might be a fully-verified completed download — or it might
+        // be one that was moved into place but never made it through ModelIntegrity.verify because the
+        // process was killed in the crash window between the move and the (multi-GB, non-instant)
+        // SHA-256 check. Re-run the same C3 gate the fresh-download path enforces before trusting it;
+        // on failure, delete and fall through to a real download rather than loading unverified bytes.
+        if FileManager.default.fileExists(atPath: destination.path) {
+            if (try? ModelIntegrity.verify(fileURL: destination, expectedSHA256: model.sha256)) == nil {
+                try? FileManager.default.removeItem(at: destination)
+            }
+        }
+
         if !FileManager.default.fileExists(atPath: destination.path) {
             guard let url = model.downloadURL else {
                 phase = .failed("\(model.label) has no valid download URL.")

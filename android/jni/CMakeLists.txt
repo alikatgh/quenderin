@@ -29,6 +29,14 @@ if(QUENDERIN_VULKAN)
     message(STATUS "quenderin: Vulkan GPU backend ENABLED (GpuOffloadPlanner gates offload per SoC)")
 endif()
 
+# Force an optimized (RelWithDebInfo) build even when the app's Gradle variant is Debug: native
+# inference is the perf-critical path, and an unoptimized (-O0) ggml is 5-20x slower AND compiles with
+# live assert()s (NDEBUG unset), which can abort() on-device where an optimized build compiles them
+# out (audit L3). RelWithDebInfo keeps debug symbols (-g), so the .so stays debuggable, just fast.
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
+endif()
+
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 
 add_library(quenderin_llama SHARED llama_jni.cpp)

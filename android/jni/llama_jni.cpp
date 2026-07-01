@@ -42,8 +42,30 @@ std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& t
     return tokens;
 }
 
+// Build a jstring from raw UTF-8 bytes via the byte[] + Charset constructor, NOT NewStringUTF.
+// NewStringUTF expects JNI's "modified UTF-8" (rejects embedded NUL, encodes chars > U+FFFF as a
+// 6-byte surrogate pair form) — llama_token_to_piece emits STANDARD UTF-8, so any piece containing
+// a 4-byte sequence (emoji, several CJK extension blocks) is not valid modified UTF-8 and NewStringUTF
+// can mangle or reject it (audit M2). "UTF-8" the charset-name literal is pure ASCII, so NewStringUTF
+// is safe for THAT one string. Returns nullptr on OOM (caller checks, matching throw_oom's contract).
+jstring make_jstring(JNIEnv* env, const std::string& s) {
+    jbyteArray bytes = env->NewByteArray((jsize) s.size());
+    if (!bytes) return nullptr;
+    env->SetByteArrayRegion(bytes, 0, (jsize) s.size(), reinterpret_cast<const jbyte*>(s.data()));
+    jclass stringCls = env->FindClass("java/lang/String");
+    jmethodID ctor = env->GetMethodID(stringCls, "<init>", "([BLjava/lang/String;)V");
+    jstring charset = env->NewStringUTF("UTF-8");
+    jstring result = (jstring) env->NewObject(stringCls, ctor, bytes, charset);
+    env->DeleteLocalRef(bytes);
+    env->DeleteLocalRef(stringCls);
+    env->DeleteLocalRef(charset);
+    return result;   // null here means NewObject threw (e.g. OOM) — a pending exception propagates
+}
+
 // Run generation with the handle's sampler (top-p + temperature, built in nativeLoad). If
-// `env`/`sink` are non-null, push each piece to sink.onToken().
+// `env`/`sink` are non-null, push each piece to sink.onToken(). `failed` is set true only on a
+// genuine, unrecoverable decode failure (never on a graceful context-limit stop) — see
+// generateWithKVReuse's contract in llama_generate.h.
 // `thiz` is the LlamaEngine instance; its boolean `cancelRequested` field is polled each token so
 // a model switch can interrupt a running generation (audit M3).
 //
@@ -51,7 +73,7 @@ std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& t
 // (llama_generate.h) so the on-device smoke test runs the EXACT same code. This function is the thin
 // JNI adapter: tokenize, resolve the Java callbacks, and supply emit/cancel lambdas.
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
-                     JNIEnv* env, jobject sink, jobject thiz) {
+                     JNIEnv* env, jobject sink, jobject thiz, bool& failed) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
     std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
@@ -66,15 +88,20 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
 
     // Resolve the cancellation field once; polled lock-free each token (M3).
     jfieldID cancel_fid = nullptr;
+    // Resolve LlamaEngine.recommendedThreads() once; called every ~32 tokens by generateWithKVReuse's
+    // thermalPoll so a long generation sheds threads as the SoC heats (mirrors iOS's in-flight
+    // ThermalGovernor — was previously applied only once, at nativeLoad time).
+    jmethodID recommended_threads_mid = nullptr;
     if (env && thiz) {
         jclass tcls = env->GetObjectClass(thiz);
         cancel_fid = env->GetFieldID(tcls, "cancelRequested", "Z");
+        recommended_threads_mid = env->GetMethodID(tcls, "recommendedThreads", "()I");
         env->DeleteLocalRef(tcls);
     }
 
     auto emit = [&](const std::string& p) -> bool {
         if (!on_token) return true;                     // non-streaming (nativeComplete): accumulate only
-        jstring js = env->NewStringUTF(p.c_str());      // null on OOM (H5) — skip, keep going
+        jstring js = make_jstring(env, p);              // null on OOM (H5) — skip, keep going
         if (js) {
             env->CallVoidMethod(sink, on_token, js);
             env->DeleteLocalRef(js);
@@ -87,8 +114,19 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         return cancel_fid && env->GetBooleanField(thiz, cancel_fid);   // interrupted by a switch/cancel (M3)
     };
 
+    // Only call llama_set_n_threads when the recommendation actually CHANGES (like iOS's governor,
+    // which returns nil unless the level differs) — avoids a redundant native call every 32 tokens.
+    int last_threads = 0;
+    auto thermalPoll = [&]() -> int {
+        if (!recommended_threads_mid) return 0;
+        int n = env->CallIntMethod(thiz, recommended_threads_mid);
+        if (n <= 0 || n == last_threads) return 0;
+        last_threads = n;
+        return n;
+    };
+
     return quenderin::generateWithKVReuse(h->ctx, vocab, h->sampler, newTokens, max_tokens,
-                                          h->cached, emit, cancelled);
+                                          h->cached, emit, cancelled, &failed, thermalPoll);
 }
 
 LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
@@ -97,6 +135,15 @@ LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
 // the UI can show, instead of a silent empty reply (audit L3).
 jstring throw_oom(JNIEnv* env, const char* msg) {
     jclass cls = env->FindClass("java/lang/OutOfMemoryError");
+    if (cls) env->ThrowNew(cls, msg);
+    return nullptr;
+}
+
+// Throw when generateWithKVReuse reports a genuine, unrecoverable decode failure — so the Kotlin
+// side (and the UI above it) sees a real error instead of an empty string indistinguishable from a
+// legitimate empty reply (audit H2).
+jstring throw_generation_failed(JNIEnv* env, const char* msg) {
+    jclass cls = env->FindClass("java/lang/IllegalStateException");
     if (cls) env->ThrowNew(cls, msg);
     return nullptr;
 }
@@ -132,6 +179,8 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     llama_context_params cp = llama_context_default_params();
     cp.n_ctx     = context_tokens > 0 ? (uint32_t) context_tokens : 4096;
     cp.n_threads = threads > 0 ? threads : 0; // 0 → llama.cpp picks
+    cp.n_threads_batch = cp.n_threads;         // prefill (prompt processing) used the default otherwise —
+                                                // iOS sets both; leaving this unset made prefill slower
     // Quantize the KV cache on memory-tight devices (KVCacheType.nativeId: 0 f16, 1 q8_0). q8_0 is
     // safe for both K and V on the standard (non-flash-attention) path; the Kotlin side already sized
     // n_ctx for this dtype, so the smaller per-token cost buys back context instead of memory.
@@ -161,12 +210,16 @@ JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject thiz,
                                                   jlong handle, jstring prompt, jint max_tokens) {
     LlamaHandle* h = as_handle(handle);
-    if (!h) return env->NewStringUTF("");
+    if (!h) return make_jstring(env, "");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
     if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
-    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz);
+    bool failed = false;
+    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed);
     env->ReleaseStringUTFChars(prompt, p);
-    return env->NewStringUTF(out.c_str());
+    // A genuine decode failure (audit H1/H2) — throw instead of returning an empty string that's
+    // indistinguishable from a legitimate empty reply.
+    if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
+    return make_jstring(env, out);   // audit M2: real UTF-8, not modified-UTF-8
 }
 
 JNIEXPORT jstring JNICALL
@@ -174,12 +227,14 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
                                                            jlong handle, jstring prompt, jint max_tokens,
                                                            jobject sink) {
     LlamaHandle* h = as_handle(handle);
-    if (!h) return env->NewStringUTF("");
+    if (!h) return make_jstring(env, "");
     const char* p = env->GetStringUTFChars(prompt, nullptr);
     if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
-    std::string out = generate(h, std::string(p), max_tokens, env, sink, thiz);
+    bool failed = false;
+    std::string out = generate(h, std::string(p), max_tokens, env, sink, thiz, failed);
     env->ReleaseStringUTFChars(prompt, p);
-    return env->NewStringUTF(out.c_str());
+    if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
+    return make_jstring(env, out);
 }
 
 JNIEXPORT void JNICALL

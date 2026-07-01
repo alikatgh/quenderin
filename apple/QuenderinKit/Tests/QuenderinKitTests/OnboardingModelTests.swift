@@ -43,11 +43,20 @@ final class OnboardingModelTests: XCTestCase {
     func testInstallSkipsDownloadWhenFileExists() async throws {
         let dir = freshModelsDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let entry = ModelCatalog.smallest
 
-        // Pre-create the model file so install should go straight to loading.
+        // A genuinely valid stub GGUF (magic header + a pinned sha256 that matches these exact
+        // bytes) — install()'s "already exists" fast path now re-verifies integrity (audit: it
+        // used to trust bare file presence), so an empty/garbage fixture no longer proves the
+        // "skip download" path; it just proves the file gets correctly rejected and re-fetched.
+        let payload = ModelIntegrity.ggufMagic + Data(repeating: 0x2A, count: 96)
+        let fileURL = dir.appendingPathComponent("stub.gguf")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        FileManager.default.createFile(atPath: dir.appendingPathComponent(entry.filename).path, contents: Data())
+        try payload.write(to: fileURL)
+        let entry = ModelEntry(
+            id: "stub", label: "Stub", filename: "stub.gguf", ramGB: 1, sizeLabel: "100 B",
+            paramsBillions: 0.001, quantization: "Q2_K", urlString: "https://example.com/stub.gguf",
+            sha256: try ModelIntegrity.sha256Hex(of: fileURL)
+        )
 
         // A downloader that would FAIL if called — proves we skipped it.
         let model = OnboardingModel(
@@ -60,6 +69,32 @@ final class OnboardingModelTests: XCTestCase {
         guard case .ready = model.phase else {
             return XCTFail("expected .ready (download skipped), got \(model.phase)")
         }
+    }
+
+    func testInstallRejectsAndRefetchesAnInvalidExistingFile() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let entry = ModelCatalog.smallest
+
+        // A pre-existing file that is NOT a valid GGUF (e.g. truncated by a prior crash between
+        // moveItem and integrity verification) must be rejected, not trusted, by the "file
+        // already exists" fast path.
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: dir.appendingPathComponent(entry.filename).path, contents: Data())
+
+        let model = OnboardingModel(
+            downloader: MockModelDownloader(behavior: .failTransport(reason: "offline")),
+            engine: MockInferenceEngine(),
+            modelsDir: dir
+        )
+        await model.install(entry)
+
+        // The downloader WAS invoked (and failed) — proving the invalid existing file was
+        // discarded rather than loaded straight into the engine.
+        guard case let .failed(message) = model.phase else {
+            return XCTFail("expected .failed after rejecting the invalid existing file, got \(model.phase)")
+        }
+        XCTAssertTrue(message.contains("offline"), "should have fallen through to a real (failing) download: \(message)")
     }
 
     func testInstallSurfacesDownloadFailure() async {

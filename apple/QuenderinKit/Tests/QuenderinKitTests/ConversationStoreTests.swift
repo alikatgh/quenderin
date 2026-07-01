@@ -25,6 +25,18 @@ final class ConversationStoreTests: XCTestCase {
         XCTAssertEqual(restored.map(\.text), tricky.map(\.text))
     }
 
+    /// A row with an unparseable role must be dropped, not silently coerced to `.assistant` — a
+    /// coerced row would replay as a spoofed "Assistant:" line into `ConversationContext.build()`
+    /// on the next turn. Matches Kotlin `ConversationStore.decode`, which drops the same row via
+    /// `mapNotNull`.
+    func testUnparseableRoleRowIsDroppedNotCoerced() throws {
+        let good = try store.encode([u("hi")])
+        let corrupted = String(data: good, encoding: .utf8)!
+            .replacingOccurrences(of: "\"role\":\"user\"", with: "\"role\":\"narrator\"")
+        let restored = try store.decode(corrupted.data(using: .utf8)!)
+        XCTAssertTrue(restored.isEmpty)
+    }
+
     func testRestoreSeedsChatModelFromSavedTranscript() {
         let chat = ChatModel(engine: MockInferenceEngine())
         let saved = try! store.decode(store.encode([u("earlier question"), a("earlier answer")]))

@@ -224,9 +224,13 @@ public actor LlamaEngine: InferenceEngine {
         //
         // `llama_batch_get_one` only BORROWS the token pointer, so the batch must be built AND
         // consumed while that storage is alive — hence withUnsafeMutableBufferPointer.
-        func decode(_ toks: inout [llama_token]) -> Bool {
+        //
+        // Returns the raw llama_decode rc (0 = ok, 1 = no free KV slot — cache full, recoverable,
+        // negative = fatal) — NOT collapsed to Bool, so callers can distinguish a graceful
+        // context-limit stop from a genuine failure, mirroring llama_generate.h's contract.
+        func decode(_ toks: inout [llama_token]) -> Int32 {
             toks.withUnsafeMutableBufferPointer {
-                llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count))) == 0
+                llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count)))
             }
         }
 
@@ -239,7 +243,18 @@ public actor LlamaEngine: InferenceEngine {
             cachedTokens = []
         }
         var toPrefill = Array(newTokens[plan.decodeFrom...])
-        if !decode(&toPrefill) {
+        var prefillRC = decode(&toPrefill)
+        if prefillRC == 1 && plan.decodeFrom > 0 {
+            // Cache full with the reused prefix in play — drop reuse and reprefill the whole
+            // turn fresh (mirrors llama_generate.h:83-90).
+            llama_memory_clear(llama_get_memory(context), true)
+            cachedTokens = []
+            toPrefill = newTokens
+            prefillRC = decode(&toPrefill)
+        }
+        if prefillRC != 0 {
+            llama_memory_clear(llama_get_memory(context), true)
+            cachedTokens = []
             continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
             return
         }
@@ -252,6 +267,10 @@ public actor LlamaEngine: InferenceEngine {
         let thermalSampleInterval = 32
 
         var produced = 0
+        var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
+                                      // piece has been yielded, INCLUDING the current token's (checked
+                                      // below only after this token's own yield, same ordering as the
+                                      // C++ `out += piece` happening before the fatal check).
         while produced < options.maxTokens {
             if cancelState.withLock({ $0 }) { break }   // interrupted by a switch/cancel (M3)
             if produced % thermalSampleInterval == 0,
@@ -262,13 +281,23 @@ public actor LlamaEngine: InferenceEngine {
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
 
             let piece = tokenToPiece(next)
-            if !piece.isEmpty { continuation.yield(piece) }
+            if !piece.isEmpty {
+                continuation.yield(piece)
+                yieldedAnyText = true
+            }
             produced += 1
 
             var one = [next]                               // feed the token back (alive during decode)
-            if !decode(&one) {
-                continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
-                return
+            let feedbackRC = decode(&one)
+            if feedbackRC != 0 {
+                // Code 1 mid-stream = context filled while generating THIS reply — graceful stop,
+                // not a failure (mirrors llama_generate.h:126-132). A fatal (negative) code with
+                // nothing produced yet IS a failure; with partial output already yielded, keep it.
+                if feedbackRC != 1 && !yieldedAnyText {
+                    continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
+                    return
+                }
+                break
             }
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }

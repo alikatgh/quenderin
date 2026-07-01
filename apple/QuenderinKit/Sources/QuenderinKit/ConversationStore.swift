@@ -17,7 +17,11 @@ public struct ConversationStore: Sendable {
     /// not an error (first launch, or a cleared chat).
     public func decode(_ data: Data) throws -> [ChatMessage] {
         guard !data.isEmpty else { return [] }
-        return try JSONDecoder().decode([StoredMessage].self, from: data).map(\.chatMessage)
+        // Drop rows with an unparseable role rather than coercing to `.assistant` — coercing
+        // would silently relabel the speaker and replay it as "Assistant:" into
+        // `ConversationContext.build()` on the next turn. Matches Kotlin `ConversationStore`,
+        // which drops the same row via `mapNotNull`.
+        return try JSONDecoder().decode([StoredMessage].self, from: data).compactMap(\.chatMessage)
     }
 
     /// On-disk shape — role + text only. Message ids are *view* identity, regenerated on
@@ -32,8 +36,8 @@ public struct ConversationStore: Sendable {
             text = message.text
         }
 
-        var chatMessage: ChatMessage {
-            ChatMessage(role: ChatMessage.Role(rawValue: role) ?? .assistant, text: text)
+        var chatMessage: ChatMessage? {
+            ChatMessage.Role(rawValue: role).map { ChatMessage(role: $0, text: text) }
         }
     }
 }

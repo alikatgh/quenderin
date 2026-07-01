@@ -43,6 +43,26 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
+- **Cross-platform "twin" parity gap.** Android (Kotlin) and iOS (Swift) ship parallel implementations of
+  the same feature — the recurring real bug shape is one platform having a check/fix/recoverable-error-path
+  the other lacks (an "already downloaded" fast path that skips integrity verification on one platform but
+  not the other; a `llama_decode` return code the C++ loop treats as recoverable but the Swift loop treats
+  as fatal; a JSON parser that reads nested keys on one platform but only top-level on the other; a
+  file-decode that drops an unparseable row on one platform but silently mislabels it on the other). When
+  auditing either platform, always read its twin's equivalent function side-by-side. (2026-07-01 mobile
+  bug review, findings #1/#2/#3/#9)
+- **`#if canImport(X)` silently un-verifies a `swift build`/`swift test` pass.** If `X` isn't linked in the
+  current environment, the compiler skips that block entirely — a syntax/type error inside it will NOT
+  surface as a build failure, so "build succeeded" is not proof the edited code is even valid. Check for
+  guard blocks around the edited lines before trusting a green build; if real verification matters, actually
+  link the dependency (`QuenderinKit/Package.swift`'s `QUENDERIN_LLAMA_DIR` route: build llama.cpp locally
+  with cmake, then `QUENDERIN_LLAMA_DIR=<dir> swift build` compiles the real path). (2026-07-01 mobile bug
+  review, finding #2)
+- **Re-deriving a value via lookup instead of using the parameter already holding it.** `ModelCatalog.entry(id:
+  model.id)?.sha256` instead of just `model.sha256` — works for real catalog entries (same value either way)
+  but silently returns nil (skipping a security check) for any entry not in the static catalog. When a
+  value is already in scope as a parameter, use it directly; a lookup-by-id reintroduces a "not found" failure
+  mode the direct value never had. (2026-07-01 mobile bug review, finding #1 self-correction)
 - **Hand-rolled unescaper vs a real JSON parser (twin drift).** One platform parses with a JSON lib,
   its twin hand-extracts string values — the hand-rolled side silently drops `\uXXXX` / `\r` / `\b` /
   `\f` (mangling non-ASCII + emoji, e.g. `café` → `cafu00e9`) while the lib decodes them. Decode
@@ -220,6 +240,66 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-01 — Full mobile bug review (6 subsystems, Android+iOS): 9 confirmed, 9 fixed. See
+  `docs/audits/2026-07-01-quenderin-mobile-bug-review.md` for full details of each. Method: per-subsystem
+  hunt → dual-lens adversarial verify → bug-fixer applies fix, then manually re-verified every fix myself
+  (compile + full test suite both platforms, including linking real llama.cpp via `QUENDERIN_LLAMA_DIR` to
+  actually type-check the `#if canImport(llama)` block) rather than trusting each fixer's self-report.
+
+- 2026-07-01 — iOS `OnboardingModel.install()` skipped the C3 integrity gate on an already-existing model
+  file (high). Symptom: a file present at `destination` loaded straight into the engine with zero GGUF-magic
+  or sha256 check. Fix: re-run `ModelIntegrity.verify` before trusting a pre-existing file; on failure,
+  delete + fall through to a real download. Caught during fix: it read the hash via
+  `ModelCatalog.entry(id:)?.sha256` instead of the `model.sha256` parameter already in scope — fixed to use
+  the parameter directly (see pattern above).
+
+- 2026-07-01 — iOS decode loop treated a recoverable `llama_decode` rc==1 (KV cache full) as fatal (high).
+  Symptom: a long chat that fills context throws and drops the whole reply on iOS; Android's shared C++ loop
+  already special-cased this. Fix: return the raw rc from `decode()`, retry a full reprefill on cache-full
+  during prefill, and treat cache-full mid-generation as a graceful stop (keep partial output) — mirrors
+  `llama_generate.h`. Also fixed the fixer's own regression: the "was anything produced" check used a raw
+  token counter instead of tracking non-empty yielded text, so it could still misfire on the very first token.
+
+- 2026-07-01 — Android's JSON key extraction for agent tool-calls ignored nesting (high, parity). Symptom:
+  `{"reasoning":{"tool":"x"},"final":true}` — Android's flat regex could pick up a key buried in a nested
+  object, while iOS's `JSONSerialization` only reads top-level keys, so the two platforms could choose a
+  different tool/answer for identical model output. Fix: depth-tracking scan in `extractString`, matching a
+  `"key":` pair only at depth==1 (same brace/bracket walk `firstJsonObject` already does).
+
+- 2026-07-01 — Android tab switch silently cancelled in-flight Chat/Agent work (high, parity). Symptom:
+  send a message, switch tabs, switch back — reply never arrives. Cause: `MainTabs.kt`'s single-slot
+  `when (tab)` tore down the inactive screen's composable subtree, cancelling its
+  `rememberCoroutineScope()`-launched coroutine; iOS's `TabView` keeps all tabs alive. Fix: keep all three
+  tabs always composed, alpha/zIndex-hide the inactive ones, swallow their touch input.
+
+- 2026-07-01 — Android `DownloadStore` never persisted across `WorkManager` worker runs (medium). Symptom:
+  the store's own doc comment promises resume state "survives the app being killed," but
+  `ModelDownloadWorker` always constructed a fresh empty store and never wired `onChange` to disk — the
+  `.part` file resume itself worked, but any UI querying progress-after-relaunch saw nothing. Fix: load/save
+  a tab-delimited snapshot to `download_store.txt` in `filesDir`, wired through `onChange`.
+
+- 2026-07-01 — Android native thread count never adjusted after load, even as the device heats mid-reply
+  (medium, parity). Symptom: iOS's in-flight `ThermalGovernor` sheds threads every 32 tokens during
+  generation; Android's equivalent `ThermalGovernor` class existed but was wired nowhere in the JNI/decode
+  path. Fix: `llama_generate.h` polls a `thermalPoll()` callback every 32 tokens;
+  `llama_jni.cpp` bridges it to a new `LlamaEngine.kt.recommendedThreads()` via JNI.
+
+- 2026-07-01 — iOS `ConversationCoordinator.persist()` could write a mid-stream placeholder assistant
+  message to disk (medium, parity). Symptom: navigate away / start a new conversation while a reply is
+  still streaming — the abandoned conversation gets saved ending in an empty/truncated assistant turn.
+  Android's synchronous `send()` can't expose this state at all. Fix: added a `!chat.isGenerating` guard to
+  `persist()`, the single choke point both `open()` and `startNew()` route through.
+
+- 2026-07-01 — Android Agent screen missing the double-tap guard Chat screen already has (medium, parity).
+  Symptom: rapid double-tap on "Run" could enqueue two concurrent `session.run()` calls before `running`
+  flips true via the async `onChange` callback. Fix: set `running = true` synchronously in the onClick
+  handler, mirroring `ChatScreen.kt`'s existing `busy = true` pattern for Send.
+
+- 2026-07-01 — iOS/Android diverge on an unparseable persisted message role (low, parity). Symptom: Android
+  drops a message with a corrupted role byte (`mapNotNull`); iOS coerced it to `.assistant`, keeping it but
+  mislabeled — and a user-authored line replayed to the model as "Assistant:" on the next turn. Fix:
+  `StoredMessage.chatMessage` returns `nil` on an unrecognized role, `decode()` uses `compactMap`.
 
 - 2026-06-30 — Apple model download pegged a CPU core / capped throughput on multi-GB GGUFs (perf HIGH #6).
   Symptom: `for try await byte in bytes { chunk.append(byte) }` over `URLSession.bytes` = one async

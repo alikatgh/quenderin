@@ -73,6 +73,24 @@ class ModelDownloadEngine(
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
         val finalPath = "$destinationDir/${model.filename}"
         val tempPath = "$finalPath.part"
+
+        // Already downloaded — e.g. onboarding re-running after a reinstall, a model switch
+        // falling back via restore(), or a stale WorkManager re-run hitting a finished job.
+        // Verify (not just "file present") before trusting it, same gate a fresh download
+        // passes, so a corrupt/tampered finalPath can't be silently reused (C3). This is the
+        // "returns the existing path without re-fetching" contract OnboardingModel.restore()
+        // already documents — it just wasn't implemented here, so every re-entry re-fetched the
+        // full multi-GB file from byte 0.
+        if (sink.existingSize(finalPath) > 0 && ModelIntegrity.hasGGUFMagic(sink.head(finalPath, 4))) {
+            val expectedSha = model.sha256
+            if (expectedSha == null || sink.sha256(finalPath).equals(expectedSha, ignoreCase = true)) {
+                onProgress(1.0)
+                return finalPath
+            }
+            // Existing file fails integrity — don't trust it; discard and fall through to a real download.
+            sink.truncate(finalPath)
+        }
+
         var existing = sink.existingSize(tempPath)
 
         store.upsert(

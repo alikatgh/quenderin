@@ -102,6 +102,29 @@ final class ConversationCoordinatorTests: XCTestCase {
         XCTAssertEqual(chat.messages.first?.text, "conversation A")
     }
 
+    /// `persist()` mid-stream must not write the trailing placeholder/partial assistant message to
+    /// disk. Pre-fix, `open()`/`startNew()` navigating away while a reply is in flight saved a
+    /// transcript ending in an empty assistant turn (see `ChatModelTests` for the matching
+    /// `isGenerating` spin-wait pattern this borrows).
+    @MainActor
+    func testPersistIsNoOpWhileGenerating() async {
+        let persistence = InMemoryConversationPersistence()
+        let chat = await loadedChat("one two three four five")
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
+
+        let id = coord.summaries.first!.id   // the empty "New conversation" row created on init
+
+        let task = Task { await chat.send("hello") }
+        while chat.messages.count < 2 { await Task.yield() }   // user+placeholder assistant appended
+        XCTAssertTrue(chat.isGenerating)
+
+        coord.open("does-not-exist")   // persist() runs first internally; must not save mid-stream
+        XCTAssertEqual(coord.summaries.first?.title, "New conversation")   // still untitled — "hello" never landed
+        XCTAssertTrue(persistence.loadTranscript(id: id).isEmpty)          // and nothing was written to disk
+
+        await task.value   // let the stream finish so the task doesn't leak past the test
+    }
+
     @MainActor
     func testClearAllWipesHistoryThenStartsFresh() async {
         let persistence = InMemoryConversationPersistence()
