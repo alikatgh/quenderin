@@ -18,8 +18,20 @@
 
 #define LOG_TAG "QuenderinLlama"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 namespace {
+
+// Route llama.cpp/ggml's own logs (model metadata, tensor loading, decode diagnostics) into Android
+// logcat under LOG_TAG — otherwise they go to stderr and are INVISIBLE on-device, which is exactly
+// what made an on-device "chat won't answer" impossible to diagnose. Registered once at backend init.
+void android_llama_log(ggml_log_level level, const char* text, void* /*user*/) {
+    if (!text) return;
+    int prio = level == GGML_LOG_LEVEL_ERROR ? ANDROID_LOG_ERROR
+             : level == GGML_LOG_LEVEL_WARN  ? ANDROID_LOG_WARN
+                                             : ANDROID_LOG_INFO;
+    __android_log_print(prio, LOG_TAG, "%s", text);
+}
 
 // Everything one loaded model needs. The opaque jlong handle is a pointer to this.
 struct LlamaHandle {
@@ -77,6 +89,7 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
     std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
+    LOGI("generate: prompt_bytes=%zu tokens=%zu max_tokens=%d cached=%zu", prompt.size(), newTokens.size(), max_tokens, h->cached.size());
     if (newTokens.empty()) return std::string();
 
     jmethodID on_token = nullptr;
@@ -125,8 +138,10 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         return n;
     };
 
-    return quenderin::generateWithKVReuse(h->ctx, vocab, h->sampler, newTokens, max_tokens,
-                                          h->cached, emit, cancelled, &failed, thermalPoll);
+    std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, h->sampler, newTokens, max_tokens,
+                                                         h->cached, emit, cancelled, &failed, thermalPoll);
+    LOGI("generate: done failed=%d out_bytes=%zu", (int) failed, result.size());
+    return result;
 }
 
 LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
@@ -157,10 +172,14 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,
                                               jint kv_cache_quant, jfloat temperature, jfloat top_p,
                                               jint gpu_layers) {
-    std::call_once(g_backend_once, [] { llama_backend_init(); });   // race-free, once per process (H6)
+    std::call_once(g_backend_once, [] {
+        llama_log_set(android_llama_log, nullptr);   // llama.cpp logs → logcat, before anything loads
+        llama_backend_init();
+    });
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
     if (!path) return 0;   // OOM (H4)
+    LOGI("nativeLoad: path=%s n_ctx=%d threads=%d gpu_layers=%d kv_quant=%d", path, context_tokens, threads, gpu_layers, kv_cache_quant);
 
     llama_model_params mp = llama_model_default_params();
     // GPU layers come from the Kotlin GpuOffloadPlanner (Adreno → all layers, else 0/CPU). A CPU-only
@@ -203,6 +222,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     }
 
     auto* h = new LlamaHandle{model, ctx, sampler};
+    LOGI("nativeLoad: OK, handle=%p n_ctx=%u", (void*) h, cp.n_ctx);
     return reinterpret_cast<jlong>(h);
 }
 
@@ -210,7 +230,7 @@ JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject thiz,
                                                   jlong handle, jstring prompt, jint max_tokens) {
     LlamaHandle* h = as_handle(handle);
-    if (!h) return make_jstring(env, "");
+    if (!h) { LOGE("nativeComplete: null handle (no model loaded)"); return make_jstring(env, ""); }
     const char* p = env->GetStringUTFChars(prompt, nullptr);
     if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
     bool failed = false;
