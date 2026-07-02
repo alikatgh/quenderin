@@ -20,7 +20,7 @@ public struct OnboardingView: View {
                 Text("Quenderin")
                     .font(.title.weight(.semibold))
                     .foregroundStyle(p.onSurface)
-                Text("An AI that runs on your phone — even offline.")
+                Text("An AI that runs on your \(deviceNoun) — even offline.")
                     .font(.subheadline)
                     .foregroundStyle(p.onSurfaceVariant)
                     .multilineTextAlignment(.center)

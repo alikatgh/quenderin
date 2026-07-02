@@ -214,7 +214,7 @@ private struct EmptyChatState: View {
             Text("Ask Quenderin anything")
                 .font(.title3.weight(.medium))
                 .foregroundStyle(palette.onSurface)
-            Text("Runs entirely on your phone. Nothing you type leaves the device.")
+            Text("Runs entirely on your \(deviceNoun). Nothing you type leaves the device.")
                 .font(.subheadline)
                 .foregroundStyle(palette.onSurfaceVariant)
                 .multilineTextAlignment(.center)

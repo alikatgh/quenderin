@@ -1,11 +1,15 @@
-# XcodeGen spec for the Quenderin iOS app target.
+# XcodeGen spec for the Quenderin app targets (iOS + macOS).
 # Generate the project:  brew install xcodegen && cd apple/QuenderinApp && xcodegen
-# Then open Quenderin.xcodeproj in Xcode and Run on a simulator.
+# Then open Quenderin.xcodeproj in Xcode: Run "Quenderin" on a simulator/device, or
+# "QuenderinMac" on this Mac. Both targets share Sources/ and QuenderinKit — the same
+# app, two platforms (llama.xcframework carries a macOS Metal slice, so the Mac build
+# does real on-device inference too).
 name: Quenderin
 options:
   bundleIdPrefix: ai.quenderin
   deploymentTarget:
     iOS: "16.0"
+    macOS: "13.0"
 packages:
   QuenderinKit:
     path: ../QuenderinKit
@@ -27,3 +31,36 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+
+  # The macOS client — same sources, same QuenderinKit, Metal inference via the
+  # xcframework's macos slice. Sandboxed + hardened runtime from day one so the
+  # target is Mac App Store-submittable without settings archaeology later.
+  QuenderinMac:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - PrivacyInfo.xcprivacy
+    dependencies:
+      - package: QuenderinKit
+        product: QuenderinKit
+    settings:
+      base:
+        # Universal purchase with the iOS app: same bundle id on both platforms.
+        PRODUCT_BUNDLE_IDENTIFIER: ai.quenderin.Quenderin
+        PRODUCT_NAME: Quenderin
+        ENABLE_HARDENED_RUNTIME: YES
+    info:
+      path: Info-macOS.plist
+      properties:
+        CFBundleDisplayName: Quenderin
+        LSApplicationCategoryType: public.app-category.productivity
+        # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: Quenderin-macOS.entitlements
+      properties:
+        # App Sandbox is mandatory for the Mac App Store.
+        com.apple.security.app-sandbox: true
+        # Outbound HTTPS for the model download (Hugging Face); nothing inbound.
+        com.apple.security.network.client: true

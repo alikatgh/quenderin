@@ -1,7 +1,8 @@
 import SwiftUI
 import QuenderinKit
 
-/// The Quenderin iOS app entry point.
+/// The Quenderin app entry point — shared by the iOS target and the macOS target
+/// (QuenderinMac), which compile this same file per platform.
 ///
 /// Both seams are now wired to their real implementations:
 ///   - engine: `DefaultInferenceEngine.make()` → real `LlamaEngine` when this build
@@ -33,6 +34,14 @@ struct QuenderinApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(onboarding: onboarding, conversations: conversations, agent: agent)
+                #if os(macOS)
+                // The same SwiftUI flow runs on the Mac (QuenderinMac target); give the window a
+                // chat-app footprint instead of the tiny fit-to-content default.
+                .frame(minWidth: 640, minHeight: 560)
+                #endif
         }
+        #if os(macOS)
+        .defaultSize(width: 860, height: 700)
+        #endif
     }
 }

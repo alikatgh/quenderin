@@ -90,7 +90,7 @@ struct ConversationListView: View {
                 VStack(spacing: 12) {
                     ModelOrb(size: 72)
                     Text("No conversations yet").font(.headline).foregroundStyle(p.onSurface)
-                    Text("Start a chat with \(model.label) — it runs entirely on your phone.")
+                    Text("Start a chat with \(model.label) — it runs entirely on your \(deviceNoun).")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

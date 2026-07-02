@@ -64,6 +64,16 @@ struct QuenderinPalette {
     static func of(_ scheme: ColorScheme) -> QuenderinPalette { scheme == .dark ? dark : light }
 }
 
+/// What this device is called in user-facing copy — the same QuenderinKit UI now ships on the
+/// Mac (QuenderinMac target), where "runs on your phone" reads wrong.
+var deviceNoun: String {
+    #if os(macOS)
+    return "Mac"
+    #else
+    return "phone"
+    #endif
+}
+
 /// Bubble shape: 18pt corners except the "tail" corner (4pt) toward the speaker (iOS 16+ / macOS 13+).
 struct BubbleShape: Shape {
     let mine: Bool
