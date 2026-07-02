@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,73 +72,88 @@ fun SettingsScreen(
     }
     LaunchedEffect(model.id) { reloadModels() }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { pad ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Settings") }) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SectionHeader("Model")
-            LabeledRow("Active model", model.label)
-            LabeledRow("Size", model.sizeLabel)
-            OutlinedButton(onClick = { showPicker = true }) { Text("Change model…") }
-            Caption("Runs entirely on-device via llama.cpp — no cloud.")
+            SettingsGroup("Model") {
+                LabeledRow("Active model", model.label)
+                LabeledRow("Size", model.sizeLabel)
+                OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Change model…")
+                }
+                Caption("Runs entirely on-device via llama.cpp — no cloud.")
+            }
 
-            SectionHeader("Storage")
-            LabeledRow("Saved conversations", conversationCount.toString())
-            Caption("Browse, switch, or clear conversations from the History button in Chat.")
+            SettingsGroup("Storage") {
+                LabeledRow("Saved conversations", conversationCount.toString())
+                Caption("Browse, switch, or clear conversations from the History button in Chat.")
+            }
 
-            SectionHeader("Downloaded models")
-            if (installedModels.isEmpty()) {
-                Caption("No models downloaded yet.")
-            } else {
-                installedModels.forEach { installed ->
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(installed.model.label)
-                            if (installed.isActive) {
-                                Text(
-                                    "Active",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
+            SettingsGroup("Downloaded models") {
+                if (installedModels.isEmpty()) {
+                    Caption("No models downloaded yet.")
+                } else {
+                    installedModels.forEach { installed ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(installed.model.label)
+                                if (installed.isActive) {
+                                    Text(
+                                        "Active",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            Text(
+                                Formatter.formatShortFileSize(context, installed.sizeBytes),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (!installed.isActive) {
+                                TextButton(
+                                    onClick = {
+                                        ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+                                            .delete(installed.id)
+                                        reloadModels()
+                                    },
+                                    modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
+                                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
                             }
                         }
-                        Text(
-                            Formatter.formatShortFileSize(context, installed.sizeBytes),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (!installed.isActive) {
-                            TextButton(
-                                onClick = {
-                                    ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
-                                        .delete(installed.id)
-                                    reloadModels()
-                                },
-                                modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
-                            ) { Text("Delete") }
-                        }
                     }
+                    LabeledRow("Total on device", Formatter.formatShortFileSize(context, totalModelBytes))
                 }
-                LabeledRow("Total on device", Formatter.formatShortFileSize(context, totalModelBytes))
+                Caption("Delete a model to free space — the active model is protected.")
             }
-            Caption("Delete a model to free space — the active model is protected.")
 
-            SectionHeader("Privacy & support")
-            Caption(SupportContact.AI_DISCLAIMER)
-            Button(onClick = {
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportContact.PRIVACY_POLICY_URL)))
-                }
-            }) { Text("Privacy Policy") }
-            OutlinedButton(onClick = {
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${SupportContact.REPORT_EMAIL}")))
-                }
-            }) { Text("Contact support") }
+            SettingsGroup("Privacy & support") {
+                Caption(SupportContact.AI_DISCLAIMER)
+                Button(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportContact.PRIVACY_POLICY_URL)))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Privacy Policy") }
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${SupportContact.REPORT_EMAIL}")))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Contact support") }
+            }
 
             Caption(
                 "Quenderin runs entirely on your device. No account, no cloud, no tracking — once a " +
@@ -197,9 +213,28 @@ private fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> U
     }
 }
 
+/** A titled settings section: a small primary-tinted label above a rounded surface card holding the rows. */
 @Composable
-private fun SectionHeader(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+private fun SettingsGroup(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = QuenderinShapes.card,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
+        }
+    }
 }
 
 @Composable
