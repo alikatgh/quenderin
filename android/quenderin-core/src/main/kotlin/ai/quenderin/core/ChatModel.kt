@@ -40,9 +40,10 @@ class ChatModel(
         require(trimmed.isNotEmpty()) { "Message is empty" }
         _messages += ChatMessage(Role.USER, trimmed)
         emit()
-        // Prompt = system prompt + prior history within the context-window budget, so the assistant
-        // remembers earlier turns (not just this line). Build it BEFORE the placeholder is appended.
-        val prompt = context.build(_messages)
+        // The budgeted history (system prompt + recent turns) — passed STRUCTURED to the engine so it can
+        // format with the model's own chat template (early-stop + higher quality). Compute BEFORE the
+        // placeholder is appended so it isn't included in the prompt.
+        val history = context.windowedHistory(_messages)
 
         // Stream the reply into a placeholder assistant message so it appears token-by-token instead of
         // the UI sitting blank for the whole (multi-second) generation — the difference between the user
@@ -51,7 +52,7 @@ class ChatModel(
         _messages += ChatMessage(Role.ASSISTANT, "")
         emit()
         val sb = StringBuilder()
-        val reply = engine.complete(prompt) { piece ->
+        val reply = engine.completeChat(context.systemPrompt, history) { piece ->
             sb.append(piece)
             _messages[placeholderIndex] = ChatMessage(Role.ASSISTANT, sb.toString())
             emit()

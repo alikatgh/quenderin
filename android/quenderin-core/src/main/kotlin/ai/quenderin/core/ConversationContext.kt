@@ -28,7 +28,12 @@ class ConversationContext(
      * fit the budget (oldest dropped first; the latest turn is always kept, even if it alone
      * exceeds the budget — we never silently drop the message the user just sent).
      */
-    fun build(history: List<ChatMessage>): String {
+    /**
+     * The most recent turns that fit the history budget (oldest dropped first; the latest turn is always
+     * kept). This is the context-window trimming, WITHOUT the "User:/Assistant:" flattening — so a
+     * chat-template-aware engine ([LlamaEngine]) can format the kept turns with the model's own template.
+     */
+    fun windowedHistory(history: List<ChatMessage>): List<ChatMessage> {
         val kept = ArrayList<ChatMessage>()
         var used = 0
         for (message in history.asReversed()) {              // newest → oldest
@@ -41,7 +46,11 @@ class ConversationContext(
             }
         }
         kept.reverse()                                       // restore chronological order
+        return kept
+    }
 
+    fun build(history: List<ChatMessage>): String {
+        val kept = windowedHistory(history)
         return buildString {
             if (systemPrompt.isNotEmpty()) {
                 append(systemPrompt)

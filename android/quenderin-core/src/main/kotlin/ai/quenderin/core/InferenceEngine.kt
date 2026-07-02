@@ -25,6 +25,24 @@ interface InferenceEngine {
      */
     fun complete(prompt: String, onToken: (String) -> Unit): String = complete(prompt)
 
+    /**
+     * Streaming chat completion from the STRUCTURED conversation (system prompt + turns). A real engine
+     * ([LlamaEngine]) formats this with the model's OWN chat template so the model answers as an assistant
+     * and stops at its end-of-turn token — the difference between a snappy short reply and one that grinds
+     * out `maxTokens` of rambling every time. Default: flatten to the plain "User:/Assistant:" prompt and
+     * stream that, so the mock/scripted engines (and tests) are unchanged.
+     */
+    fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+        val flat = buildString {
+            if (systemPrompt.isNotEmpty()) { append(systemPrompt); append("\n\n") }
+            history.forEach {
+                append(if (it.role == Role.USER) "User: " else "Assistant: ").append(it.text).append("\n")
+            }
+            append("Assistant:")
+        }
+        return complete(flat, onToken)
+    }
+
     /** Best-effort: interrupt an in-flight [complete] (e.g. a model switch or stop button). Must NOT
      *  take the engine's generation lock — it has to signal a generation that already holds it.
      *  Default no-op for engines without interruption (mock, scripted, tests). Audit M3. */
