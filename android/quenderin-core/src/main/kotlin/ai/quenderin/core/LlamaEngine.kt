@@ -118,7 +118,7 @@ class LlamaEngine(
      * Streaming completion: the native side invokes [onToken] per decoded piece and
      * also returns the full text. Lets the Compose layer render tokens as they arrive.
      */
-    fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
+    override fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })

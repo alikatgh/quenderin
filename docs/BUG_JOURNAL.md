@@ -43,6 +43,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
+- **A regex that compiles on the JVM can crash on Android.** Android's regex engine (ICU-backed)
+  rejects things the desktop JVM accepts: the inline `(?U)` flag AND the `UNICODE_CHARACTER_CLASS`
+  compile flag both throw on Android (`PatternSyntaxException` / `ExceptionInInitializerError`) but pass
+  on the JVM where the pure-core unit tests run — so a regex bug ships invisibly and crashes only
+  on-device. For Unicode-aware word boundaries use lookarounds over `[\p{L}\p{N}_]` (supported on both),
+  never `(?U)`/`UNICODE_CHARACTER_CLASS`. More broadly: a "pure core" JVM test is NOT a substitute for
+  running the code on an actual Android runtime — reproduce on an arm64 emulator. (SafetyBlocklist crash)
+- **"Not answering" can be a render-time CRASH, not a generation failure.** The reply generated fine
+  (`generate: done failed=0`), but rendering the assistant bubble ran `isFlagged` → the crashing regex →
+  the app died the instant the reply appeared. Symptom "no reply" ≠ "generation broke"; check the
+  render/format path (and route native logs to logcat so you can see `generate` succeeded). (SafetyBlocklist crash)
+- **Non-streaming chat feels broken even when it works.** A blocking `complete()` shows nothing for the
+  whole multi-second generation, then dumps the reply — indistinguishable from "not answering". Stream
+  tokens into a placeholder message (per-token `onToken` → emit) so the reply builds live. (android chat streaming)
 - **Strict-prefix KV reuse silently dies on a front-drop.** Reusing the KV cache only when it's a strict
   *prefix* of the new prompt breaks the instant `ConversationContext` drops the OLDEST turn (budget full):
   the prompt becomes `sys + [t2..tN]` vs the cached `sys + [t1..t_{N-1}]`, the common prefix collapses to
@@ -253,6 +267,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-02 — Android chat "never answers" = a render-time regex CRASH (the real root cause).
+  Symptom: send a message, no reply ever (app silently dies). Cause: `SafetyBlocklist` used `(?U)\b…\b`;
+  the `(?U)` inline flag compiles on the desktop JVM (pure-core tests passed) but throws on Android's
+  regex engine, so rendering ANY assistant bubble (isFlagged → isBlocked) crashed the app right as the
+  reply appeared. Fix: Unicode boundary via `(?<![\p{L}\p{N}_])…(?![…])` lookarounds (Android-safe).
+  Reproduced on an arm64 emulator (JVM tests couldn't catch it). Also made Android chat STREAM tokens
+  (ChatModel placeholder + onToken) so a reply builds live instead of a long blank blocking wait.
 
 - 2026-07-01 — KV-cache reuse cliff → context-shifting (perf; branch `perf/kv-context-shift`, NOT yet merged).
   Symptom: strict-prefix-only KV reuse (`KVCacheReuse` + `generateWithKVReuse`) fell to zero the moment

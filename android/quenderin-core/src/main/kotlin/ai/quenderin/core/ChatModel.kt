@@ -40,10 +40,25 @@ class ChatModel(
         require(trimmed.isNotEmpty()) { "Message is empty" }
         _messages += ChatMessage(Role.USER, trimmed)
         emit()
-        // Prompt = system prompt + prior history within the context-window budget, so the
-        // assistant remembers earlier turns (not just this line).
-        val reply = engine.complete(context.build(_messages))
-        _messages += ChatMessage(Role.ASSISTANT, reply)
+        // Prompt = system prompt + prior history within the context-window budget, so the assistant
+        // remembers earlier turns (not just this line). Build it BEFORE the placeholder is appended.
+        val prompt = context.build(_messages)
+
+        // Stream the reply into a placeholder assistant message so it appears token-by-token instead of
+        // the UI sitting blank for the whole (multi-second) generation — the difference between the user
+        // seeing "it's typing…" vs. concluding "it's not answering at all". Mirrors iOS `ChatModel`.
+        val placeholderIndex = _messages.size
+        _messages += ChatMessage(Role.ASSISTANT, "")
+        emit()
+        val sb = StringBuilder()
+        val reply = engine.complete(prompt) { piece ->
+            sb.append(piece)
+            _messages[placeholderIndex] = ChatMessage(Role.ASSISTANT, sb.toString())
+            emit()
+        }
+        // Settle on the authoritative full text (covers the non-streaming fallback, where onToken never
+        // fired and the placeholder is still empty).
+        _messages[placeholderIndex] = ChatMessage(Role.ASSISTANT, reply)
         emit()
         return reply
     }

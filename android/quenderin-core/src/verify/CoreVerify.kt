@@ -215,7 +215,10 @@ fun main() {
     check("chat returns the engine reply", reply == "Running on-device.")
     check("chat transcript is user then assistant",
         chat.messages.map { it.role } == listOf(Role.USER, Role.ASSISTANT))
-    check("chat emitted after each append", sizes == listOf(1, 2))
+    // send() now streams into a placeholder: emit after the user msg (1), after the assistant
+    // placeholder is appended (2), then after it settles to the final text (2). A real streaming
+    // engine adds one emit per token in between; the mock (non-streaming fallback) does not.
+    check("chat emits user, assistant placeholder, then settle", sizes == listOf(1, 2, 2))
     check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
 
     // --- ConversationContext (chat memory + context-window budgeting; twin of Swift) ---

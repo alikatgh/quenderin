@@ -16,6 +16,15 @@ interface InferenceEngine {
     /** The full completion for a prompt. */
     fun complete(prompt: String): String
 
+    /**
+     * Streaming completion: [onToken] is invoked with each decoded piece as it's produced, and the
+     * full text is also returned. This is what lets a reply appear LIVE in the chat instead of the UI
+     * sitting blank for the whole (multi-second) generation — the difference between "it's typing" and
+     * "it's not answering". Default: fall back to the blocking [complete] (mock/scripted don't stream);
+     * `LlamaEngine` overrides it with the real per-token JNI callback.
+     */
+    fun complete(prompt: String, onToken: (String) -> Unit): String = complete(prompt)
+
     /** Best-effort: interrupt an in-flight [complete] (e.g. a model switch or stop button). Must NOT
      *  take the engine's generation lock — it has to signal a generation that already holds it.
      *  Default no-op for engines without interruption (mock, scripted, tests). Audit M3. */
