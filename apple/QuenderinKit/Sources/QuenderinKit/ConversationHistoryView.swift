@@ -1,15 +1,15 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// The Chat tab: the live streaming chat, plus a History button (browse/switch) and a New-chat
-/// button. Persists the conversation when each turn finishes, so it survives relaunch. Wraps
-/// `ChatView` so that screen stays a pure streaming view. Bound to `ConversationCoordinator`.
+/// The Chat tab: a WhatsApp-style two-level flow. Lands on the conversation LIST; tapping a row (or the
+/// "+") pushes the open CONVERSATION (the streaming `ChatView` + its toolbar), and the system back button
+/// returns to the list. Bound to `ConversationCoordinator`. Twin of Android's `ChatTab`.
 public struct ChatHomeView: View {
     @ObservedObject private var coordinator: ConversationCoordinator
     @ObservedObject private var chat: ChatModel
     private let model: ModelEntry
     private let onSelectModel: (ModelEntry) -> Void
-    @State private var showHistory = false
+    @State private var showConversation = false
     @State private var showProfile = false
     @Environment(\.colorScheme) private var scheme
 
@@ -21,111 +21,114 @@ public struct ChatHomeView: View {
     }
 
     public var body: some View {
-        let p = QuenderinPalette.of(scheme)
         NavigationStack {
-            ChatView(model: chat)
-                .inlineNavTitle()
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        Button { showHistory = true } label: {
-                            Label("History", systemImage: "clock.arrow.circlepath")
-                        }
-                    }
-                    // Tappable model name (twin of Android's tappable chat header) → the model profile.
-                    ToolbarItem(placement: .principal) {
-                        Button { showProfile = true } label: {
-                            VStack(spacing: 1) {
-                                Text(model.label)
-                                    .font(.headline)
-                                    .foregroundStyle(p.onSurface)
-                                    .lineLimit(1)
-                                HStack(spacing: 4) {
-                                    Circle().fill(p.status).frame(width: 6, height: 6)
-                                    Text("on-device · private").font(.caption2).foregroundStyle(p.statusText)
-                                }
+            ConversationListView(
+                coordinator: coordinator,
+                model: model,
+                onOpen: { id in coordinator.open(id); showConversation = true },
+                onNew: { coordinator.startNew(); showConversation = true }
+            )
+            .navigationDestination(isPresented: $showConversation) {
+                conversationDetail
+            }
+        }
+        // Persist when leaving the open conversation (back to the list), so the list reflects it.
+        .onChange(of: showConversation) { open in
+            if !open { coordinator.persist() }
+        }
+    }
+
+    @ViewBuilder
+    private var conversationDetail: some View {
+        let p = QuenderinPalette.of(scheme)
+        ChatView(model: chat)
+            .inlineNavTitle()
+            .toolbar {
+                // Tappable model name (twin of Android's tappable chat header) → the model profile.
+                ToolbarItem(placement: .principal) {
+                    Button { showProfile = true } label: {
+                        VStack(spacing: 1) {
+                            Text(model.label).font(.headline).foregroundStyle(p.onSurface).lineLimit(1)
+                            HStack(spacing: 4) {
+                                Circle().fill(p.status).frame(width: 6, height: 6)
+                                Text("on-device · private").font(.caption2).foregroundStyle(p.statusText)
                             }
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("About \(model.label)")
                     }
-                    ToolbarItem(placement: .primaryAction) {
-                        Button { coordinator.startNew() } label: {
-                            Label("New chat", systemImage: "square.and.pencil")
-                        }
-                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("About \(model.label)")
                 }
-                .sheet(isPresented: $showHistory) {
-                    ConversationHistoryView(coordinator: coordinator) { showHistory = false }
+                ToolbarItem(placement: .primaryAction) {
+                    Button { coordinator.startNew() } label: { Label("New chat", systemImage: "square.and.pencil") }
                 }
-                .sheet(isPresented: $showProfile) {
-                    ModelProfileView(model: model, onSelectModel: onSelectModel)
-                }
-                // Persist when a turn finishes (isGenerating falls), not on every streamed token.
-                .onChange(of: chat.isGenerating) { generating in
-                    if !generating { coordinator.persist() }
-                }
-        }
+            }
+            .sheet(isPresented: $showProfile) {
+                ModelProfileView(model: model, onSelectModel: onSelectModel)
+            }
+            // Persist when a turn finishes (isGenerating falls), not on every streamed token.
+            .onChange(of: chat.isGenerating) { generating in
+                if !generating { coordinator.persist() }
+            }
     }
 }
 
-/// The chat-history list: tap to open a past conversation, swipe to delete. Presented as a sheet
-/// from `ChatHomeView`.
-struct ConversationHistoryView: View {
+/// The WhatsApp-style conversation list — the Chat tab's landing screen. Tap a row to open it, swipe to
+/// delete, the toolbar "+" starts a new chat. Every conversation is with the same on-device model, so
+/// each row is a past SESSION (title from its first message + when it was last active). Twin of Android's
+/// `ConversationListScreen`.
+struct ConversationListView: View {
     @ObservedObject var coordinator: ConversationCoordinator
-    let onDismiss: () -> Void
-    @State private var showClearConfirm = false
+    let model: ModelEntry
+    let onOpen: (String) -> Void
+    let onNew: () -> Void
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if coordinator.summaries.isEmpty {
-                    Text("No conversations yet")
+        let p = QuenderinPalette.of(scheme)
+        Group {
+            if coordinator.summaries.isEmpty {
+                VStack(spacing: 12) {
+                    ModelOrb(size: 72)
+                    Text("No conversations yet").font(.headline).foregroundStyle(p.onSurface)
+                    Text("Start a chat with \(model.label) — it runs entirely on your phone.")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .accessibilityLabel("No conversations yet")
-                        .accessibilityHint("Start chatting on the Chat tab and your conversations will appear here.")
-                } else {
-                    List {
-                        ForEach(coordinator.summaries) { summary in
-                            Button {
-                                coordinator.open(summary.id)
-                                onDismiss()
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(summary.title)
-                                        .lineLimit(1)
-                                        .foregroundStyle(.primary)
-                                    Text(Self.relativeDate(summary.updatedAt))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .accessibilityLabel("Updated " + Self.relativeDateFull(summary.updatedAt))
-                                }
+                        .multilineTextAlignment(.center)
+                    Button(action: onNew) { Label("New chat", systemImage: "square.and.pencil") }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 4)
+                }
+                .padding(40)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(coordinator.summaries) { summary in
+                        Button { onOpen(summary.id) } label: {
+                            HStack(spacing: 12) {
+                                ModelOrb(size: 44)
+                                Text(summary.title).font(.body).foregroundStyle(p.onSurface).lineLimit(1)
+                                Spacer()
+                                Text(Self.relativeDate(summary.updatedAt))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityLabel("Last active " + Self.relativeDate(summary.updatedAt))
                             }
                         }
-                        .onDelete { offsets in
-                            // Snapshot the IDs against the *current* array before deleting — each
-                            // delete() calls refresh() and mutates `summaries`, so deleting by a
-                            // stable id (not a shifting index) is required for correctness.
-                            let ids = offsets.map { coordinator.summaries[$0].id }
-                            for id in ids { coordinator.delete(id) }
-                        }
+                    }
+                    .onDelete { offsets in
+                        // Delete by STABLE id snapshotted before mutation — each delete() refreshes
+                        // `summaries`, so deleting by a shifting index would be wrong.
+                        let ids = offsets.map { coordinator.summaries[$0].id }
+                        for id in ids { coordinator.delete(id) }
                     }
                 }
             }
-            .navigationTitle("History")
-            .toolbar {
-                if !coordinator.summaries.isEmpty {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Clear All", role: .destructive) { showClearConfirm = true }
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDismiss) }
-            }
-            .confirmationDialog("Delete all conversations?", isPresented: $showClearConfirm, titleVisibility: .visible) {
-                Button("Delete All", role: .destructive) { coordinator.clearAll() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This permanently removes every saved conversation from this device.")
+        }
+        .navigationTitle("Chats")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: onNew) { Image(systemName: "square.and.pencil") }
+                    .accessibilityLabel("New chat")
             }
         }
     }
@@ -134,13 +137,6 @@ struct ConversationHistoryView: View {
         let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
-
-    private static func relativeDateFull(_ epochMillis: Int64) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 }

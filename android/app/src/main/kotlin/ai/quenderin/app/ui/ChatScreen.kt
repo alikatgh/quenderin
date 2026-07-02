@@ -9,8 +9,6 @@ import ai.quenderin.core.ChatMessage
 import ai.quenderin.core.ConversationExporter
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
-import ai.quenderin.core.ConversationPersistence
-import ai.quenderin.core.ConversationSummary
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Role
@@ -35,7 +33,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -86,19 +83,20 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun ChatScreen(
-    engine: InferenceEngine,
+    coordinator: ConversationCoordinator,
     model: ModelEntry,
-    persistence: ConversationPersistence,
+    onBack: () -> Unit,
     onSelectModel: (ModelEntry) -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
-    var summaries by remember { mutableStateOf<List<ConversationSummary>>(emptyList()) }
+    val chat = coordinator.chat
+    // The conversation list (ChatTab) owns the coordinator and its `summaries`; this screen only
+    // renders the OPEN conversation, so it just tracks its messages.
+    var messages by remember { mutableStateOf(chat.messages) }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var showHistory by remember { mutableStateOf(false) }
     // Tapping the top-bar name/avatar opens the model "profile" sheet; from there the user can open
     // the model picker to switch models (same picker Settings uses).
     var showProfile by remember { mutableStateOf(false) }
@@ -106,13 +104,9 @@ fun ChatScreen(
     // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (engine not
     // loaded, native decode error) looks identical to "the app is ignoring me". Surface + log it.
     var sendError by remember { mutableStateOf<String?>(null) }
-    val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
-    val chat = coordinator.chat
     LaunchedEffect(coordinator) {
         messages = chat.messages
-        summaries = coordinator.summaries
         chat.onChange = { messages = it }
-        coordinator.onChange = { summaries = it }
     }
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -129,8 +123,8 @@ fun ChatScreen(
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
+            onBack = onBack,
             onTitleClick = { showProfile = true },
-            onHistory = { showHistory = true },
             onNew = { coordinator.startNew() },
             onShare = {
                 val md = ConversationExporter.markdown(messages, model.label)
@@ -213,17 +207,6 @@ fun ChatScreen(
         )
     }
 
-    if (showHistory) {
-        ModalBottomSheet(onDismissRequest = { showHistory = false }) {
-            ConversationHistoryList(
-                summaries = summaries,
-                onOpen = { id -> coordinator.open(id); showHistory = false },
-                onDelete = { id -> coordinator.delete(id) },
-                onClearAll = { coordinator.clearAll(); showHistory = false },
-            )
-        }
-    }
-
     if (showProfile) {
         ModalBottomSheet(onDismissRequest = { showProfile = false }) {
             ModelProfileSheet(
@@ -253,17 +236,25 @@ fun ChatScreen(
 private fun ChatTopBar(
     model: ModelEntry,
     hasMessages: Boolean,
+    onBack: () -> Unit,
     onTitleClick: () -> Unit,
-    onHistory: () -> Unit,
     onNew: () -> Unit,
     onShare: () -> Unit,
 ) {
     val colors = Quenderin.colors
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(start = 4.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Back to the conversation list (WhatsApp: the chat header's back arrow).
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .semantics { contentDescription = "Back to conversations" }
+                    .combinedClickable(onClick = onBack, onLongClick = {}),
+                contentAlignment = Alignment.Center,
+            ) { BackIcon(MaterialTheme.colorScheme.onSurface) }
             // The avatar + name is a tappable "contact" that opens the model profile (like tapping a
             // chat's header in WhatsApp). Ripple + a11y label so it reads as a button.
             Row(
@@ -307,7 +298,6 @@ private fun ChatTopBar(
                     contentAlignment = Alignment.Center,
                 ) { OverflowIcon(MaterialTheme.colorScheme.onSurfaceVariant) }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("History") }, onClick = { menuOpen = false; onHistory() })
                     DropdownMenuItem(text = { Text("New conversation") }, onClick = { menuOpen = false; onNew() })
                     if (hasMessages) {
                         DropdownMenuItem(text = { Text("Share") }, onClick = { menuOpen = false; onShare() })
@@ -541,59 +531,13 @@ private fun OverflowIcon(color: Color) {
     }
 }
 
-/** The chat-history sheet: tap a row to open that conversation, Delete to remove it. */
 @Composable
-private fun ConversationHistoryList(
-    summaries: List<ConversationSummary>,
-    onOpen: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onClearAll: () -> Unit,
-) {
-    Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("History", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            if (summaries.isNotEmpty()) {
-                Text(
-                    "Clear all",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier
-                        .combinedClickable(onClick = onClearAll, onLongClick = {})
-                        .padding(8.dp),
-                )
-            }
-        }
-        if (summaries.isEmpty()) {
-            Text(
-                "No conversations yet",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        } else {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                items(summaries) { summary ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(onClick = { onOpen(summary.id) }, onLongClick = {})
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(summary.title, modifier = Modifier.weight(1f), maxLines = 1, color = MaterialTheme.colorScheme.onSurface)
-                        Text(
-                            "Delete",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier
-                                .combinedClickable(onClick = { onDelete(summary.id) }, onLongClick = {})
-                                .padding(8.dp),
-                        )
-                    }
-                }
-            }
-        }
+private fun BackIcon(color: Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
+        val w = size.width; val h = size.height
+        val sw = 2.2.dp.toPx()
+        // A left-pointing chevron.
+        drawLine(color, androidx.compose.ui.geometry.Offset(w * 0.60f, h * 0.24f), androidx.compose.ui.geometry.Offset(w * 0.34f, h * 0.5f), sw, StrokeCap.Round)
+        drawLine(color, androidx.compose.ui.geometry.Offset(w * 0.34f, h * 0.5f), androidx.compose.ui.geometry.Offset(w * 0.60f, h * 0.76f), sw, StrokeCap.Round)
     }
 }

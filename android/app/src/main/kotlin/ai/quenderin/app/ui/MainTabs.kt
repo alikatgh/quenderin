@@ -1,6 +1,8 @@
 package ai.quenderin.app.ui
 
 import ai.quenderin.core.CalculatorTool
+import ai.quenderin.core.ChatModel
+import ai.quenderin.core.ConversationCoordinator
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.DateCalcTool
 import ai.quenderin.core.EchoTool
@@ -99,7 +101,7 @@ fun MainTabs(
             // The hidden tabs are also removed from touch/a11y focus so they can't intercept input
             // while invisible underneath the active one.
             Box(Modifier.fillMaxSize().tabVisibility(tab == 0)) {
-                ChatScreen(
+                ChatTab(
                     engine = engine,
                     model = model,
                     persistence = conversations,
@@ -121,6 +123,47 @@ fun MainTabs(
                 )
             }
         }
+    }
+}
+
+/**
+ * The Chat tab: a WhatsApp-style two-level flow. Owns the [ConversationCoordinator] (and its live
+ * `summaries`), and switches between the conversation LIST and an open CONVERSATION. Keeping the
+ * coordinator here — above the list/conversation swap — means both views share one source of truth and
+ * survive the swap. Note: leaving an open chat tears down [ChatScreen], so a reply still generating is
+ * cancelled (its partial is persisted on the way out) — acceptable for v1.
+ */
+@Composable
+private fun ChatTab(
+    engine: InferenceEngine,
+    model: ModelEntry,
+    persistence: ConversationPersistence,
+    onSelectModel: (ModelEntry) -> Unit,
+    deepThinking: Boolean,
+    onDeepThinkingChange: (Boolean) -> Unit,
+) {
+    val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
+    var summaries by remember { mutableStateOf(coordinator.summaries) }
+    var inConversation by remember { mutableStateOf(false) }
+    LaunchedEffect(coordinator) { coordinator.onChange = { summaries = it } }
+
+    if (inConversation) {
+        ChatScreen(
+            coordinator = coordinator,
+            model = model,
+            onBack = { coordinator.persist(); inConversation = false },
+            onSelectModel = onSelectModel,
+            deepThinking = deepThinking,
+            onDeepThinkingChange = onDeepThinkingChange,
+        )
+    } else {
+        ConversationListScreen(
+            summaries = summaries,
+            model = model,
+            onOpen = { id -> coordinator.open(id); inConversation = true },
+            onNew = { coordinator.startNew(); inConversation = true },
+            onDelete = { id -> coordinator.delete(id) },
+        )
     }
 }
 
