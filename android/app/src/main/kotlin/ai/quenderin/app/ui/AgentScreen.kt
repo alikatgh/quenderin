@@ -10,7 +10,9 @@ import ai.quenderin.core.SupportContact
 import ai.quenderin.core.userMessage
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +20,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,11 +32,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,11 +43,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,18 +81,32 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     }
     val context = LocalContext.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Agent") },
-                actions = {
-                    val hasContent = steps.isNotEmpty() || answer != null || haltReason != null
-                    TextButton(onClick = { session.clear() }, enabled = !running && hasContent) { Text("Clear") }
-                },
+    val hasContent = steps.isNotEmpty() || answer != null || haltReason != null
+
+    // No nested Scaffold/TopAppBar: this screen already sits inside MainTabs' Scaffold, which applies the
+    // status-bar inset once. A second Scaffold+TopAppBar re-applied it — the big empty band above the
+    // title. A plain titled column avoids that double inset. imePadding() lifts the goal field above the
+    // soft keyboard (twin of ChatScreen); MainTabs consumes the nav-bar inset so the field docks onto the
+    // keyboard with no gap.
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Agent",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
             )
-        },
-    ) { pad ->
-        Column(Modifier.fillMaxSize().padding(pad)) {
+            TextButton(onClick = { session.clear() }, enabled = !running && hasContent) { Text("Clear") }
+        }
+
+        if (!hasContent && !running) {
+            // Centered guidance (twin of chat's centered empty state) — no top-stuck block with a big
+            // empty middle.
+            AgentEmptyState(Modifier.weight(1f))
+        } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -122,59 +141,55 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 if (answer == null && !running) {
                     haltReason?.userMessage?.let { msg -> item { AgentHaltBanner(msg) } }
                 }
-                // First run: show what the agent can do instead of a blank screen.
-                if (steps.isEmpty() && answer == null && haltReason == null && !running) {
-                    item { AgentEmptyState() }
-                }
             }
+        }
 
-            // AI-content disclaimer (Generative-AI content policy).
-            Text(
-                SupportContact.AI_DISCLAIMER,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        // AI-content disclaimer (Generative-AI content policy).
+        Text(
+            SupportContact.AI_DISCLAIMER,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        )
+
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = goal,
+                onValueChange = { goal = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Give the agent a goal") },
+                enabled = !running,
             )
-
-            Row(
-                Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = goal,
-                    onValueChange = { goal = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Give the agent a goal") },
-                    enabled = !running,
-                )
-                Spacer(Modifier.width(8.dp))
-                // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
-                // mirroring chat's Share. The agent's reasoning leaves the device on the user's terms.
-                if (!running && haltReason != null) {
-                    TextButton(onClick = {
-                        session.exportMarkdown()?.let { md ->
-                            val share = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Quenderin agent run")
-                                putExtra(Intent.EXTRA_TEXT, md)
-                            }
-                            runCatching { context.startActivity(Intent.createChooser(share, "Share walkthrough")) }
+            Spacer(Modifier.width(8.dp))
+            // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
+            // mirroring chat's Share. The agent's reasoning leaves the device on the user's terms.
+            if (!running && haltReason != null) {
+                TextButton(onClick = {
+                    session.exportMarkdown()?.let { md ->
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Quenderin agent run")
+                            putExtra(Intent.EXTRA_TEXT, md)
                         }
-                    }) { Text("Share") }
-                    Spacer(Modifier.width(8.dp))
-                }
-                Button(
-                    enabled = !running && goal.isNotBlank(),
-                    onClick = {
-                        val g = goal.trim()
-                        goal = ""
-                        // Set running synchronously on the calling (main) thread so a rapid
-                        // double-tap can't enqueue a second run before IO flips the flag.
-                        running = true
-                        scope.launch(Dispatchers.IO) { session.run(g) }
-                    },
-                ) { Text("Run") }
+                        runCatching { context.startActivity(Intent.createChooser(share, "Share walkthrough")) }
+                    }
+                }) { Text("Share") }
+                Spacer(Modifier.width(8.dp))
             }
+            Button(
+                enabled = !running && goal.isNotBlank(),
+                onClick = {
+                    val g = goal.trim()
+                    goal = ""
+                    // Set running synchronously on the calling (main) thread so a rapid
+                    // double-tap can't enqueue a second run before IO flips the flag.
+                    running = true
+                    scope.launch(Dispatchers.IO) { session.run(g) }
+                },
+            ) { Text("Run") }
         }
     }
 }
@@ -203,26 +218,69 @@ private fun AgentHaltBanner(message: String) {
     }
 }
 
-/** First-run guidance: what to type when the agent transcript is empty, so the screen isn't blank. */
+/**
+ * First-run guidance, centered in the transcript area (twin of chat's centered empty state) with an
+ * on-brand spark focal point so the screen reads as intentional rather than a top-stuck note over a
+ * big empty middle. The examples are deliberately MULTI-STEP — each needs the agent to plan and chain
+ * more than one tool (convert → calculate, date → divide), showcasing agentic work instead of a
+ * single-shot calculation.
+ */
 @Composable
-private fun AgentEmptyState() {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 24.dp)) {
+private fun AgentEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        AgentSparkGlyph()
+        Spacer(Modifier.height(16.dp))
         Text(
-            "Give the agent a goal — it plans, uses tools, and answers. Try:",
+            "Give the agent a multi-step goal",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "It plans, calls tools, and chains the results.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
-        listOf(
-            "What's 18% of 240?",
-            "Convert 5 miles to kilometres",
-            "How many days until 2027-01-01?",
-        ).forEach { example ->
-            Text(
-                "↳ $example",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Spacer(Modifier.height(22.dp))
+        // Examples as a left-aligned list, but the block itself is centered horizontally.
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(
+                "Convert 5 miles to km, then take 20% of that",
+                "Days until 2027-01-01 — and how many weeks?",
+                "18% of 240, then convert that many km to miles",
+            ).forEach { example ->
+                Text(
+                    "↳ $example",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
+    }
+}
+
+/** The 4-point "AI spark" — the filled twin of the Agent nav icon, as the empty-state focal point. */
+@Composable
+private fun AgentSparkGlyph() {
+    val color = MaterialTheme.colorScheme.primary
+    Canvas(Modifier.size(56.dp)) {
+        val s = size.minDimension
+        val cx = s * 0.5f; val cy = s * 0.5f; val r = s * 0.46f; val k = r * 0.16f
+        val p = Path().apply {
+            moveTo(cx, cy - r)
+            quadraticBezierTo(cx + k, cy - k, cx + r, cy)
+            quadraticBezierTo(cx + k, cy + k, cx, cy + r)
+            quadraticBezierTo(cx - k, cy + k, cx - r, cy)
+            quadraticBezierTo(cx - k, cy - k, cx, cy - r)
+            close()
+        }
+        drawPath(p, color)
     }
 }
 

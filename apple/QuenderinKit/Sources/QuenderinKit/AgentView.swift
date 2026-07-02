@@ -94,28 +94,41 @@ public struct AgentView: View {
     }
 }
 
-/// First-run guidance: what to type when the agent transcript is empty, so the screen isn't blank.
+/// First-run guidance with an on-brand spark focal point (twin of Android's `AgentEmptyState`) so the
+/// screen reads as intentional, not blank. The examples are deliberately MULTI-STEP — each needs the
+/// agent to plan and chain more than one tool (convert → calculate, date → divide), showcasing agentic
+/// work instead of a single-shot calculation.
 private struct AgentEmptyState: View {
     private let examples = [
-        "What's 18% of 240?",
-        "Convert 5 miles to kilometres",
-        "How many days until 2027-01-01?",
+        "Convert 5 miles to km, then take 20% of that",
+        "Days until 2027-01-01 — and how many weeks?",
+        "18% of 240, then convert that many km to miles",
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Give the agent a goal — it plans, uses tools, and answers. Try:")
+        VStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 40))
+                .foregroundStyle(.tint)
+            Text("Give the agent a multi-step goal")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            Text("It plans, calls tools, and chains the results.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            ForEach(examples, id: \.self) { example in
-                Label(example, systemImage: "arrow.turn.down.right")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(example)
+                .multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(examples, id: \.self) { example in
+                    Label(example, systemImage: "arrow.turn.down.right")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(example)
+                }
             }
+            .padding(.top, 8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 24)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
     }
 }
 

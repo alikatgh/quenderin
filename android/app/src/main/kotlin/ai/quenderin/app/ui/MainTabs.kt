@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -86,7 +87,12 @@ fun MainTabs(
             }
         },
     ) { pad ->
-        Box(Modifier.fillMaxSize().padding(pad)) {
+        // consumeWindowInsets(pad): the Scaffold reserves the bottom-nav height in `pad`, and a child
+        // that also applies imePadding() would otherwise STACK the two — leaving the composer floating
+        // one nav-bar-height above the keyboard (the "input in the middle" bug). Consuming `pad` here
+        // means a descendant imePadding() computes `ime − navBar`, so the composer docks right onto the
+        // keyboard when it's open and sits above the nav bar when it's closed.
+        Box(Modifier.fillMaxSize().padding(pad).consumeWindowInsets(pad)) {
             // Keep all three tabs composed (alpha-hidden, not torn down) instead of a single-slot
             // `when`, so a rememberCoroutineScope()-launched send/run in Chat or Agent survives a
             // tab switch — matching iOS's TabView, which keeps every tab's Task-launched work alive.
