@@ -47,6 +47,30 @@ public struct SettingsView: View {
     public var body: some View {
         let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
         return List {
+            Section("Speed") {
+                // The model-speed dial: decode speed scales with model SIZE, so this is the one
+                // control that changes how fast replies FEEL. Selecting a preset runs the normal
+                // switch flow (download if needed → load → swap).
+                let choice = SpeedPresets.forDevice(totalRAMGB: HardwareProbe.current().totalRAMGB)
+                let current = choice.preset(for: model.id)
+                Picker("Speed", selection: Binding(
+                    get: { current ?? .quality },
+                    set: { picked in
+                        let target = choice.model(picked)
+                        if target.id != model.id { onSelectModel(target) }
+                    }
+                )) {
+                    Text("Fast").tag(SpeedPreset.fast)
+                    Text("Balanced").tag(SpeedPreset.balanced)
+                    Text("Quality").tag(SpeedPreset.quality)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text(current == nil
+                     ? "Custom model active (\(model.label)) — pick a preset to switch."
+                     : "Fast: \(choice.fast.label) · Balanced: \(choice.balanced.label) · Quality: \(choice.quality.label). Switching downloads the model if needed.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
             Section("Model") {
                 LabeledRow(title: "Active model", value: model.label)
                 LabeledRow(title: "Size", value: model.sizeLabel)

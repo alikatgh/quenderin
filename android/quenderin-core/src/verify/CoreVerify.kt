@@ -946,6 +946,29 @@ fun main() {
             countFor(listOf(2_000_000L, 2_000_000L, 2_000_000L, 2_000_000L)) == 4
     })
 
+    // Speed dial: Fast/Balanced/Quality → catalog models per RAM band; never upside-down.
+    check("SpeedPresets bands map to the right models", run {
+        val phone = SpeedPresets.forDevice(8.0)     // mainstream phone
+        val bigMac = SpeedPresets.forDevice(18.0)   // desktop-class RAM
+        val tiny = SpeedPresets.forDevice(2.0)
+        phone.fast.id == "llama32-1b" && phone.balanced.id == "llama32-3b" && phone.quality.id == "qwen3-4b" &&
+            bigMac.fast.id == "llama32-3b" && bigMac.balanced.id == "qwen3-4b" && bigMac.quality.id == "qwen3-14b" &&
+            tiny.fast.id == "llama32-1b-q2" && tiny.balanced.id == "llama32-1b"
+    })
+    check("SpeedPresets ordering: fast ≤ balanced ≤ quality by footprint", run {
+        listOf(1.0, 2.0, 3.5, 6.0, 8.0, 12.0, 18.0).all { ram ->
+            val c = SpeedPresets.forDevice(ram)
+            c.fast.ramGB <= c.balanced.ramGB && c.balanced.ramGB <= c.quality.ramGB
+        }
+    })
+    check("SpeedPresets.presetFor round-trips and prefers the stronger label on collapsed bands", run {
+        val c = SpeedPresets.forDevice(8.0)
+        val tiny = SpeedPresets.forDevice(2.0)   // balanced == quality here (llama32-1b)
+        c.presetFor(c.fast.id) == SpeedPreset.FAST && c.presetFor(c.quality.id) == SpeedPreset.QUALITY &&
+            c.presetFor("qwen25-coder-7b") == null &&
+            tiny.presetFor(tiny.balanced.id) == SpeedPreset.QUALITY   // quality-first on dup ids
+    })
+
     // Thermal-adaptive threading — hotter device → fewer threads (twin of iOS ThermalThrottleTests).
     check("ThermalThrottle drops threads as the device heats up, never below 1",
         ThermalThrottle.recommendedThreads(ThermalLevel.NOMINAL, 4) == 4 &&

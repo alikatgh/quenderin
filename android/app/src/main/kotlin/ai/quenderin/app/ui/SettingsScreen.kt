@@ -5,7 +5,10 @@ import ai.quenderin.core.FileModelStorage
 import ai.quenderin.core.InstalledModel
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.ModelManager
+import ai.quenderin.core.SpeedPreset
+import ai.quenderin.core.SpeedPresets
 import ai.quenderin.core.SupportContact
+import androidx.compose.foundation.clickable
 import android.content.Intent
 import android.net.Uri
 import android.text.format.Formatter
@@ -90,6 +93,35 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
         )
+        SettingsGroup("Speed") {
+            // The model-speed dial: decode speed scales with model SIZE, so this is the one control
+            // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
+            // (download if needed → load → swap).
+            val totalRamGb = remember {
+                val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+                mi.totalMem / 1_073_741_824.0
+            }
+            val choice = remember(totalRamGb) { SpeedPresets.forDevice(totalRamGb) }
+            val current = choice.presetFor(model.id)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PresetChip("Fast", current == SpeedPreset.FAST, Modifier.weight(1f)) {
+                    if (choice.fast.id != model.id) onSelectModel(choice.fast)
+                }
+                PresetChip("Balanced", current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
+                    if (choice.balanced.id != model.id) onSelectModel(choice.balanced)
+                }
+                PresetChip("Quality", current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
+                    if (choice.quality.id != model.id) onSelectModel(choice.quality)
+                }
+            }
+            Caption(
+                if (current == null) "Custom model active (${model.label}) — pick a preset to switch."
+                else "Fast: ${choice.fast.label} · Balanced: ${choice.balanced.label} · Quality: ${choice.quality.label}. " +
+                    "Switching downloads the model if needed.",
+            )
+        }
+
         SettingsGroup("Model") {
             LabeledRow("Active model", model.label)
             LabeledRow("Size", model.sizeLabel)
@@ -196,6 +228,34 @@ fun SettingsScreen(
                 },
             )
         }
+    }
+}
+
+/**
+ * One segment of the speed dial: a pill that reads selected through COLOR only (brand-tinted fill +
+ * hairline) — geometry identical in both states, per the design rules.
+ */
+@Composable
+private fun PresetChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        shape = QuenderinShapes.pill,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+        modifier = modifier,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp)
+                .fillMaxWidth(),
+        )
     }
 }
 
