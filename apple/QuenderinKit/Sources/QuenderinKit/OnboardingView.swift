@@ -7,6 +7,7 @@ import SwiftUI
 public struct OnboardingView: View {
     @ObservedObject private var model: OnboardingModel
     @Environment(\.colorScheme) private var scheme
+    @State private var showPicker = false
 
     public init(model: OnboardingModel) {
         self.model = model
@@ -35,6 +36,23 @@ public struct OnboardingView: View {
         }
         .task {
             if case .probing = model.phase { await model.start() }
+        }
+        // The escape hatch the recommendation screen offers: the full fitness-aware catalog, so a
+        // user who can't (or won't) take the recommended download picks a smaller model instead.
+        .sheet(isPresented: $showPicker) {
+            NavigationStack {
+                ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB) { picked in
+                    showPicker = false
+                    model.beginInstall(picked)
+                }
+                .navigationTitle("Choose a model")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showPicker = false } }
+                }
+            }
+            #if os(macOS)
+            .frame(minWidth: 480, minHeight: 440)
+            #endif
         }
     }
 
@@ -93,10 +111,23 @@ public struct OnboardingView: View {
                         Text(fitness.message).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
                     }
                 }
-                Button("Download & continue") { Task { await model.install(entry) } }
+                // Refuse to start a download that can't fit — and say so BEFORE the tap, not at 95%.
+                let storage = model.storageCheck(for: entry)
+                if !storage.hasRoom {
+                    Text(storage.message)
+                        .font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
+                }
+                Button("Download & continue") { model.beginInstall(entry) }
                     .buttonStyle(.borderedProminent)
                     .tint(p.primary)
+                    .disabled(!storage.hasRoom)
                     .padding(.top, 4)
+                // The recommendation is a default, not a cage: full catalog one tap away (smaller
+                // download, different family, coding model, …).
+                Button("Choose a different model…") { showPicker = true }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(p.primary)
             }
 
         case let .downloading(entry, _):
@@ -105,6 +136,13 @@ public struct OnboardingView: View {
                 Text(entry.label).font(.headline).foregroundStyle(p.onSurface)
                 Text("\(entry.sizeLabel) · one time, then it's yours offline")
                     .font(.caption).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
+                // A 9 GB download must never be a trap: cancel returns to the recommendation
+                // screen (the partial is discarded by the next attempt's integrity gate).
+                Button("Cancel") { model.cancelInstall() }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .padding(.top, 6)
             }
 
         case let .loading(entry):
@@ -122,6 +160,12 @@ public struct OnboardingView: View {
             VStack(spacing: 8) {
                 Text("Couldn't get set up").font(.headline).foregroundStyle(p.onSurface)
                 Text(message).font(.caption).foregroundStyle(.red).multilineTextAlignment(.center)
+                // Failure must not be a dead end: back to the recommendation (pick a smaller
+                // model, retry after freeing space / regaining network).
+                Button("Back to model choice") { Task { await model.start() } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(p.primary)
+                    .padding(.top, 4)
             }
         }
     }

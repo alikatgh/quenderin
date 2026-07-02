@@ -35,6 +35,10 @@ public final class OnboardingModel: ObservableObject {
     /// landing on the wrong model. The UI can also bind this to disable the install/switch control.
     @Published public private(set) var isInstalling = false
 
+    /// The in-flight install, kept so `cancelInstall()` can abort a multi-GB download the user
+    /// regrets (wrong model, metered bandwidth, not enough disk).
+    private var installTask: Task<Void, Never>?
+
     public init(
         downloader: ModelDownloader,
         engine: InferenceEngine,
@@ -87,6 +91,26 @@ public final class OnboardingModel: ObservableObject {
         #endif
     }
 
+    /// Fire-and-track wrapper around [install]: runs it in a stored Task so `cancelInstall()` can
+    /// abort it mid-download. The UI's entry point (onboarding buttons, Settings model switch).
+    public func beginInstall(_ model: ModelEntry) {
+        guard !isInstalling else { return }
+        installTask = Task { await install(model) }
+    }
+
+    /// Abort an in-flight install. A cancelled DOWNLOAD returns to the recommendation screen
+    /// (nothing was committed; a partial file is re-verified and discarded on the next attempt) —
+    /// it is NOT surfaced as a failure.
+    public func cancelInstall() {
+        installTask?.cancel()
+    }
+
+    /// Will this model's download fit on the volume that holds our models? Exposed for the UI so
+    /// "not enough space" shows BEFORE a doomed multi-GB download starts, not at 95%.
+    public func storageCheck(for model: ModelEntry) -> StorageCheckResult {
+        DiskSpace.check(model: model, availableBytes: DiskSpace.availableBytes(at: modelsDir))
+    }
+
     /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH
     /// whose new model fails to load, the previously-working model is restored (H1).
     public func install(_ model: ModelEntry) async {
@@ -114,6 +138,13 @@ public final class OnboardingModel: ObservableObject {
                 phase = .failed("\(model.label) has no valid download URL.")
                 return
             }
+            // Disk preflight: refuse to START a download that cannot finish — a 9 GB pull that
+            // dies at 95% full is exactly the failure DiskSpace exists to prevent.
+            let storage = storageCheck(for: model)
+            guard storage.hasRoom else {
+                phase = .failed(storage.message)
+                return
+            }
             phase = .downloading(model, progress: 0)
             do {
                 // Consumed sequentially on the main actor → ordered phase updates.
@@ -126,7 +157,24 @@ public final class OnboardingModel: ObservableObject {
                     }
                 }
             } catch {
-                phase = .failed(Self.describe(error))
+                // A user cancel is a change of mind, not a failure: return to the recommendation
+                // screen (start() is idempotent). The partial file is re-verified — and discarded —
+                // by the integrity gate on the next install attempt.
+                if error is CancellationError || Task.isCancelled {
+                    await start()
+                } else if case DownloadError.cancelled = error {
+                    await start()
+                } else {
+                    phase = .failed(Self.describe(error))
+                }
+                return
+            }
+            // When the CONSUMING task is cancelled, AsyncThrowingStream iteration ends WITHOUT
+            // throwing (onTermination cancels the URLSession task) — so a cancelled download can
+            // reach here with no file on disk. Don't march into engine.load on a missing file;
+            // treat it as the cancel it is.
+            if Task.isCancelled || !FileManager.default.fileExists(atPath: destination.path) {
+                await start()
                 return
             }
         }

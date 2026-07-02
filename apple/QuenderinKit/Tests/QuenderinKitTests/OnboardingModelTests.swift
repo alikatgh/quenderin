@@ -223,6 +223,57 @@ final class OnboardingModelTests: XCTestCase {
         XCTAssertEqual(loaded, a.id, "the concurrent second install must be ignored; the first model wins")
         XCTAssertFalse(model.isInstalling)
     }
+
+    func testCancelDuringDownloadReturnsToRecommendation() async throws {
+        // Regression: cancelling the CONSUMING task makes AsyncThrowingStream iteration end
+        // WITHOUT throwing — install() used to march on into engine.load against a file that was
+        // never written and dead-end in .failed("Model file is missing…"). A user cancel must land
+        // back on .recommended instead. (Caught live on the macOS client's 9 GB download.)
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let model = OnboardingModel(downloader: EndlessDownloader(), engine: MockInferenceEngine(), modelsDir: dir)
+        let entry = ModelCatalog.smallest
+
+        model.beginInstall(entry)
+        for _ in 0..<200 {                                   // wait for the download to be in flight
+            if case .downloading = model.phase { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        guard case .downloading = model.phase else {
+            return XCTFail("expected .downloading, got \(model.phase)")
+        }
+
+        model.cancelInstall()
+        for _ in 0..<200 {                                   // the cancel must NOT surface as .failed
+            if case .recommended = model.phase { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        guard case .recommended = model.phase else {
+            return XCTFail("expected .recommended after cancel, got \(model.phase)")
+        }
+        XCTAssertFalse(model.isInstalling)
+    }
+}
+
+/// Downloader whose stream yields progress until the consuming task cancels, then ends WITHOUT
+/// throwing — the exact shape a real cancelled `AsyncThrowingStream` takes (onTermination stops the
+/// URLSession task; iteration just returns nil). Never writes the destination file.
+private struct EndlessDownloader: ModelDownloader {
+    func download(from url: URL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let work = Task {
+                var fraction = 0.0
+                while !Task.isCancelled {
+                    continuation.yield(.progress(fraction))
+                    fraction = min(0.5, fraction + 0.01)
+                    try? await Task.sleep(nanoseconds: 10_000_000)
+                }
+                continuation.finish()   // ends, no throw — like a real cancelled stream
+            }
+            continuation.onTermination = { _ in work.cancel() }
+        }
+    }
 }
 
 /// Engine whose `load` blocks until `release()` — lets a test hold an `install` mid-flight and fire a

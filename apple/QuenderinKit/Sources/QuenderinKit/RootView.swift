@@ -21,7 +21,7 @@ public struct RootView: View {
                 TabView {
                     ChatHomeView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Same install flow the Settings picker uses: download (if needed) → load → swap.
-                        Task { await onboarding.install(picked) }
+                        onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                     if let agent {
@@ -30,7 +30,7 @@ public struct RootView: View {
                     }
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Reuse the onboarding install flow: download (if needed) → load → swap.
-                        Task { await onboarding.install(picked) }
+                        onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                 }
