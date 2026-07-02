@@ -32,6 +32,18 @@ public struct ConversationContext: Sendable, Equatable {
     /// fit the budget (oldest dropped first; the latest turn is always kept, even if it alone
     /// exceeds the budget — we never silently drop the message the user just sent).
     public func build(history: [ChatMessage]) -> String {
+        let kept = windowedHistory(history)
+        var prompt = systemPrompt.isEmpty ? "" : systemPrompt + "\n\n"
+        prompt += kept.map(Self.line(for:)).joined(separator: "\n")
+        if !kept.isEmpty { prompt += "\n" }
+        prompt += Self.assistantPrimer
+        return prompt
+    }
+
+    /// The most recent turns that fit the context budget — the windowing half of `build`, without
+    /// the flat formatting — for engines that format the conversation with the model's OWN chat
+    /// template instead. Twin of Kotlin `ConversationContext.windowedHistory`.
+    public func windowedHistory(_ history: [ChatMessage]) -> [ChatMessage] {
         var kept: [ChatMessage] = []
         var used = 0
         for message in history.reversed() {                 // newest → oldest
@@ -44,12 +56,7 @@ public struct ConversationContext: Sendable, Equatable {
             }
         }
         kept.reverse()                                       // restore chronological order
-
-        var prompt = systemPrompt.isEmpty ? "" : systemPrompt + "\n\n"
-        prompt += kept.map(Self.line(for:)).joined(separator: "\n")
-        if !kept.isEmpty { prompt += "\n" }
-        prompt += Self.assistantPrimer
-        return prompt
+        return kept
     }
 
     /// Tokens available for history after the system prompt and the trailing primer.

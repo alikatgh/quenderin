@@ -37,11 +37,38 @@ struct QuenderinApp: App {
                 #if os(macOS)
                 // The same SwiftUI flow runs on the Mac (QuenderinMac target); give the window a
                 // chat-app footprint instead of the tiny fit-to-content default.
-                .frame(minWidth: 640, minHeight: 560)
+                .frame(minWidth: 720, minHeight: 560)
                 #endif
         }
         #if os(macOS)
-        .defaultSize(width: 860, height: 700)
+        .defaultSize(width: 960, height: 700)
+        .commands {
+            // ⌘N = new chat, in the File menu where Mac users expect it (replaces "New Window" —
+            // Quenderin is a single-window chat app).
+            CommandGroup(replacing: .newItem) {
+                Button("New Chat") { conversations.startNew() }
+                    .keyboardShortcut("n")
+            }
+        }
+        #endif
+
+        #if os(macOS)
+        // The standard ⌘, Settings window. Model management only makes sense once onboarding
+        // finished (the engine + catalog state live behind .ready).
+        Settings {
+            Group {
+                if case .ready(let model) = onboarding.phase {
+                    SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
+                        onboarding.beginInstall(picked)
+                    })
+                } else {
+                    Text("Finish setting up Quenderin in the main window first.")
+                        .foregroundStyle(.secondary)
+                        .padding(40)
+                }
+            }
+            .frame(minWidth: 540, minHeight: 480)
+        }
         #endif
     }
 }

@@ -45,6 +45,10 @@ public struct ChatView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
+                        // On a wide Mac detail pane the transcript reads as a centered column
+                        // (like Messages), not a strip hugging the left edge.
+                        .frame(maxWidth: 760)
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 .onChange(of: model.messages.count) { _ in
@@ -65,6 +69,8 @@ public struct ChatView: View {
                 .padding(.horizontal)
 
             composer(palette: p)
+                .frame(maxWidth: 760)     // same centered column as the transcript on wide panes
+                .frame(maxWidth: .infinity)
         }
         .background(p.background)
         .toolbar {
@@ -116,6 +122,15 @@ private struct ChatBubble: View {
     let palette: QuenderinPalette
     @Environment(\.openURL) private var openURL
 
+    /// Phone-width bubbles look like ribbons in the Mac's wide detail pane.
+    static var bubbleMaxWidth: CGFloat {
+        #if os(macOS)
+        return 460
+        #else
+        return 300
+        #endif
+    }
+
     var body: some View {
         let mine = message.role == .user
         let bubble = VStack(alignment: .leading, spacing: 2) {
@@ -141,7 +156,7 @@ private struct ChatBubble: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
         .background(mine ? palette.userBubble : palette.assistantBubble, in: BubbleShape(mine: mine))
-        .frame(maxWidth: 300, alignment: .leading)
+        .frame(maxWidth: Self.bubbleMaxWidth, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
         .accessibilityElement(children: .combine)
 

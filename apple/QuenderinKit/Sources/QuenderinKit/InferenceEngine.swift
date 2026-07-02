@@ -50,14 +50,37 @@ public protocol InferenceEngine: Sendable {
     /// is loaded yet.
     func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
 
+    /// Chat-structured streaming generation. Engines that know the model's own chat template
+    /// (LlamaEngine, via the GGUF) format `history` with it — so the model answers as an
+    /// assistant and STOPS at its end-of-turn token, instead of rambling hallucinated
+    /// "User:/Assistant:" turns off a flat transcript. The default falls back to that flat
+    /// transcript so mocks/scripted engines and tests are unchanged. Twin of Kotlin
+    /// `InferenceEngine.completeChat`.
+    func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error>
+
     /// Best-effort: interrupt an in-flight `generate` (e.g. a model switch or a stop button).
     /// Synchronous + non-blocking by design so it can signal a generation that holds the engine.
     /// Default no-op for engines that don't support interruption (mock, scripted, tests).
     func requestCancel()
 }
 
+/// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the
+/// protocol default and `LlamaEngine`'s no-template path.
+func flatTranscriptPrompt(system: String, history: [ChatMessage]) -> String {
+    var prompt = system.isEmpty ? "" : system + "\n\n"
+    for m in history {
+        prompt += (m.role == .user ? "User: " : "Assistant: ") + m.text + "\n"
+    }
+    prompt += "Assistant:"
+    return prompt
+}
+
 public extension InferenceEngine {
     func requestCancel() {}
+
+    func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        try await generate(prompt: flatTranscriptPrompt(system: system, history: history), options: options)
+    }
 
     /// Convenience: accumulate the token stream into one completion string.
     func complete(prompt: String, options: GenerationOptions = .init()) async throws -> String {

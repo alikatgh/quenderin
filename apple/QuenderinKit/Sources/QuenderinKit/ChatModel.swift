@@ -45,9 +45,11 @@ public final class ChatModel: ObservableObject {
         guard !trimmed.isEmpty, !isGenerating else { return }
 
         messages.append(ChatMessage(role: .user, text: trimmed))
-        // Build the prompt from the whole conversation (system prompt + history within the
-        // context-window budget) so the assistant remembers prior turns — not just this line.
-        let enginePrompt = context.build(history: messages)
+        // Chat-structured generation: pass the budget-windowed history so the engine formats it
+        // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
+        // Template-less engines fall back to the flat transcript; the assistant remembers prior
+        // turns either way.
+        let windowed = context.windowedHistory(messages)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
@@ -56,7 +58,7 @@ public final class ChatModel: ObservableObject {
         defer { isGenerating = false }
 
         do {
-            let stream = try await engine.generate(prompt: enginePrompt, options: options)
+            let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)
             for try await token in stream {
                 assistant.text += token
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`

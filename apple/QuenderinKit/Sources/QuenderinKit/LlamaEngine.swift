@@ -109,9 +109,77 @@ public actor LlamaEngine: InferenceEngine {
         #endif
     }
 
+    /// Chat-structured generation: format the conversation with the model's OWN chat template
+    /// (from the GGUF, via `llama_chat_apply_template`) so it answers as an assistant and STOPS at
+    /// its end-of-turn token — a flat "User:/Assistant:" transcript makes models ramble
+    /// hallucinated turns (caught live on the macOS client). Twin of the Android JNI's
+    /// `buildChatPrompt` path, including the no-think close for reasoning models.
+    public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        #if canImport(llama)
+        let prompt = buildChatPrompt(system: system, history: history)
+            ?? flatTranscriptPrompt(system: system, history: history)   // model exposes no template
+        return try await generate(prompt: prompt, options: options)
+        #else
+        throw InferenceError.loadFailed(reason: "llama.cpp not linked; use MockInferenceEngine.")
+        #endif
+    }
+
     // MARK: - Real inference (compiled only when llama.cpp is linked)
 
     #if canImport(llama)
+    /// Formats the conversation with the model's embedded chat template (Qwen ChatML, Llama-3
+    /// headers, …), returning nil when the GGUF carries none (caller falls back to the flat
+    /// transcript). For "thinking" models (template gates `enable_thinking`/`<think>`), an empty
+    /// think block is closed right after the assistant turn so replies are direct — Android parity
+    /// (default thinking OFF). Reads the model pointer under `nativeLock`.
+    nonisolated private func buildChatPrompt(system: String, history: [ChatMessage]) -> String? {
+        nativeLock.lock()
+        defer { nativeLock.unlock() }
+        guard let model, let tmplC = llama_model_chat_template(model, nil) else { return nil }
+        let tmpl = String(cString: tmplC)
+
+        // llama_chat_message borrows C strings — strdup them and free after the call.
+        var owned: [UnsafeMutablePointer<CChar>] = []
+        defer { owned.forEach { free($0) } }
+        func dup(_ s: String) -> UnsafePointer<CChar>? {
+            guard let p = strdup(s) else { return nil }
+            owned.append(p)
+            return UnsafePointer(p)
+        }
+        var msgs: [llama_chat_message] = []
+        if !system.isEmpty { msgs.append(llama_chat_message(role: dup("system"), content: dup(system))) }
+        for m in history {
+            msgs.append(llama_chat_message(role: dup(m.role == .user ? "user" : "assistant"), content: dup(m.text)))
+        }
+        guard !msgs.isEmpty else { return nil }
+
+        var capacity = msgs.reduce(512) { $0 + (($1.content.map { strlen($0) }) ?? 0) + 64 } * 2
+        var buf = [CChar](repeating: 0, count: capacity)
+        var n = msgs.withUnsafeBufferPointer { ptr in
+            llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, true, &buf, Int32(capacity))
+        }
+        if n > Int32(capacity) {   // buffer too small — grow once and retry (mirrors the JNI)
+            capacity = Int(n)
+            buf = [CChar](repeating: 0, count: capacity)
+            n = msgs.withUnsafeBufferPointer { ptr in
+                llama_chat_apply_template(tmplC, ptr.baseAddress, msgs.count, true, &buf, Int32(capacity))
+            }
+        }
+        guard n > 0 else { return nil }
+        var result = String(decoding: buf.prefix(Int(n)).map { UInt8(bitPattern: $0) }, as: UTF8.self)
+
+        // No-think: close an empty <think> block after the assistant turn (Qwen3's
+        // enable_thinking=false behaviour); normalize whether the template already opened one.
+        if tmpl.contains("enable_thinking") || tmpl.contains("<think>") {
+            let lastOpen = result.range(of: "<think>", options: .backwards)
+            let lastClose = result.range(of: "</think>", options: .backwards)
+            let openUnclosed = lastOpen != nil && (lastClose == nil || lastClose!.lowerBound < lastOpen!.lowerBound)
+            result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n"
+        }
+        return result
+    }
+
     /// The native load, under `nativeLock` (synchronous → manual lock is allowed here, unlike the
     /// async `load()`). Frees any previous model first (free-before-reassign; C1) and throws on
     /// failure, leaving `model`/`context`/`vocab` nil so the engine reports "not loaded".

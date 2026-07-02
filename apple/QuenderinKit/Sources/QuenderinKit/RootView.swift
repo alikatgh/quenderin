@@ -18,6 +18,11 @@ public struct RootView: View {
     public var body: some View {
         Group {
             if case .ready(let model) = onboarding.phase {
+                #if os(macOS)
+                // The Mac gets a native sidebar shell (split view, menu commands, ⌘, Settings) —
+                // not the phone's TabView in a window.
+                MacRootView(onboarding: onboarding, conversations: conversations, agent: agent, model: model)
+                #else
                 TabView {
                     ChatHomeView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Same install flow the Settings picker uses: download (if needed) → load → swap.
@@ -34,6 +39,7 @@ public struct RootView: View {
                     })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                 }
+                #endif
             } else {
                 OnboardingView(model: onboarding)
             }

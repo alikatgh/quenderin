@@ -13,6 +13,9 @@ public final class ConversationCoordinator: ObservableObject {
     /// The live chat for the *current* conversation.
     public let chat: ChatModel
 
+    /// The open conversation's id — drives the macOS sidebar's selection highlight.
+    public var currentID: String? { manager.currentID }
+
     private let manager: ConversationManager
 
     public init(
