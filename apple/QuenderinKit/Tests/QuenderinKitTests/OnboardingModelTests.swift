@@ -164,7 +164,12 @@ final class OnboardingModelTests: XCTestCase {
         let modelB = try XCTUnwrap(ModelCatalog.models.first { $0.id != modelA.id })
 
         let engine = FailOnLoadEngine(failingID: modelB.id)
-        let onboarding = OnboardingModel(downloader: MockModelDownloader(), engine: engine, modelsDir: dir)
+        // Inject unlimited disk: this test exercises the failed-LOAD restore path with the 9 GB 14B,
+        // which the real-disk preflight would otherwise veto on a nearly-full host machine.
+        let onboarding = OnboardingModel(
+            downloader: MockModelDownloader(), engine: engine, modelsDir: dir,
+            availableDiskBytes: { _ in .max }
+        )
 
         await onboarding.install(modelA)                      // first model loads fine
         guard case .ready(let readyA) = onboarding.phase, readyA.id == modelA.id else {

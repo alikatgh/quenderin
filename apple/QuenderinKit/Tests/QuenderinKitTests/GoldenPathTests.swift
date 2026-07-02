@@ -26,7 +26,8 @@ final class GoldenPathTests: XCTestCase {
             freeDiskGB: 128, isKnownDevice: true
         )
         let onboarding = OnboardingModel(
-            downloader: MockModelDownloader(), engine: engine, modelsDir: dir, deviceProfile: device
+            downloader: MockModelDownloader(), engine: engine, modelsDir: dir, deviceProfile: device,
+            availableDiskBytes: { _ in .max }   // deterministic: don't depend on the host's live free disk
         )
 
         // 1) Probe + recommend — the jetsam-aware selector picks the safe 4B on an 8 GB iPhone.

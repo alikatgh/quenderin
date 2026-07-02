@@ -39,16 +39,23 @@ public final class OnboardingModel: ObservableObject {
     /// regrets (wrong model, metered bandwidth, not enough disk).
     private var installTask: Task<Void, Never>?
 
+    /// Free-bytes source for the download preflight. Injectable so tests are deterministic —
+    /// without this, any test that installs a big model silently depends on the HOST machine's
+    /// live free disk (they started failing on a nearly-full Mac). Defaults to the real volume.
+    private let availableDiskBytes: (URL) -> Int64
+
     public init(
         downloader: ModelDownloader,
         engine: InferenceEngine,
         modelsDir: URL? = nil,
-        deviceProfile: IOSDeviceProfile? = nil
+        deviceProfile: IOSDeviceProfile? = nil,
+        availableDiskBytes: ((URL) -> Int64)? = nil
     ) {
         self.downloader = downloader
         self.engine = engine
         self.modelsDir = modelsDir ?? Self.defaultModelsDir()
         self.deviceProfile = deviceProfile
+        self.availableDiskBytes = availableDiskBytes ?? { DiskSpace.availableBytes(at: $0) }
     }
 
     /// Probe hardware and produce a recommendation. Idempotent.
@@ -108,7 +115,7 @@ public final class OnboardingModel: ObservableObject {
     /// Will this model's download fit on the volume that holds our models? Exposed for the UI so
     /// "not enough space" shows BEFORE a doomed multi-GB download starts, not at 95%.
     public func storageCheck(for model: ModelEntry) -> StorageCheckResult {
-        DiskSpace.check(model: model, availableBytes: DiskSpace.availableBytes(at: modelsDir))
+        DiskSpace.check(model: model, availableBytes: availableDiskBytes(modelsDir))
     }
 
     /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH

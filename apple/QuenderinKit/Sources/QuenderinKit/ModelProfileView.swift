@@ -33,7 +33,7 @@ struct ModelProfileView: View {
                             Circle().fill(p.status).frame(width: 7, height: 7)
                             Text("on-device · private").font(.footnote).foregroundStyle(p.statusText)
                         }
-                        Text(blurb(model.id))
+                        Text(modelBlurb(model.id))
                             .font(.subheadline)
                             .foregroundStyle(p.onSurfaceVariant)
                             .multilineTextAlignment(.center)
@@ -157,8 +157,8 @@ private func fmt(_ d: Double) -> String {
 }
 
 /// One-line, family-specific description keyed off the catalog id. Purely cosmetic copy (twin of
-/// Android's `modelBlurb`).
-private func blurb(_ id: String) -> String {
+/// Android's `modelBlurb`). Shared with `ModelPickerView`'s rows.
+func modelBlurb(_ id: String) -> String {
     if id.hasPrefix("qwen3") { return "Alibaba's Qwen3 — a strong, broadly multilingual all-rounder." }
     if id.hasPrefix("qwen25-coder") { return "Qwen2.5 Coder — tuned for programming and code reasoning." }
     if id.hasPrefix("deepseek-r1") { return "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers." }
