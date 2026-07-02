@@ -1,0 +1,79 @@
+site_name: Quenderin Docs
+site_description: Private, offline, on-device AI — engineering docs
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.emoji
+
+plugins:
+  - search
+
+validation:
+  omitted_files: ignore
+  absolute_links: ignore
+  unrecognized_links: ignore
+
+nav:
+  - Overview — A to Z: QUENDERIN_A_TO_Z.md
+  - 101 Series:
+      - Inference 101: INFERENCE_101.md
+      - Mobile Performance 101: MOBILE_PERFORMANCE_101.md
+      - llama.cpp C++ 101: LLAMA_CPP_101.md
+  - Architecture & Product:
+      - Product: PRODUCT.md
+      - Architecture: ARCHITECTURE.md
+      - Backend: BACKEND.md
+      - Frontend: FRONTEND.md
+      - API: API.md
+  - Build · Test · Ship:
+      - Build Mobile: BUILD_MOBILE.md
+      - Device Verification: DEVICE_VERIFICATION.md
+      - Ship Readiness: SHIP_READINESS.md
+      - Release: RELEASE.md
+      - Store Submission: STORE_SUBMISSION.md
+      - Store Listing: STORE_LISTING.md
+  - Reference:
+      - NPU / Neural Engine: NPU_NEURAL_ENGINE.md
+      - Bug Journal: BUG_JOURNAL.md
+      - Development: DEVELOPMENT.md
