@@ -35,6 +35,15 @@ class LlamaEngine(
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
 
+    /**
+     * When true, reasoning models (Qwen3, DeepSeek-R1) are allowed to emit their <think> chain before
+     * answering — slower but shows the model's reasoning. Default OFF: fast, direct replies (the native
+     * side closes an empty think block). Toggled from Settings ("Deep thinking"). @Volatile: read on the
+     * generation thread, written from the UI thread.
+     */
+    @Volatile
+    var enableThinking: Boolean = false
+
     /** The unthrottled (big-core) thread count chosen at load — the governor's baseline for
      *  [recommendedThreads]'s in-flight thermal re-tuning during generation (mirrors iOS
      *  `loadedBaseThreads`). Set under [lock] in [load]; read by the native decode loop via JNI. */
@@ -143,7 +152,7 @@ class LlamaEngine(
                         .append('\u001F').append(clean(m.text)).append('\u001E')
                 }
             }
-            nativeCompleteChatStreaming(handle, payload, maxTokens, TokenSink { onToken(it) })
+            nativeCompleteChatStreaming(handle, payload, maxTokens, !enableThinking, TokenSink { onToken(it) })
         }
 
     private fun ensureReady() {
@@ -155,7 +164,7 @@ class LlamaEngine(
     private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
-    private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, sink: TokenSink): String
+    private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeFree(handle: Long)
 
     /** JNI-friendly callback (a single known method signature `(Ljava/lang/String;)V`). */

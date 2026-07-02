@@ -19,7 +19,10 @@ public struct RootView: View {
         Group {
             if case .ready(let model) = onboarding.phase {
                 TabView {
-                    ChatHomeView(coordinator: conversations)
+                    ChatHomeView(coordinator: conversations, model: model, onSelectModel: { picked in
+                        // Same install flow the Settings picker uses: download (if needed) → load → swap.
+                        Task { await onboarding.install(picked) }
+                    })
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                     if let agent {
                         AgentView(session: agent)

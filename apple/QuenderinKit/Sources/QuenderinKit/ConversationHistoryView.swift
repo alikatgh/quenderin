@@ -7,22 +7,46 @@ import SwiftUI
 public struct ChatHomeView: View {
     @ObservedObject private var coordinator: ConversationCoordinator
     @ObservedObject private var chat: ChatModel
+    private let model: ModelEntry
+    private let onSelectModel: (ModelEntry) -> Void
     @State private var showHistory = false
+    @State private var showProfile = false
+    @Environment(\.colorScheme) private var scheme
 
-    public init(coordinator: ConversationCoordinator) {
+    public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.coordinator = coordinator
         self.chat = coordinator.chat
+        self.model = model
+        self.onSelectModel = onSelectModel
     }
 
     public var body: some View {
+        let p = QuenderinPalette.of(scheme)
         NavigationStack {
             ChatView(model: chat)
-                .navigationTitle("Chat")
+                .inlineNavTitle()
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
                         Button { showHistory = true } label: {
                             Label("History", systemImage: "clock.arrow.circlepath")
                         }
+                    }
+                    // Tappable model name (twin of Android's tappable chat header) → the model profile.
+                    ToolbarItem(placement: .principal) {
+                        Button { showProfile = true } label: {
+                            VStack(spacing: 1) {
+                                Text(model.label)
+                                    .font(.headline)
+                                    .foregroundStyle(p.onSurface)
+                                    .lineLimit(1)
+                                HStack(spacing: 4) {
+                                    Circle().fill(p.status).frame(width: 6, height: 6)
+                                    Text("on-device · private").font(.caption2).foregroundStyle(p.statusText)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("About \(model.label)")
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button { coordinator.startNew() } label: {
@@ -32,6 +56,9 @@ public struct ChatHomeView: View {
                 }
                 .sheet(isPresented: $showHistory) {
                     ConversationHistoryView(coordinator: coordinator) { showHistory = false }
+                }
+                .sheet(isPresented: $showProfile) {
+                    ModelProfileView(model: model, onSelectModel: onSelectModel)
                 }
                 // Persist when a turn finishes (isGenerating falls), not on every streamed token.
                 .onChange(of: chat.isGenerating) { generating in

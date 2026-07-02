@@ -182,7 +182,7 @@ std::vector<std::string> splitOn(const std::string& s, char sep) {
 // answer as an assistant AND emit its end-of-turn token, so generation STOPS after a short reply instead
 // of running to max_tokens (the multi-second-per-reply slowness). `payload` is role\x1Ftext records joined
 // by \x1E (system first). Falls back to a plain "User:/Assistant:" prompt if the model has no template.
-std::string buildChatPrompt(llama_model* model, const std::string& payload, bool& templated) {
+std::string buildChatPrompt(llama_model* model, const std::string& payload, bool& templated, bool disableThinking) {
     templated = false;
     std::vector<std::pair<std::string, std::string>> msgs;
     for (const auto& rec : splitOn(payload, '\x1E')) {
@@ -214,7 +214,8 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
             // behaviour). Detected by the model's template gating <think>/enable_thinking; other models are
             // untouched. Normalize whether or not the applied template already opened a <think>.
             std::string t(tmpl);
-            if (t.find("enable_thinking") != std::string::npos || t.find("<think>") != std::string::npos) {
+            if (disableThinking &&
+                (t.find("enable_thinking") != std::string::npos || t.find("<think>") != std::string::npos)) {
                 size_t lastOpen = result.rfind("<think>");
                 size_t lastClose = result.rfind("</think>");
                 bool openUnclosed = lastOpen != std::string::npos &&
@@ -337,7 +338,8 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
 JNIEXPORT jstring JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobject thiz,
                                                                jlong handle, jstring payload,
-                                                               jint max_tokens, jobject sink) {
+                                                               jint max_tokens, jboolean disable_thinking,
+                                                               jobject sink) {
     LlamaHandle* h = as_handle(handle);
     if (!h) { LOGE("nativeCompleteChat: null handle (no model loaded)"); return make_jstring(env, ""); }
     const char* p = env->GetStringUTFChars(payload, nullptr);
@@ -346,8 +348,8 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobj
     env->ReleaseStringUTFChars(payload, p);
 
     bool templated = false;
-    std::string prompt = buildChatPrompt(h->model, payloadStr, templated);
-    LOGI("nativeCompleteChat: templated=%d prompt_bytes=%zu", (int) templated, prompt.size());
+    std::string prompt = buildChatPrompt(h->model, payloadStr, templated, disable_thinking == JNI_TRUE);
+    LOGI("nativeCompleteChat: templated=%d no_think=%d prompt_bytes=%zu", (int) templated, (int) disable_thinking, prompt.size());
     if (prompt.empty()) return make_jstring(env, "");
 
     bool failed = false;
