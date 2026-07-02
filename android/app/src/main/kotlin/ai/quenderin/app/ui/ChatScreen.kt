@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -110,7 +111,10 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // imePadding() lifts the whole chat (and its composer) above the soft keyboard. Needed because
+    // targetSdk 35 forces edge-to-edge on Android 15+, which makes the manifest's `adjustResize` a no-op —
+    // without this the keyboard draws OVER the input field and you can't see what you're typing.
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
