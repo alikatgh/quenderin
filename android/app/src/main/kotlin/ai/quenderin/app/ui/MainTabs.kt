@@ -5,6 +5,7 @@ import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.DateCalcTool
 import ai.quenderin.core.EchoTool
 import ai.quenderin.core.InferenceEngine
+import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.UnitConverterTool
 import androidx.compose.foundation.Canvas
@@ -21,8 +22,10 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -55,6 +58,10 @@ fun MainTabs(
     onSelectModel: (ModelEntry) -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
+    // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
+    // the generation path reads it; a no-op for the mock/scripted engines.
+    var deepThinking by remember { mutableStateOf((engine as? LlamaEngine)?.enableThinking ?: false) }
+    LaunchedEffect(deepThinking) { (engine as? LlamaEngine)?.enableThinking = deepThinking }
     Scaffold(
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
@@ -100,7 +107,13 @@ fun MainTabs(
                 AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
-                SettingsScreen(model = model, persistence = conversations, onSelectModel = onSelectModel)
+                SettingsScreen(
+                    model = model,
+                    persistence = conversations,
+                    onSelectModel = onSelectModel,
+                    deepThinking = deepThinking,
+                    onDeepThinkingChange = { deepThinking = it },
+                )
             }
         }
     }

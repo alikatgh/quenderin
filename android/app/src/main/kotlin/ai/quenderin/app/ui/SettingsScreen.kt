@@ -10,12 +10,15 @@ import ai.quenderin.core.SupportContact
 import android.content.Intent
 import android.net.Uri
 import android.text.format.Formatter
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -25,11 +28,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +56,8 @@ fun SettingsScreen(
     model: ModelEntry,
     persistence: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
+    deepThinking: Boolean = false,
+    onDeepThinkingChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     // Read on entry (the tab recomposes fresh each visit); the index file is tiny.
@@ -72,22 +76,45 @@ fun SettingsScreen(
     }
     LaunchedEffect(model.id) { reloadModels() }
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Settings") }) },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { pad ->
-        Column(
-            Modifier.fillMaxSize().padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            SettingsGroup("Model") {
-                LabeledRow("Active model", model.label)
-                LabeledRow("Size", model.sizeLabel)
-                OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Change model…")
-                }
-                Caption("Runs entirely on-device via llama.cpp — no cloud.")
+    // No nested Scaffold/TopAppBar here: this screen already sits inside MainTabs' Scaffold content
+    // (which applies the status-bar inset once). A second Scaffold+TopAppBar re-applied that inset,
+    // producing the big empty band above the title. A plain titled column avoids the double inset.
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Text(
+            "Settings",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+        )
+        SettingsGroup("Model") {
+            LabeledRow("Active model", model.label)
+            LabeledRow("Size", model.sizeLabel)
+            OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("Change model…")
             }
+            Caption("Runs entirely on-device via llama.cpp — no cloud.")
+        }
+
+        SettingsGroup("Reasoning") {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Deep thinking", color = MaterialTheme.colorScheme.onSurface)
+                    Caption(
+                        if (deepThinking) "The model reasons step-by-step before answering — better on hard " +
+                            "questions, but noticeably slower."
+                        else "Off: fast, direct answers. Turn on to let the model reason step-by-step (slower).",
+                    )
+                }
+                Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
+            }
+        }
 
             SettingsGroup("Storage") {
                 LabeledRow("Saved conversations", conversationCount.toString())
@@ -155,11 +182,11 @@ fun SettingsScreen(
                 ) { Text("Contact support") }
             }
 
-            Caption(
-                "Quenderin runs entirely on your device. No account, no cloud, no tracking — once a " +
-                    "model is downloaded it works fully offline, and nothing you type leaves your phone.",
-            )
-        }
+        Caption(
+            "Quenderin runs entirely on your device. No account, no cloud, no tracking — once a " +
+                "model is downloaded it works fully offline, and nothing you type leaves your phone.",
+        )
+        Spacer(Modifier.height(24.dp))   // breathing room at the very bottom, above the nav bar
     }
 
     if (showPicker) {
