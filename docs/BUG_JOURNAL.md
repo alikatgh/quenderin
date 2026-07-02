@@ -40,6 +40,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   (Snapdragon) is proven; Mali/Xclipse can be slower-than-CPU or crash on llama.cpp's compute shaders.
   Gate offload per-SoC (`GpuOffloadPlanner`), default CPU, and remember decode is bandwidth-bound so the
   GPU win is mostly prefill — measure before trusting it. (android gpu offload)
+- **"Count cores at the global max freq" misses tri-cluster big cores.** Modern SoCs are 1+4+3 (prime +
+  performance + efficiency), so only the SINGLE prime core sits at the top frequency — counting `== max`
+  returns 1 and pins inference to one thread. Count cores ABOVE the LITTLE cluster (`> min`) instead. A
+  test that only covers a 4+4 SoC (max == above-min) will never catch it — add a tri-cluster fixture. And
+  a perf regression this size is invisible without a tok/s number: **instrument, don't guess.** (P1)
+- **Measure on a COOL device.** Back-to-back on-device benchmarks heat the SoC into hardware DVFS
+  throttling (prime core 3.36→0.86 GHz at 48°C), which silently dominates any code change — a later run
+  can look *slower* than an earlier one for purely thermal reasons. Let it idle to cool before A/B'ing. (P1)
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
@@ -277,6 +285,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-02 (P1) — Inference ran SINGLE-THREADED on an 8-core phone (~5–8× too slow).
+  Symptom: "still tooo slow"; instrumentation showed decode 1.6 tok/s AND prefill≈decode (2.1 vs 1.6) — no
+  parallelism. Cause: `ThreadPlanner.performanceCoreCount()` counted cores at the *single* global max freq
+  → the 1 prime core on a 1+4+3 SoC → `threads=1`. Fix: count cores above the LITTLE cluster (`> min`) → 5;
+  added a tri-cluster test + tok/s perf logging. Lesson: measure first; test tri-cluster, not just 4+4.
+  `ThreadPlanner.kt`, `llama_generate.h`, `CoreVerify.kt`.
 
 - 2026-07-02 — Android chat "never answers" = a render-time regex CRASH (the real root cause).
   Symptom: send a message, no reply ever (app silently dies). Cause: `SafetyBlocklist` used `(?U)\b…\b`;

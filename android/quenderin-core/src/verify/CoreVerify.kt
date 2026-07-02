@@ -924,19 +924,26 @@ fun main() {
         ThreadPlanner.recommend(4, 8) == 4 && ThreadPlanner.recommend(null, 8) == 7 &&
             ThreadPlanner.recommend(0, 8) == 7 && ThreadPlanner.recommend(99, 8) == 7 &&
             ThreadPlanner.recommend(4, 0) == 1)
-    check("ThreadPlanner.performanceCoreCount counts big cores from cpufreq", run {
-        val dir = java.nio.file.Files.createTempDirectory("cpus").toFile()
-        try {
-            // 8 cores: 4 LITTLE @ 1.80 GHz, 4 big @ 2.84 GHz → expect 4 big cores.
-            listOf(1_804_800L, 1_804_800L, 1_804_800L, 1_804_800L, 2_841_600L, 2_841_600L, 2_841_600L, 2_841_600L)
-                .forEachIndexed { i, f ->
+    check("ThreadPlanner.performanceCoreCount counts big cores from cpufreq (incl. tri-cluster)", run {
+        fun countFor(freqs: List<Long>): Int? {
+            val dir = java.nio.file.Files.createTempDirectory("cpus").toFile()
+            return try {
+                freqs.forEachIndexed { i, f ->
                     val cf = java.io.File(dir, "cpu$i/cpufreq").also { it.mkdirs() }
                     java.io.File(cf, "cpuinfo_max_freq").writeText(f.toString())
                 }
-            ThreadPlanner.performanceCoreCount(dir) == 4
-        } finally {
-            dir.deleteRecursively()
+                ThreadPlanner.performanceCoreCount(dir)
+            } finally {
+                dir.deleteRecursively()
+            }
         }
+        // Bi-cluster 4+4: 4 LITTLE @ 1.80 GHz, 4 big @ 2.84 GHz → 4 big.
+        countFor(listOf(1_804_800L, 1_804_800L, 1_804_800L, 1_804_800L, 2_841_600L, 2_841_600L, 2_841_600L, 2_841_600L)) == 4 &&
+            // TRI-cluster (Snapdragon 8 Gen 2): 3 LITTLE @2.0 + 4 perf @2.8 + 1 prime @3.36 → 5 big, NOT 1.
+            // "Count at the single global max" returned 1 here → single-threaded decode (the bug this guards).
+            countFor(listOf(2_016_000L, 2_016_000L, 2_016_000L, 2_803_200L, 2_803_200L, 2_803_200L, 2_803_200L, 3_360_000L)) == 5 &&
+            // Homogeneous SoC (no LITTLE cluster) → every core is "big".
+            countFor(listOf(2_000_000L, 2_000_000L, 2_000_000L, 2_000_000L)) == 4
     })
 
     // Thermal-adaptive threading — hotter device → fewer threads (twin of iOS ThermalThrottleTests).

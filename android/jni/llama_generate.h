@@ -14,6 +14,16 @@
 #include "llama.h"
 #include <string>
 #include <vector>
+#include <chrono>
+
+// Perf logging: prefill/decode tok/s to logcat, so "feels slow" becomes a real number. Android-only
+// (the desktop smoke test doesn't link liblog); a no-op elsewhere so this header stays portable.
+#if defined(__ANDROID__)
+#include <android/log.h>
+#define QUENDERIN_PERF_LOG(...) __android_log_print(ANDROID_LOG_INFO, "Quenderin", __VA_ARGS__)
+#else
+#define QUENDERIN_PERF_LOG(...) ((void) 0)
+#endif
 
 namespace quenderin {
 
@@ -110,6 +120,8 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     if (failed) *failed = false;
     if (newTokens.empty()) return out;
 
+    const auto perfT0 = std::chrono::steady_clock::now();   // prefill start (perf instrumentation)
+
     llama_memory_t mem = llama_get_memory(ctx);
     const KVReusePlan plan = kvReusePlan(cached, newTokens);
     size_t reuse = plan.decodeFrom;
@@ -157,6 +169,10 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     }
     cached = newTokens;   // the KV now holds exactly newTokens
 
+    const auto perfPrefillDone = std::chrono::steady_clock::now();   // prefill end / decode start
+    const int perfPrefillTok = (int) toDecode.size();
+    int perfDecodeTok = 0;
+
     constexpr int kThermalSampleInterval = 32;   // heat moves slowly; matches iOS's sample cadence
     for (int i = 0; i < maxTokens; ++i) {
         if (cancelled()) break;
@@ -166,6 +182,7 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         }
         llama_token next = llama_sampler_sample(sampler, ctx, -1);
         if (llama_vocab_is_eog(vocab, next)) break;
+        perfDecodeTok++;
 
         char buf[256];
         int c = llama_token_to_piece(vocab, next, buf, sizeof(buf), 0, true);
@@ -198,6 +215,17 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         }
         cached.push_back(next);
     }
+
+    // Perf: prefill vs steady decode tok/s — the number that turns "feels slow" into data. Decode is the
+    // one the user watches (token-by-token); prefill is the one-shot time-to-first-token.
+    const auto perfEnd = std::chrono::steady_clock::now();
+    const double prefillMs = std::chrono::duration<double, std::milli>(perfPrefillDone - perfT0).count();
+    const double decodeMs = std::chrono::duration<double, std::milli>(perfEnd - perfPrefillDone).count();
+    QUENDERIN_PERF_LOG(
+        "perf: prefill %d tok in %.0f ms (%.1f tok/s) | decode %d tok in %.0f ms (%.1f tok/s)",
+        perfPrefillTok, prefillMs, prefillMs > 0 ? perfPrefillTok * 1000.0 / prefillMs : 0.0,
+        perfDecodeTok, decodeMs, decodeMs > 0 ? perfDecodeTok * 1000.0 / decodeMs : 0.0);
+
     return out;
 }
 
