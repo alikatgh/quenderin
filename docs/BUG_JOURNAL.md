@@ -48,6 +48,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Measure on a COOL device.** Back-to-back on-device benchmarks heat the SoC into hardware DVFS
   throttling (prime core 3.36→0.86 GHz at 48°C), which silently dominates any code change — a later run
   can look *slower* than an earlier one for purely thermal reasons. Let it idle to cool before A/B'ing. (P1)
+- **Modern APKs don't extract .so files — a filesystem scan of nativeLibraryDir sees NOTHING.** With
+  AGP's default (`useLegacyPackaging=false`) native libs are mmapped from inside the APK; any native
+  code that enumerates the lib dir (ggml's CPU-variant `ggml_backend_load_all_from_path`) finds zero
+  files and fails silently (worse: `-DNDEBUG` builds suppress its error logs). Set
+  `packaging { jniLibs { useLegacyPackaging = true } }` when anything dlopen-scans by directory. (P2)
+- **Two agents, one phone.** Parallel Claude sessions (or any automation) driving the same test device
+  steal each other's foreground — taps land in the OTHER app (this session typed into a foreign app's
+  screen). Guard EVERY injected tap with a frontmost-window check (`dumpsys window | mCurrentFocus`)
+  and never force-stop foreign apps mid-test — they may be another session's live run. (P2)
 - **WorkManager `Result.failure` is terminal.** A cooperative stop (`isStopped` → constraint loss like
   Wi-Fi off, or a cancel) must return `Result.retry()`, not `failure`, or the work never auto-resumes.
   Catch the cancel exception separately from real errors. (workmanager retry vs failure)
@@ -285,6 +294,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-02 (P2) — CPU-variant backends (DOTPROD/I8MM) silently didn't load: 0 devices.
+  Symptom: "no backends are loaded" on every model load after enabling GGML_CPU_ALL_VARIANTS. Cause:
+  AGP keeps .so files INSIDE the APK (no extraction), so ggml's directory scan of nativeLibraryDir found
+  nothing — and NDEBUG suppressed its errors. Fix: `useLegacyPackaging = true` + a device-count log +
+  fallback. Result: picked android_armv8.6_1 (i8mm) on the S23; prefill 3.5→9.0 tok/s even throttled.
+  `app/build.gradle.kts`, `llama_jni.cpp`. Lesson: fs-scans can't see APK-embedded libs.
 
 - 2026-07-02 (P1) — Inference ran SINGLE-THREADED on an 8-core phone (~5–8× too slow).
   Symptom: "still tooo slow"; instrumentation showed decode 1.6 tok/s AND prefill≈decode (2.1 vs 1.6) — no

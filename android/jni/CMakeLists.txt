@@ -18,6 +18,16 @@ set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER   OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP          OFF CACHE BOOL "" FORCE)
 
+# Per-CPU-feature backends (OSS audit: the #1 prefill lever). A single generic arm64-v8a build never
+# uses the DOTPROD/I8MM matmul kernels — why prefill ran no faster than decode (measured: both
+# 3.5 tok/s on a cool S23). GGML_CPU_ALL_VARIANTS builds ggml's Android variant set
+# (android_armv8.0 … armv9.2 — DOTPROD, MATMUL_INT8, …) as dlopen-able backends; the best one for
+# the device is picked at RUNTIME — fast kernels on modern SoCs, safe baseline on old ones. The JNI
+# calls ggml_backend_load_all_from_path(nativeLibraryDir) at init to load them.
+set(BUILD_SHARED_LIBS     ON CACHE BOOL "" FORCE)
+set(GGML_BACKEND_DL       ON CACHE BOOL "" FORCE)
+set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "" FORCE)
+
 # GPU offload (Vulkan) — opt-in: configure with -DQUENDERIN_VULKAN=ON. Default OFF keeps a stable
 # CPU build. When ON, the .so carries the Vulkan backend; the Kotlin GpuOffloadPlanner still decides
 # PER-SoC whether to actually offload (Adreno → yes; Mali/Xclipse → only with the forceGpu benchmark
@@ -36,6 +46,10 @@ endif()
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "" FORCE)
 endif()
+# …and at -O3, not CMake's RelWithDebInfo default of -O2 (OSS llama.cpp apps ship -O3): measurable
+# extra vectorization in the ggml kernels, still with -g symbols for debuggability.
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
 
 # 16 KB page-size compatibility (Android 15+): some devices run with 16 KB memory pages, and a native
 # .so whose LOAD segments aren't 16 KB-aligned is rejected by the loader / flagged by Play (the on-device
@@ -46,5 +60,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 
 add_library(quenderin_llama SHARED llama_jni.cpp)
-target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include)
-target_link_libraries(quenderin_llama llama android log)
+# ggml/include for ggml-backend.h (ggml_backend_load_all_from_path — the runtime CPU-variant pick).
+target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)
+target_link_libraries(quenderin_llama llama ggml android log)

@@ -67,9 +67,19 @@ android {
         }
     }
 
-    buildFeatures { 
+    buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        jniLibs {
+            // Extract .so files to nativeLibraryDir instead of mmapping them from inside the APK:
+            // ggml's CPU-variant runtime pick (ggml_backend_load_all_from_path) enumerates that
+            // directory with a filesystem scan, which sees nothing when the libs only exist as APK
+            // entries. Costs some disk (no shared APK mmap) — the price of the DOTPROD/I8MM kernels.
+            useLegacyPackaging = true
+        }
     }
 
     signingConfigs {

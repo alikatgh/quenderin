@@ -68,6 +68,16 @@ class LlamaEngine(
     var thermalLevel: ThermalLevel = ThermalLevel.NOMINAL
 
     /**
+     * The app's `applicationInfo.nativeLibraryDir` — where Gradle unpacked the ggml CPU-variant
+     * backends (`libggml-cpu-android_armv*.so`). Passed to the native side at load so ggml can
+     * dlopen the best variant for the LIVE CPU (DOTPROD/I8MM on modern SoCs — the fast matmul
+     * kernels a single generic arm64 build never used). Set by the app before [load]; the core
+     * stays `android`-free. Empty → the statically-linked default backend (tests, old builds).
+     */
+    @Volatile
+    var nativeLibDir: String = ""
+
+    /**
      * Serializes ALL native access. load/unload/complete must not interleave — a `unload()` on
      * one thread (e.g. UI cancel) while `complete()` runs on another would free the native handle
      * mid-call → use-after-free / SIGSEGV (C2). Held across the long native call on purpose: you
@@ -104,7 +114,7 @@ class LlamaEngine(
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
         val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType)
-        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers)
+        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers, nativeLibDir)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
     }
@@ -161,7 +171,7 @@ class LlamaEngine(
     }
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
-    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int): Long
+    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String

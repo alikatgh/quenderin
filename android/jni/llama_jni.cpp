@@ -13,7 +13,9 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <algorithm>
 #include "llama.h"
+#include "ggml-backend.h"     // ggml_backend_load_all_from_path — runtime CPU-variant pick (DOTPROD/I8MM)
 #include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
 
 #define LOG_TAG "QuenderinLlama"
@@ -245,9 +247,30 @@ JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,
                                               jint kv_cache_quant, jfloat temperature, jfloat top_p,
-                                              jint gpu_layers) {
-    std::call_once(g_backend_once, [] {
+                                              jint gpu_layers, jstring native_lib_dir) {
+    // The app's nativeLibraryDir, where Gradle unpacked the ggml CPU-variant backends
+    // (libggml-cpu-android_armv*.so). Loaded once; ggml scores them against the live CPU and
+    // registers the best (e.g. armv8.6 DOTPROD+I8MM on an S23) — the fast matmul kernels a single
+    // generic arm64 build never used. Empty string → statically-linked default (old builds, tests).
+    std::string libDir;
+    if (native_lib_dir) {
+        if (const char* d = env->GetStringUTFChars(native_lib_dir, nullptr)) {
+            libDir = d;
+            env->ReleaseStringUTFChars(native_lib_dir, d);
+        }
+    }
+    std::call_once(g_backend_once, [&libDir] {
         llama_log_set(android_llama_log, nullptr);   // llama.cpp logs → logcat, before anything loads
+        if (!libDir.empty()) {
+            ggml_backend_load_all_from_path(libDir.c_str());
+        }
+        LOGI("backends: %zu device(s) after variant scan of '%s'", ggml_backend_dev_count(), libDir.c_str());
+        if (ggml_backend_dev_count() == 0) {
+            // Variant scan found nothing usable (unexpected) — fall back to the default search
+            // (executable dir / GGML_BACKEND_DIR) rather than failing every model load.
+            ggml_backend_load_all();
+            LOGI("backends: %zu device(s) after fallback load_all", ggml_backend_dev_count());
+        }
         llama_backend_init();
     });
 
@@ -274,6 +297,10 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     cp.n_threads = threads > 0 ? threads : 0; // 0 → llama.cpp picks
     cp.n_threads_batch = cp.n_threads;         // prefill (prompt processing) used the default otherwise —
                                                 // iOS sets both; leaving this unset made prefill slower
+    // Explicit prefill batch sizes (OSS audit: every surveyed llama.cpp mobile app sets 512/512).
+    // Never exceed n_ctx on tight devices where the budgeter picked a small window.
+    cp.n_batch  = std::min<uint32_t>(512, cp.n_ctx);
+    cp.n_ubatch = cp.n_batch;
     // Quantize the KV cache on memory-tight devices (KVCacheType.nativeId: 0 f16, 1 q8_0). q8_0 is
     // safe for both K and V on the standard (non-flash-attention) path; the Kotlin side already sized
     // n_ctx for this dtype, so the smaller per-token cost buys back context instead of memory.

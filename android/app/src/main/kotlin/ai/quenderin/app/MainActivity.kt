@@ -53,6 +53,9 @@ class MainActivity : ComponentActivity() {
                         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
                         it.thermalLevel = ThermalMonitor.levelFromStatus(pm.currentThermalStatus)
                     }
+                    // Where Gradle unpacked our .so files — lets ggml dlopen the best CPU-variant
+                    // backend (DOTPROD/I8MM) for this SoC at load (see jni/CMakeLists.txt).
+                    it.nativeLibDir = applicationInfo.nativeLibraryDir
                 }
             } else {
                 MockInferenceEngine()
