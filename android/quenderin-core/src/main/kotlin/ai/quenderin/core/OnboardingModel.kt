@@ -30,8 +30,13 @@ class OnboardingModel(
     var phase: OnboardingPhase = OnboardingPhase.Idle
         private set(value) {
             field = value
+            if (value is OnboardingPhase.Recommended) lastRecommended = value
             onChange(value)
         }
+
+    /** The most recent recommendation — where a CANCELLED download returns (a change of mind is
+     *  not a failure). Kept by the phase setter so both start() paths feed it. */
+    private var lastRecommended: OnboardingPhase.Recommended? = null
 
     /**
      * The full selector result (rationale + heat/battery + alternatives) when the pick
@@ -99,6 +104,11 @@ class OnboardingModel(
         val path = try {
             phase = OnboardingPhase.Downloading(model, 0.0)
             downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
+        } catch (c: DownloadCancelledException) {
+            // User cancel → back to the recommendation screen, not a Failed dead end. The engine
+            // kept the .part, so a retry resumes. (Twin of the Apple install() cancel path.)
+            phase = lastRecommended ?: OnboardingPhase.Failed("Download cancelled.")
+            return
         } catch (t: Throwable) {
             phase = OnboardingPhase.Failed("Download failed: ${t.message}")
             return

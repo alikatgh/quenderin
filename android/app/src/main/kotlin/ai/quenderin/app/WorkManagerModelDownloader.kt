@@ -1,5 +1,6 @@
 package ai.quenderin.app
 
+import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadException
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
@@ -62,9 +63,17 @@ class WorkManagerModelDownloader(
                         info.outputData.getString(ModelDownloadWorker.KEY_ERROR) ?: "download failed for ${model.id}"
                     )
                 WorkInfo.State.CANCELLED ->
-                    throw DownloadException("download cancelled for ${model.id}")
+                    // A user cancel (see [cancel]) is a change of mind, not a failure — the typed
+                    // exception lets OnboardingModel return to the recommendation instead of Failed.
+                    throw DownloadCancelledException("download cancelled for ${model.id}")
                 else -> Thread.sleep(pollMs) // ENQUEUED / RUNNING / BLOCKED — keep mirroring progress
             }
         }
+    }
+
+    /** Cancel an in-flight download: WorkManager flips the worker's `isStopped`, the engine keeps
+     *  the `.part` for a future resume, and the polling loop above surfaces the typed cancel. */
+    fun cancel(model: ModelEntry) {
+        WorkManager.getInstance(context).cancelUniqueWork("download:${model.id}")
     }
 }

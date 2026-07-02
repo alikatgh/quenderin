@@ -1,13 +1,21 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.ConversationPersistence
+import ai.quenderin.core.DiskSpace
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.ModelSelection
 import ai.quenderin.core.OnboardingModel
 import ai.quenderin.core.OnboardingPhase
+import ai.quenderin.core.StorageCheckResult
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -65,6 +73,7 @@ import kotlinx.coroutines.launch
  * [ChatScreen]. Maps the core's listener (`onChange`) into Compose state and runs the
  * blocking download/load on [Dispatchers.IO]. Twin of iOS `RootView`.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot(
     engine: InferenceEngine,
@@ -86,12 +95,33 @@ fun AppRoot(
             // Reuse the onboarding install flow: download (if needed) → load → swap. Blocking → IO.
             onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
         )
-        else -> OnboardingScreen(
-            phase = current,
-            selection = onboarding.selection,
-            onStart = { onboarding.start(probe()) },   // world-class selector path
-            onAccept = { model -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(model) } },
-        )
+        else -> {
+            val context = LocalContext.current
+            var showPicker by remember { mutableStateOf(false) }
+            OnboardingScreen(
+                phase = current,
+                selection = onboarding.selection,
+                onStart = { onboarding.start(probe()) },   // world-class selector path
+                onAccept = { model -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(model) } },
+                onChoose = { showPicker = true },
+                onCancel = { model -> (downloader as? WorkManagerModelDownloader)?.cancel(model) },
+                storageCheck = { model ->
+                    DiskSpace.check(model, availableBytes = android.os.StatFs(context.filesDir.path).availableBytes)
+                },
+            )
+            // The recommendation is a default, not a cage: the full catalog one tap away.
+            if (showPicker) {
+                ModalBottomSheet(onDismissRequest = { showPicker = false }) {
+                    ModelPickerSheet(
+                        currentModelId = (current as? OnboardingPhase.Recommended)?.model?.id ?: "",
+                        onSelect = { picked ->
+                            showPicker = false
+                            scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) }
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -101,6 +131,9 @@ fun OnboardingScreen(
     selection: ModelSelection?,
     onStart: () -> Unit,
     onAccept: (ModelEntry) -> Unit,
+    onChoose: () -> Unit = {},
+    onCancel: (ModelEntry) -> Unit = {},
+    storageCheck: (ModelEntry) -> StorageCheckResult = { StorageCheckResult(true, 0, 0, "") },
 ) {
     // Smoothly-eased download fraction so the ring glides to each new value instead of snapping.
     val targetFraction = (phase as? OnboardingPhase.Downloading)?.fraction?.toFloat() ?: 0f
@@ -157,6 +190,9 @@ fun OnboardingScreen(
                         fraction = animFraction,
                         onStart = onStart,
                         onAccept = onAccept,
+                        onChoose = onChoose,
+                        onCancel = onCancel,
+                        storageCheck = storageCheck,
                     )
                 }
             }
@@ -182,6 +218,9 @@ private fun PhaseContent(
     fraction: Float,
     onStart: () -> Unit,
     onAccept: (ModelEntry) -> Unit,
+    onChoose: () -> Unit,
+    onCancel: (ModelEntry) -> Unit,
+    storageCheck: (ModelEntry) -> StorageCheckResult,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -248,7 +287,25 @@ private fun PhaseContent(
                     )
                 }
                 Spacer(Modifier.height(20.dp))
-                Button(onClick = { onAccept(phase.model) }) { Text("Download & continue") }
+                // The CTA adapts to reality (twin of the Apple onboarding): when the recommended
+                // download fits, the primary action is Download; when it DOESN'T, the reason moves
+                // into a calm structured card and the PRIMARY action becomes picking a model that
+                // fits — never a disabled dead-end hero button.
+                val storage = storageCheck(phase.model)
+                if (storage.hasRoom) {
+                    Button(onClick = { onAccept(phase.model) }) { Text("Download & continue") }
+                    TextButton(onClick = onChoose) { Text("Choose a different model…") }
+                } else {
+                    StorageShortfallCard(storage)
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = onChoose) { Text("Choose a smaller model") }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Or free up storage and come back.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             is OnboardingPhase.Downloading -> {
@@ -275,6 +332,10 @@ private fun PhaseContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(6.dp))
+                // A multi-GB download must never be a trap: cancel returns to the recommendation
+                // (the engine keeps the .part, so a retry resumes).
+                TextButton(onClick = { onCancel(phase.model) }) { Text("Cancel") }
             }
 
             is OnboardingPhase.Loading ->
@@ -300,6 +361,44 @@ private fun PhaseContent(
                 Spacer(Modifier.height(20.dp))
                 Button(onClick = onStart) { Text("Try again") }
             }
+        }
+    }
+}
+
+/**
+ * Why the recommended model can't be installed, as a compact structured card — an orange status dot
+ * + short headline + ONE plain-toned sentence with the two numbers that matter. Never a wall of
+ * alarm text on the first-run screen. Twin of the Apple `StorageShortfallCard`.
+ */
+@Composable
+private fun StorageShortfallCard(storage: StorageCheckResult) {
+    fun gb(bytes: Long) = String.format("%.1f", bytes / 1_000_000_000.0)
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            val warn = androidx.compose.ui.graphics.Color(0xFFE8963A)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(7.dp)
+                        .background(warn, androidx.compose.foundation.shape.CircleShape),
+                )
+                Text(
+                    "  Not enough free space",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = warn,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "This model needs ~${gb(storage.requiredBytes)} GB — your phone has ${gb(storage.availableBytes)} GB free.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
