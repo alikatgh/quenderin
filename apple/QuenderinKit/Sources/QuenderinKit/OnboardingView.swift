@@ -75,7 +75,7 @@ public struct OnboardingView: View {
                 .font(.subheadline).foregroundStyle(p.onSurfaceVariant)
 
         case let .recommended(entry, hardware, fitness):
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Text("RECOMMENDED FOR YOUR DEVICE")
                     .font(.caption.weight(.semibold)).foregroundStyle(p.primary)
                     .accessibilityAddTraits(.isHeader)
@@ -111,23 +111,34 @@ public struct OnboardingView: View {
                         Text(fitness.message).font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
                     }
                 }
-                // Refuse to start a download that can't fit — and say so BEFORE the tap, not at 95%.
+                // The CTA adapts to reality: when the recommended download fits, the primary action
+                // is Download; when it DOESN'T, a disabled Download button would be a dead-end hero —
+                // so the primary action BECOMES picking a model that fits, and the reason moves into
+                // a calm, structured card instead of a wall of orange text (this is the first screen
+                // anyone sees; it has to read composed, not alarmed).
                 let storage = model.storageCheck(for: entry)
-                if !storage.hasRoom {
-                    Text(storage.message)
-                        .font(.caption).foregroundStyle(.orange).multilineTextAlignment(.center)
+                if storage.hasRoom {
+                    Button("Download & continue") { model.beginInstall(entry) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(p.primary)
+                        .padding(.top, 6)
+                    // The recommendation is a default, not a cage: full catalog one tap away.
+                    Button("Choose a different model…") { showPicker = true }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(p.primary)
+                        .padding(.top, 2)
+                } else {
+                    StorageShortfallCard(model: entry, storage: storage, palette: p)
+                        .padding(.top, 8)
+                    Button("Choose a smaller model") { showPicker = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(p.primary)
+                        .padding(.top, 6)
+                    Text("Or free up disk space and come back.")
+                        .font(.caption2)
+                        .foregroundStyle(p.onSurfaceVariant)
                 }
-                Button("Download & continue") { model.beginInstall(entry) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(p.primary)
-                    .disabled(!storage.hasRoom)
-                    .padding(.top, 4)
-                // The recommendation is a default, not a cage: full catalog one tap away (smaller
-                // download, different family, coding model, …).
-                Button("Choose a different model…") { showPicker = true }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(p.primary)
             }
 
         case let .downloading(entry, _):
@@ -168,6 +179,40 @@ public struct OnboardingView: View {
                     .padding(.top, 4)
             }
         }
+    }
+}
+
+/// Why the recommended model can't be installed, as a compact structured card — an orange status dot
+/// + short headline + ONE plain-toned sentence with the two numbers that matter. Replaces the previous
+/// all-orange paragraph (dense + alarmed) on the first-run screen.
+private struct StorageShortfallCard: View {
+    let model: ModelEntry
+    let storage: StorageCheckResult
+    let palette: QuenderinPalette
+
+    private func gb(_ bytes: Int64) -> String {
+        String(format: "%.1f", Double(bytes) / 1_000_000_000)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Circle().fill(.orange).frame(width: 7, height: 7)
+                Text("Not enough free space")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
+            Text("This model needs ~\(gb(storage.requiredBytes)) GB — your \(deviceNoun) has \(gb(storage.availableBytes)) GB free.")
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.surfaceVariant, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+        .accessibilityElement(children: .combine)
     }
 }
 
