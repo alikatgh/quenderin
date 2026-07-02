@@ -57,6 +57,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Non-streaming chat feels broken even when it works.** A blocking `complete()` shows nothing for the
   whole multi-second generation, then dumps the reply — indistinguishable from "not answering". Stream
   tokens into a placeholder message (per-token `onToken` → emit) so the reply builds live. (android chat streaming)
+- **A raw "User:/Assistant:" prompt makes an instruct model ramble to `maxTokens`.** Without the model's
+  real chat template (`<|im_start|>…<|im_end|>` for Qwen, `<|start_header_id|>…<|eot_id|>` for Llama-3) it
+  never emits its end-of-turn token, so EVERY reply runs to the full token cap (tens of seconds on a phone)
+  AND multilingual quality drops hard. Feed structured messages to `llama_chat_apply_template` using the
+  GGUF's embedded template (`llama_model_chat_template`) so it stops early + answers properly; keep a flat
+  fallback for templateless models. (android chat template — slowness + Russian quality)
+- **On-device model language reality.** Small on-device models (Qwen3, Llama-3.2) have real Russian but NO
+  meaningful Yakut/Sakha (~450k-speaker low-resource language, ~absent from training data). No code fix
+  makes a model speak a language it wasn't trained on — that needs a fine-tuned model. Set honest
+  expectations. (on-device language limits)
 - **Strict-prefix KV reuse silently dies on a front-drop.** Reusing the KV cache only when it's a strict
   *prefix* of the new prompt breaks the instant `ConversationContext` drops the OLDEST turn (budget full):
   the prompt becomes `sys + [t2..tN]` vs the cached `sys + [t1..t_{N-1}]`, the common prefix collapses to

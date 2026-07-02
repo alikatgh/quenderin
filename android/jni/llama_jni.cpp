@@ -163,6 +163,61 @@ jstring throw_generation_failed(JNIEnv* env, const char* msg) {
     return nullptr;
 }
 
+// Split `s` on the single-char delimiter `sep`.
+std::vector<std::string> splitOn(const std::string& s, char sep) {
+    std::vector<std::string> out;
+    size_t start = 0;
+    while (true) {
+        size_t pos = s.find(sep, start);
+        if (pos == std::string::npos) { out.push_back(s.substr(start)); break; }
+        out.push_back(s.substr(start, pos - start));
+        start = pos + 1;
+    }
+    return out;
+}
+
+// Turn the structured conversation into the prompt string the model was actually TRAINED on, using its
+// OWN chat template embedded in the GGUF (llama_model_chat_template) via llama_chat_apply_template — e.g.
+// Qwen's `<|im_start|>…<|im_end|>`, Llama-3's `<|start_header_id|>…<|eot_id|>`. This is what makes the model
+// answer as an assistant AND emit its end-of-turn token, so generation STOPS after a short reply instead
+// of running to max_tokens (the multi-second-per-reply slowness). `payload` is role\x1Ftext records joined
+// by \x1E (system first). Falls back to a plain "User:/Assistant:" prompt if the model has no template.
+std::string buildChatPrompt(llama_model* model, const std::string& payload, bool& templated) {
+    templated = false;
+    std::vector<std::pair<std::string, std::string>> msgs;
+    for (const auto& rec : splitOn(payload, '\x1E')) {
+        if (rec.empty()) continue;
+        auto rt = splitOn(rec, '\x1F');
+        if (rt.size() == 2) msgs.emplace_back(rt[0], rt[1]);
+    }
+    if (msgs.empty()) return std::string();
+
+    const char* tmpl = llama_model_chat_template(model, nullptr);
+    if (tmpl) {
+        std::vector<llama_chat_message> cm;
+        cm.reserve(msgs.size());
+        for (const auto& m : msgs) cm.push_back({m.first.c_str(), m.second.c_str()});
+        size_t est = 512;
+        for (const auto& m : msgs) est += m.first.size() + m.second.size();
+        std::vector<char> buf(est * 2);
+        int32_t n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), true, buf.data(), (int32_t) buf.size());
+        if (n > (int32_t) buf.size()) {              // buffer too small — grow once and retry
+            buf.resize(n);
+            n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), true, buf.data(), n);
+        }
+        if (n > 0) { templated = true; return std::string(buf.data(), (size_t) n); }
+    }
+
+    // Fallback: the old flat prompt (still works, just no early-stop benefit).
+    std::string flat;
+    for (const auto& m : msgs) {
+        if (m.first == "system") { flat += m.second; flat += "\n\n"; }
+        else { flat += (m.first == "user" ? "User: " : "Assistant: "); flat += m.second; flat += "\n"; }
+    }
+    flat += "Assistant:";
+    return flat;
+}
+
 } // namespace
 
 extern "C" {
@@ -253,6 +308,32 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
     bool failed = false;
     std::string out = generate(h, std::string(p), max_tokens, env, sink, thiz, failed);
     env->ReleaseStringUTFChars(prompt, p);
+    if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
+    return make_jstring(env, out);
+}
+
+// Chat-templated streaming completion: `payload` is the structured conversation (role\x1Ftext records
+// joined by \x1E, system first). We apply the model's own chat template so it answers as an assistant and
+// stops at its end-of-turn token — dramatically faster + higher quality than the raw "User:/Assistant:"
+// prompt. Streams pieces to `sink`; returns the full text.
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobject thiz,
+                                                               jlong handle, jstring payload,
+                                                               jint max_tokens, jobject sink) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h) { LOGE("nativeCompleteChat: null handle (no model loaded)"); return make_jstring(env, ""); }
+    const char* p = env->GetStringUTFChars(payload, nullptr);
+    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");
+    std::string payloadStr(p);
+    env->ReleaseStringUTFChars(payload, p);
+
+    bool templated = false;
+    std::string prompt = buildChatPrompt(h->model, payloadStr, templated);
+    LOGI("nativeCompleteChat: templated=%d prompt_bytes=%zu", (int) templated, prompt.size());
+    if (prompt.empty()) return make_jstring(env, "");
+
+    bool failed = false;
+    std::string out = generate(h, prompt, max_tokens, env, sink, thiz, failed);
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
 }

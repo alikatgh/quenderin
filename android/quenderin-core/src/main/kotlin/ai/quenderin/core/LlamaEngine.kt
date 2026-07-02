@@ -124,6 +124,28 @@ class LlamaEngine(
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
 
+    /**
+     * Chat-templated streaming completion: the native side formats the structured conversation with the
+     * MODEL'S OWN chat template (from the GGUF) so it answers as an assistant and stops at its end-of-turn
+     * token — instead of the raw "User:/Assistant:" prompt that made it run to `maxTokens` every reply
+     * (the multi-second slowness). Serialize to a role\u001Ftext\u001E payload the JNI parses. Control
+     * separators are stripped from text so a stray one can't corrupt the framing.
+     */
+    override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String =
+        synchronized(lock) {
+            ensureReady()
+            cancelRequested = false
+            fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
+            val payload = buildString {
+                if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
+                history.forEach { m ->
+                    append(if (m.role == Role.USER) "user" else "assistant")
+                        .append('\u001F').append(clean(m.text)).append('\u001E')
+                }
+            }
+            nativeCompleteChatStreaming(handle, payload, maxTokens, TokenSink { onToken(it) })
+        }
+
     private fun ensureReady() {
         if (!NATIVE_AVAILABLE) throw IllegalStateException(UNAVAILABLE_MSG)
         if (handle == 0L || loadedModelId == null) throw EngineNotLoadedException()
@@ -133,6 +155,7 @@ class LlamaEngine(
     private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
+    private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeFree(handle: Long)
 
     /** JNI-friendly callback (a single known method signature `(Ljava/lang/String;)V`). */
