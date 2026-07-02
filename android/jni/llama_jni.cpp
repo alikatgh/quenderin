@@ -205,7 +205,25 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
             buf.resize(n);
             n = llama_chat_apply_template(tmpl, cm.data(), cm.size(), true, buf.data(), n);
         }
-        if (n > 0) { templated = true; return std::string(buf.data(), (size_t) n); }
+        if (n > 0) {
+            std::string result(buf.data(), (size_t) n);
+            // Turn OFF extended reasoning for "thinking" models (Qwen3, DeepSeek-R1). By default they emit
+            // a long <think>…</think> chain BEFORE the answer — on a phone that's tens of seconds per reply
+            // AND the user reads raw reasoning instead of the response. Closing an EMPTY think block right
+            // after the assistant turn makes the model answer directly (Qwen3's `enable_thinking=false`
+            // behaviour). Detected by the model's template gating <think>/enable_thinking; other models are
+            // untouched. Normalize whether or not the applied template already opened a <think>.
+            std::string t(tmpl);
+            if (t.find("enable_thinking") != std::string::npos || t.find("<think>") != std::string::npos) {
+                size_t lastOpen = result.rfind("<think>");
+                size_t lastClose = result.rfind("</think>");
+                bool openUnclosed = lastOpen != std::string::npos &&
+                                    (lastClose == std::string::npos || lastClose < lastOpen);
+                result += openUnclosed ? "\n</think>\n\n" : "<think>\n\n</think>\n\n";
+            }
+            templated = true;
+            return result;
+        }
     }
 
     // Fallback: the old flat prompt (still works, just no early-stop benefit).
