@@ -132,7 +132,11 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                                     )
                                 },
                         ) {
-                            Text(a, modifier = Modifier.padding(12.dp))
+                            MarkdownText(
+                                text = a,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(12.dp),
+                            )
                         }
                     }
                 }

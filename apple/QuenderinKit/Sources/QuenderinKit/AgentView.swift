@@ -20,7 +20,7 @@ public struct AgentView: View {
                         AgentStepRow(step: step)
                     }
                     if let answer = session.answer {
-                        Text(answer)
+                        MarkdownText(text: answer, color: .primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(12)
                             .background(Color.accentColor.opacity(0.12))

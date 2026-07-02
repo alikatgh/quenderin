@@ -367,12 +367,22 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                         else Modifier,
                     ),
             ) {
-                Text(
-                    text = msg.text,
-                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
-                    color = if (mine) colors.onUserBubble else colors.onAssistantBubble,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                if (mine) {
+                    // The user's own message is shown literally (what they typed), not re-interpreted.
+                    Text(
+                        text = msg.text,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                        color = colors.onUserBubble,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                } else {
+                    // Assistant replies are Markdown — render bold/headings/lists/code instead of raw markers.
+                    MarkdownText(
+                        text = msg.text,
+                        color = colors.onAssistantBubble,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    )
+                }
             }
         }
         if (msg.isFlagged) {

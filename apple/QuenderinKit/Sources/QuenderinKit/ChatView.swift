@@ -119,9 +119,18 @@ private struct ChatBubble: View {
     var body: some View {
         let mine = message.role == .user
         let bubble = VStack(alignment: .leading, spacing: 2) {
-            Text(message.text.isEmpty ? "…" : message.text)
-                .foregroundStyle(mine ? palette.onUserBubble : palette.onAssistantBubble)
-                .textSelection(.enabled)
+            if mine {
+                // The user's own message is shown literally (what they typed), not re-interpreted.
+                Text(message.text.isEmpty ? "…" : message.text)
+                    .foregroundStyle(palette.onUserBubble)
+                    .textSelection(.enabled)
+            } else if message.text.isEmpty {
+                Text("…").foregroundStyle(palette.onAssistantBubble)
+            } else {
+                // Assistant replies are Markdown — render bold/headings/lists/code instead of raw markers.
+                MarkdownText(text: message.text, color: palette.onAssistantBubble)
+                    .textSelection(.enabled)
+            }
             if message.isFlagged {
                 Label(SupportContact.flaggedOutputNotice, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2)
