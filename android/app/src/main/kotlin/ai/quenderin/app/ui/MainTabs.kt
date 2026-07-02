@@ -11,15 +11,19 @@ import ai.quenderin.core.UnitConverterTool
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.CornerRadius
@@ -64,33 +69,20 @@ fun MainTabs(
     LaunchedEffect(deepThinking) { (engine as? LlamaEngine)?.enableThinking = deepThinking }
     Scaffold(
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                val itemColors = NavigationBarItemDefaults.colors(
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                NavigationBarItem(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    colors = itemColors,
-                    icon = { NavIcon(NavKind.Chat, tab == 0) },
-                    label = { Text("Chat") },
-                )
-                NavigationBarItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    colors = itemColors,
-                    icon = { NavIcon(NavKind.Agent, tab == 1) },
-                    label = { Text("Agent") },
-                )
-                NavigationBarItem(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
-                    colors = itemColors,
-                    icon = { NavIcon(NavKind.Settings, tab == 2) },
-                    label = { Text("Settings") },
-                )
+            // A custom bar instead of Material's NavigationBar: its content band is a hard-coded 80dp
+            // (too tall vs WhatsApp's ~56dp), and it merges the system-nav inset INTO that height, so
+            // shrinking the total via a height() modifier just crushes the icons. Here the content is a
+            // fixed 56dp band and navigationBarsPadding() adds the system-nav inset BELOW it — tight
+            // like a messaging app, and correct on gesture- and 3-button-nav devices alike.
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
+                Row(
+                    Modifier.fillMaxWidth().navigationBarsPadding().height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BottomTab(NavKind.Chat, "Chat", tab == 0, { tab = 0 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Agent, "Agent", tab == 1, { tab = 1 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Settings, "Settings", tab == 2, { tab = 2 }, Modifier.weight(1f))
+                }
             }
         },
     ) { pad ->
@@ -101,7 +93,14 @@ fun MainTabs(
             // The hidden tabs are also removed from touch/a11y focus so they can't intercept input
             // while invisible underneath the active one.
             Box(Modifier.fillMaxSize().tabVisibility(tab == 0)) {
-                ChatScreen(engine = engine, model = model, persistence = conversations)
+                ChatScreen(
+                    engine = engine,
+                    model = model,
+                    persistence = conversations,
+                    onSelectModel = onSelectModel,
+                    deepThinking = deepThinking,
+                    onDeepThinkingChange = { deepThinking = it },
+                )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 1)) {
                 AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
@@ -137,6 +136,42 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
     ) {}
 
 private enum class NavKind { Chat, Agent, Settings }
+
+/**
+ * One bottom-bar destination: a drawn icon over a small label, the whole column tappable. No pill
+ * indicator behind the icon (WhatsApp-style) — selection reads through colour only, and a no-ripple
+ * click keeps geometry stable (state never resizes the item). [modifier] carries the RowScope weight
+ * so the three tabs split the width evenly.
+ */
+@Composable
+private fun BottomTab(
+    kind: NavKind,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        NavIcon(kind, selected)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            modifier = Modifier.padding(top = 3.dp),
+        )
+    }
+}
 
 /**
  * Crisp, theme-tinted line icons drawn in Compose — replacing the full-colour emoji that clashed with

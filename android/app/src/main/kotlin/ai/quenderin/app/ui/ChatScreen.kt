@@ -85,13 +85,24 @@ import kotlinx.coroutines.launch
  * blocking [InferenceEngine.complete] off the main thread. Twin of iOS `ChatView`.
  */
 @Composable
-fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: ConversationPersistence) {
+fun ChatScreen(
+    engine: InferenceEngine,
+    model: ModelEntry,
+    persistence: ConversationPersistence,
+    onSelectModel: (ModelEntry) -> Unit = {},
+    deepThinking: Boolean = false,
+    onDeepThinkingChange: (Boolean) -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     var summaries by remember { mutableStateOf<List<ConversationSummary>>(emptyList()) }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
+    // Tapping the top-bar name/avatar opens the model "profile" sheet; from there the user can open
+    // the model picker to switch models (same picker Settings uses).
+    var showProfile by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
     // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (engine not
     // loaded, native decode error) looks identical to "the app is ignoring me". Surface + log it.
     var sendError by remember { mutableStateOf<String?>(null) }
@@ -118,6 +129,7 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
+            onTitleClick = { showProfile = true },
             onHistory = { showHistory = true },
             onNew = { coordinator.startNew() },
             onShare = {
@@ -211,6 +223,29 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
             )
         }
     }
+
+    if (showProfile) {
+        ModalBottomSheet(onDismissRequest = { showProfile = false }) {
+            ModelProfileSheet(
+                model = model,
+                deepThinking = deepThinking,
+                onDeepThinkingChange = onDeepThinkingChange,
+                onChangeModel = { showProfile = false; showPicker = true },
+            )
+        }
+    }
+
+    if (showPicker) {
+        ModalBottomSheet(onDismissRequest = { showPicker = false }) {
+            ModelPickerSheet(
+                currentModelId = model.id,
+                onSelect = { picked ->
+                    showPicker = false
+                    if (picked.id != model.id) onSelectModel(picked)
+                },
+            )
+        }
+    }
 }
 
 // ── Top bar: avatar + name + live "on-device · private" status + overflow menu ──
@@ -218,6 +253,7 @@ fun ChatScreen(engine: InferenceEngine, model: ModelEntry, persistence: Conversa
 private fun ChatTopBar(
     model: ModelEntry,
     hasMessages: Boolean,
+    onTitleClick: () -> Unit,
     onHistory: () -> Unit,
     onNew: () -> Unit,
     onShare: () -> Unit,
@@ -228,23 +264,37 @@ private fun ChatTopBar(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ModelAvatar(size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    model.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(7.dp).background(colors.status, CircleShape))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "on-device · private",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.statusText,
+            // The avatar + name is a tappable "contact" that opens the model profile (like tapping a
+            // chat's header in WhatsApp). Ripple + a11y label so it reads as a button.
+            Row(
+                Modifier
+                    .weight(1f)
+                    .combinedClickable(
+                        onClick = onTitleClick,
+                        onLongClick = {},
                     )
+                    .semantics { contentDescription = "About ${model.label}" }
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ModelAvatar(size = 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        model.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(7.dp).background(colors.status, CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "on-device · private",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.statusText,
+                        )
+                    }
                 }
             }
             var menuOpen by remember { mutableStateOf(false) }
@@ -270,7 +320,7 @@ private fun ChatTopBar(
 
 /** The model rendered as a chat "contact": a gradient orb with a monogram. */
 @Composable
-private fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
+internal fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
     Box(
         Modifier
             .size(size)
