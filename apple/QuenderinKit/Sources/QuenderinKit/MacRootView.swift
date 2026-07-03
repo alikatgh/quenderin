@@ -321,9 +321,6 @@ extension MacRootView {
     var railColumn: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 6) {
-            ModelAvatar(size: 30)
-                .padding(.bottom, 8)
-                .accessibilityHidden(true)
             railButton(.chats, icon: "bubble.left.and.bubble.right", label: "Chats (⌘1)", palette: p)
             if agent != nil {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
@@ -349,7 +346,7 @@ extension MacRootView {
                     }
                 }
             Spacer()
-            SettingsGearButton()
+            AppIdentityMenu()
                 .padding(.bottom, 10)
         }
         .padding(.top, 12)
@@ -378,30 +375,77 @@ extension MacRootView {
     }
 }
 
-/// Opens the standard Settings scene: SettingsLink on macOS 14+, the legacy selector before.
-private struct SettingsGearButton: View {
+/// The rail-foot identity menu — the anatomy every serious app anchors to its account
+/// avatar, translated to an app that HAS no account: the elf is the identity, the header
+/// says what we are, and where others put "Log out" we get to state the brand promise.
+private struct AppIdentityMenu: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.openURL) private var openURL
+
+    private var version: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
+    }
+
     var body: some View {
         let p = QuenderinPalette.of(scheme)
-        Group {
+        Menu {
+            // Identity header (disabled rows read as the menu's letterhead).
+            Text("Quenderin \(version) — on-device · private")
+
+            Divider()
+
             if #available(macOS 14.0, *) {
-                SettingsLink {
-                    Image(systemName: "gearshape")
-                }
+                SettingsLink { Label("Settings…", systemImage: "gearshape") }
+                    .keyboardShortcut(",", modifiers: .command)
             } else {
                 Button {
                     NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
                 } label: {
-                    Image(systemName: "gearshape")
+                    Label("Settings…", systemImage: "gearshape")
                 }
             }
+
+            Divider()
+
+            Button {
+                if let url = URL(string: "mailto:\(SupportContact.reportEmail)") { openURL(url) }
+            } label: {
+                Label("Get help", systemImage: "questionmark.circle")
+            }
+            Button {
+                if let url = URL(string: SupportContact.githubURL + "/commits/main") { openURL(url) }
+            } label: {
+                Label("What's new — the changelog", systemImage: "clock.arrow.circlepath")
+            }
+            Button {
+                if let url = URL(string: SupportContact.githubURL) { openURL(url) }
+            } label: {
+                Label("View the source on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+            }
+            Button {
+                if let url = URL(string: "https://quenderin.org") { openURL(url) }
+            } label: {
+                Label("quenderin.org", systemImage: "globe")
+            }
+            Button {
+                if let url = URL(string: SupportContact.privacyPolicyURL) { openURL(url) }
+            } label: {
+                Label("Privacy Policy", systemImage: "lock.shield")
+            }
+
+            Divider()
+
+            // Where other apps put "Log out": the promise, stated where they'd expect the button.
+            Text("No account, no log-out — your chats never leave this Mac.")
+        } label: {
+            ModelAvatar(size: 30)
         }
+        .menuStyle(.button)
         .buttonStyle(.plain)
-        .font(.system(size: 17, weight: .medium))
-        .foregroundStyle(p.onSurfaceVariant)
-        .frame(width: 44, height: 40)
-        .help("Settings (⌘,)")
-        .accessibilityLabel("Settings")
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Quenderin — settings, help, and links")
+        .accessibilityLabel("Quenderin menu")
     }
 }
 
