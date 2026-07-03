@@ -33,9 +33,13 @@ public struct ModelPickerView: View {
 
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
-        let recommended = options.filter { $0.model.id == recommendedID }
-        let fitting = options.filter { $0.model.id != recommendedID && $0.fitness.canLoad }
-        let blocked = options.filter { $0.model.id != recommendedID && !$0.fitness.canLoad }
+        // Same information order as the library: what you HAVE (instant switches) first,
+        // then the recommendation, then downloads, then what can't run.
+        let installed = options.filter { installedFilenames.contains($0.model.filename) && $0.fitness.canLoad }
+        let installedIDs = Set(installed.map(\.model.id))
+        let recommended = options.filter { $0.model.id == recommendedID && !installedIDs.contains($0.model.id) }
+        let fitting = options.filter { !installedIDs.contains($0.model.id) && $0.model.id != recommendedID && $0.fitness.canLoad }
+        let blocked = options.filter { !installedIDs.contains($0.model.id) && !$0.fitness.canLoad }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("All of these run fully on your \(deviceNoun) — a one-time download, then it's yours offline.")
@@ -61,12 +65,16 @@ public struct ModelPickerView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
 
+                if !installed.isEmpty {
+                    sectionHeader("On this \(deviceNoun) — switches instantly", color: p.statusText)
+                    rows(installed, palette: p)
+                }
                 if !recommended.isEmpty {
                     sectionHeader("Recommended for this \(deviceNoun)", color: p.primary)
                     rows(recommended, palette: p)
                 }
                 if !fitting.isEmpty {
-                    sectionHeader("All models", color: p.onSurfaceVariant)
+                    sectionHeader("Available to download", color: p.onSurfaceVariant)
                     rows(fitting, palette: p)
                 }
                 if !blocked.isEmpty {

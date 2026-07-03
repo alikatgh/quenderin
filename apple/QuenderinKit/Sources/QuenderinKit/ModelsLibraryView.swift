@@ -21,31 +21,61 @@ public struct ModelsLibraryView: View {
         self.onSelectModel = onSelectModel
     }
 
+    /// The page's information order: what you HAVE, what you SHOULD get, what you COULD get,
+    /// what you CAN'T — each its own captioned section, never one undifferentiated dump.
+    private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry]) {
+        let recommendedID = ModelRecommender.bestInstallableModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB).id
+        var mine: [ModelEntry] = [], recommended: [ModelEntry] = []
+        var available: [ModelEntry] = [], blocked: [ModelEntry] = []
+        for entry in ModelCatalog.models {
+            let state = library.state(of: entry)
+            if state == .installed || { if case .downloading = state { return true }; return false }() {
+                mine.append(entry)   // downloading = arriving — it belongs with "yours"
+            } else if entry.id == recommendedID {
+                recommended.append(entry)
+            } else if MemoryFitness.check(for: entry).canLoad {
+                available.append(entry)
+            } else {
+                blocked.append(entry)
+            }
+        }
+        // Yours: the active model first, then the rest by size (largest = most capable first).
+        mine.sort { a, b in
+            if (a.id == activeModelID) != (b.id == activeModelID) { return a.id == activeModelID }
+            return a.paramsBillions > b.paramsBillions
+        }
+        return (mine, recommended, available, blocked)
+    }
+
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
+        let groups = grouped
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header(p)
-                // Adaptive grid: one column in a narrow window, two on a wide Mac pane —
-                // cards, not a strip down the middle of a big window.
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 14, alignment: .top)],
-                          alignment: .leading, spacing: 14) {
-                    ForEach(ModelCatalog.models) { entry in
-                        LibraryRow(
-                            entry: entry,
-                            state: library.state(of: entry),
-                            isActive: entry.id == activeModelID,
-                            fitness: MemoryFitness.check(for: entry),
-                            palette: p,
-                            onDownload: { library.download(entry) },
-                            onCancel: { library.cancel(entry) },
-                            onUse: { onSelectModel(entry) },
-                            onOpen: { profileModel = entry },
-                            onDelete: { pendingDelete = entry },
-                            sizeOnDisk: library.sizeOnDisk(entry)
-                        )
-                    }
+
+                if !groups.mine.isEmpty {
+                    sectionHeader("On this \(deviceNoun)", color: p.statusText, palette: p)
+                    grid(groups.mine, palette: p)
                 }
+                if !groups.recommended.isEmpty {
+                    sectionHeader("Recommended", color: p.primary, palette: p,
+                                  hint: "The largest model that loads comfortably in this \(deviceNoun)'s "
+                                      + "\(Int(HardwareProbe.current().totalRAMGB)) GB of memory — the best answers "
+                                      + "it can run without slowdowns. Picked by the same live check that grades "
+                                      + "every card's fit badge.")
+                    grid(groups.recommended, palette: p)
+                }
+                if !groups.available.isEmpty {
+                    sectionHeader("Available to download", color: p.onSurfaceVariant, palette: p)
+                    grid(groups.available, palette: p)
+                }
+                if !groups.blocked.isEmpty {
+                    // Can't-run models sink to the bottom, dimmed by their own cards' fit state.
+                    sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant, palette: p)
+                    grid(groups.blocked, palette: p)
+                }
+
                 Text("Installed is not the same as loadable: models load one at a time, and RAM decides "
                    + "which can run. The fit badges are live for this \(deviceNoun). Click a model for its "
                    + "full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
@@ -122,6 +152,58 @@ public struct ModelsLibraryView: View {
         } message: {
             Text("They download one after another and can be deleted any time in Settings → Storage.")
         }
+    }
+
+    @ViewBuilder
+    private func grid(_ entries: [ModelEntry], palette p: QuenderinPalette) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 14, alignment: .top)],
+                  alignment: .leading, spacing: 14) {
+            ForEach(entries) { entry in
+                LibraryRow(
+                    entry: entry,
+                    state: library.state(of: entry),
+                    isActive: entry.id == activeModelID,
+                    fitness: MemoryFitness.check(for: entry),
+                    palette: p,
+                    onDownload: { library.download(entry) },
+                    onCancel: { library.cancel(entry) },
+                    onUse: { onSelectModel(entry) },
+                    onOpen: { profileModel = entry },
+                    onDelete: { pendingDelete = entry },
+                    sizeOnDisk: library.sizeOnDisk(entry)
+                )
+            }
+        }
+    }
+
+    @State private var showRecommendedHint = false
+
+    @ViewBuilder
+    private func sectionHeader(_ title: String, color: Color, palette p: QuenderinPalette, hint: String? = nil) -> some View {
+        HStack(spacing: 5) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(color)
+                .accessibilityAddTraits(.isHeader)
+            if let hint {
+                Button { showRecommendedHint = true } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(p.onSurfaceVariant.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .help("Why this one?")
+                .accessibilityLabel("Why is this recommended?")
+                .popover(isPresented: $showRecommendedHint, arrowEdge: .bottom) {
+                    Text(hint)
+                        .font(.callout)
+                        .padding(14)
+                        .frame(width: 300, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.top, 4)
     }
 
     @ViewBuilder
