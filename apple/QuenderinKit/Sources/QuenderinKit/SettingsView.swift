@@ -172,22 +172,32 @@ public struct SettingsView: View {
         }
     }
 
+    /// The preset a click is about to switch to, held for confirmation when it means a
+    /// DOWNLOAD — a settings segment must never surprise-fetch gigabytes (owner feedback:
+    /// "why does it open some other window" — the main window becoming the install screen
+    /// out of nowhere).
+    @State private var pendingPreset: ModelEntry?
+
     private var speedSection: some View {
         Section("Speed") {
                 // The model-speed dial: decode speed scales with model SIZE, so this is the one
-                // control that changes how fast replies FEEL. Selecting a preset runs the normal
-                // switch flow (download if needed → load → swap).
+                // control that changes how fast replies FEEL.
                 let choice = SpeedPresets.forDevice(totalRAMGB: HardwareProbe.current().totalRAMGB)
                 let current = choice.preset(for: model.id)
-                // Optional selection: a CUSTOM model must show NO selected segment (highlighting
-                // "Quality" while the caption says "custom model active" contradicts itself —
-                // Android's chips already behave this way).
+                let installed = Set(FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()).installedFilenames())
+                // Optional selection: a non-preset model must show NO selected segment (highlighting
+                // "Quality" while the caption says otherwise contradicts itself).
                 Picker("Speed", selection: Binding<SpeedPreset?>(
                     get: { current },
                     set: { picked in
                         guard let picked else { return }
                         let target = choice.model(picked)
-                        if target.id != model.id { onSelectModel(target) }
+                        guard target.id != model.id else { return }
+                        if installed.contains(target.filename) {
+                            onSelectModel(target)   // already on disk: switches in seconds
+                        } else {
+                            pendingPreset = target  // a download: ask before fetching gigabytes
+                        }
                     }
                 )) {
                     Text("Fast").tag(SpeedPreset.fast as SpeedPreset?)
@@ -196,11 +206,34 @@ public struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                Text(current == nil
-                     ? "Custom model active (\(model.label)) — pick a preset to switch."
-                     : "Fast: \(choice.fast.label) · Balanced: \(choice.balanced.label) · Quality: \(choice.quality.label). Switching downloads the model if needed.")
+                // Say what each preset IS and whether picking it downloads or just switches.
+                Text("Fast: \(presetLine(choice.fast, installed: installed)) · Balanced: \(presetLine(choice.balanced, installed: installed)) · Quality: \(presetLine(choice.quality, installed: installed))")
                     .font(.footnote).foregroundStyle(.secondary)
+                if current == nil {
+                    Text("You're on \(model.label), which isn't one of these three — picking one switches to it.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
         }
+        .confirmationDialog(
+            "Switch to \(pendingPreset?.label ?? "")?",
+            isPresented: Binding(get: { pendingPreset != nil }, set: { if !$0 { pendingPreset = nil } }),
+            titleVisibility: .visible,
+            presenting: pendingPreset
+        ) { target in
+            Button("Download \(target.sizeLabel.replacingOccurrences(of: " download", with: "")) and switch") {
+                onSelectModel(target)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { target in
+            Text("A one-time download — the main window shows progress and you can cancel any time. Your current model stays installed.")
+        }
+    }
+
+    /// "Llama 3.2 3B (installed)" or "Llama 3 8B (4.7 GB)" — a glance says tap-or-download.
+    private func presetLine(_ entry: ModelEntry, installed: Set<String>) -> String {
+        installed.contains(entry.filename)
+            ? "\(entry.label) — installed"
+            : "\(entry.label) — \(entry.sizeLabel.replacingOccurrences(of: " download", with: ""))"
     }
 
     private var modelSection: some View {
