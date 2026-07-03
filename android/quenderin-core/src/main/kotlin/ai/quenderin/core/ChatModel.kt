@@ -58,10 +58,12 @@ class ChatModel(
             emit()
         }
         // Settle on the authoritative full text (covers the non-streaming fallback, where onToken never
-        // fired and the placeholder is still empty).
-        _messages[placeholderIndex] = ChatMessage(Role.ASSISTANT, reply)
+        // fired and the placeholder is still empty) — with duplicate-paragraph runs collapsed
+        // (DegenerationGuard; the sampler penalty upstream prevents most, this cleans the rest).
+        val settled = DegenerationGuard.collapseRepeatedParagraphs(reply)
+        _messages[placeholderIndex] = ChatMessage(Role.ASSISTANT, settled)
         emit()
-        return reply
+        return settled
     }
 
     fun reset() {

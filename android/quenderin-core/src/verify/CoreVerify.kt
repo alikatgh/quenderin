@@ -166,6 +166,21 @@ fun main() {
             tight != null && !tight.modelId.startsWith("qwen25-coder") && ModelRouter.route("hi", emptyList(), 16.0, 8.0) == null
     })
 
+    // --- DegenerationGuard (twin of iOS DegenerationGuardTests) ---
+    run {
+        val para = "Quender was a forest elf, a member of the slender and agile forest elves."
+        val wall = "Once upon a time.\n\n" + List(4) { para }.joinToString("\n\n")
+        check("degeneration guard collapses runs of identical substantial paragraphs",
+            DegenerationGuard.collapseRepeatedParagraphs(wall) == "Once upon a time.\n\n" + para)
+        check("degeneration guard keeps distinct paragraphs and short repeats",
+            DegenerationGuard.collapseRepeatedParagraphs("A tale.\n\nYes.\n\nYes.\n\nThe end.") == "A tale.\n\nYes.\n\nYes.\n\nThe end." &&
+            DegenerationGuard.collapseRepeatedParagraphs("First idea here.\n\nSecond idea here.") == "First idea here.\n\nSecond idea here.")
+        val loop = List(8) { para }.joinToString(" ")
+        check("degeneration guard detects a verbatim-looping tail and not normal prose",
+            DegenerationGuard.looksDegenerate(loop) && !DegenerationGuard.looksDegenerate(
+                "The forest was a vast and varied tapestry of life, where a variety of animals and plants could be found, and every day brought a different weather, a different visitor, and a different small problem to solve."))
+    }
+
     // --- Inference seam (mock) ---
     val engine = MockInferenceEngine(cannedReply = "one two three")
     engine.load(ModelCatalog.smallest, "/dev/null")

@@ -10,11 +10,16 @@ public struct ChatView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var draft: String = ""
     @State private var suggestionDismissed = false
-    /// True while the bottom of the transcript is (about) on screen. Streaming auto-follows
-    /// ONLY then — the moment you scroll up to re-read, the app stops fighting you and a
-    /// floating ↓ offers the way back (the detail ChatGPT gets right).
-    @State private var nearBottom = true
+    /// Where the transcript's bottom edge sits in viewport coordinates, and the viewport's
+    /// height — nearBottom is DERIVED from the pair in body, so it can never go stale when
+    /// one arrives before the other (the ↓ button haunted empty chats when a preference
+    /// fired before onAppear had measured the viewport).
+    @State private var sentinelY: CGFloat = 0
     @State private var viewportHeight: CGFloat = 0
+
+    /// Streaming auto-follows ONLY while this is true — the moment you scroll up to re-read,
+    /// the app stops fighting you and a floating ↓ offers the way back.
+    private var nearBottom: Bool { sentinelY < viewportHeight + 140 }
     @Environment(\.colorScheme) private var scheme
     @FocusState private var composerFocused: Bool
 
@@ -120,15 +125,15 @@ public struct ChatView: View {
                     // layout pass, so the preference above goes stale mid-scroll. Watch the
                     // enclosing NSScrollView's bounds directly for that path.
                     .background(MacScrollObserver { distanceFromBottom in
-                        nearBottom = distanceFromBottom < 140
+                        sentinelY = viewportHeight + distanceFromBottom
                     })
                     #endif
                 }
                 .coordinateSpace(name: "chatScroll")
                 .onPreferenceChange(BottomEdgeKey.self) { minY in
                     // Updates on LAYOUT changes (streaming growth). On macOS, user scrolling
-                    // doesn't relayout — MacScrollObserver below covers that path.
-                    nearBottom = minY < viewportHeight + 140
+                    // doesn't relayout — MacScrollObserver covers that path.
+                    sentinelY = minY
                 }
                 .onAppear {
                     viewportHeight = viewport.size.height

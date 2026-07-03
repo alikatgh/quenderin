@@ -69,10 +69,15 @@ public final class ChatModel: ObservableObject {
 
         do {
             let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)
+            var tokenCount = 0
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
                 // onTermination stops decoding), so Stop also stops the compute.
                 if stopRequested { break }
+                // Degeneration guard: if the tail is verbatim-looping despite the sampler's
+                // repetition penalty, stop paying for tokens — the collapse below cleans up.
+                tokenCount += 1
+                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) { break }
                 assistant.text += token
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
@@ -84,7 +89,12 @@ public final class ChatModel: ObservableObject {
         } catch {
             assistant.text = "⚠️ " + OnboardingModel.describe(error)
             if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
+            return
         }
+        // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
+        // the guard's between-checkpoints window and the Stop path alike).
+        assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+        if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
     }
 
     /// Clear the conversation.
