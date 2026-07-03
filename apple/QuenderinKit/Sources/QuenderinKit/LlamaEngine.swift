@@ -281,8 +281,12 @@ public actor LlamaEngine: InferenceEngine {
             return
         }
 
-        // 2) Sampler chain from the request options (top-p → temperature → dist).
+        // 2) Sampler chain from the request options (penalties → top-p → temperature → dist).
+        // The repetition penalty is what keeps Q2-class small models from looping the same
+        // paragraph verbatim (docs/BUG_JOURNAL.md 2026-07-03). Kotlin twin: jni sampler chain.
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
+        llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
+            Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(Float(options.topP), 1))
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(Float(options.temperature)))
         llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32(truncatingIfNeeded: LLAMA_DEFAULT_SEED)))

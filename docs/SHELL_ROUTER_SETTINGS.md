@@ -52,6 +52,9 @@ that would re-prefill the transcript on another model behind the user's back.
   through `OnboardingModel`'s phases; the chip is the honest v1.
 - Router v2: use the small resident model as a classifier when heuristics are unsure.
 - Android UI wiring (core `ModelRouter.kt` + CoreVerify checks already landed).
+- Android JNI sampler parity: iOS now adds a repetition penalty
+  (`llama_sampler_init_penalties(256, 1.1, 0, 0)`) ahead of top-p — the Kotlin/JNI chain
+  in the Android engine needs the same or small quantized models loop verbatim.
 
 ## 3. Settings
 

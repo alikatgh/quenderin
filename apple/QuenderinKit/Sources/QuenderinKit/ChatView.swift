@@ -78,7 +78,7 @@ public struct ChatView: View {
               GeometryReader { viewport in
                 ScrollView {
                     if model.messages.isEmpty, !model.isGenerating {
-                        EmptyChatState(palette: p)
+                        EmptyChatState(palette: p, activeModel: activeModel)
                             .frame(maxWidth: .infinity, minHeight: 360)
                     } else {
                         // macOS gets a PLAIN VStack: LazyVStack destroys/recreates rows while you
@@ -452,6 +452,15 @@ private struct DayDivider: View {
 
 private struct EmptyChatState: View {
     let palette: QuenderinPalette
+    var activeModel: ModelEntry? = nil
+
+    /// True when the loaded model's quantization is graded "Low" — the honest heads-up
+    /// belongs BEFORE the first disappointing answer, not buried in the profile sheet.
+    private var isLowQualityModel: Bool {
+        guard let activeModel else { return false }
+        return Quantization.info(id: activeModel.quantization)?.quality == "Low"
+    }
+
     var body: some View {
         VStack(spacing: 14) {
             ModelAvatar(size: 72)
@@ -463,6 +472,15 @@ private struct EmptyChatState: View {
                 .foregroundStyle(palette.onSurfaceVariant)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
+            if isLowQualityModel {
+                Text("You're on the lightest model — quick, but it simplifies and sometimes rambles. "
+                   + "For anything that matters, pick a bigger one in the Model library.")
+                    .font(.footnote)
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 300)
+                    .padding(.top, 2)
+            }
         }
         .padding(32)
     }

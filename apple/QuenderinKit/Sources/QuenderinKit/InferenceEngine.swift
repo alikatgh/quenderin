@@ -6,17 +6,26 @@ public struct GenerationOptions: Sendable, Equatable {
     public var maxTokens: Int
     public var temperature: Double
     public var topP: Double
+    /// Repetition penalty over the last `repeatLastN` tokens (1.0 = off). Without it the
+    /// heavily-quantized small models loop the same paragraph verbatim — the failure mode
+    /// is a wall of identical "Installing Python" sections, not subtle drift.
+    public var repeatPenalty: Double
+    public var repeatLastN: Int
     public var stopSequences: [String]
 
     public init(
         maxTokens: Int = 512,
         temperature: Double = 0.7,
         topP: Double = 0.95,
+        repeatPenalty: Double = 1.1,
+        repeatLastN: Int = 256,
         stopSequences: [String] = []
     ) {
         self.maxTokens = maxTokens
         self.temperature = temperature
         self.topP = topP
+        self.repeatPenalty = repeatPenalty
+        self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences
     }
 }
