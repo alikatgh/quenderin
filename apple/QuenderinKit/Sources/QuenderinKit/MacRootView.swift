@@ -12,7 +12,10 @@ public struct MacRootView: View {
     private let agent: AgentSession?
     private let model: ModelEntry
 
-    @State private var selection: SidebarItem?
+    /// Sidebar selection as a SET: single click opens a chat; ⌘-click / ⇧-click (or a long
+    /// press on a row) grow it into a multi-selection for bulk actions.
+    @State private var selection = Set<String>()
+    @State private var confirmBulkDelete = false
     @State private var showProfile = false
     @State private var rail: RailSection = .chats
     @ObservedObject private var library = ModelLibraryController.shared
@@ -56,23 +59,24 @@ public struct MacRootView: View {
             }
         }
         .onAppear {
-            if selection == nil, let id = conversations.currentID {
-                selection = .conversation(id)
+            if selection.isEmpty, let id = conversations.currentID {
+                selection = [id]
             }
         }
-        // Selecting a sidebar row opens that conversation (open() persists the one being left).
+        // A SINGLE selected row opens that conversation (open() persists the one being left);
+        // a multi-selection changes nothing until the user picks a bulk action.
         .onChange(of: selection) { newValue in
-            if case let .conversation(id) = newValue, id != conversations.currentID {
+            if newValue.count == 1, let id = newValue.first, id != conversations.currentID {
                 conversations.open(id)
             }
         }
         // Follow the coordinator wherever a conversation change originates — the sidebar button,
         // the File-menu ⌘N (which talks to the coordinator directly and can't reach this view's
         // @State), or a delete fallback. Without this, ⌘N created a chat but left the detail pane
-        // showing whatever was selected before.
+        // showing whatever was selected before. (Never while a multi-selection is in progress.)
         .onChange(of: conversations.currentID) { (newID: String?) in
-            if let id = newID, selection != .conversation(id) {
-                selection = .conversation(id)
+            if let id = newID, selection.count <= 1, selection != [id] {
+                selection = [id]
             }
         }
         // "New Chat" must never be a dead control: even when startNew() no-ops (the current chat
@@ -80,7 +84,7 @@ public struct MacRootView: View {
         .onChange(of: conversations.newChatSignal) { (_: Int) in
             rail = .chats   // ⌘N from any rail section lands you in the empty chat, ready to type
             if let id = conversations.currentID {
-                selection = .conversation(id)
+                selection = [id]
             }
         }
         // Persist when a turn finishes (isGenerating falls), so sidebar titles/times stay live.
@@ -113,9 +117,20 @@ public struct MacRootView: View {
                 } else {
                     ForEach(conversations.summaries) { summary in
                         SidebarChatRow(summary: summary)
-                            .tag(SidebarItem.conversation(summary.id))
+                            .tag(summary.id)
+                            // Long press ADDS to the selection (the phone idiom, honored on
+                            // the Mac too); ⌘-click / ⇧-click are the native equivalents.
+                            .onLongPressGesture(minimumDuration: 0.4) {
+                                selection.insert(summary.id)
+                            }
                             .contextMenu {
-                                Button("Delete", role: .destructive) { delete(summary.id) }
+                                if selection.count > 1, selection.contains(summary.id) {
+                                    Button("Delete \(selection.count) chats…", role: .destructive) {
+                                        confirmBulkDelete = true
+                                    }
+                                } else {
+                                    Button("Delete", role: .destructive) { delete(summary.id) }
+                                }
                             }
                     }
                 }
@@ -123,6 +138,17 @@ public struct MacRootView: View {
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 200, ideal: 240)
+        // ⌫ deletes the selection — one chat or many (with the same confirmation).
+        .onDeleteCommand { if !selection.isEmpty { confirmBulkDelete = true } }
+        .confirmationDialog(
+            "Delete \(selection.count) \(selection.count == 1 ? "chat" : "chats")?",
+            isPresented: $confirmBulkDelete, titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { deleteSelected() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Their transcripts and per-chat settings are removed from this Mac. This can't be undone.")
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: newChat) { Image(systemName: "square.and.pencil") }
@@ -139,9 +165,14 @@ public struct MacRootView: View {
     private func delete(_ id: String) {
         conversations.delete(id)
         // Deleting the selected chat: follow the coordinator to whatever it fell back to.
-        if case .conversation(id) = selection {
-            selection = conversations.currentID.map(SidebarItem.conversation)
+        if selection.contains(id) {
+            selection = conversations.currentID.map { [$0] } ?? []
         }
+    }
+
+    private func deleteSelected() {
+        conversations.deleteMany(selection)
+        selection = conversations.currentID.map { [$0] } ?? []
     }
 
     // MARK: Detail
@@ -149,8 +180,14 @@ public struct MacRootView: View {
     @ViewBuilder
     private var detail: some View {
         let p = QuenderinPalette.of(scheme)
-        switch selection {
-        case .conversation:
+        if selection.count > 1 {
+            MultiSelectPane(
+                count: selection.count,
+                palette: p,
+                onDelete: { confirmBulkDelete = true },
+                onCancel: { selection = conversations.currentID.map { [$0] } ?? [] }
+            )
+        } else if selection.count == 1 {
             ChatView(model: chat, activeModel: model, onSwitchModel: { onboarding.beginInstall($0) }, conversationID: conversations.currentID)
                 // Re-identify the view per conversation: switching chats resets scroll state and
                 // refires onAppear, which puts the caret in the composer (see ChatView).
@@ -176,7 +213,7 @@ public struct MacRootView: View {
                                      conversationID: conversations.currentID)
                         .frame(minWidth: 480, minHeight: 560)
                 }
-        case nil:
+        } else {
             VStack(spacing: 10) {
                 ModelOrb(size: 56)
                 Text("Select a chat, or press ⌘N to start one.")
@@ -185,6 +222,39 @@ public struct MacRootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(p.background)
         }
+    }
+}
+
+/// The detail pane while SEVERAL chats are selected: the count, the one destructive action,
+/// and a way out — nothing else competes for attention.
+private struct MultiSelectPane: View {
+    let count: Int
+    let palette: QuenderinPalette
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 40))
+                .foregroundStyle(palette.primary)
+            Text("\(count) chats selected")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(palette.onSurface)
+            Text("⌘-click or long-press rows to change the selection.")
+                .font(.callout)
+                .foregroundStyle(palette.onSurfaceVariant)
+            HStack(spacing: 10) {
+                Button(role: .destructive) { onDelete() } label: {
+                    Label("Delete \(count) chats…", systemImage: "trash")
+                }
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(palette.background)
     }
 }
 

@@ -106,6 +106,29 @@ public final class ConversationCoordinator: ObservableObject {
         refresh()
     }
 
+    /// Delete SEVERAL conversations in one operation (multi-select bulk delete): per-chat
+    /// prefs die with each, and the current-chat fallback runs ONCE at the end — deleting
+    /// five chats must not open and restore five intermediate conversations.
+    public func deleteMany(_ ids: some Collection<String>) {
+        guard !ids.isEmpty else { return }
+        let deletingCurrent = manager.currentID.map(ids.contains) ?? false
+        for id in ids {
+            ChatPrefsStore.shared.clear(for: id)
+            manager.delete(id)
+        }
+        if deletingCurrent {
+            if let recent = manager.list().first {
+                chat.restore(manager.open(recent.id))
+                savedCount = chat.messages.count
+            } else {
+                manager.startNew()
+                chat.reset()
+                savedCount = 0
+            }
+        }
+        refresh()
+    }
+
     /// Delete all saved conversations, then drop into a fresh empty one (first-launch state).
     public func clearAll() {
         summaries.forEach { ChatPrefsStore.shared.clear(for: $0.id) }

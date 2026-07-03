@@ -61,6 +61,26 @@ final class ConversationCoordinatorTests: XCTestCase {
     }
 
     @MainActor
+    func testDeleteManyFallsBackOnceAndClearsPrefs() async {
+        let persistence = InMemoryConversationPersistence()
+        let chat = await loadedChat("r")
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
+        await chat.send("one"); coord.persist()
+        coord.startNew(); await chat.send("two"); coord.persist()
+        coord.startNew(); await chat.send("three"); coord.persist()
+        XCTAssertEqual(coord.summaries.count, 3)
+
+        let ids = coord.summaries.map(\.id)          // newest first: "three", "two", "one"
+        ChatPrefsStore.shared.set(fontStyle: "serif", fontSize: nil, for: ids[0])
+        coord.deleteMany([ids[0], ids[1]])            // includes the CURRENT conversation
+
+        XCTAssertEqual(coord.summaries.map(\.title), ["one"])
+        XCTAssertEqual(coord.currentID, ids[2], "fallback restores the surviving conversation")
+        XCTAssertEqual(chat.messages.first?.text, "one")
+        XCTAssertNil(ChatPrefsStore.shared.fontStyle(for: ids[0]), "per-chat prefs die with the chat")
+    }
+
+    @MainActor
     func testStartNewIsNoOpOnAnEmptyChat() async {
         let persistence = InMemoryConversationPersistence()
         let coord = ConversationCoordinator(chat: await loadedChat("x"), persistence: persistence, now: { 1 })
