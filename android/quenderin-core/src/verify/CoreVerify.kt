@@ -350,10 +350,28 @@ fun main() {
     })
 
     // --- ConversationManager (capstone: lifecycle over library + persistence; twin of Swift) ---
-    check("conversation manager startNew creates a titled, current, listed conversation", run {
-        val mgr = ConversationManager(InMemoryConversationPersistence(), now = { 1000L }, makeId = { "c1" })
+    check("conversation manager startNew defers the index row until first save (WhatsApp rule)", run {
+        val p = InMemoryConversationPersistence()
+        val mgr = ConversationManager(p, now = { 1000L }, makeId = { "c1" })
         val id = mgr.startNew()
-        mgr.currentId == id && mgr.list().size == 1 && mgr.list().first().title == "New conversation"
+        val nothingWritten = mgr.currentId == id && mgr.list().isEmpty() && p.loadIndex().isEmpty()
+        mgr.save(id, listOf(ChatMessage(Role.USER, "hi")))
+        nothingWritten && mgr.list().map { it.id } == listOf(id)
+    })
+    check("conversation manager pruneEmptyConversations drops blank shells, keeps real ones", run {
+        val p = InMemoryConversationPersistence()
+        // A legacy index as the old create-immediately startNew() wrote it: one real conversation
+        // plus abandoned "New conversation" shells (one with an empty transcript, one with none).
+        p.saveTranscript("real", listOf(ChatMessage(Role.USER, "keep me")))
+        p.saveTranscript("blank1", emptyList())
+        p.saveIndex(listOf(
+            ConversationSummary("real", "keep me", 1),
+            ConversationSummary("blank1", "New conversation", 2),
+            ConversationSummary("blank2", "New conversation", 3),
+        ))
+        val mgr = ConversationManager(p, now = { 9L }, makeId = { "x" })
+        mgr.pruneEmptyConversations()
+        mgr.list().map { it.id } == listOf("real") && p.loadIndex().map { it.id } == listOf("real")
     })
     check("conversation manager save derives a title and persists the transcript", run {
         val mgr = ConversationManager(InMemoryConversationPersistence(), now = { 1000L }, makeId = { "c1" })
@@ -364,11 +382,13 @@ fun main() {
     check("conversation manager lists newest-first and a touch re-sorts to top", run {
         var clock = 1000L
         val mgr = ConversationManager(InMemoryConversationPersistence(), now = { clock }, makeId = { "id-$clock" })
-        val first = mgr.startNew(); clock += 1000
+        val first = mgr.startNew()
+        mgr.save(first, listOf(ChatMessage(Role.USER, "first"))); clock += 1000
         val second = mgr.startNew()
+        mgr.save(second, listOf(ChatMessage(Role.USER, "second")))
         val newestIsSecond = mgr.list().first().id == second
         clock += 1000
-        mgr.save(first, listOf(ChatMessage(Role.USER, "hi")))
+        mgr.save(first, listOf(ChatMessage(Role.USER, "first"), ChatMessage(Role.ASSISTANT, "reply")))
         newestIsSecond && mgr.list().first().id == first
     })
     check("conversation manager delete removes everywhere and clears current", run {
@@ -1092,8 +1112,32 @@ fun main() {
         c.startNew(); chat.send("two"); c.persist()
         val hadTwo = c.summaries.size == 2
         c.clearAll()
-        hadTwo && chat.messages.isEmpty() && c.summaries.size == 1 &&
-            c.summaries[0].title == "New conversation" && p.loadIndex().size == 1
+        // First-launch state: empty chat, empty history — the fresh conversation only earns a
+        // row once something is said (WhatsApp rule).
+        hadTwo && chat.messages.isEmpty() && c.summaries.isEmpty() &&
+            c.currentId != null && p.loadIndex().isEmpty()
+    })
+    check("ConversationCoordinator creates no history row until the first turn is saved", run {
+        val p = InMemoryConversationPersistence()
+        val chat = ChatModel(ScriptedInferenceEngine(listOf("hello")))
+        val c = ConversationCoordinator(chat, p, now = { 7L })
+        val emptyOnLaunch = c.summaries.isEmpty() && p.loadIndex().isEmpty() && c.currentId != null
+        chat.send("first message"); c.persist()
+        emptyOnLaunch && c.summaries.map { it.title } == listOf("first message")
+    })
+    check("ConversationCoordinator init prunes legacy blank rows and restores the real chat", run {
+        val p = InMemoryConversationPersistence()
+        p.saveTranscript("real", listOf(ChatMessage(Role.USER, "keep me")))
+        p.saveTranscript("blank1", emptyList())
+        p.saveIndex(listOf(
+            ConversationSummary("real", "keep me", 1),
+            ConversationSummary("blank1", "New conversation", 2),
+            ConversationSummary("blank2", "New conversation", 3),
+        ))
+        val chat = ChatModel(ScriptedInferenceEngine(listOf("x")))
+        val c = ConversationCoordinator(chat, p, now = { 9L })
+        c.summaries.map { it.id } == listOf("real") && p.loadIndex().map { it.id } == listOf("real") &&
+            c.currentId == "real" && chat.messages.map { it.text } == listOf("keep me")
     })
 
     println()
