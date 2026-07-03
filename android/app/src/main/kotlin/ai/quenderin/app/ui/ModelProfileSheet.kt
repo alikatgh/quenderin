@@ -189,7 +189,7 @@ private fun Caption(text: String) {
 private fun fmt(d: Double): String = if (d % 1.0 == 0.0) d.toInt().toString() else d.toString()
 
 /** One-line, family-specific description keyed off the catalog id. Purely cosmetic copy. */
-private fun modelBlurb(id: String): String = when {
+internal fun modelBlurb(id: String): String = when {
     id.startsWith("qwen3") -> "Alibaba's Qwen3 — a strong, broadly multilingual all-rounder."
     id.startsWith("qwen25-coder") -> "Qwen2.5 Coder — tuned for programming and code reasoning."
     id.startsWith("deepseek-r1") -> "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers."
