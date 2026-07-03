@@ -27,6 +27,19 @@ struct ModelProfileView: View {
     let model: ModelEntry
     var onSelectModel: (ModelEntry) -> Void
 
+    /// Plain-language glossary behind the Specifications card's single (?) — this app is for
+    /// people who shouldn't need to know what "quantization" means before using it.
+    static let glossary: [(String, String)] = [
+        ("Parameters", "How big the model is — roughly how much it learned during training. More usually means smarter answers, but a bigger download that needs more memory."),
+        ("Download size", "A one-time download. After it finishes, the model is stored on your \(deviceNoun) and works without internet."),
+        ("Memory needed", "How much working memory (RAM) the model uses while it's answering. Your \(deviceNoun) needs at least this much free."),
+        ("Quantization", "Compression that shrinks the model so it fits on everyday devices. A \"Q4\"-style name means each number is stored in about 4 bits instead of 16 — much smaller, slightly less precise."),
+        ("Precision", "How much detail survives the compression. More bits per weight means answers closer to the original model, but a bigger file."),
+        ("Quality", "A rough grade of how much the compression affects answer quality — from Low (noticeably simplified) to High (close to the original)."),
+        ("Format", "GGUF is the standard file format for AI models that run directly on your \(deviceNoun) instead of in the cloud."),
+        ("Checksum", "A digital fingerprint of the downloaded file. Quenderin verifies it so a corrupted or tampered download is never loaded."),
+    ]
+
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -64,23 +77,18 @@ struct ModelProfileView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    ProfileCard(title: "Specifications", palette: p) {
-                        SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p,
-                                hint: "How big the model is — roughly how much it learned during training. More usually means smarter answers, but a bigger download that needs more memory.")
-                        SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p,
-                                hint: "A one-time download. After it finishes, the model is stored on your \(deviceNoun) and works without internet.")
-                        SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p,
-                                hint: "How much working memory (RAM) the model uses while it's answering. Your \(deviceNoun) needs at least this much free.")
-                        SpecRow("Quantization", model.quantization, palette: p,
-                                hint: "Compression that shrinks the model so it fits on everyday devices. A \"Q4\"-style name means each number is stored in about 4 bits instead of 16 — much smaller, slightly less precise.")
+                    // ONE (?) on the card header opens the whole glossary — a ring on every row
+                    // read as noise (user feedback), and the terms are best explained together.
+                    ProfileCard(title: "Specifications", palette: p, glossary: Self.glossary) {
+                        SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p)
+                        SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p)
+                        SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p)
+                        SpecRow("Quantization", model.quantization, palette: p)
                         if let q = quant {
-                            SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight", palette: p,
-                                    hint: "How much detail survives the compression. More bits per weight means answers closer to the original model, but a bigger file.")
-                            SpecRow("Quality", q.quality, palette: p,
-                                    hint: "A rough grade of how much the compression affects answer quality — from Low (noticeably simplified) to High (close to the original).")
+                            SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight", palette: p)
+                            SpecRow("Quality", q.quality, palette: p)
                         }
-                        SpecRow("Format", "GGUF", palette: p,
-                                hint: "GGUF is the standard file format for AI models that run directly on your \(deviceNoun) instead of in the cloud.")
+                        SpecRow("Format", "GGUF", palette: p)
                     }
 
                     ProfileCard(title: "Technical", palette: p) {
@@ -103,8 +111,7 @@ struct ModelProfileView: View {
                             .accessibilityLabel("Open source page")
                         }
                         // Truncated for display, copyable in full — a hash you can't copy is decoration.
-                        SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true,
-                                hint: "A digital fingerprint of the downloaded file. Quenderin verifies it so a corrupted or tampered download is never loaded.")
+                        SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true)
                             .contentShape(Rectangle())
                             .contextMenu {
                                 if let sha = model.sha256 {
@@ -193,18 +200,38 @@ struct ModelOrb: View {
 
 /// A captioned, hairline-bordered section card (the picker rows' visual language): the section
 /// title sits ABOVE the card as a small uppercase caption, and rows inside carry no separators.
+/// Pass a `glossary` to add ONE (?) beside the caption that opens all the term explanations
+/// together — per user feedback, a ring on every row reads as noise.
 private struct ProfileCard<Content: View>: View {
     let title: String
     let palette: QuenderinPalette
+    var glossary: [(String, String)]? = nil
     @ViewBuilder let content: Content
+    @State private var showGlossary = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(palette.onSurfaceVariant)
-                .padding(.horizontal, 4)
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 5) {
+                Text(title.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .accessibilityAddTraits(.isHeader)
+                if let glossary {
+                    Button { showGlossary = true } label: {
+                        Image(systemName: "questionmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(palette.onSurfaceVariant.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .help("What do these mean?")
+                    .accessibilityLabel("Explain the \(title.lowercased())")
+                    .popover(isPresented: $showGlossary, arrowEdge: .bottom) {
+                        GlossaryList(entries: glossary, palette: palette)
+                            .compactPopover()
+                    }
+                }
+            }
+            .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 10) { content }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -215,47 +242,52 @@ private struct ProfileCard<Content: View>: View {
     }
 }
 
+/// All the spec terms explained in one place: term (semibold) over one plain-language line each.
+private struct GlossaryList: View {
+    let entries: [(String, String)]
+    let palette: QuenderinPalette
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("What these mean")
+                    .font(.headline)
+                ForEach(entries, id: \.0) { term, text in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(term).font(.subheadline.weight(.semibold))
+                        Text(text)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .frame(width: 340)
+        .frame(maxHeight: 440)
+    }
+}
+
 /// Label on the left (quiet), value on the right (the data is the point — tabular digits, wraps
-/// trailing-aligned; `mono` for filenames/checksums). An optional `hint` adds a small (?) that
-/// pops a plain-language explanation — this app is for people who shouldn't need to know what
-/// "quantization" means before using it.
+/// trailing-aligned; `mono` for filenames/checksums). Term explanations live in the card
+/// header's single (?) glossary, not on the rows.
 private struct SpecRow: View {
     let title: String
     let value: String
     let palette: QuenderinPalette
     let mono: Bool
-    let hint: String?
-    @State private var showHint = false
 
-    init(_ title: String, _ value: String, palette: QuenderinPalette, mono: Bool = false, hint: String? = nil) {
+    init(_ title: String, _ value: String, palette: QuenderinPalette, mono: Bool = false) {
         self.title = title
         self.value = value
         self.palette = palette
         self.mono = mono
-        self.hint = hint
     }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title).font(.callout).foregroundStyle(palette.onSurfaceVariant)
-            if let hint {
-                Button { showHint = true } label: {
-                    Image(systemName: "questionmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(palette.onSurfaceVariant.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-                .help("What does this mean?")
-                .accessibilityLabel("Explain \(title)")
-                .popover(isPresented: $showHint, arrowEdge: .bottom) {
-                    Text(hint)
-                        .font(.callout)
-                        .padding(14)
-                        .frame(width: 280, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .compactPopover()
-                }
-            }
             Spacer(minLength: 12)
             Text(value)
                 .font(mono ? .footnote.monospaced() : .callout.monospacedDigit())
