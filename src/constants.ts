@@ -206,7 +206,7 @@ export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
             availableMemoryGB: freeGb,
             requiredMemoryGB: required,
             remainingAfterLoadGB: remaining,
-            message: `Loading ${entry.label} needs ~${required.toFixed(1)}GB but only ${freeGb.toFixed(1)}GB is free. Close some apps or choose a smaller model.`,
+            message: `Loading ${entry.label} needs ~${required.toFixed(1)}GB of memory — more than this device can safely spare (${freeGb.toFixed(1)}GB free of ${totalGb.toFixed(1)}GB). Close other apps or choose a smaller model.`,
         };
     }
     if (usageAfterLoad > MEMORY_BUDGET_WARNING) {

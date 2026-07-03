@@ -117,7 +117,7 @@ public struct OnboardingView: View {
                 // a calm, structured card instead of a wall of orange text (this is the first screen
                 // anyone sees; it has to read composed, not alarmed).
                 let storage = model.storageCheck(for: entry)
-                if storage.hasRoom {
+                if storage.hasRoom && fitness.canLoad {
                     Button("Download & continue") { model.beginInstall(entry) }
                         .buttonStyle(.borderedProminent)
                         .tint(p.primary)
@@ -129,15 +129,28 @@ public struct OnboardingView: View {
                         .foregroundStyle(p.primary)
                         .padding(.top, 2)
                 } else {
-                    StorageShortfallCard(model: entry, storage: storage, palette: p)
-                        .padding(.top, 8)
+                    // Disk shortfall gets the structured card; a memory block (rare now that the
+                    // recommendation is fitness-aware, but possible on a truly tiny machine) states
+                    // the reason plainly — either way, never a Download button for a doomed install.
+                    if !storage.hasRoom {
+                        StorageShortfallCard(model: entry, storage: storage, palette: p)
+                            .padding(.top, 8)
+                    } else {
+                        Text(fitness.message)
+                            .font(.caption)
+                            .foregroundStyle(p.onSurfaceVariant)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 8)
+                    }
                     Button("Choose a smaller model") { showPicker = true }
                         .buttonStyle(.borderedProminent)
                         .tint(p.primary)
                         .padding(.top, 6)
-                    Text("Or free up disk space and come back.")
-                        .font(.caption2)
-                        .foregroundStyle(p.onSurfaceVariant)
+                    if !storage.hasRoom {
+                        Text("Or free up disk space and come back.")
+                            .font(.caption2)
+                            .foregroundStyle(p.onSurfaceVariant)
+                    }
                 }
             }
 

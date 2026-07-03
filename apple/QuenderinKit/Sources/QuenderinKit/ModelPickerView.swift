@@ -14,7 +14,9 @@ public struct ModelPickerView: View {
 
     public init(totalRAMGB: Double, onSelect: @escaping (ModelEntry) -> Void) {
         self.options = ModelCatalog.optionsWithFitness(forTotalRAMGB: totalRAMGB)
-        self.recommendedID = ModelRecommender.recommendedModelID(forTotalRAMGB: totalRAMGB)
+        // Fitness-aware: the tag must sit on a row this same screen can actually install,
+        // never on one it dims and disables (band-vs-budget disagreement, e.g. 14B on 16 GB).
+        self.recommendedID = ModelRecommender.bestInstallableModel(forTotalRAMGB: totalRAMGB).id
         self.onSelect = onSelect
     }
 

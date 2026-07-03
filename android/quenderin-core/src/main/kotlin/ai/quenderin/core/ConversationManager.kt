@@ -63,9 +63,29 @@ class ConversationManager(
      */
     fun save(id: String, messages: List<ChatMessage>) {
         val firstUser = messages.firstOrNull { it.role == Role.USER }?.text
-        library.upsert(ConversationSummary(id, ConversationLibrary.titleFromFirstUserMessage(firstUser), now()))
+        library.upsert(ConversationSummary(
+            id,
+            ConversationLibrary.titleFromFirstUserMessage(firstUser),
+            now(),
+            preview = ConversationLibrary.previewFromLastMessage(messages.lastOrNull()),
+        ))
         persistence.saveTranscript(id, messages)
         persistence.saveIndex(library.snapshot())
+    }
+
+    /** One-time backfill for indexes written before `preview` existed: compute each snippet from
+     *  its transcript WITHOUT touching `updatedAt` — this is repair, not activity. */
+    fun refreshPreviews() {
+        var changed = false
+        for (summary in library.list()) {
+            if (summary.preview.isNotEmpty()) continue
+            val preview = ConversationLibrary.previewFromLastMessage(persistence.loadTranscript(summary.id).lastOrNull())
+            if (preview.isNotEmpty()) {
+                library.upsert(summary.copy(preview = preview))
+                changed = true
+            }
+        }
+        if (changed) persistence.saveIndex(library.snapshot())
     }
 
     /** Load a conversation's transcript and make it current (seed it into [ChatModel.restore]). */

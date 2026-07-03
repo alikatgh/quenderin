@@ -10,6 +10,12 @@ public final class ConversationCoordinator: ObservableObject {
     /// History rows, newest first — drives the history list.
     @Published public private(set) var summaries: [ConversationSummary] = []
 
+    /// Bumped on EVERY `startNew()` call — including the no-op case where the current chat is
+    /// already empty. Shells observe it to move selection/focus to the (possibly reused) current
+    /// conversation, so "New Chat" is never a dead button (e.g. pressed from the Agent pane, or
+    /// pressed twice — the second press must still land you in the empty chat, ready to type).
+    @Published public private(set) var newChatSignal = 0
+
     /// The live chat for the *current* conversation.
     public let chat: ChatModel
 
@@ -18,6 +24,12 @@ public final class ConversationCoordinator: ObservableObject {
 
     private let manager: ConversationManager
 
+    /// How many of the live chat's messages are already saved for the CURRENT conversation.
+    /// persist() only writes when the transcript grew past this — `save()` stamps `updatedAt`,
+    /// and without the guard every conversation SWITCH (open / ⌘N / relaunch) re-stamped an
+    /// untouched chat, so last night's conversation read "25 min ago" this morning.
+    private var savedCount = 0
+
     public init(
         chat: ChatModel,
         persistence: ConversationPersistence,
@@ -25,9 +37,11 @@ public final class ConversationCoordinator: ObservableObject {
     ) {
         self.chat = chat
         self.manager = ConversationManager(persistence: persistence, now: now)
+        manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
         // Pick up where you left off: restore the most recent conversation, or start fresh.
         if let recent = manager.list().first {
             chat.restore(manager.open(recent.id))
+            savedCount = chat.messages.count
         } else {
             manager.startNew()
         }
@@ -37,22 +51,27 @@ public final class ConversationCoordinator: ObservableObject {
     private func refresh() { summaries = manager.list() }
 
     /// Persist the current conversation — call when a turn finishes. No-ops on an empty chat so
-    /// untouched "New conversation" rows don't pile up, and while a reply is still streaming —
+    /// untouched "New conversation" rows don't pile up, while a reply is still streaming —
     /// `chat.messages` ends in a placeholder/partial assistant turn until `send()` completes, and
-    /// callers like `startNew()`/`open()` can run mid-stream (e.g. the user navigates away).
+    /// callers like `startNew()`/`open()` can run mid-stream (e.g. the user navigates away) —
+    /// and when nothing new was said since the last save (see `savedCount`).
     public func persist() {
-        guard let id = manager.currentID, !chat.messages.isEmpty, !chat.isGenerating else { return }
+        guard let id = manager.currentID, !chat.messages.isEmpty, !chat.isGenerating,
+              chat.messages.count > savedCount else { return }
         manager.save(id: id, messages: chat.messages)
+        savedCount = chat.messages.count
         refresh()
     }
 
     /// Start a fresh conversation. Saves the one you're leaving first; a no-op if the current
     /// chat is already empty (avoids stacking blank conversations).
     public func startNew() {
+        defer { newChatSignal += 1 }   // even a storage no-op must surface the empty chat
         guard !chat.messages.isEmpty else { return }
         persist()
         manager.startNew()
         chat.reset()
+        savedCount = 0
         refresh()
     }
 
@@ -60,6 +79,7 @@ public final class ConversationCoordinator: ObservableObject {
     public func open(_ id: String) {
         persist()
         chat.restore(manager.open(id))
+        savedCount = chat.messages.count
         refresh()
     }
 
@@ -70,9 +90,11 @@ public final class ConversationCoordinator: ObservableObject {
         if wasCurrent {
             if let recent = manager.list().first {
                 chat.restore(manager.open(recent.id))
+                savedCount = chat.messages.count
             } else {
                 manager.startNew()
                 chat.reset()
+                savedCount = 0
             }
         }
         refresh()
@@ -83,6 +105,7 @@ public final class ConversationCoordinator: ObservableObject {
         manager.clearAll()
         manager.startNew()
         chat.reset()
+        savedCount = 0
         refresh()
     }
 }

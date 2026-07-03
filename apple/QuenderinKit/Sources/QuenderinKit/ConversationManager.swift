@@ -72,10 +72,27 @@ public final class ConversationManager {
         library.upsert(ConversationSummary(
             id: id,
             title: ConversationLibrary.title(fromFirstUserMessage: firstUser),
-            updatedAt: now()
+            updatedAt: now(),
+            preview: ConversationLibrary.preview(fromLastMessage: messages.last)
         ))
         persistence.saveTranscript(id: id, messages: messages)
         persistence.saveIndex(library.snapshot())
+    }
+
+    /// One-time backfill for indexes written before `preview` existed: compute each snippet from
+    /// its transcript WITHOUT touching `updatedAt` — this is repair, not activity.
+    public func refreshPreviews() {
+        var changed = false
+        for summary in library.list() where summary.preview.isEmpty {
+            let preview = ConversationLibrary.preview(fromLastMessage: persistence.loadTranscript(id: summary.id).last)
+            if !preview.isEmpty {
+                var updated = summary
+                updated.preview = preview
+                library.upsert(updated)
+                changed = true
+            }
+        }
+        if changed { persistence.saveIndex(library.snapshot()) }
     }
 
     /// Load a conversation's transcript and make it current (seed it into `ChatModel.restore`).

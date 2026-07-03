@@ -106,12 +106,25 @@ struct ConversationListView: View {
                         Button { onOpen(summary.id) } label: {
                             HStack(spacing: 12) {
                                 ModelOrb(size: 44)
-                                Text(summary.title).font(.body).foregroundStyle(p.onSurface).lineLimit(1)
+                                // WhatsApp row anatomy: title over the last-message snippet.
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(summary.title).font(.body).foregroundStyle(p.onSurface).lineLimit(1)
+                                    if !summary.preview.isEmpty {
+                                        Text(summary.preview)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                }
                                 Spacer()
-                                Text(Self.relativeDate(summary.updatedAt))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityLabel("Last active " + Self.relativeDate(summary.updatedAt))
+                                // TimelineView keeps the label live if the list stays on screen
+                                // (same fix as the Mac sidebar — never a frozen "in 0 sec").
+                                TimelineView(.everyMinute) { context in
+                                    Text(Self.relativeDate(summary.updatedAt, now: context.date))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityLabel("Last active " + Self.relativeDate(summary.updatedAt, now: context.date))
+                                }
                             }
                         }
                     }
@@ -133,11 +146,13 @@ struct ConversationListView: View {
         }
     }
 
-    private static func relativeDate(_ epochMillis: Int64) -> String {
+    private static func relativeDate(_ epochMillis: Int64, now: Date) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
+        // Clamp the fresh case: a just-saved row would otherwise read as the future-tense "in 0 sec".
+        if now.timeIntervalSince(date) < 60 { return "just now" }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return formatter.localizedString(for: date, relativeTo: now)
     }
 }
 #endif

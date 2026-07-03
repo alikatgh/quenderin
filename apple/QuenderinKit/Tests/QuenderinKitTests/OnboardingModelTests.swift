@@ -26,7 +26,8 @@ final class OnboardingModelTests: XCTestCase {
         let dir = freshModelsDir()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let model = OnboardingModel(downloader: MockModelDownloader(), engine: MockInferenceEngine(), modelsDir: dir)
+        let model = OnboardingModel(downloader: MockModelDownloader(), engine: MockInferenceEngine(), modelsDir: dir,
+                                    availableDiskBytes: { _ in .max })   // host disk must not decide this test
         let entry = ModelCatalog.smallest
 
         await model.install(entry)
@@ -38,6 +39,37 @@ final class OnboardingModelTests: XCTestCase {
         // The downloader wrote the file to the models dir.
         let expected = dir.appendingPathComponent(entry.filename)
         XCTAssertTrue(FileManager.default.fileExists(atPath: expected.path))
+    }
+
+    func testInstallRemembersModelAndStartRestoresItOnRelaunch() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // First launch: install succeeds → the model id is remembered.
+        var remembered: String?
+        let first = OnboardingModel(
+            downloader: MockModelDownloader(), engine: MockInferenceEngine(), modelsDir: dir,
+            availableDiskBytes: { _ in .max },
+            recallActiveModelID: { nil },
+            rememberActiveModelID: { remembered = $0 }
+        )
+        await first.install(ModelCatalog.smallest)
+        guard case .ready = first.phase else { return XCTFail("expected .ready, got \(first.phase)") }
+        XCTAssertEqual(remembered, ModelCatalog.smallest.id)
+
+        // "Relaunch": a fresh OnboardingModel that recalls the remembered id must land straight on
+        // .ready from start() — never replay the first-run recommendation screen.
+        let second = OnboardingModel(
+            downloader: MockModelDownloader(), engine: MockInferenceEngine(), modelsDir: dir,
+            availableDiskBytes: { _ in .max },
+            recallActiveModelID: { remembered },
+            rememberActiveModelID: { _ in }
+        )
+        await second.start()
+        guard case let .ready(entry) = second.phase else {
+            return XCTFail("expected relaunch to restore straight to .ready, got \(second.phase)")
+        }
+        XCTAssertEqual(entry.id, ModelCatalog.smallest.id)
     }
 
     func testInstallSkipsDownloadWhenFileExists() async throws {
@@ -62,7 +94,8 @@ final class OnboardingModelTests: XCTestCase {
         let model = OnboardingModel(
             downloader: MockModelDownloader(behavior: .failTransport(reason: "should not be called")),
             engine: MockInferenceEngine(),
-            modelsDir: dir
+            modelsDir: dir,
+            availableDiskBytes: { _ in .max }   // host disk must not decide this test
         )
         await model.install(entry)
 
@@ -85,7 +118,8 @@ final class OnboardingModelTests: XCTestCase {
         let model = OnboardingModel(
             downloader: MockModelDownloader(behavior: .failTransport(reason: "offline")),
             engine: MockInferenceEngine(),
-            modelsDir: dir
+            modelsDir: dir,
+            availableDiskBytes: { _ in .max }   // host disk must not decide this test
         )
         await model.install(entry)
 
@@ -102,7 +136,8 @@ final class OnboardingModelTests: XCTestCase {
         let model = OnboardingModel(
             downloader: MockModelDownloader(behavior: .failTransport(reason: "offline")),
             engine: MockInferenceEngine(),
-            modelsDir: dir
+            modelsDir: dir,
+            availableDiskBytes: { _ in .max }   // host disk must not decide this test
         )
 
         await model.install(ModelCatalog.smallest)
@@ -216,7 +251,8 @@ final class OnboardingModelTests: XCTestCase {
         FileManager.default.createFile(atPath: dir.appendingPathComponent(b.filename).path, contents: Data())
 
         let engine = GatedLoadEngine()
-        let model = OnboardingModel(downloader: MockModelDownloader(), engine: engine, modelsDir: dir)
+        let model = OnboardingModel(downloader: MockModelDownloader(), engine: engine, modelsDir: dir,
+                                    availableDiskBytes: { _ in .max })   // host disk must not decide this test
 
         let taskA = Task { await model.install(a) }
         while !model.isInstalling { await Task.yield() }   // install(a) is in flight
@@ -237,7 +273,8 @@ final class OnboardingModelTests: XCTestCase {
         let dir = freshModelsDir()
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let model = OnboardingModel(downloader: EndlessDownloader(), engine: MockInferenceEngine(), modelsDir: dir)
+        let model = OnboardingModel(downloader: EndlessDownloader(), engine: MockInferenceEngine(), modelsDir: dir,
+                                    availableDiskBytes: { _ in .max })   // host disk must not decide this test
         let entry = ModelCatalog.smallest
 
         model.beginInstall(entry)

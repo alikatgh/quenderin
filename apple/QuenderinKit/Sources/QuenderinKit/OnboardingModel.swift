@@ -44,18 +44,31 @@ public final class OnboardingModel: ObservableObject {
     /// live free disk (they started failing on a nearly-full Mac). Defaults to the real volume.
     private let availableDiskBytes: (URL) -> Int64
 
+    /// Persistence of the last successfully-loaded model id across launches (UserDefaults by
+    /// default; injectable for tests). Without it, every cold launch replayed first-run
+    /// onboarding even though the model was sitting on disk — the app forgot your model.
+    private let recallActiveModelID: () -> String?
+    private let rememberActiveModelID: (String?) -> Void
+    static let activeModelDefaultsKey = "quenderin.activeModelID"
+
     public init(
         downloader: ModelDownloader,
         engine: InferenceEngine,
         modelsDir: URL? = nil,
         deviceProfile: IOSDeviceProfile? = nil,
-        availableDiskBytes: ((URL) -> Int64)? = nil
+        availableDiskBytes: ((URL) -> Int64)? = nil,
+        recallActiveModelID: (() -> String?)? = nil,
+        rememberActiveModelID: ((String?) -> Void)? = nil
     ) {
         self.downloader = downloader
         self.engine = engine
         self.modelsDir = modelsDir ?? Self.defaultModelsDir()
         self.deviceProfile = deviceProfile
         self.availableDiskBytes = availableDiskBytes ?? { DiskSpace.availableBytes(at: $0) }
+        self.recallActiveModelID = recallActiveModelID
+            ?? { UserDefaults.standard.string(forKey: Self.activeModelDefaultsKey) }
+        self.rememberActiveModelID = rememberActiveModelID
+            ?? { UserDefaults.standard.set($0, forKey: Self.activeModelDefaultsKey) }
     }
 
     /// Probe hardware and produce a recommendation. Idempotent.
@@ -64,6 +77,17 @@ public final class OnboardingModel: ObservableObject {
     /// chip-aware `IPhoneModelSelector` and records the full `selection` so the UI can
     /// explain the choice. Elsewhere it uses the shared RAM-band recommender.
     public func start() async {
+        // Relaunch fast-path: a model that loaded successfully before, and whose file is still on
+        // disk, goes straight back to .ready — no first-run onboarding replay. Only from the
+        // pristine .probing phase (an explicit "Back to model choice" must show the choice), and
+        // install() re-runs the integrity gate before trusting the file, so a corrupted leftover
+        // still falls through to a fresh recommendation below.
+        if case .probing = phase, let id = recallActiveModelID(),
+           let remembered = ModelCatalog.entry(id: id),
+           FileManager.default.fileExists(atPath: modelsDir.appendingPathComponent(remembered.filename).path) {
+            await install(remembered)
+            if case .ready = phase { return }
+        }
         phase = .probing
         let hardware = HardwareProbe.current()
         if let profile = deviceProfile ?? Self.liveProfile() {
@@ -84,7 +108,10 @@ public final class OnboardingModel: ObservableObject {
                 phase = .recommended(sel.model, hardware, fitness)
             }
         } else {
-            let model = ModelRecommender.recommendedModel(forTotalRAMGB: hardware.totalRAMGB)
+            // Fitness-aware, not just the RAM band: the band can pick a model the memory gate
+            // then blocks (16 GB Mac → 14B → 89% > the 85% budget), which would put a dead
+            // "recommended" model on the first screen. Offer the largest model that loads.
+            let model = ModelRecommender.bestInstallableModel(forTotalRAMGB: hardware.totalRAMGB)
             phase = .recommended(model, hardware, MemoryFitness.check(for: model))
         }
     }
@@ -190,6 +217,7 @@ public final class OnboardingModel: ObservableObject {
         do {
             try await engine.load(model: model, at: destination)
             phase = .ready(model)
+            rememberActiveModelID(model.id)   // next cold launch restores this model directly
         } catch {
             // `load()` already freed the previously-loaded model before failing, so on a failed
             // switch restore the prior model rather than leaving the engine empty (H1).
@@ -197,6 +225,7 @@ public final class OnboardingModel: ObservableObject {
                let previous = ModelCatalog.entry(id: previousID),
                await restore(previous) {
                 phase = .ready(previous)
+                rememberActiveModelID(previous.id)
             } else {
                 phase = .failed(Self.describe(error))
             }

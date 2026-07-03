@@ -30,7 +30,7 @@ object MemoryFitness {
         return when {
             usageAfterLoad > budgetHard -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB,
-                "Loading ${model.label} needs ~${fmt(required)}GB but only ${fmt(freeGB)}GB is free.",
+                "Loading ${model.label} needs ~${fmt(required)}GB of memory — more than this device can safely spare (${fmt(freeGB)}GB free of ${fmt(totalGB)}GB). Close other apps or choose a smaller model.",
             )
             usageAfterLoad > budgetWarning -> MemoryCheckResult(
                 true, MemorySeverity.WARNING, required, freeGB,

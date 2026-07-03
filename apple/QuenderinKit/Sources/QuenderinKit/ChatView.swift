@@ -9,6 +9,7 @@ public struct ChatView: View {
     @ObservedObject private var model: ChatModel
     @State private var draft: String = ""
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var composerFocused: Bool
 
     public init(model: ChatModel) {
         self.model = model
@@ -19,6 +20,7 @@ public struct ChatView: View {
         let prompt = draft.trimmingCharacters(in: .whitespaces)
         guard !prompt.isEmpty, !model.isGenerating else { return }
         draft = ""
+        composerFocused = true   // Return-to-send must not drop keyboard focus mid-conversation
         Task { await model.send(prompt) }
     }
 
@@ -96,6 +98,10 @@ public struct ChatView: View {
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.send)
                 .onSubmit { send() }
+                .focused($composerFocused)
+                // A chat you just opened (or created with ⌘N) is for TYPING — put the caret there,
+                // WhatsApp-style, instead of making the user click the field first.
+                .onAppear { composerFocused = true }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
                 .background(p.surfaceVariant, in: Capsule())

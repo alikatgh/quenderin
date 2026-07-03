@@ -44,7 +44,7 @@ public enum MemoryFitness {
                 availableMemoryGB: freeGB,
                 requiredMemoryGB: required,
                 remainingAfterLoadGB: remaining,
-                message: "Loading \(model.label) needs ~\(fmt(required))GB but only \(fmt(freeGB))GB is free. Close some apps or choose a smaller model."
+                message: "Loading \(model.label) needs ~\(fmt(required))GB of memory — more than this device can safely spare (\(fmt(freeGB))GB free of \(fmt(totalGB))GB). Close other apps or choose a smaller model."
             )
         }
         if usageAfterLoad > budgetWarning {

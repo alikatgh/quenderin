@@ -17,4 +17,20 @@ object ModelRecommender {
 
     fun recommendedModel(totalRamGb: Double): ModelEntry =
         ModelCatalog.entry(recommendedModelId(totalRamGb)) ?: ModelCatalog.smallest
+
+    /**
+     * The recommendation a UI can actually OFFER: the RAM-band pick when it passes the memory
+     * gate, else the largest catalog model that does (falling back to the smallest). Twin of the
+     * Swift `bestInstallableModel` — the band and [MemoryFitness] can disagree (a 16 GB device
+     * band-picks the 14B, which the 85% budget then blocks), and a recommendation must never
+     * point at a model the same screen refuses to install.
+     */
+    fun bestInstallableModel(totalRamGb: Double, freeRamGb: Double = totalRamGb): ModelEntry {
+        val banded = recommendedModel(totalRamGb)
+        if (MemoryFitness.check(banded, totalRamGb, freeRamGb).canLoad) return banded
+        return ModelCatalog.models
+            .filter { MemoryFitness.check(it, totalRamGb, freeRamGb).canLoad }
+            .maxByOrNull { it.ramGB }
+            ?: ModelCatalog.smallest
+    }
 }

@@ -38,7 +38,9 @@ public enum SpeedPresets {
     }
 
     public static func forDevice(totalRAMGB: Double) -> Choice {
-        let quality = ModelRecommender.recommendedModel(forTotalRAMGB: totalRAMGB)
+        // Fitness-aware, not the raw band: Quality must never point at a model the memory gate
+        // blocks (16 GB → band says 14B, budget says no — the dial would offer a doomed install).
+        let quality = ModelRecommender.bestInstallableModel(forTotalRAMGB: totalRAMGB)
         let fastCand: ModelEntry
         let balancedCand: ModelEntry
         switch totalRAMGB {

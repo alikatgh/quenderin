@@ -4,6 +4,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Two "can this device run it?" sources diverge at the boundary.** A band lookup (RAM → model) and a
+  budget gate (85% usage) each look right alone, but at band edges the band picks what the gate blocks —
+  and the UI shows "RECOMMENDED" on a disabled row. Derive the OFFERED pick through the gate (largest
+  model that passes), keep the raw band for parity tests. (bestInstallableModel)
+- **A relative-time string computed once is a frozen lie.** Any "5 min ago" label in a long-lived view
+  (Mac sidebar) must re-render on a clock (TimelineView/.everyMinute) and clamp `date >= now` to
+  "just now" — RelativeDateTimeFormatter says future-tense "in 0 sec" otherwise. (sidebar timestamps)
+- **Ready-state that lives only in memory replays onboarding every launch.** Persist the tiny id of the
+  thing that made the app "ready" (active model) and restore through the same verifying install path —
+  never trust the file blindly, never forget it either. (launch amnesia)
 - **Falsy-zero / falsy-empty guards.** `if (!id)` / `if (!title)` wrongly fire on the valid
   value `0` or on a string that sanitizes to `""`. Use explicit `=== undefined || === null`,
   and validate the *sanitized* value, not the raw one. (H8, M14)
@@ -294,6 +304,46 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-03 (mac) — "Recommended" model was uninstallable on the very device it was recommended for.
+  Symptom: 16 GB Mac → picker tags Qwen3 14B "RECOMMENDED" yet dims it "Too big"; onboarding's Download CTA
+  gated only on DISK. Cause: RAM-band recommender (≥10 GB → 14B) vs MemoryFitness 85% budget (14.3/16 = 89%)
+  disagree at band edges. Fix: `bestInstallableModel` (largest model that PASSES the gate) feeds onboarding,
+  picker tag, and the speed dial's Quality; CTA gates on fitness too. `ModelRecommender` (Swift+Kotlin).
+
+- 2026-07-03 — Memory-blocked message contradicted itself: "needs ~14.3GB but only 16.0GB is free".
+  Cause: message compared `required` against `freeGB` while the gate actually tests the 85% usage budget
+  (and Apple passes free=total). Fix: state the real constraint ("more than this device can safely spare
+  (X free of Y)") in all three cores. `MemoryFitness.swift/.kt`, `src/constants.ts`. Lesson: error copy
+  must cite the numbers the CHECK used, not adjacent ones.
+
+- 2026-07-03 (mac) — Every cold launch replayed first-run onboarding despite a downloaded, loaded model.
+  Symptom: relaunch → recommendation screen; the user's model sat on disk. Cause: nothing persisted the
+  active model id — `.ready` lived only in memory. Fix: remember id on successful load (UserDefaults seam),
+  `start()` fast-path re-installs it (integrity gate re-runs) straight to `.ready`.
+  `OnboardingModel.swift` + restore test. Android twin still TODO (chip spawned).
+
+- 2026-07-03 (mac) — Sidebar timestamp frozen at "in 0 sec" for 9 hours.
+  Cause: `RelativeDateTimeFormatter` string computed ONCE per summary change; a permanently-visible Mac
+  sidebar never re-renders it, and `date==now` formats future-tense. Fix: `TimelineView(.everyMinute)` +
+  clamp <60 s to "just now"/"now" (sidebar + history list). `MacRootView`, `ConversationHistoryView`.
+
+- 2026-07-03 — Opening/relaunching a chat re-stamped `updatedAt` — last night's chat read "25 min ago".
+  Cause: coordinator `persist()` runs on every SWITCH (open/new/relaunch) and `save()` always stamps now().
+  Fix: `savedCount` dirty-guard — persist only when the transcript grew. Both coordinators (Swift+Kotlin).
+  Lesson: a save that stamps recency needs a did-anything-change guard, or navigation fakes activity.
+
+- 2026-07-03 (mac) — "New Chat" was a dead button from the Agent pane (and when the chat was already empty).
+  Cause: `startNew()` no-ops on an empty chat, and the ⌘N File-menu command can't reach MacRootView's
+  selection @State. Fix: `newChatSignal` published on EVERY startNew() (even no-op) → shell moves selection
+  to the current empty chat; composer autofocuses (`@FocusState` + `.id(currentID)`). `ConversationCoordinator`,
+  `MacRootView`, `ChatView`.
+
+- 2026-07-03 (mac) — Speed dial showed "Quality" selected while a custom model was active (Apple only).
+  Cause: `get: { current ?? .quality }` forced a segment; Android's chips already handled null. Fix:
+  optional-selection Picker (`SpeedPreset?` tags) — no segment lights up for a custom model. Also:
+  "Swipe to delete" copy + `.onDelete`-only affordance on macOS → context-menu delete + per-OS caption;
+  hardcoded "your phone" in ModelProfileView/Settings → `deviceNoun`. `SettingsView`, `ModelProfileView`.
 
 - 2026-07-02 (P2) — CPU-variant backends (DOTPROD/I8MM) silently didn't load: 0 devices.
   Symptom: "no backends are loaded" on every model load after enabling GGML_CPU_ALL_VARIANTS. Cause:

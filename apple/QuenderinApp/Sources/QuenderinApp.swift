@@ -67,7 +67,7 @@ struct QuenderinApp: App {
                         .padding(40)
                 }
             }
-            .frame(minWidth: 540, minHeight: 480)
+            .frame(minWidth: 680, minHeight: 440)
         }
         #endif
     }

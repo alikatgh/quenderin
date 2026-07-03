@@ -31,6 +31,21 @@ public enum ModelRecommender {
         return (tier?.maxParamsBillions ?? 1, tier?.quantization ?? "Q4_K_M", ram)
     }
 
+    /// The recommendation a UI can actually OFFER: the RAM-band pick when it passes the memory
+    /// gate, else the largest catalog model that does (falling back to the smallest). The band
+    /// function above stays 1:1 with desktop/Android; this wrapper exists because the band and
+    /// `MemoryFitness` can disagree — a 16 GB Mac band-picks the 14B, which the 85% budget then
+    /// blocks — and "RECOMMENDED FOR THIS DEVICE" must never sit on a model the same screen
+    /// refuses to install.
+    public static func bestInstallableModel(forTotalRAMGB ram: Double) -> ModelEntry {
+        let banded = recommendedModel(forTotalRAMGB: ram)
+        if MemoryFitness.check(model: banded, totalGB: ram, freeGB: ram).canLoad { return banded }
+        let fitting = ModelCatalog.models
+            .filter { MemoryFitness.check(model: $0, totalGB: ram, freeGB: ram).canLoad }
+            .max { $0.ramGB < $1.ramGB }
+        return fitting ?? ModelCatalog.smallest
+    }
+
     /// Convenience: recommend straight from the live device probe.
     ///
     /// On iOS this defers to `IPhoneModelSelector`, which is jetsam-budget- and

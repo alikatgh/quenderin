@@ -953,7 +953,19 @@ fun main() {
         val tiny = SpeedPresets.forDevice(2.0)
         phone.fast.id == "llama32-1b" && phone.balanced.id == "llama32-3b" && phone.quality.id == "qwen3-4b" &&
             bigMac.fast.id == "llama32-3b" && bigMac.balanced.id == "qwen3-4b" && bigMac.quality.id == "qwen3-14b" &&
-            tiny.fast.id == "llama32-1b-q2" && tiny.balanced.id == "llama32-1b"
+            // 2 GB: the band's 1B-Q4 needs ~1.7 GB → 86% of RAM, over the 85% budget — the
+            // fitness-aware quality steps down to Q2 and the dial collapses onto it.
+            tiny.fast.id == "llama32-1b-q2" && tiny.balanced.id == "llama32-1b-q2" && tiny.quality.id == "llama32-1b-q2"
+    })
+    check("Quality/recommendation step down when the band pick is memory-blocked (16 GB → not 14B)", run {
+        // 16 GB: the RAM band says 14B, but loading it needs ~89% of RAM — over the 85% budget.
+        // The offered recommendation (and the dial's Quality) must be the largest model that loads.
+        val sixteen = SpeedPresets.forDevice(16.0)
+        sixteen.quality.id != "qwen3-14b" &&
+            MemoryFitness.check(sixteen.quality, 16.0, 16.0).canLoad &&
+            sixteen.quality.id == ModelRecommender.bestInstallableModel(16.0).id &&
+            // Enough headroom (14.3 GB required / 85% of 18 GB budget) → the band pick stands.
+            ModelRecommender.bestInstallableModel(18.0).id == "qwen3-14b"
     })
     check("SpeedPresets ordering: fast ≤ balanced ≤ quality by footprint", run {
         listOf(1.0, 2.0, 3.5, 6.0, 8.0, 12.0, 18.0).all { ram ->

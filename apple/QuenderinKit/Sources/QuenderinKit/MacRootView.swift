@@ -46,6 +46,22 @@ public struct MacRootView: View {
                 conversations.open(id)
             }
         }
+        // Follow the coordinator wherever a conversation change originates — the sidebar button,
+        // the File-menu ⌘N (which talks to the coordinator directly and can't reach this view's
+        // @State), or a delete fallback. Without this, ⌘N created a chat but left the detail pane
+        // showing whatever was selected before.
+        .onChange(of: conversations.currentID) { (newID: String?) in
+            if let id = newID, selection != .conversation(id) {
+                selection = .conversation(id)
+            }
+        }
+        // "New Chat" must never be a dead control: even when startNew() no-ops (the current chat
+        // is already empty), jump the selection back to that empty chat — e.g. from the Agent pane.
+        .onChange(of: conversations.newChatSignal) { (_: Int) in
+            if let id = conversations.currentID {
+                selection = .conversation(id)
+            }
+        }
         // Persist when a turn finishes (isGenerating falls), so sidebar titles/times stay live.
         .onChange(of: chat.isGenerating) { generating in
             if !generating { conversations.persist() }
@@ -90,8 +106,7 @@ public struct MacRootView: View {
     }
 
     private func newChat() {
-        conversations.startNew()
-        if let id = conversations.currentID { selection = .conversation(id) }
+        conversations.startNew()   // selection follows via the newChatSignal observer
     }
 
     private func delete(_ id: String) {
@@ -113,6 +128,9 @@ public struct MacRootView: View {
                 .navigationTitle("Agent")
         case .conversation:
             ChatView(model: chat)
+                // Re-identify the view per conversation: switching chats resets scroll state and
+                // refires onAppear, which puts the caret in the composer (see ChatView).
+                .id(conversations.currentID)
                 .navigationTitle("")   // the model header below is the title
                 .toolbar {
                     // Tappable model identity (twin of the mobile chat header) → the model profile.
@@ -145,25 +163,50 @@ public struct MacRootView: View {
     }
 }
 
-/// One sidebar conversation: title, with the relative "last active" time as the subtitle.
+/// One sidebar conversation, WhatsApp-anatomy: avatar orb · title over last-message snippet ·
+/// compact time in the top-right corner.
 private struct SidebarChatRow: View {
     let summary: ConversationSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(summary.title).lineLimit(1)
-            Text(Self.relative(summary.updatedAt))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 9) {
+            ModelAvatar(size: 34)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(summary.title)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    // TimelineView re-renders each minute: a Mac sidebar sits open for hours, and
+                    // a label computed once at persist time would otherwise freeze at the string
+                    // it was born with ("in 0 sec" — forever).
+                    TimelineView(.everyMinute) { context in
+                        Text(Self.compactTime(summary.updatedAt, now: context.date))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(summary.preview.isEmpty ? "No messages yet" : summary.preview)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
-        .padding(.vertical, 1)
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .combine)
     }
 
-    private static func relative(_ epochMillis: Int64) -> String {
+    /// WhatsApp-style corner time: "now" this minute, minutes/hours today-ish, weekday inside a
+    /// week, short date beyond. Clamped so a just-saved row never reads future-tense ("in 0 sec").
+    static func compactTime(_ epochMillis: Int64, now: Date) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        let seconds = now.timeIntervalSince(date)
+        if seconds < 60 { return "now" }
+        if seconds < 3600 { return "\(Int(seconds / 60))m" }
+        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate(seconds < 7 * 86_400 ? "EEE" : "dMMM")
+        return formatter.string(from: date)
     }
 }
 

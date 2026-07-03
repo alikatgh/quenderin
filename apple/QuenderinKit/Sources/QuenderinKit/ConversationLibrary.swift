@@ -7,11 +7,15 @@ public struct ConversationSummary: Sendable, Equatable, Identifiable {
     public let id: String
     public var title: String
     public var updatedAt: Int64   // epoch milliseconds (supplied by the caller, not the clock)
+    /// One-line snippet of the LAST message ("You: …" for the user's own) — what a chat-list row
+    /// shows under the title, WhatsApp-style. Empty for a conversation with no messages yet.
+    public var preview: String
 
-    public init(id: String, title: String, updatedAt: Int64) {
+    public init(id: String, title: String, updatedAt: Int64, preview: String = "") {
         self.id = id
         self.title = title
         self.updatedAt = updatedAt
+        self.preview = preview
     }
 }
 
@@ -46,6 +50,27 @@ public final class ConversationLibrary {
 
     /// The full index, for the app to persist (mirrors `DownloadStore.snapshot`).
     public func snapshot() -> [ConversationSummary] { Array(entries.values) }
+
+    /// A one-line list snippet from the LAST message: whitespace collapsed, truncated at 80 code
+    /// points, prefixed "You: " when the last speaker was the user (twin of Kotlin `preview`).
+    public static func preview(fromLastMessage message: ChatMessage?) -> String {
+        guard let message else { return "" }
+        // A snippet is plain text: drop the Markdown markers an assistant reply carries
+        // (bold/heading/code fences), or the row reads "**Python Knowledge** Here are…".
+        let plain = message.text
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "#", with: "")
+        let trimmed = plain.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        let collapsed = trimmed.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let scalars = Array(collapsed.unicodeScalars)
+        let limit = 80
+        let body = scalars.count > limit
+            ? String(String.UnicodeScalarView(scalars.prefix(limit))) + "…"
+            : collapsed
+        return message.role == .user ? "You: \(body)" : body
+    }
 
     /// A short display title from the first user line: whitespace collapsed and truncated.
     /// An empty conversation gets a generic label.

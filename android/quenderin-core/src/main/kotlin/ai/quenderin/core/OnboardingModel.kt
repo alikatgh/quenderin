@@ -86,7 +86,10 @@ class OnboardingModel(
     fun start(probe: () -> DeviceProfile) {
         phase = OnboardingPhase.Probing
         val device = probe()
-        val model = ModelRecommender.recommendedModel(device.totalRamGB)
+        // Fitness-aware, not just the RAM band: the band can pick a model the memory gate then
+        // blocks (a 12–16 GB device band-picks the 14B → over the 85% budget), which used to land
+        // first-run straight on Failed. Offer the largest model that actually loads instead.
+        val model = ModelRecommender.bestInstallableModel(device.totalRamGB, device.freeRamGB)
         val fitness = MemoryFitness.check(model, device.totalRamGB, device.freeRamGB)
         phase = if (fitness.canLoad) {
             OnboardingPhase.Recommended(model, fitness)

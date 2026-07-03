@@ -13,6 +13,7 @@ import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -105,7 +106,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
         if (!hasContent && !running) {
             // Centered guidance (twin of chat's centered empty state) — no top-stuck block with a big
             // empty middle.
-            AgentEmptyState(Modifier.weight(1f))
+            AgentEmptyState(Modifier.weight(1f), onPick = { goal = it })
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -230,7 +231,7 @@ private fun AgentHaltBanner(message: String) {
  * single-shot calculation.
  */
 @Composable
-private fun AgentEmptyState(modifier: Modifier = Modifier) {
+private fun AgentEmptyState(modifier: Modifier = Modifier, onPick: (String) -> Unit = {}) {
     Column(
         modifier.fillMaxWidth().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -259,10 +260,13 @@ private fun AgentEmptyState(modifier: Modifier = Modifier) {
                 "Days until 2027-01-01 — and how many weeks?",
                 "18% of 240, then convert that many km to miles",
             ).forEach { example ->
+                // Tapping an example drops it into the goal field, ready to edit or run
+                // (twin of the iOS empty state).
                 Text(
                     "↳ $example",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { onPick(example) },
                 )
             }
         }

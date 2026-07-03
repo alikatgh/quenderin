@@ -57,7 +57,7 @@ struct ModelProfileView: View {
 
                 Section("Privacy") {
                     Text("Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — "
-                       + "once downloaded it works fully offline and nothing you type leaves your phone.")
+                       + "once downloaded it works fully offline and nothing you type leaves your \(deviceNoun).")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 

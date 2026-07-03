@@ -21,10 +21,24 @@ class ConversationCoordinator(
     var summaries: List<ConversationSummary> = emptyList()
         private set
 
+    /**
+     * How many of the live chat's messages are already saved for the CURRENT conversation.
+     * [persist] only writes when the transcript grew past this — `save()` stamps `updatedAt`,
+     * and without the guard every conversation SWITCH (open / new / relaunch) re-stamped an
+     * untouched chat, faking recency in the history list. (Twin of the Swift coordinator.)
+     */
+    private var savedCount = 0
+
     init {
+        manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
         // Pick up where you left off: restore the most recent conversation, or start fresh.
         val recent = manager.list().firstOrNull()
-        if (recent != null) chat.restore(manager.open(recent.id)) else manager.startNew()
+        if (recent != null) {
+            chat.restore(manager.open(recent.id))
+            savedCount = chat.messages.size
+        } else {
+            manager.startNew()
+        }
         refresh()
     }
 
@@ -34,11 +48,13 @@ class ConversationCoordinator(
     }
 
     /** Persist the current conversation — call when a turn finishes. No-op on an empty chat so
-     *  untouched "New conversation" rows don't pile up. */
+     *  untouched "New conversation" rows don't pile up, and when nothing new was said since the
+     *  last save (see [savedCount]). */
     fun persist() {
         val id = manager.currentId ?: return
-        if (chat.messages.isEmpty()) return
+        if (chat.messages.isEmpty() || chat.messages.size <= savedCount) return
         manager.save(id, chat.messages)
+        savedCount = chat.messages.size
         refresh()
     }
 
@@ -48,6 +64,7 @@ class ConversationCoordinator(
         persist()
         manager.startNew()
         chat.reset()
+        savedCount = 0
         refresh()
     }
 
@@ -55,6 +72,7 @@ class ConversationCoordinator(
     fun open(id: String) {
         persist()
         chat.restore(manager.open(id))
+        savedCount = chat.messages.size
         refresh()
     }
 
@@ -64,7 +82,12 @@ class ConversationCoordinator(
         manager.delete(id)
         if (wasCurrent) {
             val recent = manager.list().firstOrNull()
-            if (recent != null) chat.restore(manager.open(recent.id)) else { manager.startNew(); chat.reset() }
+            if (recent != null) {
+                chat.restore(manager.open(recent.id))
+                savedCount = chat.messages.size
+            } else {
+                manager.startNew(); chat.reset(); savedCount = 0
+            }
         }
         refresh()
     }
@@ -74,6 +97,7 @@ class ConversationCoordinator(
         manager.clearAll()
         manager.startNew()
         chat.reset()
+        savedCount = 0
         refresh()
     }
 }

@@ -30,7 +30,9 @@ object SpeedPresets {
     }
 
     fun forDevice(totalRamGb: Double): Choice {
-        val quality = ModelRecommender.recommendedModel(totalRamGb)
+        // Fitness-aware, not the raw band: Quality must never point at a model the memory gate
+        // blocks (16 GB → band says 14B, budget says no — the dial would offer a doomed install).
+        val quality = ModelRecommender.bestInstallableModel(totalRamGb)
         val fastCand: ModelEntry
         val balancedCand: ModelEntry
         when {

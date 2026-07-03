@@ -9,6 +9,9 @@ data class ConversationSummary(
     val id: String,
     val title: String,
     val updatedAt: Long, // epoch milliseconds (supplied by the caller, not the clock)
+    /** One-line snippet of the LAST message ("You: …" for the user's own) — what a chat-list row
+     *  shows under the title, WhatsApp-style. Empty for a conversation with no messages yet. */
+    val preview: String = "",
 )
 
 /**
@@ -44,6 +47,28 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
     fun snapshot(): List<ConversationSummary> = entries.values.toList()
 
     companion object {
+        /**
+         * A one-line list snippet from the LAST message: whitespace collapsed, truncated at 80
+         * code points, prefixed "You: " when the last speaker was the user (twin of Swift
+         * `preview(fromLastMessage:)`).
+         */
+        fun previewFromLastMessage(message: ChatMessage?): String {
+            // A snippet is plain text: drop the Markdown markers an assistant reply carries
+            // (bold/heading/code fences), or the row reads "**Python Knowledge** Here are…".
+            val trimmed = message?.text
+                ?.replace("**", "")?.replace("`", "")?.replace("#", "")
+                ?.trim() ?: return ""
+            if (trimmed.isEmpty()) return ""
+            val collapsed = trimmed.split(Regex("\\s+")).joinToString(" ")
+            val limit = 80
+            val body = if (collapsed.codePointCount(0, collapsed.length) <= limit) {
+                collapsed
+            } else {
+                collapsed.substring(0, collapsed.offsetByCodePoints(0, limit)) + "…"
+            }
+            return if (message.role == Role.USER) "You: $body" else body
+        }
+
         /**
          * A short display title from the first user line: whitespace collapsed and truncated.
          * An empty conversation gets a generic label.

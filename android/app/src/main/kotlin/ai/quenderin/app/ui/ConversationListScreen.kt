@@ -104,14 +104,25 @@ private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, on
         ) {
             ModelAvatar(size = 48.dp)
             Spacer(Modifier.width(12.dp))
-            Text(
-                summary.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            // WhatsApp row anatomy: title over the last-message snippet, time in the top corner.
+            Column(Modifier.weight(1f)) {
+                Text(
+                    summary.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (summary.preview.isNotEmpty()) {
+                    Text(
+                        summary.preview,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             Spacer(Modifier.width(10.dp))
             Text(
                 relativeTime(summary.updatedAt),

@@ -45,7 +45,9 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
     }
 
     override fun saveIndex(summaries: List<ConversationSummary>) {
-        val text = summaries.joinToString("\n") { "${it.id}\t${escape(it.title)}\t${it.updatedAt}" }
+        val text = summaries.joinToString("\n") {
+            "${it.id}\t${escape(it.title)}\t${it.updatedAt}\t${escape(it.preview)}"
+        }
         runCatching { atomicWrite(indexFile, text) }
     }
 
@@ -57,7 +59,9 @@ class FileConversationPersistence(private val dir: File) : ConversationPersisten
             val parts = line.split("\t")
             if (parts.size < 3) return@mapNotNull null
             val updatedAt = parts[2].toLongOrNull() ?: return@mapNotNull null
-            ConversationSummary(parts[0], unescape(parts[1]), updatedAt)
+            // 4th column (preview) arrived later — an index written before it still loads.
+            val preview = if (parts.size >= 4) unescape(parts[3]) else ""
+            ConversationSummary(parts[0], unescape(parts[1]), updatedAt, preview)
         }
     }
 
