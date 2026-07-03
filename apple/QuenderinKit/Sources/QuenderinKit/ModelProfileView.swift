@@ -167,18 +167,27 @@ struct ModelOrb: View {
     var modelID: String? = nil
     var body: some View {
         let (monogram, top, bottom) = ModelFamily.identity(for: modelID)
-        ZStack {
-            Circle().fill(
-                RadialGradient(
-                    colors: [top, bottom],
-                    center: .center, startRadius: 0, endRadius: size * 0.7
+        if ModelFamily.isBrand(modelID), let brandAvatar {
+            // The app's own identity: the elf mascot from the official icon.
+            brandAvatar
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+        } else {
+            ZStack {
+                Circle().fill(
+                    RadialGradient(
+                        colors: [top, bottom],
+                        center: .center, startRadius: 0, endRadius: size * 0.7
+                    )
                 )
-            )
-            Text(monogram)
-                .font(.system(size: size * 0.42, weight: .semibold))
-                .foregroundStyle(.white)
+                Text(monogram)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: size, height: size)
         }
-        .frame(width: size, height: size)
     }
 }
 

@@ -74,6 +74,7 @@ let package = Package(
         .target(
             name: "QuenderinKit",
             dependencies: qkDependencies,
+            resources: [.process("Resources")],   // brand-avatar.png (chat orbs / empty states)
             swiftSettings: qkSwiftSettings,
             linkerSettings: qkLinkerSettings
         ),

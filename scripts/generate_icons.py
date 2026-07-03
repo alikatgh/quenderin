@@ -153,6 +153,12 @@ def main():
     ico_base.save(ROOT / "brand/electron/icon.ico", sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
     print("  brand/electron/icon.ico  multi-size")
 
+    print("in-app brand avatars (chat orbs / empty states) + dashboard favicon:")
+    avatar = master.resize((384, 384), Image.LANCZOS)  # orbs render <=72pt@3x - 384px covers it
+    save(avatar, ROOT / "apple/QuenderinKit/Sources/QuenderinKit/Resources/brand-avatar.png")
+    save(avatar, ROOT / "android/app/src/main/res/drawable-nodpi/brand_avatar.png")
+    save(rounded(master, 0.20).resize((64, 64), Image.LANCZOS), ROOT / "ui/public/favicon.png")
+
     print("website:")
     web = ROOT / "website"
     save(rounded(master, 0.20).resize((32, 32), Image.LANCZOS), web / "favicon-32.png")

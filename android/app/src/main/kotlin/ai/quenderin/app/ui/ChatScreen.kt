@@ -23,6 +23,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,12 +59,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -308,20 +312,16 @@ private fun ChatTopBar(
     }
 }
 
-/** The model rendered as a chat "contact": a gradient orb with a monogram. */
+/** The model rendered as a chat "contact": the Quenderin mascot (the elf from the official app
+ *  icon) clipped to a circle — twin of iOS `ModelAvatar`/`brandAvatar`. */
 @Composable
 internal fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
-    Box(
-        Modifier
-            .size(size)
-            .background(
-                Brush.radialGradient(listOf(Color(0xFF8A82E6), Color(0xFF4F46B8))),
-                CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("Q", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = (size.value * 0.42f).sp)
-    }
+    Image(
+        painter = painterResource(ai.quenderin.app.R.drawable.brand_avatar),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.size(size).clip(CircleShape),
+    )
 }
 
 // ── Message bubble with a speaker-side tail + flagged-output safeguard ──

@@ -1,5 +1,10 @@
 #if canImport(SwiftUI)
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 /// The app's design tokens — the SwiftUI twin of Android's `QuenderinColors` / `QuenderinShapes`.
 /// One source of truth for chat bubble colors, the live status accent, and the speaker-tail bubble
@@ -118,6 +123,14 @@ extension Color {
 /// terms (and App Review flags third-party marks), so a colored monogram carries the recognition
 /// legally. `nil` / unknown ids fall back to the Quenderin "Q" brand orb.
 enum ModelFamily {
+    /// True when `id` names no known family — the avatar shows the app's own identity
+    /// (the elf mascot) instead of a family monogram. NOT the same as monogram == "Q":
+    /// Qwen's monogram is also "Q" but Qwen is a real family, never the brand fallback.
+    static func isBrand(_ id: String?) -> Bool {
+        guard let id else { return true }
+        return !["llama", "qwen", "deepseek", "mistral", "gemma", "phi"].contains { id.hasPrefix($0) }
+    }
+
     /// (monogram, gradient top, gradient bottom)
     static func identity(for id: String?) -> (String, Color, Color) {
         guard let id else { return ("Q", Color(hex: 0x8A82E6), Color(hex: 0x4F46B8)) }
@@ -131,24 +144,47 @@ enum ModelFamily {
     }
 }
 
-/// The model rendered as a chat "contact": a gradient orb with a monogram. Twin of Android's ModelAvatar.
-/// Pass a `modelID` to wear that family's colors; omit it for the app's own "Q" brand orb.
+/// The Quenderin mascot (the elf from the app icon) as a circular avatar image, loaded once from
+/// the package bundle. `nil` if the resource is missing — callers fall back to the monogram orb.
+@MainActor
+let brandAvatar: Image? = {
+    guard let url = Bundle.module.url(forResource: "brand-avatar", withExtension: "png") else { return nil }
+    #if os(macOS)
+    guard let img = NSImage(contentsOf: url) else { return nil }
+    return Image(nsImage: img)
+    #else
+    guard let data = try? Data(contentsOf: url), let img = UIImage(data: data) else { return nil }
+    return Image(uiImage: img)
+    #endif
+}()
+
+/// The model rendered as a chat "contact". Twin of Android's ModelAvatar.
+/// With a `modelID`, a known family wears its monogram + brand colors; without one (or for an
+/// unknown family) the app's own identity shows — the elf mascot from the official icon.
 struct ModelAvatar: View {
     var size: CGFloat = 40
     var modelID: String? = nil
     var body: some View {
         let (monogram, top, bottom) = ModelFamily.identity(for: modelID)
-        Circle()
-            .fill(LinearGradient(
-                colors: [top, bottom],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ))
-            .frame(width: size, height: size)
-            .overlay(
-                Text(monogram)
-                    .font(.system(size: size * 0.42, weight: .semibold))
-                    .foregroundStyle(.white)
-            )
+        if ModelFamily.isBrand(modelID), let brandAvatar {
+            brandAvatar
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+        } else {
+            Circle()
+                .fill(LinearGradient(
+                    colors: [top, bottom],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .frame(width: size, height: size)
+                .overlay(
+                    Text(monogram)
+                        .font(.system(size: size * 0.42, weight: .semibold))
+                        .foregroundStyle(.white)
+                )
+        }
     }
 }
 #endif
