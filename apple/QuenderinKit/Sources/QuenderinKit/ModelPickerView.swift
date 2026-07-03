@@ -13,6 +13,11 @@ public struct ModelPickerView: View {
     private let recommendedID: String
     private let currentModelID: String?
     private let onSelect: (ModelEntry) -> Void
+    /// Which catalog files are already on disk — "Installed · switches instantly" vs
+    /// "4.7 GB download" is the difference between a tap and a coffee break, so every
+    /// row says which it is.
+    private let installedFilenames: Set<String>
+    @ObservedObject private var settings = AppSettings.shared
     @Environment(\.colorScheme) private var scheme
 
     public init(totalRAMGB: Double, currentModelID: String? = nil, onSelect: @escaping (ModelEntry) -> Void) {
@@ -22,6 +27,8 @@ public struct ModelPickerView: View {
         self.recommendedID = ModelRecommender.bestInstallableModel(forTotalRAMGB: totalRAMGB).id
         self.currentModelID = currentModelID
         self.onSelect = onSelect
+        self.installedFilenames = Set(
+            FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()).installedFilenames())
     }
 
     public var body: some View {
@@ -35,6 +42,24 @@ public struct ModelPickerView: View {
                     .font(.caption)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.horizontal, 4)
+
+                // The router's switch lives WHERE models are chosen, not only buried in Settings.
+                Toggle(isOn: $settings.suggestBestModel) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Suggest the best model for each task")
+                            .font(.callout)
+                            .foregroundStyle(p.onSurface)
+                        Text("New chats get a one-tap suggestion — coding, reasoning, languages — from what's installed.")
+                            .font(.caption2)
+                            .foregroundStyle(p.onSurfaceVariant)
+                    }
+                }
+                .toggleStyle(.switch)
+                .tint(p.primary)
+                .padding(12)
+                .background(p.surfaceVariant, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
 
                 if !recommended.isEmpty {
                     sectionHeader("Recommended for this \(deviceNoun)", color: p.primary)
@@ -63,6 +88,7 @@ public struct ModelPickerView: View {
                 fitness: option.fitness,
                 isRecommended: option.model.id == recommendedID,
                 isCurrent: option.model.id == currentModelID,
+                isInstalled: installedFilenames.contains(option.model.filename),
                 palette: p,
                 action: { onSelect(option.model) }
             )
@@ -84,6 +110,7 @@ private struct ModelPickerRow: View {
     let fitness: MemoryCheckResult
     let isRecommended: Bool
     let isCurrent: Bool
+    let isInstalled: Bool
     let palette: QuenderinPalette
     let action: () -> Void
 
@@ -100,7 +127,9 @@ private struct ModelPickerRow: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 10) {
+              ModelAvatar(size: 34, modelID: model.id)
+              VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                     Text(split.name)
                         .font(.body.weight(.semibold))
@@ -131,12 +160,17 @@ private struct ModelPickerRow: View {
                     .foregroundStyle(palette.onSurfaceVariant)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text("\(model.sizeLabel.replacingOccurrences(of: " download", with: "")) · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM")
+                // The line that answers "tap or coffee break": installed switches instantly,
+                // everything else says exactly how big the one-time download is.
+                Text(isInstalled
+                     ? "Installed — switches instantly · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM"
+                     : "\(model.sizeLabel) · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(palette.onSurfaceVariant)
+                    .foregroundStyle(isInstalled ? palette.statusText : palette.onSurfaceVariant)
                 if !fitness.canLoad {
                     MemoryShortfallNote(fitness: fitness, palette: palette)
                 }
+              }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -150,7 +184,7 @@ private struct ModelPickerRow: View {
         }
         .buttonStyle(.plain)
         .disabled(!fitness.canLoad || isCurrent)
-        .accessibilityLabel("\(model.label), \(isCurrent ? "current model" : fitLabel(fitness))\(isRecommended ? ", recommended for this device" : "")")
+        .accessibilityLabel("\(model.label), \(isInstalled ? "installed" : "requires download"), \(isCurrent ? "current model" : fitLabel(fitness))\(isRecommended ? ", recommended for this device" : "")")
     }
 }
 

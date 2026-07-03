@@ -14,6 +14,7 @@ public struct ModelsLibraryView: View {
     @State private var profileModel: ModelEntry?
     @State private var dropTargeted = false
     @State private var importMessage: String?
+    @State private var pendingDelete: ModelEntry?
 
     public init(activeModelID: String, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.activeModelID = activeModelID
@@ -39,7 +40,9 @@ public struct ModelsLibraryView: View {
                             onDownload: { library.download(entry) },
                             onCancel: { library.cancel(entry) },
                             onUse: { onSelectModel(entry) },
-                            onOpen: { profileModel = entry }
+                            onOpen: { profileModel = entry },
+                            onDelete: { pendingDelete = entry },
+                            sizeOnDisk: library.sizeOnDisk(entry)
                         )
                     }
                 }
@@ -97,6 +100,20 @@ public struct ModelsLibraryView: View {
                 #endif
         }
         .confirmationDialog(
+            "Delete \(pendingDelete?.label ?? "this model")?",
+            isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+            titleVisibility: .visible,
+            presenting: pendingDelete
+        ) { entry in
+            Button("Delete (frees \(ByteCountFormatter.string(fromByteCount: library.sizeOnDisk(entry), countStyle: .file)))",
+                   role: .destructive) {
+                library.delete(entry, activeModelID: activeModelID)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { entry in
+            Text("You can download \(entry.label) again any time — it just won't be on this \(deviceNoun).")
+        }
+        .confirmationDialog(
             "Download \(library.missingModels.count) models (\(library.missingDownloadLabel))?",
             isPresented: $confirmDownloadAll, titleVisibility: .visible
         ) {
@@ -144,6 +161,8 @@ private struct LibraryRow: View {
     let onCancel: () -> Void
     let onUse: () -> Void
     let onOpen: () -> Void
+    let onDelete: () -> Void
+    let sizeOnDisk: Int64
     @State private var hovering = false
 
     var body: some View {
@@ -161,23 +180,48 @@ private struct LibraryRow: View {
                     .font(.caption)
                     .foregroundStyle(palette.onSurfaceVariant)
                     .lineLimit(2)
-                Text("\(entry.sizeLabel.replacingOccurrences(of: " download", with: "")) · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
+                Text(state == .installed
+                     ? "\(ByteCountFormatter.string(fromByteCount: sizeOnDisk, countStyle: .file)) on disk · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM"
+                     : "\(entry.sizeLabel) · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(palette.onSurfaceVariant)
             }
             Spacer(minLength: 12)
             switch state {
             case .installed:
-                if isActive {
-                    HStack(spacing: 5) {
-                        Circle().fill(palette.status).frame(width: 7, height: 7)
-                        Text("Active").font(.callout).foregroundStyle(palette.statusText)
+                HStack(spacing: 6) {
+                    if isActive {
+                        HStack(spacing: 5) {
+                            Circle().fill(palette.status).frame(width: 7, height: 7)
+                            Text("Active").font(.callout).foregroundStyle(palette.statusText)
+                        }
+                    } else {
+                        Button("Use") { onUse() }
+                            .buttonStyle(.bordered)
+                            .disabled(!fitness.canLoad)
+                            .help(fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)")
                     }
-                } else {
-                    Button("Use") { onUse() }
-                        .buttonStyle(.bordered)
-                        .disabled(!fitness.canLoad)
-                        .help(fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)")
+                    // Manage the file where you SEE the file — not only in Settings → Storage.
+                    Menu {
+                        #if os(macOS)
+                        Button("Show in Finder") {
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                [OnboardingModel.defaultModelsDir().appendingPathComponent(entry.filename)])
+                        }
+                        #endif
+                        if isActive {
+                            Button("Active — protected") {}.disabled(true)
+                        } else {
+                            Button("Delete…", role: .destructive) { onDelete() }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").foregroundStyle(.secondary)
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.borderless)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .accessibilityLabel("Actions for \(entry.label)")
                 }
             case .downloading(let fraction):
                 HStack(spacing: 8) {
@@ -386,6 +430,20 @@ final class ModelLibraryController: ObservableObject {
             self?.tasks[entry.id] = nil
             if Task.isCancelled { self?.refresh() }
         }
+    }
+
+    /// Bytes this model occupies on disk (0 when not installed).
+    func sizeOnDisk(_ entry: ModelEntry) -> Int64 {
+        let url = modelsDir.appendingPathComponent(entry.filename)
+        return (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+    }
+
+    /// Delete an installed model file. The ACTIVE model is protected — the UI never offers
+    /// this for it, and the guard holds even if it did.
+    func delete(_ entry: ModelEntry, activeModelID: String) {
+        guard entry.id != activeModelID else { return }
+        try? FileManager.default.removeItem(at: modelsDir.appendingPathComponent(entry.filename))
+        refresh()
     }
 
     func cancel(_ entry: ModelEntry) {
