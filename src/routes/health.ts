@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
 import { randomUUID } from 'crypto';
-import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getRecommendedModelIdForTotalRam } from '../constants.js';
+import { MODEL_CATALOG, modelPath, getHardwareRecommendation, getBestInstallableModel } from '../constants.js';
 import { availableMemBytes } from '../utils/memory.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import { getReadiness, getReadinessHistory } from '../services/readiness.service.js';
@@ -134,7 +134,7 @@ router.get('/health', (_req, res) => {
         : [1024, 2048, 4096]; // standard
 
     // Best default model to recommend for download based on hardware
-    const recommendedModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
+    const recommendedModelId = getBestInstallableModel(hw.totalRamGb);
 
     res.status(200).json({
         status: 'OK',

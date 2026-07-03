@@ -14,7 +14,7 @@ import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
 import { LlmService } from './services/llm.service.js';
 import { SessionService } from './services/session.service.js';
-import { MODEL_CATALOG, modelPath as getModelPath, getRecommendedModelIdForTotalRam } from './constants.js';
+import { MODEL_CATALOG, modelPath as getModelPath, getBestInstallableModel } from './constants.js';
 import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
@@ -148,7 +148,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 return;
             }
             const hw = getHardwareProfile();
-            const fallbackModelId = getRecommendedModelIdForTotalRam(hw.totalRamGb);
+            const fallbackModelId = getBestInstallableModel(hw.totalRamGb);
             const requestedModelId = modelId ?? fallbackModelId;
             llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });

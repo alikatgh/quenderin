@@ -180,6 +180,26 @@ export function getRecommendedModelIdForTotalRam(totalRamGb: number): ModelEntry
     return 'qwen3-14b';
 }
 
+/**
+ * The recommendation callers can actually OFFER: the RAM-band pick when it passes the
+ * memory gate, else the largest catalog model that does (falling back to the smallest).
+ * Mirrors ModelRecommender.bestInstallableModel in the Swift/Kotlin ports — the band
+ * and checkMemoryForModel can disagree (a 16 GB machine band-picks the 14B, which the
+ * 85% budget then blocks), and a recommendation must never sit on a model the same
+ * surface refuses to install. The band function above stays 1:1 with the ports and
+ * its boundary tests — don't fold this logic into it.
+ */
+export function getBestInstallableModel(totalRamGb: number): ModelEntry['id'] {
+    const bandedId = getRecommendedModelIdForTotalRam(totalRamGb);
+    const banded = MODEL_CATALOG.find(m => m.id === bandedId);
+    if (banded && checkMemoryForModel(banded).canLoad) return bandedId;
+    let fitting: ModelEntry | undefined;
+    for (const m of MODEL_CATALOG) {
+        if ((!fitting || m.ramGb > fitting.ramGb) && checkMemoryForModel(m).canLoad) fitting = m;
+    }
+    return (fitting ?? MODEL_CATALOG[MODEL_CATALOG.length - 1]).id;
+}
+
 /** Resolves the full path for a model by its catalog id */
 export function modelPath(id: string): string {
     const entry = MODEL_CATALOG.find(m => m.id === id);
