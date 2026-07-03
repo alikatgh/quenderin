@@ -105,7 +105,8 @@ struct ConversationListView: View {
                     ForEach(coordinator.summaries) { summary in
                         Button { onOpen(summary.id) } label: {
                             HStack(spacing: 12) {
-                                ModelOrb(size: 44)
+                                // Family colors of the model that answered here — rows tell apart at a glance.
+                                ModelOrb(size: 44, modelID: summary.modelID)
                                 // WhatsApp row anatomy: title over the last-message snippet.
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(summary.title).font(.body).foregroundStyle(p.onSurface).lineLimit(1)

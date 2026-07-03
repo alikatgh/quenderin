@@ -170,7 +170,9 @@ private struct SidebarChatRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 9) {
-            ModelAvatar(size: 34)
+            // The row wears the family colors of the model that answered in that conversation —
+            // people run several models, and the avatar is how rows tell them apart at a glance.
+            ModelAvatar(size: 34, modelID: summary.modelID)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(summary.title)

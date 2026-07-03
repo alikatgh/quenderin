@@ -18,6 +18,18 @@ public struct RootView: View {
     public var body: some View {
         Group {
             if case .ready(let model) = onboarding.phase {
+                shell(model: model)
+                    // Saves stamp the answering model onto the conversation (its list row wears
+                    // that family's avatar) — keep the id current across model switches.
+                    .task(id: model.id) { conversations.activeModelID = model.id }
+            } else {
+                OnboardingView(model: onboarding)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func shell(model: ModelEntry) -> some View {
                 #if os(macOS)
                 // The Mac gets a native sidebar shell (split view, menu commands, ⌘, Settings) —
                 // not the phone's TabView in a window.
@@ -40,10 +52,6 @@ public struct RootView: View {
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                 }
                 #endif
-            } else {
-                OnboardingView(model: onboarding)
-            }
-        }
     }
 }
 #endif

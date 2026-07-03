@@ -12,6 +12,18 @@ final class ConversationManagerTests: XCTestCase {
         return (mgr, { clock += 1000 })
     }
 
+    func testSaveStampsModelIDAndNilKeepsExisting() {
+        let persistence = InMemoryConversationPersistence()
+        let (mgr, _) = make(persistence)
+        let id = mgr.startNew()
+        mgr.save(id: id, messages: [u("hi")], modelID: "llama32-1b-q2")
+        XCTAssertEqual(mgr.list().first?.modelID, "llama32-1b-q2")
+        // A save that doesn't know the model (nil) must not erase the stamp.
+        mgr.save(id: id, messages: [u("hi"), a("hello")])
+        XCTAssertEqual(mgr.list().first?.modelID, "llama32-1b-q2")
+        XCTAssertEqual(persistence.loadIndex().first?.modelID, "llama32-1b-q2")
+    }
+
     func testStartNewDefersTheIndexRowUntilFirstSave() {
         let persistence = InMemoryConversationPersistence()
         let (mgr, _) = make(persistence)

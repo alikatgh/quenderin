@@ -44,7 +44,7 @@ public final class FileConversationPersistence: ConversationPersistence {
     }
 
     public func saveIndex(_ summaries: [ConversationSummary]) {
-        let rows = summaries.map { IndexRow(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview) }
+        let rows = summaries.map { IndexRow(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview, modelID: $0.modelID) }
         guard let data = try? JSONEncoder().encode(rows) else { return }
         try? data.write(to: indexURL, options: .atomic)
     }
@@ -52,16 +52,17 @@ public final class FileConversationPersistence: ConversationPersistence {
     public func loadIndex() -> [ConversationSummary] {
         guard let data = try? Data(contentsOf: indexURL),
               let rows = try? JSONDecoder().decode([IndexRow].self, from: data) else { return [] }
-        return rows.map { ConversationSummary(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview ?? "") }
+        return rows.map { ConversationSummary(id: $0.id, title: $0.title, updatedAt: $0.updatedAt, preview: $0.preview ?? "", modelID: $0.modelID) }
     }
 
     /// On-disk index shape — Codable mirror of `ConversationSummary` (which stays a plain value
     /// type in the core), the same decoupling `ConversationStore.StoredMessage` uses.
-    /// `preview` is optional so an index written before the field existed still decodes.
+    /// `preview` / `modelID` are optional so an index written before the fields existed still decodes.
     private struct IndexRow: Codable {
         let id: String
         let title: String
         let updatedAt: Int64
         let preview: String?
+        let modelID: String?
     }
 }

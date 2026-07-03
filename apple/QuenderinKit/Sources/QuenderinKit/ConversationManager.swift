@@ -67,13 +67,16 @@ public final class ConversationManager {
 
     /// Persist a conversation: refresh its title from the first user line, stamp `updatedAt`,
     /// and write the transcript + index. Call after each turn with the chat's messages.
-    public func save(id: String, messages: [ChatMessage]) {
+    /// `modelID` records which model answered (list rows wear its family avatar); passing nil
+    /// keeps whatever the row already had rather than erasing it.
+    public func save(id: String, messages: [ChatMessage], modelID: String? = nil) {
         let firstUser = messages.first(where: { $0.role == .user })?.text
         library.upsert(ConversationSummary(
             id: id,
             title: ConversationLibrary.title(fromFirstUserMessage: firstUser),
             updatedAt: now(),
-            preview: ConversationLibrary.preview(fromLastMessage: messages.last)
+            preview: ConversationLibrary.preview(fromLastMessage: messages.last),
+            modelID: modelID ?? library.get(id)?.modelID
         ))
         persistence.saveTranscript(id: id, messages: messages)
         persistence.saveIndex(library.snapshot())

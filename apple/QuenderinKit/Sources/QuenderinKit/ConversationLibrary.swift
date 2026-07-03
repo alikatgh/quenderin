@@ -10,12 +10,16 @@ public struct ConversationSummary: Sendable, Equatable, Identifiable {
     /// One-line snippet of the LAST message ("You: …" for the user's own) — what a chat-list row
     /// shows under the title, WhatsApp-style. Empty for a conversation with no messages yet.
     public var preview: String
+    /// The catalog id of the model that last answered in this conversation — lets list rows wear
+    /// that family's avatar. `nil` for rows saved before the field existed (brand orb fallback).
+    public var modelID: String?
 
-    public init(id: String, title: String, updatedAt: Int64, preview: String = "") {
+    public init(id: String, title: String, updatedAt: Int64, preview: String = "", modelID: String? = nil) {
         self.id = id
         self.title = title
         self.updatedAt = updatedAt
         self.preview = preview
+        self.modelID = modelID
     }
 }
 

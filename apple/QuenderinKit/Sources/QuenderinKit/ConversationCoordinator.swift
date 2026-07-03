@@ -19,6 +19,10 @@ public final class ConversationCoordinator: ObservableObject {
     /// The live chat for the *current* conversation.
     public let chat: ChatModel
 
+    /// The catalog id of the ACTIVE model — stamped onto each conversation at save time so its
+    /// list row wears that family's avatar. The shell keeps this current across model switches.
+    public var activeModelID: String?
+
     /// The open conversation's id — drives the macOS sidebar's selection highlight.
     public var currentID: String? { manager.currentID }
 
@@ -59,7 +63,7 @@ public final class ConversationCoordinator: ObservableObject {
     public func persist() {
         guard let id = manager.currentID, !chat.messages.isEmpty, !chat.isGenerating,
               chat.messages.count > savedCount else { return }
-        manager.save(id: id, messages: chat.messages)
+        manager.save(id: id, messages: chat.messages, modelID: activeModelID)
         savedCount = chat.messages.count
         refresh()
     }
