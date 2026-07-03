@@ -112,15 +112,15 @@ final class ConversationCoordinatorTests: XCTestCase {
         let chat = await loadedChat("one two three four five")
         let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
 
-        let id = coord.summaries.first!.id   // the empty "New conversation" row created on init
+        let id = coord.currentID!   // the fresh conversation; no history row exists until a save
 
         let task = Task { await chat.send("hello") }
         while chat.messages.count < 2 { await Task.yield() }   // user+placeholder assistant appended
         XCTAssertTrue(chat.isGenerating)
 
         coord.open("does-not-exist")   // persist() runs first internally; must not save mid-stream
-        XCTAssertEqual(coord.summaries.first?.title, "New conversation")   // still untitled — "hello" never landed
-        XCTAssertTrue(persistence.loadTranscript(id: id).isEmpty)          // and nothing was written to disk
+        XCTAssertTrue(coord.summaries.isEmpty)                    // "hello" never landed — still no row
+        XCTAssertTrue(persistence.loadTranscript(id: id).isEmpty) // and nothing was written to disk
 
         await task.value   // let the stream finish so the task doesn't leak past the test
     }
@@ -138,10 +138,47 @@ final class ConversationCoordinatorTests: XCTestCase {
         XCTAssertEqual(coord.summaries.count, 2)
 
         coord.clearAll()
-        // Back to first-launch state: the chat is empty and only a fresh conversation remains.
+        // Back to first-launch state: the chat is empty and the history is empty too — the fresh
+        // conversation only earns a row once something is said.
         XCTAssertTrue(chat.messages.isEmpty)
-        XCTAssertEqual(coord.summaries.count, 1)
-        XCTAssertEqual(coord.summaries.first?.title, "New conversation")
-        XCTAssertEqual(persistence.loadIndex().count, 1)   // persistence actually wiped
+        XCTAssertNotNil(coord.currentID)   // there IS a fresh conversation to type into
+        XCTAssertTrue(coord.summaries.isEmpty)
+        XCTAssertTrue(persistence.loadIndex().isEmpty)   // persistence actually wiped
+    }
+
+    /// The WhatsApp rule end-to-end: launching fresh (or pressing New Chat) shows NO history row;
+    /// the row appears only when the first completed turn is persisted.
+    @MainActor
+    func testFirstLaunchCreatesNoRowUntilFirstTurnIsSaved() async {
+        let persistence = InMemoryConversationPersistence()
+        let chat = await loadedChat("hello")
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 7 })
+        XCTAssertTrue(coord.summaries.isEmpty)
+        XCTAssertTrue(persistence.loadIndex().isEmpty)
+        XCTAssertNotNil(coord.currentID)   // but there IS a current conversation to type into
+
+        await chat.send("first message")
+        coord.persist()
+        XCTAssertEqual(coord.summaries.map(\.title), ["first message"])
+    }
+
+    /// Migration for installs that ran the old create-immediately `startNew()`: blank
+    /// "New conversation" shells are garbage-collected on init, and launch restores the newest
+    /// REAL conversation instead of an empty shell.
+    @MainActor
+    func testInitPrunesLegacyBlankConversationRows() async {
+        let persistence = InMemoryConversationPersistence()
+        persistence.saveTranscript(id: "real", messages: [ChatMessage(role: .user, text: "keep me")])
+        persistence.saveTranscript(id: "blank1", messages: [])
+        persistence.saveIndex([
+            ConversationSummary(id: "real", title: "keep me", updatedAt: 1),
+            ConversationSummary(id: "blank1", title: "New conversation", updatedAt: 2),
+            ConversationSummary(id: "blank2", title: "New conversation", updatedAt: 3),
+        ])
+        let coord = ConversationCoordinator(chat: await loadedChat("x"), persistence: persistence, now: { 9 })
+        XCTAssertEqual(coord.summaries.map(\.id), ["real"])   // shells GC'd everywhere
+        XCTAssertEqual(persistence.loadIndex().map(\.id), ["real"])
+        XCTAssertEqual(coord.currentID, "real")               // restored the real chat, not a shell
+        XCTAssertEqual(coord.chat.messages.map(\.text), ["keep me"])
     }
 }

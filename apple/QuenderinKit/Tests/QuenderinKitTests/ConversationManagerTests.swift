@@ -12,12 +12,15 @@ final class ConversationManagerTests: XCTestCase {
         return (mgr, { clock += 1000 })
     }
 
-    func testStartNewCreatesTitledCurrentListedConversation() {
-        let (mgr, _) = make(InMemoryConversationPersistence())
+    func testStartNewDefersTheIndexRowUntilFirstSave() {
+        let persistence = InMemoryConversationPersistence()
+        let (mgr, _) = make(persistence)
         let id = mgr.startNew()
         XCTAssertEqual(mgr.currentID, id)
-        XCTAssertEqual(mgr.list().count, 1)
-        XCTAssertEqual(mgr.list().first?.title, "New conversation")
+        XCTAssertTrue(mgr.list().isEmpty, "no history row until something is said (WhatsApp rule)")
+        XCTAssertTrue(persistence.loadIndex().isEmpty, "an abandoned new chat writes nothing")
+        mgr.save(id: id, messages: [u("hi")])
+        XCTAssertEqual(mgr.list().map(\.id), [id])
     }
 
     func testSaveDerivesTitleAndPersistsTranscript() {
@@ -30,11 +33,13 @@ final class ConversationManagerTests: XCTestCase {
 
     func testListIsRecencyOrderedAndATouchReSortsToTop() {
         let (mgr, tick) = make(InMemoryConversationPersistence())
-        let first = mgr.startNew(); tick()
+        let first = mgr.startNew()
+        mgr.save(id: first, messages: [u("first")]); tick()
         let second = mgr.startNew()
+        mgr.save(id: second, messages: [u("second")])
         XCTAssertEqual(mgr.list().map(\.id).first, second, "newest conversation is on top")
         tick()
-        mgr.save(id: first, messages: [u("hi")])   // touch the older one
+        mgr.save(id: first, messages: [u("first"), a("reply")])   // touch the older one
         XCTAssertEqual(mgr.list().map(\.id).first, first, "a touched conversation jumps to the top")
     }
 
@@ -46,6 +51,23 @@ final class ConversationManagerTests: XCTestCase {
         XCTAssertTrue(mgr.list().isEmpty)
         XCTAssertNil(mgr.currentID)
         XCTAssertTrue(mgr.open(id).isEmpty)
+    }
+
+    func testPruneEmptyConversationsDropsBlankShellsAndKeepsRealOnes() {
+        let persistence = InMemoryConversationPersistence()
+        // A legacy index as the old create-immediately startNew() wrote it: one real conversation
+        // plus abandoned "New conversation" shells (one with an empty transcript, one with none).
+        persistence.saveTranscript(id: "real", messages: [u("keep me")])
+        persistence.saveTranscript(id: "blank1", messages: [])
+        persistence.saveIndex([
+            ConversationSummary(id: "real", title: "keep me", updatedAt: 1),
+            ConversationSummary(id: "blank1", title: "New conversation", updatedAt: 2),
+            ConversationSummary(id: "blank2", title: "New conversation", updatedAt: 3),
+        ])
+        let mgr = ConversationManager(persistence: persistence, now: { 9 }, makeID: { "x" })
+        mgr.pruneEmptyConversations()
+        XCTAssertEqual(mgr.list().map(\.id), ["real"])
+        XCTAssertEqual(persistence.loadIndex().map(\.id), ["real"])
     }
 
     func testHistorySurvivesAcrossManagerInstances() {

@@ -197,6 +197,33 @@ fun main() {
         val phase = onb.phase
         phase is OnboardingPhase.Ready && phase.model.id == a.id && engine.loadedModelId == a.id
     })
+    // Twin of Swift testInstallRemembersModelAndStartRestoresItOnRelaunch: a successful load
+    // persists the model id, and a fresh OnboardingModel ("relaunch") restores it straight to
+    // Ready — never replaying the first-run recommendation screen.
+    check("acceptAndPrepare remembers the model id for the next launch", run {
+        var remembered: String? = null
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader(),
+            rememberActiveModelID = { remembered = it })
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        remembered == ModelCatalog.smallest.id
+    })
+    check("cold relaunch restores the remembered model straight to Ready — no onboarding replay", run {
+        val replayed = mutableListOf<OnboardingPhase>()
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader(),
+            recallActiveModelID = { ModelCatalog.smallest.id },
+            activeModelFileExists = { true })
+        onb.onChange = { replayed += it }
+        val restored = onb.restoreAtLaunch()
+        val phase = onb.phase
+        restored && phase is OnboardingPhase.Ready && phase.model.id == ModelCatalog.smallest.id &&
+            replayed.none { it is OnboardingPhase.Recommended }
+    })
+    check("relaunch restore declines when the remembered file is gone", run {
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader(),
+            recallActiveModelID = { ModelCatalog.smallest.id },
+            activeModelFileExists = { false })
+        !onb.restoreAtLaunch() && onb.phase is OnboardingPhase.Idle
+    })
     check("unsupported device: even the smallest model can't run → UNSUPPORTED + Failed onboarding", run {
         // Almost no native-heap budget — even the smallest model won't fit.
         val tiny = AndroidDeviceProfile("Ancient", AndroidSoc.MIDRANGE, 1.0, 0.2, 128.0, 4500.0)

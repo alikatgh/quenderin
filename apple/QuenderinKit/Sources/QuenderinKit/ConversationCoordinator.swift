@@ -37,6 +37,7 @@ public final class ConversationCoordinator: ObservableObject {
     ) {
         self.chat = chat
         self.manager = ConversationManager(persistence: persistence, now: now)
+        manager.pruneEmptyConversations()   // GC blank rows left by the old create-immediately startNew()
         manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
         // Pick up where you left off: restore the most recent conversation, or start fresh.
         if let recent = manager.list().first {

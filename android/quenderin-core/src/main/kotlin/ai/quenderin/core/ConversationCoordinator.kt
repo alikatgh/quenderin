@@ -21,6 +21,9 @@ class ConversationCoordinator(
     var summaries: List<ConversationSummary> = emptyList()
         private set
 
+    /** The open conversation's id (twin of Swift `currentID`). */
+    val currentId: String? get() = manager.currentId
+
     /**
      * How many of the live chat's messages are already saved for the CURRENT conversation.
      * [persist] only writes when the transcript grew past this — `save()` stamps `updatedAt`,
@@ -30,6 +33,7 @@ class ConversationCoordinator(
     private var savedCount = 0
 
     init {
+        manager.pruneEmptyConversations()   // GC blank rows left by the old create-immediately startNew()
         manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
         // Pick up where you left off: restore the most recent conversation, or start fresh.
         val recent = manager.list().firstOrNull()

@@ -54,14 +54,14 @@ public final class ConversationManager {
     /// The history list, newest first.
     public func list() -> [ConversationSummary] { library.list() }
 
-    /// Begin a fresh, empty conversation and make it current.
+    /// Begin a fresh, empty conversation and make it current. Deliberately writes NOTHING:
+    /// the index row and transcript are created by the first `save()`, so a new chat the user
+    /// abandons without typing never leaves a blank "New conversation" row in the history
+    /// list (WhatsApp only creates a list row on the first message).
     @discardableResult
     public func startNew() -> String {
         let id = makeID()
         currentID = id
-        library.upsert(ConversationSummary(id: id, title: "New conversation", updatedAt: now()))
-        persistence.saveTranscript(id: id, messages: [])
-        persistence.saveIndex(library.snapshot())
         return id
     }
 
@@ -77,6 +77,20 @@ public final class ConversationManager {
         ))
         persistence.saveTranscript(id: id, messages: messages)
         persistence.saveIndex(library.snapshot())
+    }
+
+    /// One-time cleanup for indexes written by the old `startNew()` (which created the row and
+    /// saved immediately): drop every summary whose transcript is empty — those are abandoned
+    /// "New conversation" shells, not history. Run before restoring the most recent conversation
+    /// so a blank shell is never what launch reopens.
+    public func pruneEmptyConversations() {
+        var changed = false
+        for summary in library.list() where persistence.loadTranscript(id: summary.id).isEmpty {
+            library.remove(summary.id)
+            persistence.deleteTranscript(id: summary.id)
+            changed = true
+        }
+        if changed { persistence.saveIndex(library.snapshot()) }
     }
 
     /// One-time backfill for indexes written before `preview` existed: compute each snippet from
