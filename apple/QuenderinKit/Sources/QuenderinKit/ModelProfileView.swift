@@ -21,8 +21,12 @@ struct ModelProfileView: View {
         let p = QuenderinPalette.of(scheme)
         let quant = Quantization.info(id: model.quantization)
         NavigationStack {
-            List {
-                Section {
+            // Card sections instead of a List: a List separator-rules EVERY row (~14 hairlines on
+            // this sheet), which reads as a wall of lines. Three bordered cards + captioned
+            // headers carry the same structure with a fraction of the ink; rows inside a card
+            // need no rules at all (label-left/value-right is separation enough).
+            ScrollView {
+                VStack(spacing: 18) {
                     VStack(spacing: 10) {
                         ModelOrb(size: 72)
                         Text(model.label)
@@ -37,50 +41,54 @@ struct ModelProfileView: View {
                             .font(.subheadline)
                             .foregroundStyle(p.onSurfaceVariant)
                             .multilineTextAlignment(.center)
+                        // The sheet's ONE action, above the fold — not buried under the specs.
+                        Button("Change model…") { showPicker = true }
+                            .buttonStyle(.borderedProminent)
+                            .tint(p.primary)
+                            .padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-                    .listRowBackground(Color.clear)
-                }
 
-                Section("Specifications") {
-                    SpecRow("Parameters", "\(fmt(model.paramsBillions))B")
-                    SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""))
-                    SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM")
-                    SpecRow("Quantization", model.quantization)
-                    if let q = quant {
-                        SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight")
-                        SpecRow("Quality", q.quality)
+                    ProfileCard(title: "Specifications", palette: p) {
+                        SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p)
+                        SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p)
+                        SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p)
+                        SpecRow("Quantization", model.quantization, palette: p)
+                        if let q = quant {
+                            SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight", palette: p)
+                            SpecRow("Quality", q.quality, palette: p)
+                        }
+                        SpecRow("Format", "GGUF", palette: p)
                     }
-                    SpecRow("Format", "GGUF")
-                }
 
-                Section("Privacy") {
+                    ProfileCard(title: "Technical", palette: p) {
+                        SpecRow("File", model.filename, palette: p, mono: true)
+                        if let url = model.downloadURL {
+                            Button { openURL(url) } label: {
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text("Source").font(.callout).foregroundStyle(p.onSurfaceVariant)
+                                    Spacer(minLength: 12)
+                                    Text("Hugging Face").font(.callout).foregroundStyle(p.primary)
+                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(p.primary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open source page")
+                        }
+                        SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true)
+                    }
+
+                    // Prose needs no box and no rules — quiet caption under the cards.
                     Text("Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — "
                        + "once downloaded it works fully offline and nothing you type leaves your \(deviceNoun).")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote)
+                        .foregroundStyle(p.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
                 }
-
-                Section("Technical") {
-                    SpecRow("File", model.filename)
-                    if let url = model.downloadURL {
-                        Button { openURL(url) } label: {
-                            HStack {
-                                Text("Source").foregroundStyle(p.onSurface)
-                                Spacer()
-                                Text("Hugging Face").foregroundStyle(p.primary)
-                                Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(p.primary)
-                            }
-                        }
-                        .accessibilityLabel("Open source page")
-                    }
-                    SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only")
-                }
-
-                Section {
-                    Button("Change model…") { showPicker = true }
-                }
+                .padding(18)
             }
+            .background(p.background)
             .navigationTitle("Model")
             .inlineNavTitle()
             .toolbar {
@@ -135,17 +143,53 @@ struct ModelOrb: View {
     }
 }
 
-/// Label on the left, value on the right (the value wraps/trailing-aligns). A local twin of the
-/// `LabeledRow` used in `SettingsView`.
+/// A captioned, hairline-bordered section card (the picker rows' visual language): the section
+/// title sits ABOVE the card as a small uppercase caption, and rows inside carry no separators.
+private struct ProfileCard<Content: View>: View {
+    let title: String
+    let palette: QuenderinPalette
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.onSurfaceVariant)
+                .padding(.horizontal, 4)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 10) { content }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(palette.surfaceVariant, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+        }
+    }
+}
+
+/// Label on the left (quiet), value on the right (the data is the point — tabular digits, wraps
+/// trailing-aligned; `mono` for filenames/checksums).
 private struct SpecRow: View {
     let title: String
     let value: String
-    init(_ title: String, _ value: String) { self.title = title; self.value = value }
+    let palette: QuenderinPalette
+    let mono: Bool
+
+    init(_ title: String, _ value: String, palette: QuenderinPalette, mono: Bool = false) {
+        self.title = title
+        self.value = value
+        self.palette = palette
+        self.mono = mono
+    }
+
     var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).font(.callout).foregroundStyle(palette.onSurfaceVariant)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(mono ? .footnote.monospaced() : .callout.monospacedDigit())
+                .foregroundStyle(palette.onSurface)
+                .multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)
     }
