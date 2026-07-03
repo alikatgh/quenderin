@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>The real numbers — Quenderin</title>
+<meta name="description" content="Measured tokens-per-second, thermal caveats, and honest limits of on-device AI — the raw numbers behind Quenderin, with sources you can check." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/reality.html" />
+<link rel="alternate" hreflang="x-default" href="https://quenderin.org/reality.html" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="The real numbers — Quenderin" />
+<meta property="og:description" content="What we measured, what we interpolated, and what still runs too hot — the homework behind the marketing." />
+<meta property="og:url" content="https://quenderin.org/reality.html" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The real numbers — Quenderin" />
+<meta name="twitter:description" content="The measured numbers behind Quenderin — on-device AI without the rounding-up." />
+<meta name="twitter:image" content="https://quenderin.org/og-image.png" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://quenderin.org/"},{"@type":"ListItem","position":2,"name":"The real numbers","item":"https://quenderin.org/reality.html"}]}
+</script>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+<style>html[dir="rtl"] .checklist,html[dir="rtl"] .steplist{text-align:right}</style>
+</head>
+<body>
+<a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+
+<header class="site-header" id="top">
+  <div class="container container-wide header-inner">
+    <a class="brand" href="./" aria-label="Quenderin home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <div class="lang-picker">
+        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="bn">বাংলা</option>
+          <option value="pt">Português</option>
+          <option value="ru">Русский</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <svg class="lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="section">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">The homework</p>
+        <h1 style="font-size:clamp(2rem,4.6vw,3.2rem)">The real numbers</h1>
+        <p class="section-sub">Marketing pages usually round up. This one is the raw material: what we
+        measured, what we interpolated, and what still runs too hot. Sources and the full research
+        live in the repo &mdash; every claim below links to something you can check.</p>
+      </header>
+
+      <div class="band-inner reveal" style="margin-top:2.5rem">
+        <h2>Decode speed, measured</h2>
+        <p style="margin-top:0.6rem">Tokens per second, ~1&ndash;1.5B model, 4-bit, stock llama.cpp on CPU
+        (anchors from <a href="https://arxiv.org/pdf/2506.19884" rel="noopener" style="text-decoration:underline">arXiv 2506.19884</a>);
+        our own pipeline measured ~157&ndash;177&nbsp;tok/s for a 0.5B on an M-series Mac with Metal.</p>
+        <div style="overflow-x:auto;margin-top:1rem">
+        <table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums">
+          <thead><tr style="text-align:left;border-bottom:1px solid var(--border)">
+            <th style="padding:0.5rem 0.75rem">Chip</th><th style="padding:0.5rem 0.75rem">1B</th><th style="padding:0.5rem 0.75rem">3&ndash;4B</th><th style="padding:0.5rem 0.75rem">7&ndash;8B</th><th style="padding:0.5rem 0.75rem">Status</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem 0.75rem">A14 (iPhone&nbsp;12)</td><td style="padding:0.5rem 0.75rem"><strong>15&nbsp;tok/s</strong></td><td style="padding:0.5rem 0.75rem">~7&ndash;9</td><td style="padding:0.5rem 0.75rem">not advised</td><td style="padding:0.5rem 0.75rem">measured</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem 0.75rem">A16 (iPhone&nbsp;15)</td><td style="padding:0.5rem 0.75rem"><strong>20&nbsp;tok/s</strong></td><td style="padding:0.5rem 0.75rem">~10&ndash;13</td><td style="padding:0.5rem 0.75rem">tight</td><td style="padding:0.5rem 0.75rem">measured</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:0.5rem 0.75rem">A17&nbsp;Pro / A18&nbsp;Pro</td><td style="padding:0.5rem 0.75rem">~24&ndash;28</td><td style="padding:0.5rem 0.75rem">~11&ndash;13</td><td style="padding:0.5rem 0.75rem">~8</td><td style="padding:0.5rem 0.75rem"><em>interpolated</em></td></tr>
+            <tr><td style="padding:0.5rem 0.75rem">Snapdragon 8 Gen 2/3</td><td style="padding:0.5rem 0.75rem">~10&ndash;20</td><td style="padding:0.5rem 0.75rem">~6&ndash;12</td><td style="padding:0.5rem 0.75rem">~4&ndash;8</td><td style="padding:0.5rem 0.75rem">measured anchors</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="band-inner reveal" style="margin-top:3rem">
+        <h2>What we&rsquo;ll say out loud that a landing page usually won&rsquo;t</h2>
+        <ul class="checklist" style="margin-top:1rem;display:grid;gap:0.75rem">
+          <li><strong>Small models get things wrong.</strong> A 1B model is a pocket assistant, not an oracle. The app grades every model&rsquo;s quality honestly &mdash; our lightest build ships labeled <em>Low</em>.</li>
+          <li><strong>Phones throttle.</strong> Sustained generation heats a phone until the chip slows itself &mdash; published studies show 10&ndash;44% drops on long runs. We design around it (thermal-aware thread planning) rather than pretend it away.</li>
+          <li><strong>Some numbers are interpolated.</strong> Where hard data is missing (newest chips, GPU decode), our tables say so, in italics, instead of extrapolating quietly.</li>
+          <li><strong>Cloud models are smarter.</strong> If you need frontier reasoning and have a connection, use one. Quenderin is for the words you don&rsquo;t want to hand over and the places the connection doesn&rsquo;t reach.</li>
+        </ul>
+      </div>
+
+      <div class="band-inner reveal" style="margin-top:3rem">
+        <h2>Check the homework</h2>
+        <p style="margin-top:0.6rem">The research and the bug history are public &mdash; not as a stunt, but because
+        that&rsquo;s what open source means to us:</p>
+        <ul class="checklist" style="margin-top:1rem;display:grid;gap:0.6rem">
+          <li><a href="https://github.com/alikatgh/quenderin/blob/main/apple/REALITY.md" rel="noopener" style="text-decoration:underline">REALITY.md</a> &mdash; the honest &ldquo;can phones actually do this&rdquo; write-up that seeds the app&rsquo;s calibration code.</li>
+          <li><a href="https://github.com/alikatgh/quenderin/blob/main/docs/research/on-device-llm.md" rel="noopener" style="text-decoration:underline">On-device LLM research</a> &mdash; 28 sources, adversarially verified; the refuted claims are listed too.</li>
+          <li><a href="https://github.com/alikatgh/quenderin/blob/main/docs/research/similar-projects.md" rel="noopener" style="text-decoration:underline">Similar projects</a> &mdash; who else does this well, and what we learned from each of them.</li>
+          <li><a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener" style="text-decoration:underline">The bug journal</a> &mdash; every bug we&rsquo;ve fixed, what caused it, and the lesson. Yes, really.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band" data-theme="dark">
+    <div class="container reveal">
+      <h2>Judge it by the code, not this page.</h2>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener">Read the source</a>
+        <a class="btn btn-ghost" href="./">Back to the overview</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container container-wide footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Quenderin</span>
+      <p class="footer-tag" data-i18n="foot.tag">Offline, private, on-device AI.</p>
+      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
+    </div>
+    <nav class="footer-cols" aria-label="Footer">
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.product">Product</h3>
+        <a href="how-it-works.html" data-i18n="nav.how">How it works</a>
+        <a href="features.html" data-i18n="nav.features">Features</a>
+        <a href="models.html" data-i18n="nav.models">Models</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.project">Project</h3>
+        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
+        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
+        <a href="reality.html" data-i18n="nav.faq">FAQ</a>
+      </div>
+    </nav>
+  </div>
+  <div class="container container-wide footer-base">
+    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
+    <nav class="footer-legal" aria-label="Legal">
+      <a href="privacy.html" data-i18n="foot.legal.privacy">Privacy</a>
+      <a href="terms.html" data-i18n="foot.legal.terms">Terms</a>
+      <a href="legal.html" data-i18n="foot.legal.legal">Legal Notice</a>
+      <a href="accessibility.html" data-i18n="foot.legal.a11y">Accessibility</a>
+    </nav>
+    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+<script src="i18n.js" defer></script>
+</body>
+</html>

@@ -33,50 +33,54 @@ struct QuenderinPalette {
     let codeComment: Color
     let codeNumber: Color
 
+    // The palette is DERIVED FROM THE BRAND ARTWORK (brand/icon-square-1024.png), not from a
+    // SaaS template: teal #52939A = her braids/eyes/choker, copper #EDA04F = the "Q" and the
+    // warm braid strands, warm paper + leather in the light theme. Sampled 2026-07-03
+    // (scripts/generate_icons.py's source image); change the art → resample, don't guess.
     static let dark = QuenderinPalette(
-        background: Color(hex: 0x0B0B10),
-        surface: Color(hex: 0x16161D),
-        surfaceVariant: Color(hex: 0x1E1E27),
-        onSurface: Color(hex: 0xE9E7F2),
-        onSurfaceVariant: Color(hex: 0x9C99AE),
-        primary: Color(hex: 0x8B83FF),
-        userBubble: Color(hex: 0x5D54C4),
-        onUserBubble: Color(hex: 0xF4F2FF),
-        userTimestamp: Color(hex: 0xC4BFF0),
-        assistantBubble: Color(hex: 0x1E1E27),
-        onAssistantBubble: Color(hex: 0xE9E7F2),
-        assistantTimestamp: Color(hex: 0x78758A),
+        background: Color(hex: 0x0B0F10),
+        surface: Color(hex: 0x141A1B),
+        surfaceVariant: Color(hex: 0x1C2426),
+        onSurface: Color(hex: 0xE8EDEA),
+        onSurfaceVariant: Color(hex: 0x93A19E),
+        primary: Color(hex: 0x52939A),
+        userBubble: Color(hex: 0x245A62),
+        onUserBubble: Color(hex: 0xEAF6F4),
+        userTimestamp: Color(hex: 0xA8CDD1),
+        assistantBubble: Color(hex: 0x1C2426),
+        onAssistantBubble: Color(hex: 0xE8EDEA),
+        assistantTimestamp: Color(hex: 0x798682),
         status: Color(hex: 0x37C98B),
         statusText: Color(hex: 0x8FE8C4),
-        dayDivider: Color(hex: 0x1B1B23),
-        onDayDivider: Color(hex: 0x8B889C),
+        dayDivider: Color(hex: 0x171E1F),
+        onDayDivider: Color(hex: 0x8C9996),
         codeKeyword: Color(hex: 0xC792EA),
         codeString: Color(hex: 0xC3E88D),
-        codeComment: Color(hex: 0x7A7889),
-        codeNumber: Color(hex: 0xF78C6C)
+        codeComment: Color(hex: 0x7A8682),
+        codeNumber: Color(hex: 0xEDA04F)
     )
 
     static let light = QuenderinPalette(
-        background: Color(hex: 0xF6F5FB),
+        background: Color(hex: 0xF5F4EF),
         surface: Color(hex: 0xFFFFFF),
-        surfaceVariant: Color(hex: 0xEDEBF5),
-        onSurface: Color(hex: 0x1A1A22),
-        onSurfaceVariant: Color(hex: 0x66647A),
-        primary: Color(hex: 0x635BFF),
-        userBubble: Color(hex: 0x635BFF),
+        surfaceVariant: Color(hex: 0xE9E7DE),
+        onSurface: Color(hex: 0x1C2224),
+        onSurfaceVariant: Color(hex: 0x5D6B68),
+        primary: Color(hex: 0x2E7680),
+        userBubble: Color(hex: 0x2E7680),
         onUserBubble: Color(hex: 0xFFFFFF),
-        userTimestamp: Color(hex: 0xDAD7FA),
+        userTimestamp: Color(hex: 0xC9E4E6),
         assistantBubble: Color(hex: 0xFFFFFF),
-        onAssistantBubble: Color(hex: 0x1A1A22),
-        assistantTimestamp: Color(hex: 0x9A98AC),
+        onAssistantBubble: Color(hex: 0x1C2224),
+        assistantTimestamp: Color(hex: 0x97A4A1),
         status: Color(hex: 0x0E9E6B),
-        statusText: Color(hex: 0x0E7E56),
-        dayDivider: Color(hex: 0xE9E7F2),
-        onDayDivider: Color(hex: 0x7A7889),
-        codeKeyword: Color(hex: 0x9C27B0),
+        statusText: Color(hex: 0x0B7E57),
+        dayDivider: Color(hex: 0xE7E5DC),
+        onDayDivider: Color(hex: 0x77837F),
+        codeKeyword: Color(hex: 0x8E44AD),
         codeString: Color(hex: 0x448C27),
-        codeComment: Color(hex: 0x9A98AC),
-        codeNumber: Color(hex: 0xC25E0C)
+        codeComment: Color(hex: 0x97A4A1),
+        codeNumber: Color(hex: 0xB4632A)
     )
 
     static func of(_ scheme: ColorScheme) -> QuenderinPalette { scheme == .dark ? dark : light }
@@ -155,14 +159,14 @@ enum ModelFamily {
 
     /// (monogram, gradient top, gradient bottom)
     static func identity(for id: String?) -> (String, Color, Color) {
-        guard let id else { return ("Q", Color(hex: 0x8A82E6), Color(hex: 0x4F46B8)) }
+        guard let id else { return ("Q", Color(hex: 0x52939A), Color(hex: 0x1C4E5D)) }   // brand teal (elf artwork)
         if id.hasPrefix("llama") { return ("L", Color(hex: 0x2E8BFF), Color(hex: 0x0353C7)) }      // Meta blue
         if id.hasPrefix("qwen") { return ("Q", Color(hex: 0x7B61FF), Color(hex: 0x3B2FC9)) }       // Qwen violet
         if id.hasPrefix("deepseek") { return ("D", Color(hex: 0x6B85FE), Color(hex: 0x2C4BDF)) }   // DeepSeek blue
         if id.hasPrefix("mistral") { return ("M", Color(hex: 0xFF8205), Color(hex: 0xE0400A)) }    // Mistral orange
         if id.hasPrefix("gemma") { return ("G", Color(hex: 0x4285F4), Color(hex: 0x9B72CB)) }      // Gemini blue→purple
         if id.hasPrefix("phi") { return ("P", Color(hex: 0x30A2FF), Color(hex: 0x005A9E)) }        // Microsoft blue
-        return ("Q", Color(hex: 0x8A82E6), Color(hex: 0x4F46B8))
+        return ("Q", Color(hex: 0x52939A), Color(hex: 0x1C4E5D))
     }
 }
 

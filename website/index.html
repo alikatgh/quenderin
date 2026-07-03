@@ -7,7 +7,7 @@
 <title>Quenderin — An AI that runs on your phone, even offline</title>
 <meta name="description" content="Quenderin runs large language models fully on your device. No internet, no API keys, no telemetry. Download a model once and your assistant works on a plane, in a tent, off the grid." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#0A2540" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/" />
 <link rel="alternate" hreflang="x-default" href="https://quenderin.org/" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -161,26 +161,26 @@
 
   <!-- HERO -->
   <section class="hero">
-    <canvas class="hero-canvas" data-quenderin-gradient data-colors="#7A5AF8,#635BFF,#FF6B8A,#FFD55A" data-darken-top aria-hidden="true"></canvas>
     <div class="container container-wide">
       <div class="hero-inner">
         <div class="hero-copy reveal">
-          <p class="eyebrow" data-i18n="hero.eyebrow">Offline &middot; Private &middot; Yours</p>
+          <p class="eyebrow" data-i18n="hero.eyebrow">Open source &middot; every token computed in your hand</p>
           <h1 data-i18n="hero.title">An AI that lives on your phone&mdash;not in someone&rsquo;s cloud.</h1>
           <p class="lede" data-i18n-html="hero.lede">
-            Quenderin runs large language models <strong>fully on your device</strong>. No internet,
-            no API keys, no telemetry. Download a model once over Wi-Fi, and your assistant keeps
-            working on a plane, in a tent, anywhere your signal doesn&rsquo;t.
+            Quenderin downloads an open model (0.4&ndash;4.7&nbsp;GB, your pick) and runs
+            <strong>every token locally</strong>. We&rsquo;ve measured ~15&nbsp;tok/s on an
+            iPhone&nbsp;12 &mdash; quick enough to be useful, and honest enough to warn you
+            when a model won&rsquo;t fit. After the download, nothing you type touches a network.
           </p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.cta1">View on GitHub</a>
             <a class="btn btn-ghost" href="#how" data-i18n="hero.cta2">See how it works</a>
           </div>
-          <ul class="spec-strip" aria-label="Key facts">
-            <li><span class="spec-num">100%</span> <span data-i18n="hero.spec1">offline</span></li>
-            <li><span class="spec-num">0</span> <span data-i18n="hero.spec2">API keys</span></li>
-            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">telemetry</span></li>
-            <li><span class="spec-num">$0</span> <span data-i18n="hero.spec4">per token</span></li>
+          <ul class="spec-strip" aria-label="Measured facts">
+            <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
+            <li><span class="spec-num">0.4&ndash;4.7&nbsp;GB</span> <span data-i18n="hero.spec2">one download</span></li>
+            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">network calls after setup</span></li>
+            <li><span class="spec-num">MIT</span> <span data-i18n="hero.spec4">every line public</span></li>
           </ul>
         </div>
 
@@ -212,11 +212,13 @@
   <section class="band">
     <div class="container">
       <div class="band-inner reveal">
-        <h2 data-i18n="problem.title">The cloud isn&rsquo;t always there. Your AI shouldn&rsquo;t vanish with your signal.</h2>
+        <h2 data-i18n="problem.title">We built this because our assistants kept vanishing with the signal.</h2>
         <p data-i18n-html="problem.body">
-          Every other assistant is a thin client for a data center. Lose connection and it goes dark&mdash;
-          and even when it works, your words travel to a server you don&rsquo;t own. Quenderin flips that:
-          the model lives <em>on the device in your hand</em>.
+          A mainstream assistant is a thin client for a data center: lose the connection and it goes
+          dark; keep it and your words travel to hardware you&rsquo;ll never see. Quenderin is the
+          model itself, living on the device in your hand. It&rsquo;s smaller than the cloud ones and
+          it will sometimes be wrong &mdash; <a href="reality.html" style="text-decoration:underline">we publish exactly how much smaller</a>.
+          It is also always there, and it is only yours.
         </p>
       </div>
     </div>
@@ -227,7 +229,7 @@
     <div class="container split">
       <div class="split-copy reveal">
         <p class="eyebrow" data-i18n="how.eyebrow">How it works</p>
-        <h2 data-i18n="how.title">Download once. Run forever.</h2>
+        <h2 data-i18n="how.title">One download. Then it&rsquo;s just yours.</h2>
         <ol class="steplist">
           <li><span class="step-num">01</span><div><h3 data-i18n="how.s1t">Probe</h3><p data-i18n="how.s1b">Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
           <li><span class="step-num">02</span><div><h3 data-i18n="how.s2t">Download</h3><p data-i18n="how.s2b">Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
@@ -284,8 +286,8 @@
         </article>
         <article class="cell reveal">
           <div class="bignum">$0</div>
-          <h3 data-i18n="feat.free.t">Forever free</h3>
-          <p data-i18n="feat.free.b">No subscriptions, no per-token billing. It runs on hardware you already own.</p>
+          <h3 data-i18n="feat.free.t">Free, structurally</h3>
+          <p data-i18n="feat.free.b">Not a promotion &mdash; there is no server to pay for. It runs on hardware you already own.</p>
         </article>
         <article class="cell span-2 reveal">
           <h3 data-i18n="feat.agent.t">Does things, safely</h3>
@@ -470,7 +472,6 @@ npm run electron:dev</code></pre>
 
   <!-- CTA — brand gradient, one focused action -->
   <section class="cta-band" data-theme="dark" id="waitlist">
-    <canvas class="cta-canvas" data-quenderin-gradient data-colors="#5B54E6,#635BFF,#7A5AF8,#8E6BFF" data-darken-top aria-hidden="true"></canvas>
     <div class="container reveal cta-inner">
       <h2 data-i18n="cta.title">Bring your AI offline.</h2>
       <p data-i18n="cta.body">It&rsquo;s open source and runs from GitHub today. Star the repo to follow along&mdash;and watch releases to hear the moment the mobile apps land.</p>
@@ -507,6 +508,7 @@ npm run electron:dev</code></pre>
       </div>
       <div class="footer-col">
         <h3 data-i18n="foot.col.learn">Learn</h3>
+        <a href="reality.html" data-i18n="nav.reality">The real numbers</a>
         <a href="privacy.html" data-i18n="nav.privacy">Privacy</a>
         <a href="faq.html" data-i18n="nav.faq">FAQ</a>
       </div>
@@ -524,7 +526,6 @@ npm run electron:dev</code></pre>
   </div>
 </footer>
 
-<script src="gradient.js" defer></script>
 <script src="main.js" defer></script>
 <script src="i18n.js" defer></script>
 </body>

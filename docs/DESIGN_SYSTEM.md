@@ -13,10 +13,15 @@ conflict) with Quenderin's tokens, components, and per-platform idioms.
 | Shapes (bubble tails, cards, pills) | `QuenderinShapes` | `BubbleShape` + per-view corner radii |
 | Device noun in copy ("phone"/"Mac") | n/a (phone-only) | `deviceNoun` (Theme.swift) |
 
-Key values (change BOTH files or neither):
-- Brand `#635BFF`, bright `#8B83FF` · dark bg `#0B0B10` · surface `#16161D` · surfaceVariant `#1E1E27`
+Key values (change BOTH files or neither). **The palette is derived from the brand artwork**
+(`brand/icon-square-1024.png`): teal = her braids/eyes/choker, copper = the "Q" pendant, warm
+paper for light surfaces. Sampled 2026-07-03 — if the art changes, resample; don't guess:
+- Brand teal `#2E7680` (light primary), bright `#52939A` (dark primary), deep `#1C4E5D` ·
+  copper accent `#EDA04F` (numbers/warm highlights; site CTAs `#C46B2C`)
+- Dark bg `#0B0F10` · surface `#141A1B` · surfaceVariant `#1C2426` · light bg `#F5F4EF` (paper)
 - Status green `#37C98B` (dot) / `#8FE8C4` (text) — the "on-device · private" accent
-- Bubbles: user `#5D54C4`, assistant = surfaceVariant; 18dp corners, 4dp tail toward the speaker
+- Bubbles: user `#245A62` dark / `#2E7680` light, assistant = surfaceVariant; 18dp corners,
+  4dp tail toward the speaker
 - Cards: 16dp radius (12 on Apple picker/shortfall cards), hairline borders, **no shadows**
 
 ## 2. Component language
