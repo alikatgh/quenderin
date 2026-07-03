@@ -332,6 +332,30 @@ private struct LibraryRow: View {
                           : palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 12))
         .onTapGesture { onOpen() }
+        // The Mac instinct is RIGHT-CLICK the thing: the whole card answers it with every
+        // action the tiny ⋯ has, plus opening the profile — no hunting for the small target.
+        .contextMenu {
+            Button("Show details…") { onOpen() }
+            switch state {
+            case .installed:
+                if !isActive, fitness.canLoad { Button("Use this model") { onUse() } }
+                #if os(macOS)
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting(
+                        [OnboardingModel.defaultModelsDir().appendingPathComponent(entry.filename)])
+                }
+                #endif
+                if isActive {
+                    Button("Active — protected") {}.disabled(true)
+                } else {
+                    Button("Delete…", role: .destructive) { onDelete() }
+                }
+            case .notInstalled, .failed:
+                Button("Download") { onDownload() }
+            case .downloading:
+                Button("Cancel download") { onCancel() }
+            }
+        }
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

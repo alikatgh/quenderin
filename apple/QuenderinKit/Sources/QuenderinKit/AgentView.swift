@@ -62,6 +62,11 @@ public struct AgentView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .contextMenu {
                                 Button {
+                                    copyToPasteboard(answer)
+                                } label: {
+                                    Label("Copy answer", systemImage: "doc.on.doc")
+                                }
+                                Button {
                                     if let url = SupportContact.reportMailto(reportedText: answer, context: "agent") {
                                         openURL(url)
                                     }

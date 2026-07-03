@@ -107,6 +107,14 @@ struct ModelProfileView: View {
                             .contentShape(Rectangle())   // right-click works on the whole row, not just the glyphs
                             .contextMenu {
                                 Button("Copy file name") { copyToPasteboard(model.filename) }
+                                #if os(macOS)
+                                let fileURL = OnboardingModel.defaultModelsDir().appendingPathComponent(model.filename)
+                                if FileManager.default.fileExists(atPath: fileURL.path) {
+                                    Button("Show in Finder") {
+                                        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+                                    }
+                                }
+                                #endif
                             }
                         if let url = model.downloadURL {
                             Button { openURL(url) } label: {

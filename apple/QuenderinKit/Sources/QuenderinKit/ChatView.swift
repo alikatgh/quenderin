@@ -241,9 +241,17 @@ private struct ChatBubble: View {
         .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
         .accessibilityElement(children: .combine)
 
-        // Report affordance on AI responses only (Generative-AI content policy).
-        if message.role == .assistant, !message.text.isEmpty {
-            bubble.contextMenu {
+        // Every bubble answers a right-click: Copy always; Report on AI responses only
+        // (Generative-AI content policy).
+        bubble.contextMenu {
+            if !message.text.isEmpty {
+                Button {
+                    copyToPasteboard(message.text)
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+            }
+            if message.role == .assistant, !message.text.isEmpty {
                 Button {
                     if let url = SupportContact.reportMailto(reportedText: message.text, context: "chat") {
                         openURL(url)
@@ -252,8 +260,6 @@ private struct ChatBubble: View {
                     Label("Report response", systemImage: "flag")
                 }
             }
-        } else {
-            bubble
         }
     }
 }

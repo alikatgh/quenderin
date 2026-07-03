@@ -124,6 +124,7 @@ public struct MacRootView: View {
                                 selection.insert(summary.id)
                             }
                             .contextMenu {
+                                Button("Open") { selection = [summary.id] }
                                 if selection.count > 1, selection.contains(summary.id) {
                                     Button("Delete \(selection.count) chats…", role: .destructive) {
                                         confirmBulkDelete = true
