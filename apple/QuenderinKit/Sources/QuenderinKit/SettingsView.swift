@@ -298,6 +298,12 @@ public struct SettingsView: View {
                 Text("Quenderin runs entirely on your device. No account, no cloud, no tracking — "
                    + "once a model is downloaded it works fully offline, and nothing you type leaves your \(deviceNoun).")
                     .font(.footnote).foregroundStyle(.secondary)
+                // Open source is a feature — say so where users look for "who made this".
+                if let url = URL(string: SupportContact.githubURL) {
+                    Button { openURL(url) } label: {
+                        Label("Quenderin is open source — view on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                    }
+                }
                 Text("Version \(version)")
                     .font(.footnote).foregroundStyle(.secondary)
         }

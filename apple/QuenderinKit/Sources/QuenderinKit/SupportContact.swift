@@ -11,6 +11,9 @@ public enum SupportContact {
     /// Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html.
     public static let privacyPolicyURL = "https://quenderin.org/privacy"
 
+    /// The open-source home — Quenderin's full source, issues, and discussions.
+    public static let githubURL = "https://github.com/alikatgh/quenderin"
+
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."

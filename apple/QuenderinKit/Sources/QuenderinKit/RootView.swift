@@ -8,6 +8,7 @@ public struct RootView: View {
     @ObservedObject private var onboarding: OnboardingModel
     @ObservedObject private var conversations: ConversationCoordinator
     private let agent: AgentSession?
+    @State private var needsWelcome = WelcomeGate.needsWelcome()
 
     public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
@@ -17,7 +18,13 @@ public struct RootView: View {
 
     public var body: some View {
         Group {
-            if case .ready(let model) = onboarding.phase {
+            if needsWelcome {
+                // First launch ever: one calm page of who Quenderin is, before any setup.
+                WelcomeView {
+                    WelcomeGate.markWelcomed()
+                    needsWelcome = false
+                }
+            } else if case .ready(let model) = onboarding.phase {
                 shell(model: model)
                     // Saves stamp the answering model onto the conversation (its list row wears
                     // that family's avatar) — keep the id current across model switches.

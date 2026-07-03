@@ -105,6 +105,21 @@ fun AppRoot(
     // core call here.
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { onboarding.restoreAtLaunch() } }
 
+    // First launch ever: one calm page of who Quenderin is, before any setup (twin of iOS
+    // WelcomeGate). The same "quenderin" prefs file the model-restore seam uses.
+    var needsWelcome by remember {
+        val prefs = context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+        mutableStateOf(!prefs.getBoolean("hasWelcomed", false))
+    }
+    if (needsWelcome) {
+        WelcomeScreen(onContinue = {
+            context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+                .edit().putBoolean("hasWelcomed", true).apply()
+            needsWelcome = false
+        })
+        return
+    }
+
     when (val current = phase) {
         is OnboardingPhase.Ready -> MainTabs(
             engine = engine,

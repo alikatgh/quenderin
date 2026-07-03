@@ -15,6 +15,9 @@ object SupportContact {
     /** Hosted privacy policy (Cloudflare Pages, apex domain). Source: website/privacy.html. */
     const val PRIVACY_POLICY_URL = "https://quenderin.org/privacy"
 
+    /** The open-source home — Quenderin's full source, issues, and discussions. */
+    const val GITHUB_URL = "https://github.com/alikatgh/quenderin"
+
     /** Shown beneath chat + agent output so users know responses are unfiltered, on-device AI. */
     const val AI_DISCLAIMER =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."

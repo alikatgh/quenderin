@@ -96,7 +96,8 @@ public struct AgentView: View {
                 .disabled(session.isRunning)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(p.surfaceVariant, in: Capsule())
+                // Same Liquid Glass chrome as chat's composer — the two surfaces read as one app.
+                .glassChrome(in: Capsule())
 
             let canRun = !goal.trimmingCharacters(in: .whitespaces).isEmpty && !session.isRunning
             Button(action: run) {

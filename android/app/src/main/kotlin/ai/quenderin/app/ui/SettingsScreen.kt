@@ -209,6 +209,15 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Contact support") }
+                // Open source is a feature — say so where users look for "who made this".
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportContact.GITHUB_URL)))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Quenderin is open source — GitHub") }
             }
 
         Caption(

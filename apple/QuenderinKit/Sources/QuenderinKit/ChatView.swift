@@ -120,7 +120,9 @@ public struct ChatView: View {
                 .onAppear { composerFocused = true }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(p.surfaceVariant, in: Capsule())
+                // Liquid Glass on OS 26 (material below): the composer is chrome floating
+                // over the transcript, not part of the content.
+                .glassChrome(in: Capsule())
 
             let canSend = !draft.trimmingCharacters(in: .whitespaces).isEmpty && !model.isGenerating
             Button(action: send) {
@@ -241,7 +243,7 @@ private struct DayDivider: View {
             .foregroundStyle(palette.onDayDivider)
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
-            .background(palette.dayDivider, in: Capsule())
+            .glassChrome(in: Capsule())
             .frame(maxWidth: .infinity)
     }
 }

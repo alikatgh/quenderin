@@ -92,6 +92,28 @@ var deviceNoun: String {
     #endif
 }
 
+extension View {
+    /// The app's "chrome" surface — Liquid Glass on OS 26+ (compiled with the 26 SDK),
+    /// ultra-thin material on earlier systems. Chrome only (composer, pills, overlays):
+    /// per Apple's Liquid Glass guidance the CONTENT layer (bubbles, text) stays opaque.
+    @ViewBuilder func glassChrome<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
+    }
+
+    /// Interactive glass (buttons): reacts to presses on OS 26+, tinted fill below.
+    @ViewBuilder func glassChromeInteractive<S: Shape>(in shape: S, fallbackTint: Color) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            self.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            self.background(fallbackTint, in: shape)
+        }
+    }
+}
+
 /// Bubble shape: 18pt corners except the "tail" corner (4pt) toward the speaker (iOS 16+ / macOS 13+).
 struct BubbleShape: Shape {
     let mine: Bool
