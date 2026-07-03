@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Median color of the icon art's leather frame (computed by scripts/generate_icons.py). -->
+    <color name="ic_launcher_background">#4D3E3A</color>
+</resources>

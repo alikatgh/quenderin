@@ -2,6 +2,9 @@ appId: com.quenderin.desktop
 productName: Quenderin
 directories:
   output: release
+  # Icon resources (icon.icns / icon.ico / icon.png) — build/ is gitignored TS output,
+  # so the electron-builder resources live under brand/ instead.
+  buildResources: brand/electron
 mac:
   category: public.app-category.productivity
   target:
