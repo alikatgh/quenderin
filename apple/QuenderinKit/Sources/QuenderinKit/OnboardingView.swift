@@ -154,10 +154,14 @@ public struct OnboardingView: View {
                 }
             }
 
-        case let .downloading(entry, _):
+        case let .downloading(entry, progress):
             VStack(spacing: 4) {
-                Text("Downloading").font(.caption).foregroundStyle(p.onSurfaceVariant)
-                Text(entry.label).font(.headline).foregroundStyle(p.onSurface)
+                Text("Downloading · \(Int(progress * 100))%")
+                    .font(.caption.monospacedDigit()).foregroundStyle(p.onSurfaceVariant)
+                HStack(spacing: 7) {
+                    ModelAvatar(size: 22, modelID: entry.id)
+                    Text(entry.label).font(.headline).foregroundStyle(p.onSurface)
+                }
                 Text("\(entry.sizeLabel) · one time, then it's yours offline")
                     .font(.caption).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
                 // A 9 GB download must never be a trap: cancel returns to the recommendation
@@ -170,8 +174,11 @@ public struct OnboardingView: View {
             }
 
         case let .loading(entry):
-            Text("Warming up \(entry.label)…")
-                .font(.subheadline).foregroundStyle(p.onSurfaceVariant)
+            HStack(spacing: 7) {
+                ModelAvatar(size: 20, modelID: entry.id)
+                Text("Warming up \(entry.label)…")
+                    .font(.subheadline).foregroundStyle(p.onSurfaceVariant)
+            }
 
         case let .ready(entry):
             VStack(spacing: 6) {
@@ -284,24 +291,17 @@ private struct ModelCoreView: View {
                     ctx.stroke(arc, with: .color(palette.primary), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 }
 
-                // Breathing core.
-                let breathe = 0.92 + 0.06 * (0.5 + 0.5 * sin(t * 1.2))
-                let coreR = maxR * 0.30 * breathe
-                ctx.fill(
-                    Circle().path(in: circleRect(coreR)),
-                    with: .radialGradient(
-                        Gradient(colors: [palette.primary, palette.primary.opacity(0.65)]),
-                        center: c, startRadius: 0, endRadius: coreR
-                    )
-                )
             }
             .frame(width: 190, height: 190)
+            // The core is the BRAND: the elf breathing gently inside the progress ring —
+            // the same face as the app icon, not an anonymous disc. (The percentage moved
+            // to the status line below, where the words are.)
             .overlay {
-                if let prog = progress {
-                    Text("\(Int(prog * 100))%")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(palette.onSurface)
-                }
+                let breathe = 1.0 + 0.02 * sin(t * 1.2)
+                ModelAvatar(size: 96)
+                    .scaleEffect(breathe)
+                    .overlay(Circle().strokeBorder(palette.primary.opacity(0.35), lineWidth: 1))
+                    .accessibilityHidden(true)
             }
         }
     }

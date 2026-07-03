@@ -64,10 +64,13 @@ final class ConversationCoordinatorTests: XCTestCase {
     func testDeleteManyFallsBackOnceAndClearsPrefs() async {
         let persistence = InMemoryConversationPersistence()
         let chat = await loadedChat("r")
-        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
-        await chat.send("one"); coord.persist()
-        coord.startNew(); await chat.send("two"); coord.persist()
-        coord.startNew(); await chat.send("three"); coord.persist()
+        // An ADVANCING clock: with a constant clock every summary ties on updatedAt and the
+        // newest-first ordering falls to random UUID tie-breaking (this test flaked on that).
+        var clock: Int64 = 0
+        let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { clock })
+        await chat.send("one"); clock = 1; coord.persist()
+        coord.startNew(); await chat.send("two"); clock = 2; coord.persist()
+        coord.startNew(); await chat.send("three"); clock = 3; coord.persist()
         XCTAssertEqual(coord.summaries.count, 3)
 
         let ids = coord.summaries.map(\.id)          // newest first: "three", "two", "one"
