@@ -24,7 +24,7 @@ public extension AgentRun.HaltReason {
         case .answered:  return nil
         case .maxSteps:  return "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
         case .blocked:   return "The agent stopped: a step was blocked by the on-device safety filter."
-        case .planError: return "The agent couldn't turn this goal into a valid plan. Try rephrasing it."
+        case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
         }
     }
 }

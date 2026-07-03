@@ -36,12 +36,16 @@ public struct AgentView: View {
                                     Label("Report answer", systemImage: "flag")
                                 }
                             }
-                        runActions(palette: p)
+                        runActions(palette: p, showShare: true)
                     } else if !session.isRunning, let message = session.haltReason?.userMessage {
                         // The agent stopped without an answer (step limit, safety gate, plan error):
-                        // say so instead of trailing off into silence.
+                        // say so, then GUIDE — show goals that work instead of blaming the phrasing.
+                        // No Share here: a run with no answer has no walkthrough worth exporting.
                         AgentHaltBanner(message: message)
-                        runActions(palette: p)
+                        AgentExampleList(palette: p, header: "It plans best with clear multi-step goals — try one of these:") { example in
+                            goal = example
+                        }
+                        runActions(palette: p, showShare: false)
                     } else if session.steps.isEmpty, !session.isRunning {
                         // First run: show what the agent can do instead of a blank screen.
                         // Tapping an example drops it into the field, ready to edit or run.
@@ -117,13 +121,14 @@ public struct AgentView: View {
     }
 
     /// Actions on a FINISHED run (share the walkthrough, clear the board) — attached to the result
-    /// they act on, not parked permanently in the composer bar.
+    /// they act on, not parked permanently in the composer bar. `showShare` is false on a halt:
+    /// a run that produced no answer has nothing worth exporting.
     @ViewBuilder
-    private func runActions(palette p: QuenderinPalette) -> some View {
+    private func runActions(palette p: QuenderinPalette, showShare: Bool) -> some View {
         HStack(spacing: 16) {
             // Export the completed run as a Markdown walkthrough — mirroring chat's ShareLink.
             // The agent's reasoning leaves the device on the user's terms.
-            if let walkthrough = session.exportMarkdown {
+            if showShare, let walkthrough = session.exportMarkdown {
                 ShareLink(item: walkthrough,
                           subject: Text("Quenderin agent run"),
                           message: Text("Exported from Quenderin (on-device)")) {
@@ -152,12 +157,6 @@ private struct AgentEmptyState: View {
     let palette: QuenderinPalette
     let onPick: (String) -> Void
 
-    private let examples = [
-        "Convert 5 miles to km, then take 20% of that",
-        "Days until 2027-01-01 — and how many weeks?",
-        "18% of 240, then convert that many km to miles",
-    ]
-
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: "sparkles")
@@ -170,21 +169,47 @@ private struct AgentEmptyState: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(examples, id: \.self) { example in
-                    Button { onPick(example) } label: {
-                        Label(example, systemImage: "arrow.turn.down.right")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Use example: \(example)")
-                }
-            }
-            .padding(.top, 8)
+            AgentExampleList(palette: palette, header: nil, onPick: onPick)
+                .padding(.top, 8)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
+    }
+}
+
+/// The tappable example goals — ONE list shared by the empty state and the halt state, so the
+/// screen that says "that didn't work" always also shows what DOES. Tapping drops the example
+/// into the field, ready to edit or run.
+private struct AgentExampleList: View {
+    let palette: QuenderinPalette
+    let header: String?
+    let onPick: (String) -> Void
+
+    private static let examples = [
+        "Convert 5 miles to km, then take 20% of that",
+        "Days until 2027-01-01 — and how many weeks?",
+        "18% of 240, then convert that many km to miles",
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let header {
+                Text(header)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(Self.examples, id: \.self) { example in
+                Button { onPick(example) } label: {
+                    Label(example, systemImage: "arrow.turn.down.right")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Use example: \(example)")
+            }
+        }
+        // No frame here: the empty state centers this as a block, the halt state leads it —
+        // the parent stack's alignment decides.
     }
 }
 

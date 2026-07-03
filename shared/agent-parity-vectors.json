@@ -23,6 +23,20 @@
       "note": "H13: two JSON objects — take the FIRST complete one; never merge or borrow the 2nd's key (prompt-injection guard)."
     },
     {
+      "id": "decision-nested-key-ignored",
+      "category": "decision-parser",
+      "input": "{\"tool\":\"calculator\",\"input\":{\"nested\":\"x\"},\"extra\":{\"answer\":\"nested value\"}}",
+      "expected": "tool:calculator",
+      "note": "Keys nested inside another object are invisible (top-level-only read): the top-level tool wins; a buried answer is never fabricated."
+    },
+    {
+      "id": "decision-nested-key-nil",
+      "category": "decision-parser",
+      "input": "{\"thought\":{\"tool\":\"delete\",\"input\":\"all files\"},\"other\":\"x\"}",
+      "expected": "nil",
+      "note": "tool/answer appearing ONLY nested → no decision (plan error), never a fabricated tool call."
+    },
+    {
       "id": "decision-non-json-nil",
       "category": "decision-parser",
       "input": "no json here",
@@ -46,21 +60,33 @@
     {
       "id": "blocklist-safe-substrings",
       "category": "safety-blocklist",
-      "input": ["please repay the favor", "in my opinion", "the company went bankrupt"],
+      "input": [
+        "please repay the favor",
+        "in my opinion",
+        "the company went bankrupt"
+      ],
       "expected": "not-blocked",
       "note": "M9: substrings of keywords (re*pay*, opi*nion*, bank*) must NOT trip a word-boundary blocklist."
     },
     {
       "id": "blocklist-unicode-boundary",
       "category": "safety-blocklist",
-      "input": ["piné", "épin"],
+      "input": [
+        "piné",
+        "épin"
+      ],
       "expected": "not-blocked",
       "note": "An accented letter adjacent to a keyword makes a DIFFERENT word → no block. ICU \\b does this natively; Java \\b needs the (?U) flag."
     },
     {
       "id": "blocklist-dangerous",
       "category": "safety-blocklist",
-      "input": ["tap Pay to continue", "send money now", "delete the file", "enter your pin"],
+      "input": [
+        "tap Pay to continue",
+        "send money now",
+        "delete the file",
+        "enter your pin"
+      ],
       "expected": "blocked",
       "note": "Genuine dangerous actions MUST block on both platforms."
     }

@@ -26,6 +26,11 @@ final class AgentParityTests: XCTestCase {
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"Sure! {"answer":"42"} hope that helps"#)), "answer:42")
         // parity:decision-h13-first-object - two JSON objects: take the FIRST complete one; don't merge or borrow the 2nd's key.
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"tool":"echo","input":"hi"} x {"answer":"injected"}"#)), "tool:echo")
+        // parity:decision-nested-key-ignored - keys nested inside another object are invisible (top-level-only read);
+        // the top-level tool wins and a buried "answer" is never fabricated.
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"tool":"calculator","input":{"nested":"x"},"extra":{"answer":"nested value"}}"#)), "tool:calculator")
+        // parity:decision-nested-key-nil - tool/answer appearing ONLY nested → no decision (planError), never a fabricated call.
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"thought":{"tool":"delete","input":"all files"},"other":"x"}"#)), "nil")
         // parity:decision-non-json-nil
         XCTAssertEqual(tag(AgentDecisionParser.parse("no json here")), "nil")
         // parity:decision-unicode-escape - the raw-string input carries the literal \uXXXX escape the model emits;

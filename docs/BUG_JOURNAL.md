@@ -314,6 +314,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 (parity) — `check_agent_parity.py` red on main: CoreVerify.kt carried two `parity:decision-nested-key-*`
+  markers with NO canonical vector in shared/agent-parity-vectors.json and no iOS twin (added in bb31929,
+  Android-only). iOS behavior already matched; fix = add the 2 vectors + the 2 Swift assertions.
+  Lesson: a parity marker is a THREE-part contract (vector JSON + Swift + Kotlin) — land all three in one
+  commit; the checker catching it is the system working.
+
 - 2026-07-03 (mac) — Settings window could shrink into a sidebar-only sliver ("UI is BROKEN"): a
   NavigationSplitView with no frame floor lets the user (or state restoration) squeeze the window
   until the detail pane vanishes, leaving three sidebar rows and a stray collapse chevron.

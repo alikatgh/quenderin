@@ -19,7 +19,7 @@ val AgentRun.HaltReason.userMessage: String?
         AgentRun.HaltReason.ANSWERED -> null
         AgentRun.HaltReason.MAX_STEPS -> "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
         AgentRun.HaltReason.BLOCKED -> "The agent stopped: a step was blocked by the on-device safety filter."
-        AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't turn this goal into a valid plan. Try rephrasing it."
+        AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
     }
 
 /**
