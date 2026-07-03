@@ -314,6 +314,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 (mac) — Scroll-position tracking froze: the ↓ jump button never appeared after scrolling up.
+  Cause: on macOS, SwiftUI ScrollView is NSScrollView-backed and USER SCROLLING MOVES THE DOCUMENT
+  WITHOUT A LAYOUT PASS — GeometryReader/preference frames only update when content changes (streaming),
+  so `nearBottom` went stale. Fix: observe NSView.boundsDidChangeNotification on the clip view (ChatView.MacScrollObserver).
+  Lesson: on macOS, never derive scroll position from GeometryReader preferences alone; iOS is fine.
+
+
 - 2026-07-03 (website) — With JS off (crawlers, pre-hydration paints), everything below the fold was
   INVISIBLE: `.reveal { opacity: 0 }` hid content unconditionally and only IntersectionObserver ever
   unhid it (styles.css:416). Surfaced by the preview tool capturing before JS ran — all-black shots.

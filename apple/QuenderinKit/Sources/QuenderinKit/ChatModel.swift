@@ -30,6 +30,15 @@ public final class ChatModel: ObservableObject {
     @Published public private(set) var messages: [ChatMessage] = []
     @Published public private(set) var isGenerating = false
 
+    /// Set by `stopGenerating()`; checked per token so a stop lands within one token.
+    private var stopRequested = false
+
+    /// Stop the current reply where it is — the streamed partial stays in the transcript
+    /// (stopping is a decision about YOUR time, not a failure; no error styling).
+    public func stopGenerating() {
+        stopRequested = true
+    }
+
     private let engine: InferenceEngine
     private let context: ConversationContext
 
@@ -55,11 +64,15 @@ public final class ChatModel: ObservableObject {
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
 
         isGenerating = true
+        stopRequested = false
         defer { isGenerating = false }
 
         do {
             let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)
             for try await token in stream {
+                // Dropping the iterator on break terminates the stream (the engine's
+                // onTermination stops decoding), so Stop also stops the compute.
+                if stopRequested { break }
                 assistant.text += token
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the

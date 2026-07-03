@@ -10,6 +10,11 @@ public struct ChatView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var draft: String = ""
     @State private var suggestionDismissed = false
+    /// True while the bottom of the transcript is (about) on screen. Streaming auto-follows
+    /// ONLY then — the moment you scroll up to re-read, the app stops fighting you and a
+    /// floating ↓ offers the way back (the detail ChatGPT gets right).
+    @State private var nearBottom = true
+    @State private var viewportHeight: CGFloat = 0
     @Environment(\.colorScheme) private var scheme
     @FocusState private var composerFocused: Bool
 
@@ -70,6 +75,7 @@ public struct ChatView: View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
+              GeometryReader { viewport in
                 ScrollView {
                     if model.messages.isEmpty, !model.isGenerating {
                         EmptyChatState(palette: p)
@@ -101,15 +107,67 @@ public struct ChatView: View {
                         .frame(maxWidth: 760)
                         .frame(maxWidth: .infinity)
                     }
+                    // Bottom sentinel: its position in the scroll coordinate space tells us
+                    // whether the transcript's tail is on screen (drives follow + the ↓ button).
+                    GeometryReader { geo in
+                        Color.clear.preference(key: BottomEdgeKey.self,
+                                               value: geo.frame(in: .named("chatScroll")).minY)
+                    }
+                    .frame(height: 1)
+                    .id("bottom")
+                    #if os(macOS)
+                    // AppKit gotcha: user scrolling moves the document view WITHOUT a SwiftUI
+                    // layout pass, so the preference above goes stale mid-scroll. Watch the
+                    // enclosing NSScrollView's bounds directly for that path.
+                    .background(MacScrollObserver { distanceFromBottom in
+                        nearBottom = distanceFromBottom < 140
+                    })
+                    #endif
                 }
+                .coordinateSpace(name: "chatScroll")
+                .onPreferenceChange(BottomEdgeKey.self) { minY in
+                    // Updates on LAYOUT changes (streaming growth). On macOS, user scrolling
+                    // doesn't relayout — MacScrollObserver below covers that path.
+                    nearBottom = minY < viewportHeight + 140
+                }
+                .onAppear {
+                    viewportHeight = viewport.size.height
+                    // A restored conversation opens at its LATEST messages, not the top.
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                .onChange(of: viewport.size.height) { viewportHeight = $0 }
                 .onChange(of: model.messages.count) { _ in
-                    if let lastId = model.messages.last?.id {
-                        withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
+                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                // Follow the STREAM token by token — but only while you're already at the tail.
+                .onChange(of: model.messages.last?.text) { _ in
+                    if nearBottom, model.isGenerating {
+                        proxy.scrollTo("bottom", anchor: .bottom)
                     }
                 }
                 .onChange(of: model.isGenerating) { generating in
-                    if generating { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
+                    if generating { withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
                 }
+                // The way back down while reading history (always available, not just streaming).
+                .overlay(alignment: .bottomTrailing) {
+                    if !nearBottom {
+                        Button {
+                            withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                        } label: {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(p.onSurface)
+                                .frame(width: 34, height: 34)
+                        }
+                        .buttonStyle(.plain)
+                        .glassChrome(in: Circle())
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 10)
+                        .help("Jump to the latest message")
+                        .accessibilityLabel("Jump to latest")
+                    }
+                }
+              }
             }
 
             if let suggestion = routeSuggestion {
@@ -179,16 +237,19 @@ public struct ChatView: View {
                 .glassChrome(in: Capsule())
 
             let canSend = !draft.trimmingCharacters(in: .whitespaces).isEmpty && !model.isGenerating
-            Button(action: send) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 18, weight: .semibold))
+            Button {
+                if model.isGenerating { model.stopGenerating() } else { send() }
+            } label: {
+                Image(systemName: model.isGenerating ? "stop.fill" : "arrow.up")
+                    .font(.system(size: model.isGenerating ? 15 : 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(p.primary.opacity(canSend ? 1 : 0.4), in: Circle())
+                    .background(p.primary.opacity(canSend || model.isGenerating ? 1 : 0.4), in: Circle())
             }
             .buttonStyle(.plain)
-            .disabled(!canSend)
-            .accessibilityLabel("Send message")
+            .disabled(!canSend && !model.isGenerating)
+            .help(model.isGenerating ? "Stop generating" : "Send message")
+            .accessibilityLabel(model.isGenerating ? "Stop generating" : "Send message")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
@@ -301,6 +362,48 @@ private struct RouteSuggestionChip: View {
         .padding(.bottom, 2)
         .accessibilityElement(children: .combine)
     }
+}
+
+#if os(macOS)
+/// Reports how far the user is from the transcript's bottom, straight from the enclosing
+/// NSScrollView — the only signal that survives AppKit's layout-free scrolling.
+private struct MacScrollObserver: NSViewRepresentable {
+    let onChange: (_ distanceFromBottom: CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var token: NSObjectProtocol?
+        deinit {
+            if let token { NotificationCenter.default.removeObserver(token) }
+        }
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            guard let view, context.coordinator.token == nil,
+                  let scroll = view.enclosingScrollView else { return }
+            scroll.contentView.postsBoundsChangedNotifications = true
+            context.coordinator.token = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scroll.contentView, queue: .main
+            ) { [weak scroll] _ in
+                guard let clip = scroll?.contentView else { return }
+                onChange(clip.documentRect.height - clip.bounds.maxY)
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+#endif
+
+/// Where the transcript's bottom edge sits in the scroll viewport (drives follow-scroll).
+private struct BottomEdgeKey: PreferenceKey {
+    static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 /// Assistant-side "…" while a reply is being generated — three dots pulsing in sequence.
