@@ -184,24 +184,12 @@
           </ul>
         </div>
 
-        <div class="hero-visual reveal" aria-hidden="true">
-          <div class="device">
-            <div class="device-bar">
-              <span class="dot dot-live"></span>
-              <span class="device-status" data-i18n="hero.dev.status">On-device &middot; Offline</span>
-              <span class="device-airplane" data-i18n="hero.dev.airplane">✈ airplane mode</span>
-            </div>
-            <div class="chat">
-              <div class="msg msg-user"><span class="msg-who" data-i18n="hero.dev.user">You</span><span id="demo-q">Best knot for a tarp shelter?</span></div>
-              <div class="msg msg-ai">
-                <span class="msg-who">Quenderin</span>
-                <span id="demo-a">A <strong>taut-line hitch</strong> on the ridgeline&mdash;it grips under load but slides
-                to re-tension when the wind picks up. For the corners, a prusik loop lets you adjust
-                without untying.</span>
-              </div>
-              <div class="chat-foot"><span class="dot dot-live"></span> <span data-i18n="hero.dev.foot">0&nbsp;ms to a server &middot; nothing left your phone</span></div>
-            </div>
-          </div>
+        <div class="hero-visual reveal">
+          <figure class="app-window">
+            <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title">Llama 3.2 1B &middot; on-device &middot; private</span></div>
+            <img src="assets/app/chat.png" width="720" height="580" alt="The actual Quenderin app answering a Python question fully on-device, with syntax-highlighted code" decoding="async" fetchpriority="high" />
+            <figcaption class="app-window-caption" data-i18n="hero.shot.caption">A real screenshot &mdash; this exact conversation ran with the network off.</figcaption>
+          </figure>
         </div>
       </div>
     </div>
@@ -247,33 +235,36 @@
         </ol>
       </div>
       <div class="split-visual reveal">
-        <div class="phone-stage" aria-hidden="true">
-          <div class="phone-annot phone-annot-1" data-i18n="how.ph.annot1">✓ Fits your 8&nbsp;GB device</div>
-          <div class="phone">
-            <div class="phone-screen">
-              <div class="phone-statusbar" aria-hidden="true">
-                <span class="phone-time">9:41</span>
-                <span class="phone-island"></span>
-                <span class="phone-signal">
-                  <svg viewBox="0 0 16 12" width="15" height="11" fill="currentColor"><path d="M8 9.4a1.45 1.45 0 1 0 0 2.9 1.45 1.45 0 0 0 0-2.9zM8 5.1c1.65 0 3.16.62 4.3 1.73l-1.32 1.4A4.05 4.05 0 0 0 8 7.85a4.05 4.05 0 0 0-2.98 1.18l-1.32-1.4A6.13 6.13 0 0 1 8 5.1zM8 1c2.74 0 5.26 1.02 7.16 2.96l-1.32 1.4A8.18 8.18 0 0 0 8 3.74 8.18 8.18 0 0 0 2.16 5.36L.84 3.96A10.27 10.27 0 0 1 8 1z"/></svg>
-                  <svg viewBox="0 0 27 13" width="23" height="11" fill="none"><rect x="0.6" y="0.6" width="21.8" height="11.8" rx="3" stroke="currentColor" stroke-opacity="0.5"/><rect x="2.2" y="2.2" width="15" height="8.6" rx="1.6" fill="currentColor"/><path d="M24.4 4.4v4.2c.9-.3 1.5-1.1 1.5-2.1s-.6-1.8-1.5-2.1z" fill="currentColor" fill-opacity="0.6"/></svg>
-                </span>
-              </div>
-              <p class="phone-eyebrow" data-i18n="how.ph.eyebrow">Recommended for your device</p>
-              <div class="phone-model">
-                <span class="phone-model-icon" aria-hidden="true"></span>
-                <div class="phone-model-meta">
-                  <h4>Qwen3 4B</h4>
-                  <p class="phone-sub" data-i18n="how.ph.sub">8&nbsp;GB RAM &middot; 2.4&nbsp;GB download</p>
-                </div>
-              </div>
-              <div class="phone-bar"><span></span></div>
-              <p class="phone-pct" data-i18n="how.ph.pct">2.4 / 2.4 GB &middot; complete</p>
-              <div class="phone-ready"><span class="dot dot-live"></span> <span data-i18n="how.ph.ready">Ready to go offline</span></div>
-            </div>
-          </div>
-          <div class="phone-annot phone-annot-2" data-i18n="how.ph.annot2">Resumes in the background</div>
-        </div>
+        <figure class="app-window app-window-tall">
+          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title" data-i18n="how.shot.title">Choose a model</span></div>
+          <img src="assets/app/picker.png" width="520" height="820" alt="Quenderin's model picker: a recommended model for this device on top, every other model badged Fits, Tight, or Too big" loading="lazy" decoding="async" />
+          <figcaption class="app-window-caption" data-i18n="how.shot.caption">The picker checks your RAM before offering anything &mdash; models that don&rsquo;t fit are disabled, with the reason.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- REAL SCREENS -->
+  <section class="section" id="screens">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow" data-i18n="screens.eyebrow">Straight from the app</p>
+        <h2 data-i18n="screens.title">Not mockups. These are renders of the real UI.</h2>
+        <p class="section-sub" data-i18n="screens.sub">Every image on this page is generated from the shipping SwiftUI code &mdash; when the app changes, the site re-renders with it.</p>
+      </header>
+      <div class="shots">
+        <figure class="shot reveal">
+          <img src="assets/app/welcome.png" width="520" height="720" alt="Quenderin's first-launch welcome screen: private by design, works offline, open source" loading="lazy" decoding="async" />
+          <figcaption data-i18n="screens.welcome">First launch &mdash; three promises, then you&rsquo;re in.</figcaption>
+        </figure>
+        <figure class="shot reveal">
+          <img src="assets/app/profile.png" width="520" height="820" alt="The model profile: parameters, download size, memory, quantization — with a plain-language glossary behind one help button" loading="lazy" decoding="async" />
+          <figcaption data-i18n="screens.profile">Every model explained in plain language &mdash; no jargon assumed.</figcaption>
+        </figure>
+        <figure class="shot reveal">
+          <img src="assets/app/picker.png" width="520" height="820" alt="The fitness-aware model picker" loading="lazy" decoding="async" />
+          <figcaption data-i18n="screens.picker">The catalog knows your hardware &mdash; Fits, Tight, or Too big, honestly.</figcaption>
+        </figure>
       </div>
     </div>
   </section>

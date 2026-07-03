@@ -413,8 +413,10 @@ html[data-theme-mode="dark"] .model-fam { filter: brightness(1.4); }
 .footer-base { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem; padding-block: 1.75rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.86rem; }
 
 /* ---------- Reveal (opacity + small transform; honored discipline) ---------- */
-.reveal { opacity: 0; transform: translateY(12px); transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo), border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
-.reveal.in { opacity: 1; transform: none; }
+/* Scroll-in animation is a JS enhancement: content hides ONLY once main.js marks <html class="js">,
+   so no-JS visitors, crawlers, and pre-hydration paints always see the page. */
+html.js .reveal { opacity: 0; transform: translateY(12px); transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo), border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
+html.js .reveal.in { opacity: 1; transform: none; }
 
 .dot-live { animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
@@ -640,3 +642,20 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
   a { color: #000 !important; text-decoration: underline; }
   .eyebrow { color: #555 !important; }
 }
+
+/* ── Real app screenshots (rendered from the shipping SwiftUI code) ───────── */
+.app-window { margin: 0; border: 1px solid rgba(255,255,255,0.14); border-radius: var(--r-xl); background: #0B0B10; overflow: hidden; box-shadow: 0 40px 80px rgba(10,37,64,0.42), 0 12px 28px rgba(10,37,64,0.28); }
+.app-window-bar { display: flex; align-items: center; gap: 6px; padding: 0.6rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.08); background: #16161D; font-family: var(--font-mono); font-size: 0.72rem; color: #8FE8C4; }
+.app-window-title { margin-left: 0.5rem; }
+.wdot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,0.16); }
+.wdot:first-child { background: #FF5F57; } .wdot:nth-child(2) { background: #FEBC2E; } .wdot:nth-child(3) { background: #28C840; }
+.app-window img { display: block; width: 100%; height: auto; }
+.app-window-caption { padding: 0.55rem 0.9rem; font-size: 0.78rem; color: var(--text-muted, #89B3D7); border-top: 1px solid rgba(255,255,255,0.08); background: #101017; }
+.app-window-tall { max-width: 420px; margin-inline: auto; }
+.section-sub { max-width: 560px; margin: 0.6rem auto 0; color: var(--text-muted, #89B3D7); }
+.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; align-items: start; margin-top: 2rem; }
+.shot { margin: 0; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r-xl); overflow: hidden; background: #0B0B10; }
+.shot img { display: block; width: 100%; height: auto; }
+.shot figcaption { padding: 0.7rem 0.95rem; font-size: 0.84rem; color: var(--text-muted, #89B3D7); border-top: 1px solid rgba(255,255,255,0.08); }
+@media (max-width: 880px) { .shots { grid-template-columns: 1fr; max-width: 440px; margin-inline: auto; } }
+/* The frames stay dark in both site themes - they hold a dark-UI screenshot. */

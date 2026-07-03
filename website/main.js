@@ -50,6 +50,7 @@
   }
 
   // Reveal on scroll (opacity only — never geometry)
+  document.documentElement.classList.add("js");   // enables the .reveal hidden state (see styles.css)
   var reveals = document.querySelectorAll(".reveal");
   if ("IntersectionObserver" in window && reveals.length) {
     var io = new IntersectionObserver(
@@ -70,7 +71,7 @@
 
   // 3D tilt on the hero product window (Stripe pattern: small cap, expo reset)
   var tiltWrap = document.querySelector(".hero-visual");
-  var tiltEl = document.querySelector(".hero-visual .device");
+  var tiltEl = document.querySelector(".hero-visual .app-window");
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var finePointer = window.matchMedia && window.matchMedia("(pointer: fine)").matches;
   if (tiltWrap && tiltEl && !reduceMotion && finePointer) {

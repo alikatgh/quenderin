@@ -314,6 +314,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 (website) — With JS off (crawlers, pre-hydration paints), everything below the fold was
+  INVISIBLE: `.reveal { opacity: 0 }` hid content unconditionally and only IntersectionObserver ever
+  unhid it (styles.css:416). Surfaced by the preview tool capturing before JS ran — all-black shots.
+  Fix: hide only under `html.js` (class added by main.js), so no-JS always paints.
+  Lesson: scroll-in animations are an ENHANCEMENT — the hidden state must be gated on JS presence.
+
 - 2026-07-03 (parity) — `check_agent_parity.py` red on main: CoreVerify.kt carried two `parity:decision-nested-key-*`
   markers with NO canonical vector in shared/agent-parity-vectors.json and no iOS twin (added in bb31929,
   Android-only). iOS behavior already matched; fix = add the 2 vectors + the 2 Swift assertions.
