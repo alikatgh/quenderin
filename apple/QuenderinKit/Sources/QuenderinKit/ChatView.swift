@@ -178,7 +178,10 @@ private struct ChatBubble: View {
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
         .background(mine ? palette.userBubble : palette.assistantBubble, in: BubbleShape(mine: mine))
-        .frame(maxWidth: Self.bubbleMaxWidth, alignment: .leading)
+        // BOTH frames must align to the speaker's side: the inner cap-width frame still expands
+        // to bubbleMaxWidth when the pane is wider, so a short user bubble pinned .leading inside
+        // it would float mid-pane instead of hugging the right edge.
+        .frame(maxWidth: Self.bubbleMaxWidth, alignment: mine ? .trailing : .leading)
         .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
         .accessibilityElement(children: .combine)
 

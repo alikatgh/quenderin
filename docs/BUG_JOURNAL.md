@@ -314,6 +314,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 (mac) — User bubbles floated mid-pane instead of hugging the right edge (ChatView.swift:181).
+  Cause: stacked frames `.frame(maxWidth: 460, alignment: .leading)` then `.frame(maxWidth: .infinity,
+  alignment: .trailing)` — the cap-width frame EXPANDS to its max, so the bubble pinned leading inside a
+  trailing-aligned 460pt box. Fix: inner alignment follows the speaker side too.
+  Lesson: `.frame(maxWidth:)` is a frame, not a clamp — every stacked frame needs the same alignment.
+
 - 2026-07-03 (mac) — Scrolling a long chat crawled and stuttered ("feels buggy").
   Cause: `MarkdownText` re-parsed the WHOLE message (block split + one `AttributedString(markdown:)`
   per run) on every body evaluation, and the LazyVStack transcript re-creates recycled rows while
