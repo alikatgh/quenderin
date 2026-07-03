@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,8 +66,10 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Top-level router: drives [OnboardingModel] until it reaches Ready, then hands off to
@@ -82,10 +85,25 @@ fun AppRoot(
     conversations: ConversationPersistence,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var phase by remember { mutableStateOf<OnboardingPhase>(OnboardingPhase.Idle) }
     val onboarding = remember {
-        OnboardingModel(engine, downloader).apply { onChange = { phase = it } }
+        // SharedPreferences backs the core's remember/recall seam (twin of the Swift UserDefaults
+        // default); the file check points at the downloader's models dir under filesDir.
+        val prefs = context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+        val modelsDir = File(context.filesDir, "models")
+        OnboardingModel(
+            engine,
+            downloader,
+            recallActiveModelID = { prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null) },
+            rememberActiveModelID = { id -> prefs.edit().putString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, id).apply() },
+            activeModelFileExists = { File(modelsDir, it.filename).isFile },
+        ).apply { onChange = { phase = it } }
     }
+    // Relaunch fast-path: restore the last successfully-loaded model straight to Ready instead of
+    // replaying first-run onboarding. Blocking (integrity re-check + load) → IO, like every other
+    // core call here.
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { onboarding.restoreAtLaunch() } }
 
     when (val current = phase) {
         is OnboardingPhase.Ready -> MainTabs(
@@ -96,7 +114,6 @@ fun AppRoot(
             onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
         )
         else -> {
-            val context = LocalContext.current
             var showPicker by remember { mutableStateOf(false) }
             OnboardingScreen(
                 phase = current,

@@ -2,9 +2,11 @@ package ai.quenderin.app
 
 import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadException
+import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
 import android.content.Context
+import java.io.File
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -31,6 +33,21 @@ class WorkManagerModelDownloader(
 ) : ModelDownloader {
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        // Already fully on disk and integrity-verified → hand it back without waking WorkManager.
+        // This is what makes the cold-launch restore work OFFLINE: the CONNECTED constraint below
+        // would otherwise park the work at ENQUEUED until the network returns, hanging a "load the
+        // model you already have" call forever. Twin of the Swift install() skip-download path
+        // (testInstallSkipsDownloadWhenFileExists) — the sha gate still rejects a corrupted file,
+        // which then falls through to a real (resumable) download.
+        val existing = File(context.filesDir, "models/${model.filename}")
+        if (existing.isFile) {
+            val expected = model.sha256
+            if (expected == null || JvmFileSink().sha256(existing.absolutePath).equals(expected, ignoreCase = true)) {
+                onProgress(1.0)
+                return existing.absolutePath
+            }
+        }
+
         val workManager = WorkManager.getInstance(context)
 
         val constraints = Constraints.Builder()
