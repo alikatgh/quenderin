@@ -33,7 +33,13 @@ public struct ChatView: View {
                         EmptyChatState(palette: p)
                             .frame(maxWidth: .infinity, minHeight: 360)
                     } else {
-                        LazyVStack(spacing: 6) {
+                        // macOS gets a PLAIN VStack: LazyVStack destroys/recreates rows while you
+                        // scroll and estimates-then-corrects their heights, which made wheel
+                        // scrolling stutter and jump on long Markdown replies. A transcript's row
+                        // count is modest and each row is cheap once the Markdown parse is cached
+                        // (see MarkdownText), so laziness bought nothing here. iOS keeps the lazy
+                        // stack for memory on phones.
+                        transcriptStack {
                             DayDivider(text: "Today", palette: p)
                             ForEach(model.messages) { message in
                                 ChatBubble(message: message, palette: p)
@@ -88,6 +94,16 @@ public struct ChatView: View {
                 }
             }
         }
+    }
+
+    /// The transcript container: eager on macOS (smooth wheel scrolling), lazy on iOS (memory).
+    @ViewBuilder
+    private func transcriptStack<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        VStack(spacing: 6) { content() }
+        #else
+        LazyVStack(spacing: 6) { content() }
+        #endif
     }
 
     @ViewBuilder

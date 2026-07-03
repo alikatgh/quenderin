@@ -7,33 +7,68 @@ import SwiftUI
 /// fenced code, bullet/numbered lists, blockquotes, rules — and renders inline formatting (**bold**,
 /// *italic*, `code`, [text](url)) via SwiftUI's native inline-markdown AttributedString. Not full
 /// CommonMark (no tables/nested lists), but it covers assistant output and degrades gracefully.
+///
+/// PERFORMANCE: parsing (the block split + one `AttributedString(markdown:)` per run) is the
+/// expensive half, and it used to happen inside `body` — so every body evaluation re-parsed the
+/// whole message. A `LazyVStack` transcript re-creates recycled rows WHILE YOU SCROLL, which meant
+/// a long reply was re-parsed dozens of times per second and scrolling crawled. Messages are
+/// immutable once finished, so the parse is memoized per unique text (streaming intermediates just
+/// age out of the cache).
 struct MarkdownText: View {
     let text: String
     let color: Color
 
     var body: some View {
+        let blocks = cachedBlocks(text)
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(parseMarkdownBlocks(text).enumerated()), id: \.offset) { _, block in
-                block.view(color: color)
+            ForEach(blocks.indices, id: \.self) { i in
+                blocks[i].view(color: color)
             }
         }
     }
 }
 
+// ── Parse memoization ─────────────────────────────────────────────────────────
+
+private final class ParsedBlocks {
+    let blocks: [MdBlock]
+    init(_ blocks: [MdBlock]) { self.blocks = blocks }
+}
+
+@MainActor
+private let mdCache: NSCache<NSString, ParsedBlocks> = {
+    let cache = NSCache<NSString, ParsedBlocks>()
+    // Finished messages hit forever; a streaming bubble's per-token intermediates get evicted.
+    cache.countLimit = 128
+    return cache
+}()
+
+// Rendering (View.body) is main-actor, so the cache never needs to be touched off-main.
+@MainActor
+private func cachedBlocks(_ text: String) -> [MdBlock] {
+    let key = text as NSString
+    if let hit = mdCache.object(forKey: key) { return hit.blocks }
+    let parsed = parseMarkdownBlocks(text)
+    mdCache.setObject(ParsedBlocks(parsed), forKey: key)
+    return parsed
+}
+
+// ── Blocks (inline runs pre-parsed to AttributedString at PARSE time, not render time) ──────────
+
 private enum MdBlock {
-    case heading(level: Int, text: String)
-    case paragraph(String)
+    case heading(level: Int, text: AttributedString)
+    case paragraph(AttributedString)
     case code(String)
-    case list(items: [String], ordered: Bool, start: Int)
-    case quote(String)
+    case list(items: [AttributedString], ordered: Bool, start: Int)
+    case quote(AttributedString)
     case rule
 
     @ViewBuilder func view(color: Color) -> some View {
         switch self {
         case let .heading(level, text):
-            inlineText(text).font(headingFont(level)).fontWeight(.bold).foregroundStyle(color)
+            Text(text).font(headingFont(level)).fontWeight(.bold).foregroundStyle(color)
         case let .paragraph(t):
-            inlineText(t).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
+            Text(t).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
         case let .code(code):
             Text(code)
                 .font(.system(.footnote, design: .monospaced))
@@ -46,12 +81,12 @@ private enum MdBlock {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(ordered ? "\(start + i)." : "•").foregroundStyle(color)
-                        inlineText(item).foregroundStyle(color)
+                        Text(item).foregroundStyle(color)
                     }
                 }
             }
         case let .quote(t):
-            inlineText(t).italic().foregroundStyle(color.opacity(0.85)).padding(.leading, 10)
+            Text(t).italic().foregroundStyle(color.opacity(0.85)).padding(.leading, 10)
         case .rule:
             Divider().overlay(color.opacity(0.2))
         }
@@ -66,16 +101,13 @@ private func headingFont(_ level: Int) -> Font {
     }
 }
 
-/// Inline markdown → Text via SwiftUI's native inline-only AttributedString, falling back to plain text
-/// if the string can't be parsed as markdown.
-private func inlineText(_ s: String) -> Text {
-    if let attr = try? AttributedString(
+/// Inline markdown → AttributedString via SwiftUI's native inline-only parser, falling back to the
+/// plain string if it can't be parsed. Runs ONCE per block at parse time.
+private func inline(_ s: String) -> AttributedString {
+    (try? AttributedString(
         markdown: s,
         options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-    ) {
-        return Text(attr)
-    }
-    return Text(s)
+    )) ?? AttributedString(s)
 }
 
 // ── Block parsing (line-oriented; a blank line separates blocks) ──────────────
@@ -86,7 +118,7 @@ private func parseMarkdownBlocks(_ text: String) -> [MdBlock] {
     var para = ""
     func flush() {
         let t = para.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !t.isEmpty { blocks.append(.paragraph(t)) }
+        if !t.isEmpty { blocks.append(.paragraph(inline(t))) }
         para = ""
     }
     while i < lines.count {
@@ -103,21 +135,21 @@ private func parseMarkdownBlocks(_ text: String) -> [MdBlock] {
         } else if trimmed.isEmpty {
             flush(); i += 1
         } else if let h = matchHeading(line) {
-            flush(); blocks.append(.heading(level: h.0, text: h.1)); i += 1
+            flush(); blocks.append(.heading(level: h.0, text: inline(h.1))); i += 1
         } else if isRule(trimmed) {
             flush(); blocks.append(.rule); i += 1
         } else if let b = matchBullet(line) {
             flush(); var items = [b]; i += 1
             while i < lines.count, let bb = matchBullet(lines[i]) { items.append(bb); i += 1 }
-            blocks.append(.list(items: items, ordered: false, start: 1))
+            blocks.append(.list(items: items.map(inline), ordered: false, start: 1))
         } else if let o = matchOrdered(line) {
             flush(); let start = o.0; var items = [o.1]; i += 1
             while i < lines.count, let oo = matchOrdered(lines[i]) { items.append(oo.1); i += 1 }
-            blocks.append(.list(items: items, ordered: true, start: start))
+            blocks.append(.list(items: items.map(inline), ordered: true, start: start))
         } else if let q = matchQuote(line) {
             flush(); var buf = q; i += 1
             while i < lines.count, let qq = matchQuote(lines[i]) { buf += " " + qq; i += 1 }
-            blocks.append(.quote(buf.trimmingCharacters(in: .whitespaces)))
+            blocks.append(.quote(inline(buf.trimmingCharacters(in: .whitespaces))))
         } else {
             if !para.isEmpty { para += " " }
             para += trimmed

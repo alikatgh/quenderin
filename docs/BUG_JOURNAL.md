@@ -302,8 +302,42 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `npm audit` step hid a downstream `no-useless-escape` lint error; fixing audit exposed lint, then
   tests. Run the CI job's steps locally IN ORDER (`audit → lint → check → test → build`) before
   pushing, so you don't ping-pong one masked failure at a time. (CI step masking)
+- **Create-on-intent leaves blank artifacts behind.** Minting the persistent row/file when the user
+  OPENS a thing (new chat) instead of when it first has CONTENT litters the UI with empty shells
+  ("New conversation" ×N in the sidebar). Defer creation to the first save, and ship a one-time GC
+  for shells the old code already leaked. (startNew defer)
+
+- **A constraint-gated work queue must short-circuit no-op requests.** Routing "give me the model
+  I already have on disk" through a NetworkType.CONNECTED-gated WorkManager job hangs at ENQUEUED
+  forever when offline — check "is the work already done?" BEFORE enqueueing, not inside the worker.
+  (Android launch restore)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-03 (mac) — Scrolling a long chat crawled and stuttered ("feels buggy").
+  Cause: `MarkdownText` re-parsed the WHOLE message (block split + one `AttributedString(markdown:)`
+  per run) on every body evaluation, and the LazyVStack transcript re-creates recycled rows while
+  scrolling → dozens of full re-parses per second; lazy height re-estimation added jumps. Fix:
+  memoize the parse per unique text (NSCache, inline runs pre-parsed) + plain VStack on macOS.
+  Lesson: never parse in `body`; messages are immutable — parse once, render many.
+
+- 2026-07-03 (android) — Launch-restore twin: every cold launch replayed onboarding despite a downloaded model.
+  Fix: SharedPreferences seams + `restoreAtLaunch()` → `acceptAndPrepare` (integrity gate re-runs). New trap:
+  `WorkManagerModelDownloader` gates ALL downloads on NetworkType.CONNECTED, so an OFFLINE relaunch would park
+  the restore at ENQUEUED forever — added an already-complete sha preflight that skips WorkManager entirely.
+  `OnboardingModel.kt` / `WorkManagerModelDownloader.kt` / `OnboardingScreen.kt` + 3 CoreVerify checks.
+
+- 2026-07-03 — Every "New Chat" left a permanent blank "New conversation" row (Mac sidebar showed two "No messages yet").
+  Cause: `ConversationManager.startNew()` (Swift + Kotlin) upserted the summary and saved index+transcript immediately.
+  Fix: `startNew()` only mints the id — the first `save()` creates the row (WhatsApp rule); coordinator init runs
+  `pruneEmptyConversations()` to GC legacy shells. ConversationManager/Coordinator .swift/.kt + tests + CoreVerify.
+  Lesson: create the persistent artifact on first CONTENT, not on intent — and GC what the old code leaked.
+
+- 2026-07-03 (ts) — Desktop `recommendedModelId` / download fallback could name a model the memory gate blocks.
+  Same band-vs-gate divergence as the Mac fix below, still live in the TS core: `getRecommendedModelIdForTotalRam`
+  band-picks qwen3-14b ≥10 GB while `checkMemoryForModel` can refuse it. Fix: `getBestInstallableModel` in
+  `src/constants.ts` (band pick if it passes the gate, else largest passing entry, else smallest) now feeds
+  `src/app.ts` download fallback + `src/routes/health.ts`; band fn untouched (boundary tests). `tests/best-installable-model.test.ts`.
 
 - 2026-07-03 — Catalog label "Qwen3 4B (Recommended)" masqueraded as the device recommendation.
   Surfaced when the picker started rendering the label's parenthetical as a capability chip — a
@@ -327,7 +361,7 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Symptom: relaunch → recommendation screen; the user's model sat on disk. Cause: nothing persisted the
   active model id — `.ready` lived only in memory. Fix: remember id on successful load (UserDefaults seam),
   `start()` fast-path re-installs it (integrity gate re-runs) straight to `.ready`.
-  `OnboardingModel.swift` + restore test. Android twin still TODO (chip spawned).
+  `OnboardingModel.swift` + restore test. Android twin: 2026-07-03 (android) entry above.
 
 - 2026-07-03 (mac) — Sidebar timestamp frozen at "in 0 sec" for 9 hours.
   Cause: `RelativeDateTimeFormatter` string computed ONCE per summary change; a permanently-visible Mac
