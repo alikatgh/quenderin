@@ -58,7 +58,7 @@ private func cachedBlocks(_ text: String) -> [MdBlock] {
 private enum MdBlock {
     case heading(level: Int, text: AttributedString)
     case paragraph(AttributedString)
-    case code(String)
+    case code(raw: String, segments: [CodeSeg])
     case list(items: [AttributedString], ordered: Bool, start: Int)
     case quote(AttributedString)
     case rule
@@ -69,13 +69,8 @@ private enum MdBlock {
             Text(text).font(headingFont(level)).fontWeight(.bold).foregroundStyle(color)
         case let .paragraph(t):
             Text(t).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
-        case let .code(code):
-            Text(code)
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(color)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        case let .code(raw, segments):
+            CodeBlockView(raw: raw, segments: segments, plain: color)
         case let .list(items, ordered, start):
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in
@@ -125,13 +120,17 @@ private func parseMarkdownBlocks(_ text: String) -> [MdBlock] {
         let line = lines[i]
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         if trimmed.hasPrefix("```") {
-            flush(); i += 1
+            flush()
+            // The fence's info string ("```python") names the language — feed the highlighter.
+            let lang = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces).lowercased()
+            i += 1
             var buf: [String] = []
             while i < lines.count, !lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                 buf.append(lines[i]); i += 1
             }
             i += 1 // consume closing fence (or EOF)
-            blocks.append(.code(buf.joined(separator: "\n")))
+            let raw = buf.joined(separator: "\n")
+            blocks.append(.code(raw: raw, segments: tokenizeCode(raw, language: lang.isEmpty ? nil : lang)))
         } else if trimmed.isEmpty {
             flush(); i += 1
         } else if let h = matchHeading(line) {
@@ -202,4 +201,150 @@ private func isRule(_ s: String) -> Bool {
     let set = Set(s)
     return set.count == 1 && (set.first == "-" || set.first == "*" || set.first == "_")
 }
+
+// ── Code syntax highlighting ──────────────────────────────────────────────────
+// Tokenized ONCE at parse time (same memoization as the block parse); colors are applied at
+// render time from the theme palette so light/dark both read well. A small hand-rolled scanner,
+// not a grammar — comments, strings, numbers, and a merged keyword set cover LLM-emitted code
+// (Python/JS/Swift/Kotlin/shell) without a dependency.
+
+struct CodeSeg {
+    enum Kind { case plain, keyword, string, comment, number }
+    let text: String
+    let kind: Kind
+}
+
+private let codeKeywords: Set<String> = [
+    // python
+    "def", "return", "if", "elif", "else", "for", "while", "in", "import", "from", "as", "class",
+    "try", "except", "finally", "with", "lambda", "pass", "break", "continue", "and", "or", "not",
+    "is", "None", "True", "False", "raise", "yield", "global", "nonlocal", "assert", "del", "async", "await",
+    // js / ts
+    "function", "const", "let", "var", "new", "this", "typeof", "instanceof", "export", "default",
+    "null", "undefined", "true", "false", "switch", "case", "do", "throw", "catch", "extends", "super", "of",
+    // swift
+    "func", "guard", "struct", "enum", "protocol", "extension", "init", "self", "nil", "some", "any",
+    "public", "private", "internal", "static", "mutating", "defer",
+    // kotlin / java
+    "fun", "val", "when", "object", "data", "override", "open", "sealed", "companion", "int", "void",
+]
+
+/// Languages where `#` starts a comment; for an UNKNOWN language both `#` and `//` are treated as
+/// comments — LLM answers default to Python-ish snippets, and a false comment line is a milder
+/// failure than an unhighlighted one.
+private func hashComments(_ lang: String?) -> Bool {
+    guard let lang else { return true }
+    return ["python", "py", "sh", "bash", "shell", "zsh", "ruby", "rb", "yaml", "yml", "toml", "r"].contains(lang)
+}
+private func slashComments(_ lang: String?) -> Bool {
+    guard let lang else { return true }
+    return !hashComments(lang)
+}
+
+func tokenizeCode(_ code: String, language: String?) -> [CodeSeg] {
+    let useHash = hashComments(language)
+    let useSlash = slashComments(language)
+    var segs: [CodeSeg] = []
+    var plain = ""
+    func flushPlain() {
+        if !plain.isEmpty { segs.append(CodeSeg(text: plain, kind: .plain)); plain = "" }
+    }
+    for (li, line) in code.components(separatedBy: "\n").enumerated() {
+        if li > 0 { plain += "\n" }
+        let chars = Array(line)
+        var i = 0
+        while i < chars.count {
+            let c = chars[i]
+            // comment → rest of line
+            if (useHash && c == "#") || (useSlash && c == "/" && i + 1 < chars.count && chars[i + 1] == "/") {
+                flushPlain()
+                segs.append(CodeSeg(text: String(chars[i...]), kind: .comment))
+                i = chars.count
+            } else if c == "\"" || c == "'" || c == "`" {
+                // string → to the matching quote on this line (escapes honored), else to EOL
+                var j = i + 1
+                while j < chars.count, chars[j] != c {
+                    j += chars[j] == "\\" ? 2 : 1
+                }
+                let end = min(j, chars.count - 1)
+                flushPlain()
+                segs.append(CodeSeg(text: String(chars[i...end]), kind: .string))
+                i = end + 1
+            } else if c.isNumber, i == 0 || !(chars[i - 1].isLetter || chars[i - 1] == "_") {
+                var j = i + 1
+                while j < chars.count, chars[j].isHexDigit || chars[j] == "." || chars[j] == "_" || chars[j] == "x" { j += 1 }
+                flushPlain()
+                segs.append(CodeSeg(text: String(chars[i..<j]), kind: .number))
+                i = j
+            } else if c.isLetter || c == "_" {
+                var j = i + 1
+                while j < chars.count, chars[j].isLetter || chars[j].isNumber || chars[j] == "_" { j += 1 }
+                let word = String(chars[i..<j])
+                if codeKeywords.contains(word) {
+                    flushPlain()
+                    segs.append(CodeSeg(text: word, kind: .keyword))
+                } else {
+                    plain += word
+                }
+                i = j
+            } else {
+                plain.append(c)
+                i += 1
+            }
+        }
+    }
+    flushPlain()
+    return segs
+}
+
+/// Renders pre-tokenized code with the palette's token colors. The colored AttributedString is
+/// memoized per (code, scheme) — recycled LazyVStack rows must not rebuild it every body pass.
+private struct CodeBlockView: View {
+    let raw: String
+    let segments: [CodeSeg]
+    let plain: Color
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        Text(highlighted())
+            .font(.system(.footnote, design: .monospaced))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(plain.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+            .textSelection(.enabled)
+    }
+
+    @MainActor
+    private func highlighted() -> AttributedString {
+        let key = "\(scheme == .dark ? "D" : "L")|\(raw)" as NSString
+        if let hit = codeCache.object(forKey: key) { return hit.value }
+        let p = QuenderinPalette.of(scheme)
+        var out = AttributedString()
+        for seg in segments {
+            var run = AttributedString(seg.text)
+            switch seg.kind {
+            case .plain: run.foregroundColor = plain
+            case .keyword: run.foregroundColor = p.codeKeyword
+            case .string: run.foregroundColor = p.codeString
+            case .comment: run.foregroundColor = p.codeComment
+            case .number: run.foregroundColor = p.codeNumber
+            }
+            out += run
+        }
+        codeCache.setObject(Boxed(out), forKey: key)
+        return out
+    }
+}
+
+private final class Boxed {
+    let value: AttributedString
+    init(_ value: AttributedString) { self.value = value }
+}
+
+@MainActor
+private let codeCache: NSCache<NSString, Boxed> = {
+    let cache = NSCache<NSString, Boxed>()
+    cache.countLimit = 64
+    return cache
+}()
 #endif

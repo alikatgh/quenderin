@@ -314,6 +314,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 (mac) — Settings window could shrink into a sidebar-only sliver ("UI is BROKEN"): a
+  NavigationSplitView with no frame floor lets the user (or state restoration) squeeze the window
+  until the detail pane vanishes, leaving three sidebar rows and a stray collapse chevron.
+  Fix: `.frame(minWidth: 640, minHeight: 420)` + remove the sidebar toggle + brand tint (SettingsView).
+  Lesson: every macOS NavigationSplitView window needs a minWidth ≥ sidebar + usable detail.
+
 - 2026-07-03 (mac) — User bubbles floated mid-pane instead of hugging the right edge (ChatView.swift:181).
   Cause: stacked frames `.frame(maxWidth: 460, alignment: .leading)` then `.frame(maxWidth: .infinity,
   alignment: .trailing)` — the cap-width frame EXPANDS to its max, so the bubble pinned leading inside a

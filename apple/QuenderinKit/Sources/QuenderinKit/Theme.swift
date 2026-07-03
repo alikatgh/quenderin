@@ -22,6 +22,11 @@ struct QuenderinPalette {
     let statusText: Color
     let dayDivider: Color
     let onDayDivider: Color
+    // Code-block token colors (MarkdownText syntax highlighting).
+    let codeKeyword: Color
+    let codeString: Color
+    let codeComment: Color
+    let codeNumber: Color
 
     static let dark = QuenderinPalette(
         background: Color(hex: 0x0B0B10),
@@ -39,7 +44,11 @@ struct QuenderinPalette {
         status: Color(hex: 0x37C98B),
         statusText: Color(hex: 0x8FE8C4),
         dayDivider: Color(hex: 0x1B1B23),
-        onDayDivider: Color(hex: 0x8B889C)
+        onDayDivider: Color(hex: 0x8B889C),
+        codeKeyword: Color(hex: 0xC792EA),
+        codeString: Color(hex: 0xC3E88D),
+        codeComment: Color(hex: 0x7A7889),
+        codeNumber: Color(hex: 0xF78C6C)
     )
 
     static let light = QuenderinPalette(
@@ -58,7 +67,11 @@ struct QuenderinPalette {
         status: Color(hex: 0x0E9E6B),
         statusText: Color(hex: 0x0E7E56),
         dayDivider: Color(hex: 0xE9E7F2),
-        onDayDivider: Color(hex: 0x7A7889)
+        onDayDivider: Color(hex: 0x7A7889),
+        codeKeyword: Color(hex: 0x9C27B0),
+        codeString: Color(hex: 0x448C27),
+        codeComment: Color(hex: 0x9A98AC),
+        codeNumber: Color(hex: 0xC25E0C)
     )
 
     static func of(_ scheme: ColorScheme) -> QuenderinPalette { scheme == .dark ? dark : light }
@@ -100,18 +113,39 @@ extension Color {
     }
 }
 
+/// Visual identity for a model FAMILY — a monogram + brand-inspired gradient keyed off the catalog
+/// id. Deliberately NOT the providers' official logos: those are trademarks with their own usage
+/// terms (and App Review flags third-party marks), so a colored monogram carries the recognition
+/// legally. `nil` / unknown ids fall back to the Quenderin "Q" brand orb.
+enum ModelFamily {
+    /// (monogram, gradient top, gradient bottom)
+    static func identity(for id: String?) -> (String, Color, Color) {
+        guard let id else { return ("Q", Color(hex: 0x8A82E6), Color(hex: 0x4F46B8)) }
+        if id.hasPrefix("llama") { return ("L", Color(hex: 0x2E8BFF), Color(hex: 0x0353C7)) }      // Meta blue
+        if id.hasPrefix("qwen") { return ("Q", Color(hex: 0x7B61FF), Color(hex: 0x3B2FC9)) }       // Qwen violet
+        if id.hasPrefix("deepseek") { return ("D", Color(hex: 0x6B85FE), Color(hex: 0x2C4BDF)) }   // DeepSeek blue
+        if id.hasPrefix("mistral") { return ("M", Color(hex: 0xFF8205), Color(hex: 0xE0400A)) }    // Mistral orange
+        if id.hasPrefix("gemma") { return ("G", Color(hex: 0x4285F4), Color(hex: 0x9B72CB)) }      // Gemini blue→purple
+        if id.hasPrefix("phi") { return ("P", Color(hex: 0x30A2FF), Color(hex: 0x005A9E)) }        // Microsoft blue
+        return ("Q", Color(hex: 0x8A82E6), Color(hex: 0x4F46B8))
+    }
+}
+
 /// The model rendered as a chat "contact": a gradient orb with a monogram. Twin of Android's ModelAvatar.
+/// Pass a `modelID` to wear that family's colors; omit it for the app's own "Q" brand orb.
 struct ModelAvatar: View {
     var size: CGFloat = 40
+    var modelID: String? = nil
     var body: some View {
+        let (monogram, top, bottom) = ModelFamily.identity(for: modelID)
         Circle()
             .fill(LinearGradient(
-                colors: [Color(hex: 0x8A82E6), Color(hex: 0x4F46B8)],
+                colors: [top, bottom],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             ))
             .frame(width: size, height: size)
             .overlay(
-                Text("Q")
+                Text(monogram)
                     .font(.system(size: size * 0.42, weight: .semibold))
                     .foregroundStyle(.white)
             )

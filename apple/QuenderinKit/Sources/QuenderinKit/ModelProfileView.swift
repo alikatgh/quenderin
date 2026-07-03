@@ -43,7 +43,7 @@ struct ModelProfileView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     VStack(spacing: 10) {
-                        ModelOrb(size: 72)
+                        ModelOrb(size: 72, modelID: model.id)
                         Text(model.label)
                             .font(.title3.weight(.semibold))
                             .multilineTextAlignment(.center)
@@ -65,15 +65,22 @@ struct ModelProfileView: View {
                     .frame(maxWidth: .infinity)
 
                     ProfileCard(title: "Specifications", palette: p) {
-                        SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p)
-                        SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p)
-                        SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p)
-                        SpecRow("Quantization", model.quantization, palette: p)
+                        SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p,
+                                hint: "How big the model is — roughly how much it learned during training. More usually means smarter answers, but a bigger download that needs more memory.")
+                        SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p,
+                                hint: "A one-time download. After it finishes, the model is stored on your \(deviceNoun) and works without internet.")
+                        SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p,
+                                hint: "How much working memory (RAM) the model uses while it's answering. Your \(deviceNoun) needs at least this much free.")
+                        SpecRow("Quantization", model.quantization, palette: p,
+                                hint: "Compression that shrinks the model so it fits on everyday devices. A \"Q4\"-style name means each number is stored in about 4 bits instead of 16 — much smaller, slightly less precise.")
                         if let q = quant {
-                            SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight", palette: p)
-                            SpecRow("Quality", q.quality, palette: p)
+                            SpecRow("Precision", "\(fmt(q.bitsPerWeight)) bits/weight", palette: p,
+                                    hint: "How much detail survives the compression. More bits per weight means answers closer to the original model, but a bigger file.")
+                            SpecRow("Quality", q.quality, palette: p,
+                                    hint: "A rough grade of how much the compression affects answer quality — from Low (noticeably simplified) to High (close to the original).")
                         }
-                        SpecRow("Format", "GGUF", palette: p)
+                        SpecRow("Format", "GGUF", palette: p,
+                                hint: "GGUF is the standard file format for AI models that run directly on your \(deviceNoun) instead of in the cloud.")
                     }
 
                     ProfileCard(title: "Technical", palette: p) {
@@ -96,7 +103,8 @@ struct ModelProfileView: View {
                             .accessibilityLabel("Open source page")
                         }
                         // Truncated for display, copyable in full — a hash you can't copy is decoration.
-                        SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true)
+                        SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true,
+                                hint: "A digital fingerprint of the downloaded file. Quenderin verifies it so a corrupted or tampered download is never loaded.")
                             .contentShape(Rectangle())
                             .contextMenu {
                                 if let sha = model.sha256 {
@@ -150,19 +158,23 @@ extension View {
     }
 }
 
-/// The model rendered as a chat "contact": a gradient orb with a "Q" monogram (twin of Android's
-/// `ModelAvatar`).
+/// The model rendered as a chat "contact": a gradient orb with a monogram (twin of Android's
+/// `ModelAvatar`). Pass a `modelID` to wear that FAMILY's monogram + brand-inspired colors
+/// (see `ModelFamily` — deliberately not the providers' trademarked logos); omit it for the
+/// app's own "Q" brand orb.
 struct ModelOrb: View {
     let size: CGFloat
+    var modelID: String? = nil
     var body: some View {
+        let (monogram, top, bottom) = ModelFamily.identity(for: modelID)
         ZStack {
             Circle().fill(
                 RadialGradient(
-                    colors: [Color(hex: 0x8A82E6), Color(hex: 0x4F46B8)],
+                    colors: [top, bottom],
                     center: .center, startRadius: 0, endRadius: size * 0.7
                 )
             )
-            Text("Q")
+            Text(monogram)
                 .font(.system(size: size * 0.42, weight: .semibold))
                 .foregroundStyle(.white)
         }
@@ -195,23 +207,46 @@ private struct ProfileCard<Content: View>: View {
 }
 
 /// Label on the left (quiet), value on the right (the data is the point — tabular digits, wraps
-/// trailing-aligned; `mono` for filenames/checksums).
+/// trailing-aligned; `mono` for filenames/checksums). An optional `hint` adds a small (?) that
+/// pops a plain-language explanation — this app is for people who shouldn't need to know what
+/// "quantization" means before using it.
 private struct SpecRow: View {
     let title: String
     let value: String
     let palette: QuenderinPalette
     let mono: Bool
+    let hint: String?
+    @State private var showHint = false
 
-    init(_ title: String, _ value: String, palette: QuenderinPalette, mono: Bool = false) {
+    init(_ title: String, _ value: String, palette: QuenderinPalette, mono: Bool = false, hint: String? = nil) {
         self.title = title
         self.value = value
         self.palette = palette
         self.mono = mono
+        self.hint = hint
     }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title).font(.callout).foregroundStyle(palette.onSurfaceVariant)
+            if let hint {
+                Button { showHint = true } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(palette.onSurfaceVariant.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .help("What does this mean?")
+                .accessibilityLabel("Explain \(title)")
+                .popover(isPresented: $showHint, arrowEdge: .bottom) {
+                    Text(hint)
+                        .font(.callout)
+                        .padding(14)
+                        .frame(width: 280, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .compactPopover()
+                }
+            }
             Spacer(minLength: 12)
             Text(value)
                 .font(mono ? .footnote.monospaced() : .callout.monospacedDigit())
@@ -219,6 +254,18 @@ private struct SpecRow: View {
                 .multilineTextAlignment(.trailing)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+private extension View {
+    /// Keep the explainer a small anchored popover on iPhone too (iOS 16.4+) instead of a
+    /// full sheet; a no-op elsewhere (macOS popovers already anchor).
+    @ViewBuilder func compactPopover() -> some View {
+        if #available(iOS 16.4, macOS 13.3, *) {
+            self.presentationCompactAdaptation(.popover)
+        } else {
+            self
+        }
     }
 }
 

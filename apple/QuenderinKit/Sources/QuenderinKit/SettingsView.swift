@@ -1,5 +1,8 @@
 #if canImport(SwiftUI)
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Settings / manage: the active model, on-device storage, and the in-app About/Privacy (folded in
 /// from `AboutView`). Reachable as a tab. Clearing conversations lives in the chat History sheet,
@@ -10,9 +13,12 @@ public struct SettingsView: View {
     private let model: ModelEntry
     private let onSelectModel: (ModelEntry) -> Void
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var scheme
     @State private var showPicker = false
     @State private var installedModels: [InstalledModel] = []
     @State private var totalModelBytes: Int64 = 0
+    @State private var pendingModelDelete: InstalledModel?
+    @State private var confirmClearConversations = false
 
     public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.coordinator = coordinator
@@ -92,6 +98,8 @@ public struct SettingsView: View {
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 150, ideal: 170)
+            // System Settings has no collapse chevron — a settings sidebar that can vanish is a trap.
+            .removeSidebarToggle()
         } detail: {
             Form {
                 switch pane ?? .model {
@@ -109,6 +117,10 @@ public struct SettingsView: View {
             }
             .formStyle(.grouped)
         }
+        // Brand accent on selection/controls (the default system blue reads as someone else's app),
+        // and a floor under the window so it can never shrink into a sidebar-only sliver.
+        .tint(QuenderinPalette.of(scheme).primary)
+        .frame(minWidth: 640, minHeight: 420)
         #else
         List {
             speedSection
@@ -170,7 +182,20 @@ public struct SettingsView: View {
     private var storageSection: some View {
         Section("Storage") {
                 LabeledRow(title: "Saved conversations", value: "\(coordinator.summaries.count)")
-                Text("Browse, switch, or clear conversations from the History button in Chat.")
+                Button(role: .destructive) { confirmClearConversations = true } label: {
+                    Label("Clear all conversations…", systemImage: "trash")
+                }
+                .disabled(coordinator.summaries.isEmpty)
+                .confirmationDialog(
+                    "Delete all \(coordinator.summaries.count) conversations?",
+                    isPresented: $confirmClearConversations, titleVisibility: .visible
+                ) {
+                    Button("Delete all", role: .destructive) { coordinator.clearAll() }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This removes every saved conversation from this \(deviceNoun). It can't be undone.")
+                }
+                Text("Browse or switch conversations from the sidebar in Chat.")
                     .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -190,27 +215,63 @@ public struct SettingsView: View {
                             }
                             Spacer()
                             Text(fileSize(installed.sizeBytes)).foregroundStyle(.secondary)
+                            // A VISIBLE per-row action menu — right-click alone is a hidden door.
+                            Menu {
+                                modelActions(installed)
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .menuStyle(.button)
+                            .buttonStyle(.borderless)
+                            .menuIndicator(.hidden)
+                            .fixedSize()
+                            .accessibilityLabel("Actions for \(installed.model.label)")
                         }
                         .accessibilityElement(children: .combine)
                         .deleteDisabled(installed.isActive)   // the loaded model can't be removed
-                        // Swipe doesn't exist on macOS — the context menu is the Mac's delete
-                        // affordance (and a harmless long-press extra on iOS).
+                        // Right-click (macOS) / long-press (iOS) offers the same actions as the ⋯ menu.
                         .contextMenu {
-                            if !installed.isActive {
-                                Button("Delete", role: .destructive) { deleteModel(installed) }
-                            }
+                            modelActions(installed)
                         }
                     }
                     .onDelete { offsets in offsets.forEach { deleteModel(installedModels[$0]) } }
                     LabeledRow(title: "Total on device", value: fileSize(totalModelBytes))
                 }
-                #if os(macOS)
-                Text("Right-click a model to delete it and free space — the active model is protected.")
+                Text("The ⋯ menu on each model can delete it and free space — the active model is protected.")
                     .font(.footnote).foregroundStyle(.secondary)
-                #else
-                Text("Swipe a model to delete it and free space — the active model is protected.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                #endif
+        }
+        .confirmationDialog(
+            "Delete \(pendingModelDelete?.model.label ?? "this model")?",
+            isPresented: Binding(
+                get: { pendingModelDelete != nil },
+                set: { if !$0 { pendingModelDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingModelDelete
+        ) { installed in
+            Button("Delete (frees \(fileSize(installed.sizeBytes)))", role: .destructive) {
+                deleteModel(installed)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { installed in
+            Text("You can download \(installed.model.label) again later — it just won't be on this \(deviceNoun).")
+        }
+    }
+
+    /// The shared per-model actions (the ⋯ menu and the context menu must never drift apart).
+    @ViewBuilder
+    private func modelActions(_ installed: InstalledModel) -> some View {
+        #if os(macOS)
+        Button("Show in Finder") {
+            let url = OnboardingModel.defaultModelsDir().appendingPathComponent(installed.model.filename)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+        #endif
+        if installed.isActive {
+            Button("Active — in use") {}.disabled(true)
+        } else {
+            Button("Delete…", role: .destructive) { pendingModelDelete = installed }
         }
     }
 
@@ -242,6 +303,19 @@ public struct SettingsView: View {
         }
     }
 }
+
+#if os(macOS)
+private extension View {
+    /// Hide the sidebar-collapse chevron (macOS 14+); a no-op on 13 where the API doesn't exist.
+    @ViewBuilder func removeSidebarToggle() -> some View {
+        if #available(macOS 14.0, *) {
+            self.toolbar(removing: .sidebarToggle)
+        } else {
+            self
+        }
+    }
+}
+#endif
 
 /// A title-on-the-left, value-on-the-right settings row.
 private struct LabeledRow: View {
