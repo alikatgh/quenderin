@@ -305,6 +305,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-03 — Catalog label "Qwen3 4B (Recommended)" masqueraded as the device recommendation.
+  Surfaced when the picker started rendering the label's parenthetical as a capability chip — a
+  "Recommended" chip on a NON-recommended row. Fix: renamed to "(Everyday)" in all four catalogs
+  (canonical JSON + Swift + Kotlin + TS; check_catalog_parity green). Lesson: don't encode a
+  RELATIVE judgment (recommended-for-whom?) in a static catalog string.
+
 - 2026-07-03 (mac) — "Recommended" model was uninstallable on the very device it was recommended for.
   Symptom: 16 GB Mac → picker tags Qwen3 14B "RECOMMENDED" yet dims it "Too big"; onboarding's Download CTA
   gated only on DISK. Cause: RAM-band recommender (≥10 GB → 14B) vs MemoryFitness 85% budget (14.3/16 = 89%)

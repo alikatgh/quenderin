@@ -88,7 +88,7 @@ struct ModelProfileView: View {
             }
             .sheet(isPresented: $showPicker) {
                 NavigationStack {
-                    ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB) { picked in
+                    ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB, currentModelID: model.id) { picked in
                         showPicker = false
                         dismiss()
                         if picked.id != model.id { onSelectModel(picked) }

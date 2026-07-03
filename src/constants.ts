@@ -115,7 +115,7 @@ export const MODEL_CATALOG = [
     },
     {
         id: 'qwen3-4b',
-        label: 'Qwen3 4B (Recommended)',
+        label: 'Qwen3 4B (Everyday)',
         filename: 'qwen3-4b.Q4_K_M.gguf',
         ramGb: 3.6,
         sizeLabel: '2.4 GB download',

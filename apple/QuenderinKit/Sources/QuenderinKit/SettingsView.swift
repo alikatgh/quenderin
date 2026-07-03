@@ -70,7 +70,7 @@ public struct SettingsView: View {
             .sheet(isPresented: $showPicker) {
                 NavigationStack {
                     // Reuses the fitness-aware picker (disables models that won't fit, explains why).
-                    ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB) { picked in
+                    ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB, currentModelID: model.id) { picked in
                         showPicker = false
                         if picked.id != model.id { onSelectModel(picked) }
                     }
