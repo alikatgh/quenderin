@@ -22,6 +22,14 @@ final class ChatModelTests: XCTestCase {
         XCTAssertFalse(chat.isGenerating)
     }
 
+    func testEmptyEngineReplyGetsAnHonestNotice() async {
+        let chat = ChatModel(engine: await loadedMock(""))
+        await chat.send("hello?")
+        XCTAssertEqual(chat.messages.count, 2)
+        XCTAssertTrue(chat.messages[1].text.contains("empty reply"),
+                      "a zero-token generation must never settle as a silent blank bubble")
+    }
+
     func testSendIgnoresEmptyInput() async {
         let chat = ChatModel(engine: await loadedMock("x"))
         await chat.send("   ")

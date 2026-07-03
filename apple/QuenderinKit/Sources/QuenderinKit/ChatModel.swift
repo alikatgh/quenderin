@@ -92,8 +92,12 @@ public final class ChatModel: ObservableObject {
             return
         }
         // Settle: collapse any exact-duplicate paragraph runs that slipped through (covers
-        // the guard's between-checkpoints window and the Stop path alike).
+        // the guard's between-checkpoints window and the Stop path alike), and never leave a
+        // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
+        if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
+            assistant.text = "The model returned an empty reply. Try rephrasing, or pick a larger model in the Model library."
+        }
         if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
     }
 

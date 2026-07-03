@@ -1,0 +1,53 @@
+# Known failure modes — the ledger
+
+The owner's question (2026-07-03): *"You knew repetition was a thing — what else do you
+know can go wrong that isn't fixed? What's stopping you from fixing all of it before users
+get this?"* The honest answer: nothing except running the enumeration. Domain knowledge
+only becomes fixes when someone audits the code against it systematically — so this file
+IS that audit, kept current. **Every known failure mode of an on-device LLM chat app is
+either ✅ fixed (with the mechanism named), ⏳ planned (with the reason), or 🟨 accepted
+(with the justification). Nothing is allowed to be silently known.**
+
+Rules: when you learn a new failure mode (a bug, a paper, a competitor's postmortem), add
+a row BEFORE fixing it. When shipping a feature that touches generation, re-read the table.
+
+## Generation quality
+
+| Failure mode | Status | Mechanism / disposition |
+|---|---|---|
+| Verbatim repetition loops (neural text degeneration) | ✅ | Three layers: sampler repetition penalty (1.1/256, `LlamaEngine`) · mid-stream loop tripwire (`DegenerationGuard.looksDegenerate`, every 32 tokens) · settle-time collapse of identical paragraph runs. Tests both platforms. |
+| Split multi-byte characters across BPE tokens → "�" corruption (Cyrillic = 2 bytes, emoji = 4) | ✅ | `UTF8StreamDecoder` holds incomplete trailing sequences until continuation arrives; exhaustive every-split tests. **Android JNI still converts per-piece — chip.** |
+| Zero-token generation → silent empty bubble | ✅ | Settle-time notice: "The model returned an empty reply…" (`ChatModel`), test pinned. |
+| Token-cap hit mid-sentence ("…accustomed to the") | ⏳ | Needs the cap signal surfaced from the engine + a "Continue" affordance (ChatGPT-style). Auto-trimming was rejected: it eats legitimate non-punctuated endings (lists, code). |
+| Small-model paraphrase rambling / factual errors | 🟨 | Capacity, not sampling — no setting fixes it. Mitigated honestly: per-model quality grades, the Low-quality heads-up in the empty state, the router offering bigger installed models, Stop button. |
+| Context overflow mid-conversation | ✅ | Budget-windowed history (`ConversationContext`) + engine treats mid-stream decode code 1 as graceful stop, keeping partial output. |
+| Wrong/missing chat template (role bleed-through, "User:" artifacts) | ✅ | The model's own template via `llama_chat_apply_template`, with flat-transcript fallback; caught originally by looking at real output. |
+| Thermal throttling turning replies to sludge | ✅ | `ThermalGovernor` re-tunes thread count mid-generation. |
+
+## Interaction robustness
+
+| Failure mode | Status | Mechanism |
+|---|---|---|
+| Reentrancy: clear/open/switch DURING a streaming reply | ✅ | Stream writes track the message by stable id, re-looked-up per token; install/switch re-entrancy guards. (Bug journal: `@MainActor` + `await` = reentrancy.) |
+| Runaway generation burning battery | ✅ | maxTokens cap + Stop button (breaks within one token, keeps partial) + degeneration tripwire. |
+| Download corruption / tampering | ✅ | SHA-256 / GGUF-magic gate on every path (onboarding, library, bulk, drag-import); corrupt files deleted, never listed. |
+| Disk full mid-download | ✅ | `DiskSpace` preflight before the tap; bulk-download offered only with ≥10 GB headroom. |
+| Interrupted downloads | ✅ | Resumable background session; survives relaunch (verified live 2026-07-03). |
+| Model too big for RAM (jetsam / OOM) | ✅ | `MemoryFitness` gates every offer surface (picker, library, presets, router). |
+| Surprise multi-GB downloads from a settings tap | ✅ | Speed dial confirms before fetching (2026-07-03). |
+| Quit mid-generation loses the partial reply | 🟨 | Accepted: persist-on-turn-end is the consistency boundary; a mid-token crash-safe journal isn't worth the complexity today. |
+
+## Safety / store compliance
+
+| Failure mode | Status | Mechanism |
+|---|---|---|
+| Harmful autonomous agent actions | ✅ | `SafetyBlocklist` hard-gates tool calls (pay/delete/credentials…); parity-tested both platforms. |
+| Objectionable AI content presented as fact | ✅ | Standing disclaimer under chat + agent; flagged-output notice; per-response Report → support email. |
+| Prompt injection via second JSON object in agent output | ✅ | First-complete-object parsing, parity-pinned (H13). |
+
+## Cross-platform drift (the meta-failure)
+
+| Failure mode | Status | Mechanism |
+|---|---|---|
+| Twin logic diverging silently (Swift ↔ Kotlin) | ✅ | Machine-enforced parity: catalog, agent vectors, router vectors (CI); CoreVerify mirrors for guards. |
+| Android lag list (JNI: repetition penalty, per-piece UTF-8 decode, mid-stream abort; UI backlog) | ⏳ | Tracked in docs/SHELL_ROUTER_SETTINGS.md + the standing parity chip. |

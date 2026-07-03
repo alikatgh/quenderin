@@ -357,6 +357,7 @@ public actor LlamaEngine: InferenceEngine {
         let thermalSampleInterval = 32
 
         var produced = 0
+        var decoder = UTF8StreamDecoder()   // survives across tokens: split characters reassemble
         var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
                                       // piece has been yielded, INCLUDING the current token's (checked
                                       // below only after this token's own yield, same ordering as the
@@ -370,7 +371,7 @@ public actor LlamaEngine: InferenceEngine {
             let next = llama_sampler_sample(sampler, context, -1)
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
 
-            let piece = tokenToPiece(next)
+            let piece = decoder.feed(tokenToBytes(next))
             if !piece.isEmpty {
                 continuation.yield(piece)
                 yieldedAnyText = true
@@ -391,6 +392,8 @@ public actor LlamaEngine: InferenceEngine {
             }
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
+        let tail = decoder.flush()                          // any held bytes (end-of-stream mid-character)
+        if !tail.isEmpty { continuation.yield(tail) }
         continuation.finish()
     }
 
@@ -408,9 +411,11 @@ public actor LlamaEngine: InferenceEngine {
         return Array(out.prefix(Int(n)))
     }
 
-    /// Wrapper over `llama_token_to_piece` (single token → UTF-8 fragment).
-    nonisolated private func tokenToPiece(_ token: llama_token) -> String {
-        guard let vocab else { return "" }
+    /// Wrapper over `llama_token_to_piece` (single token → raw UTF-8 BYTES). Callers must
+    /// decode through `UTF8StreamDecoder` — tokens routinely end mid-character (Cyrillic,
+    /// emoji), and per-token String decoding turns the halves into "�".
+    nonisolated private func tokenToBytes(_ token: llama_token) -> [UInt8] {
+        guard let vocab else { return [] }
         var buffer = [CChar](repeating: 0, count: 64)
         var n = llama_token_to_piece(vocab, token, &buffer, Int32(buffer.count), 0, true)
         if n < 0 {
@@ -419,9 +424,8 @@ public actor LlamaEngine: InferenceEngine {
             buffer = [CChar](repeating: 0, count: Int(-n))
             n = llama_token_to_piece(vocab, token, &buffer, Int32(buffer.count), 0, true)
         }
-        guard n > 0 else { return "" }
-        let bytes = buffer.prefix(Int(n)).map { UInt8(bitPattern: $0) }
-        return String(decoding: bytes, as: UTF8.self)
+        guard n > 0 else { return [] }
+        return buffer.prefix(Int(n)).map { UInt8(bitPattern: $0) }
     }
     #endif
 }
