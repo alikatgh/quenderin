@@ -17,11 +17,26 @@ public struct ChatView: View {
     /// installed model for a NEW chat's first message (a tappable chip, never a silent swap).
     private let activeModel: ModelEntry?
     private let onSwitchModel: ((ModelEntry) -> Void)?
+    /// When set, this conversation's appearance overrides (ChatPrefsStore) beat the globals.
+    private let conversationID: String?
+    @ObservedObject private var chatPrefs = ChatPrefsStore.shared
 
-    public init(model: ChatModel, activeModel: ModelEntry? = nil, onSwitchModel: ((ModelEntry) -> Void)? = nil) {
+    public init(model: ChatModel, activeModel: ModelEntry? = nil,
+                onSwitchModel: ((ModelEntry) -> Void)? = nil, conversationID: String? = nil) {
         self.model = model
         self.activeModel = activeModel
         self.onSwitchModel = onSwitchModel
+        self.conversationID = conversationID
+    }
+
+    /// This chat's font: per-conversation override where present, the Settings default otherwise.
+    private var effectiveChatFont: Font {
+        guard let id = conversationID else { return settings.chatFont }
+        let style = chatPrefs.fontStyle(for: id).flatMap(AppSettings.ChatFontStyle.init(rawValue:))
+            ?? settings.chatFontStyle
+        let size = chatPrefs.fontSize(for: id).flatMap(AppSettings.ChatFontSize.init(rawValue:))
+            ?? settings.chatFontSize
+        return .system(size: size.points, design: style.design)
     }
 
     /// Router suggestion for the drafted FIRST message: only in an empty chat, only when the
@@ -80,7 +95,7 @@ public struct ChatView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
-                        .environment(\.font, settings.chatFont)   // Appearance → chat font
+                        .environment(\.font, effectiveChatFont)   // per-chat override ?? Settings default
                         // On a wide Mac detail pane the transcript reads as a centered column
                         // (like Messages), not a strip hugging the left edge.
                         .frame(maxWidth: 760)

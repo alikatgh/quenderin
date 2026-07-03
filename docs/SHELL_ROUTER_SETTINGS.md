@@ -59,6 +59,11 @@ that would re-prefill the transcript on another model behind the user's back.
 - Appearance pane: Theme (System/Light/Dark), Chat font (System/Serif/Monospaced),
   Text size (4 steps) — applied via the transcript's font environment.
 - Routing: "Suggest the best model for each task" toggle.
+- **Per-chat overrides** ("This chat" card in the chat-header profile sheet): font + text
+  size for ONE conversation, with "Global default" as the reset state. Stored in
+  `ChatPrefsStore` (UserDefaults side-store keyed by conversation id — works for a
+  brand-new empty chat, no index-schema change), cleaned up on conversation delete /
+  clear-all. Global defaults stay in Settings; the sheet says so.
 
 **Rule (from the bug journal):** a setting ships only when something reads it — no
 advertised-but-unimplemented toggles.

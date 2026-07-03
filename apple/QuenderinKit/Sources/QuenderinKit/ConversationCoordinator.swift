@@ -91,6 +91,7 @@ public final class ConversationCoordinator: ObservableObject {
     /// Delete a conversation. If it was the open one, fall back to the most recent (or a fresh one).
     public func delete(_ id: String) {
         let wasCurrent = manager.currentID == id
+        ChatPrefsStore.shared.clear(for: id)   // per-chat appearance overrides die with the chat
         manager.delete(id)
         if wasCurrent {
             if let recent = manager.list().first {
@@ -107,6 +108,7 @@ public final class ConversationCoordinator: ObservableObject {
 
     /// Delete all saved conversations, then drop into a fresh empty one (first-launch state).
     public func clearAll() {
+        summaries.forEach { ChatPrefsStore.shared.clear(for: $0.id) }
         manager.clearAll()
         manager.startNew()
         chat.reset()

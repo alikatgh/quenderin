@@ -26,6 +26,9 @@ func copyToPasteboard(_ s: String) {
 struct ModelProfileView: View {
     let model: ModelEntry
     var onSelectModel: (ModelEntry) -> Void
+    /// When opened FROM a conversation (the chat header), that chat's id — enables the
+    /// "This chat" section of per-conversation appearance overrides. nil from the library.
+    var conversationID: String? = nil
 
     /// Plain-language glossary behind the Specifications card's single (?) — this app is for
     /// people who shouldn't need to know what "quantization" means before using it.
@@ -76,6 +79,14 @@ struct ModelProfileView: View {
                             .padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity)
+
+                    if let conversationID {
+                        // Per-chat appearance: overrides for THIS conversation only; the global
+                        // defaults live in Settings. "Global default" is the reset state.
+                        ProfileCard(title: "This chat", palette: p) {
+                            ChatPrefsSection(conversationID: conversationID, palette: p)
+                        }
+                    }
 
                     // ONE (?) on the card header opens the whole glossary — a ring on every row
                     // read as noise (user feedback), and the terms are best explained together.
@@ -204,6 +215,48 @@ struct ModelOrb: View {
             }
             .frame(width: size, height: size)
         }
+    }
+}
+
+/// Per-conversation appearance controls: font + text size, each with a "Global default"
+/// choice that clears the override. Writes through ChatPrefsStore immediately — the open
+/// transcript re-renders live behind the sheet.
+private struct ChatPrefsSection: View {
+    let conversationID: String
+    let palette: QuenderinPalette
+    @ObservedObject private var store = ChatPrefsStore.shared
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var styleBinding: Binding<AppSettings.ChatFontStyle?> {
+        Binding(
+            get: { store.fontStyle(for: conversationID).flatMap(AppSettings.ChatFontStyle.init(rawValue:)) },
+            set: { store.set(fontStyle: $0?.rawValue, fontSize: store.fontSize(for: conversationID), for: conversationID) }
+        )
+    }
+
+    private var sizeBinding: Binding<AppSettings.ChatFontSize?> {
+        Binding(
+            get: { store.fontSize(for: conversationID).flatMap(AppSettings.ChatFontSize.init(rawValue:)) },
+            set: { store.set(fontStyle: store.fontStyle(for: conversationID), fontSize: $0?.rawValue, for: conversationID) }
+        )
+    }
+
+    var body: some View {
+        Picker("Chat font", selection: styleBinding) {
+            Text("Global default (\(settings.chatFontStyle.label))").tag(AppSettings.ChatFontStyle?.none)
+            ForEach(AppSettings.ChatFontStyle.allCases, id: \.self) { style in
+                Text(style.label).tag(AppSettings.ChatFontStyle?.some(style))
+            }
+        }
+        Picker("Text size", selection: sizeBinding) {
+            Text("Global default (\(settings.chatFontSize.label))").tag(AppSettings.ChatFontSize?.none)
+            ForEach(AppSettings.ChatFontSize.allCases, id: \.self) { size in
+                Text(size.label).tag(AppSettings.ChatFontSize?.some(size))
+            }
+        }
+        Text("Only this conversation. The defaults for every chat live in Settings.")
+            .font(.caption2)
+            .foregroundStyle(palette.onSurfaceVariant)
     }
 }
 

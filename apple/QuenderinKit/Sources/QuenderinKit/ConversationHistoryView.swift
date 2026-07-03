@@ -41,7 +41,7 @@ public struct ChatHomeView: View {
     @ViewBuilder
     private var conversationDetail: some View {
         let p = QuenderinPalette.of(scheme)
-        ChatView(model: chat, activeModel: model, onSwitchModel: { onSelectModel($0) })
+        ChatView(model: chat, activeModel: model, onSwitchModel: { onSelectModel($0) }, conversationID: coordinator.currentID)
             .inlineNavTitle()
             .toolbar {
                 // Tappable model name (twin of Android's tappable chat header) → the model profile.
@@ -63,7 +63,7 @@ public struct ChatHomeView: View {
                 }
             }
             .sheet(isPresented: $showProfile) {
-                ModelProfileView(model: model, onSelectModel: onSelectModel)
+                ModelProfileView(model: model, onSelectModel: onSelectModel, conversationID: coordinator.currentID)
             }
             // Persist when a turn finishes (isGenerating falls), not on every streamed token.
             .onChange(of: chat.isGenerating) { generating in

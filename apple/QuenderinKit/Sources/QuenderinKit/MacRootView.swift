@@ -151,7 +151,7 @@ public struct MacRootView: View {
         let p = QuenderinPalette.of(scheme)
         switch selection {
         case .conversation:
-            ChatView(model: chat, activeModel: model, onSwitchModel: { onboarding.beginInstall($0) })
+            ChatView(model: chat, activeModel: model, onSwitchModel: { onboarding.beginInstall($0) }, conversationID: conversations.currentID)
                 // Re-identify the view per conversation: switching chats resets scroll state and
                 // refires onAppear, which puts the caret in the composer (see ChatView).
                 .id(conversations.currentID)
@@ -172,8 +172,9 @@ public struct MacRootView: View {
                     }
                 }
                 .sheet(isPresented: $showProfile) {
-                    ModelProfileView(model: model, onSelectModel: { onboarding.beginInstall($0) })
-                        .frame(minWidth: 480, minHeight: 520)
+                    ModelProfileView(model: model, onSelectModel: { onboarding.beginInstall($0) },
+                                     conversationID: conversations.currentID)
+                        .frame(minWidth: 480, minHeight: 560)
                 }
         case nil:
             VStack(spacing: 10) {
