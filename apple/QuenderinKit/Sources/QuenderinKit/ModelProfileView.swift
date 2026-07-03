@@ -1,5 +1,20 @@
 #if canImport(SwiftUI)
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
+
+/// Cross-platform "put this string on the clipboard".
+func copyToPasteboard(_ s: String) {
+    #if os(macOS)
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(s, forType: .string)
+    #else
+    UIPasteboard.general.string = s
+    #endif
+}
 
 /// The model "profile" — the SwiftUI twin of Android's `ModelProfileSheet`. Tapping the chat header
 /// (the model name) opens this: a page of everything the app knows about the active model — params,
@@ -63,6 +78,10 @@ struct ModelProfileView: View {
 
                     ProfileCard(title: "Technical", palette: p) {
                         SpecRow("File", model.filename, palette: p, mono: true)
+                            .contentShape(Rectangle())   // right-click works on the whole row, not just the glyphs
+                            .contextMenu {
+                                Button("Copy file name") { copyToPasteboard(model.filename) }
+                            }
                         if let url = model.downloadURL {
                             Button { openURL(url) } label: {
                                 HStack(alignment: .firstTextBaseline) {
@@ -73,9 +92,17 @@ struct ModelProfileView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .help("Open the model's page on huggingface.co")
                             .accessibilityLabel("Open source page")
                         }
+                        // Truncated for display, copyable in full — a hash you can't copy is decoration.
                         SpecRow("Checksum", model.sha256.map { String($0.prefix(12)) + "…" } ?? "magic-only", palette: p, mono: true)
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                if let sha = model.sha256 {
+                                    Button("Copy SHA-256") { copyToPasteboard(sha) }
+                                }
+                            }
                     }
 
                     // Prose needs no box and no rules — quiet caption under the cards.
