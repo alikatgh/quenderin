@@ -8,15 +8,16 @@ import SwiftUI
 public struct ModelsLibraryView: View {
     private let activeModelID: String
     private let onSelectModel: (ModelEntry) -> Void
-    @StateObject private var library: ModelLibraryController
+    @ObservedObject private var library = ModelLibraryController.shared
     @Environment(\.colorScheme) private var scheme
     @State private var confirmDownloadAll = false
     @State private var profileModel: ModelEntry?
+    @State private var dropTargeted = false
+    @State private var importMessage: String?
 
     public init(activeModelID: String, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.activeModelID = activeModelID
         self.onSelectModel = onSelectModel
-        _library = StateObject(wrappedValue: ModelLibraryController())
     }
 
     public var body: some View {
@@ -43,7 +44,8 @@ public struct ModelsLibraryView: View {
                     }
                 }
                 Text("Installed is not the same as loadable: models load one at a time, and RAM decides "
-                   + "which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile.")
+                   + "which can run. The fit badges are live for this \(deviceNoun). Click a model for its "
+                   + "full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
             }
@@ -52,6 +54,40 @@ public struct ModelsLibraryView: View {
             .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        // Drag a .gguf you already have straight onto the page — the power-user import.
+        .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
+            for provider in providers {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url, url.pathExtension.lowercased() == "gguf" else { return }
+                    Task { @MainActor in
+                        switch await library.importGGUF(at: url) {
+                        case .installed(let label):
+                            importMessage = "\(label) imported — no download needed."
+                        case .notInCatalog(let name):
+                            importMessage = "\(name) isn't in the catalog yet, so Quenderin can't load it. Custom models are on the roadmap — nothing was copied."
+                        case .invalid(let name):
+                            importMessage = "\(name) doesn't look like a valid GGUF file — nothing was imported."
+                        }
+                    }
+                }
+            }
+            return true
+        }
+        .overlay {
+            if dropTargeted {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(p.primary, lineWidth: 2)
+                    .background(p.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+                    .padding(6)
+                    .allowsHitTesting(false)
+            }
+        }
+        .alert("Import", isPresented: Binding(get: { importMessage != nil },
+                                              set: { if !$0 { importMessage = nil } })) {
+            Button("OK") { importMessage = nil }
+        } message: {
+            Text(importMessage ?? "")
+        }
         .onAppear { library.refresh() }
         // Click a card → the full profile (specs, glossary, provenance) for THAT model.
         .sheet(item: $profileModel) { entry in
@@ -199,11 +235,70 @@ private struct FitDot: View {
 /// same integrity gate — a corrupted download is deleted, never listed as installed.
 @MainActor
 final class ModelLibraryController: ObservableObject {
+    /// One shared instance: downloads must SURVIVE navigating away from the Models page
+    /// (a per-view @StateObject deallocated mid-download orphaned its tasks), and the Mac
+    /// rail badge observes the same instance for live progress.
+    static let shared = ModelLibraryController()
+
     enum ModelState: Equatable {
         case notInstalled
         case downloading(Double)
         case installed
         case failed
+    }
+
+    /// What a dropped .gguf turned out to be (see `importGGUF`).
+    enum ImportResult: Equatable {
+        case installed(String)      // catalog label — file matched a known model
+        case notInCatalog(String)   // filename — we don't quietly hoard disk with unloadable files
+        case invalid(String)        // filename — failed the GGUF magic check
+    }
+
+    var activeDownloadCount: Int {
+        states.values.filter { if case .downloading = $0 { return true }; return false }.count
+    }
+
+    /// Mean fraction across live downloads — the rail badge's ring.
+    var overallDownloadProgress: Double {
+        let fractions = states.values.compactMap { state -> Double? in
+            if case .downloading(let f) = state { return f }
+            return nil
+        }
+        guard !fractions.isEmpty else { return 0 }
+        return fractions.reduce(0, +) / Double(fractions.count)
+    }
+
+    /// Import a .gguf the user already has (another machine, a manual download) — the
+    /// power-user path that skips a multi-GB download. Catalog-matching filenames only:
+    /// a file the engine can never load shouldn't quietly eat disk. Magic-checked before
+    /// AND after the copy; a bad copy is deleted, never listed.
+    func importGGUF(at url: URL) async -> ImportResult {
+        let name = url.lastPathComponent
+        guard let entry = ModelCatalog.models.first(where: { $0.filename == name }) else {
+            return .notInCatalog(name)
+        }
+        guard (try? ModelIntegrity.verify(fileURL: url, expectedSHA256: nil)) != nil else {
+            return .invalid(name)
+        }
+        states[entry.id] = .downloading(0)
+        let destination = modelsDir.appendingPathComponent(entry.filename)
+        let dir = modelsDir
+        let copied: Bool = await Task.detached(priority: .userInitiated) {
+            do {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.copyItem(at: url, to: destination)
+                try ModelIntegrity.verify(fileURL: destination, expectedSHA256: nil)
+                return true
+            } catch {
+                try? FileManager.default.removeItem(at: destination)
+                return false
+            }
+        }.value
+        states[entry.id] = copied ? .installed : .notInstalled
+        return copied ? .installed(entry.label) : .invalid(name)
     }
 
     @Published private(set) var states: [String: ModelState] = [:]
@@ -252,7 +347,18 @@ final class ModelLibraryController: ObservableObject {
     }
 
     func downloadAllMissing() {
-        missingModels.forEach { download($0) }
+        // Sequential, as the confirm dialog promises: the first model becomes usable while
+        // the rest still download, and N streams don't fight for the same bandwidth.
+        let queue = missingModels
+        Task { [weak self] in
+            for entry in queue {
+                guard let self else { return }
+                self.download(entry)
+                while case .downloading = self.state(of: entry) {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                }
+            }
+        }
     }
 
     func download(_ entry: ModelEntry) {

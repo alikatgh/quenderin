@@ -16,10 +16,43 @@ public struct AgentView: View {
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 0) {
+            // Identity header, twin of the chat header's anatomy: name + status line.
+            VStack(spacing: 1) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles").font(.subheadline).foregroundStyle(p.primary)
+                    Text("Agent").font(.headline).foregroundStyle(p.onSurface)
+                }
+                HStack(spacing: 4) {
+                    Circle().fill(p.status).frame(width: 6, height: 6)
+                    Text("on-device tools · safety-gated").font(.caption2).foregroundStyle(p.statusText)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(p.surface)
+            Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(session.steps.enumerated()), id: \.offset) { _, step in
-                        AgentStepRow(step: step)
+                    if !session.steps.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("RUN LOG")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(p.onSurfaceVariant)
+                            // The final "answer" decision carries no tool call and no observation —
+                            // it would render as a bare numbered circle, so the log skips it.
+                            let visible = session.steps.filter { step in
+                                if case .useTool = step.decision { return true }
+                                return step.observation != nil
+                            }
+                            ForEach(Array(visible.enumerated()), id: \.offset) { index, step in
+                                AgentStepRow(index: index + 1, step: step, palette: p)
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(p.surfaceVariant.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
                     }
                     if let answer = session.answer {
                         MarkdownText(text: answer, color: .primary)
@@ -235,25 +268,37 @@ private struct AgentHaltBanner: View {
     }
 }
 
-/// One step in the agent's reasoning: the tool it called and what it observed.
+/// One numbered step in the run log: the tool call (code-styled) and what came back.
 private struct AgentStepRow: View {
+    let index: Int
     let step: AgentStep
+    let palette: QuenderinPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if case let .useTool(name, input) = step.decision {
-                Text("\(name)(\(input))")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            if let observation = step.observation {
-                Text("→ \(observation)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 9) {
+            Text("\(index)")
+                .font(.caption2.weight(.semibold).monospacedDigit())
+                .foregroundStyle(palette.onSurfaceVariant)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(palette.surfaceVariant))
+            VStack(alignment: .leading, spacing: 3) {
+                if case let .useTool(name, input) = step.decision {
+                    Text("\(name)(\(input))")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(palette.primary)
+                        .textSelection(.enabled)
+                }
+                if let observation = step.observation {
+                    Text(observation)
+                        .font(.caption)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .textSelection(.enabled)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Step \(index)")
     }
 }
 #endif

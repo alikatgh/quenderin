@@ -65,6 +65,17 @@ final class WebsiteAssetRenderTests: XCTestCase {
         try render(ModelPickerView(totalRAMGB: 16, currentModelID: llama.id, onSelect: { _ in })
                        .frame(width: 520, height: 820),
                    to: out, name: "picker")
+
+        // 5. Agent — a REAL run through the actual AgentLoop (scripted planner, real tools),
+        // showing the run log + answer anatomy.
+        let agentEngine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"units","input":"5 miles to km"}"#,
+            #"{"tool":"calculator","input":"8.0467 * 0.20"}"#,
+            #"{"answer":"5 miles is **8.05 km**, and 20% of that is **1.61 km**."}"#,
+        ])
+        let session = AgentSession(engine: agentEngine, tools: [CalculatorTool(), UnitConverterTool()])
+        await session.run(goal: "Convert 5 miles to km, then take 20% of that")
+        try render(AgentView(session: session).frame(width: 720, height: 560), to: out, name: "agent")
     }
 
     /// Snapshot via a real (briefly materialized, back-ordered) NSHostingView window —

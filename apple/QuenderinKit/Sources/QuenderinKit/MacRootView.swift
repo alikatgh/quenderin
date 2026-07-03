@@ -15,6 +15,7 @@ public struct MacRootView: View {
     @State private var selection: SidebarItem?
     @State private var showProfile = false
     @State private var rail: RailSection = .chats
+    @ObservedObject private var library = ModelLibraryController.shared
     @Environment(\.colorScheme) private var scheme
 
     public init(
@@ -257,6 +258,25 @@ extension MacRootView {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
             railButton(.models, icon: "books.vertical", label: "Model library (⌘3)", palette: p)
+                .overlay(alignment: .topTrailing) {
+                    // Live download activity: a thin progress ring + count, visible from any
+                    // section — the library keeps working when you go back to chatting.
+                    if library.activeDownloadCount > 0 {
+                        ZStack {
+                            Circle().fill(p.surface)
+                            Circle()
+                                .trim(from: 0, to: max(0.03, library.overallDownloadProgress))
+                                .stroke(p.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                            Text("\(library.activeDownloadCount)")
+                                .font(.system(size: 8, weight: .bold).monospacedDigit())
+                                .foregroundStyle(p.onSurface)
+                        }
+                        .frame(width: 16, height: 16)
+                        .offset(x: 2, y: -2)
+                        .accessibilityLabel("\(library.activeDownloadCount) models downloading")
+                    }
+                }
             Spacer()
             SettingsGearButton()
                 .padding(.bottom, 10)

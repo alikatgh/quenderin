@@ -15,8 +15,15 @@ Settings scene (Mac idiom beats WhatsApp idiom for preferences).
 
 **Android (open — parity chip):** bottom nav gains Models; same shared anatomy.
 
+**Also shipped (same-day polish round):** live download badge on the Models rail item
+(count + progress ring; downloads survive navigation — the library controller is shared,
+not per-view) · sequential bulk download (first model usable while the rest arrive) ·
+drag-a-.gguf-onto-the-library import (catalog-matching files only, magic-checked, never
+silently hoards disk) · Agent page identity header + structured numbered run log ·
+vendor-logo avatars everywhere.
+
 **Later, in the same spirit:** Archived chats · Starred messages (both cheap on the existing
-conversation index) · per-rail-section badges (e.g. download progress on Models).
+conversation index).
 
 ## 2. Model library + router
 
