@@ -86,6 +86,18 @@ public struct MacRootView: View {
         .onChange(of: chat.isGenerating) { generating in
             if !generating { conversations.persist() }
         }
+        // A real Mac app never collapses into a sliver (same lesson as the Settings window).
+        .frame(minWidth: 860, minHeight: 520)
+        // ⌘1/⌘2/⌘3 walk the rail — the keyboard is a first-class citizen on the Mac.
+        .background {
+            Group {
+                Button("") { rail = .chats }.keyboardShortcut("1", modifiers: .command)
+                Button("") { rail = agent != nil ? .agent : rail }.keyboardShortcut("2", modifiers: .command)
+                Button("") { rail = .models }.keyboardShortcut("3", modifiers: .command)
+            }
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
     }
 
     // MARK: Sidebar
@@ -237,11 +249,14 @@ extension MacRootView {
     var railColumn: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 6) {
-            railButton(.chats, icon: "bubble.left.and.bubble.right", label: "Chats", palette: p)
+            ModelAvatar(size: 30)
+                .padding(.bottom, 8)
+                .accessibilityHidden(true)
+            railButton(.chats, icon: "bubble.left.and.bubble.right", label: "Chats (⌘1)", palette: p)
             if agent != nil {
-                railButton(.agent, icon: "sparkles", label: "Agent", palette: p)
+                railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
-            railButton(.models, icon: "books.vertical", label: "Model library", palette: p)
+            railButton(.models, icon: "books.vertical", label: "Model library (⌘3)", palette: p)
             Spacer()
             SettingsGearButton()
                 .padding(.bottom, 10)

@@ -11,6 +11,7 @@ public struct ModelsLibraryView: View {
     @StateObject private var library: ModelLibraryController
     @Environment(\.colorScheme) private var scheme
     @State private var confirmDownloadAll = false
+    @State private var profileModel: ModelEntry?
 
     public init(activeModelID: String, onSelectModel: @escaping (ModelEntry) -> Void) {
         self.activeModelID = activeModelID
@@ -23,29 +24,42 @@ public struct ModelsLibraryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header(p)
-                ForEach(ModelCatalog.models) { entry in
-                    LibraryRow(
-                        entry: entry,
-                        state: library.state(of: entry),
-                        isActive: entry.id == activeModelID,
-                        fitness: MemoryFitness.check(for: entry),
-                        palette: p,
-                        onDownload: { library.download(entry) },
-                        onCancel: { library.cancel(entry) },
-                        onUse: { onSelectModel(entry) }
-                    )
+                // Adaptive grid: one column in a narrow window, two on a wide Mac pane —
+                // cards, not a strip down the middle of a big window.
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 14, alignment: .top)],
+                          alignment: .leading, spacing: 14) {
+                    ForEach(ModelCatalog.models) { entry in
+                        LibraryRow(
+                            entry: entry,
+                            state: library.state(of: entry),
+                            isActive: entry.id == activeModelID,
+                            fitness: MemoryFitness.check(for: entry),
+                            palette: p,
+                            onDownload: { library.download(entry) },
+                            onCancel: { library.cancel(entry) },
+                            onUse: { onSelectModel(entry) },
+                            onOpen: { profileModel = entry }
+                        )
+                    }
                 }
                 Text("Installed is not the same as loadable: models load one at a time, and RAM decides "
-                   + "which can run. The fit badges are live for this \(deviceNoun).")
+                   + "which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile.")
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
             }
             .padding(18)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .background(p.background)
         .onAppear { library.refresh() }
+        // Click a card → the full profile (specs, glossary, provenance) for THAT model.
+        .sheet(item: $profileModel) { entry in
+            ModelProfileView(model: entry, onSelectModel: { onSelectModel($0) })
+                #if os(macOS)
+                .frame(minWidth: 480, minHeight: 520)
+                #endif
+        }
         .confirmationDialog(
             "Download \(library.missingModels.count) models (\(library.missingDownloadLabel))?",
             isPresented: $confirmDownloadAll, titleVisibility: .visible
@@ -81,8 +95,9 @@ public struct ModelsLibraryView: View {
     }
 }
 
-/// One catalog row: identity (family avatar + name + blurb) · live state (installed / progress /
-/// download) · the fit badge language shared with the picker.
+/// One catalog card: identity (vendor logo + name + family blurb) · fit badge · live state
+/// (installed / progress / download). The whole card opens the model's profile; the trailing
+/// controls act without opening it (buttons capture their own clicks).
 private struct LibraryRow: View {
     let entry: ModelEntry
     let state: ModelLibraryController.ModelState
@@ -92,15 +107,25 @@ private struct LibraryRow: View {
     let onDownload: () -> Void
     let onCancel: () -> Void
     let onUse: () -> Void
+    let onOpen: () -> Void
+    @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             ModelAvatar(size: 40, modelID: entry.id)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.label)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(palette.onSurface)
-                Text("\(entry.sizeLabel.replacingOccurrences(of: " download", with: "")) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text(entry.label)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(palette.onSurface)
+                        .lineLimit(1)
+                    FitDot(fitness: fitness, palette: palette)
+                }
+                Text(modelBlurb(entry.id))
+                    .font(.caption)
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .lineLimit(2)
+                Text("\(entry.sizeLabel.replacingOccurrences(of: " download", with: "")) · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(palette.onSurfaceVariant)
             }
@@ -135,10 +160,37 @@ private struct LibraryRow: View {
             }
         }
         .padding(12)
-        .background(palette.surfaceVariant, in: RoundedRectangle(cornerRadius: 12))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Hover reads through COLOR only (surface tint), never geometry.
+        .background(hovering ? palette.surfaceVariant.opacity(0.75) : palette.surfaceVariant,
+                    in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(isActive ? palette.primary.opacity(0.6) : palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+            .strokeBorder(isActive ? palette.primary.opacity(0.6)
+                          : hovering ? palette.primary.opacity(0.35)
+                          : palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture { onOpen() }
+        .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens \(entry.label)'s full profile")
+    }
+}
+
+/// The picker's status-dot fit language, compact: green Fits · orange Tight · red Too big.
+private struct FitDot: View {
+    let fitness: MemoryCheckResult
+    let palette: QuenderinPalette
+
+    var body: some View {
+        let (color, word): (Color, String) = !fitness.canLoad
+            ? (.red, "Too big")
+            : fitness.severity == .safe ? (palette.status, "Fits") : (Color(hex: 0xE8963A), "Tight")
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(word).font(.caption2).foregroundStyle(palette.onSurfaceVariant)
+        }
+        .accessibilityLabel("Memory fit: \(word)")
     }
 }
 

@@ -144,10 +144,10 @@ extension Color {
     }
 }
 
-/// Visual identity for a model FAMILY — a monogram + brand-inspired gradient keyed off the catalog
-/// id. Deliberately NOT the providers' official logos: those are trademarks with their own usage
-/// terms (and App Review flags third-party marks), so a colored monogram carries the recognition
-/// legally. `nil` / unknown ids fall back to the Quenderin "Q" brand orb.
+/// Visual identity for a model FAMILY, keyed off the catalog id. Avatars show the vendor's
+/// OFFICIAL mark (owner's call 2026-07-03 — nominative use to identify the vendor's own models,
+/// as LM Studio/Ollama do; see scripts/generate_model_logos.py); the monogram + gradient here is
+/// the drawn FALLBACK when a logo resource is missing. `nil`/unknown ids → the Quenderin elf.
 enum ModelFamily {
     /// True when `id` names no known family — the avatar shows the app's own identity
     /// (the elf mascot) instead of a family monogram. NOT the same as monogram == "Q":
@@ -170,11 +170,10 @@ enum ModelFamily {
     }
 }
 
-/// The Quenderin mascot (the elf from the app icon) as a circular avatar image, loaded once from
-/// the package bundle. `nil` if the resource is missing — callers fall back to the monogram orb.
+/// Load a bundled PNG as a SwiftUI Image; nil when missing (callers keep a drawn fallback).
 @MainActor
-let brandAvatar: Image? = {
-    guard let url = Bundle.module.url(forResource: "brand-avatar", withExtension: "png") else { return nil }
+private func bundleImage(_ name: String) -> Image? {
+    guard let url = Bundle.module.url(forResource: name, withExtension: "png") else { return nil }
     #if os(macOS)
     guard let img = NSImage(contentsOf: url) else { return nil }
     return Image(nsImage: img)
@@ -182,7 +181,29 @@ let brandAvatar: Image? = {
     guard let data = try? Data(contentsOf: url), let img = UIImage(data: data) else { return nil }
     return Image(uiImage: img)
     #endif
-}()
+}
+
+/// The Quenderin mascot (the elf from the app icon) as a circular avatar image.
+@MainActor
+let brandAvatar: Image? = bundleImage("brand-avatar")
+
+/// Official vendor logos (owner's call: identify models by their real marks, the way
+/// LM Studio/Ollama do — generated from website/icons by scripts/generate_model_logos.py).
+/// Keyed by family prefix; missing resource → the monogram fallback still draws.
+@MainActor
+private var vendorLogos: [String: Image?] = [:]
+
+@MainActor
+func vendorLogo(for id: String?) -> Image? {
+    guard let id else { return nil }
+    for family in ["llama", "qwen", "deepseek", "gemma", "mistral", "phi"] where id.hasPrefix(family) {
+        if let cached = vendorLogos[family] { return cached }
+        let img = bundleImage("logo-\(family)")
+        vendorLogos[family] = img
+        return img
+    }
+    return nil
+}
 
 /// The model rendered as a chat "contact". Twin of Android's ModelAvatar.
 /// With a `modelID`, a known family wears its monogram + brand colors; without one (or for an
@@ -198,6 +219,16 @@ struct ModelAvatar: View {
                 .scaledToFill()
                 .frame(width: size, height: size)
                 .clipShape(Circle())
+        } else if let logo = vendorLogo(for: modelID) {
+            // The official mark on a light circle (the color IS the identity) + hairline.
+            Circle()
+                .fill(Color.white)
+                .frame(width: size, height: size)
+                .overlay(
+                    logo.resizable().scaledToFit()
+                        .frame(width: size * 0.58, height: size * 0.58)
+                )
+                .overlay(Circle().strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
         } else {
             Circle()
                 .fill(LinearGradient(

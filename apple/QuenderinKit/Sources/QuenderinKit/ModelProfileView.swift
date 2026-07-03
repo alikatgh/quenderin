@@ -181,6 +181,15 @@ struct ModelOrb: View {
                 .scaledToFill()
                 .frame(width: size, height: size)
                 .clipShape(Circle())
+        } else if let logo = vendorLogo(for: modelID) {
+            Circle()
+                .fill(Color.white)
+                .frame(width: size, height: size)
+                .overlay(
+                    logo.resizable().scaledToFit()
+                        .frame(width: size * 0.58, height: size * 0.58)
+                )
+                .overlay(Circle().strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
         } else {
             ZStack {
                 Circle().fill(
