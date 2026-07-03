@@ -70,6 +70,9 @@ def main() -> int:
             ok = False
             continue
         found = MARKER.findall(path.read_text(encoding="utf-8"))
+        # router-* ids belong to shared/router-parity-vectors.json (check_router_parity.py) —
+        # the two scripts partition the parity:<id> namespace and share CoreVerify.kt.
+        found = [m for m in found if not m.startswith("router-")]
         found_set = set(found)
 
         # A marker appearing twice in one suite is almost always a copy-paste mistake, not coverage.

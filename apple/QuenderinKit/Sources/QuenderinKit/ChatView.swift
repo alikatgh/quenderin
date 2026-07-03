@@ -7,16 +7,43 @@ import SwiftUI
 /// assistant bubble live as they stream.
 public struct ChatView: View {
     @ObservedObject private var model: ChatModel
+    @ObservedObject private var settings = AppSettings.shared
     @State private var draft: String = ""
+    @State private var suggestionDismissed = false
     @Environment(\.colorScheme) private var scheme
     @FocusState private var composerFocused: Bool
 
-    public init(model: ChatModel) {
+    /// The loaded model + a switch action — when provided, the router can suggest a better
+    /// installed model for a NEW chat's first message (a tappable chip, never a silent swap).
+    private let activeModel: ModelEntry?
+    private let onSwitchModel: ((ModelEntry) -> Void)?
+
+    public init(model: ChatModel, activeModel: ModelEntry? = nil, onSwitchModel: ((ModelEntry) -> Void)? = nil) {
         self.model = model
+        self.activeModel = activeModel
+        self.onSwitchModel = onSwitchModel
+    }
+
+    /// Router suggestion for the drafted FIRST message: only in an empty chat, only when the
+    /// pick differs from the loaded model, and only from what's actually installed.
+    private var routeSuggestion: (decision: RouteDecision, entry: ModelEntry)? {
+        guard settings.suggestBestModel, !suggestionDismissed,
+              let active = activeModel, onSwitchModel != nil,
+              model.messages.isEmpty, draft.trimmingCharacters(in: .whitespaces).count >= 12 else { return nil }
+        let installed = ModelManager(
+            storage: FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()),
+            activeModelID: active.id
+        ).installed().map(\.model)
+        guard installed.count > 1,
+              let decision = ModelRouter.route(prompt: draft, installed: installed),
+              decision.modelID != active.id,
+              let entry = installed.first(where: { $0.id == decision.modelID }) else { return nil }
+        return (decision, entry)
     }
 
     // Mirrors the Send button's .disabled guard so Return-to-send adds no new behavior.
     private func send() {
+        suggestionDismissed = false
         let prompt = draft.trimmingCharacters(in: .whitespaces)
         guard !prompt.isEmpty, !model.isGenerating else { return }
         draft = ""
@@ -53,6 +80,7 @@ public struct ChatView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
+                        .environment(\.font, settings.chatFont)   // Appearance → chat font
                         // On a wide Mac detail pane the transcript reads as a centered column
                         // (like Messages), not a strip hugging the left edge.
                         .frame(maxWidth: 760)
@@ -67,6 +95,17 @@ public struct ChatView: View {
                 .onChange(of: model.isGenerating) { generating in
                     if generating { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
                 }
+            }
+
+            if let suggestion = routeSuggestion {
+                RouteSuggestionChip(
+                    decision: suggestion.decision,
+                    entry: suggestion.entry,
+                    palette: p,
+                    onSwitch: { onSwitchModel?(suggestion.entry) },
+                    onDismiss: { suggestionDismissed = true }
+                )
+                .frame(maxWidth: 760)
             }
 
             Text(SupportContact.aiDisclaimer)
@@ -201,6 +240,45 @@ private struct ChatBubble: View {
         } else {
             bubble
         }
+    }
+}
+
+/// The router's pick, offered — never imposed: "coding question → Qwen2.5 Coder · Switch".
+/// Appears above the composer while drafting the FIRST message of a chat; one tap switches
+/// the model (the draft survives), the ✕ dismisses it for this message.
+private struct RouteSuggestionChip: View {
+    let decision: RouteDecision
+    let entry: ModelEntry
+    let palette: QuenderinPalette
+    let onSwitch: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ModelAvatar(size: 22, modelID: entry.id)
+            Text(decision.reason)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Switch") { onSwitch() }
+                .buttonStyle(.borderless)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(palette.primary)
+            Button { onDismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+                    .foregroundStyle(palette.onSurfaceVariant)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss suggestion")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .glassChrome(in: Capsule())
+        .padding(.horizontal, 10)
+        .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
     }
 }
 

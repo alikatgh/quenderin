@@ -136,6 +136,36 @@ fun main() {
     check("parity: genuine dangerous actions still blocked",  // parity:blocklist-dangerous
         listOf("tap Pay to continue", "send money now", "delete the file", "enter your pin").all { SafetyBlocklist.isBlocked(it) })
 
+    // --- ModelRouter classification parity (twin of iOS RouterParityTests; ids in
+    //     shared/router-parity-vectors.json, bijection enforced by scripts/check_router_parity.py) ---
+    fun task(p: String) = "task:" + ModelRouter.classify(p).name.lowercase()
+    check("router parity: code fence classifies as coding",  // parity:router-coding-fence
+        task("```python\nprint(1)\n```") == "task:coding")
+    check("router parity: sql/exception keywords classify as coding",  // parity:router-coding-keyword
+        task("Why does my SQL query throw an exception?") == "task:coding")
+    check("router parity: coding beats multilingual (Chinese coding question)",  // parity:router-coding-beats-multilingual
+        task("用Python写一个函数") == "task:coding")
+    check("router parity: step by step classifies as reasoning",  // parity:router-reasoning-step-by-step
+        task("Solve this puzzle step by step") == "task:reasoning")
+    check("router parity: riddle classifies as reasoning",  // parity:router-reasoning-riddle
+        task("Here is a riddle for you") == "task:reasoning")
+    check("router parity: CJK classifies as multilingual",  // parity:router-multilingual-cjk
+        task("给我讲一个关于森林的故事") == "task:multilingual")
+    check("router parity: Cyrillic classifies as multilingual",  // parity:router-multilingual-cyrillic
+        task("Расскажи сказку про лес") == "task:multilingual")
+    check("router parity: explicit translate marker classifies as multilingual",  // parity:router-multilingual-translate
+        task("Translate this sentence into English please") == "task:multilingual")
+    check("router parity: accented Latin stays general (threshold counts > 0x24F only)",  // parity:router-accented-latin-general
+        task("Où est la bibliothèque? Merci beaucoup") == "task:general")
+    check("router parity: no markers classifies as general",  // parity:router-general
+        task("What should I cook tonight?") == "task:general")
+    check("router picks the coder family for code and falls back when RAM is tight", run {
+        val coder = ModelRouter.route("debug this python function", ModelCatalog.models, 16.0, 12.0)
+        val tight = ModelRouter.route("debug this python function", ModelCatalog.models, 4.0, 2.5)
+        coder != null && coder.modelId.startsWith("qwen25-coder") &&
+            tight != null && !tight.modelId.startsWith("qwen25-coder") && ModelRouter.route("hi", emptyList(), 16.0, 8.0) == null
+    })
+
     // --- Inference seam (mock) ---
     val engine = MockInferenceEngine(cannedReply = "one two three")
     engine.load(ModelCatalog.smallest, "/dev/null")

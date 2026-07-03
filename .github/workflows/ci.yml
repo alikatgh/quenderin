@@ -154,3 +154,5 @@ jobs:
         run: python3 scripts/check_catalog_parity.py
       - name: Agent-logic parity suites cover the same vectors (iOS + Android)
         run: python3 scripts/check_agent_parity.py
+      - name: Model-router parity suites cover the same vectors (iOS + Android)
+        run: python3 scripts/check_router_parity.py

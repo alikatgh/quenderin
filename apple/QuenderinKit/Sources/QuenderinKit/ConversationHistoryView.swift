@@ -41,7 +41,7 @@ public struct ChatHomeView: View {
     @ViewBuilder
     private var conversationDetail: some View {
         let p = QuenderinPalette.of(scheme)
-        ChatView(model: chat)
+        ChatView(model: chat, activeModel: model, onSwitchModel: { onSelectModel($0) })
             .inlineNavTitle()
             .toolbar {
                 // Tappable model name (twin of Android's tappable chat header) → the model profile.

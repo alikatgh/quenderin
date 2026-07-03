@@ -14,6 +14,7 @@ public struct MacRootView: View {
 
     @State private var selection: SidebarItem?
     @State private var showProfile = false
+    @State private var rail: RailSection = .chats
     @Environment(\.colorScheme) private var scheme
 
     public init(
@@ -30,10 +31,28 @@ public struct MacRootView: View {
     }
 
     public var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            detail
+        // WhatsApp anatomy: a fixed icon RAIL (sections) · list column · detail. Each rail
+        // destination is a dedicated page, not a row squeezed into the chats sidebar.
+        HStack(spacing: 0) {
+            railColumn
+            Divider()
+            switch rail {
+            case .chats:
+                NavigationSplitView {
+                    sidebar
+                } detail: {
+                    detail
+                }
+            case .agent:
+                if let agent {
+                    AgentView(session: agent)
+                } else {
+                    Text("The agent needs a loaded model.").foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            case .models:
+                ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
+            }
         }
         .onAppear {
             if selection == nil, let id = conversations.currentID {
@@ -58,6 +77,7 @@ public struct MacRootView: View {
         // "New Chat" must never be a dead control: even when startNew() no-ops (the current chat
         // is already empty), jump the selection back to that empty chat — e.g. from the Agent pane.
         .onChange(of: conversations.newChatSignal) { (_: Int) in
+            rail = .chats   // ⌘N from any rail section lands you in the empty chat, ready to type
             if let id = conversations.currentID {
                 selection = .conversation(id)
             }
@@ -85,12 +105,6 @@ public struct MacRootView: View {
                                 Button("Delete", role: .destructive) { delete(summary.id) }
                             }
                     }
-                }
-            }
-            if agent != nil {
-                Section("Tools") {
-                    Label("Agent", systemImage: "sparkles")
-                        .tag(SidebarItem.agent)
                 }
             }
         }
@@ -123,11 +137,8 @@ public struct MacRootView: View {
     private var detail: some View {
         let p = QuenderinPalette.of(scheme)
         switch selection {
-        case .agent:
-            AgentView(session: agent!)
-                .navigationTitle("Agent")
         case .conversation:
-            ChatView(model: chat)
+            ChatView(model: chat, activeModel: model, onSwitchModel: { onboarding.beginInstall($0) })
                 // Re-identify the view per conversation: switching chats resets scroll state and
                 // refires onAppear, which puts the caret in the composer (see ChatView).
                 .id(conversations.currentID)
@@ -213,8 +224,82 @@ private struct SidebarChatRow: View {
 }
 
 /// What the Mac sidebar can select: a conversation, or the Agent tool.
+/// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
+/// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
+enum RailSection: Hashable {
+    case chats, agent, models
+}
+
+extension MacRootView {
+    /// The WhatsApp-style fixed icon rail: Chats / Agent / Models, gear at the foot.
+    /// Selection reads through COLOR only (tinted rounded fill), never geometry.
+    @ViewBuilder
+    var railColumn: some View {
+        let p = QuenderinPalette.of(scheme)
+        VStack(spacing: 6) {
+            railButton(.chats, icon: "bubble.left.and.bubble.right", label: "Chats", palette: p)
+            if agent != nil {
+                railButton(.agent, icon: "sparkles", label: "Agent", palette: p)
+            }
+            railButton(.models, icon: "books.vertical", label: "Model library", palette: p)
+            Spacer()
+            SettingsGearButton()
+                .padding(.bottom, 10)
+        }
+        .padding(.top, 12)
+        .frame(width: 64)
+        .background(p.surface)
+    }
+
+    @ViewBuilder
+    private func railButton(_ section: RailSection, icon: String, label: String, palette p: QuenderinPalette) -> some View {
+        Button {
+            rail = section
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(rail == section ? p.primary : p.onSurfaceVariant)
+                .frame(width: 44, height: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(rail == section ? p.primary.opacity(0.16) : .clear)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(rail == section ? [.isSelected] : [])
+    }
+}
+
+/// Opens the standard Settings scene: SettingsLink on macOS 14+, the legacy selector before.
+private struct SettingsGearButton: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        let p = QuenderinPalette.of(scheme)
+        Group {
+            if #available(macOS 14.0, *) {
+                SettingsLink {
+                    Image(systemName: "gearshape")
+                }
+            } else {
+                Button {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 17, weight: .medium))
+        .foregroundStyle(p.onSurfaceVariant)
+        .frame(width: 44, height: 40)
+        .help("Settings (⌘,)")
+        .accessibilityLabel("Settings")
+    }
+}
+
 enum SidebarItem: Hashable {
     case conversation(String)
-    case agent
 }
 #endif

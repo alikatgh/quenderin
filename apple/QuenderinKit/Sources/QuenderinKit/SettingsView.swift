@@ -57,12 +57,14 @@ public struct SettingsView: View {
     /// What the Settings window can show, as System-Settings-style sidebar panes (macOS).
     private enum Pane: String, CaseIterable, Identifiable {
         case model = "Model"
+        case appearance = "Appearance"
         case storage = "Storage"
         case about = "About"
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .model: return "cpu"
+            case .appearance: return "paintbrush"
             case .storage: return "internaldrive"
             case .about: return "info.circle"
             }
@@ -106,6 +108,9 @@ public struct SettingsView: View {
                 case .model:
                     speedSection
                     modelSection
+                    routingSection
+                case .appearance:
+                    appearanceSection
                 case .storage:
                     storageSection
                     downloadedModelsSection
@@ -125,6 +130,8 @@ public struct SettingsView: View {
         List {
             speedSection
             modelSection
+            routingSection
+            appearanceSection
             storageSection
             downloadedModelsSection
             privacySection
@@ -135,6 +142,35 @@ public struct SettingsView: View {
     }
 
     // MARK: Sections (shared by the Mac panes and the phone list)
+
+    @ObservedObject private var appSettings = AppSettings.shared
+
+    private var routingSection: some View {
+        Section("Routing") {
+            Toggle("Suggest the best model for each task", isOn: $appSettings.suggestBestModel)
+            Text("When you start a chat, Quenderin checks what you're asking (code, reasoning, "
+               + "another language) and offers the best installed model for it — a suggestion you "
+               + "can tap, never a silent switch.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Theme", selection: $appSettings.theme) {
+                ForEach(AppSettings.Theme.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            Picker("Chat font", selection: $appSettings.chatFontStyle) {
+                ForEach(AppSettings.ChatFontStyle.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Text size", selection: $appSettings.chatFontSize) {
+                ForEach(AppSettings.ChatFontSize.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Text("Applies to the conversation text. Code blocks keep their own monospaced size.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
 
     private var speedSection: some View {
         Section("Speed") {

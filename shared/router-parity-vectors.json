@@ -1,0 +1,65 @@
+{
+  "_comment": "Canonical cross-platform MODEL-ROUTER parity vectors. The SAME prompt must classify to the SAME TaskKind on iOS (apple/.../RouterParityTests.swift) and Android (android/.../CoreVerify.kt). Every id starts with 'router-' — that prefix is the namespace split from agent-parity-vectors.json (check_agent_parity.py ignores router-* markers; check_router_parity.py counts ONLY them). Both platform suites tag assertions with a parity:<id> marker; scripts/check_router_parity.py enforces the bijection in CI. Expected format: task:<coding|reasoning|multilingual|general>. The classification uses plain substring/code-point scans, NO regex — regex/Unicode-class semantics are exactly where Swift and Kotlin silently diverged before (2026-06-26 audit).",
+  "vectors": [
+    {
+      "id": "router-coding-fence",
+      "input": "```python\nprint(1)\n```",
+      "expected": "task:coding",
+      "note": "A code fence is the strongest coding signal."
+    },
+    {
+      "id": "router-coding-keyword",
+      "input": "Why does my SQL query throw an exception?",
+      "expected": "task:coding",
+      "note": "Keyword markers (sql, exception) classify as coding."
+    },
+    {
+      "id": "router-coding-beats-multilingual",
+      "input": "用Python写一个函数",
+      "expected": "task:coding",
+      "note": "Priority pin: coding > multilingual — a Chinese coding question still gets the coding model."
+    },
+    {
+      "id": "router-reasoning-step-by-step",
+      "input": "Solve this puzzle step by step",
+      "expected": "task:reasoning",
+      "note": "Reasoning markers without coding markers."
+    },
+    {
+      "id": "router-reasoning-riddle",
+      "input": "Here is a riddle for you",
+      "expected": "task:reasoning",
+      "note": "Single reasoning marker suffices."
+    },
+    {
+      "id": "router-multilingual-cjk",
+      "input": "给我讲一个关于森林的故事",
+      "expected": "task:multilingual",
+      "note": "Non-Latin letter share > 0.3 (CJK)."
+    },
+    {
+      "id": "router-multilingual-cyrillic",
+      "input": "Расскажи сказку про лес",
+      "expected": "task:multilingual",
+      "note": "Cyrillic letters are beyond Latin Extended-B (0x24F)."
+    },
+    {
+      "id": "router-multilingual-translate",
+      "input": "Translate this sentence into English please",
+      "expected": "task:multilingual",
+      "note": "Explicit translate marker on an all-Latin prompt."
+    },
+    {
+      "id": "router-accented-latin-general",
+      "input": "Où est la bibliothèque? Merci beaucoup",
+      "expected": "task:general",
+      "note": "Accented European Latin stays 'latin' — the non-Latin threshold counts only code points beyond 0x24F."
+    },
+    {
+      "id": "router-general",
+      "input": "What should I cook tonight?",
+      "expected": "task:general",
+      "note": "No markers → general."
+    }
+  ]
+}

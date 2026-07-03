@@ -1,0 +1,243 @@
+#if canImport(SwiftUI)
+import SwiftUI
+
+/// The Models page — a dedicated destination (Mac rail / iOS tab), not a picker sheet.
+/// For people with disk to spare: see the whole catalog, download any or ALL of it up front,
+/// and let the router pick per task later. Honest framing everywhere: installed ≠ loadable
+/// (RAM still gates what can run), and the storage meter shows real numbers.
+public struct ModelsLibraryView: View {
+    private let activeModelID: String
+    private let onSelectModel: (ModelEntry) -> Void
+    @StateObject private var library: ModelLibraryController
+    @Environment(\.colorScheme) private var scheme
+    @State private var confirmDownloadAll = false
+
+    public init(activeModelID: String, onSelectModel: @escaping (ModelEntry) -> Void) {
+        self.activeModelID = activeModelID
+        self.onSelectModel = onSelectModel
+        _library = StateObject(wrappedValue: ModelLibraryController())
+    }
+
+    public var body: some View {
+        let p = QuenderinPalette.of(scheme)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                header(p)
+                ForEach(ModelCatalog.models) { entry in
+                    LibraryRow(
+                        entry: entry,
+                        state: library.state(of: entry),
+                        isActive: entry.id == activeModelID,
+                        fitness: MemoryFitness.check(for: entry),
+                        palette: p,
+                        onDownload: { library.download(entry) },
+                        onCancel: { library.cancel(entry) },
+                        onUse: { onSelectModel(entry) }
+                    )
+                }
+                Text("Installed is not the same as loadable: models load one at a time, and RAM decides "
+                   + "which can run. The fit badges are live for this \(deviceNoun).")
+                    .font(.footnote)
+                    .foregroundStyle(p.onSurfaceVariant)
+            }
+            .padding(18)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+        }
+        .background(p.background)
+        .onAppear { library.refresh() }
+        .confirmationDialog(
+            "Download \(library.missingModels.count) models (\(library.missingDownloadLabel))?",
+            isPresented: $confirmDownloadAll, titleVisibility: .visible
+        ) {
+            Button("Download all") { library.downloadAllMissing() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("They download one after another and can be deleted any time in Settings → Storage.")
+        }
+    }
+
+    @ViewBuilder
+    private func header(_ p: QuenderinPalette) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Model library")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(p.onSurface)
+            Text("\(library.installedCount) of \(ModelCatalog.models.count) installed · \(library.installedSizeLabel) on disk · \(library.freeDiskLabel) free")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(p.onSurfaceVariant)
+            // The 2 TB-owner move: if everything missing fits comfortably, offer it in one tap.
+            if library.canDownloadAllMissing {
+                Button {
+                    confirmDownloadAll = true
+                } label: {
+                    Label("Download the complete library (\(library.missingDownloadLabel))", systemImage: "arrow.down.circle")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(p.primary)
+                .padding(.top, 6)
+            }
+        }
+    }
+}
+
+/// One catalog row: identity (family avatar + name + blurb) · live state (installed / progress /
+/// download) · the fit badge language shared with the picker.
+private struct LibraryRow: View {
+    let entry: ModelEntry
+    let state: ModelLibraryController.ModelState
+    let isActive: Bool
+    let fitness: MemoryCheckResult
+    let palette: QuenderinPalette
+    let onDownload: () -> Void
+    let onCancel: () -> Void
+    let onUse: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ModelAvatar(size: 40, modelID: entry.id)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.label)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.onSurface)
+                Text("\(entry.sizeLabel.replacingOccurrences(of: " download", with: "")) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(palette.onSurfaceVariant)
+            }
+            Spacer(minLength: 12)
+            switch state {
+            case .installed:
+                if isActive {
+                    HStack(spacing: 5) {
+                        Circle().fill(palette.status).frame(width: 7, height: 7)
+                        Text("Active").font(.callout).foregroundStyle(palette.statusText)
+                    }
+                } else {
+                    Button("Use") { onUse() }
+                        .buttonStyle(.bordered)
+                        .disabled(!fitness.canLoad)
+                        .help(fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)")
+                }
+            case .downloading(let fraction):
+                HStack(spacing: 8) {
+                    ProgressView(value: fraction).frame(width: 90)
+                    Button { onCancel() } label: { Image(systemName: "xmark.circle") }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Cancel download")
+                }
+            case .notInstalled:
+                Button { onDownload() } label: { Label("Download", systemImage: "arrow.down.circle") }
+                    .buttonStyle(.bordered)
+            case .failed:
+                Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+            }
+        }
+        .padding(12)
+        .background(palette.surfaceVariant, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(isActive ? palette.primary.opacity(0.6) : palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Download/installation state for the library page. Library downloads use the plain
+/// URLSession downloader into the SAME models dir the onboarding installer uses, with the
+/// same integrity gate — a corrupted download is deleted, never listed as installed.
+@MainActor
+final class ModelLibraryController: ObservableObject {
+    enum ModelState: Equatable {
+        case notInstalled
+        case downloading(Double)
+        case installed
+        case failed
+    }
+
+    @Published private(set) var states: [String: ModelState] = [:]
+    private var tasks: [String: Task<Void, Never>] = [:]
+    private let downloader = URLSessionModelDownloader()
+    private let modelsDir = OnboardingModel.defaultModelsDir()
+
+    func refresh() {
+        let installed = Set(FileManagerModelStorage(directory: modelsDir).installedFilenames())
+        for entry in ModelCatalog.models where tasks[entry.id] == nil {
+            states[entry.id] = installed.contains(entry.filename) ? .installed : .notInstalled
+        }
+    }
+
+    func state(of entry: ModelEntry) -> ModelState { states[entry.id] ?? .notInstalled }
+
+    var installedCount: Int { states.values.filter { $0 == .installed }.count }
+
+    var missingModels: [ModelEntry] {
+        ModelCatalog.models.filter { state(of: $0) == .notInstalled || state(of: $0) == .failed }
+    }
+
+    private var missingBytes: Int64 {
+        // sizeLabel is display-only; approximate from the catalog's GB figure in the label.
+        missingModels.reduce(0) { $0 + Int64(gbFromSizeLabel($1.sizeLabel) * 1_073_741_824) }
+    }
+
+    var missingDownloadLabel: String {
+        String(format: "%.1f GB", missingModels.reduce(0.0) { $0 + gbFromSizeLabel($1.sizeLabel) })
+    }
+
+    var installedSizeLabel: String {
+        let mgr = ModelManager(storage: FileManagerModelStorage(directory: modelsDir), activeModelID: "")
+        return ByteCountFormatter.string(fromByteCount: mgr.totalBytesUsed, countStyle: .file)
+    }
+
+    var freeDiskLabel: String {
+        ByteCountFormatter.string(fromByteCount: DiskSpace.availableBytes(at: modelsDir), countStyle: .file)
+    }
+
+    /// Offer "download all" only when everything missing fits with 10 GB of the user's disk
+    /// left over — the feature exists FOR the 2 TB crowd, not to wedge a 128 GB laptop.
+    var canDownloadAllMissing: Bool {
+        !missingModels.isEmpty && missingModels.count > 1
+            && DiskSpace.availableBytes(at: modelsDir) > missingBytes + 10_737_418_240
+    }
+
+    func downloadAllMissing() {
+        missingModels.forEach { download($0) }
+    }
+
+    func download(_ entry: ModelEntry) {
+        guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        states[entry.id] = .downloading(0)
+        let destination = modelsDir.appendingPathComponent(entry.filename)
+        tasks[entry.id] = Task { [weak self] in
+            do {
+                try FileManager.default.createDirectory(at: self?.modelsDir ?? destination.deletingLastPathComponent(),
+                                                        withIntermediateDirectories: true)
+                guard let stream = self?.downloader.download(from: url, to: destination) else { return }
+                for try await event in stream {
+                    switch event {
+                    case .progress(let fraction):
+                        self?.states[entry.id] = .downloading(fraction)
+                    case .finished:
+                        try ModelIntegrity.verify(fileURL: destination, expectedSHA256: entry.sha256)
+                        self?.states[entry.id] = .installed
+                    }
+                }
+            } catch {
+                try? FileManager.default.removeItem(at: destination)   // never leave a corrupt file behind
+                if !Task.isCancelled { self?.states[entry.id] = .failed }
+            }
+            self?.tasks[entry.id] = nil
+            if Task.isCancelled { self?.refresh() }
+        }
+    }
+
+    func cancel(_ entry: ModelEntry) {
+        tasks[entry.id]?.cancel()
+        tasks[entry.id] = nil
+        states[entry.id] = .notInstalled
+    }
+
+    private func gbFromSizeLabel(_ label: String) -> Double {
+        Double(label.split(separator: " ").first ?? "0") ?? 0
+    }
+}
+#endif

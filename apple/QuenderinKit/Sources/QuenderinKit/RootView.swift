@@ -7,6 +7,7 @@ import SwiftUI
 public struct RootView: View {
     @ObservedObject private var onboarding: OnboardingModel
     @ObservedObject private var conversations: ConversationCoordinator
+    @ObservedObject private var settings = AppSettings.shared
     private let agent: AgentSession?
     @State private var needsWelcome = WelcomeGate.needsWelcome()
 
@@ -33,6 +34,8 @@ public struct RootView: View {
                 OnboardingView(model: onboarding)
             }
         }
+        // Appearance → Theme (nil = follow the system, the default).
+        .preferredColorScheme(settings.theme.colorScheme)
     }
 
     @ViewBuilder
@@ -52,6 +55,10 @@ public struct RootView: View {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                     }
+                    ModelsLibraryView(activeModelID: model.id, onSelectModel: { picked in
+                        onboarding.beginInstall(picked)
+                    })
+                        .tabItem { Label("Models", systemImage: "books.vertical") }
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Reuse the onboarding install flow: download (if needed) → load → swap.
                         onboarding.beginInstall(picked)
