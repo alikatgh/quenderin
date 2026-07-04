@@ -50,7 +50,8 @@ graded **Quality: Low**, in the UI, on purpose).
 | **macOS** | `apple/` (SwiftUI — `QuenderinKit` + `QuenderinApp`) | The most complete client: rail navigation, model library, router, agent, deep settings |
 | **iOS** | the same shared `QuenderinKit` | Builds from the same code; on-device inference via the llama.cpp xcframework |
 | **Android** | `android/` (Compose + shared Kotlin core) | Core logic at parity (machine-enforced); UI catching up |
-| **Desktop prototype** | `src/` + `ui/` (Electron/React) | The research testbed. It additionally explores an autonomous device-driver agent that is deliberately **never** shipped in the store apps — see [docs/PRODUCT.md](docs/PRODUCT.md) |
+| **Windows / Linux** | `src/` + `ui/` (Electron + node-llama-cpp) | **Downloadable preview** — installers built in public by CI: [quenderin.org/download](https://quenderin.org/download.html). Strategy: [docs/WINDOWS_LINUX_STRATEGY.md](docs/WINDOWS_LINUX_STRATEGY.md) |
+| **Desktop prototype** | same codebase | The research testbed additionally explores an autonomous device-driver agent that is deliberately **never** shipped in the store apps — see [docs/PRODUCT.md](docs/PRODUCT.md) |
 
 Cross-platform logic (model catalog, agent parser, router, safety blocklist) is hand-ported
 Swift ↔ Kotlin and **machine-enforced against drift**: shared canonical vectors + CI checks

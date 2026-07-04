@@ -2,7 +2,7 @@
   "name": "quenderin-poc",
   "description": "An offline autonomous agent control",
   "version": "0.1.0",
-  "author": "Quenderin Team",
+  "author": "Quenderin Team <quenderin@aulenor.com>",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
