@@ -393,6 +393,7 @@ func modelBlurb(_ id: String) -> String {
     if id.hasPrefix("qwen25-coder") { return "Qwen2.5 Coder — tuned for programming and code reasoning." }
     if id.hasPrefix("deepseek-r1") { return "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers." }
     if id.hasPrefix("mistral") { return "Mistral — a fast, well-balanced general-purpose model." }
+    if id.hasPrefix("gemma4") { return "Google's Gemma 4 — the newest Gemma; excellent multilingual quality per GB." }
     if id.hasPrefix("gemma3") { return "Google's Gemma 3 — strong multilingual coverage for its size." }
     if id.hasPrefix("phi4") { return "Microsoft's Phi-4 Mini — efficient and capable for its footprint." }
     if id.hasPrefix("llama") { return "Meta's Llama — a capable, general-purpose instruct model." }

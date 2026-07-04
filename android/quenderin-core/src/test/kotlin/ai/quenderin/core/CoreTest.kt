@@ -29,7 +29,7 @@ class CoreTest {
     }
 
     @Test fun catalogIntegrity() {
-        assertEquals(11, ModelCatalog.models.size)
+        assertEquals(12, ModelCatalog.models.size)
         assertEquals("llama32-1b-q2", ModelCatalog.smallest.id)
         ModelCatalog.models.forEach { assertNotNull(Quantization.info(it.quantization)) }
     }

@@ -74,10 +74,10 @@ object ModelRouter {
     }
 
     internal fun preferredFamilies(task: TaskKind): List<String> = when (task) {
-        TaskKind.CODING -> listOf("qwen25-coder", "deepseek-r1", "qwen3", "llama", "mistral", "gemma3", "phi4")
-        TaskKind.REASONING -> listOf("deepseek-r1", "qwen3", "llama", "mistral", "gemma3", "phi4", "qwen25-coder")
-        TaskKind.MULTILINGUAL -> listOf("qwen3", "gemma3", "llama", "mistral", "deepseek-r1", "phi4", "qwen25-coder")
-        TaskKind.GENERAL -> listOf("llama", "mistral", "qwen3", "gemma3", "phi4", "deepseek-r1", "qwen25-coder")
+        TaskKind.CODING -> listOf("qwen25-coder", "deepseek-r1", "qwen3", "llama", "mistral", "gemma4", "gemma3", "phi4")
+        TaskKind.REASONING -> listOf("deepseek-r1", "qwen3", "llama", "mistral", "gemma4", "gemma3", "phi4", "qwen25-coder")
+        TaskKind.MULTILINGUAL -> listOf("qwen3", "gemma4", "gemma3", "llama", "mistral", "deepseek-r1", "phi4", "qwen25-coder")
+        TaskKind.GENERAL -> listOf("llama", "mistral", "qwen3", "gemma4", "gemma3", "phi4", "deepseek-r1", "qwen25-coder")
     }
 
     internal fun taskLabel(task: TaskKind): String = when (task) {

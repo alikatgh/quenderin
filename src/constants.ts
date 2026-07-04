@@ -59,6 +59,17 @@ export const MODEL_CATALOG = [
         sha256: '500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0',
     },
     {
+        id: 'gemma4-12b',
+        label: 'Gemma 4 12B (Multilingual)',
+        filename: 'gemma-4-12b-it.Q4_K_M.gguf',
+        ramGb: 9.0,
+        sizeLabel: '7.4 GB download',
+        paramsBillions: 12,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/ggml-org/gemma-4-12B-it-GGUF/resolve/main/gemma-4-12B-it-Q4_K_M.gguf?download=true',
+        sha256: '1278394b693672ac2799eadc9a83fd98259a6a88a40acfb1dcaa6c6fc895a606',
+    },
+    {
         id: 'qwen25-coder-7b',
         label: 'Qwen2.5 Coder 7B (Coding)',
         filename: 'qwen2.5-coder-7b-instruct.Q4_K_M.gguf',

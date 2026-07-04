@@ -83,10 +83,10 @@ public enum ModelRouter {
 
     static func preferredFamilies(for task: TaskKind) -> [String] {
         switch task {
-        case .coding:       return ["qwen25-coder", "deepseek-r1", "qwen3", "llama", "mistral", "gemma3", "phi4"]
-        case .reasoning:    return ["deepseek-r1", "qwen3", "llama", "mistral", "gemma3", "phi4", "qwen25-coder"]
-        case .multilingual: return ["qwen3", "gemma3", "llama", "mistral", "deepseek-r1", "phi4", "qwen25-coder"]
-        case .general:      return ["llama", "mistral", "qwen3", "gemma3", "phi4", "deepseek-r1", "qwen25-coder"]
+        case .coding:       return ["qwen25-coder", "deepseek-r1", "qwen3", "llama", "mistral", "gemma4", "gemma3", "phi4"]
+        case .reasoning:    return ["deepseek-r1", "qwen3", "llama", "mistral", "gemma4", "gemma3", "phi4", "qwen25-coder"]
+        case .multilingual: return ["qwen3", "gemma4", "gemma3", "llama", "mistral", "deepseek-r1", "phi4", "qwen25-coder"]
+        case .general:      return ["llama", "mistral", "qwen3", "gemma4", "gemma3", "phi4", "deepseek-r1", "qwen25-coder"]
         }
     }
 

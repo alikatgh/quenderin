@@ -194,6 +194,7 @@ internal fun modelBlurb(id: String): String = when {
     id.startsWith("qwen25-coder") -> "Qwen2.5 Coder — tuned for programming and code reasoning."
     id.startsWith("deepseek-r1") -> "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers."
     id.startsWith("mistral") -> "Mistral — a fast, well-balanced general-purpose model."
+    id.startsWith("gemma4") -> "Google's Gemma 4 — the newest Gemma; excellent multilingual quality per GB."
     id.startsWith("gemma3") -> "Google's Gemma 3 — strong multilingual coverage for its size."
     id.startsWith("phi4") -> "Microsoft's Phi-4 Mini — efficient and capable for its footprint."
     id.startsWith("llama") -> "Meta's Llama — a capable, general-purpose instruct model."

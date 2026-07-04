@@ -33,9 +33,9 @@ describe('getBestInstallableModel', () => {
         mem.totalGb = 16;
         mem.freeGb = 16;
         // Band picks qwen3-14b (14.3GB → 89.4% of 16GB, blocked by the 85% budget);
-        // largest fitting entry is llama3-8b (6.75 × 1.3 = 8.775GB → 54.8%).
+        // largest fitting entry is gemma4-12b (9.0 × 1.3 = 11.7GB → 73.1%).
         expect(getRecommendedModelIdForTotalRam(16)).toBe('qwen3-14b');
-        expect(getBestInstallableModel(16)).toBe('llama3-8b');
+        expect(getBestInstallableModel(16)).toBe('gemma4-12b');
     });
 
     it('falls back to the smallest model when nothing passes the gate', () => {
