@@ -61,7 +61,43 @@ public final class AppSettings: ObservableObject {
         }
     }
 
+    /// User-bubble color presets, all sampled/derived from the brand artwork so every choice
+    /// stays "ours" (no free color picker — that's how Stripe purple sneaks back in).
+    public enum BubbleAccent: String, CaseIterable {
+        case teal, copper, forest, slate
+        public var label: String {
+            switch self {
+            case .teal: return "Teal (default)"
+            case .copper: return "Copper"
+            case .forest: return "Forest"
+            case .slate: return "Slate"
+            }
+        }
+        /// (bubble, text, timestamp) for the USER side, per color scheme — each pair checked
+        /// for contrast on its bubble.
+        public func colors(dark: Bool) -> (bubble: Color, text: Color, timestamp: Color) {
+            switch (self, dark) {
+            case (.teal, true):    return (Color(hex: 0x245A62), Color(hex: 0xEAF6F4), Color(hex: 0xA8CDD1))
+            case (.teal, false):   return (Color(hex: 0x2E7680), .white, Color(hex: 0xC9E4E6))
+            case (.copper, true):  return (Color(hex: 0x6E431C), Color(hex: 0xFFF3E4), Color(hex: 0xE3C4A1))
+            case (.copper, false): return (Color(hex: 0xB4632A), .white, Color(hex: 0xF0D9C4))
+            case (.forest, true):  return (Color(hex: 0x2F5738), Color(hex: 0xE9F5EA), Color(hex: 0xB5D9BC))
+            case (.forest, false): return (Color(hex: 0x3A7047), .white, Color(hex: 0xD3E8D8))
+            case (.slate, true):   return (Color(hex: 0x3A434C), Color(hex: 0xEDF2F6), Color(hex: 0xB7C4CE))
+            case (.slate, false):  return (Color(hex: 0x51616E), .white, Color(hex: 0xD5DEE5))
+            }
+        }
+    }
+
+    public enum MessageDensity: String, CaseIterable {
+        case comfortable, compact
+        public var spacing: CGFloat { self == .comfortable ? 6 : 3 }
+        public var label: String { rawValue.capitalized }
+    }
+
     @Published public var theme: Theme { didSet { save(theme.rawValue, "theme") } }
+    @Published public var bubbleAccent: BubbleAccent { didSet { save(bubbleAccent.rawValue, "bubbleAccent") } }
+    @Published public var messageDensity: MessageDensity { didSet { save(messageDensity.rawValue, "messageDensity") } }
     @Published public var chatFontStyle: ChatFontStyle { didSet { save(chatFontStyle.rawValue, "chatFontStyle") } }
     @Published public var chatFontSize: ChatFontSize { didSet { save(chatFontSize.rawValue, "chatFontSize") } }
     /// When on, the router suggests the best installed model for a new chat's first message.
@@ -80,6 +116,8 @@ public final class AppSettings: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         theme = Theme(rawValue: defaults.string(forKey: Self.key("theme")) ?? "") ?? .system
+        bubbleAccent = BubbleAccent(rawValue: defaults.string(forKey: Self.key("bubbleAccent")) ?? "") ?? .teal
+        messageDensity = MessageDensity(rawValue: defaults.string(forKey: Self.key("messageDensity")) ?? "") ?? .comfortable
         chatFontStyle = ChatFontStyle(rawValue: defaults.string(forKey: Self.key("chatFontStyle")) ?? "") ?? .standard
         chatFontSize = ChatFontSize(rawValue: defaults.string(forKey: Self.key("chatFontSize")) ?? "") ?? .standard
         suggestBestModel = defaults.object(forKey: Self.key("suggestBestModel")) as? Bool ?? true

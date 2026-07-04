@@ -152,6 +152,7 @@ struct ModelProfileView: View {
             .background(p.background)
             .navigationTitle("Model")
             .inlineNavTitle()
+            .dismissesOnOutsideClick { dismiss() }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }

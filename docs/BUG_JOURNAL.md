@@ -314,6 +314,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-04 (mac) — Chat switching felt broken ("almost impossible to use"): clicks on sidebar rows
+  lagged or vanished. Cause: `.onLongPressGesture(minimumDuration: 0.4)` added to every List row for
+  multi-select forced EVERY mouse-down through gesture disambiguation, delaying/eating selection.
+  Fix: remove it; multi-select stays on ⌘-click/⇧-click/⌫/context menu (MacRootView).
+  Lesson: never attach long-press recognizers to macOS List rows — they fight click-to-select.
+
+
 - 2026-07-03 (mac) — Scroll-position tracking froze: the ↓ jump button never appeared after scrolling up.
   Cause: on macOS, SwiftUI ScrollView is NSScrollView-backed and USER SCROLLING MOVES THE DOCUMENT
   WITHOUT A LAYOUT PASS — GeometryReader/preference frames only update when content changes (streaming),

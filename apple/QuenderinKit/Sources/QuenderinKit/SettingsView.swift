@@ -167,7 +167,22 @@ public struct SettingsView: View {
             Picker("Text size", selection: $appSettings.chatFontSize) {
                 ForEach(AppSettings.ChatFontSize.allCases, id: \.self) { Text($0.label).tag($0) }
             }
-            Text("Applies to the conversation text. Code blocks keep their own monospaced size.")
+            Picker("Message bubbles", selection: $appSettings.bubbleAccent) {
+                ForEach(AppSettings.BubbleAccent.allCases, id: \.self) { accent in
+                    HStack {
+                        Circle()
+                            .fill(accent.colors(dark: scheme == .dark).bubble)
+                            .frame(width: 12, height: 12)
+                        Text(accent.label)
+                    }
+                    .tag(accent)
+                }
+            }
+            Picker("Density", selection: $appSettings.messageDensity) {
+                ForEach(AppSettings.MessageDensity.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Text("Applies to the conversation text. Code blocks keep their own monospaced size. "
+               + "Bubble colors are presets from the brand artwork — every choice stays Quenderin.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }

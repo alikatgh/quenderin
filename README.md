@@ -1,93 +1,106 @@
-# Quenderin
+<p align="center">
+  <img src="brand/icon-square-1024.png" width="150" alt="Quenderin — the forest elf" />
+</p>
 
-> Product identity: see `docs/PRODUCT.md` — the mobile apps are an offline chat assistant, NOT an autonomous device controller.
+<h1 align="center">Quenderin</h1>
 
-Quenderin is a **private, offline, on-device AI chat assistant**. The native **iOS/Android** apps are the product; the desktop Electron app (`src/`+`ui/`) is the research prototype/testbed. The model runs fully on your device — no cloud, no API keys, no telemetry. (The desktop prototype additionally explores an autonomous device-driver agent; per `docs/PRODUCT.md` that capability is deliberately desktop-only and never shipped to the store apps.)
+<p align="center"><strong>A personal AI that lives on your device — not in someone's cloud.</strong></p>
 
-**The Quenderin Paradox:**
-This entire system infrastructure is explicitly and exclusively written by Google models. However, the assistant itself runs **exclusively on local, offline models**, guaranteeing absolute data privacy and zero token costs for the end user.
-
----
-
-## State of the Project: An Honest Audit
-
-Short answer: it’s a *decent* prototype/POC idea but **quite brittle** and likely to fail in real-world, complex apps unless you add lots of engineering around it.
-
-### Quick verdict
-* **Good for:** rapid prototyping, simple screens, controlled emulators, research experiments, and exploring LLM-driven UI planning ideas.
-* **Not great for:** robust automation, flaky UI flows, apps with custom views/graphics, production-level autonomous agents, or anything involving sensitive actions without strong safeguards.
-
-### Why it’s brittle / major failure modes
-1. **Coordinate brittle-ness:** Executing touches by raw coordinates breaks when screen sizes change or views move.
-2. **Timing & race conditions:** Dumping hierarchy, deciding, and executing can be too slow relative to UI changes (animations, stale nodes).
-3. **Lack of state verification:** If a TAP dismisses a dialog differently than expected, there's no robust way to detect divergence.
-4. **Incomplete perception:** The backend discards "non-interactable" nodes, removing crucial context (visibility, labels).
-5. **Custom rendering:** Many apps draw UI in canvases where view hierarchy is useless.
-6. **LLM limitations:** Local LLMs are not deterministic enough for optimal low-level control loops over long periods.
-
-### Implemented Architecture Improvements
-Following this audit, the following robust features were immediately implemented into the agent's core OS Loop:
-1. **View-Level Actions**: The Executor maps symbolic JSON `id` targets dynamically at runtime, avoiding stale coordinate clicks.
-2. **Rich Perception State**: Non-interactable nodes are explicitly kept to provide the LLM with surrounding textual and layout context. Output is compressed into strict JSON.
-3. **Event-driven idempotent primitives**: Fixed sleeps are gone. Replaced by `waitForUiIdle`, which actively polls the UI XML structure until animations settle.
-4. **Separation of Concerns**: The LLM acts purely as a Symbolic Planner (`{"action": "click", "id": X}`), while a deterministic node backend handles the platform execution, bounds lookups, and retries.
-5. **Safety Sandboxing**: A hardcoded keyword blocklist (e.g. "Pay", "Delete", "Password") prevents the LLM from interacting with potentially destructive or sensitive elements autonomously.
+<p align="center">
+  <a href="https://quenderin.org">quenderin.org</a> ·
+  <a href="https://quenderin.org/reality.html">the real numbers</a> ·
+  <a href="docs/README.md">docs</a> ·
+  <a href="LICENSE">MIT</a>
+</p>
 
 ---
 
-## How it Works
+Quenderin downloads an open model (0.4–4.7 GB, your pick) and runs **every token locally**
+via [llama.cpp](https://github.com/ggml-org/llama.cpp). After the one-time download there
+are zero network calls: no account, no API keys, no telemetry, nothing you type leaves the
+device. We've measured ~15 tok/s on an iPhone 12 and ~157–177 tok/s on an M-series Mac —
+quick enough to be useful, and the app is honest about the rest (our lightest model ships
+graded **Quality: Low**, in the UI, on purpose).
 
-The shipped product is an on-device chat assistant: your prompt is fed into a locally-running GGUF LLM (powered by `node-llama-cpp`) and the response is generated entirely on your machine.
+<p align="center">
+  <img src="website/assets/app/chat.png" width="640" alt="The real chat: a Python lesson answered on-device with syntax-highlighted code" />
+</p>
 
-The **desktop research prototype** additionally explores an autonomous device-driver agent (desktop-only, never shipped to the store apps — see `docs/PRODUCT.md`). That agent interacts with interfaces using three main components:
-1. **Perception**: Extracts the current screen context (e.g., via Android ADB view hierarchies).
-2. **LLM Inference**: Feeds the context into the locally-running GGUF LLM, which plans the next action in a concise JSON format.
-3. **Execution**: Translates the LLM's planned action into concrete UI inputs (e.g., adb shell input tap).
+## What's inside
 
-**Privacy & Offline-First:**
-Quenderin runs **100% locally and offline**. It relies on an instruction-tuned LLaMA architecture (GGUF model) managed entirely on your local machine. There are no API keys required, no external network calls after initial model download, and zero telemetry.
+- **Chat** with streaming replies, Markdown + syntax highlighting, per-conversation
+  appearance settings, and a transcript that follows generation (and stops following the
+  moment you scroll up).
+- **A model library** — Llama, Qwen, DeepSeek-R1, Mistral, Gemma, Phi — with live
+  fits-your-RAM badges, one-tap "download the complete library" for big disks, and
+  drag-a-GGUF-in import.
+- **A task router** that suggests the best *installed* model for each new chat (code →
+  the coder model, reasoning → the reasoning model) — a one-tap suggestion, never a
+  silent switch.
+- **A tool-using agent** (calculator, unit converter, dates) with a hard safety
+  blocklist: it will never autonomously pay, delete, transfer, or touch credentials.
+- **Guardrails that respect you**: repetition-loop detection, split-character-safe
+  streaming (Cyrillic and emoji arrive intact), honest empty-reply notices, and a
+  [public ledger of every failure mode we know about](docs/KNOWN_FAILURE_MODES.md).
 
----
+## The apps
 
-## Setup and Usage
+| Platform | Where | Status |
+|---|---|---|
+| **macOS** | `apple/` (SwiftUI — `QuenderinKit` + `QuenderinApp`) | The most complete client: rail navigation, model library, router, agent, deep settings |
+| **iOS** | the same shared `QuenderinKit` | Builds from the same code; on-device inference via the llama.cpp xcframework |
+| **Android** | `android/` (Compose + shared Kotlin core) | Core logic at parity (machine-enforced); UI catching up |
+| **Desktop prototype** | `src/` + `ui/` (Electron/React) | The research testbed. It additionally explores an autonomous device-driver agent that is deliberately **never** shipped in the store apps — see [docs/PRODUCT.md](docs/PRODUCT.md) |
 
-Installation and setup are fully integrated into the local Dashboard's React setup wizard, which will seamlessly guide you through downloading the required LLM weights and configuring voice control access.
+Cross-platform logic (model catalog, agent parser, router, safety blocklist) is hand-ported
+Swift ↔ Kotlin and **machine-enforced against drift**: shared canonical vectors + CI checks
+(`scripts/check_*_parity.py`) fail the build if one platform tests a case the other doesn't.
 
-### 1. Start the React Dashboard
-The primary way to use Quenderin is through its interactive frontend dashboard.
+## Getting started
+
+**macOS / iOS** — requires Xcode:
+
+```bash
+cd apple/QuenderinApp
+xcodegen                      # brew install xcodegen (generates Quenderin.xcodeproj)
+open Quenderin.xcodeproj      # run "QuenderinMac" or "Quenderin" (iOS)
+```
+
+Real inference needs the llama.cpp xcframework once — see
+[apple/QuenderinKit/INTEGRATION.md](apple/QuenderinKit/INTEGRATION.md). Without it the app
+still builds and runs against a mock engine.
+
+**Android** — open `android/` in Android Studio; the pure-JVM core self-verifies via
+`android/quenderin-core` (see [docs/BUILD_MOBILE.md](docs/BUILD_MOBILE.md)).
+
+**Desktop prototype:**
+
 ```bash
 npm install
-npm run dashboard
-```
-Open your browser to `http://localhost:3000`. The Welcome Wizard will automatically start the setup process if this is your first time.
-
-### 2. Run the Autonomous Agent Directly
-If you want to run the agent backend standalone (for example, to execute a pre-determined task without the UI):
-```bash
-npm run agent
+npm run dashboard        # React dashboard at http://localhost:3000
+npm run electron:dev     # or as a desktop app
 ```
 
-### 3. Desktop Application (Electron)
-To run Quenderin as a standalone cross-platform desktop app:
-```bash
-npm run electron:dev
-```
-*(Or build the production macOS application with `npm run electron:build`)*
+## Show your homework
 
----
+We publish the material most projects keep private — that's the point:
 
-## Documentation
+- [REALITY.md](apple/REALITY.md) — can phones actually run this? Measured, sourced, caveated.
+- [On-device LLM research](docs/research/on-device-llm.md) — 28 sources, adversarially verified; the refuted claims are listed too.
+- [Similar projects](docs/research/similar-projects.md) — who else does this well, and what we took from each.
+- [The bug journal](docs/BUG_JOURNAL.md) — every bug, its cause, its lesson.
+- [Known failure modes](docs/KNOWN_FAILURE_MODES.md) — everything we know can go wrong: fixed, planned, or accepted, each with a reason.
+- [The brand guide](docs/BRAND.md) — why the whole design derives from the artwork, and the anti-slop rules.
 
-Full documentation lives in [`docs/`](docs/README.md):
-
-- **[Architecture](docs/ARCHITECTURE.md)** — the system, the agent loop, the two products
-- **[Backend](docs/BACKEND.md)** &middot; **[API &amp; WebSocket](docs/API.md)** &middot; **[Frontend](docs/FRONTEND.md)**
-- **[Development](docs/DEVELOPMENT.md)** — setup, build, test, project layout
-- **Native mobile:** [apple/ARCHITECTURE.md](apple/ARCHITECTURE.md) — what llama.cpp is, the engine-vs-model distinction, the Swift stack
+Full documentation map: [docs/README.md](docs/README.md) · architecture:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · mobile stack:
+[apple/ARCHITECTURE.md](apple/ARCHITECTURE.md)
 
 ## Contributing
 
-MIT License. PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
-**Stop configuring. Start automating.**
+## License
+
+[MIT](LICENSE). The elf artwork and the Quenderin name identify this project — please
+don't use them to mark derived works as official.

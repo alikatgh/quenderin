@@ -92,10 +92,11 @@ public struct ChatView: View {
                         // count is modest and each row is cheap once the Markdown parse is cached
                         // (see MarkdownText), so laziness bought nothing here. iOS keeps the lazy
                         // stack for memory on phones.
-                        transcriptStack {
+                        transcriptStack(spacing: settings.messageDensity.spacing) {
                             DayDivider(text: "Today", palette: p)
                             ForEach(model.messages) { message in
-                                ChatBubble(message: message, palette: p)
+                                ChatBubble(message: message, palette: p,
+                                           accent: settings.bubbleAccent.colors(dark: scheme == .dark))
                                     .id(message.id)
                             }
                             if model.isGenerating {
@@ -215,11 +216,11 @@ public struct ChatView: View {
 
     /// The transcript container: eager on macOS (smooth wheel scrolling), lazy on iOS (memory).
     @ViewBuilder
-    private func transcriptStack<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func transcriptStack<Content: View>(spacing: CGFloat, @ViewBuilder content: () -> Content) -> some View {
         #if os(macOS)
-        VStack(spacing: 6) { content() }
+        VStack(spacing: spacing) { content() }
         #else
-        LazyVStack(spacing: 6) { content() }
+        LazyVStack(spacing: spacing) { content() }
         #endif
     }
 
@@ -264,6 +265,8 @@ public struct ChatView: View {
 private struct ChatBubble: View {
     let message: ChatMessage
     let palette: QuenderinPalette
+    /// The user-bubble color preset (Appearance → Message bubbles).
+    var accent: (bubble: Color, text: Color, timestamp: Color)? = nil
     @Environment(\.openURL) private var openURL
 
     /// Phone-width bubbles look like ribbons in the Mac's wide detail pane.
@@ -281,7 +284,7 @@ private struct ChatBubble: View {
             if mine {
                 // The user's own message is shown literally (what they typed), not re-interpreted.
                 Text(message.text.isEmpty ? "…" : message.text)
-                    .foregroundStyle(palette.onUserBubble)
+                    .foregroundStyle(accent?.text ?? palette.onUserBubble)
                     .textSelection(.enabled)
             } else if message.text.isEmpty {
                 Text("…").foregroundStyle(palette.onAssistantBubble)
@@ -299,7 +302,7 @@ private struct ChatBubble: View {
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 9)
-        .background(mine ? palette.userBubble : palette.assistantBubble, in: BubbleShape(mine: mine))
+        .background(mine ? (accent?.bubble ?? palette.userBubble) : palette.assistantBubble, in: BubbleShape(mine: mine))
         // BOTH frames must align to the speaker's side: the inner cap-width frame still expands
         // to bubbleMaxWidth when the pane is wider, so a short user bubble pinned .leading inside
         // it would float mid-pane instead of hugging the right edge.

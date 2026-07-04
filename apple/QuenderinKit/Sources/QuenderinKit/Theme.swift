@@ -118,6 +118,53 @@ extension View {
     }
 }
 
+#if os(macOS)
+/// Sheets on the Mac normally trap you until you find the Done button. This watches for
+/// clicks landing on any OTHER window (the dimmed parent) and dismisses — plus Esc via
+/// onExitCommand at the call site. Attach with `.dismissesOnOutsideClick()`.
+private struct OutsideClickMonitor: NSViewRepresentable {
+    let onOutside: () -> Void
+
+    final class Coordinator {
+        var monitor: Any?
+        deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            guard context.coordinator.monitor == nil else { return }
+            context.coordinator.monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { event in
+                if let window = view?.window, let eventWindow = event.window, eventWindow != window {
+                    onOutside()
+                }
+                return event
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+#endif
+
+extension View {
+    /// macOS: clicking outside this sheet (on the dimmed parent window) dismisses it, and so
+    /// does Esc — nobody should have to hunt for Done (owner feedback). No-op on iOS, where
+    /// sheets already swipe away.
+    @ViewBuilder func dismissesOnOutsideClick(_ dismiss: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        self
+            .background(OutsideClickMonitor(onOutside: dismiss))
+            .onExitCommand(perform: dismiss)
+        #else
+        self
+        #endif
+    }
+}
+
 /// Bubble shape: 18pt corners except the "tail" corner (4pt) toward the speaker (iOS 16+ / macOS 13+).
 struct BubbleShape: Shape {
     let mine: Bool

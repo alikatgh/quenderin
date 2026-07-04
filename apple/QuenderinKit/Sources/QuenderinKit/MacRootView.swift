@@ -118,11 +118,10 @@ public struct MacRootView: View {
                     ForEach(conversations.summaries) { summary in
                         SidebarChatRow(summary: summary)
                             .tag(summary.id)
-                            // Long press ADDS to the selection (the phone idiom, honored on
-                            // the Mac too); ⌘-click / ⇧-click are the native equivalents.
-                            .onLongPressGesture(minimumDuration: 0.4) {
-                                selection.insert(summary.id)
-                            }
+                            // NO long-press recognizer here: it forced every click through a
+                            // 0.4s disambiguation and made plain chat switching feel broken
+                            // (owner: "almost impossible to use"). Multi-select is ⌘-click /
+                            // ⇧-click / ⌫ / the context menu — the Mac-native paths.
                             .contextMenu {
                                 Button("Open") { selection = [summary.id] }
                                 if selection.count > 1, selection.contains(summary.id) {
@@ -242,7 +241,7 @@ private struct MultiSelectPane: View {
             Text("\(count) chats selected")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(palette.onSurface)
-            Text("⌘-click or long-press rows to change the selection.")
+            Text("⌘-click rows to change the selection; ⇧-click selects a range.")
                 .font(.callout)
                 .foregroundStyle(palette.onSurfaceVariant)
             HStack(spacing: 10) {
@@ -351,7 +350,9 @@ extension MacRootView {
                 .padding(.bottom, 10)
         }
         .padding(.top, 12)
-        .frame(width: 64)
+        // 78pt, not 64: the traffic lights span ~x12–68 — at 64 the green light straddled
+        // the rail/list color seam (owner screenshot). All three now sit on one surface.
+        .frame(width: 78)
         .background(p.surface)
     }
 
