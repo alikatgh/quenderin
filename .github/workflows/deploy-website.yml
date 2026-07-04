@@ -37,3 +37,24 @@ jobs:
           path: website
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Mirrors the same content to the Cloudflare Pages project behind quenderin.org.
+  # No-ops gracefully until the CLOUDFLARE_API_TOKEN repo secret is set (one-time:
+  # dash.cloudflare.com → My Profile → API Tokens → Create → "Cloudflare Pages: Edit",
+  # then `gh secret set CLOUDFLARE_API_TOKEN -R alikatgh/quenderin`).
+  cloudflare:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.CF_TOKEN_SET == 'true'
+      - name: Deploy to Cloudflare Pages (quenderin.org)
+        if: env.CF_TOKEN_SET == 'true'
+        run: npx --yes wrangler pages deploy website --project-name quenderin --branch main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 4c1e57b6972105286a7aeb46b2b89c78
+      - name: Skipped (no CLOUDFLARE_API_TOKEN secret yet)
+        if: env.CF_TOKEN_SET != 'true'
+        run: echo "Cloudflare deploy skipped — set the CLOUDFLARE_API_TOKEN repo secret to enable."
