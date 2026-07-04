@@ -18,9 +18,26 @@ object SupportContact {
     /** The open-source home — Quenderin's full source, issues, and discussions. */
     const val GITHUB_URL = "https://github.com/alikatgh/quenderin"
 
+    /** Hosted terms of use. Source: website/terms.html. */
+    const val TERMS_URL = "https://quenderin.org/terms"
+
     /** Shown beneath chat + agent output so users know responses are unfiltered, on-device AI. */
     const val AI_DISCLAIMER =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."
+
+    // First-run consent (ConsentScreen / iOS ConsentView — one wording, both platforms).
+
+    const val CONSENT_WRONG =
+        "On-device models are small. They can be confidently wrong, outdated, or occasionally inappropriate — and nothing filters them."
+
+    const val CONSENT_NOT_ADVICE =
+        "Nothing Quenderin writes is medical, legal, financial, or safety advice. Verify anything that matters with a qualified source."
+
+    const val CONSENT_RESPONSIBILITY =
+        "Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone."
+
+    const val CONSENT_LEGAL =
+        "By continuing you agree: Quenderin is provided “as is”, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce."
 
     /** Shown on a chat response that trips [SafetyBlocklist] — a non-blocking, on-device
      *  "minimize risk" safeguard for the Generative-AI policies. Kept identical to iOS

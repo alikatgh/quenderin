@@ -173,8 +173,11 @@
             when a model won&rsquo;t fit. After the download, nothing you type touches a network.
           </p>
           <div class="cta-row">
-            <a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.cta1">View on GitHub</a>
-            <a class="btn btn-ghost" href="#how" data-i18n="hero.cta2">See how it works</a>
+            <!-- Fresh i18n keys on purpose: the old hero.cta1/cta2 translations would relabel
+                 these buttons with stale text in the 11 non-EN locales. New keys fall back to
+                 the inline English until retranslation. -->
+            <a class="btn btn-primary" href="download.html" data-i18n="hero.ctaDownload">Download — Windows &amp; Linux</a>
+            <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View on GitHub</a>
           </div>
           <ul class="spec-strip" aria-label="Measured facts">
             <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
@@ -506,6 +509,7 @@ npm run electron:dev</code></pre>
       </div>
       <div class="footer-col">
         <h3 data-i18n="foot.col.project">Project</h3>
+        <a href="download.html" data-i18n="nav.download">Download</a>
         <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
         <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
         <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>

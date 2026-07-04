@@ -647,10 +647,66 @@ function AppContent() {
   );
 }
 
+/**
+ * First-run consent — nobody uses the app without agreeing that AI output is their own
+ * responsibility. Same wording as the iOS ConsentView / Android ConsentScreen (twin copy
+ * in QuenderinKit SupportContact.swift / quenderin-core SupportContact.kt); update all
+ * three together.
+ */
+function ConsentGate({ children }: { children: React.ReactNode }) {
+  const [accepted, setAccepted] = useState<boolean>(() => {
+    try { return localStorage.getItem('quenderin_disclaimer_accepted') === 'true'; }
+    catch { return false; } // storage unavailable → ask every launch rather than never
+  });
+
+  if (accepted) return <>{children}</>;
+
+  const agree = () => {
+    try { localStorage.setItem('quenderin_disclaimer_accepted', 'true'); } catch { /* best-effort */ }
+    setAccepted(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-100 dark:bg-zinc-950 p-4" role="dialog" aria-modal="true" aria-label="Use with judgement">
+      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Use with judgement</h1>
+        <dl className="mt-6 space-y-4 text-sm">
+          <div>
+            <dt className="font-semibold text-zinc-900 dark:text-zinc-100">AI can be wrong</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">On-device models are small. They can be confidently wrong, outdated, or occasionally inappropriate — and nothing filters them.</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-zinc-900 dark:text-zinc-100">It is not advice</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">Nothing Quenderin writes is medical, legal, financial, or safety advice. Verify anything that matters with a qualified source.</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-zinc-900 dark:text-zinc-100">You are in charge</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone.</dd>
+          </div>
+        </dl>
+        <p className="mt-6 text-xs text-zinc-500 dark:text-zinc-500">
+          By continuing you agree: Quenderin is provided &ldquo;as is&rdquo;, and to the maximum extent
+          permitted by law, the Quenderin project and its contributors accept no liability, to anyone,
+          under any circumstances, for the software or anything its AI models produce.{' '}
+          <a href="https://quenderin.org/terms" target="_blank" rel="noreferrer" className="underline">Read the full terms</a>.
+        </p>
+        <button
+          onClick={agree}
+          className="mt-6 w-full rounded-full bg-teal-700 hover:bg-teal-800 text-white font-semibold py-3 text-sm"
+        >
+          I understand and agree
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ConsentGate>
+        <AppContent />
+      </ConsentGate>
     </ThemeProvider>
   );
 }

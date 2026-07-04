@@ -10,6 +10,7 @@ public struct RootView: View {
     @ObservedObject private var settings = AppSettings.shared
     private let agent: AgentSession?
     @State private var needsWelcome = WelcomeGate.needsWelcome()
+    @State private var needsConsent = ConsentGate.needsConsent()
 
     public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
@@ -24,6 +25,13 @@ public struct RootView: View {
                 WelcomeView {
                     WelcomeGate.markWelcomed()
                     needsWelcome = false
+                }
+            } else if needsConsent {
+                // Nobody uses the app without agreeing that AI output is their own
+                // responsibility — including existing users who predate this screen.
+                ConsentView {
+                    ConsentGate.markAccepted()
+                    needsConsent = false
                 }
             } else if case .ready(let model) = onboarding.phase {
                 shell(model: model)

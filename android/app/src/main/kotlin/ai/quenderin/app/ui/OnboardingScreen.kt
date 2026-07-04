@@ -120,6 +120,22 @@ fun AppRoot(
         return
     }
 
+    // Nobody uses the app without agreeing that AI output is their own responsibility —
+    // separate flag from hasWelcomed ON PURPOSE, so existing users also accept once
+    // (twin of iOS ConsentGate).
+    var needsConsent by remember {
+        val prefs = context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+        mutableStateOf(!prefs.getBoolean("disclaimerAccepted", false))
+    }
+    if (needsConsent) {
+        ConsentScreen(onAgree = {
+            context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+                .edit().putBoolean("disclaimerAccepted", true).apply()
+            needsConsent = false
+        })
+        return
+    }
+
     when (val current = phase) {
         is OnboardingPhase.Ready -> MainTabs(
             engine = engine,

@@ -24,9 +24,26 @@ public enum SupportContact {
     /// Hosted human-readable changelog. Source: website/changelog.html.
     public static let changelogURL = "https://quenderin.org/changelog"
 
+    /// Hosted terms of use. Source: website/terms.html.
+    public static let termsURL = "https://quenderin.org/terms"
+
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."
+
+    // MARK: First-run consent (ConsentView / Android ConsentScreen — one wording, both platforms)
+
+    public static let consentWrong =
+        "On-device models are small. They can be confidently wrong, outdated, or occasionally inappropriate — and nothing filters them."
+
+    public static let consentNotAdvice =
+        "Nothing Quenderin writes is medical, legal, financial, or safety advice. Verify anything that matters with a qualified source."
+
+    public static let consentResponsibility =
+        "Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone."
+
+    public static let consentLegal =
+        "By continuing you agree: Quenderin is provided \u{201C}as is\u{201D}, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce."
 
     /// Shown on a chat response that trips `SafetyBlocklist` — a non-blocking, on-device
     /// "minimize risk" safeguard for the Generative-AI policies. Kept identical to Android
