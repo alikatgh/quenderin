@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Roadmap — Quenderin</title>
+<meta name="description" content="Where Quenderin is going: from private on-device chat to local autonomous computer usage — the concrete steps, what must be true first, and what's already shipped." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/roadmap.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>Roadmap</h1>
+  <p class="legal-updated">The mission, stated plainly: <strong>local autonomous computer usage</strong> — an AI that does real work on <em>your</em> machine, where nothing you do leaves it. "Run LLMs locally" is the foundation, not the destination. Here's the concrete path, stage by stage, with what must be true before each step ships.</p>
+
+  <h2>Stage 1 — Private chat, everywhere <span aria-hidden="true">✅ shipped</span></h2>
+  <p>The foundation is live: native apps on <strong>macOS and iOS</strong> (one Swift codebase), <strong>Android</strong> (Kotlin), downloadable previews for <strong>Windows and Linux</strong>, and a <strong>CLI</strong> for programmers (<a href="blog-cli.html">announced today</a>). Under it: a 12-model catalog with RAM-fit gating and SHA-256-verified downloads, a task router that suggests the right installed model per job, repetition-loop and encoding guardrails, and cross-platform logic kept identical by machine-enforced parity tests. Everything measured is published on <a href="reality.html">the reality page</a>; everything broken is in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">the failure-mode ledger</a>.</p>
+
+  <h2>Stage 2 — A model that can see your work <span aria-hidden="true">⏳ next</span></h2>
+  <p>Before an AI can act on your computer, it has to perceive what you give it:</p>
+  <ul>
+    <li><strong>Documents in chat</strong> — drop a PDF or text file, ask about it. Pure text extraction; no engine surgery, so it lands first.</li>
+    <li><strong>Images</strong> — the models are ready (Gemma&nbsp;4 is fully multimodal); our engine builds are text-only today. Requires rebuilding the inference layer with multimodal support on every platform — which is why the + attach button doesn't exist yet: we don't ship buttons before the pipeline behind them works.</li>
+    <li><strong>Frictionless install</strong> — Microsoft Store, Flathub, winget, an npm package for the CLI; one shared model store so the app and CLI never download the same gigabytes twice.</li>
+  </ul>
+
+  <h2>Stage 3 — The agent grows hands <span aria-hidden="true">⏳ then</span></h2>
+  <p>Quenderin already ships a tool-using agent — but its tools are deliberately harmless (calculator, unit converter, dates), fenced by a hard safety blocklist that refuses payments, deletion, and credentials. Stage 3 widens what it can touch, carefully: reading and organizing local files, driving applications, multi-step tasks you watch and can interrupt. The groundwork is real and public — our research testbed drives device UIs in the lab today (screen parsing, action planning, an intervention hotkey). It stays in the lab until the safety story is as boring as the blocklist: every action gated, every session interruptible, nothing autonomous by surprise.</p>
+
+  <h2>Stage 4 — Local autonomous computer usage <span aria-hidden="true">◎ the destination</span></h2>
+  <p>The end state: you describe an outcome, and an agent on your machine does the work — sorts the folder, drafts the reply, runs the pipeline — with the same privacy guarantee as chat, because it's the same architecture: <strong>no server, no account, nothing leaves the device</strong>. That's a capability cloud agents can't offer, and it's the whole reason this project exists.</p>
+
+  <h2>How this stays funded (and free)</h2>
+  <p>The chat apps, the model library, and the CLI are free and MIT-licensed — permanently. The plan is open-core: when the autonomy layer (Stages 3–4) matures, that becomes the paid tier for the people who need it, and it funds everything else. No ads, no data sales — there's no data to sell; that's the point.</p>
+
+  <p class="legal-updated" style="margin-top:2rem">This page changes as reality does — no dates you can screenshot and shame us with later, just order and honesty. Watch progress commit-by-commit <a href="https://github.com/alikatgh/quenderin" rel="noopener">on GitHub</a>.</p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="blog.html">Dev log</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="download.html">Download</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>The terminal gets a seat — Quenderin CLI</title>
+<meta name="description" content="quenderin chat: a local LLM in your terminal. Streaming REPL, pipe mode for code review, same SHA-256-verified model catalog — and the two bugs we hit shipping it." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-cli.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>The terminal gets a seat</h1>
+  <p class="legal-updated">4 July 2026 · from <a href="blog.html">the dev log</a></p>
+
+  <p>Quenderin now runs where programmers live. <code>quenderin chat</code> is a streaming
+  REPL in your terminal — same model catalog, same SHA-256-verified downloads, same
+  zero-network promise as the apps. And because it's a proper CLI, it composes:</p>
+
+  <pre><code>git diff | quenderin chat -p "review this change"
+cat error.log | quenderin chat -p "what's the likely cause?"
+quenderin chat -m qwen25-coder-7b        # the coder model, interactively</code></pre>
+
+  <p>That first line matters more than it looks: it's <strong>code review that never
+  leaves your machine</strong>. Proprietary diff, client code, unreleased work — piped
+  into a model that has no network to leak it to.</p>
+
+  <h2>What it is</h2>
+  <ul>
+    <li><strong><code>quenderin chat</code></strong> — interactive REPL with slash commands (<code>/model</code>, <code>/models</code>, <code>/clear</code>).</li>
+    <li><strong><code>quenderin chat -p "…"</code></strong> — one answer on stdout, exit 0, honest in pipes. Piped stdin becomes context.</li>
+    <li><strong><code>quenderin models</code> / <code>quenderin download &lt;id&gt;</code></strong> — the full 12-model catalog, integrity-checked.</li>
+  </ul>
+
+  <h2>Measured, not promised</h2>
+  <p>On the 10-core Apple-silicon laptop we build on — deliberately tested while the machine
+  was starved, with under 3&nbsp;GB of RAM free — the 0.4&nbsp;GB ultra-light model streamed
+  at <strong>78–101 tokens/second with ~90–150&nbsp;ms to first token</strong>, after the
+  engine auto-tuned its context window down to fit. Bigger machines get bigger models;
+  the CLI makes the same honest RAM-fit calls as the apps.</p>
+
+  <h2>The two bugs we hit (kept in public, as usual)</h2>
+  <p>First: chat initially <em>failed before the first token</em> on that starved machine.
+  The shared chat path prepended a ~465-token tool preamble to every session, and the
+  auto-shrunk 512-token context couldn't fit it. The CLI now runs a plain-chat session —
+  and the failure mode is in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">the public ledger</a>.</p>
+  <p>Second: after a perfect answer, the process exited with code 134 — a known llama.cpp
+  Metal teardown assertion. Harmless-looking, fatal in practice: a pipeline checking exit
+  codes would treat every successful answer as a failure. The fix is a full engine dispose
+  before exit. If your scripts wrap AI tools, check <em>your</em> exit codes.</p>
+
+  <h2>Get it</h2>
+  <p>It ships with the source today — <code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code>
+  from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a> puts
+  <code>quenderin</code> on your PATH. A standalone npm package is planned. Where this fits
+  in the bigger picture: <a href="roadmap.html">the roadmap</a>.</p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="blog.html">Dev log</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="download.html">Download</a></p>
+</main>
+</body>
+</html>

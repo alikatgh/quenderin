@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Dev log — Quenderin</title>
+<meta name="description" content="The Quenderin dev log: what we shipped, what broke, and what we measured — written by the people who read the stack traces." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>Dev log</h1>
+  <p class="legal-updated">What we shipped, what broke, what we measured. The unabridged version is <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">the git history</a>; the disasters live in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener">the bug journal</a>.</p>
+
+  <h2><a href="blog-cli.html">The terminal gets a seat</a></h2>
+  <p class="legal-updated">4 July 2026</p>
+  <p><code>quenderin chat</code> brings the local models to the command line — a streaming
+  REPL plus a pipe mode that turns <code>git diff | quenderin chat -p "review this"</code>
+  into code review that never leaves your machine. Includes the two bugs we hit shipping
+  it, because that's how we do release notes. <a href="blog-cli.html">Read it →</a></p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="roadmap.html">Roadmap</a></p>
+</main>
+</body>
+</html>
