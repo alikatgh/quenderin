@@ -52,7 +52,7 @@ final class WebsiteAssetRenderTests: XCTestCase {
             That's the core — everything else builds on these three.
             """),
         ])
-        try render(ChatView(model: chat).frame(width: 720, height: 580), to: out, name: "chat")
+        try render(ChatView(model: chat).frame(width: 720, height: 460), to: out, name: "chat")
 
         // 2. Welcome — the first-launch page (elf, three value props).
         try render(WelcomeView(onContinue: {}).frame(width: 520, height: 720), to: out, name: "welcome")
