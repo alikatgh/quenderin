@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Get help — Quenderin</title>
+<meta name="description" content="Help with Quenderin: quick fixes for the most common questions, and how to reach a human. No chatbot, no ticket portal — an email that gets read." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/help.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>Get help</h1>
+  <p class="legal-updated">The short list first — most questions end here.</p>
+
+  <h2>The model gives a slow or strange first answer</h2>
+  <p>The first message after loading a model is always the slowest — the model is warming up. If replies stay slow, open the <strong>Model library</strong> and pick a smaller model; the fit dot next to each one tells you what your machine runs comfortably. If an answer loops or comes back empty, the app says so and suggests the fix — usually rephrasing, or a larger model.</p>
+
+  <h2>Which model should I download?</h2>
+  <p>The one the app recommends — the recommendation is computed from your RAM, not from marketing. If you have disk to spare, download several: with <strong>“Suggest the best model”</strong> on, Quenderin proposes the right installed model per task (code questions go to the coder model, and so on). It suggests; it never switches silently.</p>
+
+  <h2>Where are my chats? Can you see them?</h2>
+  <p>On your device, and no. There is no account, no server, no telemetry. Deleting the app deletes everything. That's the entire architecture — the <a href="privacy.html">privacy policy</a> is short because there's nothing to disclose.</p>
+
+  <h2>How do I free up disk space?</h2>
+  <p>Every installed model shows its on-disk size in the <strong>Model library</strong> and in <strong>Settings → Storage</strong>; right-click (or use the ⋯ menu) to delete it or reveal the file. Models re-download any time.</p>
+
+  <h2>Something else, or something broken?</h2>
+  <ul>
+    <li><strong>Email a human:</strong> <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a> — this address gets read, not routed.</li>
+    <li><strong>Report a bug in the open:</strong> <a href="https://github.com/alikatgh/quenderin/issues" rel="noopener">GitHub issues</a>.</li>
+    <li><strong>Longer answers:</strong> the <a href="faq.html">FAQ</a>, or <a href="how-it-works.html">how it works</a>.</li>
+    <li><strong>Known limitations:</strong> we publish <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">every failure mode we know about</a> — check whether yours is already on the list.</li>
+  </ul>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="faq.html">FAQ</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="privacy.html">Privacy</a></p>
+</main>
+</body>
+</html>

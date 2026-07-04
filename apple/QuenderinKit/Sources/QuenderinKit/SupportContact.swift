@@ -14,6 +14,16 @@ public enum SupportContact {
     /// The open-source home — Quenderin's full source, issues, and discussions.
     public static let githubURL = "https://github.com/alikatgh/quenderin"
 
+    /// The marketing site — every in-app link except GitHub lands on a quenderin.org page,
+    /// so the website (not a popup menu) is where people learn the product.
+    public static let websiteURL = "https://quenderin.org"
+
+    /// Hosted help page (FAQ + how to reach us). Source: website/help.html.
+    public static let helpURL = "https://quenderin.org/help"
+
+    /// Hosted human-readable changelog. Source: website/changelog.html.
+    public static let changelogURL = "https://quenderin.org/changelog"
+
     /// Shown beneath chat + agent output so users know responses are unfiltered, on-device AI.
     public static let aiDisclaimer =
         "Responses are AI-generated on-device and may be inaccurate or objectionable."

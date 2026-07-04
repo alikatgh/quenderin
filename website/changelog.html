@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>What's new — Quenderin changelog</title>
+<meta name="description" content="What changed in Quenderin, in plain language — features, fixes, and the honest reasons behind them. Full detail lives in the open git history." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/changelog.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>What's new</h1>
+  <p class="legal-updated">Plain-language notes, newest first. Every line here maps to real commits in the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">open git history</a> — that's the unabridged version.</p>
+
+  <h2>July 2026</h2>
+  <ul>
+    <li><strong>Gemma 4 12B joins the library.</strong> Google's newest open model (Apache 2.0, 7.4&nbsp;GB download) — the strongest multilingual option we ship. Recommended automatically on 16&nbsp;GB machines.</li>
+    <li><strong>About is a page now.</strong> Clicking the elf opens a proper About screen instead of a popup menu; help, changelog, and privacy land on their quenderin.org pages.</li>
+    <li><strong>Daily-use fixes.</strong> Conversation switching is instant again (a long-press gesture was eating clicks — removed). Chat bubbles come in four artwork-derived colors. Sheets close when you click outside them; no more hunting for Done.</li>
+    <li><strong>The window chrome behaves.</strong> The traffic lights sit on one surface instead of straddling a color seam.</li>
+  </ul>
+
+  <h2>June–July 2026 — the credibility round</h2>
+  <ul>
+    <li><strong>Repetition walls died.</strong> A model repeating the same paragraph three times kills trust instantly, so it's now stopped in three places: a repetition penalty in the sampler, a mid-stream loop detector, and a final collapse pass. The full list of what can still go wrong is <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">published</a>.</li>
+    <li><strong>Streaming that keeps up.</strong> The transcript follows generation like you'd expect, stops following the moment you scroll up, and offers a ↓ jump back. A Stop button actually stops. Cyrillic and emoji arrive intact even when the model splits them across tokens.</li>
+    <li><strong>A real model library.</strong> Installed models on top, recommended next (with the why), everything clickable, on-disk sizes visible, delete where you see the file, drag a GGUF in to import it. Downloads confirm their size before starting — never surprise-download gigabytes.</li>
+    <li><strong>The task router.</strong> With several models installed, Quenderin suggests the best one per task — a tap to accept, never a silent switch. The routing logic is identical on every platform, enforced by machine-checked parity tests.</li>
+    <li><strong>The design became ours.</strong> Every color in the app and on this site is sampled from the elf artwork. The app icon, the in-app avatar, the website — one identity, teal and copper.</li>
+  </ul>
+
+  <h2>Earlier</h2>
+  <p>The foundation: on-device inference via llama.cpp on macOS, iOS, and Android; the shared model catalog with RAM-fit gating and SHA-256 download verification; the tool-using agent with its hard safety blocklist; onboarding; and the measured performance numbers on the <a href="reality.html">reality page</a>.</p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help.html">Get help</a> &middot; <a href="https://github.com/alikatgh/quenderin" rel="noopener">Source on GitHub</a></p>
+</main>
+</body>
+</html>

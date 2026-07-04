@@ -56,6 +56,8 @@ public struct MacRootView: View {
                 }
             case .models:
                 ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
+            case .about:
+                AboutView()
             }
         }
         .onAppear {
@@ -311,7 +313,7 @@ private struct SidebarChatRow: View {
 /// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
 /// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
 enum RailSection: Hashable {
-    case chats, agent, models
+    case chats, agent, models, about
 }
 
 extension MacRootView {
@@ -346,8 +348,22 @@ extension MacRootView {
                     }
                 }
             Spacer()
-            AppIdentityMenu()
-                .padding(.bottom, 10)
+            // The elf opens the dedicated About PAGE (was a popup menu — owner wanted a page).
+            Button {
+                rail = .about
+            } label: {
+                ModelAvatar(size: 30)
+                    .overlay(
+                        Circle().strokeBorder(
+                            rail == .about ? p.primary : .clear, lineWidth: 2
+                        )
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("About Quenderin — settings, help, and links")
+            .accessibilityLabel("About Quenderin")
+            .accessibilityAddTraits(rail == .about ? [.isSelected] : [])
+            .padding(.bottom, 10)
         }
         .padding(.top, 12)
         // 78pt, not 64: the traffic lights span ~x12–68 — at 64 the green light straddled
@@ -374,80 +390,6 @@ extension MacRootView {
         .help(label)
         .accessibilityLabel(label)
         .accessibilityAddTraits(rail == section ? [.isSelected] : [])
-    }
-}
-
-/// The rail-foot identity menu — the anatomy every serious app anchors to its account
-/// avatar, translated to an app that HAS no account: the elf is the identity, the header
-/// says what we are, and where others put "Log out" we get to state the brand promise.
-private struct AppIdentityMenu: View {
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.openURL) private var openURL
-
-    private var version: String {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
-    }
-
-    var body: some View {
-        let p = QuenderinPalette.of(scheme)
-        Menu {
-            // Identity header (disabled rows read as the menu's letterhead).
-            Text("Quenderin \(version) — on-device · private")
-
-            Divider()
-
-            if #available(macOS 14.0, *) {
-                SettingsLink { Label("Settings…", systemImage: "gearshape") }
-                    .keyboardShortcut(",", modifiers: .command)
-            } else {
-                Button {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                } label: {
-                    Label("Settings…", systemImage: "gearshape")
-                }
-            }
-
-            Divider()
-
-            Button {
-                if let url = URL(string: "mailto:\(SupportContact.reportEmail)") { openURL(url) }
-            } label: {
-                Label("Get help", systemImage: "questionmark.circle")
-            }
-            Button {
-                if let url = URL(string: SupportContact.githubURL + "/commits/main") { openURL(url) }
-            } label: {
-                Label("What's new — the changelog", systemImage: "clock.arrow.circlepath")
-            }
-            Button {
-                if let url = URL(string: SupportContact.githubURL) { openURL(url) }
-            } label: {
-                Label("View the source on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
-            }
-            Button {
-                if let url = URL(string: "https://quenderin.org") { openURL(url) }
-            } label: {
-                Label("quenderin.org", systemImage: "globe")
-            }
-            Button {
-                if let url = URL(string: SupportContact.privacyPolicyURL) { openURL(url) }
-            } label: {
-                Label("Privacy Policy", systemImage: "lock.shield")
-            }
-
-            Divider()
-
-            // Where other apps put "Log out": the promise, stated where they'd expect the button.
-            Text("No account, no log-out — your chats never leave this Mac.")
-        } label: {
-            ModelAvatar(size: 30)
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("Quenderin — settings, help, and links")
-        .accessibilityLabel("Quenderin menu")
     }
 }
 
