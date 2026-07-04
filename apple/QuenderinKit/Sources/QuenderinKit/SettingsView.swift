@@ -74,6 +74,10 @@ public struct SettingsView: View {
 
     public var body: some View {
         content
+            // Settings is its OWN window (scene) — RootView's preferredColorScheme doesn't
+            // reach it, so picking "Light" used to change the app but not this window
+            // (owner screenshot: Light selected, Settings still dark).
+            .preferredColorScheme(appSettings.theme.colorScheme)
             .onAppear { reloadModelStorage() }
             .sheet(isPresented: $showPicker) {
                 NavigationStack {
@@ -110,6 +114,7 @@ public struct SettingsView: View {
                     modelSection
                     routingSection
                 case .appearance:
+                    appearancePreviewSection
                     appearanceSection
                 case .storage:
                     storageSection
@@ -131,6 +136,7 @@ public struct SettingsView: View {
             speedSection
             modelSection
             routingSection
+            appearancePreviewSection
             appearanceSection
             storageSection
             downloadedModelsSection
@@ -152,6 +158,18 @@ public struct SettingsView: View {
                + "another language) and offers the best installed model for it — a suggestion you "
                + "can tap, never a silent switch.")
                 .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    /// A live two-bubble transcript that re-renders as the user moves any appearance control —
+    /// see the result the moment you change it, not after hunting for a chat window (owner:
+    /// "user will see instantly how everything will look"). Rendered in the EFFECTIVE scheme
+    /// (the picked theme, or the system's when following it), so Theme flips inside the card
+    /// even before the window catches up.
+    private var appearancePreviewSection: some View {
+        Section("Preview") {
+            AppearancePreviewCard(settings: appSettings, systemScheme: scheme)
+                .listRowInsets(EdgeInsets())
         }
     }
 
@@ -406,6 +424,63 @@ private extension View {
     }
 }
 #endif
+
+/// The Appearance pane's live preview: a two-bubble transcript drawn with the SAME tokens the
+/// real chat uses (palette, bubble accent, chat font, density), in the EFFECTIVE color scheme —
+/// the picked theme, or the system's while following it. Every control change re-renders it.
+private struct AppearancePreviewCard: View {
+    @ObservedObject var settings: AppSettings
+    let systemScheme: ColorScheme
+
+    var body: some View {
+        let effective: ColorScheme = settings.theme.colorScheme ?? systemScheme
+        let dark = effective == .dark
+        let p = QuenderinPalette.of(effective)
+        let accent = settings.bubbleAccent.colors(dark: dark)
+
+        VStack(alignment: .leading, spacing: settings.messageDensity.spacing) {
+            HStack(alignment: .bottom) {
+                previewBubble(
+                    text: "Every word of this reply is computed on your \(deviceNoun).",
+                    background: p.assistantBubble, textColor: p.onAssistantBubble,
+                    timestampColor: p.assistantTimestamp
+                )
+                Spacer(minLength: 48)
+            }
+            HStack(alignment: .bottom) {
+                Spacer(minLength: 48)
+                previewBubble(
+                    text: "And it will look exactly like this?",
+                    background: accent.bubble, textColor: accent.text,
+                    timestampColor: accent.timestamp
+                )
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(p.background)
+        // The card carries its own scheme so Theme flips INSIDE it instantly, independent of
+        // how fast the window around it follows.
+        .environment(\.colorScheme, effective)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Preview of the chat appearance with the current settings")
+    }
+
+    private func previewBubble(text: String, background: Color, textColor: Color, timestampColor: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(text)
+                .font(settings.chatFont)
+                .foregroundStyle(textColor)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("09:41")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(timestampColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(background, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
 
 /// A title-on-the-left, value-on-the-right settings row.
 private struct LabeledRow: View {
