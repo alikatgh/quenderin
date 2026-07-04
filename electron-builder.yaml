@@ -43,9 +43,19 @@ win:
     - target: portable
       arch:
         - x64
+# Version-less artifact names so the website can link
+# github.com/…/releases/latest/download/<name> and never go stale. nsis and
+# portable are both .exe — they need distinct names or they'd overwrite each other.
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  artifactName: "Quenderin-Setup-${arch}.exe"
+portable:
+  artifactName: "Quenderin-Portable-${arch}.exe"
+appImage:
+  artifactName: "Quenderin-${arch}.AppImage"
+deb:
+  artifactName: "Quenderin-${arch}.deb"
 files:
   - dist/**/*
   - node_modules/**/*

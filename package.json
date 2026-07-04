@@ -1,7 +1,7 @@
 {
   "name": "quenderin-poc",
   "description": "An offline autonomous agent control",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "Quenderin Team",
   "engines": {
     "node": ">=20.0.0",
@@ -38,9 +38,9 @@
     "electron:dev": "npm run build:tsc && electron .",
     "electron:build": "npm run build:tsc && npm run build:ui && electron-builder --mac",
     "electron:build:mac": "npm run build:tsc && npm run build:ui && electron-builder --mac",
-    "electron:build:linux": "npm run build:tsc && electron-builder --linux",
-    "electron:build:win": "npm run build:tsc && electron-builder --win",
-    "electron:build:all": "npm run build:tsc && electron-builder --mac --linux --win",
+    "electron:build:linux": "npm run build:tsc && npm run build:ui && electron-builder --linux",
+    "electron:build:win": "npm run build:tsc && npm run build:ui && electron-builder --win",
+    "electron:build:all": "npm run build:tsc && npm run build:ui && electron-builder --mac --linux --win",
     "check:router-parity": "python3 scripts/check_router_parity.py"
   },
   "dependencies": {
