@@ -1,0 +1,13 @@
+// The config behind https://quenderin.org — the site is served by a WORKER named
+// "quenderin" with a Workers custom-domain binding (NOT the Pages project; Pages is the
+// preview at quenderin.pages.dev). `scripts/deploy_website.sh` deploys this.
+// Assets-only Worker: no script, just the static site with extensionless-URL handling.
+{
+  "name": "quenderin",
+  "compatibility_date": "2026-07-04",
+  "assets": {
+    "directory": "./website",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

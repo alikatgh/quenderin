@@ -38,9 +38,12 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  # Mirrors the same content to the Cloudflare Pages project behind quenderin.org.
+  # Mirrors the same content to Cloudflare. quenderin.org is served by the WORKER named
+  # "quenderin" (Workers custom domain — discovered 2026-07-04 after Pages deploys silently
+  # went nowhere); the Pages project is only the quenderin.pages.dev preview.
   # No-ops gracefully until the CLOUDFLARE_API_TOKEN repo secret is set (one-time:
-  # dash.cloudflare.com → My Profile → API Tokens → Create → "Cloudflare Pages: Edit",
+  # dash.cloudflare.com → My Profile → API Tokens → Create → custom with
+  # "Workers Scripts: Edit" + "Cloudflare Pages: Edit",
   # then `gh secret set CLOUDFLARE_API_TOKEN -R alikatgh/quenderin`).
   cloudflare:
     runs-on: ubuntu-latest
@@ -49,7 +52,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: env.CF_TOKEN_SET == 'true'
-      - name: Deploy to Cloudflare Pages (quenderin.org)
+      - name: Deploy quenderin.org (the Worker)
+        if: env.CF_TOKEN_SET == 'true'
+        run: npx --yes wrangler deploy --config wrangler.site.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 4c1e57b6972105286a7aeb46b2b89c78
+      - name: Deploy the Pages preview (quenderin.pages.dev)
         if: env.CF_TOKEN_SET == 'true'
         run: npx --yes wrangler pages deploy website --project-name quenderin --branch main --commit-dirty=true
         env:
