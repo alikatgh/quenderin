@@ -30,11 +30,18 @@ function resolveLogLevel(): LogLevel {
     return isDev ? 'info' : 'warn';
 }
 
-const activeLevel = resolveLogLevel();
-const activeLevelNum = LOG_LEVEL_ORDER[activeLevel];
+let activeLevel = resolveLogLevel();
+let activeLevelNum = LOG_LEVEL_ORDER[activeLevel];
 
 function shouldLog(level: LogLevel): boolean {
     return LOG_LEVEL_ORDER[level] <= activeLevelNum;
+}
+
+/** Drop the level at runtime — the CLI's pipe mode (`quenderin chat -p`) calls this with
+ *  'error' so engine logs (which go to STDOUT) can't pollute piped output. */
+export function setLogLevel(level: LogLevel): void {
+    activeLevel = level;
+    activeLevelNum = LOG_LEVEL_ORDER[level];
 }
 
 export const logger = {
@@ -58,7 +65,7 @@ export const logger = {
         console.error('[CRITICAL]', ...args); // NOSONAR
     },
     /** The active log level, for diagnostics */
-    level: activeLevel,
+    get level(): LogLevel { return activeLevel; },
 };
 
 export default logger;

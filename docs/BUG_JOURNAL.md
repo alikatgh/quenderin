@@ -314,6 +314,24 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-04 (desktop/CLI) — generalChat hung forever on RAM-pressed machines: the memory-pressure
+  monitor honors isInferenceBusy(), but the flag was set AFTER model load, so pressure could unload
+  the model between "context ready" and first token → await on a disposed context never resolves.
+  Fix: claim isGeneratingChat at generalChat entry, reset on load/session throw (llm.service.ts).
+  Lesson: a guard flag set after the guarded window opens is not a guard.
+
+- 2026-07-04 (CLI) — `quenderin chat -p` was pipe-hostile three ways: ~465-token tool preamble
+  overflowed pressure-shrunk 512-token contexts (fail before first token); ggml-metal's atexit
+  destructor asserted → exit 134 after a SUCCESSFUL answer; engine logs printed to STDOUT.
+  Fix: plainChat option, LlmService.shutdown() disposing the engine before exit, setLogLevel('error').
+  Lesson: a CLI's contract is stdout+exit code — test them, not just the text on screen.
+
+- 2026-07-04 (desktop) — The security-hardened Electron main never shipped: TWO mains existed
+  (electron/main.ts legacy vs src/electron/main.ts with the deep-hunt navigation guards) and
+  package.json `main` pointed at the legacy one, so v0.1.0 packaged WITHOUT the hardening.
+  Fix: main → dist/src/electron/main.js, legacy file deleted, tsconfig include narrowed (package.json:14).
+  Lesson: twin drift isn't just Swift↔Kotlin — any duplicated file with one referenced by config drifts the same way.
+
 - 2026-07-04 (mac) — Chat switching felt broken ("almost impossible to use"): clicks on sidebar rows
   lagged or vanished. Cause: `.onLongPressGesture(minimumDuration: 0.4)` added to every List row for
   multi-select forced EVERY mouse-down through gesture disambiguation, delaying/eating selection.

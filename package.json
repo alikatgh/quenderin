@@ -3,12 +3,15 @@
   "description": "An offline autonomous agent control",
   "version": "0.1.0",
   "author": "Quenderin Team <quenderin@aulenor.com>",
+  "bin": {
+    "quenderin": "./dist/src/index.js"
+  },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
   "type": "module",
-  "main": "dist/electron/main.js",
+  "main": "dist/src/electron/main.js",
   "scripts": {
     "postinstall": "cd ui && npm install",
     "dashboard": "tsx src/index.ts dashboard",

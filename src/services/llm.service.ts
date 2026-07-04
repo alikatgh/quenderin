@@ -165,6 +165,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private initPromise: Promise<{ model: LlamaModel, context: LlamaContext }> | null = null;
     private isDownloading: boolean = false;
     private generalChatSession: LlamaChatSession | null = null;
+    /** The engine handle from getLlama() — retained ONLY so shutdown() can dispose the
+     *  Metal/GPU device before exit (see shutdown's doc comment). */
+    private llamaEngine: { dispose(): Promise<void> } | null = null;
     private isGeneratingChat: boolean = false;
     /** Agent/daemon generateAction calls share the same model but do not use the chat session. */
     private isGeneratingAction: boolean = false;
@@ -212,6 +215,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private disposeChatSession(): void {
         try { this.generalChatSession?.dispose(); } catch { /* already disposed */ }
         this.generalChatSession = null;
+    }
+
+    /** Start the conversation over without unloading the model (CLI `/clear`, UI "new chat"). */
+    public resetChat(): void {
+        this.disposeChatSession();
+        this.chatTurnCount = 0;
     }
 
     constructor() {
@@ -365,6 +374,24 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
         this.stopMemoryPressureMonitor();
         if (wasLoaded) logger.log('[Lifecycle] Model unloaded');
+    }
+
+    /** Fully tear down for a clean process EXIT: session → context → model → the llama
+     *  engine itself, all awaited. Without the final engine dispose, ggml-metal's atexit
+     *  destructor asserts (`rsets->data count == 0`, llama.cpp #17869) and a successful
+     *  CLI run exits 134 — fatal for pipe consumers checking the code. */
+    public async shutdown(): Promise<void> {
+        const model = this.modelInstance;
+        const context = this.contextInstance;
+        this.modelInstance = null;
+        this.contextInstance = null;
+        this.disposeChatSession();
+        try { await context?.dispose(); } catch { /* already disposed */ }
+        try { await model?.dispose(); } catch { /* already disposed */ }
+        try { await this.llamaEngine?.dispose(); } catch { /* already disposed */ }
+        this.llamaEngine = null;
+        if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+        this.stopMemoryPressureMonitor();
     }
 
     /** Switch to a specific model by ID. Unloads current model if different. */
@@ -536,6 +563,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         throw initErr;
                     }
                 }
+                this.llamaEngine = llama;   // retained for shutdown()'s device dispose
 
                 // ─── 2. Load model with GPU offload + AbortController ────────
                 // AbortController actually cancels native operations (unlike
@@ -986,8 +1014,19 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
     }
 
-    public async generalChat(userMsg: string, onToken?: (token: string) => void): Promise<{ text: string; meta: GenerationMeta }> {
-        const { context } = await this.getModelAndContext();
+    public async generalChat(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean }): Promise<{ text: string; meta: GenerationMeta }> {
+        // Claim the busy flag BEFORE loading: the memory-pressure monitor skips unload only
+        // while isInferenceBusy(), and setting it after setup left a window where pressure
+        // unloaded the model between "context ready" and the first token — generalChat then
+        // awaited a disposed context forever (live-caught: two hung CLI processes, 2026-07-04).
+        this.isGeneratingChat = true;
+        let context: LlamaContext;
+        try {
+            ({ context } = await this.getModelAndContext());
+        } catch (err) {
+            this.isGeneratingChat = false;   // a failed load must not wedge the busy flag
+            throw err;
+        }
 
         const ensureSession = () => {
             // Reset session when it approaches the context limit to prevent OOM.
@@ -999,8 +1038,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // Free the outgoing session's KV-cache sequence slot before allocating a new one,
                 // or the slot leaks and context.getSequence() below eventually throws "No sequences left".
                 this.disposeChatSession();
-                const toolPrompt = buildToolPrompt();
-                const fullSystemPrompt = `${this.activePreset.systemPrompt}\n\n${toolPrompt}`;
+                // plainChat (the CLI): skip the ~465-token tool preamble. On a RAM-pressed
+                // machine the context auto-tunes small enough that persona+tools alone
+                // overflow it and chat fails before the first token (live-caught 2026-07-04).
+                const fullSystemPrompt = opts?.plainChat
+                    ? this.activePreset.systemPrompt
+                    : `${this.activePreset.systemPrompt}\n\n${buildToolPrompt()}`;
                 this.generalChatSession = this.createChatSession({
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
@@ -1009,10 +1052,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
         };
 
-        ensureSession();
+        try {
+            ensureSession();
+        } catch (err) {
+            this.isGeneratingChat = false;   // getSequence() can throw; don't wedge the flag
+            throw err;
+        }
 
         logger.log("[Assistant] Starting private conversation...");
-        this.isGeneratingChat = true;
         this.tokenBuffer = "";
 
         // --- Generation metadata tracking ---

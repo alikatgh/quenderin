@@ -8,6 +8,8 @@
 
 <p align="center">
   <a href="https://quenderin.org">quenderin.org</a> ·
+  <a href="https://quenderin.org/download.html">download</a> ·
+  <a href="https://quenderin.org/roadmap.html">roadmap</a> ·
   <a href="https://quenderin.org/reality.html">the real numbers</a> ·
   <a href="docs/README.md">docs</a> ·
   <a href="LICENSE">MIT</a>
@@ -56,6 +58,20 @@ graded **Quality: Low**, in the UI, on purpose).
 Cross-platform logic (model catalog, agent parser, router, safety blocklist) is hand-ported
 Swift ↔ Kotlin and **machine-enforced against drift**: shared canonical vectors + CI checks
 (`scripts/check_*_parity.py`) fail the build if one platform tests a case the other doesn't.
+
+## The CLI
+
+For programmers: chat with a local model without leaving the terminal, and pipe anything
+into it — same catalog, same SHA-256-verified downloads, zero network calls after setup.
+
+```bash
+npm install && npm run build:tsc && npm link   # once; then `quenderin` is on your PATH
+
+quenderin chat                      # interactive REPL (slash commands: /model /models /clear)
+quenderin models                    # what's installed / downloadable
+quenderin download llama32-1b       # fetch a model
+git diff | quenderin chat -p "review this change"    # pipe mode: one answer, plain stdout
+```
 
 ## Getting started
 
