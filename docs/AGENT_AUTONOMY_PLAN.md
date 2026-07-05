@@ -333,6 +333,32 @@ shipped on Apple via PDFKit (page-by-page, cap-aware, textless scans refused hon
 that gap is recorded here and rides the Android backlog. The public roadmap/dev-log now
 tell the Stage-3 story. Remaining: the Android Compose UI catch-up (standing chip).
 
+## Milestone 4 — operate an APP, not just files (2026-07-05)
+
+The reusable core under every "drive an app" task (the imo/BlueStacks forcing example, §4b),
+built where device automation belongs: the **desktop** TypeScript app, over the hardened ADB
+`AndroidProvider`. The desktop had ADB muscle but NO governance — so the real work was
+**porting the Capability spine to TypeScript** (`src/services/capability/`: capability.ts,
+runner.ts, safety.ts) and putting app-driving behind it, identical invariants to the
+Swift/Kotlin twins.
+
+- **`app.observe` (T1)** — read the current screen's tappable elements. Perception half.
+- **`app.tap` (T2)** — tap BY VISIBLE LABEL, never coordinates (the fs.move principle: the
+  model names what it sees, can't fabricate a pixel). Resolves label → element → center;
+  ambiguous/unknown labels refuse. **Defense in depth**: the resolved element is re-checked
+  against the blocklist, so a button reading "OK" that is `confirm_payment_btn` is refused
+  even after approval.
+- **`app.type` / `app.key` (T2)** — type into the focused field / press back·enter·home.
+- All T2 → per-run approval, **fail-closed** (no approver ⇒ refused). A friend-request plan
+  [tap → type → enter] runs under ONE aggregate approval — the Cowork loop, on a real app.
+- The safety blocklist got ONE canonical TS home (`capability/safety.ts`); ActionExecutor
+  imports it; `check_safety_parity.py` repointed. Still 34/34 across all four surfaces.
+
+Verified: 255 TS tests (9 new, driven by a fake ADB provider — no emulator needed), lint
+clean, safety-parity green. **Desktop-only** by design (§5): app-driving never ships in the
+store apps. Not yet wired into the desktop agent loop / UI — that + the approval dialog is the
+next desktop step, alongside the Android Compose catch-up.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the

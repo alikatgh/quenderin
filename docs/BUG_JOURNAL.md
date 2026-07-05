@@ -331,6 +331,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (desktop) — Milestone 4: the Capability spine now exists in TypeScript too
+  (src/services/capability/), so device-driving runs behind the same blocklist→consent→
+  preview→approval→ledger gate as the native file capabilities. First app capabilities:
+  app.observe/tap/type/key over ADB, tap-by-visible-label (never coordinates) + a
+  defense-in-depth blocklist re-check on the RESOLVED element. Blocklist got one canonical
+  TS home; parity 34/34 held. Lesson: bring the governance to the muscle, not vice versa.
+
 - 2026-07-05 (agent) — Milestone 3: plan preview, both twins. Invariants: a plan is atomic at
   the GATE (one blocked/unconsented/unparseable step refuses everything, before approval) but
   sequential at EXECUTION (a failing step stops the remainder with "stopped after N of M") —

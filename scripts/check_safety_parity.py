@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CANONICAL = ROOT / "shared" / "safety-blocklist.json"
 SWIFT = ROOT / "apple" / "QuenderinKit" / "Sources" / "QuenderinKit" / "SafetyBlocklist.swift"
 KOTLIN = ROOT / "android" / "quenderin-core" / "src" / "main" / "kotlin" / "ai" / "quenderin" / "core" / "SafetyBlocklist.kt"
-TS = ROOT / "src" / "services" / "agent" / "actionExecutor.ts"
+TS = ROOT / "src" / "services" / "capability" / "safety.ts"
 
 # Pull the double-quoted / single-quoted string literals out of the FIRST array-literal block that
 # follows the blocklist declaration in each source file. Anchored to the declaration name so a
@@ -40,7 +40,7 @@ BLOCKS = {
     # `[^=]*` skips the `: [String]` type annotation (whose own `[` would trap a `[^\[]*` scan).
     "Swift": (SWIFT, r"blockedKeywords[^=]*=\s*\[(.*?)\]", r'"([^"]+)"'),
     "Kotlin": (KOTLIN, r"blockedKeywords[^(]*listOf\((.*?)\)", r'"([^"]+)"'),
-    "Desktop": (TS, r"BLOCKLIST\s*=\s*\[(.*?)\]", r"'([^']+)'"),
+    "Desktop": (TS, r"AGENT_BLOCKLIST\s*=\s*\[(.*?)\]", r"'([^']+)'"),
 }
 
 
