@@ -10,6 +10,7 @@ import { SkillMemory } from './skillMemory.js';
 import { appCapabilities } from './appCapabilities.js';
 import { MacAutomation } from './macAutomation.js';
 import { macCapabilities } from './macCapabilities.js';
+import { fileCapabilities } from './fileCapabilities.js';
 
 /**
  * The production assembly — this is where "the engine with tests" becomes "the thing that runs on
@@ -40,6 +41,9 @@ export interface GovernedAgentDeps {
     parser?: UiParserService;
     /** macOS automation for the mac.* capabilities. Omit to exclude them (e.g. off darwin). */
     mac?: MacAutomation;
+    /** The granted workspace folder for the fs.* capabilities (organize/rename/trash/read/list).
+     *  A function so the grant can change; returns null when none is granted. Omit to exclude fs.*. */
+    workspace?: () => string | null;
     /** Persisted grants (the Settings toggles). Defaults to in-memory. */
     consent?: ConsentStore;
     /** The flight recorder. Defaults to in-memory. */
@@ -69,6 +73,7 @@ export interface GovernedAgent {
 export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
     const parser = deps.parser ?? new UiParserService();
     const capabilities: Capability[] = [
+        ...(deps.workspace ? fileCapabilities(deps.workspace) : []),
         ...(deps.mac ? macCapabilities(deps.mac) : []),
         ...(deps.device ? appCapabilities(deps.device, parser) : []),
     ];

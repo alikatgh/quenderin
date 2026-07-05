@@ -19,6 +19,7 @@ import { OsascriptAutomation } from './services/capability/macAutomation.js';
 import { InMemoryConsentStore } from './services/capability/capability.js';
 import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
+import { fileCapabilities } from './services/capability/fileCapabilities.js';
 import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
 
 const program = new Command();
@@ -235,12 +236,22 @@ program
   .description('Tell Quenderin to do something on your Mac — it asks before every change.')
   .argument('<goal>', 'what you want done, e.g. "remind me to call the dentist"')
   .option('-m, --model <id>', 'model to plan with (see `quenderin models`)')
+  .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/move/rename/trash/read)')
   .option('-y, --yes', 'auto-approve every change (use with care)')
-  .action(async (goal: string, options: { model?: string; yes?: boolean }) => {
+  .action(async (goal: string, options: { model?: string; workspace?: string; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
-    if (!mac.available()) {
-      console.error('`quenderin do` is macOS-only for now.');
+    let workspaceDir: string | null = null;
+    if (options.workspace) {
+      workspaceDir = path.resolve(options.workspace);
+      if (!fs.existsSync(workspaceDir) || !fs.statSync(workspaceDir).isDirectory()) {
+        console.error(`Workspace "${options.workspace}" is not a folder.`);
+        process.exitCode = 1;
+        return;
+      }
+    }
+    if (!mac.available() && !workspaceDir) {
+      console.error('`quenderin do` needs macOS (for app control) or --workspace <dir> (for file tasks).');
       process.exitCode = 1;
       return;
     }
@@ -256,8 +267,9 @@ program
       }
 
       const consent = new InMemoryConsentStore();
-      // The per-change terminal prompt is the real gate here, so grant the mac capabilities.
-      macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+      // The per-change terminal prompt is the real gate here, so grant the capabilities in play.
+      if (mac.available()) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+      if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
 
       const ac = new AbortController();
       process.once('SIGINT', () => { console.log(dim('\n(stopping — finishing the current step)')); ac.abort(); });
@@ -271,8 +283,13 @@ program
       // Persisted across runs: the ledger (review what it's done) and skill memory (it gets
       // better at what you repeat). Both under ~/.quenderin/, nothing leaves the machine.
       const memory = loadSkillMemory();
-      const agent = createGovernedAgent({ llm, mac, consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory });
-      console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this Mac')}\n`);
+      const agent = createGovernedAgent({
+        llm,
+        mac: mac.available() ? mac : undefined,
+        workspace: workspaceDir ? () => workspaceDir : undefined,
+        consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory,
+      });
+      console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this machine')}\n`);
       const result = await agent.run(goal);
       saveSkillMemory(memory);   // remember what worked for next time
 

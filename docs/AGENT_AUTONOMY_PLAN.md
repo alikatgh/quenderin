@@ -419,6 +419,20 @@ at the end, all governed. So the whole stack is runnable on a Mac today from the
 the Electron GUI is now a nicer front-end for a loop that already works, not a prerequisite.
 Remaining: the Electron approval dialog (a prettier `approve`) + the Android Compose catch-up.
 
+**Post-M4 gap-fill — file hands for the CLI agent (2026-07-05):** the flagship chore class
+("organize my downloads") literally *couldn't run* on `quenderin do` — `fs.*` existed only in
+the Swift/Kotlin apps, so the desktop TS agent had app-driving and mac.* but **no file
+capabilities at all**. Closed it with `fileCapabilities.ts`: `fs.list`/`fs.read` (T1) +
+`fs.move`/`fs.rename`/`fs.trash` (T2), same structural safety as the native twins — a granted
+**workspace** folder, plain names only (no paths, no `..`), **never overwrite**, and Trash is
+a *visible subfolder* (never a real delete). Every write implements `undo()` so it plugs into
+the session rollback — a move + a rename in one run both reverse LIFO through `undoAll()`.
+Wired into `createGovernedAgent` (a `workspace?: () => string | null` seam) and exposed on the
+CLI as `quenderin do --workspace <dir>`, which also lets the file half run **off macOS** (the
+first cross-platform slice of the agent). Verified: 320 TS tests (11 new — temp-dir
+round-trips, no-overwrite, path-traversal rejection, session rollback), lint + both parity
+guards green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the
