@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-    FsListCapability, FsReadCapability, FsMoveCapability, FsRenameCapability, FsTrashCapability,
+    FsListCapability, FsReadCapability, FsMoveCapability, FsRenameCapability, FsTrashCapability, FsWriteCapability,
     fileCapabilities,
 } from '../src/services/capability/fileCapabilities.js';
 import { RunSession, InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
@@ -112,10 +112,45 @@ describe('fs.trash', () => {
     });
 });
 
+describe('fs.write', () => {
+    it('creates a new file from "<name> | <content>" and undo relocates it to Trash/', async () => {
+        const cap = new FsWriteCapability(workspace);
+        const out = await cap.run('summary.md | # Report\nall good');
+        expect(out).toContain('Created "summary.md"');
+        expect(fs.readFileSync(path.join(ws, 'summary.md'), 'utf8')).toBe('# Report\nall good');
+
+        expect(await cap.undo('summary.md | # Report\nall good')).toContain('into Trash/');
+        expect(exists('summary.md')).toBe(false);
+        expect(exists('Trash/summary.md')).toBe(true);   // recoverable, never destroyed
+    });
+
+    it('never overwrites an existing file, and rejects bad input', async () => {
+        touch('keep.txt', 'original');
+        const cap = new FsWriteCapability(workspace);
+        expect(await cap.run('keep.txt | new stuff')).toContain('refusing to overwrite');
+        expect(fs.readFileSync(path.join(ws, 'keep.txt'), 'utf8')).toBe('original');   // untouched
+        expect(await cap.run('../escape | x')).toContain('plain filename');
+        expect(await cap.run('no pipe here')).toContain('<filename> | <content>');
+    });
+
+    it('preserves pipes inside the content (only the first pipe splits)', async () => {
+        await new FsWriteCapability(workspace).run('cmd.txt | a | b | c');
+        expect(fs.readFileSync(path.join(ws, 'cmd.txt'), 'utf8')).toBe('a | b | c');
+    });
+
+    it('scans the CONTENT with the blocklist through the runner, like notes/mail (nothing written)', async () => {
+        const consent = new InMemoryConsentStore(); consent.setGranted('fs.write', true);
+        const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new FsWriteCapability(workspace), 'plan.txt | first wire the deposit and send money');
+        expect(out).toContain('blocked action');
+        expect(exists('plan.txt')).toBe(false);   // fail-safe: refused before any write
+    });
+});
+
 describe('fileCapabilities() + session rollback', () => {
-    it('registers the five fs.* tools', () => {
+    it('registers the six fs.* tools', () => {
         expect(fileCapabilities(workspace).map(c => c.name)).toEqual(
-            ['fs.list', 'fs.read', 'fs.move', 'fs.rename', 'fs.trash'],
+            ['fs.list', 'fs.read', 'fs.move', 'fs.rename', 'fs.write', 'fs.trash'],
         );
     });
 

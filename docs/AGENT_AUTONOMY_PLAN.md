@@ -431,7 +431,10 @@ Wired into `createGovernedAgent` (a `workspace?: () => string | null` seam) and 
 CLI as `quenderin do --workspace <dir>`, which also lets the file half run **off macOS** (the
 first cross-platform slice of the agent). Verified: 320 TS tests (11 new — temp-dir
 round-trips, no-overwrite, path-traversal rejection, session rollback), lint + both parity
-guards green.
+guards green. **Later `fs.write` (T2)** completed the jump from *reorganize* to *produce* — the
+agent can create a NEW text file ("read these and write me a summary.md"): create-only (never
+overwrites), undo relocates it to Trash/ (safe even cross-session — never destroys), and its
+CONTENT is blocklist-scanned exactly like `mac.notes.create` / `mac.mail.draft`.
 
 **Post-M4 — the review pillar surfaced (2026-07-05):** the trust loop is stop · **review** ·
 undo · consent · preview. Every action was already *persisted* to `~/.quenderin/agent-ledger.jsonl`,
