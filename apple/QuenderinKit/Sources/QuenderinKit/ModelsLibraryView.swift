@@ -427,12 +427,17 @@ final class ModelLibraryController: ObservableObject {
         guard let entry = ModelCatalog.models.first(where: { $0.filename == name }) else {
             return .notInCatalog(name)
         }
-        guard (try? ModelIntegrity.verify(fileURL: url, expectedSHA256: nil)) != nil else {
+        // The file matched a catalog entry — hold it to that entry's pinned SHA-256 (Q-010),
+        // not just the GGUF magic. A tampered or mismatched-quant file with the right NAME must
+        // not be trusted as the catalog model. verify() falls back to magic-only when the entry
+        // pins no checksum, so an unpinned catalog model still imports.
+        guard (try? ModelIntegrity.verify(fileURL: url, expectedSHA256: entry.sha256)) != nil else {
             return .invalid(name)
         }
         states[entry.id] = .downloading(0)
         let destination = modelsDir.appendingPathComponent(entry.filename)
         let dir = modelsDir
+        let expectedSHA = entry.sha256
         let copied: Bool = await Task.detached(priority: .userInitiated) {
             do {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -440,7 +445,7 @@ final class ModelLibraryController: ObservableObject {
                     try FileManager.default.removeItem(at: destination)
                 }
                 try FileManager.default.copyItem(at: url, to: destination)
-                try ModelIntegrity.verify(fileURL: destination, expectedSHA256: nil)
+                try ModelIntegrity.verify(fileURL: destination, expectedSHA256: expectedSHA)
                 return true
             } catch {
                 try? FileManager.default.removeItem(at: destination)
@@ -515,7 +520,17 @@ final class ModelLibraryController: ObservableObject {
         guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
         states[entry.id] = .downloading(0)
         let destination = modelsDir.appendingPathComponent(entry.filename)
+        let filename = entry.filename
         tasks[entry.id] = Task { [weak self] in
+            // Claim the target file so the onboarding installer can't write the SAME partial
+            // concurrently and corrupt it (Q-003). If it's already in flight elsewhere, don't
+            // start a second writer — reflect the in-progress state and bail.
+            guard await DownloadCoordinator.shared.claim(filename) else {
+                self?.states[entry.id] = .downloading(0)
+                self?.tasks[entry.id] = nil
+                return
+            }
+            defer { Task { await DownloadCoordinator.shared.release(filename) } }
             do {
                 try FileManager.default.createDirectory(at: self?.modelsDir ?? destination.deletingLastPathComponent(),
                                                         withIntermediateDirectories: true)

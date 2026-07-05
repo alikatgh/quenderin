@@ -167,6 +167,19 @@ public final class OnboardingModel: ObservableObject {
             }
         }
 
+        // A download to this exact file may already be in flight on the library page. Claiming
+        // the filename here (and there) guarantees the shared `<filename>.partial`/destination
+        // never has two concurrent writers, which silently corrupts the file (Q-003). If another
+        // writer holds it, wait for them to finish rather than racing, then re-check the file on
+        // disk before deciding whether we still need to download.
+        let claimed = await DownloadCoordinator.shared.claim(model.filename)
+        defer { if claimed { Task { await DownloadCoordinator.shared.release(model.filename) } } }
+        if !claimed {
+            while await DownloadCoordinator.shared.isClaimed(model.filename), !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+        }
+
         if !FileManager.default.fileExists(atPath: destination.path) {
             guard let url = model.downloadURL else {
                 phase = .failed("\(model.label) has no valid download URL.")
@@ -214,6 +227,11 @@ public final class OnboardingModel: ObservableObject {
         }
 
         phase = .loading(model)
+        // Interrupt any in-flight generation BEFORE load frees the context — a running decode
+        // otherwise keeps the GPU busy right as we switch models (Android does this; Q-223).
+        // load() itself also cancels, but requesting it here ends generation sooner and keeps
+        // the switch snappy, consistent with the Stop-cancel fix (Q-005/Q-217).
+        engine.requestCancel()
         do {
             try await engine.load(model: model, at: destination)
             phase = .ready(model)

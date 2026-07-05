@@ -31,8 +31,8 @@ a row BEFORE fixing it. When shipping a feature that touches generation, re-read
 | Failure mode | Status | Mechanism |
 |---|---|---|
 | Reentrancy: clear/open/switch DURING a streaming reply | ✅ | Stream writes track the message by stable id, re-looked-up per token; install/switch re-entrancy guards. (Bug journal: `@MainActor` + `await` = reentrancy.) |
-| Runaway generation burning battery | ✅ | maxTokens cap + Stop button (breaks within one token, keeps partial) + degeneration tripwire. |
-| Download corruption / tampering | ✅ | SHA-256 / GGUF-magic gate on every path (onboarding, library, bulk, drag-import); corrupt files deleted, never listed. |
+| Runaway generation burning battery | ✅ | maxTokens cap + Stop button + degeneration tripwire. Stop now calls `engine.requestCancel()` so the native decode is interrupted mid-prefill too (was flag-only: dead during prefill, one-token-late otherwise — Q-005/Q-217); the prefill decode is bracketed by a `cancelState` check. |
+| Download corruption / tampering | ✅ | SHA-256 / GGUF-magic gate on every path (onboarding, library, bulk, drag-import); corrupt files deleted, never listed. Concurrent writers to the SAME target file are excluded by `DownloadCoordinator` (single in-flight guard keyed by filename — Q-003); drag-import checks a catalog match against its pinned SHA-256, not magic-only (Q-010). |
 | Disk full mid-download | ✅ | `DiskSpace` preflight before the tap; bulk-download offered only with ≥10 GB headroom. |
 | Interrupted downloads | ✅ | Resumable background session; survives relaunch (verified live 2026-07-03). |
 | Model too big for RAM (jetsam / OOM) | ✅ | `MemoryFitness` gates every offer surface (picker, library, presets, router). |

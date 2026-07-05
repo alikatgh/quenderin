@@ -331,6 +331,11 @@ public actor LlamaEngine: InferenceEngine {
                 reuse = 0
             }
         }
+        // A Stop during prefill (before the first token) must land too — the native prefill
+        // decode is a single non-interruptible call, so check cancelState right around it and
+        // bail before we start a long feedback loop (Q-005/Q-217). A big prompt can spend
+        // seconds here; without this check Stop was completely dead until the first token.
+        if cancelState.withLock({ $0 }) { continuation.finish(); return }
         var toPrefill = Array(newTokens[reuse...])
         var prefillRC = decode(&toPrefill)
         if prefillRC == 1 && reuse > 0 {

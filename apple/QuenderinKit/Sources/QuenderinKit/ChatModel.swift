@@ -37,6 +37,10 @@ public final class ChatModel: ObservableObject {
     /// (stopping is a decision about YOUR time, not a failure; no error styling).
     public func stopGenerating() {
         stopRequested = true
+        // The token loop below only lands a stop AT a token boundary, and never during prefill
+        // (before the first token) — so also tell the engine to interrupt its native decode now,
+        // ending generation in <500ms even mid-prefill (Q-005/Q-217).
+        engine.requestCancel()
     }
 
     private let engine: InferenceEngine

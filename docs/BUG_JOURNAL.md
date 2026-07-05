@@ -27,6 +27,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the wrong element; identify the row by a STABLE id, re-look-it-up each await, stop if it's gone. (b) a
   method that can be RE-TRIGGERED before it finishes (install/switch/submit) racing shared state + side
   effects — add a `guard !inFlight` re-entrancy guard. (chat streaming reentrancy; install guard)
+- **Breaking a Swift loop ≠ stopping native compute.** A Stop/cancel that only flips a Swift flag and
+  `break`s the token loop still lets the C/C++ engine keep decoding (to the next token boundary), and
+  does NOTHING during a single non-interruptible native call like prefill decode. Always also call the
+  engine's cancel entry point, and bracket long native calls with a cancel check. (Q-005/Q-217 Stop)
+- **Two independent writers to the same file path corrupt it.** Two registries that each stream a
+  download into the SAME `dir/<filename>` (and the same `.partial` staging file) interleave bytes with
+  no error — the SHA gate only catches it IF a checksum is pinned. Add ONE in-flight guard keyed by the
+  target filename that both writers claim/release. (Q-003 DownloadCoordinator)
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
@@ -313,6 +321,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   (Android launch restore)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-05 (apple) — Stop did nothing (Q-005/Q-217): `ChatModel.stopGenerating()` only flipped a
+  Swift flag + broke the token loop, never calling the engine's cancel — the GPU decoded to the next
+  token boundary, and during PREFILL Stop was completely dead. Fix: call `engine.requestCancel()`, bracket
+  LlamaEngine's prefill decode with a `cancelState` check, and `requestCancel()` before load() in iOS
+  install (Q-223). Lesson: breaking a Swift loop doesn't stop native compute — signal the engine too.
 
 - 2026-07-04 (desktop/CLI) — generalChat hung forever on RAM-pressed machines: the memory-pressure
   monitor honors isInferenceBusy(), but the flag was set AFTER model load, so pressure could unload
