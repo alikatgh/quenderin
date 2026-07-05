@@ -40,8 +40,11 @@ export class CapabilityAgent {
         this.byName = new Map(capabilities.map(c => [c.name, c]));
     }
 
-    async run(goal: string, signal?: AbortSignal): Promise<AgentResult> {
+    async run(goal: string, signal?: AbortSignal, onStep?: (line: string) => void): Promise<AgentResult> {
         const steps: string[] = [];
+        // Record a step and stream it live — the CLI prints each as it happens (a 30-step task
+        // shouldn't run in silence; watching it work is how you Ctrl+C the moment you see a wrong turn).
+        const emit = (line: string) => { steps.push(line); onStep?.(line); };
         const usedTools: string[] = [];   // the capabilities this run drove — recorded on success
         let transcript = this.preamble(goal);
         // Loop guard: a weak local model's #1 failure is getting stuck re-emitting the SAME action.
@@ -74,7 +77,7 @@ export class CapabilityAgent {
                 if (++parseFailures >= 2) return { answer: null, steps, halt: 'planError' };
                 const nudge = 'Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {"tool":"<name>","input":"<text>"}, {"plan":[{"tool":"<name>","input":"<text>"},…]}, or {"answer":"<text>"}.';
                 transcript += `\n${nudge}`;
-                steps.push(nudge);
+                emit(nudge);
                 continue;
             }
             parseFailures = 0;
@@ -93,7 +96,7 @@ export class CapabilityAgent {
                 if (++stall >= 2) return { answer: null, steps, halt: 'stalled' };
                 const nudge = `You already ran ${sig} and got: ${lastObs} — do something different, or reply {"answer":"…"} if the task is done.`;
                 transcript += `\n${nudge}`;
-                steps.push(nudge);
+                emit(nudge);
                 continue;
             }
             stall = 0;
@@ -116,7 +119,7 @@ export class CapabilityAgent {
                 const described = decision.calls.map(c => `${c.name}(${c.input})`).join(', ');
                 transcript += `\nProposed plan [${described}] → ${observation}`;
             }
-            steps.push(observation);
+            emit(observation);
             prevSig = sig;
             lastObs = observation;
         }

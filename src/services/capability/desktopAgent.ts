@@ -68,8 +68,8 @@ export interface GovernedAgentDeps {
 }
 
 export interface GovernedAgent {
-    /** Run a goal to completion, governed the whole way. */
-    run(goal: string): ReturnType<CapabilityAgent['run']>;
+    /** Run a goal to completion, governed the whole way. `onStep` streams each observation live. */
+    run(goal: string, onStep?: (line: string) => void): ReturnType<CapabilityAgent['run']>;
     /** Reverse everything this run changed (the "undo this task" button). */
     undoAll(): Promise<string>;
     /** The undoable actions this run recorded (name + input, oldest-first) — persist for a
@@ -102,9 +102,9 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
     );
     const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory);
     return {
-        run: (goal: string) => {
+        run: (goal: string, onStep?: (line: string) => void) => {
             runner.setRunGoal(goal);   // stamp every ledger entry with the task, for per-task `history`
-            return agent.run(goal, deps.signal);
+            return agent.run(goal, deps.signal, onStep);
         },
         undoAll: () => session.undoAll(),
         undoLog: () => session.undoLog(),

@@ -317,10 +317,10 @@ program
       });
       if (options.dryRun) console.log(dim('  dry run — reading for real, changing nothing.'));
       console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this machine')}\n`);
-      const result = await agent.run(goal);
+      // Stream each step as it happens, so a long run isn't a silent wait — you watch it work.
+      const result = await agent.run(goal, step => console.log(dim(`· ${step}`)));
       saveSkillMemory(memory);   // remember what worked for next time
 
-      for (const step of result.steps) console.log(dim(`· ${step}`));
       if (result.answer) console.log(`\n${result.answer}`);
       else {
         const why: Record<string, string> = {

@@ -141,4 +141,24 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         expect(result.answer).toBe('done after the nudge');
         expect(device.taps).toHaveLength(1);             // the repeat was nudged, not re-executed
     });
+
+    it('streams each step live via onStep, in order, matching result.steps', async () => {
+        const device = new FakeDevice(SCREEN);
+        const consent = new InMemoryConsentStore(); consent.setGranted('app.observe', true);
+        const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
+        const replies = [
+            JSON.stringify({ tool: 'app.observe', input: '' }),
+            JSON.stringify({ tool: 'app.observe', input: 'again' }),   // distinct input → not a stall
+            JSON.stringify({ answer: 'looked twice' }),
+        ];
+        let turn = 0;
+        const caps = [new AppObserveCapability(device, parser)];
+        const agent = new CapabilityAgent(async () => replies[Math.min(turn++, replies.length - 1)], caps, runner);
+
+        const streamed: string[] = [];
+        const result = await agent.run('look around', undefined, line => streamed.push(line));
+        expect(result.halt).toBe('answered');
+        expect(streamed).toEqual(result.steps);   // every step was emitted live, none missed or duplicated
+        expect(streamed.length).toBe(2);           // the two observes (the answer isn't a "step")
+    });
 });
