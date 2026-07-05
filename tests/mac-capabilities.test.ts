@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MacAutomation, escapeAppleScriptString } from '../src/services/capability/macAutomation.js';
 import {
     CalendarTodayCapability, ReminderAddCapability,
-    FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability,
+    FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability, OpenURLCapability, MailDraftCapability,
 } from '../src/services/capability/macCapabilities.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
@@ -156,5 +156,48 @@ describe('mac.notes.create (T2 — approved, iCloud→default fallback)', () => 
         const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new NoteCreateCapability(mac), 'Idea')).toBe('Created a note "Idea".');
         expect(mac.scripts).toHaveLength(2);   // iCloud attempt failed, default succeeded
+    });
+});
+
+describe('mac.safari.openURL (T2)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.safari.openURL', true); return c; };
+    it('opens a valid http(s) URL, rejects non-URLs and injection attempts', async () => {
+        const mac = new FakeMac('');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new OpenURLCapability(mac), 'https://quenderin.org')).toBe('Opened https://quenderin.org.');
+        expect(mac.scripts[0]).toBe('open location "https://quenderin.org"');
+        // Not a URL / has a space or quote → refused before any script runs.
+        expect(await new OpenURLCapability(new FakeMac('')).run('not a url')).toContain('http(s) URL');
+        expect(await new OpenURLCapability(new FakeMac('')).run('https://x.com" then do shell script "rm')).toContain('http(s) URL');
+    });
+});
+
+describe('mac.mail.draft (T2 — drafts, NEVER sends)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.mail.draft', true); return c; };
+    it('composes a draft with recipient/subject/body and does NOT send', async () => {
+        const mac = new FakeMac('ok');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new MailDraftCapability(mac), 'to: a@b.com | subject: Hi | body: hello there');
+        expect(out).toContain('Drafted an email to a@b.com');
+        expect(out).toContain('not sent');
+        expect(mac.scripts[0]).toContain('make new outgoing message');
+        expect(mac.scripts[0]).toContain('address:"a@b.com"');
+        expect(mac.scripts[0]).not.toContain('send msg');   // the whole point: no send
+    });
+    it('the preview promises it will not be sent', async () => {
+        const preview = await new MailDraftCapability(new FakeMac('ok')).plan('to: x@y.com | subject: Q');
+        expect(preview.mutates).toBe(true);
+        expect(preview.summary).toContain('NOT be sent');
+    });
+    it('rejects a missing/invalid recipient', async () => {
+        expect(await new MailDraftCapability(new FakeMac('ok')).run('subject: no recipient')).toContain('valid "to:');
+        expect(await new MailDraftCapability(new FakeMac('ok')).run('to: notanemail | body: x')).toContain('valid "to:');
+    });
+    it('is refused by the blocklist when the body names a blocked action', async () => {
+        const mac = new FakeMac('ok');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new MailDraftCapability(mac), 'to: a@b.com | body: please wire the deposit and send money');
+        expect(out).toContain('blocked action');
+        expect(mac.scripts).toHaveLength(0);
     });
 });

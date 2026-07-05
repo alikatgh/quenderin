@@ -331,6 +331,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (macOS) — Breadth: mac.safari.openURL (http(s)-only, injection-checked) and
+  mac.mail.draft — the Cowork sweet spot: it composes an email and SHOWS it but never sends
+  (no `send msg`; sending is a human decision, T4). 8 macOS capabilities now. Lesson: the
+  safe agent verb is draft/open, not send/delete — the destructive half stays a human's finger.
+
 - 2026-07-05 (agent) — Verification: capabilities can declare verify() (advisory post-condition),
   the runner annotates the observation + ledgers 'unverified' when it fails; best-effort (a throw
   doesn't fail the action, which already ran). First real case: app.tap compares the screen

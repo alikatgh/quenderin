@@ -264,6 +264,93 @@ export class NoteCreateCapability implements Capability {
     }
 }
 
+/** T2: open a URL in the default browser. Common, low-stakes, reversible (close the tab). */
+export class OpenURLCapability implements Capability {
+    readonly name = 'mac.safari.openURL';
+    readonly purpose = 'Open a web URL in the browser. Input: an http(s) URL.';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the browser (opens a page)' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    /** Only http(s), no whitespace — a URL is not a place for AppleScript/shell surprises. */
+    private valid(url: string): boolean {
+        return /^https?:\/\/[^\s"]+$/i.test(url.trim());
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const url = input.trim();
+        if (!this.valid(url)) return { summary: 'Input must be an http(s) URL.', mutates: false };
+        return { summary: `Open ${url} in the browser.`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const url = input.trim();
+        if (!this.valid(url)) return 'Input must be an http(s) URL (no spaces).';
+        const script = `open location "${escapeAppleScriptString(url)}"`;
+        try {
+            await this.mac.runAppleScript(script);
+            return `Opened ${url}.`;
+        } catch (e) {
+            return describeMacError(e, 'open the URL');
+        }
+    }
+}
+
+/**
+ * T2: compose a Mail DRAFT — the Cowork-competitor sweet spot: it writes the email and shows it,
+ * but NEVER sends (send is T4 / blocked-adjacent — a human hits send). Input:
+ * "to: a@b.com | subject: … | body: …" (subject/body optional).
+ */
+export class MailDraftCapability implements Capability {
+    readonly name = 'mac.mail.draft';
+    readonly purpose = 'Draft an email in Mail (does NOT send). Input: "to: <address> | subject: <s> | body: <b>".';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'Mail (a draft — never sent)' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    private parse(input: string): { to: string; subject: string; body: string } | null {
+        const fields: Record<string, string> = {};
+        for (const part of input.split('|')) {
+            const idx = part.indexOf(':');
+            if (idx < 0) continue;
+            fields[part.slice(0, idx).trim().toLowerCase()] = part.slice(idx + 1).trim();
+        }
+        const to = fields['to'] ?? '';
+        if (!/^[^\s@"]+@[^\s@"]+\.[^\s@"]+$/.test(to)) return null;   // one plausible address
+        return { to, subject: fields['subject'] ?? '', body: fields['body'] ?? '' };
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const f = this.parse(input);
+        if (!f) return { summary: 'Input must include a valid "to: <address>".', mutates: false };
+        const subj = f.subject ? ` "${f.subject}"` : '';
+        return { summary: `Draft an email to ${f.to}${subj} — it will NOT be sent; you review and send it yourself.`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const f = this.parse(input);
+        if (!f) return 'Input must include a valid "to: <address>".';
+        const script = [
+            'tell application "Mail"',
+            `  set msg to make new outgoing message with properties {subject:"${escapeAppleScriptString(f.subject)}", content:"${escapeAppleScriptString(f.body)}", visible:true}`,
+            `  tell msg to make new to recipient with properties {address:"${escapeAppleScriptString(f.to)}"}`,
+            'end tell',
+            'return "ok"',
+            // Deliberately NO `send msg` — drafting is T2, sending is a human decision.
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            return `Drafted an email to ${f.to} (open in Mail, not sent — review and send it yourself).`;
+        } catch (e) {
+            return describeMacError(e, 'draft the email');
+        }
+    }
+}
+
 function describeMacError(e: unknown, action: string): string {
     const code = (e as { code?: string })?.code;
     if (code === 'MAC_ONLY') return NOT_MAC;
@@ -285,7 +372,9 @@ export function macCapabilities(mac: MacAutomation): Capability[] {
         new CalendarTodayCapability(mac),
         // Action (T2 — per-run approval)
         new OpenAppCapability(mac),
+        new OpenURLCapability(mac),
         new NoteCreateCapability(mac),
         new ReminderAddCapability(mac),
+        new MailDraftCapability(mac),   // drafts, never sends
     ];
 }
