@@ -8,12 +8,17 @@ import java.util.regex.Pattern
  * Never remove entries.
  */
 object SafetyBlocklist {
+    // Twin of shared/safety-blocklist.json — scripts/check_safety_parity.py enforces exact
+    // set equality with the canonical list and the Swift/TS twins in CI (the three lists had
+    // silently drifted; audit Q-014 / AGENT_AUTONOMY_PLAN Milestone 0).
     val blockedKeywords: List<String> = listOf(
         // Financial
-        "pay", "payment", "purchase", "buy now", "checkout", "transfer", "send money",
+        "pay", "payment", "purchase", "buy", "buy now", "checkout", "transfer", "send money",
         "wire", "bank", "credit card", "cvv", "venmo", "paypal",
+        "confirm purchase", "confirm payment", "place order", "withdraw",
         // Destructive
         "delete", "erase", "format", "wipe", "factory reset", "uninstall", "remove all",
+        "revoke", "deactivate",
         // Credentials / sensitive
         "password", "passcode", "pin", "ssn", "social security", "private key", "seed phrase",
     )

@@ -159,9 +159,13 @@ The **runtime** (an evolution of `AgentLoop`) enforces, in order, before any `ru
 
 Deliberately small, desktop-first, and testable on *this* machine — no device farm needed:
 
-1. **Unify the blocklist** into `shared/safety-blocklist.json` + parity vectors +
-   `scripts/check_safety_parity.py` (CI). Both platforms load the same list. *This is the
-   prerequisite and it's pure cleanup — do it first.*
+1. ✅ **Unify the blocklist** (done 2026-07-05) — `shared/safety-blocklist.json` is canonical;
+   `scripts/check_safety_parity.py` enforces exact set-equality across the Swift/Kotlin/TS twins
+   in CI. The three lists had drifted (desktop carried 7 keywords the twins lacked, missed 16 of
+   theirs — audit Q-014); now one 34-keyword list. The desktop matcher was upgraded to
+   camelCase/underscore-aware word-boundary tokenization so it can safely carry the full
+   vocabulary (`pin`/`bank`) without firing on `spinner`/`bankruptcy` while still catching
+   `confirm_transfer_btn`. All three suites green.
 2. **Introduce `Capability`** alongside `AgentTool` (don't break existing tools; adapt them
    as T0 capabilities with `.none` blast radius).
 3. **Ship one real T1 capability: `fs.read`** — "read this file the user explicitly selected."

@@ -9,15 +9,41 @@ export class SafetyViolationError extends Error {
 }
 
 export class ActionExecutor {
-    // Destructive / financial actions the agent must never trigger without explicit human intent.
-    // Multi-word phrases avoid the false positives bare words cause (e.g. "send" vs "send money") (H10).
-    private readonly BLOCKLIST = [
-        'pay', 'delete', 'password', 'buy', 'confirm purchase', 'confirm payment',
-        'transfer', 'send money', 'purchase', 'checkout', 'place order', 'withdraw',
-        'wipe', 'factory reset', 'uninstall', 'revoke', 'deactivate',
+    // Twin of shared/safety-blocklist.json — the canonical agent blocklist. Kept in exact set
+    // parity with the Swift/Kotlin twins by scripts/check_safety_parity.py in CI (the three lists
+    // had silently drifted — audit Q-014 / AGENT_AUTONOMY_PLAN Milestone 0). Never remove entries.
+    private static readonly BLOCKLIST = [
+        // Financial
+        'pay', 'payment', 'purchase', 'buy', 'buy now', 'checkout', 'transfer', 'send money',
+        'wire', 'bank', 'credit card', 'cvv', 'venmo', 'paypal',
+        'confirm purchase', 'confirm payment', 'place order', 'withdraw',
+        // Destructive
+        'delete', 'erase', 'format', 'wipe', 'factory reset', 'uninstall', 'remove all',
+        'revoke', 'deactivate',
+        // Credentials / sensitive
+        'password', 'passcode', 'pin', 'ssn', 'social security', 'private key', 'seed phrase',
     ];
 
     constructor(private deviceProvider: IDeviceProvider) { }
+
+    /** The blocked keyword `raw` touches, or undefined. Single-word keywords match on word
+     *  boundaries — camelCase and separators (`_`, `-`) are split — so a resourceId like
+     *  "confirm_transfer_btn" / "confirmTransferBtn" still matches 'transfer' (H10) while 'pin'
+     *  never fires on "spinner" and 'bank' never on "bankruptcy". Multi-word phrases match as
+     *  substrings (same semantics as the Swift/Kotlin twins). */
+    private static matchedKeyword(raw: string): string | undefined {
+        const spaced = raw.replace(/([a-z0-9])([A-Z])/g, '$1 $2'); // camelCase → spaced before lowercasing
+        const lower = spaced.toLowerCase();
+        const tokens = new Set(lower.split(/[^a-z0-9]+/).filter(Boolean));
+        for (const kw of ActionExecutor.BLOCKLIST) {
+            if (kw.includes(' ')) {
+                if (lower.includes(kw)) return kw;
+            } else if (tokens.has(kw)) {
+                return kw;
+            }
+        }
+        return undefined;
+    }
 
     private checkSafety(el: UIElement | undefined, inputText?: string) {
         const textToCheck = [
@@ -25,14 +51,12 @@ export class ActionExecutor {
             el?.contentDesc,
             el?.resourceId,   // H10: icon buttons with empty labels but a resource-id like "confirm_transfer_btn"
             inputText
-        ].filter(Boolean).map(t => t!.toLowerCase());
+        ].filter(Boolean) as string[];
 
-        for (const word of this.BLOCKLIST) {
-            const lowerWord = word.toLowerCase();
-            for (const text of textToCheck) {
-                if (text.includes(lowerWord)) {
-                    throw new SafetyViolationError(`Safety Block: Refusing to interact with potentially destructive context matching '${word}'.`);
-                }
+        for (const text of textToCheck) {
+            const hit = ActionExecutor.matchedKeyword(text);
+            if (hit) {
+                throw new SafetyViolationError(`Safety Block: Refusing to interact with potentially destructive context matching '${hit}'.`);
             }
         }
     }

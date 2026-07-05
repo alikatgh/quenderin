@@ -86,3 +86,30 @@ describe('ActionExecutor coordinate-click safety', () => {
         expect(clicks).toHaveLength(0);
     });
 });
+
+/**
+ * The unified-blocklist matcher (Q-014 / AGENT_AUTONOMY_PLAN Milestone 0): single-word keywords
+ * match on word boundaries, with camelCase and separators (`_`, `-`) split, so the expanded list
+ * ('pin', 'bank', …) catches real destructive UI without firing on innocent substrings.
+ */
+describe('ActionExecutor unified-blocklist matching', () => {
+    const block = async (label: string) => {
+        const { provider } = deviceStub();
+        const exec = new ActionExecutor(provider);
+        return run(exec, { action: 'click', target_id: 1 } as AgentAction, [uiElement(1, label)]);
+    };
+
+    it('catches destructive keywords inside snake_case / camelCase resource labels (H10)', async () => {
+        for (const label of ['confirm_transfer_btn', 'confirmTransferButton', 'wipe-device', 'Enter PIN']) {
+            await expect(block(label), `"${label}" should block`).rejects.toBeInstanceOf(SafetyViolationError);
+        }
+    });
+
+    it('does NOT fire on innocent words that merely contain a keyword', async () => {
+        // 'pin' ⊄ spinner, 'bank' ⊄ bankruptcy, 'pay' ⊄ repay/display, 'buy' ⊄ buyer's-remorse-free label
+        for (const label of ['Spinner settings', 'Bankruptcy filing help', 'Display options', 'Open the weather app']) {
+            const ok = await block(label);
+            expect(ok, `"${label}" should be allowed`).toBe(true);
+        }
+    });
+});

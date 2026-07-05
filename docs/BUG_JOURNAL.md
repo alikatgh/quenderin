@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (all) — The agent safety blocklist had silently drifted across platforms (Q-014):
+  desktop carried 7 keywords the Swift/Kotlin twins lacked and was missing 16 of theirs — so an
+  action blocked on the phone could go through on desktop. Fix: shared/safety-blocklist.json is
+  canonical, check_safety_parity.py enforces set-equality in CI; desktop matcher upgraded to
+  boundary tokenization. Lesson: a SAFETY list is exactly the kind of twin that must be parity-gated, not hand-synced.
+
 - 2026-07-05 (android) — Switching/opening a conversation DURING a streaming reply corrupted it:
   ChatModel.send ran on Dispatchers.IO mutating _messages[placeholderIndex] with no guard, while
   ConversationCoordinator.open→chat.restore cleared+refilled the list on the main thread → tokens from

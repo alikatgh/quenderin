@@ -1,0 +1,19 @@
+{
+  "_comment": "CANONICAL agent safety blocklist — the keywords an autonomous agent must never act on without explicit human confirmation. One list, three consumers: apple/.../SafetyBlocklist.swift, android/.../SafetyBlocklist.kt, src/services/agent/actionExecutor.ts. scripts/check_safety_parity.py enforces exact set equality in CI (the lists had silently drifted — desktop had 7 keywords the twins lacked and was missing 16 of theirs; audit Q-014). RULES: entries may only be ADDED, never removed (docs/AGENT_AUTONOMY_PLAN.md §3.7). MATCH SEMANTICS, identical on all platforms: single words match on Unicode word boundaries ('pay' must NOT fire on 'repay', 'pin' not on 'opinion'); multi-word phrases match as plain substrings.",
+  "version": 2,
+  "categories": {
+    "financial": [
+      "pay", "payment", "purchase", "buy", "buy now", "checkout", "transfer",
+      "send money", "wire", "bank", "credit card", "cvv", "venmo", "paypal",
+      "confirm purchase", "confirm payment", "place order", "withdraw"
+    ],
+    "destructive": [
+      "delete", "erase", "format", "wipe", "factory reset", "uninstall",
+      "remove all", "revoke", "deactivate"
+    ],
+    "credentials": [
+      "password", "passcode", "pin", "ssn", "social security", "private key",
+      "seed phrase"
+    ]
+  }
+}
