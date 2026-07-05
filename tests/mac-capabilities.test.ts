@@ -3,6 +3,7 @@ import { MacAutomation, escapeAppleScriptString } from '../src/services/capabili
 import {
     CalendarTodayCapability, ReminderAddCapability,
     FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability, OpenURLCapability, MailDraftCapability,
+    ShortcutListCapability, ShortcutRunCapability,
 } from '../src/services/capability/macCapabilities.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
@@ -199,5 +200,79 @@ describe('mac.mail.draft (T2 — drafts, NEVER sends)', () => {
         const out = await runner.execute(new MailDraftCapability(mac), 'to: a@b.com | body: please wire the deposit and send money');
         expect(out).toContain('blocked action');
         expect(mac.scripts).toHaveLength(0);
+    });
+});
+
+describe('mac.shortcuts.list (T1 — perception, no approval)', () => {
+    it('lists shortcut names line-by-line, without approval', async () => {
+        const mac = new FakeMac('Morning Routine\nToggle Dark Mode\n\nResize Image\n');
+        const consent = new InMemoryConsentStore(); consent.setGranted('mac.shortcuts.list', true);
+        const out = await new CapabilityRunner(consent).execute(new ShortcutListCapability(mac), '');
+        expect(out).toBe('Morning Routine\nToggle Dark Mode\nResize Image');   // blanks trimmed
+        expect(mac.scripts[0]).toContain('tell application "Shortcuts Events"');
+    });
+
+    it('says so when there are none, and truncates a huge library', async () => {
+        expect(await new ShortcutListCapability(new FakeMac('   ')).run()).toContain('no Apple Shortcuts');
+        const many = Array.from({ length: 30 }, (_, i) => `S${i}`).join('\n');
+        expect(await new ShortcutListCapability(new FakeMac(many), 10).run()).toContain('[…20 more]');
+    });
+});
+
+describe('mac.shortcuts.run (T3 — the Shortcuts library, approved & injection-safe)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.shortcuts.run', true); return c; };
+
+    it('runs a named shortcut only after approval; no input clause when none given', async () => {
+        const mac = new FakeMac('');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new ShortcutRunCapability(mac), 'Toggle Dark Mode')).toBe('Ran your shortcut "Toggle Dark Mode".');
+        expect(mac.scripts[0]).toContain('run shortcut "Toggle Dark Mode"');
+        expect(mac.scripts[0]).not.toContain('with input');   // no text → no input clause
+    });
+
+    it('passes text input via "<name> | <text>", escaped, and returns the shortcut output', async () => {
+        const mac = new FakeMac('https://sho.rt/abc');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new ShortcutRunCapability(mac), 'Shorten URL | https://example.com/very/long');
+        expect(out).toContain('It returned:\nhttps://sho.rt/abc');
+        expect(mac.scripts[0]).toContain('run shortcut "Shorten URL" with input "https://example.com/very/long"');
+    });
+
+    it('FAILS CLOSED without an approver — a T3 action never runs unapproved', async () => {
+        const mac = new FakeMac('');
+        const ledger = new InMemoryAuditLedger();
+        const out = await new CapabilityRunner(grant(), ledger).execute(new ShortcutRunCapability(mac), 'Anything');
+        expect(out).toContain('per-run approval');
+        expect(mac.scripts).toHaveLength(0);
+        expect(ledger.entries().at(-1)?.decision).toBe('needsApproval');
+    });
+
+    it('a malicious shortcut name cannot break out of the AppleScript string literal', async () => {
+        const mac = new FakeMac('');
+        await new ShortcutRunCapability(mac).run('X" \nend tell\ndo shell script "rm -rf ~');
+        const script = mac.scripts[0];
+        expect(script).toContain('\\"');                       // the quote is escaped
+        expect(script).not.toMatch(/run shortcut "X"\s*$/m);   // the break-out never stands alone
+    });
+
+    it('is refused by the blocklist when the shortcut name contains a blocked word', async () => {
+        const mac = new FakeMac('');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new ShortcutRunCapability(mac), 'wire money to savings');
+        expect(out).toContain('blocked action');
+        expect(mac.scripts).toHaveLength(0);
+    });
+
+    it('reports a missing shortcut cleanly and is macOS-only off darwin', async () => {
+        const missing = new FakeMac('ok', true, 'Can’t get shortcut "Nope"');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new ShortcutRunCapability(missing), 'Nope')).toContain('No shortcut named "Nope"');
+        expect(await new ShortcutRunCapability(new FakeMac('', false)).run('X')).toBe('This runs on macOS only.');
+    });
+
+    it('the preview is truthful that the shortcut does whatever the user built', async () => {
+        const preview = await new ShortcutRunCapability(new FakeMac('')).plan('Morning Routine');
+        expect(preview.mutates).toBe(true);
+        expect(preview.summary).toContain('whatever you built it to do');
     });
 });

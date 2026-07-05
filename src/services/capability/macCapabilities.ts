@@ -351,6 +351,110 @@ export class MailDraftCapability implements Capability {
     }
 }
 
+/** T1: list the user's Apple Shortcuts by name — perception for `mac.shortcuts.run` (the model
+ *  names what it can see, exactly like fs.list → fs.move and app.observe → app.tap). Read-only. */
+export class ShortcutListCapability implements Capability {
+    readonly name = 'mac.shortcuts.list';
+    readonly purpose = 'List the names of your Apple Shortcuts. No input.';
+    readonly tier = CapabilityTier.ReadOnly;
+    readonly blastRadius: BlastRadius = { kind: 'read', resource: 'your Shortcuts library (names)' };
+
+    constructor(private readonly mac: MacAutomation, private readonly maxNames = 200) { }
+
+    async plan(): Promise<ActionPreview> {
+        return { summary: 'Would list the names of your Apple Shortcuts (read-only).', mutates: false };
+    }
+
+    async run(): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const script = [
+            'set out to ""',
+            'tell application "Shortcuts Events"',
+            '  repeat with s in shortcuts',
+            '    set out to out & (name of s) & linefeed',
+            '  end repeat',
+            'end tell',
+            'return out',
+        ].join('\n');
+        try {
+            const names = (await this.mac.runAppleScript(script)).split('\n').map(n => n.trim()).filter(Boolean);
+            if (names.length === 0) return 'You have no Apple Shortcuts yet.';
+            const shown = names.slice(0, this.maxNames);
+            return shown.join('\n') + (names.length > this.maxNames ? `\n[…${names.length - this.maxNames} more]` : '');
+        } catch (e) {
+            return describeMacError(e, 'list your Shortcuts');
+        }
+    }
+}
+
+/**
+ * T3: run one of the user's EXISTING Apple Shortcuts by name — the lodestar (§1: "Apple bought
+ * Workflow, not an AI that clicks things"). This is how "anything possible in macOS" is reached
+ * safely: it invokes a shortcut the USER already authored, BY NAME, behind per-run approval —
+ * never a "run arbitrary script" hole (it can't create or edit a shortcut, only call one that
+ * exists). The shortcut's own effects are arbitrary, so this is T3 with a truthful preview and no
+ * undo. Input: the shortcut name, optionally "<name> | <input text>" to pass it text.
+ * (Note: a shortcut named with a blocklisted word — e.g. "Pay Rent" — is refused at the gate;
+ * that's the same conservative tradeoff every capability has, and the user sees it in `history`.)
+ */
+export class ShortcutRunCapability implements Capability {
+    readonly name = 'mac.shortcuts.run';
+    readonly purpose = 'Run one of your Apple Shortcuts by name. Input: the shortcut name, or "<name> | <input text>".';
+    readonly tier = CapabilityTier.AppAction;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'your Shortcuts (runs a shortcut you built)' };
+
+    constructor(private readonly mac: MacAutomation, private readonly maxChars = 4000) { }
+
+    private parse(input: string): { name: string; text?: string } | null {
+        const raw = input.trim();
+        if (!raw) return null;
+        const idx = raw.indexOf('|');
+        if (idx < 0) return { name: raw };
+        const name = raw.slice(0, idx).trim();
+        const text = raw.slice(idx + 1).trim();
+        return name ? (text ? { name, text } : { name }) : null;
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const f = this.parse(input);
+        if (!f) return { summary: 'Input is the shortcut name (use `mac.shortcuts.list` to see them).', mutates: false };
+        const withText = f.text ? ` with input "${f.text.length > 40 ? f.text.slice(0, 40) + '…' : f.text}"` : '';
+        return { summary: `Run your shortcut "${f.name}"${withText} — it does whatever you built it to do.`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const f = this.parse(input);
+        if (!f) return 'Input is the shortcut name — see `mac.shortcuts.list` for what you have.';
+        const invoke = f.text
+            ? `run shortcut "${escapeAppleScriptString(f.name)}" with input "${escapeAppleScriptString(f.text)}"`
+            : `run shortcut "${escapeAppleScriptString(f.name)}"`;
+        const script = [
+            'tell application "Shortcuts Events"',
+            `  set outVal to ${invoke}`,
+            'end tell',
+            'if outVal is missing value then return ""',
+            'try',
+            '  return (outVal as text)',
+            'on error',
+            '  return ""',
+            'end try',
+        ].join('\n');
+        try {
+            const out = (await this.mac.runAppleScript(script)).trim();
+            if (!out) return `Ran your shortcut "${f.name}".`;
+            const shown = out.length > this.maxChars ? out.slice(0, this.maxChars) + '\n[…output truncated]' : out;
+            return `Ran your shortcut "${f.name}". It returned:\n${shown}`;
+        } catch (e) {
+            const msg = (e as Error)?.message ?? '';
+            if (/Can’t get shortcut|not found|missing value|-1728/i.test(msg)) {
+                return `No shortcut named "${f.name}". Use \`mac.shortcuts.list\` to see yours.`;
+            }
+            return describeMacError(e, `run the shortcut "${f.name}"`);
+        }
+    }
+}
+
 function describeMacError(e: unknown, action: string): string {
     const code = (e as { code?: string })?.code;
     if (code === 'MAC_ONLY') return NOT_MAC;
@@ -370,11 +474,14 @@ export function macCapabilities(mac: MacAutomation): Capability[] {
         new FrontAppCapability(mac),
         new ClipboardReadCapability(mac),
         new CalendarTodayCapability(mac),
+        new ShortcutListCapability(mac),
         // Action (T2 — per-run approval)
         new OpenAppCapability(mac),
         new OpenURLCapability(mac),
         new NoteCreateCapability(mac),
         new ReminderAddCapability(mac),
         new MailDraftCapability(mac),   // drafts, never sends
+        // The Shortcuts library (T3 — per-run approval): the user's whole automation surface
+        new ShortcutRunCapability(mac),
     ];
 }

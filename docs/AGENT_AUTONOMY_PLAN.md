@@ -442,6 +442,20 @@ outcome), which a cloud agent structurally can't offer. Renderer is pure (`ledge
 entries → string, no clock/fs) so it's unit-tested headless; the command is a thin reader over
 `FileAuditLedger`. Verified: 326 TS tests (6 new), lint + parity green.
 
+**Post-M4 — the lodestar delivered: run the user's Shortcuts (2026-07-05).** §1 says the win is
+"Apple bought Workflow, not an AI that clicks things." `mac.shortcuts.run` (T3) invokes one of
+the user's EXISTING, self-authored Apple Shortcuts **by name**, behind per-run approval — so
+"anything possible in macOS" is reached through the user's own automation library (home control,
+file ops, API calls, device toggles), NOT a "run arbitrary script" hole: it can't create or edit
+a shortcut, only call one that already exists. Paired with `mac.shortcuts.list` (T1) so the model
+names what it can see (the fs.list → fs.move / app.observe → app.tap discipline). Optional text
+input via `"<name> | <text>"`, escaped through `escapeAppleScriptString`; the shortcut's output is
+captured back. No undo (a shortcut's effects are arbitrary and it says so in the preview), and a
+blocklisted name (e.g. "Pay Rent") is refused at the gate like any other input. This is the single
+highest-leverage capability for the mission — one typed, governed door onto the whole Shortcuts
+surface. Verified: 335 TS tests (9 new — approval gating, injection break-out, blocklist refusal,
+input passing, output capture, missing-shortcut), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the
