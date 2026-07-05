@@ -1426,6 +1426,53 @@ fun main() {
         read.size == 2 && read[0].input == "a \"quoted\"\nname" && read[1].decision == "blocked(pay)"
     })
 
+    // --- Documents in chat (AGENT_AUTONOMY_PLAN Milestone 1 / roadmap Stage 2) ---
+    check("engineText composes labeled documents before the typed message", run {
+        val m = ChatMessage(Role.USER, "what does it say?", listOf(AttachedDocument("plan.txt", "ship it")))
+        m.engineText.startsWith("Attached file \"plan.txt\":\nship it") &&
+            m.engineText.endsWith("what does it say?") &&
+            ChatMessage(Role.USER, "plain").engineText == "plain"
+    })
+    check("send() hands the engine composed doc text but keeps the bubble text clean", run {
+        var captured: List<ChatMessage> = emptyList()
+        val engine = object : InferenceEngine {
+            override var loadedModelId: String? = "rec"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "ok"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                captured = history; return "ok"
+            }
+        }
+        val chat = ChatModel(engine)
+        chat.send("what does the plan say?", listOf(AttachedDocument("plan.txt", "ship milestone one")))
+        chat.messages.first().text == "what does the plan say?" &&
+            chat.messages.first().documents.single().name == "plan.txt" &&
+            captured.first { it.role == Role.USER }.text.contains("Attached file \"plan.txt\":\nship milestone one")
+    })
+    check("ConversationStore round-trips documents and still decodes old two-field rows", run {
+        val store = ConversationStore()
+        val messages = listOf(
+            ChatMessage(Role.USER, "see attached", listOf(AttachedDocument("n.txt", "line1\nline2\ttabbed"))),
+            ChatMessage(Role.ASSISTANT, "got it"),
+        )
+        val decoded = store.decode(store.encode(messages))
+        val old = store.decode("USER\thi\nASSISTANT\thello")
+        decoded == messages && old.size == 2 && old[0].documents.isEmpty() && old[0].text == "hi"
+    })
+    check("DocumentTextExtractor caps, truncates, and rejects binary", run {
+        val dir = java.nio.file.Files.createTempDirectory("docx").toFile()
+        val big = java.io.File(dir, "big.txt").apply { writeText("b".repeat(4000)) }
+        val blob = java.io.File(dir, "blob.bin").apply { writeBytes(byteArrayOf(-1, -2, 0, -40)) }
+        val truncated = DocumentTextExtractor.extract("big.txt", big, maxBytes = 1024)
+        val rejected = DocumentTextExtractor.extract("blob.bin", blob)
+        dir.deleteRecursively()
+        truncated is DocumentTextExtractor.Extraction.Document &&
+            truncated.document.text.endsWith("[…file truncated at 1 KB]") &&
+            rejected is DocumentTextExtractor.Extraction.Rejected &&
+            rejected.reason.contains("isn't a text file")
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

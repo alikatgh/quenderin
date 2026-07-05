@@ -9,19 +9,30 @@ package ai.quenderin.core
  */
 class ConversationStore {
 
-    /** Encode a transcript to a portable, dependency-free string. */
+    /** Encode a transcript to a portable, dependency-free string. Attached documents (Milestone 1)
+     *  extend the row as `ROLE\ttext[\tname\ttext]...` — real tabs are escaped, so tab is a safe
+     *  separator, and doc-free rows keep the original two-field shape (old files decode unchanged). */
     fun encode(messages: List<ChatMessage>): String =
-        messages.joinToString("\n") { "${it.role.name}\t${escape(it.text)}" }
+        messages.joinToString("\n") { m ->
+            val base = "${m.role.name}\t${escape(m.text)}"
+            if (m.documents.isEmpty()) base
+            else base + m.documents.joinToString("") { "\t${escape(it.name)}\t${escape(it.text)}" }
+        }
 
     /** Decode a transcript; blank input is an empty conversation, not an error. */
     fun decode(text: String): List<ChatMessage> {
         if (text.isBlank()) return emptyList()
         return text.split("\n").mapNotNull { line ->
-            val tab = line.indexOf('\t')
-            if (tab < 0) return@mapNotNull null
-            val role = runCatching { Role.valueOf(line.substring(0, tab)) }.getOrNull()
+            val fields = line.split('\t')   // real tabs are escaped, so this splits FIELDS only
+            if (fields.size < 2) return@mapNotNull null
+            val role = runCatching { Role.valueOf(fields[0]) }.getOrNull()
                 ?: return@mapNotNull null
-            ChatMessage(role, unescape(line.substring(tab + 1)))
+            // Fields beyond the text come in (name, text) pairs; a dangling odd field means a torn
+            // row — keep the message, drop the incomplete doc (same spirit as the ledger's torn tail).
+            val docs = fields.drop(2).chunked(2)
+                .filter { it.size == 2 }
+                .map { AttachedDocument(unescape(it[0]), unescape(it[1])) }
+            ChatMessage(role, unescape(fields[1]), docs)
         }
     }
 

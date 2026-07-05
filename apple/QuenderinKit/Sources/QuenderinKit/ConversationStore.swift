@@ -24,20 +24,23 @@ public struct ConversationStore: Sendable {
         return try JSONDecoder().decode([StoredMessage].self, from: data).compactMap(\.chatMessage)
     }
 
-    /// On-disk shape — role + text only. Message ids are *view* identity, regenerated on
-    /// load, not content; decoupling the wire format from `ChatMessage` lets the model
-    /// evolve without breaking saved files.
+    /// On-disk shape — role + text (+ attached documents when present). Message ids are *view*
+    /// identity, regenerated on load, not content; decoupling the wire format from `ChatMessage`
+    /// lets the model evolve without breaking saved files. `documents` is OPTIONAL and omitted
+    /// when empty, so pre-Milestone-1 transcripts decode unchanged and doc-free rows stay small.
     private struct StoredMessage: Codable {
         let role: String
         let text: String
+        let documents: [AttachedDocument]?
 
         init(_ message: ChatMessage) {
             role = message.role.rawValue
             text = message.text
+            documents = message.documents.isEmpty ? nil : message.documents
         }
 
         var chatMessage: ChatMessage? {
-            ChatMessage.Role(rawValue: role).map { ChatMessage(role: $0, text: text) }
+            ChatMessage.Role(rawValue: role).map { ChatMessage(role: $0, text: text, documents: documents ?? []) }
         }
     }
 }

@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (chat) — Milestone 1: documents-as-text in chat, both twins. Design: bubble text
+  stays what the user TYPED (chips show attachments); the engine gets engineText (labeled doc +
+  message) recomposed into every windowed pass so follow-ups keep the doc in context. Extraction
+  at attach time (strict UTF-8, 24 KB cap, visible binary refusal). Persistence extended
+  backward-compatibly on BOTH formats (optional JSON field / extra TSV fields) — tested.
+
 - 2026-07-05 (agent) — Milestone 0 step 5 (COMPLETE): attach UI (paperclip + chips, fileImporter),
   Settings → Agent pane (capability tiers in plain words, consent toggles, activity feed from the
   ledger incl. refusals), AgentToolkit as the ONE tool list both the app and pane read (no drift),

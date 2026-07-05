@@ -1,16 +1,43 @@
 import Foundation
 import Combine
 
+/// A document the user attached to a chat message — name for display, extracted text for the
+/// model. Extraction happens AT ATTACH TIME (strict UTF-8, size-capped) so what the model sees
+/// is fixed when the message is sent, even if the file changes later. Twin of Kotlin
+/// `AttachedDocument` (Milestone 1, roadmap Stage 2 "documents in chat").
+public struct AttachedDocument: Sendable, Equatable, Codable {
+    public let name: String
+    public let text: String
+
+    public init(name: String, text: String) {
+        self.name = name
+        self.text = text
+    }
+}
+
 public struct ChatMessage: Sendable, Identifiable, Equatable {
     public enum Role: String, Sendable { case user, assistant }
     public let id: UUID
     public let role: Role
     public var text: String
+    /// Documents attached to this (user) message. The transcript shows chips + the typed text;
+    /// `engineText` is what the model gets.
+    public var documents: [AttachedDocument]
 
-    public init(id: UUID = UUID(), role: Role, text: String) {
+    public init(id: UUID = UUID(), role: Role, text: String, documents: [AttachedDocument] = []) {
         self.id = id
         self.role = role
         self.text = text
+        self.documents = documents
+    }
+
+    /// The text the ENGINE sees: attached documents first (clearly labeled), then the typed
+    /// message. Kept out of `text` so bubbles/persistence previews stay readable, but composed
+    /// into every windowed history pass — follow-up questions still have the document in context.
+    public var engineText: String {
+        guard !documents.isEmpty else { return text }
+        let docs = documents.map { "Attached file \"\($0.name)\":\n\($0.text)" }.joined(separator: "\n\n")
+        return "\(docs)\n\n\(text)"
     }
 }
 
@@ -51,18 +78,26 @@ public final class ChatModel: ObservableObject {
         self.context = context
     }
 
-    /// Send a prompt and stream the reply. No-ops on empty input or while a
+    /// Send a prompt and stream the reply. No-ops on empty input (unless documents are
+    /// attached — "summarize this file" with no extra words is a legitimate send) or while a
     /// previous generation is still running.
-    public func send(_ prompt: String, options: GenerationOptions = .init()) async {
+    public func send(_ prompt: String, documents: [AttachedDocument] = [], options: GenerationOptions = .init()) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isGenerating else { return }
+        guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
 
-        messages.append(ChatMessage(role: .user, text: trimmed))
+        messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
         // Chat-structured generation: pass the budget-windowed history so the engine formats it
         // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
         // Template-less engines fall back to the flat transcript; the assistant remembers prior
-        // turns either way.
-        let windowed = context.windowedHistory(messages)
+        // turns either way. Attached documents are composed in (engineText) BEFORE windowing so
+        // the token budget counts them.
+        let windowed = context.windowedHistory(messages.map { message in
+            guard !message.documents.isEmpty else { return message }
+            var composed = message
+            composed.text = message.engineText
+            composed.documents = []
+            return composed
+        })
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated

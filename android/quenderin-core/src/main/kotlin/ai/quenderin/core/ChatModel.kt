@@ -2,7 +2,29 @@ package ai.quenderin.core
 
 enum class Role { USER, ASSISTANT }
 
-data class ChatMessage(val role: Role, val text: String)
+/**
+ * A document the user attached to a chat message — name for display, extracted text for the
+ * model. Extraction happens AT ATTACH TIME (strict UTF-8, size-capped) so what the model sees is
+ * fixed when the message is sent. Twin of iOS `AttachedDocument` (Milestone 1).
+ */
+data class AttachedDocument(val name: String, val text: String)
+
+data class ChatMessage(
+    val role: Role,
+    val text: String,
+    /** Documents attached to this (user) message. UI shows chips + typed text; [engineText] is
+     *  what the model gets. */
+    val documents: List<AttachedDocument> = emptyList(),
+) {
+    /** The text the ENGINE sees: labeled documents first, then the typed message. Composed into
+     *  every windowed history pass so follow-ups keep the document in context. Twin of iOS. */
+    val engineText: String
+        get() {
+            if (documents.isEmpty()) return text
+            val docs = documents.joinToString("\n\n") { "Attached file \"${it.name}\":\n${it.text}" }
+            return "$docs\n\n$text"
+        }
+}
 
 /**
  * True when this is an assistant message whose text trips [SafetyBlocklist] — the chat UI surfaces
@@ -59,9 +81,11 @@ class ChatModel(
      * swallowed). No-op (returns "") if a generation is already in flight — a rapid double-send can't
      * race two writers onto the transcript.
      */
-    fun send(text: String): String {
+    @JvmOverloads
+    fun send(text: String, documents: List<AttachedDocument> = emptyList()): String {
         val trimmed = text.trim()
-        require(trimmed.isNotEmpty()) { "Message is empty" }
+        // Documents alone are a legitimate send ("summarize this file" with no extra words).
+        require(trimmed.isNotEmpty() || documents.isNotEmpty()) { "Message is empty" }
         // The user line + placeholder assistant slot + this generation's id are established atomically
         // under the lock, so a concurrent reset/restore either happens fully before (this send sees the
         // new transcript) or fully after (it bumps our id and we drop our writes below), never
@@ -77,13 +101,17 @@ class ChatModel(
             if (isGenerating) return ""
             isGenerating = true
             myGen = ++activeGeneration
-            _messages += ChatMessage(Role.USER, trimmed)
+            _messages += ChatMessage(Role.USER, trimmed, documents)
             afterUser = _messages.toList()
             // History is computed BEFORE the placeholder is appended so the empty assistant turn isn't
             // included in the prompt. Passed STRUCTURED so the engine formats with the model's own chat
             // template (early-stop + higher quality). Trimmed to the engine's REAL loaded n_ctx (often
             // 512–2048 on phones), not a hardcoded 4096 that would overflow the native window (Q-167).
-            history = context.windowedHistory(_messages, engine.loadedContextTokens)
+            // Attached documents are composed in (engineText) BEFORE windowing so the budget counts them.
+            history = context.windowedHistory(
+                _messages.map { if (it.documents.isEmpty()) it else it.copy(text = it.engineText, documents = emptyList()) },
+                engine.loadedContextTokens,
+            )
             placeholderIndex = _messages.size
             _messages += ChatMessage(Role.ASSISTANT, "")
             afterPlaceholder = _messages.toList()

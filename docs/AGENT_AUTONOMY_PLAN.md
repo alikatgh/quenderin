@@ -202,9 +202,25 @@ Deliberately small, desktop-first, and testable on *this* machine — no device 
 
 **Milestone 0 shipped 2026-07-05 — all five steps.** The safety spine (one blocklist,
 declared blast radius, gate → run → ledger, user-owned consent) is real, tested, and carries
-its first genuine capability. Next: **Milestone 1** — documents-as-text in chat (roadmap
-Stage 2) reusing `fs.read`'s seam, then the T2 design (undo model, per-run confirmation UI)
-before any write capability exists.
+its first genuine capability.
+
+## Milestone 1 — documents-as-text in chat ✅ (shipped 2026-07-05)
+
+Roadmap Stage 2's first deliverable, no engine work needed. Both twins:
+- **`AttachedDocument`** on `ChatMessage`: the bubble shows chips + the typed text; the model
+  gets `engineText` (labeled document + message), recomposed into every windowed history pass
+  so follow-up questions keep the document in context, and counted by the token budget.
+- **`DocumentTextExtractor`**: extraction AT ATTACH TIME (what the model sees is fixed on
+  send) — strict UTF-8 with a visible refusal for binary, 24 KB cap with a truncation marker.
+- **Chat attach UI (Apple)**: paperclip + pending chips in the composer, chips on sent
+  bubbles; a documents-only send ("summarize this") is legitimate. Android core is at full
+  parity (send/persistence/extractor); the Compose attach UI rides the Android UI backlog.
+- **Persistence, backward-compatible on both formats**: optional `documents` in the JSON rows
+  (Apple), extra escaped fields per row in the TSV (Android) — pre-Milestone-1 transcripts
+  decode unchanged, verified by tests.
+
+Next: **the T2 design** (undo model, per-run confirmation UI) before any write capability
+exists — and PDF text extraction as the named `DocumentTextExtractor` extension.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file

@@ -10,6 +10,11 @@ public struct ChatView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var draft: String = ""
     @State private var suggestionDismissed = false
+    /// Documents queued for the NEXT send (chips above the composer) — extracted at attach time,
+    /// cleared once the message goes out. Milestone 1: documents-as-text in chat.
+    @State private var pendingDocuments: [AttachedDocument] = []
+    @State private var attachmentNotice: String?
+    @State private var showAttachPicker = false
     /// Where the transcript's bottom edge sits in viewport coordinates, and the viewport's
     /// height — nearBottom is DERIVED from the pair in body, so it can never go stale when
     /// one arrives before the other (the ↓ button haunted empty chats when a preference
@@ -70,10 +75,14 @@ public struct ChatView: View {
     private func send() {
         suggestionDismissed = false
         let prompt = draft.trimmingCharacters(in: .whitespaces)
-        guard !prompt.isEmpty, !model.isGenerating else { return }
+        // Documents alone are a legitimate send ("summarize this file" with no extra words).
+        guard !prompt.isEmpty || !pendingDocuments.isEmpty, !model.isGenerating else { return }
+        let documents = pendingDocuments
+        pendingDocuments = []
+        attachmentNotice = nil
         draft = ""
         composerFocused = true   // Return-to-send must not drop keyboard focus mid-conversation
-        Task { await model.send(prompt) }
+        Task { await model.send(prompt, documents: documents) }
     }
 
     public var body: some View {
@@ -226,7 +235,71 @@ public struct ChatView: View {
 
     @ViewBuilder
     private func composer(palette p: QuenderinPalette) -> some View {
+        VStack(spacing: 6) {
+            // Queued attachments + any rejection notice — visible BEFORE sending, removable.
+            if !pendingDocuments.isEmpty || attachmentNotice != nil {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(pendingDocuments, id: \.name) { doc in
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text").font(.caption2)
+                                Text(doc.name).font(.caption)
+                                Button {
+                                    pendingDocuments.removeAll { $0.name == doc.name }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(doc.name)")
+                            }
+                            .foregroundStyle(p.onSurfaceVariant)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(p.surface, in: Capsule())
+                        }
+                        if let notice = attachmentNotice {
+                            Text(notice).font(.caption).foregroundStyle(.orange)
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                }
+            }
+            composerRow(palette: p)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        // Extraction happens HERE, at attach time — what the model will see is fixed now, and a
+        // binary/oversized file is refused with a visible reason instead of mangled silently.
+        .fileImporter(isPresented: $showAttachPicker, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            guard case .success(let urls) = result else { return }
+            for url in urls {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                switch DocumentTextExtractor.extract(name: url.lastPathComponent, url: url) {
+                case .document(let doc): pendingDocuments.append(doc)
+                case .rejected(let reason): attachmentNotice = reason
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func composerRow(palette p: QuenderinPalette) -> some View {
         HStack(spacing: 8) {
+            Button {
+                showAttachPicker = true
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .frame(width: 34, height: 34)
+                    .glassChrome(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(model.isGenerating)
+            .help("Attach a text file to this message")
+            .accessibilityLabel("Attach a file")
+
             TextField("Message", text: $draft)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
@@ -242,7 +315,7 @@ public struct ChatView: View {
                 // over the transcript, not part of the content.
                 .glassChrome(in: Capsule())
 
-            let canSend = !draft.trimmingCharacters(in: .whitespaces).isEmpty && !model.isGenerating
+            let canSend = (!draft.trimmingCharacters(in: .whitespaces).isEmpty || !pendingDocuments.isEmpty) && !model.isGenerating
             Button {
                 if model.isGenerating { model.stopGenerating() } else { send() }
             } label: {
@@ -257,8 +330,6 @@ public struct ChatView: View {
             .help(model.isGenerating ? "Stop generating" : "Send message")
             .accessibilityLabel(model.isGenerating ? "Stop generating" : "Send message")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
     }
 }
 
@@ -281,11 +352,27 @@ private struct ChatBubble: View {
     var body: some View {
         let mine = message.role == .user
         let bubble = VStack(alignment: .leading, spacing: 2) {
+            // Attached-document chips — the transcript shows WHAT was attached, not the extracted
+            // text (that lives in engineText for the model).
+            if !message.documents.isEmpty {
+                HStack(spacing: 5) {
+                    ForEach(message.documents, id: \.name) { doc in
+                        Label(doc.name, systemImage: "doc.text")
+                            .font(.caption2)
+                            .foregroundStyle((accent?.timestamp ?? palette.userTimestamp))
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.bottom, 2)
+            }
             if mine {
                 // The user's own message is shown literally (what they typed), not re-interpreted.
-                Text(message.text.isEmpty ? "…" : message.text)
-                    .foregroundStyle(accent?.text ?? palette.onUserBubble)
-                    .textSelection(.enabled)
+                // A documents-only send has no typed text — the chips ARE the message.
+                if !message.text.isEmpty || message.documents.isEmpty {
+                    Text(message.text.isEmpty ? "…" : message.text)
+                        .foregroundStyle(accent?.text ?? palette.onUserBubble)
+                        .textSelection(.enabled)
+                }
             } else if message.text.isEmpty {
                 Text("…").foregroundStyle(palette.onAssistantBubble)
             } else {
