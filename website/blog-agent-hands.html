@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>The agent grows hands — locally</title>
+<meta name="description" content="Quenderin's agent can now organize your files: grant a folder, state the goal, approve the plan, undo anything. Fully local, fully recorded — the first real slice of local autonomous computer usage." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-agent-hands.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>The agent grows hands — locally</h1>
+  <p class="legal-updated">5 July 2026 · from <a href="blog.html">the dev log</a></p>
+
+  <p>Until today, Quenderin's agent could compute: math, unit conversions, dates. Useful,
+  deliberately harmless. Today it can <strong>do things to your computer</strong> — the first
+  real slice of the mission on <a href="roadmap.html">our roadmap</a>: you say what you want,
+  and an AI running <em>entirely on your machine</em> does it.</p>
+
+  <h2>What it looks like</h2>
+  <p>On the Agent screen, grant a <strong>workspace folder</strong> (a folder picker — the
+  agent can never reach outside it). Then:</p>
+  <pre><code>You:  put the PDF reports into an Archive folder
+
+Agent proposes this plan:
+  1. Move "report-q3.pdf" into "Archive/" (inside the workspace; undoable).
+  2. Move "report-q4.pdf" into "Archive/" (inside the workspace; undoable).
+
+        [ Allow this action ]  [ Don't allow ]</code></pre>
+  <p>One approval, and it's done — with an <strong>Undo last move</strong> button if you change
+  your mind, and every action (including the refused ones) written to a plain-text ledger you
+  can open from Settings. It can also rename files and move them to a visible
+  <code>Trash/</code> folder — never a hidden delete.</p>
+
+  <h2>Why this is different from cloud agents</h2>
+  <p>Products like computer-use agents from the big labs do this too — by streaming your
+  screen and files to a datacenter. Quenderin's promise is structural: <strong>the model, the
+  plan, and your files never leave the machine</strong>. That's not a policy we ask you to
+  trust; there is no server to send anything to.</p>
+
+  <h2>Why you can trust a small local model with your files</h2>
+  <p>You shouldn't trust it to be smart. You should trust the <em>architecture</em> — that's
+  our whole bet. A local model is weaker than a cloud frontier model, so the harness carries
+  the safety, and every property below is enforced by code and pinned by tests, not by the
+  model behaving:</p>
+  <ul>
+    <li><strong>It names files; it can never mint paths.</strong> Inputs are plain names inside
+    the workspace — <code>../</code> and absolute paths are rejected on shape.</li>
+    <li><strong>Nothing writes without your yes — for that specific run.</strong> A standing
+    Settings toggle isn't enough; every plan that changes files shows you the steps and waits.
+    A surface that can't ask, can't write (fail-closed). Dismissing the dialog means no.</li>
+    <li><strong>Nothing is ever overwritten or deleted.</strong> Collisions are refused;
+    "trash" is a visible folder; every change records its inverse for undo.</li>
+    <li><strong>Everything is on the record.</strong> A local, append-only ledger shows what
+    the agent did <em>and what it tried</em> — refused actions included.</li>
+    <li><strong>A plan with one bad step is a bad plan.</strong> Blocklisted or unparseable
+    steps refuse the whole plan before you're even asked.</li>
+  </ul>
+  <p>The safety vocabulary itself (the list of actions the agent must never take autonomously —
+  payments, deletion, credentials) is now <a href="https://github.com/alikatgh/quenderin/blob/main/shared/safety-blocklist.json" rel="noopener">one
+  canonical file</a>, enforced identical across macOS, Android, and the desktop by CI.</p>
+
+  <h2>The honest boundaries</h2>
+  <p>This is a first slice, and small models will sometimes call tools clumsily — the worst
+  case is a refused action in the ledger, never a surprise on your disk. The agent works in
+  one granted folder at a time, on purpose. Attachments now include <strong>PDFs</strong> on
+  Mac/iOS (text extraction — scanned PDFs are refused honestly; no OCR yet). Android's core
+  logic is at full parity, machine-enforced; its UI is catching up. Everything we know can go
+  wrong is, as always, <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">in the ledger of failure modes</a>.</p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="blog.html">Dev log</a> &middot; <a href="roadmap.html">Roadmap</a> &middot; <a href="download.html">Download</a></p>
+</main>
+</body>
+</html>
