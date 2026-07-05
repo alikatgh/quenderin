@@ -12,7 +12,7 @@ import kotlin.math.abs
 
 /** Converts between common units fully offline — length, temperature, mass, volume, speed.
  *  Parses "20 km to mi", "30 C in F", "5 kg to lb". */
-class UnitConverterTool : AgentTool {
+class UnitConverterTool : Capability {
     override val name = "units"
     override val purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\"."
     override fun run(input: String): String {
@@ -119,7 +119,7 @@ object UnitConverter {
 /** Offline date math: "days between 2026-06-08 and 2026-12-25" -> a day count, or
  *  "2026-06-08 plus 90 days" / "... minus 14 days" -> a new ISO date. Uses java.time
  *  LocalDate, so results are calendar-correct and deterministic. */
-class DateCalcTool : AgentTool {
+class DateCalcTool : Capability {
     override val name = "date"
     override val purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", or \"what day of the week is 2026-12-25\"."
     override fun run(input: String): String =

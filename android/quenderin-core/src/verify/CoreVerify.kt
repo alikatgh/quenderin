@@ -1327,6 +1327,43 @@ fun main() {
         cancelledAt == 1   // requestCancel() fired mid-stream, not never
     })
 
+    // --- Capability abstraction (AGENT_AUTONOMY_PLAN Milestone 0, step 2) ---
+    check("shipped tools are T0 pure-compute capabilities with no blast radius, no consent", run {
+        val tools = listOf(EchoTool(), CalculatorTool(), UnitConverterTool(), DateCalcTool())
+        tools.all {
+            it.tier == CapabilityTier.PURE_COMPUTE &&
+                it.blastRadius == BlastRadius.None &&
+                !it.requiresConsent &&
+                !it.plan("anything").mutates
+        }
+    })
+    check("CapabilityTier is ordered by risk", CapabilityTier.PURE_COMPUTE < CapabilityTier.READ_ONLY &&
+        CapabilityTier.READ_ONLY < CapabilityTier.IRREVERSIBLE)
+    check("BlastRadius.mutates: read/none are safe, write/irreversible mutate",
+        !BlastRadius.None.mutates && !BlastRadius.Read("f").mutates &&
+            BlastRadius.Write("f").mutates && BlastRadius.Irreversible("f").mutates)
+    check("CapabilityGate allows a clean T0 run", run {
+        CapabilityGate.assess(CalculatorTool(), "2 + 2", isConsented = false) is GateDecision.Allowed
+    })
+    check("CapabilityGate blocks input touching the safety blocklist, before any run", run {
+        val d = CapabilityGate.assess(CalculatorTool(), "delete everything then pay", isConsented = true)
+        d is GateDecision.Blocked && d.keyword in setOf("delete", "pay")
+    })
+    check("CapabilityGate demands consent for a T1 capability until granted", run {
+        // A synthetic read-only capability (the real fs.read lands in step 3) exercises the gate.
+        val t1 = object : Capability {
+            override val name = "test.read"
+            override val purpose = "read a file (test)"
+            override val tier = CapabilityTier.READ_ONLY
+            override val blastRadius = BlastRadius.Read("a file")
+            override fun plan(input: String) = ActionPreview("would read $input", mutates = false)
+            override fun run(input: String) = "contents of $input"
+        }
+        val denied = CapabilityGate.assess(t1, "notes.txt", isConsented = false)
+        val allowed = CapabilityGate.assess(t1, "notes.txt", isConsented = true)
+        denied is GateDecision.NeedsConsent && !(denied.preview.mutates) && allowed is GateDecision.Allowed
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

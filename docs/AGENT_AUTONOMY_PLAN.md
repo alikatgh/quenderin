@@ -166,8 +166,14 @@ Deliberately small, desktop-first, and testable on *this* machine — no device 
    camelCase/underscore-aware word-boundary tokenization so it can safely carry the full
    vocabulary (`pin`/`bank`) without firing on `spinner`/`bankruptcy` while still catching
    `confirm_transfer_btn`. All three suites green.
-2. **Introduce `Capability`** alongside `AgentTool` (don't break existing tools; adapt them
-   as T0 capabilities with `.none` blast radius).
+2. ✅ **Introduce `Capability`** (done 2026-07-05) — refines `AgentTool` on both twins
+   (`Capability.swift` / `Capability.kt`) with `CapabilityTier` (T0–T4), `BlastRadius`,
+   `ActionPreview`, and a T0 default so the four shipped tools (echo, calculator, unit, date)
+   became capabilities with a one-word conformance change and zero behavior change. Also lands
+   the safety spine's decision function, `CapabilityGate.assess()` — PURE, no side effects:
+   blocklist → consent → preview, returning `.blocked` / `.needsConsent` / `.allowed`. It
+   already composes the unified blocklist from step 1. Verified: Swift 256 tests, Kotlin
+   CoreVerify ALL PASSED (a synthetic T1 capability exercises the consent path ahead of `fs.read`).
 3. **Ship one real T1 capability: `fs.read`** — "read this file the user explicitly selected."
    Consent-gated, read-only, audit-logged. On desktop it reads a path the user picked via a
    file dialog (never a path from LLM output). This exercises the entire spine — consent,

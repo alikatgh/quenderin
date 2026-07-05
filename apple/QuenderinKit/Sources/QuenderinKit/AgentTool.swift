@@ -18,7 +18,7 @@ public protocol AgentTool: Sendable {
 
 /// Returns its input verbatim — a deterministic tool for tests and as the
 /// simplest possible example.
-public struct EchoTool: AgentTool {
+public struct EchoTool: Capability {
     public init() {}
     public let name = "echo"
     public let purpose = "Repeat the input back. Use to restate something."
@@ -28,7 +28,7 @@ public struct EchoTool: AgentTool {
 /// Evaluates a simple arithmetic expression (`+ - * /`, parentheses, unary
 /// minus, decimals). Uses a hand-rolled recursive-descent parser — NOT
 /// NSExpression, which raises uncatchable ObjC exceptions on malformed input.
-public struct CalculatorTool: AgentTool {
+public struct CalculatorTool: Capability {
     public init() {}
     public let name = "calculator"
     public let purpose = "Evaluate arithmetic like \"12 * (3 + 4)\", \"2^10\", or \"sqrt(16)\" (+ - * / ^ %, parentheses, sqrt/abs/floor/ceil, pi/e)."

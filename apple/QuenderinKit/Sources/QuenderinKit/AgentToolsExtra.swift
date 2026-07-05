@@ -8,7 +8,7 @@ import Foundation
 
 /// Converts between common units fully offline — length, temperature, mass,
 /// volume, speed. Parses `"20 km to mi"`, `"30 C in F"`, `"5 kg to lb"`.
-public struct UnitConverterTool: AgentTool {
+public struct UnitConverterTool: Capability {
     public init() {}
     public let name = "units"
     public let purpose = "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\"."
@@ -117,7 +117,7 @@ enum UnitConverter {
 /// Offline date math: `"days between 2026-06-08 and 2026-12-25"` → a day count,
 /// or `"2026-06-08 plus 90 days"` / `"… minus 14 days"` → a new ISO date. Dates
 /// are parsed and computed in UTC so results are deterministic.
-public struct DateCalcTool: AgentTool {
+public struct DateCalcTool: Capability {
     public init() {}
     public let name = "date"
     public let purpose = "Date math: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", or \"what day of the week is 2026-12-25\"."

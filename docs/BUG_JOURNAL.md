@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Milestone 0 step 2: introduced the `Capability` abstraction (refines
+  `AgentTool`; T0–T4 tiers, BlastRadius, ActionPreview) + `CapabilityGate.assess()` — the pure
+  blocklist→consent→preview decision. Safe-by-default: a capability opts UP into risk, never
+  defaults in (`requiresConsent = tier > .pureCompute`). Not a bug fix — scaffolding for the
+  mission — but journaled because the "default to the safest tier" invariant is load-bearing.
+
 - 2026-07-05 (all) — The agent safety blocklist had silently drifted across platforms (Q-014):
   desktop carried 7 keywords the Swift/Kotlin twins lacked and was missing 16 of theirs — so an
   action blocked on the phone could go through on desktop. Fix: shared/safety-blocklist.json is

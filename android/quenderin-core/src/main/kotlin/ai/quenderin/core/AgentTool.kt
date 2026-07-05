@@ -24,7 +24,7 @@ interface AgentTool {
 }
 
 /** Returns its input verbatim — deterministic, the simplest possible example. */
-class EchoTool : AgentTool {
+class EchoTool : Capability {
     override val name = "echo"
     override val purpose = "Repeat the input back. Use to restate something."
     override fun run(input: String): String = input
@@ -32,7 +32,7 @@ class EchoTool : AgentTool {
 
 /** Evaluates simple arithmetic. Uses a hand-rolled recursive-descent parser that returns
  *  null on malformed input rather than throwing — the input comes from an LLM. */
-class CalculatorTool : AgentTool {
+class CalculatorTool : Capability {
     override val name = "calculator"
     override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\", \"2^10\", or \"sqrt(16)\" (+ - * / ^ %, parentheses, sqrt/abs/floor/ceil, pi/e)."
     override fun run(input: String): String {
