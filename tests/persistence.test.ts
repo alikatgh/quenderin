@@ -2,8 +2,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from '../src/services/capability/persistence.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal } from '../src/services/capability/persistence.js';
 import { SkillMemory } from '../src/services/capability/skillMemory.js';
+import type { UndoAction } from '../src/services/capability/undo.js';
 
 /**
  * Persistence makes the CLI agent's reliability loop REAL: each `quenderin do` is a fresh process,
@@ -56,5 +57,39 @@ describe('skill memory persistence', () => {
         m.restore([{ goal: 'ok task', tools: ['a'] }, { goal: 42 }, { tools: ['b'] }, 'garbage']);
         expect(m.size).toBe(1);
         expect(m.recall('ok task')[0].tools).toEqual(['a']);
+    });
+});
+
+describe('undo journal persistence — cross-session `quenderin undo`', () => {
+    it('round-trips the last task and clears on demand', () => {
+        const file = path.join(dir, 'undo.json');
+        const journal: UndoAction[] = [
+            { capability: 'mac.reminders.add', input: 'call the dentist' },
+            { capability: 'fs.move', input: 'a.txt to docs', workspace: '/tmp/ws' },
+        ];
+        saveUndoJournal(journal, file);
+        expect(loadUndoJournal(file)).toEqual(journal);
+
+        clearUndoJournal(file);
+        expect(loadUndoJournal(file)).toEqual([]);   // gone → nothing to double-reverse
+    });
+
+    it('a save replaces the prior journal (undo targets only the LATEST task)', () => {
+        const file = path.join(dir, 'undo.json');
+        saveUndoJournal([{ capability: 'mac.notes.create', input: 'old' }], file);
+        saveUndoJournal([{ capability: 'mac.notes.create', input: 'new' }], file);
+        expect(loadUndoJournal(file)).toEqual([{ capability: 'mac.notes.create', input: 'new' }]);
+    });
+
+    it('a missing/corrupt journal loads empty, and junk rows are dropped', () => {
+        expect(loadUndoJournal(path.join(dir, 'nope.json'))).toEqual([]);
+        fs.writeFileSync(path.join(dir, 'bad.json'), 'not json');
+        expect(loadUndoJournal(path.join(dir, 'bad.json'))).toEqual([]);
+        fs.writeFileSync(path.join(dir, 'mixed.json'), JSON.stringify([{ capability: 'fs.move', input: 'a to b' }, { nope: 1 }, 'x']));
+        expect(loadUndoJournal(path.join(dir, 'mixed.json'))).toEqual([{ capability: 'fs.move', input: 'a to b' }]);
+    });
+
+    it('clearing an already-absent journal is a no-op (never throws)', () => {
+        expect(() => clearUndoJournal(path.join(dir, 'ghost.json'))).not.toThrow();
     });
 });

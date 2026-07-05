@@ -130,6 +130,14 @@ export class RunSession {
     /** How many actions this session could undo. */
     get undoableCount(): number { return this.done.length; }
 
+    /** The undoable actions this run recorded, oldest-first — a snapshot for persisting a
+     *  CROSS-SESSION undo (so `quenderin undo` can reverse the last task in a fresh process,
+     *  not just in the run that made the changes). Names + inputs only; the replayer rebuilds
+     *  the capability by name. */
+    undoLog(): Array<{ capability: string; input: string }> {
+        return this.done.map(d => ({ capability: d.capability.name, input: d.input }));
+    }
+
     /** Reverse everything this run did, newest first. Best-effort: a failed reversal is reported
      *  but doesn't stop the rest (the user wants as much rolled back as possible). */
     async undoAll(): Promise<string> {

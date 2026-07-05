@@ -456,6 +456,19 @@ highest-leverage capability for the mission — one typed, governed door onto th
 surface. Verified: 335 TS tests (9 new — approval gating, injection break-out, blocklist refusal,
 input passing, output capture, missing-shortcut), lint + parity green.
 
+**Post-M4 — undo made durable across sessions (2026-07-05).** The trust loop's `undo` only worked
+*inside the run that made the changes* (`RunSession` is in-memory). The biggest remaining trust gap:
+crash, or say "no" then change your mind, or realise an hour later it mis-filed something → no
+recourse. Closed with `quenderin undo`: each `do` run that leaves reversible changes persists a tiny
+journal (capability name + input, + the workspace dir for fs.* actions) to `~/.quenderin/agent-undo.json`;
+a FRESH process reloads it and `replayUndo` rebuilds each capability *by name* from the same
+factories the agent uses, reversing them LIFO through the exact same `undo()` the live session would.
+Best-effort (a failed reversal is reported, the rest still roll back); the journal is validated
+row-by-row on load (on-disk = untrusted) and cleared after a successful undo so it can't double-apply.
+Proven end to end: process A moves a file + writes the journal, process B (nothing but the journal)
+moves it back. This is transactional undo of your local machine, an hour later, in a new session —
+something a cloud agent structurally cannot offer. Verified: 348 TS tests (11 new), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the

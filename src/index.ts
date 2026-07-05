@@ -20,8 +20,9 @@ import { InMemoryConsentStore } from './services/capability/capability.js';
 import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
 import { fileCapabilities } from './services/capability/fileCapabilities.js';
-import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal } from './services/capability/persistence.js';
 import { formatHistory } from './services/capability/ledgerView.js';
+import { replayUndo, UndoAction } from './services/capability/undo.js';
 
 const program = new Command();
 
@@ -298,9 +299,23 @@ program
       if (result.answer) console.log(`\n${result.answer}`);
       else console.log(dim(`\n(stopped: ${result.halt})`));
 
-      const wantsUndo = await new Promise<boolean>(res =>
-        rl.question(dim('\nUndo everything this task changed? [y/N] '), a => res(/^y(es)?$/i.test(a.trim()))));
-      if (wantsUndo) console.log(await agent.undoAll());
+      // Capture what could be reversed BEFORE undoAll() drains the session.
+      const undoable = agent.undoLog();
+      if (undoable.length > 0) {
+        const wantsUndo = await new Promise<boolean>(res =>
+          rl.question(dim('\nUndo everything this task changed? [y/N] '), a => res(/^y(es)?$/i.test(a.trim()))));
+        if (wantsUndo) {
+          console.log(await agent.undoAll());
+          clearUndoJournal();   // reversed now — nothing left for a later `quenderin undo`
+        } else {
+          // Persist it so `quenderin undo` can still reverse this task later (even in a new session).
+          // fs.* reversals need the workspace folder, so attach it.
+          const journal: UndoAction[] = undoable.map(a =>
+            a.capability.startsWith('fs.') && workspaceDir ? { ...a, workspace: workspaceDir } : a);
+          saveUndoJournal(journal);
+          console.log(dim('\nLater? Run `quenderin undo` to reverse this task.'));
+        }
+      }
       rl.close();
       await llm.shutdown();
       process.exit(0);
@@ -308,6 +323,21 @@ program
       console.error(e instanceof Error ? e.message : String(e));
       process.exitCode = 1;
     }
+  });
+
+program
+  .command('undo')
+  .description('Reverse the changes from your last `quenderin do` task — even in a new session.')
+  .action(async () => {
+    const actions = loadUndoJournal();
+    if (actions.length === 0) {
+      console.log('Nothing to undo — no reversible task on record.');
+      return;
+    }
+    console.log('');
+    console.log(await replayUndo(actions, new OsascriptAutomation()));
+    clearUndoJournal();   // reversed — don't let a second `undo` double-apply
+    console.log('');
   });
 
 program
@@ -328,6 +358,7 @@ if (process.argv.length === 2) {
   console.log('Commands:');
   console.log('  quenderin do "<goal>"     - Tell it to do something on your Mac (asks before every change)');
   console.log('  quenderin history         - Review everything the agent has done (the local audit log)');
+  console.log('  quenderin undo            - Reverse your last `do` task (works in a new session)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');
   console.log('  quenderin chat -p "…"     - One answer, pipe-friendly (git diff | quenderin chat -p "review")');
   console.log('  quenderin models          - What is installed / downloadable');

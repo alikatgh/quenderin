@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { AuditEntry, AuditLedger } from './capability.js';
 import { SkillMemory } from './skillMemory.js';
+import { UndoAction, isUndoAction } from './undo.js';
 
 /**
  * On-disk state for the CLI agent, so "the agent gets better at what you repeat" and "review what
@@ -13,6 +14,7 @@ import { SkillMemory } from './skillMemory.js';
 export const QUENDERIN_DIR = path.join(os.homedir(), '.quenderin');
 export const LEDGER_PATH = path.join(QUENDERIN_DIR, 'agent-ledger.jsonl');
 export const SKILLS_PATH = path.join(QUENDERIN_DIR, 'agent-skills.json');
+export const UNDO_PATH = path.join(QUENDERIN_DIR, 'agent-undo.json');
 
 /** The flight recorder, persisted as JSONL — append-only, so a crash can at worst truncate the
  *  LAST line and every prior action survives (torn tails are skipped on read). Twin of the Swift
@@ -63,4 +65,34 @@ export function saveSkillMemory(memory: SkillMemory, file: string = SKILLS_PATH)
     } catch {
         // Non-fatal: the agent still worked, it just won't remember this run.
     }
+}
+
+/** Persist the undoable actions of the just-finished run (atomic write), so `quenderin undo` can
+ *  reverse them later from a fresh process. Replaces any prior journal — undo targets the LAST task
+ *  only, matching the single "undo this task" affordance the in-run prompt already offers. */
+export function saveUndoJournal(actions: UndoAction[], file: string = UNDO_PATH): void {
+    try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        const tmp = `${file}.tmp`;
+        fs.writeFileSync(tmp, JSON.stringify(actions));
+        fs.renameSync(tmp, file);
+    } catch {
+        // Non-fatal: cross-session undo just won't be available for this run.
+    }
+}
+
+/** Load the undo journal (empty if none/corrupt). Validates every row — it's on-disk, untrusted. */
+export function loadUndoJournal(file: string = UNDO_PATH): UndoAction[] {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+        return Array.isArray(parsed) ? parsed.filter(isUndoAction) : [];
+    } catch {
+        return [];
+    }
+}
+
+/** Delete the undo journal — call after a successful undo, or after an in-run undo already reversed
+ *  the task, so a later `quenderin undo` can't double-reverse it. */
+export function clearUndoJournal(file: string = UNDO_PATH): void {
+    try { fs.rmSync(file, { force: true }); } catch { /* already gone — fine */ }
 }

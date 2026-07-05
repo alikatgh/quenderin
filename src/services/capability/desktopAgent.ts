@@ -64,6 +64,9 @@ export interface GovernedAgent {
     run(goal: string): ReturnType<CapabilityAgent['run']>;
     /** Reverse everything this run changed (the "undo this task" button). */
     undoAll(): Promise<string>;
+    /** The undoable actions this run recorded (name + input, oldest-first) — persist for a
+     *  cross-session `quenderin undo`. Empty if the run changed nothing reversible. */
+    undoLog(): Array<{ capability: string; input: string }>;
     /** The capabilities this agent was assembled with (for a Settings pane). */
     readonly capabilities: Capability[];
     readonly ledger: AuditLedger;
@@ -91,6 +94,7 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
     return {
         run: (goal: string) => agent.run(goal, deps.signal),
         undoAll: () => session.undoAll(),
+        undoLog: () => session.undoLog(),
         capabilities,
         ledger,
     };
