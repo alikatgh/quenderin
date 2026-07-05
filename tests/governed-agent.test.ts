@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createGovernedAgent, ChatCompleter, llmPlanner } from '../src/services/capability/desktopAgent.js';
 import { InMemoryConsentStore } from '../src/services/capability/capability.js';
 import type { MacAutomation } from '../src/services/capability/macAutomation.js';
@@ -91,5 +94,46 @@ describe('createGovernedAgent — the whole thing on a (fake) live model', () =>
         expect(macOnly.capabilities.length).toBeGreaterThan(0);
         const none = createGovernedAgent({ llm: new FakeLlm(['{"answer":"x"}']) });
         expect(none.capabilities).toHaveLength(0);
+    });
+
+    it('surfaces fs.* only when a workspace seam is provided', () => {
+        const withWs = createGovernedAgent({ llm: new FakeLlm(['{"answer":"x"}']), workspace: () => '/tmp' });
+        expect(withWs.capabilities.map(c => c.name)).toContain('fs.move');
+        const withoutWs = createGovernedAgent({ llm: new FakeLlm(['{"answer":"x"}']), mac: new FakeMac() });
+        expect(withoutWs.capabilities.some(c => c.name.startsWith('fs.'))).toBe(false);
+    });
+});
+
+/**
+ * The flagship chore — "organize my downloads" — through the WHOLE assembly on a real temp folder.
+ * This is the "test the route, not the template" check: the capability unit tests prove fs.move
+ * in isolation; this proves createGovernedAgent({ workspace }) actually hands fs.* to the model,
+ * runs it through the real gate, mutates real disk, ledgers it, and undoes it.
+ */
+describe('createGovernedAgent — file chores end to end on a real workspace', () => {
+    let ws: string;
+    beforeEach(() => { ws = fs.mkdtempSync(path.join(os.tmpdir(), 'qga-')); });
+    afterEach(() => { fs.rmSync(ws, { recursive: true, force: true }); });
+
+    it('lists, moves a file into a subfolder, then undoes the whole task', async () => {
+        fs.writeFileSync(path.join(ws, 'invoice.pdf'), '%PDF');
+        const consent = new InMemoryConsentStore();
+        ['fs.list', 'fs.move'].forEach(id => consent.setGranted(id, true));
+        const llm = new FakeLlm([
+            JSON.stringify({ tool: 'fs.list', input: '' }),
+            JSON.stringify({ tool: 'fs.move', input: 'invoice.pdf to Finance' }),
+            JSON.stringify({ answer: 'Filed invoice.pdf under Finance/.' }),
+        ]);
+        const agent = createGovernedAgent({ llm, workspace: () => ws, consent, approve: async () => true });
+
+        const result = await agent.run('organize my downloads');
+        expect(result.halt).toBe('answered');
+        expect(fs.existsSync(path.join(ws, 'Finance', 'invoice.pdf'))).toBe(true);   // real disk changed
+        expect(fs.existsSync(path.join(ws, 'invoice.pdf'))).toBe(false);
+        expect(agent.ledger.entries().filter(e => e.decision === 'allowed').length).toBeGreaterThanOrEqual(1);
+
+        await agent.undoAll();
+        expect(fs.existsSync(path.join(ws, 'invoice.pdf'))).toBe(true);              // moved back
+        expect(fs.existsSync(path.join(ws, 'Finance', 'invoice.pdf'))).toBe(false);
     });
 });
