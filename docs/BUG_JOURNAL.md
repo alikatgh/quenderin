@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (CLI) — Persistence: FileAuditLedger (JSONL, torn-tail-safe) + file-backed skill
+  memory under ~/.quenderin/, wired into `quenderin do`. Makes the reliability loop REAL across
+  runs — each `do` is a fresh process, so in-memory state reset every time and never actually
+  helped. Now the agent remembers what worked and the ledger persists what it did/tried. Lesson:
+  a 'gets better over time' feature that doesn't persist is theatre — the fresh process forgets.
+
 - 2026-07-05 (agent) — Skill memory: the harness's answer to GROUNDING (our honest weak spot).
   After a task reaches an answer, the agent records goal → the capability sequence that worked;
   a similar future goal is PRIMED with it in the preamble (retrieval-augmented planning — a hint

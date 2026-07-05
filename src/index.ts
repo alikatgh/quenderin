@@ -19,6 +19,7 @@ import { OsascriptAutomation } from './services/capability/macAutomation.js';
 import { InMemoryConsentStore } from './services/capability/capability.js';
 import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
 
 const program = new Command();
 
@@ -267,9 +268,13 @@ program
         return new Promise(res => rl.question(`\n${bold(preview.summary)}\n  Allow? [y/N] `, a => res(/^y(es)?$/i.test(a.trim()))));
       };
 
-      const agent = createGovernedAgent({ llm, mac, consent, approve, signal: ac.signal });
+      // Persisted across runs: the ledger (review what it's done) and skill memory (it gets
+      // better at what you repeat). Both under ~/.quenderin/, nothing leaves the machine.
+      const memory = loadSkillMemory();
+      const agent = createGovernedAgent({ llm, mac, consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory });
       console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this Mac')}\n`);
       const result = await agent.run(goal);
+      saveSkillMemory(memory);   // remember what worked for next time
 
       for (const step of result.steps) console.log(dim(`· ${step}`));
       if (result.answer) console.log(`\n${result.answer}`);

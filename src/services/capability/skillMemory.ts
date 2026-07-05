@@ -58,4 +58,23 @@ export class SkillMemory {
     }
 
     get size(): number { return this.records.length; }
+
+    /** A copy of the records — for persisting across sessions (the reliability loop is only real
+     *  if memory survives a restart; in the CLI, each `quenderin do` is a fresh process). */
+    snapshot(): SkillRecord[] {
+        return this.records.map(r => ({ goal: r.goal, tools: [...r.tools] }));
+    }
+
+    /** Replace the records from a persisted snapshot (validated — junk rows are dropped). */
+    restore(records: unknown): void {
+        this.records.length = 0;
+        if (!Array.isArray(records)) return;
+        for (const r of records) {
+            const rec = r as Partial<SkillRecord>;
+            if (typeof rec?.goal === 'string' && Array.isArray(rec.tools) && rec.tools.every(t => typeof t === 'string')) {
+                this.records.push({ goal: rec.goal, tools: rec.tools });
+            }
+            if (this.records.length >= this.capacity) break;
+        }
+    }
 }
