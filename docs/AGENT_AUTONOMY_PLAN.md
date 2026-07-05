@@ -116,6 +116,59 @@ trustworthy. T4 is the permanent fence.
 
 ---
 
+## 4b. A worked example — the request that stress-tests everything (2026-07-05)
+
+The owner gave a representative real user request to reason against: *"read a list of users
+from a Google Doc, find each one in the imo app running on BlueStacks, send a friend request
++ a message, wait for their reply, and write the replies into an existing Google Sheet."*
+It is the perfect forcing case because it **breaks in five different ways**, each teaching a
+design truth:
+
+1. **Read the list (Google Docs) / 5. write results (Google Sheets)** — these are *someone
+   else's cloud*, not local files. Two honest options: (a) the user exports to a local file
+   and we use `fs.read` / write a local CSV they re-import — fits our model perfectly, zero
+   new architecture; (b) integrate the Google API with the user's own OAuth — a real
+   departure that adds network + auth but where the *AI* still never sees a vendor. We start
+   with (a); (b) is a "connectors" project, opt-in per service, never the default.
+2. **Find each user in imo on BlueStacks (steps 2–3)** — this is **GUI-driving a third-party
+   app**, the T3 tier we keep in the desktop testbed. One genuine insight: BlueStacks speaks
+   **ADB**, and our Android provider already drives Android via ADB (uiautomator view-tree +
+   `input tap`), so this is UI-tree-driven, not pixel-driven — far more tractable than
+   driving a physical phone screen. BUT: reliably grounding "tap the Add-Friend button in an
+   arbitrary chat app" is a **vision/grounding task, and small local models are weakest
+   exactly here.** This is the hard edge of the harness-over-model bet: folder ops are fully
+   harness-able (deterministic); driving imo is irreducibly model-heavy. Honest limit.
+3. **"Get the answer from the users"** — you send, then a *human* replies minutes-to-days
+   later. That is a **durable, resumable, polling, long-lived task** — a completely different
+   execution model from our synchronous bounded loop. Needs a "watch & resume" daemon
+   (the desktop testbed's `backgroundDaemon` gestures at it). New architecture.
+4. **Sending friend requests + templated messages to a LIST** — textbook **bulk outreach**,
+   almost certainly against imo's ToS (client automation), and the exact shape our safety
+   architecture exists to gate. Not financial/destructive/credential, so the blocklist
+   doesn't catch it — but "message N strangers" needs its own high-friction gate: explicit
+   per-recipient-batch confirmation, rate-limiting, and product framing that this is for
+   *your own contacts/community*, not growth-hacking. This likely stays desktop-only and
+   is NOT a marketed store-app capability.
+
+**The privacy claim, corrected by this example.** The task sends data to Google and imo — so
+"nothing leaves the machine" is imprecise. The TRUE, defensible claim is **"no AI middleman":
+the model reasoning over your doc, your contacts, and your plan runs locally; a cloud agent
+would stream all of that to its vendor's datacenter, ours streams it to no one.** Google and
+imo see what you already gave them; no AI company gets a copy. Market this precisely — the
+whole project is honesty-first, and "nothing leaves the machine" next to a flagship demo that
+messages people via imo is a credibility landmine.
+
+**Where this sits:** ~T3, plus two capability *classes* we don't have (app-GUI-driving,
+opt-in cloud connectors) and one execution model we don't have (durable watch-and-resume).
+The realistic **smallest real version** to build toward: read a local CSV → drive
+BlueStacks-imo via ADB with per-recipient approval + rate limit → append results to a local
+CSV. That strips the two cloud integrations and the async-wait (poll-once, or a manual
+"collect replies" second run), keeps it on the local-file + local-ADB spine we already have,
+and is honestly demoable. Everything past that (Google connectors, background watch, reliable
+GUI grounding) is named, sequenced work — not a weekend.
+
+---
+
 ## 5. Platform strategy
 
 **Desktop first.** macOS and Linux have real automation surfaces (Apple Events/AppleScript,
