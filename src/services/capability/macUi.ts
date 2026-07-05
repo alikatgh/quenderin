@@ -87,7 +87,12 @@ export class OsascriptMacUi implements MacUi {
     }
 
     async pressKey(key: string): Promise<void> {
-        const codes: Record<string, number> = { return: 36, tab: 48, escape: 53 };
+        // Navigation + confirm/dismiss keys — enough to move through lists and scroll panes, never a
+        // character key (that's mac.ui.type) and never a destructive shortcut.
+        const codes: Record<string, number> = {
+            return: 36, tab: 48, escape: 53,
+            up: 126, down: 125, left: 123, right: 124, pageup: 116, pagedown: 121,
+        };
         const code = codes[key];
         if (code === undefined) throw new Error(`unsupported key: ${key}`);
         await this.mac.runAppleScript(`tell application "System Events" to key code ${code}`);

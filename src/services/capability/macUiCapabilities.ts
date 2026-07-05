@@ -114,24 +114,24 @@ export class MacUiTypeCapability implements Capability {
 /** T2: press a navigation key (return, tab, escape). Per-run approval — a key can submit or dismiss. */
 export class MacUiKeyCapability implements Capability {
     readonly name = 'mac.ui.key';
-    readonly purpose = 'Press a key in the frontmost macOS app. Input: one of return, tab, escape.';
+    readonly purpose = 'Press a key in the frontmost macOS app. Input: return, tab, escape, up, down, left, right, pageup, or pagedown.';
     readonly tier = CapabilityTier.AppAction;
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the frontmost app' };
 
-    private static readonly ALLOWED = new Set(['return', 'tab', 'escape']);
+    private static readonly ALLOWED = new Set(['return', 'tab', 'escape', 'up', 'down', 'left', 'right', 'pageup', 'pagedown']);
 
     constructor(private readonly ui: MacUi) { }
 
     async plan(input: string): Promise<ActionPreview> {
         const key = input.trim().toLowerCase();
-        if (!MacUiKeyCapability.ALLOWED.has(key)) return { summary: 'Input must be one of: return, tab, escape.', mutates: false };
+        if (!MacUiKeyCapability.ALLOWED.has(key)) return { summary: 'Input must be a navigation key (return, tab, escape, up, down, left, right, pageup, pagedown).', mutates: false };
         return { summary: `Press the "${key}" key.`, mutates: true };
     }
 
     async run(input: string): Promise<string> {
         if (!this.ui.available()) return NO_MAC;
         const key = input.trim().toLowerCase();
-        if (!MacUiKeyCapability.ALLOWED.has(key)) return 'Input must be one of: return, tab, escape.';
+        if (!MacUiKeyCapability.ALLOWED.has(key)) return 'Input must be a navigation key: return, tab, escape, up, down, left, right, pageup, pagedown.';
         try { await this.ui.pressKey(key); } catch (e) { return describe(e); }
         return `Pressed "${key}".`;
     }

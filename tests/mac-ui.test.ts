@@ -108,12 +108,13 @@ describe('mac.ui.type + mac.ui.key (T2)', () => {
         expect(ui.typed).toEqual(['hello world']);
     });
 
-    it('presses only whitelisted keys', async () => {
+    it('presses only whitelisted navigation keys (return + arrows + page keys), rejects others', async () => {
         const ui = new FakeMacUi([]);
         const runner = new CapabilityRunner(grant('mac.ui.key'), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new MacUiKeyCapability(ui), 'return')).toContain('Pressed "return"');
-        expect(ui.keys).toEqual(['return']);
-        expect(await new MacUiKeyCapability(ui).run('delete-everything')).toContain('return, tab, escape');
+        expect(await runner.execute(new MacUiKeyCapability(ui), 'pagedown')).toContain('Pressed "pagedown"');
+        expect(ui.keys).toEqual(['return', 'pagedown']);   // navigation/scroll works
+        expect(await new MacUiKeyCapability(ui).run('cmd+q')).toContain('navigation key');   // arbitrary keys refused
     });
 
     it('every mac.ui.* action is macOS-only off darwin', async () => {
