@@ -3,7 +3,7 @@ import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
 import { MacUi, MacUiElement } from '../src/services/capability/macUi.js';
 import {
-    MacUiObserveCapability, MacUiTapCapability, MacUiTypeCapability, MacUiKeyCapability,
+    MacUiObserveCapability, MacUiTapCapability, MacUiTypeCapability, MacUiKeyCapability, MacUiMenuCapability,
 } from '../src/services/capability/macUiCapabilities.js';
 
 /**
@@ -13,7 +13,7 @@ import {
  * the defense-in-depth blocklist re-check, fail-closed approval, and the did-it-register verify.
  */
 class FakeMacUi implements MacUi {
-    clicks: string[] = []; typed: string[] = []; keys: string[] = [];
+    clicks: string[] = []; typed: string[] = []; keys: string[] = []; menus: string[][] = [];
     private clicked = false;
     constructor(private readonly els: MacUiElement[], private readonly opts: { avail?: boolean; failObserve?: string; elsAfter?: MacUiElement[] } = {}) { }
     available(): boolean { return this.opts.avail ?? true; }
@@ -24,6 +24,7 @@ class FakeMacUi implements MacUi {
     async click(label: string): Promise<void> { this.clicks.push(label); this.clicked = true; }
     async typeText(t: string): Promise<void> { this.typed.push(t); }
     async pressKey(k: string): Promise<void> { this.keys.push(k); }
+    async clickMenu(path: string[]): Promise<void> { this.menus.push(path); }
 }
 
 const el = (label: string, role = 'button'): MacUiElement => ({ label, role });
@@ -121,5 +122,22 @@ describe('mac.ui.type + mac.ui.key (T2)', () => {
         const off = new FakeMacUi([], { avail: false });
         expect(await new MacUiTapCapability(off).run('x')).toBe('This runs on macOS only.');
         expect(await new MacUiTypeCapability(off).run('x')).toBe('This runs on macOS only.');
+    });
+});
+
+describe('mac.ui.menu (T2 — reach the menu bar, approved & blocklist-guarded)', () => {
+    it('clicks a "<Menu> > <Item>" path after approval', async () => {
+        const ui = new FakeMacUi([]);
+        const runner = new CapabilityRunner(grant('mac.ui.menu'), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new MacUiMenuCapability(ui), 'File > Save As')).toContain('Clicked menu "File > Save As"');
+        expect(ui.menus).toEqual([['File', 'Save As']]);
+    });
+
+    it('rejects a malformed path and refuses a blocked menu item', async () => {
+        const ui = new FakeMacUi([]);
+        expect(await new MacUiMenuCapability(ui).run('just one part')).toContain('<Menu> > <Item>');
+        // "File > Delete Everything" — the resolved item trips 'delete' on the defense-in-depth re-check.
+        expect(await new MacUiMenuCapability(ui).run('File > Delete Everything')).toContain("blocked action ('delete')");
+        expect(ui.menus).toHaveLength(0);
     });
 });

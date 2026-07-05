@@ -104,7 +104,7 @@ describe('createGovernedAgent — the whole thing on a (fake) live model', () =>
     });
 
     it('surfaces mac.ui.* (GUI driving) only when the macUi seam is provided', () => {
-        const ui = { available: () => true, observe: async () => [], click: async () => {}, typeText: async () => {}, pressKey: async () => {} };
+        const ui = { available: () => true, observe: async () => [], click: async () => {}, typeText: async () => {}, pressKey: async () => {}, clickMenu: async () => {} };
         const withGui = createGovernedAgent({ llm: new FakeLlm(['{"answer":"x"}']), macUi: ui });
         expect(withGui.capabilities.map(c => c.name)).toContain('mac.ui.tap');
         const macOnly = createGovernedAgent({ llm: new FakeLlm(['{"answer":"x"}']), mac: new FakeMac() });

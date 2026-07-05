@@ -25,6 +25,8 @@ export interface MacUi {
     typeText(text: string): Promise<void>;
     /** Press a whitelisted key: return, tab, or escape. */
     pressKey(key: string): Promise<void>;
+    /** Click a menu-bar path, e.g. ["File", "Save As"] — the menu bar is a separate AX hierarchy. */
+    clickMenu(path: string[]): Promise<void>;
 }
 
 /** macOS System Events implementation. The production-only bridge (needs Accessibility permission);
@@ -84,6 +86,20 @@ export class OsascriptMacUi implements MacUi {
 
     async typeText(text: string): Promise<void> {
         await this.mac.runAppleScript(`tell application "System Events" to keystroke "${escapeAppleScriptString(text)}"`);
+    }
+
+    async clickMenu(path: string[]): Promise<void> {
+        // v1: top menu > item (e.g. "File" > "Save As") — covers the overwhelming majority of tasks.
+        const [menu, item] = path.map(escapeAppleScriptString);
+        const script = [
+            'tell application "System Events"',
+            '  tell (first application process whose frontmost is true)',
+            `    click menu item "${item}" of menu "${menu}" of menu bar 1`,
+            '  end tell',
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        await this.mac.runAppleScript(script);
     }
 
     async pressKey(key: string): Promise<void> {

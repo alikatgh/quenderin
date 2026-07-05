@@ -533,7 +533,11 @@ refused on the *resolved* label), and `verify()` flags a click that didn't chang
 discoverable via `capabilities` (flagged `needs --gui`). This is Cowork's core capability, but
 governed: every click asks first, is logged, and (where the app supports it) is reversible. Verified:
 371 TS tests (12 new — observe, label resolution, exact-wins, defense-in-depth refusal, fail-closed
-approval, did-it-register verify, key whitelist, seam assembly), lint + parity green.
+approval, did-it-register verify, key whitelist, seam assembly), lint + parity green. **Later `mac.ui.menu`** reached the menu bar (a
+separate AX hierarchy the window-scoped `mac.ui.tap` can't touch): "File > Save As", "Edit > Select
+All" — the Export/Preferences/Select-All actions no window button exposes. Same T2 governance +
+defense-in-depth blocklist re-check on the resolved path ("File > Delete Everything" refused). Plus
+`mac.ui.key` grew arrow + page keys so the agent can navigate lists and scroll panes.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file

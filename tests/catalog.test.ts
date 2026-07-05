@@ -13,7 +13,7 @@ import type { MacUi } from '../src/services/capability/macUi.js';
  * workspace hint on fs.*, and the no-colour-by-default contract here, headless.
  */
 const noopMac: MacAutomation = { available: () => true, runAppleScript: async () => '' };
-const noopUi: MacUi = { available: () => true, observe: async () => [], click: async () => {}, typeText: async () => {}, pressKey: async () => {} };
+const noopUi: MacUi = { available: () => true, observe: async () => [], click: async () => {}, typeText: async () => {}, pressKey: async () => {}, clickMenu: async () => {} };
 
 // A tiny hand-rolled capability so the grouping test doesn't depend on the real library's shape.
 const cap = (name: string, tier: CapabilityTier, purpose: string) => ({
