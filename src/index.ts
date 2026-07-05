@@ -297,7 +297,15 @@ program
 
       for (const step of result.steps) console.log(dim(`· ${step}`));
       if (result.answer) console.log(`\n${result.answer}`);
-      else console.log(dim(`\n(stopped: ${result.halt})`));
+      else {
+        const why: Record<string, string> = {
+          stalled: "the model got stuck repeating itself — try rephrasing the goal, or a bigger model with `-m`",
+          maxSteps: "reached the step limit before finishing — try a smaller, more specific goal",
+          planError: "the model's reply couldn't be parsed — try again, or a bigger model with `-m`",
+          cancelled: 'stopped at your request',
+        };
+        console.log(dim(`\n(${why[result.halt] ?? result.halt})`));
+      }
 
       // Capture what could be reversed BEFORE undoAll() drains the session.
       const undoable = agent.undoLog();

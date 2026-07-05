@@ -98,4 +98,34 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         expect(device.taps).toHaveLength(0);
         expect(result.halt).toBe('answered');
     });
+
+    // The loop guard — a weak local model's #1 failure mode is getting stuck repeating one action.
+    function tapAgent(replies: string[]) {
+        const device = new FakeDevice(SCREEN);
+        const consent = new InMemoryConsentStore(); consent.setGranted('app.tap', true);
+        const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
+        let turn = 0;
+        const agent = new CapabilityAgent(async () => replies[Math.min(turn++, replies.length - 1)], [new AppTapCapability(device, parser)], runner);
+        return { agent, device };
+    }
+
+    it('a model stuck repeating the SAME action halts "stalled" and runs the side effect only once', async () => {
+        const stuck = JSON.stringify({ tool: 'app.tap', input: 'Add friend' });
+        const { agent, device } = tapAgent([stuck]);   // it only ever emits the same tap
+        const result = await agent.run('tap it forever');
+
+        expect(result.halt).toBe('stalled');             // bailed instead of burning all 8 steps
+        expect(device.taps).toHaveLength(1);             // executed ONCE — repeats are not re-run
+        expect(result.steps.some(s => s.includes('already ran'))).toBe(true);   // the nudge was given
+    });
+
+    it('the nudge lets a model recover: repeat once, then change course and answer', async () => {
+        const tap = JSON.stringify({ tool: 'app.tap', input: 'Add friend' });
+        const { agent, device } = tapAgent([tap, tap, JSON.stringify({ answer: 'done after the nudge' })]);
+        const result = await agent.run('tap then finish');
+
+        expect(result.halt).toBe('answered');
+        expect(result.answer).toBe('done after the nudge');
+        expect(device.taps).toHaveLength(1);             // the repeat was nudged, not re-executed
+    });
 });

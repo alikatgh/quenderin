@@ -472,6 +472,20 @@ Proven end to end: process A moves a file + writes the journal, process B (nothi
 moves it back. This is transactional undo of your local machine, an hour later, in a new session —
 something a cloud agent structurally cannot offer. Verified: 348 TS tests (11 new), lint + parity green.
 
+**Post-M4 — loop guard: graceful failure when the small model gets stuck (2026-07-05).** Grounding
+is our honest weak spot (§4c): a weak local model's #1 failure mode is getting STUCK re-emitting the
+same action, which used to burn all 8 steps making no progress, then halt with no answer. The
+`CapabilityAgent` loop now fingerprints each executed action; if the model re-proposes the exact
+same one, it is NOT re-executed (no repeated side effects / identical re-failure) — the agent nudges
+once (feeding back the prior result: "you already ran X and got Y — do something different or
+answer"), and if the model insists, halts `stalled` immediately. The CLI turns that into an
+actionable message ("the model got stuck repeating itself — try rephrasing, or a bigger model with
+`-m`"). This is the graceful-degradation a big cloud model rarely needs but a small local one does —
+exactly the kind of practical robustness that makes the local agent usable, not just capable.
+(Follow-up: port the same guard to the native Swift/Kotlin `AgentLoop` twins; parity today covers the
+decision PARSER, which is unchanged.) Verified: 354 TS tests (2 new — stuck→one-execution→stalled,
+and nudge→recovery), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the

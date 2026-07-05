@@ -17,7 +17,7 @@ export type Planner = (prompt: string) => Promise<string>;
 export interface AgentResult {
     answer: string | null;
     steps: string[];   // one observation line per executed step
-    halt: 'answered' | 'maxSteps' | 'planError' | 'cancelled';
+    halt: 'answered' | 'maxSteps' | 'planError' | 'cancelled' | 'stalled';
 }
 
 type Decision =
@@ -44,6 +44,14 @@ export class CapabilityAgent {
         const steps: string[] = [];
         const usedTools: string[] = [];   // the capabilities this run drove — recorded on success
         let transcript = this.preamble(goal);
+        // Loop guard: a weak local model's #1 failure is getting stuck re-emitting the SAME action.
+        // We nudge once (feeding back the prior result), then halt 'stalled' rather than burn every
+        // step making no progress — the graceful-failure that a big cloud model rarely needs but a
+        // small local one does. `prevSig` is the last EXECUTED action's signature; `stall` counts
+        // consecutive repeats of it.
+        let prevSig: string | null = null;
+        let lastObs = '';
+        let stall = 0;
 
         for (let i = 0; i < this.maxSteps; i++) {
             // The kill switch, honored at the top of every turn: stop the WHOLE run instantly,
@@ -65,6 +73,18 @@ export class CapabilityAgent {
                 return { answer: decision.text, steps, halt: 'answered' };
             }
 
+            // Stuck detection: the model proposed the exact action it just ran. Don't re-execute it
+            // (that would repeat side effects / re-fail identically) — nudge, and bail if it insists.
+            const sig = signatureOf(decision);
+            if (sig === prevSig) {
+                if (++stall >= 2) return { answer: null, steps, halt: 'stalled' };
+                const nudge = `You already ran ${sig} and got: ${lastObs} — do something different, or reply {"answer":"…"} if the task is done.`;
+                transcript += `\n${nudge}`;
+                steps.push(nudge);
+                continue;
+            }
+            stall = 0;
+
             let observation: string;
             if (decision.kind === 'tool') {
                 const cap = this.byName.get(decision.name);
@@ -84,6 +104,8 @@ export class CapabilityAgent {
                 transcript += `\nProposed plan [${described}] → ${observation}`;
             }
             steps.push(observation);
+            prevSig = sig;
+            lastObs = observation;
         }
         return { answer: null, steps, halt: 'maxSteps' };
     }
@@ -105,6 +127,13 @@ export class CapabilityAgent {
         );
         return lines.join('\n');
     }
+}
+
+/** A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing. */
+function signatureOf(d: Exclude<Decision, { kind: 'answer' }>): string {
+    return d.kind === 'tool'
+        ? `${d.name}(${d.input})`
+        : `plan[${d.calls.map(c => `${c.name}(${c.input})`).join(', ')}]`;
 }
 
 /**
