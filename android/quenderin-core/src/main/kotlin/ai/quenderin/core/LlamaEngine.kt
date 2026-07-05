@@ -32,6 +32,17 @@ class LlamaEngine(
     override var loadedModelId: String? = null
         private set
 
+    /**
+     * The `n_ctx` the current model was actually loaded with (sized from the device's memory budget +
+     * the model footprint at [load]), or null when nothing is loaded. Exposed so the chat history is
+     * trimmed to the REAL native window — often 512–2048 on phones — instead of a hardcoded 4096 that
+     * would silently overflow it (Q-167). @Volatile: written under [lock] in [load]/[unload], read on the
+     * generation thread when the budget is computed.
+     */
+    @Volatile
+    override var loadedContextTokens: Int? = null
+        private set
+
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
 
@@ -117,6 +128,7 @@ class LlamaEngine(
         handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers, nativeLibDir)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
+        loadedContextTokens = nctx   // the REAL native window, so history is trimmed to it not a fixed 4096 (Q-167)
     }
 
     override fun unload() = synchronized(lock) {
@@ -125,6 +137,7 @@ class LlamaEngine(
             handle = 0L
         }
         loadedModelId = null
+        loadedContextTokens = null
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {

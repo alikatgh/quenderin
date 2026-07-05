@@ -27,6 +27,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the wrong element; identify the row by a STABLE id, re-look-it-up each await, stop if it's gone. (b) a
   method that can be RE-TRIGGERED before it finishes (install/switch/submit) racing shared state + side
   effects — add a `guard !inFlight` re-entrancy guard. (chat streaming reentrancy; install guard)
+- **A single-threaded reentrancy guard doesn't port to a truly-threaded platform.** iOS's `@MainActor`
+  id-relookup (identify the streamed row by stable id, re-look-it-up each `await`) is safe ONLY because
+  every `await` is a cooperative yield — there's no real parallelism. On Android the same `send` runs on
+  `Dispatchers.IO`, a real background thread, and coroutine cancellation is cooperative: a BLOCKING native
+  call (llama.cpp decode) ignores it and runs to completion. So porting the id-relookup alone still lets a
+  main-thread `restore()`/`reset()` race the background token writes → cross-conversation bleed / OOB. The
+  Kotlin twin needs BOTH: a monotonic generation id (so a superseded send's writes no-op) AND a real
+  `synchronized` lock around every transcript mutation, plus `engine.requestCancel()` to end the native
+  decode. (Q-004/Q-168 ChatModel; twin of the iOS `@MainActor`+await bullet above.)
 - **Breaking a Swift loop ≠ stopping native compute.** A Stop/cancel that only flips a Swift flag and
   `break`s the token loop still lets the C/C++ engine keep decoding (to the next token boundary), and
   does NOTHING during a single non-interruptible native call like prefill decode. Always also call the
@@ -321,6 +330,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   (Android launch restore)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-05 (android) — Switching/opening a conversation DURING a streaming reply corrupted it:
+  ChatModel.send ran on Dispatchers.IO mutating _messages[placeholderIndex] with no guard, while
+  ConversationCoordinator.open→chat.restore cleared+refilled the list on the main thread → tokens from
+  chat A bled into (and persisted onto) chat B, or IndexOutOfBounds when B was shorter (Q-004/Q-168).
+  Fix: monotonic generation id + synchronized(lock) transcript; reset()/restore()/persist() stopGenerating
+  first (bump id + engine.requestCancel), so a zombie send's writes/settle become no-ops — the Kotlin twin
+  of iOS's stable-assistantID re-lookup, plus real thread synchronization Android needs (ChatModel.kt).
+  Also: trim history to engine.loadedContextTokens not a fixed 4096 (Q-167); real Stop button + mid-stream
+  looksDegenerate→requestCancel (Q-005/Q-237); marshal onChange/busy onto Dispatchers.Main (Q-228).
+  Lesson: iOS's @MainActor id-relookup guard is necessary but NOT sufficient on a truly-threaded platform —
+  a blocking native call ignores coroutine cancellation, so the shared transcript needs a real lock too.
 
 - 2026-07-05 (desktop) — The whole Electron app was un-authable: bootstrap pre-probed its OWN
   port (all-interfaces net.createServer) and threw away startDashboardServer's `{port, authToken}`,

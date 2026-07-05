@@ -77,7 +77,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The chat surface. A polished, cohesive layout (avatar top bar with a live status line, message
@@ -101,6 +103,9 @@ fun ChatScreen(
     var messages by remember { mutableStateOf(chat.messages) }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    // The in-flight generation coroutine, so Stop can cancel it (and the coordinator can join it on a
+    // conversation switch). Held across recompositions.
+    var sendJob by remember { mutableStateOf<Job?>(null) }
     // Tapping the top-bar name/avatar opens the model "profile" sheet; from there the user can open
     // the model picker to switch models (same picker Settings uses).
     var showProfile by remember { mutableStateOf(false) }
@@ -110,7 +115,13 @@ fun ChatScreen(
     var sendError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(coordinator) {
         messages = chat.messages
-        chat.onChange = { messages = it }
+        // chat.send() runs on Dispatchers.IO (below), so its onChange fires from a background thread —
+        // writing Compose state (`messages`) off the main thread is a threading violation (Q-228). Marshal
+        // every emit onto the main dispatcher. Main.immediate keeps same-thread emits (the settle, which
+        // can land on main) synchronous instead of posting an extra frame.
+        chat.onChange = { next ->
+            scope.launch(Dispatchers.Main.immediate) { messages = next }
+        }
     }
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -183,30 +194,44 @@ fun ChatScreen(
 
         Composer(
             input = input,
-            enabled = !busy,
+            busy = busy,
             onInput = { input = it },
             onSend = {
                 val text = input.trim()
                 if (text.isEmpty()) return@Composer
                 input = ""
                 // Flip busy synchronously on the main thread so a rapid double-tap can't enqueue a
-                // second send before IO flips the flag.
+                // second send before the flag is set.
                 busy = true
                 sendError = null
-                scope.launch(Dispatchers.IO) {
+                // Launch on Main and hop to IO only for the blocking generation, so every Compose state
+                // write (busy/sendError, and messages via onChange) stays on the main thread (Q-228) — the
+                // engine's onChange fires from IO, but the state assignments here don't.
+                sendJob = scope.launch {
                     try {
-                        chat.send(text)
+                        withContext(Dispatchers.IO) { chat.send(text) }
                     } catch (t: Throwable) {
                         // Do NOT swallow: surface + log the reason. A silent catch makes a real
-                        // failure indistinguishable from the app ignoring the message.
+                        // failure indistinguishable from the app ignoring the message. Cancellation from
+                        // Stop is normal control flow, not an error — don't show it as one.
+                        if (t is kotlinx.coroutines.CancellationException) throw t
                         Log.e("Quenderin", "chat.send failed", t)
                         sendError = t.message?.takeIf { it.isNotBlank() }
                             ?: "${t.javaClass.simpleName}: generation failed"
                     } finally {
-                        coordinator.persist()
+                        // persist() runs even after Stop/cancel (NonCancellable) so the streamed partial is
+                        // saved, and it stops-then-snapshots so nothing further bleeds in.
+                        withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
                         busy = false
+                        sendJob = null
                     }
                 }
+            },
+            onStop = {
+                // Real stop: end the native decode now (not one token late / dead during prefill) and
+                // cancel the coroutine so its blocking send unwinds. The streamed partial stays. (Q-005)
+                chat.stopGenerating()
+                sendJob?.cancel()
             },
         )
     }
@@ -453,14 +478,16 @@ private fun EmptyState(model: ModelEntry, modifier: Modifier) {
     }
 }
 
-// ── Composer: pill text field + circular send button ──
+// ── Composer: pill text field + circular send button (a Stop button while generating) ──
 @Composable
 private fun Composer(
     input: String,
-    enabled: Boolean,
+    busy: Boolean,
     onInput: (String) -> Unit,
     onSend: () -> Unit,
+    onStop: () -> Unit,
 ) {
+    val enabled = !busy
     Row(
         Modifier
             .fillMaxWidth()
@@ -492,23 +519,47 @@ private fun Composer(
             }
         }
         Spacer(Modifier.width(8.dp))
+        // While generating, the same circular button becomes Stop (cancels the reply). Geometry is
+        // identical in both states (48dp, CircleShape) — only the icon, colour, and action change, so the
+        // button never resizes. When idle it's Send, dimmed until there's text to send.
         val canSend = enabled && input.isNotBlank()
+        val active = busy || canSend
         Box(
             Modifier
                 .size(48.dp)
                 .background(
-                    if (canSend) MaterialTheme.colorScheme.primary
+                    if (active) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                     CircleShape,
                 )
-                .semantics { contentDescription = "Send message" }
-                .combinedClickable(enabled = canSend, onClick = onSend, onLongClick = {}),
+                .semantics { contentDescription = if (busy) "Stop generating" else "Send message" }
+                .combinedClickable(
+                    enabled = active,
+                    onClick = { if (busy) onStop() else onSend() },
+                    onLongClick = {},
+                ),
             contentAlignment = Alignment.Center,
-        ) { SendIcon(MaterialTheme.colorScheme.onPrimary) }
+        ) {
+            if (busy) StopIcon(MaterialTheme.colorScheme.onPrimary) else SendIcon(MaterialTheme.colorScheme.onPrimary)
+        }
     }
 }
 
 // ── Canvas icons (no icon-font dependency) ──
+/** A rounded square — the universal "stop" glyph — shown on the action button while a reply generates. */
+@Composable
+private fun StopIcon(color: Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+        val s = size.minDimension
+        drawRoundRect(
+            color,
+            topLeft = androidx.compose.ui.geometry.Offset((size.width - s) / 2f, (size.height - s) / 2f),
+            size = androidx.compose.ui.geometry.Size(s, s),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(s * 0.18f),
+        )
+    }
+}
+
 @Composable
 private fun SendIcon(color: Color) {
     androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {

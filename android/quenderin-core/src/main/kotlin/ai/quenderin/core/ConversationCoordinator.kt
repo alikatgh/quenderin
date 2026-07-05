@@ -55,6 +55,11 @@ class ConversationCoordinator(
      *  untouched "New conversation" rows don't pile up, and when nothing new was said since the
      *  last save (see [savedCount]). */
     fun persist() {
+        // Stop any in-flight reply BEFORE snapshotting: persist() runs on a conversation switch/back, and
+        // saving a half-streamed transcript (or letting the zombie send keep writing into it after this
+        // conversation is left) is the corruption this guards. reset()/restore() also stop, so every
+        // lifecycle path that mutates the chat is now preceded by a stop. (Q-004/Q-168.)
+        chat.stopGenerating()
         val id = manager.currentId ?: return
         if (chat.messages.isEmpty() || chat.messages.size <= savedCount) return
         manager.save(id, chat.messages)

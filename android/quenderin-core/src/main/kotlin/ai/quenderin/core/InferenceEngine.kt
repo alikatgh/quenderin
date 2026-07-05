@@ -11,6 +11,16 @@ package ai.quenderin.core
  */
 interface InferenceEngine {
     val loadedModelId: String?
+
+    /**
+     * The ACTUAL context window (`n_ctx`, tokens) of the currently loaded model, or null when unknown
+     * (nothing loaded, or an engine that doesn't model a native window — mock/scripted). A real engine
+     * ([LlamaEngine]) sizes this from the device's memory at load, often 512–2048 on phones — so the chat
+     * history must be trimmed to THIS, not a hardcoded 4096 that silently overflows the native window
+     * (Q-167). Default null keeps the mock/scripted engines and their tests unchanged.
+     */
+    val loadedContextTokens: Int? get() = null
+
     fun load(model: ModelEntry, filePath: String)
     fun unload()
     /** The full completion for a prompt. */

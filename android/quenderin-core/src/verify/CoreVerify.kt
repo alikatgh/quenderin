@@ -1185,6 +1185,148 @@ fun main() {
             c.currentId == "real" && chat.messages.map { it.text } == listOf("keep me")
     })
 
+    // --- Q-167: chat history is trimmed to the engine's REAL loaded n_ctx, not a hardcoded 4096 ---
+    check("ConversationContext.windowedHistory trims to the smaller real n_ctx override", run {
+        // Six ~10-token turns. A 4096-token window keeps them all; the real phone window (a small n_ctx)
+        // must drop the oldest — proving the override, not the fixed 4096, drives the trim.
+        val ctx = ConversationContext(systemPrompt = "", reservedForResponse = 0)
+        val history = (1..6).map { ChatMessage(if (it % 2 == 1) Role.USER else Role.ASSISTANT, "message number $it goes here now") }
+        val big = ctx.windowedHistory(history, contextTokensOverride = 4096)
+        val small = ctx.windowedHistory(history, contextTokensOverride = 48)   // ~48-token native window
+        val nullIsBig = ctx.windowedHistory(history, contextTokensOverride = null).size == history.size
+        big.size == history.size &&                    // roomy window keeps everything
+            small.size < history.size &&               // tight real window drops the oldest
+            small.last() == history.last() &&          // newest turn always kept
+            nullIsBig                                   // null falls back to the configured contextTokens
+    })
+    check("ChatModel.send trims history to engine.loadedContextTokens (Q-167)", run {
+        // A capturing engine that reports a tiny native window and records the history it was handed.
+        var handed = -1
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "cap"
+            override val loadedContextTokens: Int? = 40   // small phone window
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "ok"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                handed = history.size; return "ok"
+            }
+        }
+        val chat = ChatModel(engine, context = ConversationContext(systemPrompt = "", reservedForResponse = 0))
+        repeat(8) { chat.send("message number $it goes here now"); }
+        // With a 40-token window the engine must NOT be handed all 15 prior turns (8 user + 7 assistant);
+        // a fixed-4096 budget would have kept them all.
+        handed in 1..14
+    })
+
+    // --- Q-004/Q-168: a conversation switch (restore/reset) DURING a streaming reply drops the stale
+    //     generation's writes — no cross-conversation token bleed, no index-out-of-bounds. ---
+    check("ChatModel: restore() mid-stream stops the reply bleeding into the opened conversation (Q-168)", run {
+        // Engine streams tokens one at a time; on the 2nd token it runs `mid` (simulates the user opening
+        // another conversation while A is still generating — the exact reentrancy the audit flagged).
+        var mid: (() -> Unit)? = null
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                var out = ""
+                listOf("AAA", "BBB", "CCC", "DDD").forEachIndexed { i, t ->
+                    out += t; onToken(t)
+                    if (i == 1) mid?.invoke()   // switch conversations mid-stream
+                }
+                return out
+            }
+        }
+        val chat = ChatModel(engine)
+        // Conversation B is SHORTER than A's live transcript would be — a captured index would go OOB here.
+        mid = { chat.restore(listOf(ChatMessage(Role.USER, "conversation B question"))) }
+        val settled = chat.send("conversation A question")   // must not throw (no OOB)
+        // The opened conversation B is intact: exactly its one restored message, with NONE of A's streamed
+        // tokens bled in and no stray assistant placeholder.
+        chat.messages.map { it.text } == listOf("conversation B question") &&
+            chat.messages.none { it.text.contains("AAA") || it.text.contains("BBB") } &&
+            settled.contains("AAA")   // send() still returns A's own (now-discarded) text to its caller
+    })
+    check("ChatModel: reset() mid-stream leaves an empty transcript, no OOB, no resurrected reply", run {
+        var mid: (() -> Unit)? = null
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                var out = ""; listOf("one", "two", "three").forEachIndexed { i, t -> out += t; onToken(t); if (i == 0) mid?.invoke() }; return out
+            }
+        }
+        val chat = ChatModel(engine)
+        mid = { chat.reset() }
+        chat.send("hi")                 // must not throw
+        chat.messages.isEmpty() && !chat.isGenerating
+    })
+    check("ChatModel: rapid double-send is rejected while one is in flight (no two writers)", run {
+        var inner: (() -> Unit)? = null
+        var secondReturned = "unset"
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                inner?.invoke(); onToken("x"); return "x"
+            }
+        }
+        val chat = ChatModel(engine)
+        inner = { secondReturned = chat.send("second while first runs") }   // re-entrant send must no-op
+        chat.send("first")
+        // The reentrant send returned "" (rejected) and the transcript has exactly one turn-pair.
+        secondReturned == "" && chat.messages.size == 2 && !chat.isGenerating
+    })
+
+    // --- Q-005 / Q-237: stop cancels generation; mid-stream degeneration asks the engine to cancel. ---
+    check("ChatModel.stopGenerating supersedes the in-flight reply and cancels the engine (Q-005)", run {
+        var cancelled = false
+        var mid: (() -> Unit)? = null
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun requestCancel() { cancelled = true }
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                var out = ""; listOf("keep", "DROPME").forEachIndexed { i, t -> out += t; onToken(t); if (i == 0) mid?.invoke() }; return out
+            }
+        }
+        val chat = ChatModel(engine)
+        mid = { chat.stopGenerating() }   // Stop after the first token
+        chat.send("go")
+        // Engine was asked to cancel, isGenerating cleared, and the post-stop token never overwrote the
+        // partial that was already shown (the settle write is a no-op once superseded).
+        cancelled && !chat.isGenerating && chat.messages.last().role == Role.ASSISTANT &&
+            !chat.messages.last().text.contains("DROPME")
+    })
+    check("ChatModel aborts a degenerate stream via requestCancel every 32 tokens (Q-237)", run {
+        var cancelledAt = -1
+        val loopPara = "Quender was a forest elf, a member of the slender and agile forest elves of the deep wood."
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun requestCancel() { if (cancelledAt < 0) cancelledAt = 1 }
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                // Emit the same paragraph as ~40 separate tokens: a verbatim loop the guard must trip at a
+                // 32-token checkpoint, so the engine is asked to cancel BEFORE all 40 are spent.
+                val sb = StringBuilder()
+                repeat(40) { sb.append(loopPara).append("\n\n"); onToken("$loopPara\n\n") }
+                return sb.toString()
+            }
+        }
+        ChatModel(engine).send("loop please")
+        cancelledAt == 1   // requestCancel() fired mid-stream, not never
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

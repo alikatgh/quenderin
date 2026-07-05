@@ -87,7 +87,10 @@ class CoreTest {
         val chat = ChatModel(engine).apply { onChange = { sizes += it.size } }
         assertEquals("Running on-device.", chat.send("hello"))
         assertEquals(listOf(Role.USER, Role.ASSISTANT), chat.messages.map { it.role })
-        assertEquals(listOf(1, 2), sizes)
+        // send() emits after the user line (1), after the assistant placeholder is appended (2), then
+        // after it settles to the final text (still 2) — matching the CoreVerify harness. (The old
+        // `listOf(1, 2)` omitted the settle emit and failed against send()'s actual 3-emit sequence.)
+        assertEquals(listOf(1, 2, 2), sizes)
         assertTrue(runCatching { chat.send("   ") }.isFailure)
     }
 

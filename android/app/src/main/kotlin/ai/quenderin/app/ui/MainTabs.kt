@@ -130,8 +130,13 @@ fun MainTabs(
  * The Chat tab: a WhatsApp-style two-level flow. Owns the [ConversationCoordinator] (and its live
  * `summaries`), and switches between the conversation LIST and an open CONVERSATION. Keeping the
  * coordinator here — above the list/conversation swap — means both views share one source of truth and
- * survive the swap. Note: leaving an open chat tears down [ChatScreen], so a reply still generating is
- * cancelled (its partial is persisted on the way out) — acceptable for v1.
+ * survive the swap.
+ *
+ * Conversation switch during a streaming reply: every lifecycle op below funnels through the
+ * coordinator, which [ChatModel.stopGenerating]s the in-flight send (bump the generation id + cancel the
+ * native decode) BEFORE it reads/mutates the transcript — so tokens from the outgoing chat can't bleed
+ * into (or be persisted onto) the one being opened, and a captured index can't go out of bounds
+ * (Q-004/Q-168). The partial already streamed is persisted as-is on the way out.
  */
 @Composable
 private fun ChatTab(

@@ -15,13 +15,14 @@ class ConversationContext(
     /** Tokens to leave free for the reply, so prompt + response fit the window. */
     val reservedForResponse: Int = 512,
 ) {
-    /** Tokens available for history after the system prompt and the trailing primer. */
-    private val historyBudget: Int
-        get() = maxOf(
-            0,
-            contextTokens - reservedForResponse -
-                estimateTokens(systemPrompt) - estimateTokens(ASSISTANT_PRIMER),
-        )
+    /** Tokens available for history after the system prompt and the trailing primer, given the effective
+     *  context window (defaults to the configured [contextTokens], but the loaded engine's real `n_ctx`
+     *  is threaded in at runtime — see [windowedHistory]). */
+    private fun historyBudget(effectiveContextTokens: Int): Int = maxOf(
+        0,
+        effectiveContextTokens - reservedForResponse -
+            estimateTokens(systemPrompt) - estimateTokens(ASSISTANT_PRIMER),
+    )
 
     /**
      * Build the instruct prompt, keeping the system prompt plus the most recent turns that
@@ -32,13 +33,19 @@ class ConversationContext(
      * The most recent turns that fit the history budget (oldest dropped first; the latest turn is always
      * kept). This is the context-window trimming, WITHOUT the "User:/Assistant:" flattening — so a
      * chat-template-aware engine ([LlamaEngine]) can format the kept turns with the model's own template.
+     *
+     * [contextTokensOverride] is the loaded engine's ACTUAL `n_ctx` (often 512–2048 on phones, sized from
+     * the device's memory at load) — when supplied it replaces the configured [contextTokens], so the trim
+     * matches the real native window instead of a hardcoded 4096 that silently overflows it (Q-167). Null
+     * (mock/scripted/off-device, and the pure prompt-building tests) falls back to [contextTokens].
      */
-    fun windowedHistory(history: List<ChatMessage>): List<ChatMessage> {
+    fun windowedHistory(history: List<ChatMessage>, contextTokensOverride: Int? = null): List<ChatMessage> {
+        val budget = historyBudget(contextTokensOverride ?: contextTokens)
         val kept = ArrayList<ChatMessage>()
         var used = 0
         for (message in history.asReversed()) {              // newest → oldest
             val cost = estimateTokens(line(message))
-            if (kept.isEmpty() || used + cost <= historyBudget) {
+            if (kept.isEmpty() || used + cost <= budget) {
                 kept += message
                 used += cost
             } else {
