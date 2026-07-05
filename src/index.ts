@@ -20,7 +20,7 @@ import { InMemoryConsentStore } from './services/capability/capability.js';
 import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
 import { fileCapabilities } from './services/capability/fileCapabilities.js';
-import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal } from './services/capability/persistence.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal, loadCliConfig, CONFIG_PATH } from './services/capability/persistence.js';
 import { formatHistory } from './services/capability/ledgerView.js';
 import { replayUndo, UndoAction } from './services/capability/undo.js';
 import { formatCapabilities } from './services/capability/catalog.js';
@@ -249,11 +249,16 @@ program
   .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; dryRun?: boolean; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
+    // Config file supplies defaults; a CLI flag always overrides it (flag > config > built-in).
+    const config = loadCliConfig();
+    const workspaceOpt = options.workspace ?? config.workspace;
+    const guiEnabled = options.gui ?? config.gui ?? false;
+    const modelId = options.model ?? config.model;
     let workspaceDir: string | null = null;
-    if (options.workspace) {
-      workspaceDir = path.resolve(options.workspace);
+    if (workspaceOpt) {
+      workspaceDir = path.resolve(workspaceOpt);
       if (!fs.existsSync(workspaceDir) || !fs.statSync(workspaceDir).isDirectory()) {
-        console.error(`Workspace "${options.workspace}" is not a folder.`);
+        console.error(`Workspace "${workspaceOpt}" is not a folder.`);
         process.exitCode = 1;
         return;
       }
@@ -265,28 +270,29 @@ program
     }
     // Step budget: default 8, clamp to [1, 50]. The loop guard + per-run approval already bound a
     // run; the ceiling is just a runaway backstop. A multi-item chore ("friend 20 users") needs more.
-    let maxSteps = 8;
+    let maxSteps = config.maxSteps ?? 8;
     if (options.maxSteps !== undefined) {
       const n = parseInt(options.maxSteps, 10);
       if (Number.isNaN(n)) { console.error('--max-steps must be a number.'); process.exitCode = 1; return; }
-      maxSteps = Math.min(50, Math.max(1, n));
+      maxSteps = n;
     }
+    maxSteps = Math.min(50, Math.max(1, maxSteps));
     const llm = new LlmService();
     try {
-      if (options.model) {
-        if (!MODEL_CATALOG.some(m => m.id === options.model)) {
-          console.error(`Unknown model "${options.model}". Run \`quenderin models\`.`);
+      if (modelId) {
+        if (!MODEL_CATALOG.some(m => m.id === modelId)) {
+          console.error(`Unknown model "${modelId}". Run \`quenderin models\`.`);
           process.exitCode = 1;
           return;
         }
-        await llm.switchModel(options.model);
+        await llm.switchModel(modelId);
       }
 
       const consent = new InMemoryConsentStore();
       // The per-change terminal prompt is the real gate here, so grant the capabilities in play.
       if (mac.available()) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
       if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
-      const macUi = options.gui && mac.available() ? new OsascriptMacUi(mac) : undefined;
+      const macUi = guiEnabled && mac.available() ? new OsascriptMacUi(mac) : undefined;
       if (macUi) macUiCapabilities(macUi).forEach(c => consent.setGranted(c.name, true));
 
       const ac = new AbortController();
@@ -353,6 +359,22 @@ program
   });
 
 program
+  .command('config')
+  .description('Show the config file that supplies `quenderin do` defaults (edit it to set them).')
+  .action(() => {
+    const cfg = loadCliConfig();
+    console.log(`\nConfig file: ${bold(CONFIG_PATH)}`);
+    if (Object.keys(cfg).length === 0) {
+      console.log(dim('  (none set — CLI flags use the built-in defaults)'));
+      console.log(dim('  Create it with e.g.: {"workspace": "~/Downloads", "gui": true, "model": "gemma-4-12b"}'));
+    } else {
+      for (const [k, v] of Object.entries(cfg)) console.log(`  ${k.padEnd(10)} ${dim(String(v))}`);
+      console.log(dim('\n  A CLI flag always overrides these.'));
+    }
+    console.log('');
+  });
+
+program
   .command('capabilities')
   .alias('caps')
   .description('List everything Quenderin can do — the governed capability library.')
@@ -395,6 +417,7 @@ if (process.argv.length === 2) {
   console.log('Commands:');
   console.log('  quenderin do "<goal>"     - Tell it to do something on your Mac (asks before every change)');
   console.log('  quenderin capabilities    - List everything Quenderin can do');
+  console.log('  quenderin config          - Show the defaults `do` uses (workspace, model, gui…)');
   console.log('  quenderin history         - Review everything the agent has done (the local audit log)');
   console.log('  quenderin undo            - Reverse your last `do` task (works in a new session)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');

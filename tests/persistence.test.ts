@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal } from '../src/services/capability/persistence.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal, loadCliConfig } from '../src/services/capability/persistence.js';
 import { SkillMemory } from '../src/services/capability/skillMemory.js';
 import type { UndoAction } from '../src/services/capability/undo.js';
 
@@ -91,5 +91,28 @@ describe('undo journal persistence — cross-session `quenderin undo`', () => {
 
     it('clearing an already-absent journal is a no-op (never throws)', () => {
         expect(() => clearUndoJournal(path.join(dir, 'ghost.json'))).not.toThrow();
+    });
+});
+
+describe('CLI config — per-user defaults for `quenderin do`', () => {
+    it('loads valid fields and drops invalid/unknown ones (a typo never bricks the CLI)', () => {
+        const file = path.join(dir, 'config.json');
+        fs.writeFileSync(file, JSON.stringify({
+            model: 'gemma-4-12b', workspace: '/Users/me/Downloads', gui: true, maxSteps: 20,
+            bogus: 'ignored', gui2: 'wrongtype',
+        }));
+        expect(loadCliConfig(file)).toEqual({ model: 'gemma-4-12b', workspace: '/Users/me/Downloads', gui: true, maxSteps: 20 });
+    });
+
+    it('drops fields of the wrong type', () => {
+        const file = path.join(dir, 'bad-types.json');
+        fs.writeFileSync(file, JSON.stringify({ model: 5, gui: 'yes', maxSteps: 'ten', workspace: '/ok' }));
+        expect(loadCliConfig(file)).toEqual({ workspace: '/ok' });   // only the valid string survives
+    });
+
+    it('a missing or corrupt config loads as empty', () => {
+        expect(loadCliConfig(path.join(dir, 'nope.json'))).toEqual({});
+        fs.writeFileSync(path.join(dir, 'corrupt.json'), 'not json');
+        expect(loadCliConfig(path.join(dir, 'corrupt.json'))).toEqual({});
     });
 });

@@ -15,6 +15,31 @@ export const QUENDERIN_DIR = path.join(os.homedir(), '.quenderin');
 export const LEDGER_PATH = path.join(QUENDERIN_DIR, 'agent-ledger.jsonl');
 export const SKILLS_PATH = path.join(QUENDERIN_DIR, 'agent-skills.json');
 export const UNDO_PATH = path.join(QUENDERIN_DIR, 'agent-undo.json');
+export const CONFIG_PATH = path.join(QUENDERIN_DIR, 'config.json');
+
+/** Per-user defaults for `quenderin do`, so a repeat user needn't retype `--workspace ~/Downloads
+ *  --gui` every time. CLI flags always override these; these override the built-in defaults. */
+export interface CliConfig {
+    model?: string;
+    workspace?: string;
+    gui?: boolean;
+    maxSteps?: number;
+}
+
+/** Load ~/.quenderin/config.json (empty if none/corrupt). Every field is validated — a bad value is
+ *  dropped, not fatal, so a typo in the config never bricks the CLI. */
+export function loadCliConfig(file: string = CONFIG_PATH): CliConfig {
+    let raw: unknown;
+    try { raw = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {}; }
+    if (typeof raw !== 'object' || raw === null) return {};
+    const o = raw as Record<string, unknown>;
+    const cfg: CliConfig = {};
+    if (typeof o.model === 'string') cfg.model = o.model;
+    if (typeof o.workspace === 'string') cfg.workspace = o.workspace;
+    if (typeof o.gui === 'boolean') cfg.gui = o.gui;
+    if (typeof o.maxSteps === 'number' && Number.isFinite(o.maxSteps)) cfg.maxSteps = o.maxSteps;
+    return cfg;
+}
 
 /** The flight recorder, persisted as JSONL — append-only, so a crash can at worst truncate the
  *  LAST line and every prior action survives (torn tails are skipped on read). Twin of the Swift
