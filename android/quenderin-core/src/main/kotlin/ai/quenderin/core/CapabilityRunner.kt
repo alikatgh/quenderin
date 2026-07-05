@@ -76,4 +76,62 @@ class CapabilityRunner(
             }
         }
     }
+
+    /**
+     * Execute a multi-step PLAN with ONE aggregate approval (Milestone 3 — the Cowork UX).
+     * All-or-nothing pre-flight: every item blocklist- and consent-checked and previewed BEFORE
+     * anything runs; one bad item refuses the whole plan. If any step mutates, the user approves
+     * the numbered plan once (fail-closed without an approver). Execution is sequential, each
+     * step individually ledgered; a failing step stops the remainder honestly. Twin of iOS.
+     */
+    fun executePlan(items: List<Pair<Capability, String>>): String {
+        fun log(item: Pair<Capability, String>, decision: String, outcome: String?) = ledger.append(
+            AuditEntry.of(now(), item.first.name, item.first.tier.ordinal, item.second, decision, outcome),
+        )
+
+        // ── Pre-flight every step, before any approval or execution.
+        val previews = mutableListOf<ActionPreview>()
+        for (item in items) {
+            SafetyBlocklist.matches(item.second).firstOrNull()?.let { hit ->
+                log(item, "blocked($hit)", null)
+                return "Refused: step ${previews.size + 1} touches a blocked action ('$hit'). Nothing was done."
+            }
+            if (item.first.requiresConsent && !consent.isGranted(item.first.name)) {
+                log(item, "needsConsent", null)
+                return "Needs your permission first: \"${item.first.name}\" isn't granted in Settings. Nothing was done."
+            }
+            previews.add(item.first.plan(item.second))
+        }
+
+        // ── One aggregate approval when anything writes.
+        if (previews.any { it.mutates }) {
+            val numbered = previews.mapIndexed { i, p -> "${i + 1}. ${p.summary}" }.joinToString("\n")
+            val combined = ActionPreview("The agent proposes this plan:\n$numbered", mutates = true)
+            val approver = approve
+            if (approver == null) {
+                items.forEach { log(it, "needsApproval", null) }
+                return "This plan changes files and needs your approval, which this surface can't ask for. Nothing was done."
+            }
+            if (!approver(combined)) {
+                items.forEach { log(it, "declined", null) }
+                return "You declined the plan. Nothing was changed."
+            }
+        }
+
+        // ── Execute sequentially; a failure stops the remainder honestly.
+        val results = mutableListOf<String>()
+        for ((index, item) in items.withIndex()) {
+            try {
+                val result = item.first.run(item.second)
+                log(item, "allowed", result)
+                results.add("${index + 1}. $result")
+            } catch (t: Throwable) {
+                log(item, "error", t.message ?: t.toString())
+                results.add("${index + 1}. Failed: ${t.message}")
+                results.add("Stopped after step ${index + 1} of ${items.size}.")
+                break
+            }
+        }
+        return results.joinToString("\n")
+    }
 }

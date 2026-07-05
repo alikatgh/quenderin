@@ -14,6 +14,7 @@ final class AgentParityTests: XCTestCase {
     private func tag(_ d: AgentDecision?) -> String {
         switch d {
         case .useTool(let name, _): return "tool:\(name)"
+        case .plan(let calls): return "plan:\(calls.count):\(calls.first?.name ?? "")"
         case .finalAnswer(let answer): return "answer:\(answer)"
         case nil: return "nil"
         }
@@ -33,6 +34,12 @@ final class AgentParityTests: XCTestCase {
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"thought":{"tool":"delete","input":"all files"},"other":"x"}"#)), "nil")
         // parity:decision-non-json-nil
         XCTAssertEqual(tag(AgentDecisionParser.parse("no json here")), "nil")
+        // parity:decision-plan-calls - a plan array parses to a plan decision (count + first tool). Milestone 3.
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"plan":[{"tool":"fs.move","input":"a.txt to Archive"},{"tool":"fs.move","input":"b.txt to Archive"}]}"#)), "plan:2:fs.move")
+        // parity:decision-plan-invalid-item - one tool-less item invalidates the WHOLE plan (never run a half-parsed plan).
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"plan":[{"tool":"fs.move","input":"a to B"},{"input":"orphan"}]}"#)), "nil")
+        // parity:decision-plan-answer-precedence - answer > plan > tool.
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"answer":"done","plan":[{"tool":"echo","input":"x"}]}"#)), "answer:done")
         // parity:decision-unicode-escape - the raw-string input carries the literal \uXXXX escape the model emits;
         // the expected uses Swift's \u{...} (cafe-acute + smiley). Android's hand-rolled unescaper had to learn \u
         // to match this - without it, non-ASCII answers rendered as "cafu00e9" on Android only.

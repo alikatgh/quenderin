@@ -95,6 +95,34 @@ public struct AgentLoop: Sendable {
                 let observation = await execute(name: name, input: input)
                 record(AgentStep(decision: decision, observation: observation))
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
+
+            case .plan(let calls):
+                // Safety gate per step, BEFORE anything runs — a plan containing a blocked
+                // action is a bad plan, not a plan to trim.
+                for call in calls where SafetyBlocklist.isBlocked(call.input) || SafetyBlocklist.isBlocked(call.name) {
+                    record(AgentStep(decision: decision, observation: "Refused: the plan touches a blocked action."))
+                    return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
+                }
+                // Every step must resolve to a Capability — the runner's plan path owns
+                // consent + the ONE aggregate approval + per-step ledgering.
+                var resolved: [(capability: Capability, input: String)] = []
+                var unknown: String?
+                for call in calls {
+                    guard let capability = tools.first(where: { $0.name == call.name }) as? Capability else {
+                        unknown = call.name
+                        break
+                    }
+                    resolved.append((capability, call.input))
+                }
+                let observation: String
+                if let unknown {
+                    observation = "No such tool: \(unknown). Plan not executed."
+                } else {
+                    observation = await runner.executePlan(resolved)
+                }
+                record(AgentStep(decision: decision, observation: observation))
+                let described = calls.map { "\($0.name)(\($0.input))" }.joined(separator: ", ")
+                transcript += "\nProposed plan [\(described)] → \(observation)"
             }
         }
 
@@ -124,7 +152,8 @@ public struct AgentLoop: Sendable {
         Available tools:
         \(toolList)
         Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, \
-        or {"answer":"<final answer>"} when done.
+        {"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user \
+        approves together, or {"answer":"<final answer>"} when done.
         """
     }
 }

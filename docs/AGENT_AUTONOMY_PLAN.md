@@ -254,9 +254,26 @@ approve → act → undo), both twins:
 Verified: Swift 276 tests / Kotlin CoreVerify ALL PASSED — including fail-closed, declined,
 collision-refusal, and hostile-path cases. Android Compose UI rides the existing backlog.
 
-Next: PDF extraction for `DocumentTextExtractor` · multi-step plan preview (approve a PLAN
-once instead of each move — the Cowork UX) · `fs.rename` + `fs.trash` on the same
-approval/undo spine · registering the workspace story on the public roadmap page.
+## Milestone 3 — plan preview: one approval for the whole plan ✅ (shipped 2026-07-05)
+
+The Cowork UX: the model proposes `{"plan":[{"tool":…},…]}`, the user sees the numbered
+previews and approves ONCE, the runner executes sequentially. Both twins:
+
+- **`AgentDecision.plan([ToolCall])`** — parity-vectored (3 new vectors: parses, strict
+  one-bad-item-kills-the-plan, answer>plan>tool precedence; `check_agent_parity.py` green
+  at 14/14 on both platforms). Kotlin gained a depth-1 `extractArray` matching its
+  top-level-only key discipline.
+- **`CapabilityRunner.executePlan`** — all-or-nothing pre-flight (blocklist + consent +
+  preview per step BEFORE anything runs; a blocked step refuses the whole plan without ever
+  reaching approval), ONE aggregate approval when anything mutates (fail-closed), sequential
+  execution with per-step ledger rows, honest stop-on-failure ("stopped after step N of M").
+- Run log + exporter render plan steps; the preamble teaches the model the plan shape.
+
+Verified: Swift 279 tests / Kotlin CoreVerify ALL PASSED (incl. one-approval-for-two-moves,
+declined-plan-changes-nothing, blocked-step-never-reaches-approval, scripted end-to-end).
+
+Next: `fs.rename` + `fs.trash` on the same spine · PDF extraction · Android Compose UI
+catch-up · the public announcement (roadmap Stage 3 has real teeth now).
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file

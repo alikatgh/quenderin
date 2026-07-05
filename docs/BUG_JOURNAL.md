@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Milestone 3: plan preview, both twins. Invariants: a plan is atomic at
+  the GATE (one blocked/unconsented/unparseable step refuses everything, before approval) but
+  sequential at EXECUTION (a failing step stops the remainder with "stopped after N of M") —
+  gate-atomic, execution-honest. Parser is strict: one tool-less item nils the whole plan;
+  precedence answer>plan>tool is parity-vectored so both platforms can never disagree.
+
 - 2026-07-05 (agent) — Milestone 2: the first WRITE capability (fs.move) + workspace + undo +
   per-run approval, both twins. Invariants worth keeping: approval is FAIL-CLOSED (no approver
   wired ⇒ every mutating action refused); standing consent ≠ per-run approval (Settings toggle

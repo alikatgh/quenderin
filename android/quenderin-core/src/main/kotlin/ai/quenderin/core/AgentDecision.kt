@@ -1,8 +1,14 @@
 package ai.quenderin.core
 
-/** One planner decision: call a tool, or give the final answer. Mirrors iOS `AgentDecision`. */
+/** One step of a proposed multi-step plan. Mirrors iOS `ToolCall`. */
+data class ToolCall(val name: String, val input: String)
+
+/** One planner decision: call a tool, propose a plan, or give the final answer. Mirrors iOS. */
 sealed interface AgentDecision {
     data class UseTool(val name: String, val input: String) : AgentDecision
+    /** Several tool calls proposed AS ONE UNIT — approved by the user once (Milestone 3).
+     *  Never empty (the parser rejects an empty plan). */
+    data class Plan(val calls: List<ToolCall>) : AgentDecision
     data class FinalAnswer(val answer: String) : AgentDecision
 }
 
@@ -14,12 +20,101 @@ sealed interface AgentDecision {
 object AgentDecisionParser {
     fun parse(raw: String): AgentDecision? {
         val json = firstJsonObject(raw) ?: return null
+        // Precedence when several keys appear: answer > plan > tool — identical on iOS.
         extractString(json, "answer")?.let { return AgentDecision.FinalAnswer(it) }
+        extractArray(json, "plan")?.let { arrayBody ->
+            // STRICT: every item needs a nonempty "tool", and an empty plan is no decision —
+            // a half-parseable plan must fail loudly, not execute partially (parity with iOS).
+            val objects = splitObjects(arrayBody)
+            val calls = objects.mapNotNull { obj ->
+                val tool = extractString(obj, "tool")
+                if (tool.isNullOrEmpty()) null else ToolCall(tool, extractString(obj, "input") ?: "")
+            }
+            return if (calls.isNotEmpty() && calls.size == objects.size) AgentDecision.Plan(calls) else null
+        }
         val tool = extractString(json, "tool")
         if (!tool.isNullOrEmpty()) {
             return AgentDecision.UseTool(tool, extractString(json, "input") ?: "")
         }
         return null
+    }
+
+    /** The raw `[ ... ]` body of a DEPTH-1 array member `"key": [ ... ]` — same top-level-only
+     *  discipline as [extractString], so a nested "plan" scratch field is invisible. */
+    private fun extractArray(json: String, key: String): String? {
+        val quotedKey = "\"$key\""
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = 0
+        while (i < json.length) {
+            val c = json[i]
+            if (inString) {
+                when {
+                    escaped -> escaped = false
+                    c == '\\' -> escaped = true
+                    c == '"' -> inString = false
+                }
+                i++
+                continue
+            }
+            when (c) {
+                '"' -> {
+                    if (depth == 1 && json.startsWith(quotedKey, i)) {
+                        var j = i + quotedKey.length
+                        while (j < json.length && json[j].isWhitespace()) j++
+                        if (j < json.length && json[j] == ':') {
+                            j++
+                            while (j < json.length && json[j].isWhitespace()) j++
+                            if (j < json.length && json[j] == '[') {
+                                // Capture the balanced [ ... ] (skipping strings), exclusive of brackets.
+                                var bracketDepth = 0
+                                var inner = false
+                                var esc = false
+                                var k = j
+                                while (k < json.length) {
+                                    val ch = json[k]
+                                    if (inner) {
+                                        when {
+                                            esc -> esc = false
+                                            ch == '\\' -> esc = true
+                                            ch == '"' -> inner = false
+                                        }
+                                    } else when (ch) {
+                                        '"' -> inner = true
+                                        '[' -> bracketDepth++
+                                        ']' -> { bracketDepth--; if (bracketDepth == 0) return json.substring(j + 1, k) }
+                                    }
+                                    k++
+                                }
+                                return null   // unbalanced — torn output
+                            }
+                        }
+                    }
+                    inString = true
+                }
+                '{', '[' -> depth++
+                '}', ']' -> depth--
+            }
+            i++
+        }
+        return null
+    }
+
+    /** Split an array body into its balanced top-level `{ ... }` objects (strings skipped). */
+    private fun splitObjects(body: String): List<String> {
+        val objects = mutableListOf<String>()
+        var i = 0
+        while (i < body.length) {
+            if (body[i] == '{') {
+                val obj = firstJsonObject(body.substring(i)) ?: break
+                objects.add(obj)
+                i += obj.length
+            } else {
+                i++
+            }
+        }
+        return objects
     }
 
     /** The FIRST complete, balanced `{ ... }` object — walking braces (skipping quoted strings)

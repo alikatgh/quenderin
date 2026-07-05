@@ -26,7 +26,10 @@ object AgentRunExporter {
             AgentRun.HaltReason.PLAN_ERROR -> "stopped (could not form a plan)"
         }
         val toolsUsed = LinkedHashSet<String>()
-        run.steps.forEach { step -> (step.decision as? AgentDecision.UseTool)?.let { toolsUsed.add(it.name) } }
+        run.steps.forEach { step ->
+            (step.decision as? AgentDecision.UseTool)?.let { toolsUsed.add(it.name) }
+            (step.decision as? AgentDecision.Plan)?.calls?.forEach { toolsUsed.add(it.name) }
+        }
         val toolsLine = if (toolsUsed.isEmpty()) "No tools used."
             else "Tools used: " + toolsUsed.joinToString(", ") + "."
         sb.append("**Outcome: ").append(status).append(".** ").append(toolsLine).append("\n\n")
@@ -36,6 +39,8 @@ object AgentRunExporter {
             when (val d = step.decision) {
                 is AgentDecision.UseTool -> sb.append("**").append(num).append(". Used `")
                     .append(d.name).append("`(").append(d.input).append(")**")
+                is AgentDecision.Plan -> sb.append("**").append(num).append(". Proposed a plan:** ")
+                    .append(d.calls.joinToString(", ") { "`${it.name}`(${it.input})" })
                 is AgentDecision.FinalAnswer -> sb.append("**").append(num).append(". Final answer**")
             }
             step.observation?.takeIf { it.isNotEmpty() }?.let { sb.append(" → ").append(it) }

@@ -126,6 +126,7 @@ public struct CapabilityRunner: Sendable {
             // The write gate: a mutating action needs the user's yes for THIS run, not just a
             // standing grant. No approver wired ⇒ refuse (fail closed), never silently write.
             if preview.mutates {
+                // (single-action path — plans batch their approval in executePlan)
                 guard let approve else {
                     log("needsApproval", outcome: nil)
                     return "This action changes files and needs your per-run approval, which this surface can't ask for. Not done."
@@ -144,5 +145,68 @@ public struct CapabilityRunner: Sendable {
                 return "Tool error: \(error)"
             }
         }
+    }
+
+    /// Execute a multi-step PLAN with ONE aggregate approval (Milestone 3 — the Cowork UX).
+    /// All-or-nothing pre-flight: every item is blocklist- and consent-checked and previewed
+    /// BEFORE anything runs; one bad item refuses the whole plan (a plan containing a blocked
+    /// step is a bad plan, not a plan to trim). If any step mutates, the user approves the whole
+    /// numbered plan once (fail-closed without an approver). Execution is sequential, each step
+    /// individually ledgered; a failing step stops the remainder and says how far it got.
+    public func executePlan(_ items: [(capability: Capability, input: String)]) async -> String {
+        func log(_ item: (capability: Capability, input: String), _ decision: String, outcome: String?) {
+            ledger.append(AuditEntry(timestamp: now(), capability: item.capability.name,
+                                     tier: item.capability.tier.rawValue, input: item.input,
+                                     decision: decision, outcome: outcome))
+        }
+
+        // ── Pre-flight every step, before any approval or execution.
+        var previews: [ActionPreview] = []
+        for item in items {
+            if let hit = SafetyBlocklist.matches(in: item.input).first {
+                log(item, "blocked(\(hit))", outcome: nil)
+                return "Refused: step \(previews.count + 1) touches a blocked action ('\(hit)'). Nothing was done."
+            }
+            if item.capability.requiresConsent && !consent.isGranted(item.capability.name) {
+                log(item, "needsConsent", outcome: nil)
+                return "Needs your permission first: \"\(item.capability.name)\" isn't granted in Settings. Nothing was done."
+            }
+            guard let preview = try? await item.capability.plan(item.input) else {
+                return "Couldn't preview step \(previews.count + 1) (\(item.capability.name)). Nothing was done."
+            }
+            previews.append(preview)
+        }
+
+        // ── One aggregate approval when anything writes.
+        if previews.contains(where: \.mutates) {
+            let numbered = previews.enumerated()
+                .map { "\($0.offset + 1). \($0.element.summary)" }
+                .joined(separator: "\n")
+            let combined = ActionPreview(summary: "The agent proposes this plan:\n\(numbered)", mutates: true)
+            guard let approve else {
+                for item in items { log(item, "needsApproval", outcome: nil) }
+                return "This plan changes files and needs your approval, which this surface can't ask for. Nothing was done."
+            }
+            guard await approve(combined) else {
+                for item in items { log(item, "declined", outcome: nil) }
+                return "You declined the plan. Nothing was changed."
+            }
+        }
+
+        // ── Execute sequentially; a failure stops the remainder honestly.
+        var results: [String] = []
+        for (index, item) in items.enumerated() {
+            do {
+                let result = try await item.capability.run(item.input)
+                log(item, "allowed", outcome: result)
+                results.append("\(index + 1). \(result)")
+            } catch {
+                log(item, "error", outcome: "\(error)")
+                results.append("\(index + 1). Failed: \(error)")
+                results.append("Stopped after step \(index + 1) of \(items.count).")
+                break
+            }
+        }
+        return results.joined(separator: "\n")
     }
 }

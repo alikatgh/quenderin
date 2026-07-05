@@ -28,6 +28,9 @@ public enum AgentRunExporter {
             if case let .useTool(name, _) = step.decision, !toolsUsed.contains(name) {
                 toolsUsed.append(name)
             }
+            if case let .plan(calls) = step.decision {
+                for call in calls where !toolsUsed.contains(call.name) { toolsUsed.append(call.name) }
+            }
         }
         let toolsLine = toolsUsed.isEmpty ? "No tools used." : "Tools used: \(toolsUsed.joined(separator: ", "))."
         out += "**Outcome: \(status).** \(toolsLine)\n\n"
@@ -37,6 +40,9 @@ public enum AgentRunExporter {
             switch step.decision {
             case let .useTool(name, input):
                 out += "**\(num). Used `\(name)`(\(input))**"
+            case let .plan(calls):
+                let described = calls.map { "`\($0.name)`(\($0.input))" }.joined(separator: ", ")
+                out += "**\(num). Proposed a plan:** \(described)"
             case .finalAnswer:
                 out += "**\(num). Final answer**"
             }

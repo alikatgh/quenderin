@@ -52,6 +52,7 @@ public struct AgentView: View {
                             // it would render as a bare numbered circle, so the log skips it.
                             let visible = session.steps.filter { step in
                                 if case .useTool = step.decision { return true }
+                                if case .plan = step.decision { return true }
                                 return step.observation != nil
                             }
                             ForEach(Array(visible.enumerated()), id: \.offset) { index, step in
@@ -427,7 +428,11 @@ private struct AgentStepRow: View {
                 .frame(width: 16, height: 16)
                 .background(Circle().fill(palette.surfaceVariant))
             VStack(alignment: .leading, spacing: 3) {
-                if case let .useTool(name, input) = step.decision {
+                if case let .plan(calls) = step.decision {
+                    Text("Plan: " + calls.map { "\($0.name)(\($0.input))" }.joined(separator: " · "))
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(palette.onSurface)
+                } else if case let .useTool(name, input) = step.decision {
                     Text("\(name)(\(input))")
                         .font(.caption.monospaced())
                         .foregroundStyle(palette.primary)

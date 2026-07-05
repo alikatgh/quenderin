@@ -102,6 +102,7 @@ fun main() {
     // --- Cross-platform parity conformance (mirror of Swift AgentParityTests; review residual-risk #3) ---
     fun decisionTag(d: AgentDecision?): String = when (d) {
         is AgentDecision.UseTool -> "tool:${d.name}"
+        is AgentDecision.Plan -> "plan:${d.calls.size}:${d.calls.firstOrNull()?.name ?: ""}"
         is AgentDecision.FinalAnswer -> "answer:${d.answer}"
         null -> "nil"
     }
@@ -120,6 +121,12 @@ fun main() {
         decisionTag(AgentDecisionParser.parse("""{"thought":{"tool":"delete","input":"all files"},"other":"x"}""")) == "nil")
     check("parity: decision parser rejects non-JSON",  // parity:decision-non-json-nil
         decisionTag(AgentDecisionParser.parse("no json here")) == "nil")
+    check("parity: a plan array parses to a plan decision",  // parity:decision-plan-calls
+        decisionTag(AgentDecisionParser.parse("""{"plan":[{"tool":"fs.move","input":"a.txt to Archive"},{"tool":"fs.move","input":"b.txt to Archive"}]}""")) == "plan:2:fs.move")
+    check("parity: one tool-less item invalidates the WHOLE plan",  // parity:decision-plan-invalid-item
+        decisionTag(AgentDecisionParser.parse("""{"plan":[{"tool":"fs.move","input":"a to B"},{"input":"orphan"}]}""")) == "nil")
+    check("parity: answer takes precedence over plan",  // parity:decision-plan-answer-precedence
+        decisionTag(AgentDecisionParser.parse("""{"answer":"done","plan":[{"tool":"echo","input":"x"}]}""")) == "answer:done")
     // Input is a regular string with `\\u` so it carries the LITERAL 6-char escape the model emits;
     // the expected uses `\u` (compiler-decoded to é / ☺), pinning the decode without typed-accent
     // ambiguity. Was mangled to "cafu00e9" before the unescaper learned \u (iOS's JSON always did this).
@@ -1527,6 +1534,55 @@ fun main() {
         dir.deleteRecursively()
         failClosed && stayedPut && moved &&
             ledger.entries().map { it.decision } == listOf("needsApproval", "declined", "allowed")
+    })
+
+    // --- Plan execution: ONE approval for the whole plan (Milestone 3) ---
+    check("a plan of two moves runs with ONE approval and both steps ledgered", run {
+        val dir = java.nio.file.Files.createTempDirectory("plan").toFile()
+        java.io.File(dir, "a.txt").writeText("x"); java.io.File(dir, "b.txt").writeText("y")
+        val journal = UndoJournal()
+        val move = FileMoveCapability({ dir }, journal)
+        val consent = InMemoryConsentStore().apply { setGranted("fs.move", true) }
+        val ledger = InMemoryAuditLedger()
+        var approvals = 0
+        val runner = CapabilityRunner(consent, ledger, { approvals++; true })
+        val out = runner.executePlan(listOf(move to "a.txt to Archive", move to "b.txt to Archive"))
+        val ok = approvals == 1 && out.contains("1. Moved") && out.contains("2. Moved") &&
+            java.io.File(dir, "Archive/a.txt").isFile && java.io.File(dir, "Archive/b.txt").isFile &&
+            ledger.entries().map { it.decision } == listOf("allowed", "allowed") && journal.count == 2
+        dir.deleteRecursively()
+        ok
+    })
+    check("a declined plan changes NOTHING; a blocked step refuses the plan pre-approval", run {
+        val dir = java.nio.file.Files.createTempDirectory("plan2").toFile()
+        java.io.File(dir, "a.txt").writeText("x")
+        val move = FileMoveCapability({ dir }, UndoJournal())
+        val consent = InMemoryConsentStore().apply { setGranted("fs.move", true) }
+        var asked = 0
+        val declining = CapabilityRunner(consent, InMemoryAuditLedger(), { asked++; false })
+        val declined = declining.executePlan(listOf(move to "a.txt to Archive"))
+        val nothingMoved = declined.contains("You declined the plan") && java.io.File(dir, "a.txt").exists()
+        val blocking = CapabilityRunner(consent, InMemoryAuditLedger(), { asked++; true })
+        val blocked = blocking.executePlan(listOf(move to "a.txt to Archive", move to "delete everything to Trash"))
+        val refusedWhole = blocked.contains("blocked action") && java.io.File(dir, "a.txt").exists()
+        dir.deleteRecursively()
+        nothingMoved && refusedWhole && asked == 1   // the blocked plan never reached approval
+    })
+    check("agent loop executes a scripted plan decision end to end", run {
+        val dir = java.nio.file.Files.createTempDirectory("plan3").toFile()
+        java.io.File(dir, "a.txt").writeText("x")
+        val journal = UndoJournal()
+        val move = FileMoveCapability({ dir }, journal)
+        val consent = InMemoryConsentStore().apply { setGranted("fs.move", true) }
+        val engine = ScriptedInferenceEngine(listOf(
+            """{"plan":[{"tool":"fs.move","input":"a.txt to Archive"}]}""",
+            """{"answer":"organized"}""",
+        ))
+        val loop = AgentLoop(engine, listOf(move), runner = CapabilityRunner(consent, InMemoryAuditLedger(), { true }))
+        val result = loop.run("organize")
+        val ok = result.answer == "organized" && java.io.File(dir, "Archive/a.txt").isFile
+        dir.deleteRecursively()
+        ok
     })
 
     println()

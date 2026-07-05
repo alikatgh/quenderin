@@ -78,6 +78,28 @@ class AgentLoop(
                     record(AgentStep(decision, observation))
                     transcript += "\nUsed ${decision.name}(${decision.input}) → $observation"
                 }
+                is AgentDecision.Plan -> {
+                    // Safety gate per step, BEFORE anything runs — a plan containing a blocked
+                    // action is a bad plan, not a plan to trim.
+                    if (decision.calls.any { SafetyBlocklist.isBlocked(it.input) || SafetyBlocklist.isBlocked(it.name) }) {
+                        record(AgentStep(decision, "Refused: the plan touches a blocked action."))
+                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
+                    }
+                    // Every step must resolve to a Capability — the runner's plan path owns
+                    // consent + the ONE aggregate approval + per-step ledgering.
+                    val resolved = mutableListOf<Pair<Capability, String>>()
+                    var unknown: String? = null
+                    for (call in decision.calls) {
+                        val capability = tools.firstOrNull { it.name == call.name } as? Capability
+                        if (capability == null) { unknown = call.name; break }
+                        resolved.add(capability to call.input)
+                    }
+                    val observation = if (unknown != null) "No such tool: $unknown. Plan not executed."
+                    else runner.executePlan(resolved)
+                    record(AgentStep(decision, observation))
+                    val described = decision.calls.joinToString(", ") { "${it.name}(${it.input})" }
+                    transcript += "\nProposed plan [$described] → $observation"
+                }
             }
         }
         return AgentRun(steps, null, AgentRun.HaltReason.MAX_STEPS)
@@ -101,7 +123,7 @@ class AgentLoop(
             Goal: $goal
             Available tools:
             $toolList
-            Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, or {"answer":"<final answer>"} when done.
+            Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, {"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user approves together, or {"answer":"<final answer>"} when done.
         """.trimIndent()
     }
 }
