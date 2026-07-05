@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — The runaway/bulk brake (safety gap from §4b, the imo mass-messaging case):
+  CapabilityRunner counts changes per run; after `bulkThreshold` (default 20) the next change
+  re-asks ("the agent has made N changes — continue?"), fail-closed, window resets on yes. Plans
+  that exceed the threshold get a loud ⚠️-count banner atop the aggregate approval. A cloud agent
+  runs 500 steps and bills you; ours pauses. Lesson: a rubber-stampable batch needs a LOUD count.
+
 - 2026-07-05 (agent) — Session-scoped undo ("undo this whole task"): RunSession records every
   successful undoable mutating action; undoAll() reverses them LIFO (best-effort — a failed
   reversal is reported, the rest still roll back). Capabilities opt in via an optional undo(input)

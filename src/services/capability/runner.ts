@@ -23,10 +23,30 @@ export class CapabilityRunner {
         /** When provided, successful undoable mutating actions are recorded here so the whole
          *  task can be reversed with one click ("undo this task" — the pair to the kill switch). */
         private readonly session?: RunSession,
+        /** After this many changes in one run, the next change re-asks the user ("the agent has
+         *  made N changes — keep going?"). The runaway/bulk brake: a stuck loop or a 500-message
+         *  outreach hits a wall. 0 disables. A cloud agent runs 500 steps and bills you; ours pauses. */
+        private readonly bulkThreshold = 20,
     ) { }
+
+    /** Successful mutating actions since the last bulk re-confirmation this run. */
+    private mutationsThisRun = 0;
 
     private log(cap: Capability, input: string, decision: string, outcome?: string): void {
         this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome });
+    }
+
+    /** The bulk brake: true if it's safe to make another change; asks the user once the run has
+     *  crossed the threshold, resetting the window on a yes. Fail-closed (no approver ⇒ stop). */
+    private async passesBulkGuard(): Promise<boolean> {
+        if (this.bulkThreshold <= 0 || this.mutationsThisRun < this.bulkThreshold) return true;
+        if (!this.approve) return false;
+        const ok = await this.approve({
+            summary: `⚠️ The agent has already made ${this.mutationsThisRun} changes in this task. Approve continuing?`,
+            mutates: true,
+        });
+        if (ok) this.mutationsThisRun = 0;   // start a fresh window
+        return ok;
     }
 
     /**
@@ -69,12 +89,20 @@ export class CapabilityRunner {
                 this.log(capability, input, 'declined');
                 return `You declined: ${preview.summary} Nothing was changed.`;
             }
+            // 4b. The runaway/bulk brake — after N changes this run, re-ask before continuing.
+            if (!await this.passesBulkGuard()) {
+                this.log(capability, input, 'bulkPaused');
+                return `Paused — the agent has made ${this.bulkThreshold}+ changes this task and you didn't approve continuing. Nothing more was done.`;
+            }
         }
         // 5. Execute.
         try {
             const result = await capability.run(input);
             this.log(capability, input, 'allowed', result);
-            if (preview.mutates) this.session?.record(capability, input);
+            if (preview.mutates) {
+                this.session?.record(capability, input);
+                this.mutationsThisRun++;
+            }
             return result;
         } catch (e) {
             this.log(capability, input, 'error', String(e));
@@ -112,7 +140,13 @@ export class CapabilityRunner {
         // ── One aggregate approval when anything writes.
         if (previews.some(p => p.mutates)) {
             const numbered = previews.map((p, i) => `${i + 1}. ${p.summary}`).join('\n');
-            const combined: ActionPreview = { summary: `The agent proposes this plan:\n${numbered}`, mutates: true };
+            // A big batch is where a rubber-stamped preview hides bulk outreach or a runaway — say
+            // it loud, at the top, so the count is the first thing the user sees.
+            const changeCount = previews.filter(p => p.mutates).length;
+            const banner = this.bulkThreshold > 0 && changeCount > this.bulkThreshold
+                ? `⚠️ This plan makes ${changeCount} changes — review carefully.\n`
+                : '';
+            const combined: ActionPreview = { summary: `${banner}The agent proposes this plan:\n${numbered}`, mutates: true };
             if (!this.approve) {
                 items.forEach(item => this.log(item.capability, item.input, 'needsApproval'));
                 return 'This plan changes things and needs your approval, which this surface can\'t ask for. Nothing was done.';
@@ -136,7 +170,10 @@ export class CapabilityRunner {
             try {
                 const result = await item.capability.run(item.input);
                 this.log(item.capability, item.input, 'allowed', result);
-                if (previews[i].mutates) this.session?.record(item.capability, item.input);
+                if (previews[i].mutates) {
+                    this.session?.record(item.capability, item.input);
+                    this.mutationsThisRun++;   // a plan's changes count toward the run's bulk brake too
+                }
                 results.push(`${i + 1}. ${result}`);
             } catch (e) {
                 this.log(item.capability, item.input, 'error', String(e));
