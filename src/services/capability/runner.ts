@@ -1,5 +1,5 @@
 import {
-    Capability, ConsentStore, AuditLedger, ActionPreview,
+    Capability, ConsentStore, AuditLedger, ActionPreview, RunSession,
     InMemoryConsentStore, InMemoryAuditLedger, requiresConsent, mutates,
 } from './capability.js';
 import { matchedBlockedKeyword } from './safety.js';
@@ -20,6 +20,9 @@ export class CapabilityRunner {
         /** Undefined ⇒ mutating actions are refused (fail closed). */
         private readonly approve?: Approver,
         private readonly now: () => number = () => Date.now(),
+        /** When provided, successful undoable mutating actions are recorded here so the whole
+         *  task can be reversed with one click ("undo this task" — the pair to the kill switch). */
+        private readonly session?: RunSession,
     ) { }
 
     private log(cap: Capability, input: string, decision: string, outcome?: string): void {
@@ -71,6 +74,7 @@ export class CapabilityRunner {
         try {
             const result = await capability.run(input);
             this.log(capability, input, 'allowed', result);
+            if (preview.mutates) this.session?.record(capability, input);
             return result;
         } catch (e) {
             this.log(capability, input, 'error', String(e));
@@ -132,6 +136,7 @@ export class CapabilityRunner {
             try {
                 const result = await item.capability.run(item.input);
                 this.log(item.capability, item.input, 'allowed', result);
+                if (previews[i].mutates) this.session?.record(item.capability, item.input);
                 results.push(`${i + 1}. ${result}`);
             } catch (e) {
                 this.log(item.capability, item.input, 'error', String(e));

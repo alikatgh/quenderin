@@ -86,6 +86,26 @@ export class ReminderAddCapability implements Capability {
             return describeMacError(e, 'add the reminder');
         }
     }
+
+    /** Undo = delete the reminder(s) with that exact name. Right after a session that just created
+     *  it, this reverses that create. (Limitation: deletes any reminder of the same name — the
+     *  honest v1 tradeoff for a dependency-free undo; a future id-tracked version is cleaner.) */
+    async undo(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const escaped = escapeAppleScriptString(input.trim());
+        const script = [
+            'tell application "Reminders"',
+            `  delete (every reminder whose name is "${escaped}")`,
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            return `Removed the reminder "${input.trim()}".`;
+        } catch (e) {
+            return describeMacError(e, 'remove the reminder');
+        }
+    }
 }
 
 /** T1: what app is frontmost right now — cheap perception, "what am I looking at?". */
@@ -220,6 +240,26 @@ export class NoteCreateCapability implements Capability {
             } catch (e) {
                 return describeMacError(e, 'create the note');
             }
+        }
+    }
+
+    /** Undo = delete the note(s) whose name matches the created title (first line of the input). */
+    async undo(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const title = input.trim().split('\n')[0];
+        const escaped = escapeAppleScriptString(title);
+        const script = [
+            'tell application "Notes"',
+            `  delete (every note whose name is "${escaped}")`,
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            const shown = title.length > 60 ? title.slice(0, 60) + '…' : title;
+            return `Removed the note "${shown}".`;
+        } catch (e) {
+            return describeMacError(e, 'remove the note');
         }
     }
 }

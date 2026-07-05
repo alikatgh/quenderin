@@ -45,6 +45,15 @@ export interface Capability {
     plan(input: string): Promise<ActionPreview>;
     /** Execute. The runner guarantees blocklist + consent + approval already passed. */
     run(input: string): Promise<string>;
+    /**
+     * OPTIONAL reversal of a just-run action with the SAME input — the "undo this whole task"
+     * building block. A capability implements it only if it can genuinely reverse itself
+     * (a created reminder/note deletes; a tap can't un-tap, so it has no undo). The runner
+     * records undoable successful actions into a RunSession; the user's Undo replays them LIFO.
+     * User-initiated, so it does NOT pass back through the blocklist gate (like the file
+     * UndoJournal). Returns a human sentence.
+     */
+    undo?(input: string): Promise<string>;
 }
 
 /** Everything above T0 requires the user's standing grant. */
@@ -89,4 +98,41 @@ export class InMemoryAuditLedger implements AuditLedger {
         this.stored.push({ ...entry, input: entry.input.slice(0, 200), outcome: entry.outcome?.slice(0, 200) });
     }
     entries(): AuditEntry[] { return [...this.stored]; }
+}
+
+// ─── Session undo (the "undo this whole task" record) ───────────────────────────────────────
+
+/**
+ * Records the undoable actions of one agent run so the user can reverse the ENTIRE task with one
+ * click — the pair to the kill switch (stop) and the ledger (review). Only successful mutating
+ * actions whose capability declares `undo` are recorded; reversal replays them LIFO (last done,
+ * first undone), so intermediate state is consistent. A cloud agent can't offer transactional
+ * undo of local changes; this is a local-agent trust superpower.
+ */
+export class RunSession {
+    private readonly done: Array<{ capability: Capability; input: string }> = [];
+
+    /** Called by the runner after a successful mutating action that CAN be undone. */
+    record(capability: Capability, input: string): void {
+        if (capability.undo) this.done.push({ capability, input });
+    }
+
+    /** How many actions this session could undo. */
+    get undoableCount(): number { return this.done.length; }
+
+    /** Reverse everything this run did, newest first. Best-effort: a failed reversal is reported
+     *  but doesn't stop the rest (the user wants as much rolled back as possible). */
+    async undoAll(): Promise<string> {
+        if (this.done.length === 0) return 'Nothing to undo from this task.';
+        const lines: string[] = [];
+        while (this.done.length > 0) {
+            const { capability, input } = this.done.pop()!;
+            try {
+                lines.push(await capability.undo!(input));
+            } catch (e) {
+                lines.push(`Couldn't undo ${capability.name}(${input}): ${String(e)}`);
+            }
+        }
+        return lines.join('\n');
+    }
 }

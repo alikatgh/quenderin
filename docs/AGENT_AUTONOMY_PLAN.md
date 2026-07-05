@@ -193,8 +193,11 @@ LOCAL, governed agent structurally dominates, and for real chores these matter m
    between steps with the done work still ledgered.)
 2. **Total legibility.** Every action — and every REFUSED action — is on a local, append-only
    ledger the user owns. A cloud agent's reasoning is a remote black box; ours is a file you read.
-3. **Reversibility.** Writes never overwrite/delete; each records its inverse (UndoJournal).
-   Next: session-scoped "undo this whole task."
+3. **Reversibility, incl. whole-task undo.** Writes never overwrite/delete; each records its
+   inverse. And an entire agent run is transactional: `RunSession` records every undoable
+   mutating action, so "undo this task" reverses them all LIFO (shipped for mac.reminders.add /
+   mac.notes.create; any capability that declares `undo()` plugs in). Stop + this + the ledger =
+   "stop, review, roll back" — the trust loop a cloud agent can't offer for local changes.
 4. **Consent + preview.** Nothing mutating runs without a per-run yes over a truthful preview
    (fail-closed). The plan is read before it runs — Shortcuts-grade, model-agnostic.
 5. **Privacy = no AI middleman.** The model reasoning over your files/screen/intent is local;

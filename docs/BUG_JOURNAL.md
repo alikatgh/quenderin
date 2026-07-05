@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Session-scoped undo ("undo this whole task"): RunSession records every
+  successful undoable mutating action; undoAll() reverses them LIFO (best-effort — a failed
+  reversal is reported, the rest still roll back). Capabilities opt in via an optional undo(input)
+  (mac.reminders.add / mac.notes.create delete-by-name). Pairs with the kill switch: stop mid-task,
+  then reverse what got done. Lesson: transactional undo of LOCAL changes is a local-agent moat.
+
 - 2026-07-05 (agent) — The KILL SWITCH: AbortSignal threaded through CapabilityRunner.execute/
   executePlan and CapabilityAgent.run. Honored BETWEEN steps — an approved plan you change your
   mind about halts mid-task, remaining steps never run, done steps stay ledgered ('cancelled').
