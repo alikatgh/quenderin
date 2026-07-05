@@ -356,8 +356,15 @@ Swift/Kotlin twins.
 
 Verified: 255 TS tests (9 new, driven by a fake ADB provider — no emulator needed), lint
 clean, safety-parity green. **Desktop-only** by design (§5): app-driving never ships in the
-store apps. Not yet wired into the desktop agent loop / UI — that + the approval dialog is the
-next desktop step, alongside the Android Compose catch-up.
+store apps. Wired into a **governed agent loop** — `CapabilityAgent` (capabilityAgent.ts), the TS twin
+of the native AgentLoop but over capabilities through the runner: a local model proposes a
+tool / plan / answer (same JSON shape + answer>plan>tool precedence + strict-plan +
+first-object H13 guard as `AgentDecisionParser`), everything mutating goes through the gate.
+Proven end to end by a scripted planner driving the fake imo screen: propose friend-request
+plan → ONE approval → tap "Add friend" → type → enter → answer. Distinct from the legacy
+`AgentService` raw-action research loop, which stays the testbed; this is the path that ships.
+Remaining desktop step: the approval DIALOG (Electron) + connecting a real planner + the
+BlueStacks connect UX. Android Compose catch-up still on the standing chip.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
