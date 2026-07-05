@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Why a local agent beats a cloud one — Quenderin</title>
+<meta name="description" content="Cloud computer-use agents are smarter per step. A local, governed agent wins where it matters for real chores: instant stop, whole-task undo, a readable record, and no AI middleman. Here's the honest comparison." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/why-local-agent.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>Why a local agent beats a cloud one</h1>
+  <p class="legal-updated">The honest version — including where we lose.</p>
+
+  <div class="legal-note">
+    <p><strong>Where we lose:</strong> a cloud frontier model is smarter per step than a model
+    running on your laptop. We don't pretend otherwise. <strong>Where we win:</strong> for the
+    everyday chores you'd actually hand to an agent — organize this folder, draft this note,
+    add these reminders — reliability and trust matter more than raw IQ, and those are
+    <em>architecture</em>, which a local agent controls completely.</p>
+  </div>
+
+  <h2>The trust loop: stop, review, roll back</h2>
+  <p>A cloud agent asks you to trust a remote brain with your computer. Quenderin asks you to
+  trust nothing — because every action is haltable, legible, and reversible:</p>
+  <ul>
+    <li><strong>Stop it dead, mid-task.</strong> A cloud agent's "stop" halts the remote model,
+    but it can't un-fire an action already sent to your machine. Quenderin checks a signal on
+    <em>your</em> computer between every step — press stop and the next step simply never runs.
+    No round-trip, no lag.</li>
+    <li><strong>Read what it did — and what it refused.</strong> Every action lands in a plain,
+    append-only log you own, including the ones it declined. The agent's reasoning isn't a
+    remote black box; it's a file you can open.</li>
+    <li><strong>Undo the whole task.</strong> Changed your mind after it ran? One click reverses
+    everything the agent did, newest-first. A cloud service can't offer transactional undo of
+    your local changes; a local one can.</li>
+    <li><strong>Nothing writes without your yes.</strong> Every action that changes something
+    shows you a plain-language preview and waits for approval — a plan you read before it runs.</li>
+  </ul>
+
+  <h2>No AI middleman</h2>
+  <p>This is the part that can't be copied. To use a cloud computer-use agent, your screen,
+  your files, and your intent are streamed to the vendor's datacenter for the model to reason
+  over. With Quenderin, the model doing that reasoning runs <strong>on your machine</strong>.
+  The apps you already use still see what you give them — but no AI company ever gets a copy of
+  your files, your contacts, or what you asked for. For anyone in law, medicine, or finance,
+  that's not a nice-to-have; it's the difference between "can use an agent" and "can't."</p>
+
+  <h2>And the boring wins</h2>
+  <ul>
+    <li><strong>Works offline.</strong> On a plane, in a SCIF, on bad hotel wifi — it's your CPU.</li>
+    <li><strong>No per-action billing, no rate limits, no outages.</strong> Run it a thousand times; it costs the same as running it once.</li>
+  </ul>
+
+  <h2>The honest caveat</h2>
+  <p>A smaller local model will sometimes choose a clumsy action. The difference is what happens
+  when it does: with Quenderin, the worst case is a <em>refused</em> action in your log — never a
+  surprise on your disk — because the safety lives in the harness, not in hoping the model is
+  smart. We publish <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">every failure mode we know about</a>. That's the whole bet: trust is engineered, not assumed.</p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="roadmap.html">Roadmap</a> &middot; <a href="blog-agent-hands.html">See it in action</a> &middot; <a href="privacy.html">Privacy</a></p>
+</main>
+</body>
+</html>
