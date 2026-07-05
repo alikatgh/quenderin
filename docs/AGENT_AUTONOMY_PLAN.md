@@ -489,6 +489,15 @@ and nudge→recovery), lint + parity green. Paired with a CLI `--max-steps <n>` 
 needs *dozens* of steps, and the loop guard is exactly what makes raising the budget safe — distinct
 per-item actions don't trip the consecutive-repeat guard, but a stuck run still bails early.
 
+**Post-M4 — `quenderin capabilities`: the discovery front door (2026-07-05).** You can't ask for what
+you don't know the agent can do — so the mission ("anything possible in macOS") needs a way to SEE
+the growing library. `quenderin capabilities` (alias `caps`) lists every capability grouped by tier
+(perception = no approval; actions = ask first, reversible where possible, undoable), flags the fs.*
+tools as needing `--workspace`, and states plainly "this is the whole list, right now." It also makes
+the governance model legible in a way a cloud agent's opaque "it does stuff" isn't. Pure renderer
+(`catalog.ts`, capabilities → string), so it's unit-tested headless; the command is a thin reader
+that instantiates the real library. Verified: 359 TS tests (4 new), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the

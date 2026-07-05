@@ -23,6 +23,7 @@ import { fileCapabilities } from './services/capability/fileCapabilities.js';
 import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loadUndoJournal, clearUndoJournal } from './services/capability/persistence.js';
 import { formatHistory } from './services/capability/ledgerView.js';
 import { replayUndo, UndoAction } from './services/capability/undo.js';
+import { formatCapabilities } from './services/capability/catalog.js';
 
 const program = new Command();
 
@@ -343,6 +344,15 @@ program
   });
 
 program
+  .command('capabilities')
+  .alias('caps')
+  .description('List everything Quenderin can do — the governed capability library.')
+  .action(() => {
+    const caps = [...macCapabilities(new OsascriptAutomation()), ...fileCapabilities(() => null)];
+    console.log(formatCapabilities(caps, { color: process.stdout.isTTY }));
+  });
+
+program
   .command('undo')
   .description('Reverse the changes from your last `quenderin do` task — even in a new session.')
   .action(async () => {
@@ -374,6 +384,7 @@ if (process.argv.length === 2) {
   console.log('\n Quenderin - a personal AI that lives on your machine\n');
   console.log('Commands:');
   console.log('  quenderin do "<goal>"     - Tell it to do something on your Mac (asks before every change)');
+  console.log('  quenderin capabilities    - List everything Quenderin can do');
   console.log('  quenderin history         - Review everything the agent has done (the local audit log)');
   console.log('  quenderin undo            - Reverse your last `do` task (works in a new session)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');
