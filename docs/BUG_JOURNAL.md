@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (CLI) — `quenderin do "<goal>"`: the FIRST real end-user invocation of the whole
+  capability stack. Real LlmService plans; a terminal y/N prompt is the approval dialog; SIGINT
+  (Ctrl+C) is the kill switch; undo offered at the end. macOS-only (mac.* caps). The governed
+  loop is now runnable today, no Electron needed. Lesson: the CLI made 'is it real?' answerable
+  before the GUI exists — a terminal approver is a legitimate, testable approval seam.
+
 - 2026-07-05 (desktop) — "Make it real": the production assembly. createGovernedAgent(deps) wires
   the whole governed loop from seams; llmPlanner adapts the real LlmService.generalChat into the
   planner (structural typing — the real service drops in). Proven end-to-end with a fake model

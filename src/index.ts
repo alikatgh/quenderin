@@ -15,6 +15,10 @@ import { UiParserService } from './services/uiParser.service.js';
 import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService, setSharedMemoryService } from './services/memory.service.js';
+import { OsascriptAutomation } from './services/capability/macAutomation.js';
+import { InMemoryConsentStore } from './services/capability/capability.js';
+import { createGovernedAgent } from './services/capability/desktopAgent.js';
+import { macCapabilities } from './services/capability/macCapabilities.js';
 
 const program = new Command();
 
@@ -221,10 +225,73 @@ program
     }
   });
 
+// ─── quenderin do — tell it to operate your Mac, governed the whole way ─────
+// The first real end-user invocation of the whole capability stack: a local model plans,
+// a terminal prompt is the approval dialog, Ctrl+C is the kill switch, undo is offered at
+// the end. macOS-only for now (the mac.* capabilities). Nothing leaves the machine.
+program
+  .command('do')
+  .description('Tell Quenderin to do something on your Mac — it asks before every change.')
+  .argument('<goal>', 'what you want done, e.g. "remind me to call the dentist"')
+  .option('-m, --model <id>', 'model to plan with (see `quenderin models`)')
+  .option('-y, --yes', 'auto-approve every change (use with care)')
+  .action(async (goal: string, options: { model?: string; yes?: boolean }) => {
+    setLogLevel('error');
+    const mac = new OsascriptAutomation();
+    if (!mac.available()) {
+      console.error('`quenderin do` is macOS-only for now.');
+      process.exitCode = 1;
+      return;
+    }
+    const llm = new LlmService();
+    try {
+      if (options.model) {
+        if (!MODEL_CATALOG.some(m => m.id === options.model)) {
+          console.error(`Unknown model "${options.model}". Run \`quenderin models\`.`);
+          process.exitCode = 1;
+          return;
+        }
+        await llm.switchModel(options.model);
+      }
+
+      const consent = new InMemoryConsentStore();
+      // The per-change terminal prompt is the real gate here, so grant the mac capabilities.
+      macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+
+      const ac = new AbortController();
+      process.once('SIGINT', () => { console.log(dim('\n(stopping — finishing the current step)')); ac.abort(); });
+
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const approve = (preview: { summary: string }): Promise<boolean> => {
+        if (options.yes) { console.log(dim(`  auto-approved: ${preview.summary}`)); return Promise.resolve(true); }
+        return new Promise(res => rl.question(`\n${bold(preview.summary)}\n  Allow? [y/N] `, a => res(/^y(es)?$/i.test(a.trim()))));
+      };
+
+      const agent = createGovernedAgent({ llm, mac, consent, approve, signal: ac.signal });
+      console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this Mac')}\n`);
+      const result = await agent.run(goal);
+
+      for (const step of result.steps) console.log(dim(`· ${step}`));
+      if (result.answer) console.log(`\n${result.answer}`);
+      else console.log(dim(`\n(stopped: ${result.halt})`));
+
+      const wantsUndo = await new Promise<boolean>(res =>
+        rl.question(dim('\nUndo everything this task changed? [y/N] '), a => res(/^y(es)?$/i.test(a.trim()))));
+      if (wantsUndo) console.log(await agent.undoAll());
+      rl.close();
+      await llm.shutdown();
+      process.exit(0);
+    } catch (e: unknown) {
+      console.error(e instanceof Error ? e.message : String(e));
+      process.exitCode = 1;
+    }
+  });
+
 // Default command - start interactive mode
 if (process.argv.length === 2) {
   console.log('\n Quenderin - a personal AI that lives on your machine\n');
   console.log('Commands:');
+  console.log('  quenderin do "<goal>"     - Tell it to do something on your Mac (asks before every change)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');
   console.log('  quenderin chat -p "…"     - One answer, pipe-friendly (git diff | quenderin chat -p "review")');
   console.log('  quenderin models          - What is installed / downloadable');

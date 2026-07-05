@@ -413,8 +413,11 @@ ledger, approver, session, bulk-threshold, and the kill-switch signal all plug i
 to end with a fake model driving real AppleScript templates through the real runner, then
 undoAll(). The ONLY production-only surfaces left: swap the fake LLM for LlmService, the fake
 mac for OsascriptAutomation, and wire the Electron approval dialog to `approve`. Nothing else
-changes — that's the spine paying off. Remaining: that 3-seam Electron wiring (unverifiable
-here without running the app) + the Android Compose catch-up (standing chip).
+changes — that's the spine paying off. It also has its FIRST real user invocation: `quenderin do "<goal>"` (CLI) — the real LlmService
+plans, a terminal y/N prompt is the approval dialog, Ctrl+C is the kill switch, undo is offered
+at the end, all governed. So the whole stack is runnable on a Mac today from the command line;
+the Electron GUI is now a nicer front-end for a loop that already works, not a prerequisite.
+Remaining: the Electron approval dialog (a prettier `approve`) + the Android Compose catch-up.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
