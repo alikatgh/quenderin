@@ -18,6 +18,7 @@ on-device AI agent.
 | [API.md](API.md) | The REST routes **and** the full WebSocket message protocol |
 | [FRONTEND.md](FRONTEND.md) | The React/Vite UI — components, state, the agent socket hook, theming |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, scripts, build, test, lint, project layout |
+| [ICON_EXTRACTION.md](ICON_EXTRACTION.md) | How the app icon is cut perfectly from the artwork — sharpness detection, the 5.8% inset math, per-platform derivation (written for future agent sessions) |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
 
 ## The native mobile app
