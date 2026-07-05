@@ -38,11 +38,16 @@ public struct AgentLoop: Sendable {
     private let engine: InferenceEngine
     private let tools: [AgentTool]
     private let maxSteps: Int
+    /// The enforcement point for tools that are `Capability`s: gate → run → ledger, no way
+    /// around it (AGENT_AUTONOMY_PLAN §6). Plain `AgentTool`s keep the legacy direct path.
+    private let runner: CapabilityRunner
 
-    public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6) {
+    public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
+                runner: CapabilityRunner = CapabilityRunner()) {
         self.engine = engine
         self.tools = tools
         self.maxSteps = max(1, maxSteps)
+        self.runner = runner
     }
 
     public func run(
@@ -99,6 +104,11 @@ public struct AgentLoop: Sendable {
     private func execute(name: String, input: String) async -> String {
         guard let tool = tools.first(where: { $0.name == name }) else {
             return "No such tool: \(name)."
+        }
+        // Capabilities go through the runner (blocklist → consent → preview → run → ledger);
+        // for T0 tools the observable behavior is identical, plus the ledger row.
+        if let capability = tool as? Capability {
+            return await runner.execute(capability, input: input)
         }
         do {
             return try await tool.run(input)

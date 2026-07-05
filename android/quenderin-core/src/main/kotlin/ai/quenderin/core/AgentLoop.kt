@@ -33,6 +33,9 @@ class AgentLoop(
     private val engine: InferenceEngine,
     private val tools: List<AgentTool>,
     maxSteps: Int = 6,
+    /** The enforcement point for tools that are [Capability]s: gate → run → ledger, no way
+     *  around it (AGENT_AUTONOMY_PLAN §6). Plain [AgentTool]s keep the legacy direct path. */
+    private val runner: CapabilityRunner = CapabilityRunner(),
 ) {
     private val maxSteps = maxOf(1, maxSteps)
 
@@ -82,6 +85,9 @@ class AgentLoop(
 
     private fun execute(name: String, input: String): String {
         val tool = tools.firstOrNull { it.name == name } ?: return "No such tool: $name."
+        // Capabilities go through the runner (blocklist → consent → preview → run → ledger);
+        // for T0 tools the observable behavior is identical, plus the ledger row.
+        if (tool is Capability) return runner.execute(tool, input)
         return try {
             tool.run(input)
         } catch (t: Throwable) {

@@ -1364,6 +1364,68 @@ fun main() {
         denied is GateDecision.NeedsConsent && !(denied.preview.mutates) && allowed is GateDecision.Allowed
     })
 
+    // --- fs.read + audit ledger + runner (AGENT_AUTONOMY_PLAN Milestone 0, steps 3+4) ---
+    check("fs.read reads only user-granted files by NAME — never a model-minted path", run {
+        val dir = java.nio.file.Files.createTempDirectory("fsread").toFile()
+        val notes = java.io.File(dir, "notes.txt").apply { writeText("the elf plans locally") }
+        val secret = java.io.File(dir, "secret.txt").apply { writeText("unreachable") }
+        val cap = FileReadCapability({ mapOf("notes.txt" to notes) })
+        val ok = cap.run("notes.txt") == "the elf plans locally"
+        val deniedName = cap.run("secret.txt").contains("No attached file")
+        val deniedPath = cap.run(secret.absolutePath).contains("No attached file")
+        dir.deleteRecursively()
+        ok && deniedName && deniedPath
+    })
+    check("fs.read truncates at maxBytes and rejects non-UTF-8", run {
+        val dir = java.nio.file.Files.createTempDirectory("fsread2").toFile()
+        val big = java.io.File(dir, "big.txt").apply { writeText("a".repeat(5000)) }
+        val blob = java.io.File(dir, "blob.bin").apply { writeBytes(byteArrayOf(-1, -2, 0, -40)) }
+        val capBig = FileReadCapability({ mapOf("big.txt" to big) }, maxBytes = 1024)
+        val capBin = FileReadCapability({ mapOf("blob.bin" to blob) })
+        val truncated = capBig.run("big.txt").contains("[…truncated at 1 KB]")
+        val rejected = capBin.run("blob.bin").contains("isn't a text file")
+        dir.deleteRecursively()
+        truncated && rejected
+    })
+    check("runner enforces consent for fs.read, ledgers every decision in order", run {
+        val dir = java.nio.file.Files.createTempDirectory("fsread3").toFile()
+        val notes = java.io.File(dir, "notes.txt").apply { writeText("hello") }
+        val cap = FileReadCapability({ mapOf("notes.txt" to notes) })
+        val consent = InMemoryConsentStore()
+        val ledger = InMemoryAuditLedger()
+        val runner = CapabilityRunner(consent, ledger) { 0L }
+        val refused = runner.execute(cap, "notes.txt").contains("Needs your permission")
+        consent.setGranted("fs.read", true)
+        val allowed = runner.execute(cap, "notes.txt") == "hello"
+        val blocked = runner.execute(cap, "delete notes.txt").contains("Refused")
+        dir.deleteRecursively()
+        refused && allowed && blocked &&
+            ledger.entries().map { it.decision } == listOf("needsConsent", "allowed", "blocked(delete)") &&
+            ledger.entries()[1].outcome == "hello" && ledger.entries()[0].outcome == null
+    })
+    check("agent loop routes capabilities through the runner → ledger records the calculator step", run {
+        val ledger = InMemoryAuditLedger()
+        val engine = ScriptedInferenceEngine(listOf(
+            """{"tool":"calculator","input":"2 + 2"}""",
+            """{"answer":"4"}""",
+        ))
+        val loop = AgentLoop(engine, listOf(CalculatorTool()), runner = CapabilityRunner(ledger = ledger))
+        val result = loop.run("add")
+        result.answer == "4" && ledger.entries().size == 1 &&
+            ledger.entries()[0].capability == "calculator" && ledger.entries()[0].decision == "allowed"
+    })
+    check("file ledger appends JSONL and a torn tail is skipped, prior entries survive", run {
+        val dir = java.nio.file.Files.createTempDirectory("ledger").toFile()
+        val f = java.io.File(dir, "agent-ledger.jsonl")
+        val ledger = FileAuditLedger(f)
+        ledger.append(AuditEntry.of(1L, "fs.read", 1, "a \"quoted\"\nname", "allowed", "x"))
+        ledger.append(AuditEntry.of(2L, "fs.read", 1, "b", "blocked(pay)", null))
+        f.appendText("{\"timestampMs\":3,\"capab")   // simulated crash mid-append
+        val read = FileAuditLedger(f).entries()
+        dir.deleteRecursively()
+        read.size == 2 && read[0].input == "a \"quoted\"\nname" && read[1].decision == "blocked(pay)"
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

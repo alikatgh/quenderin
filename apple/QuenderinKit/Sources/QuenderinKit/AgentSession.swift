@@ -16,8 +16,9 @@ public final class AgentSession: ObservableObject {
 
     private let loop: AgentLoop
 
-    public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6) {
-        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps)
+    public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
+                runner: CapabilityRunner = CapabilityRunner()) {
+        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner)
     }
 
     /// Run the agent to completion, publishing the result. (The loop also exposes a live

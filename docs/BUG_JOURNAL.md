@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Milestone 0 steps 3+4: fs.read (first T1 capability) + the audit ledger +
+  CapabilityRunner, both twins. Security seam: the model NAMES user-granted files, never mints
+  paths (a real on-disk path from "model output" resolves to nothing — tested). Ledger is JSONL
+  append-only; a crash-torn tail is skipped, prior rows survive. AgentLoop routes all capabilities
+  through gate→run→ledger. Invariant: no execution path around the runner for a Capability.
+
 - 2026-07-05 (agent) — Milestone 0 step 2: introduced the `Capability` abstraction (refines
   `AgentTool`; T0–T4 tiers, BlastRadius, ActionPreview) + `CapabilityGate.assess()` — the pure
   blocklist→consent→preview decision. Safe-by-default: a capability opts UP into risk, never

@@ -174,11 +174,19 @@ Deliberately small, desktop-first, and testable on *this* machine — no device 
    blocklist → consent → preview, returning `.blocked` / `.needsConsent` / `.allowed`. It
    already composes the unified blocklist from step 1. Verified: Swift 256 tests, Kotlin
    CoreVerify ALL PASSED (a synthetic T1 capability exercises the consent path ahead of `fs.read`).
-3. **Ship one real T1 capability: `fs.read`** — "read this file the user explicitly selected."
-   Consent-gated, read-only, audit-logged. On desktop it reads a path the user picked via a
-   file dialog (never a path from LLM output). This exercises the entire spine — consent,
-   preview, ledger — with zero write risk.
-4. **The audit ledger**: a local append-only JSON the user can open, one row per action.
+3. ✅ **`fs.read` core** (done 2026-07-05) — `FileReadCapability` on both twins. The security
+   property lives in the `grantedFiles` seam: only user-picked files enter the map, so the
+   model can NAME a granted file but can never mint a path (tested: an existing on-disk path
+   from "model output" resolves to nothing). Read-only, 64 KB-capped, strict-UTF-8, exact/
+   case-insensitive name resolution with deliberately NO fuzzy matching. **Not yet registered
+   in the app's tool list** — per the advertised-but-unimplemented rule it registers together
+   with the attach UI + capabilities pane (step 5), which also swaps the app to
+   `FileAuditLedger` + `UserDefaultsConsentStore`.
+4. ✅ **The audit ledger + runner** (done 2026-07-05) — `AuditEntry`/`AuditLedger` (in-memory +
+   JSONL file impl; a crash-torn last line is skipped, prior entries survive — tested), and
+   `CapabilityRunner`: the single enforcement point (gate → refuse/run → ledger). `AgentLoop`
+   now routes every `Capability` through it on both twins, so every agent action — including
+   refused ones — gets a ledger row. T0 behavior unchanged (suites pin it).
 5. **A capabilities pane in Settings**: list every capability, its tier, its grant state,
    revoke buttons. (Reuses the settings pattern we just built.)
 
