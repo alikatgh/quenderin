@@ -36,6 +36,23 @@ export class CapabilityRunner {
         this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome });
     }
 
+    /** Advisory post-condition check: annotate the observation + ledger an 'unverified' note when
+     *  a capability's verify() reports the action didn't visibly take. Never undoes anything (it
+     *  already ran) — this is "the agent checks its own work", not a rollback. */
+    private async annotateWithVerification(capability: Capability, input: string, result: string): Promise<string> {
+        if (!capability.verify) return result;
+        try {
+            const v = await capability.verify(input);
+            if (!v.ok) {
+                this.log(capability, input, 'unverified', v.detail);
+                return `${result}\n(Couldn't confirm it worked: ${v.detail})`;
+            }
+        } catch {
+            // Verification is best-effort; a failure to check doesn't fail the action.
+        }
+        return result;
+    }
+
     /** The bulk brake: true if it's safe to make another change; asks the user once the run has
      *  crossed the threshold, resetting the window on a yes. Fail-closed (no approver ⇒ stop). */
     private async passesBulkGuard(): Promise<boolean> {
@@ -103,7 +120,7 @@ export class CapabilityRunner {
                 this.session?.record(capability, input);
                 this.mutationsThisRun++;
             }
-            return result;
+            return await this.annotateWithVerification(capability, input, result);
         } catch (e) {
             this.log(capability, input, 'error', String(e));
             return `Tool error: ${String(e)}`;
@@ -174,7 +191,7 @@ export class CapabilityRunner {
                     this.session?.record(item.capability, item.input);
                     this.mutationsThisRun++;   // a plan's changes count toward the run's bulk brake too
                 }
-                results.push(`${i + 1}. ${result}`);
+                results.push(`${i + 1}. ${await this.annotateWithVerification(item.capability, item.input, result)}`);
             } catch (e) {
                 this.log(item.capability, item.input, 'error', String(e));
                 results.push(`${i + 1}. Failed: ${String(e)}`);

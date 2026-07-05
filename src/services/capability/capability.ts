@@ -54,6 +54,16 @@ export interface Capability {
      * UndoJournal). Returns a human sentence.
      */
     undo?(input: string): Promise<string>;
+
+    /**
+     * OPTIONAL post-condition check — "did it actually work?" — run right after `run` succeeds.
+     * The reliability lever that attacks our honest weakness: a weak local model makes clumsy
+     * actions (a GUI tap that silently doesn't register), and a VERIFYING agent notices and says
+     * so, where a naive cloud agent just assumes success. Advisory, not a gate: a false `ok`
+     * annotates the observation ("couldn't confirm…") and ledgers 'unverified'; it never
+     * un-does the action (it already happened). A throw is treated as "couldn't verify".
+     */
+    verify?(input: string): Promise<{ ok: boolean; detail: string }>;
 }
 
 /** Everything above T0 requires the user's standing grant. */

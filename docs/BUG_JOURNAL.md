@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Verification: capabilities can declare verify() (advisory post-condition),
+  the runner annotates the observation + ledgers 'unverified' when it fails; best-effort (a throw
+  doesn't fail the action, which already ran). First real case: app.tap compares the screen
+  signature before/after — the #1 silent GUI failure is a tap that doesn't register, and now the
+  agent NOTICES ("the screen didn't change") instead of assuming success. Lesson: check, don't assume.
+
 - 2026-07-05 (agent) — The runaway/bulk brake (safety gap from §4b, the imo mass-messaging case):
   CapabilityRunner counts changes per run; after `bulkThreshold` (default 20) the next change
   re-asks ("the agent has made N changes — continue?"), fail-closed, window resets on yes. Plans

@@ -58,7 +58,9 @@ describe('app.tap (T2 — by visible text, never coordinates)', () => {
         const device = new FakeDevice(SCREEN);
         const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
         const out = await runner.execute(cap(device), 'Add friend');
-        expect(out).toBe('Tapped "Add friend".');
+        // With a static fake screen the tap can't be visually confirmed, so verification honestly
+        // appends a "couldn't confirm" note — the action still ran and tapped the right center.
+        expect(out).toContain('Tapped "Add friend".');
         expect(device.taps).toEqual([[170, 140]]);   // center of [40,100][300,180]
     });
 
@@ -139,6 +141,8 @@ describe('a friend-request plan: one approval drives the app end to end', () => 
         expect(device.taps).toEqual([[170, 140]]);
         expect(device.typed).toEqual(['hi from quenderin']);
         expect(device.keys).toEqual(['enter']);
-        expect(ledger.entries().map(e => e.decision)).toEqual(['allowed', 'allowed', 'allowed']);
+        // 3 actions ran (tap, type, key); the tap also logs an 'unverified' note on the static
+        // fake screen — filter to the executions themselves.
+        expect(ledger.entries().filter(e => e.decision === 'allowed')).toHaveLength(3);
     });
 });

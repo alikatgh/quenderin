@@ -71,7 +71,7 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         expect(device.taps).toEqual([[170, 140]]);
         expect(device.typed).toEqual(['hi from quenderin']);
         expect(device.keys).toEqual(['enter']);
-        expect(ledger.entries().map(e => e.decision)).toEqual(['allowed', 'allowed', 'allowed']);
+        expect(ledger.entries().filter(e => e.decision === 'allowed')).toHaveLength(3);   // tap, type, key ran
     });
 
     it('halts as planError on unparseable planner output, changing nothing', async () => {

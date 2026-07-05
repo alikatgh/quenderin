@@ -52,6 +52,9 @@ export class AppTapCapability implements Capability {
 
     constructor(private readonly device: IDeviceProvider, private readonly parser: UiParserService) { }
 
+    /** Signature of the screen just before the tap — verify() compares against the after-state. */
+    private preTapSignature = '';
+
     async plan(input: string): Promise<ActionPreview> {
         const resolved = await this.resolve(input);
         if (typeof resolved === 'string') return { summary: resolved, mutates: false };
@@ -59,22 +62,42 @@ export class AppTapCapability implements Capability {
     }
 
     async run(input: string): Promise<string> {
-        const resolved = await this.resolve(input);
+        const elements = await readScreen(this.device, this.parser);
+        if (elements === null) return NO_DEVICE;
+        const resolved = this.resolveIn(elements, input);
         if (typeof resolved === 'string') return resolved;
         // Defense in depth: re-check the RESOLVED element's real text/desc/resource-id — a button
         // reading "OK" may be a payment confirm. The runner already checked the input string.
         const hit = matchedBlockedKeyword([resolved.text, resolved.contentDesc, resolved.resourceId].filter(Boolean).join(' '));
         if (hit) return `Refused: that element looks like a blocked action ('${hit}').`;
+        this.preTapSignature = screenSignature(elements);   // remember for verify()
         await this.device.click(resolved.center.x, resolved.center.y);
         return `Tapped "${labelOf(resolved)}".`;
     }
 
-    /** Resolve a visible label to exactly one clickable element, or an explanatory string. */
+    /** Did the tap DO anything? The #1 silent failure in GUI automation is a tap that doesn't
+     *  register (wrong coords, element not actually hittable). If the screen is byte-identical
+     *  after the tap, warn — better an honest "couldn't confirm" than a false success. */
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        const after = await readScreen(this.device, this.parser);
+        if (after === null) return { ok: true, detail: 'device went away' };   // can't check → don't cry wolf
+        if (screenSignature(after) === this.preTapSignature) {
+            return { ok: false, detail: 'the screen did not change — the tap may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
+    }
+
+    /** Read the screen, then resolve — used by plan() (run() reads once and calls resolveIn). */
     private async resolve(input: string): Promise<UIElement | string> {
-        const query = input.trim().toLowerCase();
-        if (!query) return 'Input is the visible label of the element to tap.';
         const elements = await readScreen(this.device, this.parser);
         if (elements === null) return NO_DEVICE;
+        return this.resolveIn(elements, input);
+    }
+
+    /** Resolve a visible label to exactly one clickable element in `elements`, or an explanation. */
+    private resolveIn(elements: UIElement[], input: string): UIElement | string {
+        const query = input.trim().toLowerCase();
+        if (!query) return 'Input is the visible label of the element to tap.';
         const clickable = elements.filter(e => e.visible && e.clickable);
         const exact = clickable.filter(e => labelOf(e).toLowerCase() === query);
         const partial = clickable.filter(e => labelOf(e).toLowerCase().includes(query));
@@ -149,6 +172,15 @@ const NO_DEVICE = 'No app is connected. Start BlueStacks (or an emulator/device)
 
 function labelOf(e: UIElement): string {
     return e.text || e.contentDesc || `(${e.className.split('.').pop() ?? 'element'})`;
+}
+
+/** A stable fingerprint of the visible+clickable screen — used to tell if a tap changed anything. */
+function screenSignature(elements: UIElement[]): string {
+    return elements
+        .filter(e => e.visible)
+        .map(e => `${labelOf(e)}@${e.center.x},${e.center.y}`)
+        .sort()
+        .join('|');
 }
 
 function isNoDevice(e: unknown): boolean {
