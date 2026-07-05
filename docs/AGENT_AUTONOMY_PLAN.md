@@ -13,6 +13,17 @@ does it" product, with the one guarantee they structurally cannot offer — the 
 (your files, your screen, your intent) never leaves the machine. Local LLMs are the
 foundation; this agent is the destination and the paid tier.
 
+**Mission surface (sharpened 2026-07-05):** the target is **anything possible inside macOS**
+— say a thing, Quenderin does it on your Mac, locally. That is reached NOT by one "run any
+script" hole (unbounded blast radius; can't be previewed, consented, or made reversible; fails
+App Store review and every principle in §3) but by a **growing library of governed, typed
+capabilities** over macOS's real automation surfaces — AppleScript/Apple Events (Calendar,
+Mail, Notes, Reminders, Finder, Safari, Messages, and System-Events UI-scripting of ANY app),
+Accessibility, and shell. Same Shortcuts model: breadth of safe actions, never an escape hatch.
+First macOS capabilities shipped on the TS spine — `mac.calendar.today` (T1 read),
+`mac.reminders.add` (T2 write, approved), both AppleScript-injection-safe (escapeAppleScriptString
++ execFile). The `MacAutomation` seam is where the library grows.
+
 **The product bet, stated honestly:** local models are weaker than cloud frontier models, so
 we do NOT win by out-reasoning Claude. We win on the chores people won't upload their
 filesystem for, by making the *harness* carry the intelligence: narrow deterministic

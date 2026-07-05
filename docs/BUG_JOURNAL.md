@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (desktop/macOS) — First NATIVE macOS capabilities: mac.calendar.today (T1 read),
+  mac.reminders.add (T2 write, approved), on the governed TS spine over an osascript seam. The
+  load-bearing safety piece is escapeAppleScriptString + execFile (no shell): LLM-produced input
+  steered by content must never break out of the AppleScript string literal to run a second
+  statement — the AppleScript-injection analog of the ADB shell-escaping. Two injection layers closed.
+
 - 2026-07-05 (desktop) — Milestone 4: the Capability spine now exists in TypeScript too
   (src/services/capability/), so device-driving runs behind the same blocklist→consent→
   preview→approval→ledger gate as the native file capabilities. First app capabilities:
