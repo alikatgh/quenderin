@@ -239,8 +239,9 @@ program
   .argument('<goal>', 'what you want done, e.g. "remind me to call the dentist"')
   .option('-m, --model <id>', 'model to plan with (see `quenderin models`)')
   .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/move/rename/trash/read)')
+  .option('-s, --max-steps <n>', 'how many steps the agent may take (default 8; raise for multi-item tasks)')
   .option('-y, --yes', 'auto-approve every change (use with care)')
-  .action(async (goal: string, options: { model?: string; workspace?: string; yes?: boolean }) => {
+  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
     let workspaceDir: string | null = null;
@@ -256,6 +257,14 @@ program
       console.error('`quenderin do` needs macOS (for app control) or --workspace <dir> (for file tasks).');
       process.exitCode = 1;
       return;
+    }
+    // Step budget: default 8, clamp to [1, 50]. The loop guard + per-run approval already bound a
+    // run; the ceiling is just a runaway backstop. A multi-item chore ("friend 20 users") needs more.
+    let maxSteps = 8;
+    if (options.maxSteps !== undefined) {
+      const n = parseInt(options.maxSteps, 10);
+      if (Number.isNaN(n)) { console.error('--max-steps must be a number.'); process.exitCode = 1; return; }
+      maxSteps = Math.min(50, Math.max(1, n));
     }
     const llm = new LlmService();
     try {
@@ -289,7 +298,7 @@ program
         llm,
         mac: mac.available() ? mac : undefined,
         workspace: workspaceDir ? () => workspaceDir : undefined,
-        consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory,
+        consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory, maxSteps,
       });
       console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this machine')}\n`);
       const result = await agent.run(goal);

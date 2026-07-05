@@ -136,4 +136,18 @@ describe('createGovernedAgent — file chores end to end on a real workspace', (
         expect(fs.existsSync(path.join(ws, 'invoice.pdf'))).toBe(true);              // moved back
         expect(fs.existsSync(path.join(ws, 'Finance', 'invoice.pdf'))).toBe(false);
     });
+
+    it('honors a custom maxSteps budget (the CLI `--max-steps` for multi-item chores)', async () => {
+        const consent = new InMemoryConsentStore(); consent.setGranted('fs.read', true);
+        // A model that keeps reading distinct files and never answers — distinct inputs so the loop
+        // guard doesn't fire; it should run exactly the budget, then halt 'maxSteps'.
+        const llm = new FakeLlm([
+            JSON.stringify({ tool: 'fs.read', input: 'a.txt' }),
+            JSON.stringify({ tool: 'fs.read', input: 'b.txt' }),
+        ]);
+        const agent = createGovernedAgent({ llm, workspace: () => ws, consent, maxSteps: 2 });
+        const result = await agent.run('read everything, never stop');
+        expect(result.halt).toBe('maxSteps');
+        expect(result.steps).toHaveLength(2);   // ran the budget, not the default 8
+    });
 });

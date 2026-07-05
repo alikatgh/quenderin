@@ -484,7 +484,10 @@ actionable message ("the model got stuck repeating itself — try rephrasing, or
 exactly the kind of practical robustness that makes the local agent usable, not just capable.
 (Follow-up: port the same guard to the native Swift/Kotlin `AgentLoop` twins; parity today covers the
 decision PARSER, which is unchanged.) Verified: 354 TS tests (2 new — stuck→one-execution→stalled,
-and nudge→recovery), lint + parity green.
+and nudge→recovery), lint + parity green. Paired with a CLI `--max-steps <n>` (default 8, clamped
+[1,50]): the canonical multi-item chore the user cited ("friend + message 20 users from a list")
+needs *dozens* of steps, and the loop guard is exactly what makes raising the budget safe — distinct
+per-item actions don't trip the consecutive-repeat guard, but a stuck run still bails early.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
