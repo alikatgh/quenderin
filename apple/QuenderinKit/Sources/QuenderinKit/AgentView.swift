@@ -5,12 +5,15 @@ import SwiftUI
 /// twin of `ChatView`, bound to `AgentSession`. A separate surface from chat (additive).
 public struct AgentView: View {
     @ObservedObject private var session: AgentSession
+    @ObservedObject private var attachments: AttachedFilesStore
     @State private var goal: String = ""
+    @State private var showFilePicker = false
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var scheme
 
-    public init(session: AgentSession) {
+    public init(session: AgentSession, attachments: AttachedFilesStore = .shared) {
         self.session = session
+        self.attachments = attachments
     }
 
     public var body: some View {
@@ -102,11 +105,47 @@ public struct AgentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal)
 
+            // Attached files — what fs.read may see. Chips sit above the composer so what the
+            // agent can touch is always visible before you send a goal (never buried in a menu).
+            if !attachments.names.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(attachments.names, id: \.self) { name in
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text").font(.caption2)
+                                Text(name).font(.caption)
+                                Button {
+                                    attachments.remove(name)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(name)")
+                            }
+                            .foregroundStyle(p.onSurfaceVariant)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(p.surface, in: Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+            }
+
             composer(palette: p)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        // The ONLY door into fs.read's granted map: an explicit user pick (§7 — the model can
+        // name attached files, never mint paths).
+        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls { attachments.attach(url) }
+            }
+        }
     }
 
     /// Start the typed goal. On a plan failure ("try rephrasing it") the goal is handed back to the
@@ -126,6 +165,22 @@ public struct AgentView: View {
     @ViewBuilder
     private func composer(palette p: QuenderinPalette) -> some View {
         HStack(spacing: 8) {
+            // Attach a file for fs.read — the + that only appears attached to a real capability
+            // (the advertised-but-unimplemented rule, honored in the affirmative).
+            Button {
+                showFilePicker = true
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .frame(width: 34, height: 34)
+                    .glassChrome(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(session.isRunning)
+            .help("Attach a file the agent may read (with your permission)")
+            .accessibilityLabel("Attach a file")
+
             TextField("Give the agent a goal…", text: $goal)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)

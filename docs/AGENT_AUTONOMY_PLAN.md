@@ -187,8 +187,24 @@ Deliberately small, desktop-first, and testable on *this* machine — no device 
    `CapabilityRunner`: the single enforcement point (gate → refuse/run → ledger). `AgentLoop`
    now routes every `Capability` through it on both twins, so every agent action — including
    refused ones — gets a ledger row. T0 behavior unchanged (suites pin it).
-5. **A capabilities pane in Settings**: list every capability, its tier, its grant state,
-   revoke buttons. (Reuses the settings pattern we just built.)
+5. ✅ **The user-facing surface** (done 2026-07-05) — the loop is closed end to end:
+   - **Attach** (paperclip + chips on the Agent screen, `.fileImporter`) — the ONLY door into
+     `fs.read`'s granted map; `AttachedFilesStore` keeps the UI mirror and the lock-protected
+     snapshot the agent reads.
+   - **Settings → Agent**: every capability with its tier in plain words ("reads what you
+     attach"), consent toggles for T1+ (T0 shows "Always on"), and the activity feed — the
+     last 10 ledger rows including refusals, with "Show the full ledger in Finder".
+   - **`AgentToolkit`** is the ONE list both the app's AgentSession and the pane read, so the
+     pane can never drift from what the agent actually has. The app now runs on
+     `UserDefaultsConsentStore` + `FileAuditLedger`.
+   - End-to-end test: attach → refused (no consent) → grant → reads the file → ledger rows
+     `[needsConsent, allowed]`. **Milestone 0 is complete.**
+
+**Milestone 0 shipped 2026-07-05 — all five steps.** The safety spine (one blocklist,
+declared blast radius, gate → run → ledger, user-owned consent) is real, tested, and carries
+its first genuine capability. Next: **Milestone 1** — documents-as-text in chat (roadmap
+Stage 2) reusing `fs.read`'s seam, then the T2 design (undo model, per-run confirmation UI)
+before any write capability exists.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file

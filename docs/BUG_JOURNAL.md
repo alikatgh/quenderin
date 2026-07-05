@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Milestone 0 step 5 (COMPLETE): attach UI (paperclip + chips, fileImporter),
+  Settings → Agent pane (capability tiers in plain words, consent toggles, activity feed from the
+  ledger incl. refusals), AgentToolkit as the ONE tool list both the app and pane read (no drift),
+  app wired to UserDefaultsConsentStore + FileAuditLedger. End-to-end test: attach → refused →
+  grant → read → ledger [needsConsent, allowed]. The Shortcuts-shaped loop is closed.
+
 - 2026-07-05 (agent) — Milestone 0 steps 3+4: fs.read (first T1 capability) + the audit ledger +
   CapabilityRunner, both twins. Security seam: the model NAMES user-granted files, never mints
   paths (a real on-disk path from "model output" resolves to nothing — tested). Ledger is JSONL

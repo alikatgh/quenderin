@@ -28,7 +28,14 @@ struct QuenderinApp: App {
         let chat = ChatModel(engine: engine)
         _conversations = StateObject(wrappedValue: ConversationCoordinator(chat: chat, persistence: FileConversationPersistence()))
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
-        _agent = StateObject(wrappedValue: AgentSession(engine: engine, tools: [CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()]))
+        // Tools come from the ONE toolkit the Settings pane also reads; capabilities execute
+        // through the runner — consent from UserDefaults (the pane's toggles), every action
+        // ledgered to the on-disk flight recorder (AGENT_AUTONOMY_PLAN Milestone 0).
+        _agent = StateObject(wrappedValue: AgentSession(
+            engine: engine,
+            tools: AgentToolkit.standard(),
+            runner: CapabilityRunner(consent: UserDefaultsConsentStore(), ledger: FileAuditLedger())
+        ))
     }
 
     var body: some Scene {

@@ -58,6 +58,7 @@ public struct SettingsView: View {
     private enum Pane: String, CaseIterable, Identifiable {
         case model = "Model"
         case appearance = "Appearance"
+        case agent = "Agent"
         case storage = "Storage"
         case about = "About"
         var id: String { rawValue }
@@ -65,6 +66,7 @@ public struct SettingsView: View {
             switch self {
             case .model: return "cpu"
             case .appearance: return "paintbrush"
+            case .agent: return "sparkles"
             case .storage: return "internaldrive"
             case .about: return "info.circle"
             }
@@ -116,6 +118,9 @@ public struct SettingsView: View {
                 case .appearance:
                     appearancePreviewSection
                     appearanceSection
+                case .agent:
+                    capabilitiesSection
+                    agentActivitySection
                 case .storage:
                     storageSection
                     downloadedModelsSection
@@ -138,6 +143,8 @@ public struct SettingsView: View {
             routingSection
             appearancePreviewSection
             appearanceSection
+            capabilitiesSection
+            agentActivitySection
             storageSection
             downloadedModelsSection
             privacySection
@@ -170,6 +177,101 @@ public struct SettingsView: View {
         Section("Preview") {
             AppearancePreviewCard(settings: appSettings, systemScheme: scheme)
                 .listRowInsets(EdgeInsets())
+        }
+    }
+
+    // MARK: Agent capabilities + activity (AGENT_AUTONOMY_PLAN Milestone 0, step 5)
+
+    /// Consent grants — the ONLY place they're set (never from code reachable by model output).
+    private static let consentStore = UserDefaultsConsentStore()
+    @State private var consentRefresh = false
+
+    private struct CapabilityRow: Identifiable {
+        let id: String
+        let purpose: String
+        let tier: CapabilityTier
+        let requiresConsent: Bool
+    }
+
+    private var capabilityRows: [CapabilityRow] {
+        AgentToolkit.capabilities().map {
+            CapabilityRow(id: $0.name, purpose: $0.purpose, tier: $0.tier, requiresConsent: $0.requiresConsent)
+        }
+    }
+
+    private func tierLabel(_ tier: CapabilityTier) -> String {
+        switch tier {
+        case .pureCompute: return "computes only — no side effects"
+        case .readOnly: return "reads what you attach"
+        case .reversibleWrite: return "makes undoable changes"
+        case .appAction: return "acts in apps"
+        case .irreversible: return "irreversible — never autonomous"
+        }
+    }
+
+    private var capabilitiesSection: some View {
+        Section("Agent capabilities") {
+            ForEach(capabilityRows) { row in
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(row.id).font(.body.weight(.medium))
+                            Text(tierLabel(row.tier))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(row.purpose).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if row.requiresConsent {
+                        Toggle("", isOn: Binding(
+                            get: { Self.consentStore.isGranted(row.id) },
+                            set: { Self.consentStore.setGranted(row.id, $0); consentRefresh.toggle() }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityLabel("Allow \(row.id)")
+                    } else {
+                        Text("Always on").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Text("A capability above \u{201C}computes only\u{201D} runs ONLY with your permission — grant it here, "
+               + "revoke it any time. The agent can never grant itself anything.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .id(consentRefresh)
+    }
+
+    private var agentActivitySection: some View {
+        let entries = Array(FileAuditLedger().entries().suffix(10).reversed())
+        return Section("Agent activity") {
+            if entries.isEmpty {
+                Text("Nothing yet. Every capability the agent uses — including the refused ones — "
+                   + "is recorded here and in a plain file you can read.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("\(entry.capability)(\(entry.input))")
+                                .font(.callout.monospaced())
+                                .lineLimit(1)
+                            Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(entry.decision)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(entry.decision == "allowed" ? .secondary : Color.orange)
+                    }
+                }
+                #if os(macOS)
+                Button("Show the full ledger in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([FileAuditLedger.defaultURL()])
+                }
+                #endif
+            }
         }
     }
 
