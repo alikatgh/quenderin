@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — The KILL SWITCH: AbortSignal threaded through CapabilityRunner.execute/
+  executePlan and CapabilityAgent.run. Honored BETWEEN steps — an approved plan you change your
+  mind about halts mid-task, remaining steps never run, done steps stay ledgered ('cancelled').
+  This is a trust superpower a LOCAL agent has that a cloud one can't (no round-trip; you can't
+  un-fire a dispatched action remotely). Lesson: cooperative cancellation checked at every seam, not once.
+
 - 2026-07-05 (macOS) — Grew the macOS capability library on the proven seam: mac.frontApp +
   mac.clipboard.read (T1 perception), mac.app.open + mac.notes.create (T2 action, approved).
   "Anything possible in macOS" = breadth of governed caps, not an escape hatch. Notes tries the

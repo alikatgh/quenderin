@@ -26,8 +26,17 @@ export class CapabilityRunner {
         this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome });
     }
 
-    /** Run a single capability through the full gate. Returns the observation for the agent loop. */
-    async execute(capability: Capability, input: string): Promise<string> {
+    /**
+     * Run a single capability through the full gate. Returns the observation for the agent loop.
+     * `signal` is the KILL SWITCH: if it's already aborted the action is refused before running —
+     * the trust superpower a LOCAL agent can offer that a cloud one can't (you halt execution on
+     * your own machine, instantly, no round-trip).
+     */
+    async execute(capability: Capability, input: string, signal?: AbortSignal): Promise<string> {
+        if (signal?.aborted) {
+            this.log(capability, input, 'cancelled');
+            return 'Stopped — you halted the agent.';
+        }
         // 1. Blocklist — refused regardless of tier or consent.
         const hit = matchedBlockedKeyword(input);
         if (hit) {
@@ -76,7 +85,8 @@ export class CapabilityRunner {
      * (fail-closed). Execution is sequential and each step is individually ledgered; a failing
      * step stops the remainder honestly.
      */
-    async executePlan(items: Array<{ capability: Capability; input: string }>): Promise<string> {
+    async executePlan(items: Array<{ capability: Capability; input: string }>, signal?: AbortSignal): Promise<string> {
+        if (signal?.aborted) return 'Stopped — you halted the agent before the plan ran.';
         const previews: ActionPreview[] = [];
         // ── Pre-flight.
         for (const item of items) {
@@ -108,10 +118,17 @@ export class CapabilityRunner {
                 return 'You declined the plan. Nothing was changed.';
             }
         }
-        // ── Execute sequentially; a failure stops the remainder honestly.
+        // ── Execute sequentially; a failure OR the kill switch stops the remainder honestly.
         const results: string[] = [];
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
+            // The kill switch is honored BETWEEN steps: an approved plan you change your mind
+            // about halts here, mid-task, with the already-done steps still ledgered + undoable.
+            if (signal?.aborted) {
+                this.log(item.capability, item.input, 'cancelled');
+                results.push(`Stopped by you after step ${i} of ${items.length}. The remaining steps did not run.`);
+                return results.join('\n');
+            }
             try {
                 const result = await item.capability.run(item.input);
                 this.log(item.capability, item.input, 'allowed', result);

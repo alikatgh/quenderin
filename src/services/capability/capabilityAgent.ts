@@ -16,7 +16,7 @@ export type Planner = (prompt: string) => Promise<string>;
 export interface AgentResult {
     answer: string | null;
     steps: string[];   // one observation line per executed step
-    halt: 'answered' | 'maxSteps' | 'planError';
+    halt: 'answered' | 'maxSteps' | 'planError' | 'cancelled';
 }
 
 type Decision =
@@ -36,11 +36,14 @@ export class CapabilityAgent {
         this.byName = new Map(capabilities.map(c => [c.name, c]));
     }
 
-    async run(goal: string): Promise<AgentResult> {
+    async run(goal: string, signal?: AbortSignal): Promise<AgentResult> {
         const steps: string[] = [];
         let transcript = this.preamble(goal);
 
         for (let i = 0; i < this.maxSteps; i++) {
+            // The kill switch, honored at the top of every turn: stop the WHOLE run instantly,
+            // before asking the model to think or act again. Local + cooperative = immediate.
+            if (signal?.aborted) return { answer: null, steps, halt: 'cancelled' };
             let reply: string;
             try {
                 reply = await this.planner(transcript);
@@ -58,7 +61,7 @@ export class CapabilityAgent {
             if (decision.kind === 'tool') {
                 const cap = this.byName.get(decision.name);
                 observation = cap
-                    ? await this.runner.execute(cap, decision.input)
+                    ? await this.runner.execute(cap, decision.input, signal)
                     : `No such capability: ${decision.name}.`;
                 transcript += `\nUsed ${decision.name}(${decision.input}) → ${observation}`;
             } else {
@@ -66,7 +69,7 @@ export class CapabilityAgent {
                 const unknown = resolved.find(r => !r.capability);
                 observation = unknown
                     ? `No such capability in the plan: ${decision.calls.find(c => !this.byName.has(c.name))?.name}. Plan not executed.`
-                    : await this.runner.executePlan(resolved as Array<{ capability: Capability; input: string }>);
+                    : await this.runner.executePlan(resolved as Array<{ capability: Capability; input: string }>, signal);
                 const described = decision.calls.map(c => `${c.name}(${c.input})`).join(', ');
                 transcript += `\nProposed plan [${described}] → ${observation}`;
             }

@@ -180,6 +180,35 @@ GUI grounding) is named, sequenced work — not a weekend.
 
 ---
 
+## 4c. How we go 100x better than cloud Cowork (the competitive thesis, 2026-07-05)
+
+We do NOT win on model IQ — a cloud frontier model out-reasons a local one per step, and
+that's the honest limit (§4b: grounding is model-heavy, our weak spot). We win on the axes a
+LOCAL, governed agent structurally dominates, and for real chores these matter more than raw IQ:
+
+1. **Instant kill switch.** A cloud agent's "stop" halts the remote brain but can't un-fire an
+   action already dispatched to your machine. Ours checks a LOCAL signal between every step and
+   simply doesn't run the next one — no round-trip, immediate, mid-task. (Shipped: AbortSignal
+   through `CapabilityRunner.execute`/`executePlan` and `CapabilityAgent.run`; a plan halts
+   between steps with the done work still ledgered.)
+2. **Total legibility.** Every action — and every REFUSED action — is on a local, append-only
+   ledger the user owns. A cloud agent's reasoning is a remote black box; ours is a file you read.
+3. **Reversibility.** Writes never overwrite/delete; each records its inverse (UndoJournal).
+   Next: session-scoped "undo this whole task."
+4. **Consent + preview.** Nothing mutating runs without a per-run yes over a truthful preview
+   (fail-closed). The plan is read before it runs — Shortcuts-grade, model-agnostic.
+5. **Privacy = no AI middleman.** The model reasoning over your files/screen/intent is local;
+   a cloud agent streams all of it to its vendor. This is the moat for compliance buyers.
+6. **Works offline; zero marginal cost; no rate limits.** No tokens billed per action, no
+   throttling, no outage — it's your CPU.
+
+**The strategy that follows:** keep making the harness carry reliability (verification of its
+own actions, retrieval of known-good sequences, rate-limits on bulk actions) so a weak model
+becomes a TRUSTWORTHY agent, and keep widening the governed capability library so "anything"
+grows. Trust + breadth + privacy, compounding — that's the 100x, not a smarter model.
+
+---
+
 ## 5. Platform strategy
 
 **Desktop first.** macOS and Linux have real automation surfaces (Apple Events/AppleScript,
