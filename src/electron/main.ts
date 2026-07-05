@@ -1,7 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import net from 'net';
 import { startDashboardServer } from '../server.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -9,30 +8,12 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+// Set from startDashboardServer()'s return — the ACTUAL bound port and the per-launch auth
+// token. The old code pre-probed a port with its own all-interfaces net.createServer and threw
+// the server's return away, so the window could load the wrong port with no token, breaking all
+// WS/API auth (Q-001/Q-128/Q-130). The server binds BIND_HOST and is the single source of truth.
 let PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-
-async function findFreePort(startPort: number, attempt = 0): Promise<number> {
-    // Bound the search: without this, a host where every probed port errors (EACCES on a locked-down
-    // box, or startPort climbing past 65535) bumps forever. Only EADDRINUSE is worth retrying — any
-    // other error won't clear by trying the next port, so fail fast with the real cause.
-    if (attempt > 100 || startPort > 65535) {
-        throw new Error(`Could not find a free port near ${startPort - attempt} after ${attempt} attempts`);
-    }
-    return new Promise((resolve, reject) => {
-        const s = net.createServer();
-        s.once('error', (err: NodeJS.ErrnoException) => {
-            if (err.code === 'EADDRINUSE') {
-                findFreePort(startPort + 1, attempt + 1).then(resolve, reject);
-            } else {
-                reject(err);
-            }
-        });
-        s.listen(startPort, () => {
-            const port = (s.address() as net.AddressInfo).port;
-            s.close(() => resolve(port));
-        });
-    });
-}
+let AUTH_TOKEN = '';
 
 /** (Re)create the dashboard window. Split out from bootstrap so a macOS dock re-activate makes a
  *  fresh window WITHOUT re-booting the backend server / Tray / global shortcuts. */
@@ -50,7 +31,12 @@ function createWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            // Hand the per-launch token to the renderer via argv — preload.ts reads
+            // `--quenderin-auth=` and exposes it on window.quenderinAuth (Q-001/Q-011). A local
+            // attacker process cannot read another process's argv. Set before every createWindow()
+            // (incl. the activate re-create), so a remade window is never token-less (Q-129).
+            additionalArguments: [`--quenderin-auth=${AUTH_TOKEN}`]
         }
     });
 
@@ -78,14 +64,16 @@ function createWindow() {
 }
 
 async function bootstrap() {
-    // Determine dynamic port gracefully
-    PORT = await findFreePort(PORT);
+    // 1. Boot internal Node.js backend (Adb, LLaMA, WebSockets, Express). It picks the actual
+    //    free port (findAvailablePort, bound to BIND_HOST) and mints the auth token — capture
+    //    BOTH from the return instead of pre-probing our own port (which bound all interfaces and
+    //    could disagree) and discarding the token (Q-001/Q-128).
+    console.log(`Booting Quenderin backend near port ${PORT}...`);
+    const { port, authToken } = await startDashboardServer(PORT, false); // false = don't open system browser
+    PORT = port;
+    AUTH_TOKEN = authToken;
 
-    // 1. Boot internal Node.js backend (Adb, LLaMA, WebSockets, Express)
-    console.log(`Booting Quenderin backend on port ${PORT}...`);
-    await startDashboardServer(PORT, false); // false = don't open system browser
-
-    // 2. Create the Electron Window — platform-aware chrome
+    // 2. Create the Electron Window — platform-aware chrome (loads PORT, carries AUTH_TOKEN)
     createWindow();
 
     // 3. Native Tray (created once for the app lifetime)
@@ -116,9 +104,13 @@ async function bootstrap() {
     // Register 🚨 INTERVENTION HOTKEY 🚨
     globalShortcut.register('CommandOrControl+Option+C', () => {
         console.log("🛠️ Human Intervention Triggered via Hotkey (Cmd+Opt+C)");
-        // Ping the local Node server to halt the agent loop
-        fetch(`http://localhost:${PORT}/api/agent/intervene`, { method: 'POST' })
-            .catch(e => console.error("Failed to trigger intervention route:", e));
+        // Ping the local Node server to halt the agent loop. /api/agent/intervene is a mutating
+        // POST, so it now requires the token — without the header this silently 401'd and the
+        // hotkey did nothing (Q-008).
+        fetch(`http://localhost:${PORT}/api/agent/intervene`, {
+            method: 'POST',
+            headers: { 'X-Auth-Token': AUTH_TOKEN }
+        }).catch(e => console.error("Failed to trigger intervention route:", e));
 
         // Pop the UI up immediately so the user can interact
         if (mainWindow && !mainWindow.isVisible()) {

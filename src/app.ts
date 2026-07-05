@@ -80,13 +80,22 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
     app.use(express.static(publicPath));
 
-    // State-changing-request auth (audit HIGH #1 / the unauthenticated-routes MEDIUM): every
-    // POST/PUT/PATCH/DELETE under /api/ requires the per-launch token (X-Auth-Token header, or
-    // ?token= for the opened-URL/browser path). Read-only GETs stay open. Empty token ⇒ fail closed,
-    // so a missing token never silently allows. The renderer sends it via ui/src/lib/api.ts.
+    // Auth (audit HIGH #1 + Q-007): every mutating /api/ request needs the per-launch token, AND
+    // so do the read-only GETs that return USER DATA — sessions, notes, agent memory, and the
+    // diagnostics probe. Leaving those open let any loopback process exfiltrate conversations and
+    // notes with a plain curl. Genuinely-public GETs (/health, /ready, model catalog, presets,
+    // tools, templates) stay open so readiness checks and the pre-auth shell still work. Token via
+    // X-Auth-Token header or ?token= (opened-URL path). Empty token ⇒ fail closed. Sender: ui/src/lib/api.ts.
     const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    // Path prefixes whose GETs return user data and therefore require the token regardless of method.
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics'];
+    const requiresAuth = (req: express.Request): boolean => {
+        if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
+        if (req.method === 'GET' && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
+        return false;
+    };
     app.use((req, res, next) => {
-        if (!req.path.startsWith('/api/') || !MUTATING_METHODS.has(req.method)) return next();
+        if (!requiresAuth(req)) return next();
         const provided = req.get('X-Auth-Token') || (typeof req.query.token === 'string' ? req.query.token : null);
         if (!isAuthorized(provided, authToken)) {
             return res.status(401).json({ error: 'Unauthorized: missing or invalid auth token' });

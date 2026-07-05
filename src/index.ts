@@ -21,7 +21,8 @@ const program = new Command();
 program
   .name('quenderin-poc')
   .description('An offline autonomous agent control')
-  .version('0.0.1');
+  // Keep in sync with package.json (was stale at 0.0.1 while package.json read 0.1.0 — Q-046).
+  .version('0.1.0');
 
 // Run a single agent task from the CLI without starting the full dashboard
 program

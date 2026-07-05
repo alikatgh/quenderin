@@ -34,6 +34,15 @@ jobs:
           cache: npm
       - name: Install dependencies (root + ui via postinstall)
         run: npm ci
+      # Gate the release on the same checks CI runs — a tagged build must not ship code that
+      # fails typecheck/lint/tests (Q-144). Runs once on the Linux leg only (identical result
+      # on both, and it keeps the Windows packaging leg fast).
+      - name: Typecheck, lint, and test
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
       - name: Build backend + dashboard UI
         run: npm run build
       - name: Package

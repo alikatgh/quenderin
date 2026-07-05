@@ -322,6 +322,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (desktop) — The whole Electron app was un-authable: bootstrap pre-probed its OWN
+  port (all-interfaces net.createServer) and threw away startDashboardServer's `{port, authToken}`,
+  so the window loaded the wrong port with no token → every WS/API auth failed (Q-001/Q-128/Q-130).
+  Fix: capture the return, pass `--quenderin-auth` via additionalArguments, drop the pre-probe (src/electron/main.ts).
+  Lesson: when a callee already resolves a resource (port/token), the caller must USE its return, not re-derive it.
+
+- 2026-07-05 (desktop) — Read-only GETs for sessions/notes/memory/diagnostics were unauthenticated —
+  any loopback process could curl a user's conversations (Q-007). Fix: auth now gates mutating /api/
+  AND a protected-read prefix list; public probes (/health,/ready) stay open (src/app.ts + test).
+  Lesson: "GETs are safe to leave open" is false the moment a GET returns user data, not just status.
+
 - 2026-07-05 (apple) — Stop did nothing (Q-005/Q-217): `ChatModel.stopGenerating()` only flipped a
   Swift flag + broke the token loop, never calling the engine's cancel — the GPU decoded to the next
   token boundary, and during PREFILL Stop was completely dead. Fix: call `engine.requestCancel()`, bracket
