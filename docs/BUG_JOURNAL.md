@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (desktop) — "Make it real": the production assembly. createGovernedAgent(deps) wires
+  the whole governed loop from seams; llmPlanner adapts the real LlmService.generalChat into the
+  planner (structural typing — the real service drops in). Proven end-to-end with a fake model
+  driving real AppleScript through the real runner + undoAll(). Only 3 production-only surfaces
+  remain (real LLM, real osascript, Electron approval dialog). Lesson: a good spine makes 'ship it' a swap.
+
 - 2026-07-05 (macOS) — Breadth: mac.safari.openURL (http(s)-only, injection-checked) and
   mac.mail.draft — the Cowork sweet spot: it composes an email and SHOWS it but never sends
   (no `send msg`; sending is a human decision, T4). 8 macOS capabilities now. Lesson: the

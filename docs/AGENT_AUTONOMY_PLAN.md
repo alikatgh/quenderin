@@ -406,8 +406,15 @@ first-object H13 guard as `AgentDecisionParser`), everything mutating goes throu
 Proven end to end by a scripted planner driving the fake imo screen: propose friend-request
 plan → ONE approval → tap "Add friend" → type → enter → answer. Distinct from the legacy
 `AgentService` raw-action research loop, which stays the testbed; this is the path that ships.
-Remaining desktop step: the approval DIALOG (Electron) + connecting a real planner + the
-BlueStacks connect UX. Android Compose catch-up still on the standing chip.
+The production ASSEMBLY is now wired: `createGovernedAgent(deps)` (desktopAgent.ts) builds the
+whole governed loop from injected seams — `llmPlanner` adapts the real LlmService into the
+planner (plainChat, no tool preamble); mac/device seams add the capability library; consent,
+ledger, approver, session, bulk-threshold, and the kill-switch signal all plug in. Proven end
+to end with a fake model driving real AppleScript templates through the real runner, then
+undoAll(). The ONLY production-only surfaces left: swap the fake LLM for LlmService, the fake
+mac for OsascriptAutomation, and wire the Electron approval dialog to `approve`. Nothing else
+changes — that's the spine paying off. Remaining: that 3-seam Electron wiring (unverifiable
+here without running the app) + the Android Compose catch-up (standing chip).
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
