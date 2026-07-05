@@ -498,6 +498,23 @@ the governance model legible in a way a cloud agent's opaque "it does stuff" isn
 (`catalog.ts`, capabilities → string), so it's unit-tested headless; the command is a thin reader
 that instantiates the real library. Verified: 359 TS tests (4 new), lint + parity green.
 
+**Post-M4 — the Cowork-parity leap: drive ANY macOS app (2026-07-05).** The last big reach gap was
+that desktop control only reached AppleScript-scriptable apps + Shortcuts; clicking a button in an
+arbitrary GUI app (Cowork's whole premise: screen → click) had no governed path. Closed it exactly
+the way the Android `app.*` twins are built — a **seam + fake**, so the capability logic is fully
+verifiable headless while the one production-only surface is the osascript bridge (same as every
+mac.*). `MacUi` (accessibility) + `OsascriptMacUi` (System Events, built on the hardened
+MacAutomation runner) back four capabilities: `mac.ui.observe` (T1 — read the frontmost app's named
+elements) and `mac.ui.tap` / `mac.ui.type` / `mac.ui.key` (T2 — approved). The load-bearing safety is
+the fs.move / app.tap one: **tap by VISIBLE LABEL, never a fabricated coordinate**; the resolved
+element is re-checked against the blocklist (an input "Send" that resolves to "Send payment" is
+refused on the *resolved* label), and `verify()` flags a click that didn't change the screen. It's
+**opt-in** (`quenderin do --gui`, the most powerful surface, needs the Accessibility permission) and
+discoverable via `capabilities` (flagged `needs --gui`). This is Cowork's core capability, but
+governed: every click asks first, is logged, and (where the app supports it) is reversible. Verified:
+371 TS tests (12 new — observe, label resolution, exact-wins, defense-in-depth refusal, fail-closed
+approval, did-it-register verify, key whitelist, seam assembly), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the

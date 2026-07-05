@@ -11,6 +11,8 @@ import { appCapabilities } from './appCapabilities.js';
 import { MacAutomation } from './macAutomation.js';
 import { macCapabilities } from './macCapabilities.js';
 import { fileCapabilities } from './fileCapabilities.js';
+import { MacUi } from './macUi.js';
+import { macUiCapabilities } from './macUiCapabilities.js';
 
 /**
  * The production assembly — this is where "the engine with tests" becomes "the thing that runs on
@@ -41,6 +43,9 @@ export interface GovernedAgentDeps {
     parser?: UiParserService;
     /** macOS automation for the mac.* capabilities. Omit to exclude them (e.g. off darwin). */
     mac?: MacAutomation;
+    /** macOS accessibility for the mac.ui.* GUI-driving capabilities (click/type into ANY app).
+     *  Omit to exclude them — the most powerful surface, so it's opt-in (the CLI's `--gui`). */
+    macUi?: MacUi;
     /** The granted workspace folder for the fs.* capabilities (organize/rename/trash/read/list).
      *  A function so the grant can change; returns null when none is granted. Omit to exclude fs.*. */
     workspace?: () => string | null;
@@ -78,6 +83,7 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
     const capabilities: Capability[] = [
         ...(deps.workspace ? fileCapabilities(deps.workspace) : []),
         ...(deps.mac ? macCapabilities(deps.mac) : []),
+        ...(deps.macUi ? macUiCapabilities(deps.macUi) : []),
         ...(deps.device ? appCapabilities(deps.device, parser) : []),
     ];
     const ledger = deps.ledger ?? new InMemoryAuditLedger();

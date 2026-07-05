@@ -3,7 +3,9 @@ import { formatCapabilities } from '../src/services/capability/catalog.js';
 import { CapabilityTier } from '../src/services/capability/capability.js';
 import { macCapabilities } from '../src/services/capability/macCapabilities.js';
 import { fileCapabilities } from '../src/services/capability/fileCapabilities.js';
+import { macUiCapabilities } from '../src/services/capability/macUiCapabilities.js';
 import type { MacAutomation } from '../src/services/capability/macAutomation.js';
+import type { MacUi } from '../src/services/capability/macUi.js';
 
 /**
  * `quenderin capabilities` is the discovery front door — you can't ask for what you don't know the
@@ -11,6 +13,7 @@ import type { MacAutomation } from '../src/services/capability/macAutomation.js'
  * workspace hint on fs.*, and the no-colour-by-default contract here, headless.
  */
 const noopMac: MacAutomation = { available: () => true, runAppleScript: async () => '' };
+const noopUi: MacUi = { available: () => true, observe: async () => [], click: async () => {}, typeText: async () => {}, pressKey: async () => {} };
 
 // A tiny hand-rolled capability so the grouping test doesn't depend on the real library's shape.
 const cap = (name: string, tier: CapabilityTier, purpose: string) => ({
@@ -39,13 +42,15 @@ describe('formatCapabilities', () => {
         expect(out).toContain('Move a file into a subfolder.');
     });
 
-    it('flags fs.* as needing --workspace, but not mac.*', () => {
+    it('flags fs.* as needing --workspace and mac.ui.* as needing --gui, but not plain mac.*', () => {
         const out = formatCapabilities([
             cap('fs.list', CapabilityTier.ReadOnly, 'List the workspace.'),
+            cap('mac.ui.tap', CapabilityTier.AppAction, 'Click by label.'),
             cap('mac.frontApp', CapabilityTier.ReadOnly, 'Name the front app.'),
         ]);
         expect(out).toMatch(/fs\.list.*needs --workspace/);
-        expect(out).not.toMatch(/mac\.frontApp.*needs --workspace/);
+        expect(out).toMatch(/mac\.ui\.tap.*needs --gui/);
+        expect(out).not.toMatch(/mac\.frontApp.*needs --/);
     });
 
     it('is colourless by default, coloured on request, and handles an empty library', () => {
@@ -55,11 +60,12 @@ describe('formatCapabilities', () => {
     });
 
     it('renders the REAL library the CLI assembles without throwing, covering every tool', () => {
-        const caps = [...macCapabilities(noopMac), ...fileCapabilities(() => null)];
+        const caps = [...macCapabilities(noopMac), ...macUiCapabilities(noopUi), ...fileCapabilities(() => null)];
         const out = formatCapabilities(caps);
         // Every capability name appears exactly once in the listing.
         for (const c of caps) expect(out).toContain(c.name);
         expect(out).toContain('mac.shortcuts.run');   // the lodestar is discoverable
         expect(out).toContain('fs.write');            // the newest file tool is discoverable
+        expect(out).toMatch(/mac\.ui\.tap.*needs --gui/);   // GUI driving is discoverable + flagged
     });
 });

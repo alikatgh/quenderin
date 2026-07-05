@@ -18,9 +18,12 @@ export interface CatalogOptions {
     color?: boolean;
 }
 
-/** fs.* actions only work once a folder is granted, so flag them in the listing. */
-function needsWorkspace(name: string): boolean {
-    return name.startsWith('fs.');
+/** Some capabilities need an opt-in the base agent doesn't have — flag them so the listing is honest:
+ *  fs.* need a granted --workspace folder; mac.ui.* need --gui (the Accessibility permission). */
+function gatingHint(name: string): string {
+    if (name.startsWith('fs.')) return '  (needs --workspace)';
+    if (name.startsWith('mac.ui.')) return '  (needs --gui)';
+    return '';
 }
 
 export function formatCapabilities(capabilities: Capability[], opts: CatalogOptions = {}): string {
@@ -32,8 +35,8 @@ export function formatCapabilities(capabilities: Capability[], opts: CatalogOpti
 
     const pad = Math.min(22, capabilities.reduce((m, c) => Math.max(m, c.name.length), 0) + 2);
     const row = (c: Capability) => {
-        const hint = needsWorkspace(c.name) ? paint('  (needs --workspace)', 'dim') : '';
-        return `  ${paint(c.name.padEnd(pad), 'teal')}${c.purpose}${hint}`;
+        const hint = gatingHint(c.name);
+        return `  ${paint(c.name.padEnd(pad), 'teal')}${c.purpose}${hint ? paint(hint, 'dim') : ''}`;
     };
 
     // T1 is perception (no approval); everything above asks first.

@@ -24,6 +24,8 @@ import { FileAuditLedger, loadSkillMemory, saveSkillMemory, saveUndoJournal, loa
 import { formatHistory } from './services/capability/ledgerView.js';
 import { replayUndo, UndoAction } from './services/capability/undo.js';
 import { formatCapabilities } from './services/capability/catalog.js';
+import { OsascriptMacUi } from './services/capability/macUi.js';
+import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
 
 const program = new Command();
 
@@ -241,8 +243,9 @@ program
   .option('-m, --model <id>', 'model to plan with (see `quenderin models`)')
   .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/move/rename/trash/read)')
   .option('-s, --max-steps <n>', 'how many steps the agent may take (default 8; raise for multi-item tasks)')
+  .option('-g, --gui', 'allow clicking/typing in any macOS app via accessibility (needs the Accessibility permission)')
   .option('-y, --yes', 'auto-approve every change (use with care)')
-  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; yes?: boolean }) => {
+  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
     let workspaceDir: string | null = null;
@@ -282,6 +285,8 @@ program
       // The per-change terminal prompt is the real gate here, so grant the capabilities in play.
       if (mac.available()) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
       if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
+      const macUi = options.gui && mac.available() ? new OsascriptMacUi(mac) : undefined;
+      if (macUi) macUiCapabilities(macUi).forEach(c => consent.setGranted(c.name, true));
 
       const ac = new AbortController();
       process.once('SIGINT', () => { console.log(dim('\n(stopping — finishing the current step)')); ac.abort(); });
@@ -298,6 +303,7 @@ program
       const agent = createGovernedAgent({
         llm,
         mac: mac.available() ? mac : undefined,
+        macUi,
         workspace: workspaceDir ? () => workspaceDir : undefined,
         consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory, maxSteps,
       });
@@ -348,7 +354,8 @@ program
   .alias('caps')
   .description('List everything Quenderin can do — the governed capability library.')
   .action(() => {
-    const caps = [...macCapabilities(new OsascriptAutomation()), ...fileCapabilities(() => null)];
+    const mac = new OsascriptAutomation();
+    const caps = [...macCapabilities(mac), ...macUiCapabilities(new OsascriptMacUi(mac)), ...fileCapabilities(() => null)];
     console.log(formatCapabilities(caps, { color: process.stdout.isTTY }));
   });
 
