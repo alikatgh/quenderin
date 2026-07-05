@@ -14,10 +14,28 @@ public final class AgentSession: ObservableObject {
     /// The goal of the most recent run — kept so the run can be exported with its prompt as the heading.
     private var lastGoal = ""
 
-    private let loop: AgentLoop
+    private var loop: AgentLoop
+
+    /// Per-run approvals for mutating capabilities — the view observes `approvals.pending` and
+    /// shows an Allow / Don't-allow dialog; the runner awaits the answer.
+    public let approvals = ApprovalBroker()
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
-                runner: CapabilityRunner = CapabilityRunner()) {
+                runner: CapabilityRunner? = nil) {
+        let broker = approvals
+        let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) })
+        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved)
+    }
+
+    /// The app's full wiring: persistent consent (Settings toggles), the on-disk ledger, and
+    /// this session's approval dialog. Kept here so QuenderinApp stays one line.
+    public convenience init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
+                            consent: ConsentStore, ledger: AuditLedger) {
+        self.init(engine: engine, tools: tools, maxSteps: maxSteps, runner: nil)
+        // Rebuild the loop with a runner that has BOTH the stores and this session's approvals.
+        let broker = approvals
+        let runner = CapabilityRunner(consent: consent, ledger: ledger,
+                                      approve: { preview in await broker.request(preview) })
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner)
     }
 

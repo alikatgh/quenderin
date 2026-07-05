@@ -65,18 +65,26 @@ public final class AttachedFilesStore: ObservableObject, @unchecked Sendable {
 /// both the app target (AgentSession tools) and the Settings capabilities pane, so the pane can
 /// never drift from what the agent actually has.
 public enum AgentToolkit {
-    public static func standard(attachments: AttachedFilesStore = .shared) -> [AgentTool] {
+    /// The session-wide undo journal for workspace writes — the Agent screen's "Undo last move"
+    /// reverses through it.
+    public static let undoJournal = UndoJournal()
+
+    public static func standard(attachments: AttachedFilesStore = .shared,
+                                workspace: WorkspaceStore = .shared) -> [AgentTool] {
         [
             CalculatorTool(),
             UnitConverterTool(),
             DateCalcTool(),
             EchoTool(),
             FileReadCapability(grantedFiles: { attachments.snapshot() }),
+            FileListCapability(workspace: { workspace.snapshot() }),
+            FileMoveCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
         ]
     }
 
     /// The toolkit's capabilities in display order (everything we ship IS a capability today).
-    public static func capabilities(attachments: AttachedFilesStore = .shared) -> [any Capability] {
-        standard(attachments: attachments).compactMap { $0 as? any Capability }
+    public static func capabilities(attachments: AttachedFilesStore = .shared,
+                                    workspace: WorkspaceStore = .shared) -> [any Capability] {
+        standard(attachments: attachments, workspace: workspace).compactMap { $0 as? any Capability }
     }
 }

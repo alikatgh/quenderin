@@ -1473,6 +1473,62 @@ fun main() {
             rejected.reason.contains("isn't a text file")
     })
 
+    // --- The workspace: fs.list + fs.move + undo + per-run approval (Milestone 2) ---
+    check("fs.list lists the workspace; refuses without a grant", run {
+        val dir = java.nio.file.Files.createTempDirectory("ws").toFile()
+        java.io.File(dir, "b.txt").writeText("x"); java.io.File(dir, "a.txt").writeText("x")
+        java.io.File(dir, "sub").mkdir()
+        val listed = FileListCapability({ dir }).run("")
+        val refused = FileListCapability({ null }).run("")
+        dir.deleteRecursively()
+        listed == "a.txt\nb.txt\nsub/" && refused.contains("No workspace folder granted")
+    })
+    check("fs.move moves, records undo, and undo restores", run {
+        val dir = java.nio.file.Files.createTempDirectory("ws2").toFile()
+        java.io.File(dir, "report.pdf").writeText("REPORT")
+        val journal = UndoJournal()
+        val move = FileMoveCapability({ dir }, journal)
+        val out = move.run("report.pdf to Archive")
+        val movedOk = out.contains("Moved") && java.io.File(dir, "Archive/report.pdf").isFile &&
+            !java.io.File(dir, "report.pdf").exists() && journal.count == 1
+        val undo = journal.undoLast()
+        val restored = undo.contains("back to where it was") && java.io.File(dir, "report.pdf").isFile &&
+            journal.count == 0 && journal.undoLast() == "Nothing to undo."
+        dir.deleteRecursively()
+        movedOk && restored
+    })
+    check("fs.move never overwrites and rejects model-minted paths on shape", run {
+        val dir = java.nio.file.Files.createTempDirectory("ws3").toFile()
+        java.io.File(dir, "report.pdf").writeText("NEW")
+        java.io.File(dir, "Archive").mkdir()
+        java.io.File(dir, "Archive/report.pdf").writeText("OLD")
+        val move = FileMoveCapability({ dir }, UndoJournal())
+        val collision = move.run("report.pdf to Archive").contains("refusing to overwrite") &&
+            java.io.File(dir, "report.pdf").readText() == "NEW" &&
+            java.io.File(dir, "Archive/report.pdf").readText() == "OLD"
+        val hostile = listOf("../secret to Archive", "report.pdf to ../out", "a/b to c").all {
+            val r = move.run(it); r.contains("paths aren't allowed") || r.contains("Input must be")
+        }
+        dir.deleteRecursively()
+        collision && hostile
+    })
+    check("a mutating capability FAILS CLOSED without an approver; declined/approved paths ledger correctly", run {
+        val dir = java.nio.file.Files.createTempDirectory("ws4").toFile()
+        java.io.File(dir, "report.pdf").writeText("x")
+        val move = FileMoveCapability({ dir }, UndoJournal())
+        val consent = InMemoryConsentStore().apply { setGranted("fs.move", true) }
+        val ledger = InMemoryAuditLedger()
+        val closed = CapabilityRunner(consent, ledger).execute(move, "report.pdf to Archive")
+        val failClosed = closed.contains("needs your per-run approval") && java.io.File(dir, "report.pdf").exists()
+        val declined = CapabilityRunner(consent, ledger, { false }).execute(move, "report.pdf to Archive")
+        val stayedPut = declined.contains("You declined") && java.io.File(dir, "report.pdf").exists()
+        val approved = CapabilityRunner(consent, ledger, { true }).execute(move, "report.pdf to Archive")
+        val moved = approved.contains("Moved") && java.io.File(dir, "Archive/report.pdf").isFile
+        dir.deleteRecursively()
+        failClosed && stayedPut && moved &&
+            ledger.entries().map { it.decision } == listOf("needsApproval", "declined", "allowed")
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")

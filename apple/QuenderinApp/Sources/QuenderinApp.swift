@@ -34,7 +34,8 @@ struct QuenderinApp: App {
         _agent = StateObject(wrappedValue: AgentSession(
             engine: engine,
             tools: AgentToolkit.standard(),
-            runner: CapabilityRunner(consent: UserDefaultsConsentStore(), ledger: FileAuditLedger())
+            consent: UserDefaultsConsentStore(),   // the Settings pane's toggles
+            ledger: FileAuditLedger()              // the on-disk flight recorder
         ))
     }
 

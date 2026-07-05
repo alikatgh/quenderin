@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Milestone 2: the first WRITE capability (fs.move) + workspace + undo +
+  per-run approval, both twins. Invariants worth keeping: approval is FAIL-CLOSED (no approver
+  wired ⇒ every mutating action refused); standing consent ≠ per-run approval (Settings toggle
+  says "may exist", the dialog says "do THIS one"); writes never overwrite; every write records
+  its inverse. Dialog dismissal counts as NO — silence is never a yes.
+
 - 2026-07-05 (chat) — Milestone 1: documents-as-text in chat, both twins. Design: bubble text
   stays what the user TYPED (chips show attachments); the engine gets engineText (labeled doc +
   message) recomposed into every windowed pass so follow-ups keep the doc in context. Extraction

@@ -6,14 +6,21 @@ import SwiftUI
 public struct AgentView: View {
     @ObservedObject private var session: AgentSession
     @ObservedObject private var attachments: AttachedFilesStore
+    @ObservedObject private var workspace: WorkspaceStore
+    @ObservedObject private var approvals: ApprovalBroker
     @State private var goal: String = ""
     @State private var showFilePicker = false
+    @State private var showFolderPicker = false
+    @State private var undoNotice: String?
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var scheme
 
-    public init(session: AgentSession, attachments: AttachedFilesStore = .shared) {
+    public init(session: AgentSession, attachments: AttachedFilesStore = .shared,
+                workspace: WorkspaceStore = .shared) {
         self.session = session
         self.attachments = attachments
+        self.workspace = workspace
+        self.approvals = session.approvals
     }
 
     public var body: some View {
@@ -105,6 +112,8 @@ public struct AgentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal)
 
+            workspaceRow(palette: p)
+
             // Attached files — what fs.read may see. Chips sit above the composer so what the
             // agent can touch is always visible before you send a goal (never buried in a menu).
             if !attachments.names.isEmpty {
@@ -146,6 +155,67 @@ public struct AgentView: View {
                 for url in urls { attachments.attach(url) }
             }
         }
+        // The ONLY door into the workspace (fs.list / fs.move): an explicit folder pick.
+        .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                workspace.grant(url)
+            }
+        }
+        // Per-run approval for mutating actions — the runner is suspended on this answer.
+        // Dismissing without choosing counts as NO (the safe reading of silence).
+        .confirmationDialog(
+            approvals.pending?.summary ?? "",
+            isPresented: Binding(
+                get: { approvals.pending != nil },
+                set: { stillShown in if !stillShown && approvals.pending != nil { approvals.resolve(false) } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Allow this action") { approvals.resolve(true) }
+            Button("Don't allow", role: .cancel) { approvals.resolve(false) }
+        }
+    }
+
+    /// The workspace chip row: which folder the agent may work in, revoke, and undo.
+    @ViewBuilder
+    private func workspaceRow(palette p: QuenderinPalette) -> some View {
+        if workspace.folderName != nil || undoNotice != nil {
+            HStack(spacing: 8) {
+                if let name = workspace.folderName {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder").font(.caption2)
+                        Text("\(name) — workspace").font(.caption)
+                        Button {
+                            workspace.revoke()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").font(.caption2)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Revoke workspace access")
+                    }
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(p.surface, in: Capsule())
+
+                    if AgentToolkit.undoJournal.count > 0 {
+                        Button("Undo last move") {
+                            undoNotice = AgentToolkit.undoJournal.undoLast()
+                        }
+                        .font(.caption)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(p.primary)
+                    }
+                }
+                if let notice = undoNotice {
+                    Text(notice).font(.caption).foregroundStyle(p.onSurfaceVariant)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+        }
     }
 
     /// Start the typed goal. On a plan failure ("try rephrasing it") the goal is handed back to the
@@ -180,6 +250,21 @@ public struct AgentView: View {
             .disabled(session.isRunning)
             .help("Attach a file the agent may read (with your permission)")
             .accessibilityLabel("Attach a file")
+
+            // Grant the workspace folder fs.list/fs.move work in — one folder at a time.
+            Button {
+                showFolderPicker = true
+            } label: {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .frame(width: 34, height: 34)
+                    .glassChrome(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(session.isRunning)
+            .help("Grant a workspace folder the agent may organize (with your approval per change)")
+            .accessibilityLabel("Grant a workspace folder")
 
             TextField("Give the agent a goal…", text: $goal)
                 .textFieldStyle(.plain)

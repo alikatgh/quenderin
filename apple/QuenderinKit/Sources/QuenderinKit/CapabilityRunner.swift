@@ -43,6 +43,38 @@ public final class UserDefaultsConsentStore: ConsentStore, @unchecked Sendable {
     }
 }
 
+/// Bridges the runner's async "may I?" to a SwiftUI dialog: the runner awaits `request`,
+/// the view observes `pending` and calls `resolve`. One question at a time (the agent loop is
+/// sequential). Dismissal without answering resolves to NO — the safe reading of silence.
+public final class ApprovalBroker: ObservableObject, @unchecked Sendable {
+    @MainActor @Published public private(set) var pending: ActionPreview?
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    public init() {}
+
+    /// Called by the runner (any context). Suspends until the user answers.
+    public func request(_ preview: ActionPreview) async -> Bool {
+        await withCheckedContinuation { cont in
+            lock.lock()
+            continuation = cont
+            lock.unlock()
+            Task { @MainActor in self.pending = preview }
+        }
+    }
+
+    /// Called by the UI on the user's answer (or on dialog dismissal, with `false`).
+    @MainActor
+    public func resolve(_ approved: Bool) {
+        pending = nil
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(returning: approved)
+    }
+}
+
 /// The enforcement point (AGENT_AUTONOMY_PLAN §6): every capability invocation goes
 /// gate → (refuse | run) → ledger, in that order, with NO path around it. The agent loop calls
 /// this instead of `capability.run` directly. Returns the observation string the loop feeds back
@@ -51,12 +83,19 @@ public struct CapabilityRunner: Sendable {
     private let consent: ConsentStore
     private let ledger: AuditLedger
     private let now: @Sendable () -> Date
+    /// Per-RUN approval for MUTATING capabilities (T2+): shown the preview, returns the user's
+    /// yes/no. FAIL-CLOSED: when no approver is wired (nil — e.g. a headless surface), a
+    /// mutating capability is refused outright. Consent-in-Settings says "this power may
+    /// exist"; this says "yes, do THIS one, now" — the Shortcuts distinction, kept.
+    private let approve: (@Sendable (ActionPreview) async -> Bool)?
 
     public init(consent: ConsentStore = InMemoryConsentStore(),
                 ledger: AuditLedger = InMemoryAuditLedger(),
+                approve: (@Sendable (ActionPreview) async -> Bool)? = nil,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.consent = consent
         self.ledger = ledger
+        self.approve = approve
         self.now = now
     }
 
@@ -83,7 +122,19 @@ public struct CapabilityRunner: Sendable {
         case .needsConsent(let preview):
             log("needsConsent", outcome: nil)
             return "Needs your permission first: \(preview.summary) Grant \"\(capability.name)\" in Settings to allow this."
-        case .allowed:
+        case .allowed(let preview):
+            // The write gate: a mutating action needs the user's yes for THIS run, not just a
+            // standing grant. No approver wired ⇒ refuse (fail closed), never silently write.
+            if preview.mutates {
+                guard let approve else {
+                    log("needsApproval", outcome: nil)
+                    return "This action changes files and needs your per-run approval, which this surface can't ask for. Not done."
+                }
+                guard await approve(preview) else {
+                    log("declined", outcome: nil)
+                    return "You declined: \(preview.summary) Nothing was changed."
+                }
+            }
             do {
                 let result = try await capability.run(input)
                 log("allowed", outcome: result)

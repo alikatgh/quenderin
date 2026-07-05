@@ -4,10 +4,21 @@
 user-facing version of this direction is the four-stage [roadmap](../website/roadmap.html);
 this file is *how we build it*.
 
-**Mission (stated by the owner, recorded in memory):** the GitHub tagline says "run LLMs
-locally" but the real mission is **local autonomous computer usage** — an AI that does real
-work on *your* machine, with the same guarantee as chat: nothing leaves the device. Local
-LLMs are the foundation; autonomy is the destination and the paid tier.
+**Mission (stated by the owner, recorded in memory — sharpened 2026-07-05):** the GitHub
+tagline says "run LLMs locally" but the real mission is **local autonomous computer usage**,
+meaning literally: *the user tells Quenderin what to do, and Quenderin operates the computer*
+— plans the steps, moves the files, does the chore — with a **local model** as the brain.
+The competitive frame is **Claude Cowork / cloud computer-use agents**: same "you say it, it
+does it" product, with the one guarantee they structurally cannot offer — the entire session
+(your files, your screen, your intent) never leaves the machine. Local LLMs are the
+foundation; this agent is the destination and the paid tier.
+
+**The product bet, stated honestly:** local models are weaker than cloud frontier models, so
+we do NOT win by out-reasoning Claude. We win on the chores people won't upload their
+filesystem for, by making the *harness* carry the intelligence: narrow deterministic
+capabilities, previews before writes, per-run approval, undo, a ledger, a kill switch. A
+bounded chore ("organize this folder", "rename these by date") needs reliability and trust,
+not genius — and reliability and trust are architecture, which we control.
 
 ---
 
@@ -219,8 +230,33 @@ Roadmap Stage 2's first deliverable, no engine work needed. Both twins:
   (Apple), extra escaped fields per row in the TSV (Android) — pre-Milestone-1 transcripts
   decode unchanged, verified by tests.
 
-Next: **the T2 design** (undo model, per-run confirmation UI) before any write capability
-exists — and PDF text extraction as the named `DocumentTextExtractor` extension.
+## Milestone 2 — the workspace: the first WRITE ✅ (shipped 2026-07-05)
+
+The first true "operate the computer" slice — the Cowork-class core loop (grant → plan →
+approve → act → undo), both twins:
+
+- **The workspace** (`WorkspaceStore`): ONE folder the user grants via the folder picker
+  (folder button on the Agent screen; chip + revoke). One at a time on purpose — a small
+  local model reasoning about one bounded directory is predictable.
+- **`fs.list` (T1)**: the perception half of "organize this folder". No input arguments a
+  model could get creative with.
+- **`fs.move` (T2 — the first write)**: "«file» to «subfolder»", plain names only (paths and
+  `..` rejected on shape), **never overwrites**, creates the destination folder, and records
+  every move in the **`UndoJournal`** ("Undo last move" on the Agent screen plays the inverse).
+- **The per-run approval gate** (`CapabilityRunner.approve`): a mutating action requires the
+  user's yes for THIS run — standing consent is not enough. **Fail-closed**: a surface with no
+  approver wired refuses every write. On the Agent screen it's a confirmation dialog fed by
+  `ApprovalBroker`; dismissing without answering counts as NO. Ledger decisions now include
+  `needsApproval` and `declined`.
+- T2's undo model resolved as designed in §9: move-back + no-overwrite + create-don't-replace
+  = "reversible enough" for v1; a transactional undo stack stays future work for T3.
+
+Verified: Swift 276 tests / Kotlin CoreVerify ALL PASSED — including fail-closed, declined,
+collision-refusal, and hostile-path cases. Android Compose UI rides the existing backlog.
+
+Next: PDF extraction for `DocumentTextExtractor` · multi-step plan preview (approve a PLAN
+once instead of each move — the Cowork UX) · `fs.rename` + `fs.trash` on the same
+approval/undo spine · registering the workspace story on the public roadmap page.
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
