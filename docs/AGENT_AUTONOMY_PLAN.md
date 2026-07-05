@@ -491,7 +491,12 @@ decision PARSER, which is unchanged.) Verified: 354 TS tests (2 new — stuck→
 and nudge→recovery), lint + parity green. Paired with a CLI `--max-steps <n>` (default 8, clamped
 [1,50]): the canonical multi-item chore the user cited ("friend + message 20 users from a list")
 needs *dozens* of steps, and the loop guard is exactly what makes raising the budget safe — distinct
-per-item actions don't trip the consecutive-repeat guard, but a stuck run still bails early.
+per-item actions don't trip the consecutive-repeat guard, but a stuck run still bails early. And its
+sibling: **parse-failure recovery** — the small model's #2 failure (after looping) is malformed JSON
+(a stray word, a trailing comma). One slip used to kill the whole run (`planError`); now the loop
+feeds the exact contract back and lets it retry, halting only on *consecutive* failures. Same
+graceful-degradation philosophy as the loop guard — a big cloud model rarely needs it, a small local
+one does, and it's what makes the local agent reliably usable rather than merely capable.
 
 **Post-M4 — `quenderin capabilities`: the discovery front door (2026-07-05).** You can't ask for what
 you don't know the agent can do — so the mission ("anything possible in macOS") needs a way to SEE

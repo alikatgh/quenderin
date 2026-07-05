@@ -52,6 +52,11 @@ export class CapabilityAgent {
         let prevSig: string | null = null;
         let lastObs = '';
         let stall = 0;
+        // Parse-failure recovery: a weak local model's #2 failure (after looping) is malformed
+        // structured output — a stray word, a trailing comma. Rather than kill the whole run on one
+        // slip (a big cloud model rarely slips; a small local one does), feed the contract back and
+        // let it retry, halting only if it can't produce valid JSON across consecutive tries.
+        let parseFailures = 0;
 
         for (let i = 0; i < this.maxSteps; i++) {
             // The kill switch, honored at the top of every turn: stop the WHOLE run instantly,
@@ -64,7 +69,15 @@ export class CapabilityAgent {
                 return { answer: null, steps, halt: 'planError' };
             }
             const decision = parseDecision(reply);
-            if (!decision) return { answer: null, steps, halt: 'planError' };
+            if (!decision) {
+                // Give it one corrective nudge with the exact contract; halt only if it slips again.
+                if (++parseFailures >= 2) return { answer: null, steps, halt: 'planError' };
+                const nudge = 'Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {"tool":"<name>","input":"<text>"}, {"plan":[{"tool":"<name>","input":"<text>"},…]}, or {"answer":"<text>"}.';
+                transcript += `\n${nudge}`;
+                steps.push(nudge);
+                continue;
+            }
+            parseFailures = 0;
 
             if (decision.kind === 'answer') {
                 // A completed task teaches the harness — record the proven capability sequence so

@@ -74,13 +74,26 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         expect(ledger.entries().filter(e => e.decision === 'allowed')).toHaveLength(3);   // tap, type, key ran
     });
 
-    it('halts as planError on unparseable planner output, changing nothing', async () => {
+    it('halts as planError only after consecutive unparseable replies, changing nothing', async () => {
         const device = new FakeDevice(SCREEN);
         const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
         const agent = new CapabilityAgent(async () => 'I cannot help with that', [new AppTapCapability(device, parser)], runner);
         const result = await agent.run('do something');
         expect(result.halt).toBe('planError');
         expect(device.taps).toHaveLength(0);
+    });
+
+    it('RECOVERS from a single malformed reply: nudge with the contract, then proceed', async () => {
+        const device = new FakeDevice(SCREEN);
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        // The local model slips once (prose, no JSON), then gets it right — the run should survive.
+        const replies = ['sure, let me help with that!', JSON.stringify({ answer: 'done' })];
+        let turn = 0;
+        const agent = new CapabilityAgent(async () => replies[Math.min(turn++, replies.length - 1)], [new AppTapCapability(device, parser)], runner);
+        const result = await agent.run('do the thing');
+        expect(result.halt).toBe('answered');
+        expect(result.answer).toBe('done');
+        expect(result.steps.some(s => s.includes('not valid JSON'))).toBe(true);   // the corrective nudge was given
     });
 
     it('a single unconsented capability is refused mid-loop (not fatal), agent keeps going', async () => {
