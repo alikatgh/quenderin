@@ -272,8 +272,13 @@ previews and approves ONCE, the runner executes sequentially. Both twins:
 Verified: Swift 279 tests / Kotlin CoreVerify ALL PASSED (incl. one-approval-for-two-moves,
 declined-plan-changes-nothing, blocked-step-never-reaches-approval, scripted end-to-end).
 
-Next: `fs.rename` + `fs.trash` on the same spine · PDF extraction · Android Compose UI
-catch-up · the public announcement (roadmap Stage 3 has real teeth now).
+**Post-M3 additions (2026-07-05):** `fs.rename` + `fs.trash` shipped on the same spine, both
+twins (trash = the workspace's VISIBLE Trash/ folder, not the system trash — identical
+semantics everywhere, undo moves it back, nothing is ever deleted). PDF text extraction
+shipped on Apple via PDFKit (page-by-page, cap-aware, textless scans refused honestly);
+**Android's extractor remains text-only** — a dependency-free PDF parser doesn't exist, so
+that gap is recorded here and rides the Android backlog. The public roadmap/dev-log now
+tell the Stage-3 story. Remaining: the Android Compose UI catch-up (standing chip).
 
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file

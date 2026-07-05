@@ -127,6 +127,118 @@ public final class UndoJournal: @unchecked Sendable {
     }
 }
 
+/// T2: rename a file inside the workspace — same spine as fs.move (plain names, no overwrite,
+/// journal-recorded so Undo restores the old name).
+public struct FileRenameCapability: Capability {
+    public let name = "fs.rename"
+    public let purpose = "Rename a file in the workspace. Input: \"<current name> to <new name>\"."
+    public let tier: CapabilityTier = .reversibleWrite
+    public let blastRadius: BlastRadius = .write(resource: "the workspace folder")
+
+    private let workspace: @Sendable () -> URL?
+    private let journal: UndoJournal
+
+    public init(workspace: @escaping @Sendable () -> URL?, journal: UndoJournal) {
+        self.workspace = workspace
+        self.journal = journal
+    }
+
+    private func resolve(_ input: String) -> (from: URL, to: URL, fromName: String, toName: String)? {
+        guard let folder = workspace() else { return nil }
+        let parts = input.components(separatedBy: " to ")
+        guard parts.count == 2 else { return nil }
+        let fromName = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+        let toName = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+        for name in [fromName, toName] where name.isEmpty || name.contains("/") || name.contains("..") { return nil }
+        return (folder.appendingPathComponent(fromName), folder.appendingPathComponent(toName), fromName, toName)
+    }
+
+    public func plan(_ input: String) async throws -> ActionPreview {
+        guard workspace() != nil else {
+            return ActionPreview(summary: "No workspace folder granted. Ask the user to grant one first.", mutates: false)
+        }
+        guard let r = resolve(input), FileManager.default.fileExists(atPath: r.from.path) else {
+            return ActionPreview(summary: "Input must be \"<current name> to <new name>\", both plain names of workspace files.", mutates: false)
+        }
+        return ActionPreview(summary: "Rename \"\(r.fromName)\" to \"\(r.toName)\" (inside the workspace; undoable).", mutates: true)
+    }
+
+    public func run(_ input: String) async throws -> String {
+        guard workspace() != nil else { return "No workspace folder granted. Ask the user to grant one first." }
+        guard let r = resolve(input) else {
+            return "Input must be \"<current name> to <new name>\" — plain names, no paths."
+        }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: r.from.path) else {
+            return "No file named \"\(r.fromName)\" in the workspace. Use fs.list to see what's there."
+        }
+        guard !fm.fileExists(atPath: r.to.path) else {
+            return "\"\(r.toName)\" already exists — refusing to overwrite."
+        }
+        do { try fm.moveItem(at: r.from, to: r.to) } catch {
+            return "Couldn't rename \"\(r.fromName)\": \(error.localizedDescription)"
+        }
+        journal.record(from: r.from, to: r.to)
+        return "Renamed \"\(r.fromName)\" to \"\(r.toName)\". (Undo is available.)"
+    }
+}
+
+/// T2: move a file into the workspace's visible "Trash" subfolder — deliberately NOT the system
+/// trash: identical, predictable semantics on every platform, in plain sight, and Undo moves it
+/// straight back. Sugar over the fs.move spine for the model's most common cleanup verb.
+public struct FileTrashCapability: Capability {
+    public let name = "fs.trash"
+    public let purpose = "Move a file into the workspace's Trash folder. Input: \"<file name>\"."
+    public let tier: CapabilityTier = .reversibleWrite
+    public let blastRadius: BlastRadius = .write(resource: "the workspace folder")
+
+    private let workspace: @Sendable () -> URL?
+    private let journal: UndoJournal
+
+    public init(workspace: @escaping @Sendable () -> URL?, journal: UndoJournal) {
+        self.workspace = workspace
+        self.journal = journal
+    }
+
+    public func plan(_ input: String) async throws -> ActionPreview {
+        let name = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard workspace() != nil, !name.isEmpty, !name.contains("/"), !name.contains("..") else {
+            return ActionPreview(summary: "Input is one plain file name from the workspace.", mutates: false)
+        }
+        return ActionPreview(summary: "Move \"\(name)\" into the workspace's Trash/ folder (undoable — not deleted).", mutates: true)
+    }
+
+    public func run(_ input: String) async throws -> String {
+        guard let folder = workspace() else { return "No workspace folder granted. Ask the user to grant one first." }
+        let name = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !name.contains("/"), !name.contains("..") else {
+            return "Input is one plain file name — no paths."
+        }
+        let file = folder.appendingPathComponent(name)
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: file.path) else {
+            return "No file named \"\(name)\" in the workspace. Use fs.list to see what's there."
+        }
+        let trashDir = folder.appendingPathComponent("Trash")
+        var isDir: ObjCBool = false
+        if fm.fileExists(atPath: trashDir.path, isDirectory: &isDir) {
+            guard isDir.boolValue else { return "\"Trash\" is a file, not a folder." }
+        } else {
+            do { try fm.createDirectory(at: trashDir, withIntermediateDirectories: false) }
+            catch { return "Couldn't create Trash/: \(error.localizedDescription)" }
+        }
+        let target = trashDir.appendingPathComponent(name)
+        guard !fm.fileExists(atPath: target.path) else {
+            return "Trash/\(name) already exists — refusing to overwrite."
+        }
+        do { try fm.moveItem(at: file, to: target) } catch {
+            return "Couldn't trash \"\(name)\": \(error.localizedDescription)"
+        }
+        journal.record(from: file, to: target)
+        return "Moved \"\(name)\" to Trash/. (Undo restores it; nothing is deleted.)"
+    }
+}
+
 /// T2 — the FIRST write capability: move a file inside the workspace. Every safety property
 /// is structural, not behavioral:
 ///   input   — "«file» to «subfolder»", both resolved INSIDE the workspace (no paths, no "..")

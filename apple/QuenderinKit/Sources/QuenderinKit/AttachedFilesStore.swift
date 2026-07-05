@@ -79,6 +79,8 @@ public enum AgentToolkit {
             FileReadCapability(grantedFiles: { attachments.snapshot() }),
             FileListCapability(workspace: { workspace.snapshot() }),
             FileMoveCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
+            FileRenameCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
+            FileTrashCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
         ]
     }
 

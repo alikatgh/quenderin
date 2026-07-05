@@ -1585,6 +1585,37 @@ fun main() {
         ok
     })
 
+    // --- fs.rename + fs.trash on the same write spine ---
+    check("fs.rename renames, undo restores the ORIGINAL name, never overwrites, rejects paths", run {
+        val dir = java.nio.file.Files.createTempDirectory("rn").toFile()
+        java.io.File(dir, "draft.txt").writeText("A")
+        java.io.File(dir, "final.txt").writeText("B")
+        val journal = UndoJournal()
+        val rename = FileRenameCapability({ dir }, journal)
+        val collision = rename.run("draft.txt to final.txt").contains("refusing to overwrite") &&
+            java.io.File(dir, "final.txt").readText() == "B"
+        val ok = rename.run("draft.txt to report.txt").contains("Renamed") &&
+            java.io.File(dir, "report.txt").isFile
+        val undone = journal.undoLast().contains("back to where it was") && java.io.File(dir, "draft.txt").isFile
+        val hostile = rename.run("../evil to x").let { it.contains("plain names") || it.contains("Input must be") }
+        dir.deleteRecursively()
+        collision && ok && undone && hostile
+    })
+    check("fs.trash moves to a visible Trash/ (nothing deleted) and undo restores", run {
+        val dir = java.nio.file.Files.createTempDirectory("tr").toFile()
+        java.io.File(dir, "old.log").writeText("junk")
+        val journal = UndoJournal()
+        val trash = FileTrashCapability({ dir }, journal)
+        val out = trash.run("old.log")
+        val trashed = out.contains("Moved \"old.log\" to Trash/") && out.contains("nothing is deleted") &&
+            java.io.File(dir, "Trash/old.log").isFile
+        journal.undoLast()
+        val restored = java.io.File(dir, "old.log").isFile
+        val previewHonest = trash.plan("old.log").let { it.mutates && it.summary.contains("undoable — not deleted") }
+        dir.deleteRecursively()
+        trashed && restored && previewHonest
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")
