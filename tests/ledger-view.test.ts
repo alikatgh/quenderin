@@ -62,4 +62,25 @@ describe('formatHistory', () => {
         const out = formatHistory([entry({ decision: 'allowed' }), entry({ decision: 'unverified' }), entry({ decision: 'declined' })]);
         expect(out).toContain('3 logged · 2 ran');
     });
+
+    it('groups actions under a "Task:" header per goal (the structured per-task audit)', () => {
+        const out = formatHistory([
+            entry({ timestampMs: 3000, capability: 'fs.move', goal: 'organize downloads' }),
+            entry({ timestampMs: 2000, capability: 'fs.list', goal: 'organize downloads' }),
+            entry({ timestampMs: 1000, capability: 'mac.reminders.add', goal: 'plan my week' }),
+        ]);
+        expect(out).toContain('Task: organize downloads');
+        expect(out).toContain('Task: plan my week');
+        // The two "organize" actions share ONE header; the older task gets its own.
+        expect(out.match(/Task:/g)).toHaveLength(2);
+        // Header precedes its actions.
+        const lines = out.split('\n');
+        expect(lines.findIndex(l => l.includes('Task: organize'))).toBeLessThan(lines.findIndex(l => l.includes('fs.move')));
+    });
+
+    it('labels goal-less rows as "(no task recorded)" so old ledger entries still render', () => {
+        const out = formatHistory([entry({ capability: 'fs.list' })]);   // no goal
+        expect(out).toContain('(no task recorded)');
+        expect(out).toContain('fs.list');
+    });
 });

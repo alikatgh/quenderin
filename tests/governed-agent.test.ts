@@ -139,6 +139,8 @@ describe('createGovernedAgent — file chores end to end on a real workspace', (
         expect(fs.existsSync(path.join(ws, 'Finance', 'invoice.pdf'))).toBe(true);   // real disk changed
         expect(fs.existsSync(path.join(ws, 'invoice.pdf'))).toBe(false);
         expect(agent.ledger.entries().filter(e => e.decision === 'allowed').length).toBeGreaterThanOrEqual(1);
+        // Every ledger entry is stamped with the task, so `history` can group this run's actions.
+        expect(agent.ledger.entries().every(e => e.goal === 'organize my downloads')).toBe(true);
 
         await agent.undoAll();
         expect(fs.existsSync(path.join(ws, 'invoice.pdf'))).toBe(true);              // moved back

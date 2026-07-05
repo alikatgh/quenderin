@@ -32,8 +32,15 @@ export class CapabilityRunner {
     /** Successful mutating actions since the last bulk re-confirmation this run. */
     private mutationsThisRun = 0;
 
+    /** The goal of the current run — stamped onto every ledger entry so `history` can group a task's
+     *  actions together (a structured local audit, vs a cloud agent's flat chat log). */
+    private runGoal?: string;
+
+    /** Tell the runner what task the upcoming actions serve (the agent sets this at run start). */
+    setRunGoal(goal: string | undefined): void { this.runGoal = goal?.trim() || undefined; }
+
     private log(cap: Capability, input: string, decision: string, outcome?: string): void {
-        this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome });
+        this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome, goal: this.runGoal });
     }
 
     /** Advisory post-condition check: annotate the observation + ledger an 'unverified' note when

@@ -10,7 +10,7 @@ import { AuditEntry } from './capability.js';
 
 const RESET = '\x1b[0m';
 const COLORS = {
-    green: '\x1b[32m', red: '\x1b[31m', yellow: '\x1b[33m', dim: '\x1b[2m',
+    green: '\x1b[32m', red: '\x1b[31m', yellow: '\x1b[33m', dim: '\x1b[2m', bold: '\x1b[1m',
 } as const;
 type Color = keyof typeof COLORS;
 
@@ -56,19 +56,30 @@ export function formatHistory(entries: AuditEntry[], opts: HistoryOptions = {}):
     const shown = newestFirst.slice(0, limit);
 
     const lines: string[] = [];
+    let lastGoal: string | null | undefined = Symbol('start') as unknown as string;   // force a header on the first row
     for (const e of shown) {
+        // Group by task: print a "Task:" header whenever the goal changes between adjacent rows.
+        // Each `quenderin do` is one process = one goal, so a task's actions are contiguous. This is
+        // the structured, per-task local audit a cloud agent's flat chat log can't give you.
+        const goal = e.goal?.trim() || null;
+        if (goal !== lastGoal) {
+            if (lines.length > 0) lines.push('');
+            lines.push(goal ? paint(`Task: ${goal}`, 'bold') : paint('(no task recorded)', 'dim'));
+            lastGoal = goal;
+        }
         const st = styleFor(e.decision);
-        lines.push(`${paint(stamp(e.timestampMs), 'dim')}  ${paint(st.symbol, st.color)} ${e.capability}${paint(`  ${st.note}`, 'dim')}`);
+        lines.push(`  ${paint(stamp(e.timestampMs), 'dim')}  ${paint(st.symbol, st.color)} ${e.capability}${paint(`  ${st.note}`, 'dim')}`);
         const input = e.input?.trim();
-        if (input) lines.push(paint(`      ${input}`, 'dim'));
+        if (input) lines.push(paint(`        ${input}`, 'dim'));
         const outcome = e.outcome?.trim();
         if (outcome) {
             // Keep a multi-line outcome (e.g. a directory listing) aligned under the arrow.
             const [first, ...rest] = outcome.split('\n');
-            lines.push(paint(`      → ${first}`, 'dim'));
-            for (const r of rest) lines.push(paint(`        ${r}`, 'dim'));
+            lines.push(paint(`        → ${first}`, 'dim'));
+            for (const r of rest) lines.push(paint(`          ${r}`, 'dim'));
         }
     }
+    lines.push('');
 
     const hidden = newestFirst.length - shown.length;
     if (hidden > 0) lines.push(paint(`  …${hidden} older ${hidden === 1 ? 'entry' : 'entries'} (use --limit).`, 'dim'));

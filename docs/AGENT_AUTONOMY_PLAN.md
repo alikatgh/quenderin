@@ -443,7 +443,11 @@ local, private, tamper-evident log of exactly what the agent did to this machine
 per-decision glyphs — ✓ ran / ✗ blocked by safety / ✗ you declined / ○ skipped — with input +
 outcome), which a cloud agent structurally can't offer. Renderer is pure (`ledgerView.ts`,
 entries → string, no clock/fs) so it's unit-tested headless; the command is a thin reader over
-`FileAuditLedger`. Verified: 326 TS tests (6 new), lint + parity green.
+`FileAuditLedger`. Verified: 326 TS tests (6 new), lint + parity green. **Later made it per-TASK:**
+every ledger entry is now stamped with the run's goal (the runner's single `log()` funnel + a
+`setRunGoal` the factory calls at run start), so `history` groups a task's actions under one
+`Task: <goal>` header instead of a flat list — a structured, local, per-task audit trail where a
+cloud agent gives you an opaque chat log. Older goal-less rows still render (as "(no task recorded)").
 
 **Post-M4 — the lodestar delivered: run the user's Shortcuts (2026-07-05).** §1 says the win is
 "Apple bought Workflow, not an AI that clicks things." `mac.shortcuts.run` (T3) invokes one of

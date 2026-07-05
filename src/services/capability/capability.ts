@@ -95,6 +95,7 @@ export interface AuditEntry {
     input: string;   // truncated
     decision: string; // "allowed" | "blocked(<kw>)" | "needsConsent" | "needsApproval" | "declined" | "error"
     outcome?: string;  // truncated result/error when it ran; undefined when refused
+    goal?: string;     // the task this action served — lets `history` group actions per-task (optional; older rows lack it)
 }
 
 export interface AuditLedger {

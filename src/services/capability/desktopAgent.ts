@@ -98,7 +98,10 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
     );
     const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory);
     return {
-        run: (goal: string) => agent.run(goal, deps.signal),
+        run: (goal: string) => {
+            runner.setRunGoal(goal);   // stamp every ledger entry with the task, for per-task `history`
+            return agent.run(goal, deps.signal);
+        },
         undoAll: () => session.undoAll(),
         undoLog: () => session.undoLog(),
         capabilities,
