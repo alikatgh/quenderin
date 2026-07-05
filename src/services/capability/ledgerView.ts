@@ -25,6 +25,7 @@ function styleFor(decision: string): DecisionStyle {
     if (decision === 'declined') return { symbol: '✗', color: 'red', note: 'you declined' };
     if (decision === 'needsApproval') return { symbol: '○', color: 'yellow', note: 'no approval — skipped' };
     if (decision === 'needsConsent') return { symbol: '○', color: 'yellow', note: 'not permitted — skipped' };
+    if (decision === 'dryRun') return { symbol: '◇', color: 'dim', note: 'dry run — would do, didn\'t' };
     if (decision === 'cancelled') return { symbol: '⊘', color: 'dim', note: 'stopped' };
     if (decision === 'bulkPaused') return { symbol: '⊘', color: 'yellow', note: 'bulk brake' };
     if (decision === 'error') return { symbol: '!', color: 'red', note: 'errored' };

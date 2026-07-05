@@ -59,6 +59,9 @@ export interface GovernedAgentDeps {
     signal?: AbortSignal;
     bulkThreshold?: number;
     maxSteps?: number;
+    /** Dry run — execute reads but only PREVIEW mutating actions (see what it would do, change
+     *  nothing). The CLI's `--dry-run`. */
+    dryRun?: boolean;
     /** Skill memory — primes the model with proven sequences for similar past goals, and learns
      *  from each success. Pass a shared instance to make the agent improve across runs. */
     memory?: SkillMemory;
@@ -95,6 +98,7 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
         undefined,
         session,
         deps.bulkThreshold,
+        deps.dryRun ?? false,
     );
     const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory);
     return {

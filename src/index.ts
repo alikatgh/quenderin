@@ -244,8 +244,9 @@ program
   .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/move/rename/trash/read)')
   .option('-s, --max-steps <n>', 'how many steps the agent may take (default 8; raise for multi-item tasks)')
   .option('-g, --gui', 'allow clicking/typing in any macOS app via accessibility (needs the Accessibility permission)')
+  .option('-n, --dry-run', 'show exactly what it would do — read for real, but change nothing')
   .option('-y, --yes', 'auto-approve every change (use with care)')
-  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; yes?: boolean }) => {
+  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; dryRun?: boolean; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
     let workspaceDir: string | null = null;
@@ -306,7 +307,9 @@ program
         macUi,
         workspace: workspaceDir ? () => workspaceDir : undefined,
         consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory, maxSteps,
+        dryRun: options.dryRun ?? false,
       });
+      if (options.dryRun) console.log(dim('  dry run — reading for real, changing nothing.'));
       console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this machine')}\n`);
       const result = await agent.run(goal);
       saveSkillMemory(memory);   // remember what worked for next time

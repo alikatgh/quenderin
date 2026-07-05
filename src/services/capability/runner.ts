@@ -27,6 +27,10 @@ export class CapabilityRunner {
          *  made N changes — keep going?"). The runaway/bulk brake: a stuck loop or a 500-message
          *  outreach hits a wall. 0 disables. A cloud agent runs 500 steps and bills you; ours pauses. */
         private readonly bulkThreshold = 20,
+        /** Dry run: execute reads (to ground the plan in real state) but NEVER perform a mutating
+         *  action — show its preview and move on. "See exactly what it would do, touching nothing" —
+         *  an exact, side-effect-free, LOCAL preview a cloud agent can't offer. */
+        private readonly dryRun = false,
     ) { }
 
     /** Successful mutating actions since the last bulk re-confirmation this run. */
@@ -103,6 +107,11 @@ export class CapabilityRunner {
             this.log(capability, input, 'error', `preview failed: ${String(e)}`);
             return `Couldn't preview ${capability.name}: ${String(e)}`;
         }
+        // 3b. Dry run: a mutating action is SHOWN, never done — no approval, no execution, no undo.
+        if (this.dryRun && preview.mutates) {
+            this.log(capability, input, 'dryRun', preview.summary);
+            return `[dry run] Would: ${preview.summary} (nothing was changed)`;
+        }
         // 4. Per-run approval when it mutates. Fail closed without an approver.
         if (preview.mutates) {
             if (!this.approve) {
@@ -160,6 +169,12 @@ export class CapabilityRunner {
             } catch (e) {
                 return `Couldn't preview step ${previews.length + 1} (${item.capability.name}): ${String(e)}. Nothing was done.`;
             }
+        }
+        // ── Dry run: if any step mutates, show the WHOLE plan and stop — nothing runs.
+        if (this.dryRun && previews.some(p => p.mutates)) {
+            const numbered = previews.map((p, i) => `${i + 1}. ${p.summary}`).join('\n');
+            items.forEach((item, i) => this.log(item.capability, item.input, previews[i].mutates ? 'dryRun' : 'allowed', previews[i].summary));
+            return `[dry run] The agent would run this plan (nothing was changed):\n${numbered}`;
         }
         // ── One aggregate approval when anything writes.
         if (previews.some(p => p.mutates)) {

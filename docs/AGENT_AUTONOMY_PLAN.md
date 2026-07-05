@@ -507,6 +507,17 @@ the governance model legible in a way a cloud agent's opaque "it does stuff" isn
 (`catalog.ts`, capabilities → string), so it's unit-tested headless; the command is a thin reader
 that instantiates the real library. Verified: 359 TS tests (4 new), lint + parity green.
 
+**Post-M4 — dry run: see everything, touch nothing (2026-07-05).** Per-run approval previews each
+step, but there was no way to see the WHOLE intended run before committing to any of it. `quenderin do
+--dry-run` closes that: reads execute for real (so the plan is grounded in the actual folder/screen),
+but every mutating action is only *previewed* — "[dry run] Would: move invoice.pdf into Finance/" —
+never done, ledgered `dryRun`, no approval needed (nothing happens), nothing to undo. An exact, side-
+effect-free, LOCAL preview of the changes a task would make — which a cloud agent structurally can't
+offer. One `dryRun` flag on the runner (before the approval/execute path), threaded through the
+factory and CLI. Verified: 379 TS tests (5 new — write previewed-not-done, reads still execute,
+'dryRun' ledgering, whole-plan preview, and a control that the same move really happens without the
+flag), lint + parity green.
+
 **Post-M4 — the Cowork-parity leap: drive ANY macOS app (2026-07-05).** The last big reach gap was
 that desktop control only reached AppleScript-scriptable apps + Shortcuts; clicking a button in an
 arbitrary GUI app (Cowork's whole premise: screen → click) had no governed path. Closed it exactly
