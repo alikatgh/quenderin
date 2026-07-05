@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (macOS) — Grew the macOS capability library on the proven seam: mac.frontApp +
+  mac.clipboard.read (T1 perception), mac.app.open + mac.notes.create (T2 action, approved).
+  "Anything possible in macOS" = breadth of governed caps, not an escape hatch. Notes tries the
+  iCloud folder then falls back to the default container (accounts aren't guaranteed). All on
+  the escaper+execFile injection-safe path. Lesson: each new verb is a small safe add, spine fixed.
+
 - 2026-07-05 (desktop/macOS) — First NATIVE macOS capabilities: mac.calendar.today (T1 read),
   mac.reminders.add (T2 write, approved), on the governed TS spine over an osascript seam. The
   load-bearing safety piece is escapeAppleScriptString + execFile (no shell): LLM-produced input

@@ -88,6 +88,142 @@ export class ReminderAddCapability implements Capability {
     }
 }
 
+/** T1: what app is frontmost right now — cheap perception, "what am I looking at?". */
+export class FrontAppCapability implements Capability {
+    readonly name = 'mac.frontApp';
+    readonly purpose = 'Name the frontmost (active) macOS app. No input.';
+    readonly tier = CapabilityTier.ReadOnly;
+    readonly blastRadius: BlastRadius = { kind: 'read', resource: 'the active app name' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    async plan(): Promise<ActionPreview> {
+        return { summary: 'Would read which app is frontmost (read-only).', mutates: false };
+    }
+
+    async run(): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const script = 'tell application "System Events" to return name of first application process whose frontmost is true';
+        try {
+            const name = (await this.mac.runAppleScript(script)).trim();
+            return name ? `The frontmost app is ${name}.` : 'Could not tell which app is frontmost.';
+        } catch (e) {
+            return describeMacError(e, 'read the active app');
+        }
+    }
+}
+
+/** T1: read the clipboard — huge for agent context ("use what I just copied"). Read-only. */
+export class ClipboardReadCapability implements Capability {
+    readonly name = 'mac.clipboard.read';
+    readonly purpose = 'Read the current text on the macOS clipboard. No input.';
+    readonly tier = CapabilityTier.ReadOnly;
+    readonly blastRadius: BlastRadius = { kind: 'read', resource: 'the clipboard' };
+
+    constructor(private readonly mac: MacAutomation, private readonly maxChars = 4000) { }
+
+    async plan(): Promise<ActionPreview> {
+        return { summary: 'Would read the text currently on your clipboard (read-only).', mutates: false };
+    }
+
+    async run(): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        try {
+            const text = await this.mac.runAppleScript('return (the clipboard as text)');
+            if (!text) return 'The clipboard is empty (or holds no text).';
+            return text.length > this.maxChars ? text.slice(0, this.maxChars) + '\n[…clipboard truncated]' : text;
+        } catch (e) {
+            return describeMacError(e, 'read the clipboard');
+        }
+    }
+}
+
+/** T2: open (launch/activate) an app by name. A side effect, so approved — reversible (just quit). */
+export class OpenAppCapability implements Capability {
+    readonly name = 'mac.app.open';
+    readonly purpose = 'Open (launch and bring to front) a macOS app. Input: the app name, e.g. "Safari".';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the desktop (launches an app)' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const app = input.trim();
+        if (!app) return { summary: 'Input is the app name to open.', mutates: false };
+        return { summary: `Open "${app}" and bring it to the front (quit it to undo).`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const app = input.trim();
+        if (!app) return 'Nothing to open — the app name is empty.';
+        // `tell application "<name>" to activate` launches if needed and focuses. The name is
+        // escaped into the string literal; a nonexistent app surfaces a clean AppleScript error.
+        const script = `tell application "${escapeAppleScriptString(app)}" to activate`;
+        try {
+            await this.mac.runAppleScript(script);
+            return `Opened "${app}".`;
+        } catch (e) {
+            const msg = (e as Error)?.message ?? '';
+            if (/Can’t get application|isn't running|-1728|-10814|not found/i.test(msg)) {
+                return `Couldn't find an app named "${app}".`;
+            }
+            return describeMacError(e, `open "${app}"`);
+        }
+    }
+}
+
+/** T2: create a Note with a title/body. A create — reversible (delete the note). Approved. */
+export class NoteCreateCapability implements Capability {
+    readonly name = 'mac.notes.create';
+    readonly purpose = 'Create a note in macOS Notes. Input: the note text (first line becomes the title).';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'macOS Notes' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const body = input.trim();
+        if (!body) return { summary: 'Input is the note text.', mutates: false };
+        const title = body.split('\n')[0];
+        const shown = title.length > 60 ? title.slice(0, 60) + '…' : title;
+        return { summary: `Create a note "${shown}" (delete it in Notes to undo).`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const body = input.trim();
+        if (!body) return 'Nothing to write — the note text is empty.';
+        const escaped = escapeAppleScriptString(body);
+        const script = [
+            'tell application "Notes"',
+            `  make new note at folder "Notes" of account "iCloud" with properties {body:"${escaped}"}`,
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        // The iCloud account/folder isn't guaranteed; fall back to the default container.
+        const fallback = [
+            'tell application "Notes"',
+            `  make new note with properties {body:"${escaped}"}`,
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        const title = body.split('\n')[0];
+        const shown = title.length > 60 ? title.slice(0, 60) + '…' : title;
+        try {
+            await this.mac.runAppleScript(script);
+            return `Created a note "${shown}".`;
+        } catch {
+            try {
+                await this.mac.runAppleScript(fallback);
+                return `Created a note "${shown}".`;
+            } catch (e) {
+                return describeMacError(e, 'create the note');
+            }
+        }
+    }
+}
+
 function describeMacError(e: unknown, action: string): string {
     const code = (e as { code?: string })?.code;
     if (code === 'MAC_ONLY') return NOT_MAC;
@@ -103,7 +239,13 @@ function describeMacError(e: unknown, action: string): string {
 /** The macOS toolkit — grows as capabilities are added; the spine stays fixed. */
 export function macCapabilities(mac: MacAutomation): Capability[] {
     return [
+        // Perception (T1 — no approval)
+        new FrontAppCapability(mac),
+        new ClipboardReadCapability(mac),
         new CalendarTodayCapability(mac),
+        // Action (T2 — per-run approval)
+        new OpenAppCapability(mac),
+        new NoteCreateCapability(mac),
         new ReminderAddCapability(mac),
     ];
 }

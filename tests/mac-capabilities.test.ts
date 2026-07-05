@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { MacAutomation, escapeAppleScriptString } from '../src/services/capability/macAutomation.js';
-import { CalendarTodayCapability, ReminderAddCapability } from '../src/services/capability/macCapabilities.js';
+import {
+    CalendarTodayCapability, ReminderAddCapability,
+    FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability,
+} from '../src/services/capability/macCapabilities.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
 
@@ -13,6 +16,18 @@ class FakeMac implements MacAutomation {
         this.scripts.push(script);
         if (this.fail) throw Object.assign(new Error(this.fail), { code: 'MAC_ERROR' });
         return this.stdout;
+    }
+}
+
+/** A fake that fails the FIRST script and succeeds after — for the Notes iCloud→default fallback. */
+class FakeMacFailOnce implements MacAutomation {
+    scripts: string[] = [];
+    private failed = false;
+    available(): boolean { return true; }
+    async runAppleScript(script: string): Promise<string> {
+        this.scripts.push(script);
+        if (!this.failed) { this.failed = true; throw Object.assign(new Error('no such folder'), { code: 'MAC_ERROR' }); }
+        return 'ok';
     }
 }
 
@@ -86,5 +101,60 @@ describe('mac.reminders.add (T2 — approved, injection-safe)', () => {
         const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
         const out = await runner.execute(new ReminderAddCapability(denied), 'x');
         expect(out).toContain('System Settings');
+    });
+});
+
+describe('perception capabilities (T1 — no approval)', () => {
+    it('mac.frontApp names the active app', async () => {
+        const mac = new FakeMac('Safari');
+        const consent = new InMemoryConsentStore(); consent.setGranted('mac.frontApp', true);
+        const out = await new CapabilityRunner(consent).execute(new FrontAppCapability(mac), '');
+        expect(out).toBe('The frontmost app is Safari.');
+        expect(mac.scripts[0]).toContain('frontmost is true');
+    });
+
+    it('mac.clipboard.read returns the clipboard text and truncates huge content', async () => {
+        expect(await new ClipboardReadCapability(new FakeMac('copied text')).run()).toBe('copied text');
+        expect(await new ClipboardReadCapability(new FakeMac('')).run()).toContain('clipboard is empty');
+        const big = new ClipboardReadCapability(new FakeMac('x'.repeat(5000)), 100);
+        expect(await big.run()).toContain('[…clipboard truncated]');
+    });
+});
+
+describe('mac.app.open (T2 — approved)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.app.open', true); return c; };
+
+    it('opens an app after approval', async () => {
+        const mac = new FakeMac('');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new OpenAppCapability(mac), 'Safari')).toBe('Opened "Safari".');
+        expect(mac.scripts[0]).toBe('tell application "Safari" to activate');
+    });
+
+    it('reports a missing app cleanly and fails closed without approval', async () => {
+        const missing = new FakeMac('ok', true, "Can’t get application \"Nope\"");
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new OpenAppCapability(missing), 'Nope')).toContain('Couldn\'t find an app');
+        const mac = new FakeMac('');
+        expect(await new CapabilityRunner(grant()).execute(new OpenAppCapability(mac), 'Safari')).toContain('per-run approval');
+        expect(mac.scripts).toHaveLength(0);
+    });
+});
+
+describe('mac.notes.create (T2 — approved, iCloud→default fallback)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.notes.create', true); return c; };
+
+    it('creates a note after approval, first line as the title', async () => {
+        const mac = new FakeMac('ok');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new NoteCreateCapability(mac), 'Groceries\nmilk, eggs')).toBe('Created a note "Groceries".');
+        expect(mac.scripts[0]).toContain('make new note');
+    });
+
+    it('falls back to the default container when the iCloud folder is missing', async () => {
+        const mac = new FakeMacFailOnce();
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        expect(await runner.execute(new NoteCreateCapability(mac), 'Idea')).toBe('Created a note "Idea".');
+        expect(mac.scripts).toHaveLength(2);   // iCloud attempt failed, default succeeded
     });
 });
