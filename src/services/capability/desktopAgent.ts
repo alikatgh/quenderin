@@ -6,6 +6,7 @@ import {
 } from './capability.js';
 import { CapabilityRunner, Approver } from './runner.js';
 import { CapabilityAgent, Planner } from './capabilityAgent.js';
+import { SkillMemory } from './skillMemory.js';
 import { appCapabilities } from './appCapabilities.js';
 import { MacAutomation } from './macAutomation.js';
 import { macCapabilities } from './macCapabilities.js';
@@ -49,6 +50,9 @@ export interface GovernedAgentDeps {
     signal?: AbortSignal;
     bulkThreshold?: number;
     maxSteps?: number;
+    /** Skill memory — primes the model with proven sequences for similar past goals, and learns
+     *  from each success. Pass a shared instance to make the agent improve across runs. */
+    memory?: SkillMemory;
 }
 
 export interface GovernedAgent {
@@ -78,7 +82,7 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
         session,
         deps.bulkThreshold,
     );
-    const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8);
+    const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory);
     return {
         run: (goal: string) => agent.run(goal, deps.signal),
         undoAll: () => session.undoAll(),

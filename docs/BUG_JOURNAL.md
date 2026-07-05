@@ -331,6 +331,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-05 (agent) — Skill memory: the harness's answer to GROUNDING (our honest weak spot).
+  After a task reaches an answer, the agent records goal → the capability sequence that worked;
+  a similar future goal is PRIMED with it in the preamble (retrieval-augmented planning — a hint
+  the model still reasons over + gates). Proven: a weak model that only picks the right tool WHEN
+  primed succeeds the 2nd time. Lesson: a local agent that REMEMBERS beats a cloud one that re-derives.
+
 - 2026-07-05 (CLI) — `quenderin do "<goal>"`: the FIRST real end-user invocation of the whole
   capability stack. Real LlmService plans; a terminal y/N prompt is the approval dialog; SIGINT
   (Ctrl+C) is the kill switch; undo offered at the end. macOS-only (mac.* caps). The governed

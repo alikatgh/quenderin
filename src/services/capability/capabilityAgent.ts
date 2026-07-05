@@ -1,5 +1,6 @@
 import { Capability } from './capability.js';
 import { CapabilityRunner } from './runner.js';
+import { SkillMemory } from './skillMemory.js';
 
 /**
  * The GOVERNED agent loop (desktop) — the TypeScript twin of the native `AgentLoop`, but
@@ -32,12 +33,16 @@ export class CapabilityAgent {
         private readonly capabilities: Capability[],
         private readonly runner: CapabilityRunner,
         private readonly maxSteps = 8,
+        /** Optional skill memory: primes the model with proven sequences for similar past goals,
+         *  and records this run's sequence if it succeeds. The reliability compounding loop. */
+        private readonly memory?: SkillMemory,
     ) {
         this.byName = new Map(capabilities.map(c => [c.name, c]));
     }
 
     async run(goal: string, signal?: AbortSignal): Promise<AgentResult> {
         const steps: string[] = [];
+        const usedTools: string[] = [];   // the capabilities this run drove — recorded on success
         let transcript = this.preamble(goal);
 
         for (let i = 0; i < this.maxSteps; i++) {
@@ -54,6 +59,9 @@ export class CapabilityAgent {
             if (!decision) return { answer: null, steps, halt: 'planError' };
 
             if (decision.kind === 'answer') {
+                // A completed task teaches the harness — record the proven capability sequence so
+                // the next similar goal is primed with it (retrieval-augmented planning).
+                if (usedTools.length > 0) this.memory?.record(goal, usedTools);
                 return { answer: decision.text, steps, halt: 'answered' };
             }
 
@@ -63,6 +71,7 @@ export class CapabilityAgent {
                 observation = cap
                     ? await this.runner.execute(cap, decision.input, signal)
                     : `No such capability: ${decision.name}.`;
+                if (cap) usedTools.push(decision.name);
                 transcript += `\nUsed ${decision.name}(${decision.input}) → ${observation}`;
             } else {
                 const resolved = decision.calls.map(c => ({ capability: this.byName.get(c.name), input: c.input }));
@@ -70,6 +79,7 @@ export class CapabilityAgent {
                 observation = unknown
                     ? `No such capability in the plan: ${decision.calls.find(c => !this.byName.has(c.name))?.name}. Plan not executed.`
                     : await this.runner.executePlan(resolved as Array<{ capability: Capability; input: string }>, signal);
+                if (!unknown) usedTools.push(...decision.calls.map(c => c.name));
                 const described = decision.calls.map(c => `${c.name}(${c.input})`).join(', ');
                 transcript += `\nProposed plan [${described}] → ${observation}`;
             }
@@ -80,14 +90,20 @@ export class CapabilityAgent {
 
     private preamble(goal: string): string {
         const list = this.capabilities.map(c => `- ${c.name}: ${c.purpose}`).join('\n');
-        return [
-            `Goal: ${goal}`,
-            'Available capabilities:',
-            list,
+        const lines = [`Goal: ${goal}`, 'Available capabilities:', list];
+        // Retrieval-augmented planning: prime the weak local model with the capability sequences
+        // that succeeded on similar past goals. A hint, not a command — it still reasons + gates.
+        const recalled = this.memory?.recall(goal) ?? [];
+        if (recalled.length > 0) {
+            lines.push('You completed similar tasks before — the capabilities that worked:');
+            for (const r of recalled) lines.push(`- "${r.goal}" → ${r.tools.join(' → ')}`);
+        }
+        lines.push(
             'Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use one capability, ' +
             '{"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user approves ' +
             'together, or {"answer":"<final answer>"} when done.',
-        ].join('\n');
+        );
+        return lines.join('\n');
     }
 }
 
