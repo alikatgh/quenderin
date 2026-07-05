@@ -21,6 +21,7 @@ import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
 import { fileCapabilities } from './services/capability/fileCapabilities.js';
 import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
+import { formatHistory } from './services/capability/ledgerView.js';
 
 const program = new Command();
 
@@ -309,11 +310,24 @@ program
     }
   });
 
+program
+  .command('history')
+  .description('Review what the agent has done on this machine — the local, private audit ledger.')
+  .option('-n, --limit <n>', 'how many recent entries to show', '20')
+  .action((options: { limit?: string }) => {
+    const limit = Math.max(1, parseInt(options.limit ?? '20', 10) || 20);
+    const entries = new FileAuditLedger().entries();
+    console.log('');
+    console.log(formatHistory(entries, { limit, color: process.stdout.isTTY }));
+    console.log('');
+  });
+
 // Default command - start interactive mode
 if (process.argv.length === 2) {
   console.log('\n Quenderin - a personal AI that lives on your machine\n');
   console.log('Commands:');
   console.log('  quenderin do "<goal>"     - Tell it to do something on your Mac (asks before every change)');
+  console.log('  quenderin history         - Review everything the agent has done (the local audit log)');
   console.log('  quenderin chat            - Chat with a local model in this terminal');
   console.log('  quenderin chat -p "…"     - One answer, pipe-friendly (git diff | quenderin chat -p "review")');
   console.log('  quenderin models          - What is installed / downloadable');

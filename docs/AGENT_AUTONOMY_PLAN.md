@@ -433,6 +433,15 @@ first cross-platform slice of the agent). Verified: 320 TS tests (11 new — tem
 round-trips, no-overwrite, path-traversal rejection, session rollback), lint + both parity
 guards green.
 
+**Post-M4 — the review pillar surfaced (2026-07-05):** the trust loop is stop · **review** ·
+undo · consent · preview. Every action was already *persisted* to `~/.quenderin/agent-ledger.jsonl`,
+but nothing could *read it back* — the one pillar with no CLI. Added `quenderin history`: a
+local, private, tamper-evident log of exactly what the agent did to this machine (newest-first,
+per-decision glyphs — ✓ ran / ✗ blocked by safety / ✗ you declined / ○ skipped — with input +
+outcome), which a cloud agent structurally can't offer. Renderer is pure (`ledgerView.ts`,
+entries → string, no clock/fs) so it's unit-tested headless; the command is a thin reader over
+`FileAuditLedger`. Verified: 326 TS tests (6 new), lint + parity green.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the
