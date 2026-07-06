@@ -142,12 +142,16 @@ public final class ChatModel: ObservableObject {
 
     /// Clear the conversation.
     public func reset() {
+        // Q-322: cancel any in-flight decode BEFORE wiping its target array — otherwise the streaming
+        // loop keeps appending tokens into a transcript that's just been replaced (cross-chat bleed).
+        engine.requestCancel()
         messages.removeAll()
     }
 
     /// Replace the transcript with a previously persisted conversation (see `ConversationStore`),
     /// so a chat picks up exactly where it left off after a relaunch.
     public func restore(_ saved: [ChatMessage]) {
+        engine.requestCancel()   // Q-323: same — stop the decode before swapping the transcript out
         messages = saved
     }
 }

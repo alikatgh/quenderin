@@ -341,6 +341,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 5 — backend + native) — **Q-275** WS chat had no single-flight guard
+  → a double-send overlapped two `generalChat` calls; reject while `isCurrentlyGenerating()`. **Q-279**
+  `mac.ui.menu` was two levels only → now nests any depth (`menu item "Bold" of menu "Font" of menu
+  item "Font" of menu "Format" of menu bar 1`). **Q-326** (SEC, Swift twin of Q-273) `MarkdownText`
+  rendered LLM links with no scheme allowlist → `sanitizeLinks()` neutralizes non-http(s)/mailto.
+  **Q-327** `AgentSession.run()` had no reentrancy guard → a second goal reset state under the live
+  loop; `guard !isRunning`. **Q-322/323** `ChatModel.reset()/restore()` wiped `messages` WITHOUT
+  cancelling the in-flight decode → the streaming loop kept appending into a replaced transcript
+  (cross-chat bleed); `engine.requestCancel()` before the swap. Lesson: a security fix in one renderer
+  (markdown links) has a twin in every OTHER renderer — grep all of them; a mutation that replaces a
+  streaming target must cancel the stream FIRST; and native CORE findings ARE verifiable (`swift test`/
+  CoreVerify), only the UI-framework/download-flow/JNI ones need a device.
+
 - 2026-07-06 (audit R1-R20 batch 3 — **P0**) — The auth hardening (Q-007/Q-274) protected the
   user-data GET routes server-side, but the Electron UI still called them with plain `fetch()` → **401
   → dead Settings/Sidebar/Metrics panels** (Q-489–492, Q-309/311/312/313). Root cause: a stale doc
