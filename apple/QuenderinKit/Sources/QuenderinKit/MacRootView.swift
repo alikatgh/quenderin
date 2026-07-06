@@ -99,7 +99,11 @@ public struct MacRootView: View {
         .background {
             Group {
                 Button("") { rail = .chats }.keyboardShortcut("1", modifiers: .command)
-                Button("") { rail = agent != nil ? .agent : rail }.keyboardShortcut("2", modifiers: .command)
+                // Q-581: always navigate to the Agent rail on ⌘2. It used to no-op silently when the agent
+                // was unavailable (`agent == nil`), leaving the user with no idea why the key did nothing.
+                // The `.agent` destination already renders an honest "The agent needs a loaded model."
+                // placeholder in that case, so this shows the reason instead of swallowing the keystroke.
+                Button("") { rail = .agent }.keyboardShortcut("2", modifiers: .command)
                 Button("") { rail = .models }.keyboardShortcut("3", modifiers: .command)
             }
             .opacity(0)

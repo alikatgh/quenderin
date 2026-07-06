@@ -352,6 +352,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R26 — Q-581 ⌘2 silently no-ops on Mac) — the ⌘2 shortcut did
+  `rail = agent != nil ? .agent : rail`, so when the agent was unavailable the keystroke set `rail = rail`
+  — a silent no-op with no hint why. The `.agent` destination already renders an honest "The agent needs a
+  loaded model." placeholder for the nil case, so changed ⌘2 to always navigate to `.agent`: the user now
+  sees the reason instead of nothing. `swift build` clean (view-only nav change).
+
 - 2026-07-06 (audit R27 — Q-588 Android empty-reply notice, TWIN PARITY) — iOS `ChatModel` replaces a
   silently-empty assistant bubble with an honest "The model returned an empty reply…" notice; the Android
   twin (`quenderin-core/ChatModel.kt`) left it blank. Ported the same guard at settle: `settled.isBlank()`
