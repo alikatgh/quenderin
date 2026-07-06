@@ -5,6 +5,7 @@ import path from 'path';
 import readline from 'readline';
 import { MODEL_CATALOG, MODELS_DIR } from './constants.js';
 import { setLogLevel } from './utils/logger.js';
+import { expandTilde } from './utils/paths.js';
 import { startDashboardServer } from './server.js';
 import { LlmService } from './services/llm.service.js';
 import { AgentService } from './services/agent.service.js';
@@ -256,7 +257,8 @@ program
     const modelId = options.model ?? config.model;
     let workspaceDir: string | null = null;
     if (workspaceOpt) {
-      workspaceDir = path.resolve(workspaceOpt);
+      // Expand a leading ~ (a quoted flag or a config value isn't shell-expanded) before resolving.
+      workspaceDir = path.resolve(expandTilde(workspaceOpt));
       if (!fs.existsSync(workspaceDir) || !fs.statSync(workspaceDir).isDirectory()) {
         console.error(`Workspace "${workspaceOpt}" is not a folder.`);
         process.exitCode = 1;
