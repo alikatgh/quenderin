@@ -494,7 +494,9 @@ final class ModelLibraryController: ObservableObject {
             self.networkStatus = { .wifi }
             #endif
         }
-        self.downloadPolicy = downloadPolicy ?? { .wifiOnly }
+        // Q-578: default to the user's setting (Wi-Fi-only unless they opted into cellular) so the
+        // library download gate honors the Settings toggle. Tests inject an explicit policy.
+        self.downloadPolicy = downloadPolicy ?? { AppSettings.shared.downloadPolicy }
     }
 
     func refresh() {

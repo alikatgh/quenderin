@@ -406,6 +406,11 @@ public struct SettingsView: View {
 
     private var downloadedModelsSection: some View {
         Section("Downloaded models") {
+                // Q-578: the DownloadPolicy reason string tells users to "allow cellular downloads in
+                // settings" — this is that opt-in (off by default; onboarding + library gates read it).
+                Toggle("Allow downloads over cellular", isOn: $appSettings.allowCellularDownloads)
+                Text("Off by default — models are multiple GB, so downloads wait for Wi-Fi. Turn this on to allow cellular data.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 if installedModels.isEmpty {
                     Text("No models downloaded yet.").font(.footnote).foregroundStyle(.secondary)
                 } else {

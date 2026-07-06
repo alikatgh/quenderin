@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R26 — Q-578 iOS cellular opt-in) — the DownloadPolicy reason string tells the user
+  to "allow cellular downloads in settings", but no such setting existed (the escape hatch was
+  advertised-but-unimplemented). Added `AppSettings.allowCellularDownloads` (UserDefaults, default OFF)
+  + a derived `downloadPolicy` (`.wifiOrCellular` when on, else `.wifiOnly`), a "Allow downloads over
+  cellular" Toggle in Settings → Downloaded models, and wired BOTH gates to read it (ModelLibrary
+  controller default in QuenderinKit; onboarding in the app target). Honors the journal rule "a setting
+  ships only when something reads it". 2 swift tests (default wifiOnly; toggle→wifiOrCellular + persists).
+  swift build clean, 287 swift tests. Also bumped STATUS.md (287/251) with the fresh counts.
+
 - 2026-07-06 (audit R29 — Q-606 STATUS.md stale counts) — STATUS.md claimed **195** Swift tests and
   **177** Android checks; the actuals are **285** (`swift test`) and **251** (`kotlinc CoreVerify`).
   Updated both. Doc-only; the numbers were re-measured this session.

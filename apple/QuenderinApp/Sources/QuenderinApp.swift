@@ -22,7 +22,9 @@ struct QuenderinApp: App {
         // the chosen model's footprint at load — no KV-cache OOM on memory-tight phones (M1).
         let engine: InferenceEngine = DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
-        _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine))
+        // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
+        // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
+        _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy }))
         // Chat + on-device conversation history: the coordinator owns the ChatModel, restores the
         // most recent conversation on launch, and persists each turn to Application Support.
         let chat = ChatModel(engine: engine)

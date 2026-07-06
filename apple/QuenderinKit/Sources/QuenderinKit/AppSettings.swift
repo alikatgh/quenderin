@@ -103,6 +103,15 @@ public final class AppSettings: ObservableObject {
     /// When on, the router suggests the best installed model for a new chat's first message.
     @Published public var suggestBestModel: Bool { didSet { defaults.set(suggestBestModel, forKey: Self.key("suggestBestModel")) } }
 
+    /// Q-578: opt in to model downloads over cellular. Default OFF — a multi-GB pull on cellular can
+    /// cost real money, so Wi-Fi-only is the safe default the DownloadPolicy reason string points the
+    /// user to ("…or allow cellular downloads in settings"). This IS that setting.
+    @Published public var allowCellularDownloads: Bool { didSet { defaults.set(allowCellularDownloads, forKey: Self.key("allowCellularDownloads")) } }
+
+    /// The active download network policy, derived from the toggle above. The onboarding + model-library
+    /// download gates read THIS (honoring the journal rule: a setting ships only when something reads it).
+    public var downloadPolicy: DownloadPolicy { allowCellularDownloads ? .wifiOrCellular : .wifiOnly }
+
     /// The chat transcript's base font — bubbles inherit it via the environment; Markdown
     /// headings/code keep their own explicit sizes.
     public var chatFont: Font {
@@ -121,6 +130,7 @@ public final class AppSettings: ObservableObject {
         chatFontStyle = ChatFontStyle(rawValue: defaults.string(forKey: Self.key("chatFontStyle")) ?? "") ?? .standard
         chatFontSize = ChatFontSize(rawValue: defaults.string(forKey: Self.key("chatFontSize")) ?? "") ?? .standard
         suggestBestModel = defaults.object(forKey: Self.key("suggestBestModel")) as? Bool ?? true
+        allowCellularDownloads = defaults.object(forKey: Self.key("allowCellularDownloads")) as? Bool ?? false
     }
 }
 #endif
