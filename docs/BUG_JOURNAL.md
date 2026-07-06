@@ -341,6 +341,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 19 — HTTP semantics + the tail triage) — **Q-423** a disallowed CORS
+  origin threw `new Error('CORS: …')` → the generic errorHandler returned 500, misreporting a client
+  ORIGIN-POLICY denial as a server crash (pollutes monitoring). Map `CORS:`-prefixed errors to 403;
+  2 tests (CORS→403, other→500). Triaged the rest of the tail (recorded so it isn't re-investigated):
+  **Q-313** (recent-session click only switches view) and **Q-317** (agent goals send no files) are
+  unbuilt FEATURE gaps, not bugs — Sidebar has no session-load prop, ChatArea has no attachment state;
+  building them touches the chat state model + needs product UX decisions. **Q-349** (raw token on
+  `window.quenderinAuth`) is a fundamental tension — the renderer MUST authenticate (HTTP header + WS
+  `?token=`, which browsers force since they can't set WS headers), so renderer-context XSS can always
+  reach it; truly hiding it means proxying ALL renderer I/O through the preload (large refactor). Real
+  mitigations already present: CSP `script-src 'self'` (no inline/external scripts) + per-launch
+  loopback token. **Q-380** left (OCR path is internal — the device provider's own screenshot).
+
 - 2026-07-06 (audit R1-R20 batch 18 — backend reliability) — **Q-405** `generateAction` (agent/daemon)
   called `session.prompt()` with NO timeout — a stalled native decode hung the mission FOREVER (the
   chat path already had `promptWithTimeout`). Routed it through the same tested timeout → a hang now
