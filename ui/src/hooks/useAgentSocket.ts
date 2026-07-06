@@ -381,10 +381,18 @@ export function useAgentSocket() {
         }
     };
 
+    // Q-292: stop an in-flight chat reply. The server aborts the decode and returns the streamed
+    // partial as the normal chat_response, so the stream just ends — no client-side log surgery.
+    const stopChat = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'stop_chat' }));
+        }
+    };
+
     return {
         wsReady,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent
+        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat
     };
 }

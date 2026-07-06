@@ -45,3 +45,70 @@ describe('LlmService.unloadModel — native handle disposal (leak regression)', 
         await new Promise((r) => setTimeout(r, 0));
     });
 });
+
+/**
+ * Q-292: chat generation is now cancellable. `promptWithTimeout` composes an optional external
+ * "stop" signal with its internal timeout and must classify the abort by CAUSE — a user stop is a
+ * graceful LLM_CANCELLED (caller keeps the partial), a hang is LLM_TIMEOUT (retried). The seam is
+ * `session.prompt(signal)` (the same signal the timeout already rides), so a fake session tests the
+ * whole branch matrix without a model. The action path passes no signal → its behaviour is unchanged.
+ */
+describe('LlmService chat cancel (Q-292)', () => {
+    // A fake node-llama-cpp session: rejects the moment its signal aborts, otherwise never settles
+    // (so the ONLY way out is a cancel or the timeout) — unless `resolveWith` is given.
+    function fakeSession(resolveWith?: string) {
+        return {
+            prompt: (_p: string, opts: { signal: AbortSignal }) =>
+                new Promise<string>((resolve, reject) => {
+                    if (resolveWith !== undefined) { resolve(resolveWith); return; }
+                    if (opts.signal.aborted) { reject(new Error('aborted')); return; }
+                    opts.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+                }),
+        };
+    }
+    const opts = { maxTokens: 8, temperature: 0.7 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call = (svc: LlmService, session: unknown, timeoutMs: number, signal?: AbortSignal) =>
+        (svc as any).promptWithTimeout(session, 'hi', opts, timeoutMs, 'test', signal);
+
+    it('returns the model text on normal completion (no cancel, no timeout)', async () => {
+        const svc = new LlmService();
+        await expect(call(svc, fakeSession('done'), 5000)).resolves.toBe('done');
+    });
+
+    it('classifies an EXTERNAL abort as LLM_CANCELLED (a deliberate stop, not a hang)', async () => {
+        const svc = new LlmService();
+        const external = new AbortController();
+        const p = call(svc, fakeSession(), 5000, external.signal);
+        external.abort();
+        await expect(p).rejects.toMatchObject({ code: 'LLM_CANCELLED' });
+    });
+
+    it('classifies the internal timer firing as LLM_TIMEOUT (unchanged behaviour)', async () => {
+        const svc = new LlmService();
+        await expect(call(svc, fakeSession(), 20)).rejects.toMatchObject({ code: 'LLM_TIMEOUT' });
+    });
+
+    it('honours a signal already aborted BEFORE the decode starts → LLM_CANCELLED', async () => {
+        const svc = new LlmService();
+        const external = new AbortController();
+        external.abort();   // user hit stop while we were still setting up
+        await expect(call(svc, fakeSession(), 5000, external.signal)).rejects.toMatchObject({ code: 'LLM_CANCELLED' });
+    });
+
+    it('requestChatCancel() aborts the in-flight handle', () => {
+        const svc = new LlmService();
+        const ac = new AbortController();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (svc as any).chatAbort = ac;
+        svc.requestChatCancel();
+        expect(ac.signal.aborted).toBe(true);
+    });
+
+    it('requestChatCancel() is a no-op when nothing is generating', () => {
+        const svc = new LlmService();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (svc as any).chatAbort = null;
+        expect(() => svc.requestChatCancel()).not.toThrow();
+    });
+});

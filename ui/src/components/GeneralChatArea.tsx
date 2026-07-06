@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { User, Loader2, MessageSquareText, Mic, FileText, X, Code, PenTool, GraduationCap, Sparkles, ArrowUpRight } from 'lucide-react';
+import { User, Loader2, MessageSquareText, Mic, FileText, X, Code, PenTool, GraduationCap, Sparkles, ArrowUpRight, Square } from 'lucide-react';
 import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +15,7 @@ interface GeneralChatAreaProps {
     chatInput: string;
     setChatInput: (val: string) => void;
     onSend: (msg: string, attachments: { name: string, content: string }[]) => void;
+    onStop: () => void;   // Q-292: cancel the in-flight reply
     onVoiceStart: () => void;
     onVoiceStop: () => void;
     activePresetId: string;
@@ -44,7 +45,7 @@ function stripToolCallXml(text: string): string {
 }
 
 
-export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
+export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, onOpenTroubleshooter, chatInput, setChatInput, onSend, onStop, onVoiceStart, onVoiceStop, activePresetId, onSwitchPreset }: GeneralChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const shouldAutoScrollRef = useRef(true);
@@ -463,15 +464,28 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                             >
                                 <Mic className="w-4.5 h-4.5" />
                             </button>
-                            <button
-                                type="button"
-                                aria-label={isQueuing ? 'Queuing message' : 'Send message'}
-                                onClick={handleStart}
-                                disabled={isQueuing || (!chatInput.trim() && attachments.length === 0)}
-                                className={`p-2 rounded-lg transition-all ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-300 dark:text-zinc-600' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white active:scale-95 shadow-sm'}`}
-                            >
-                                {isQueuing ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ArrowUpRight className="w-4.5 h-4.5" />}
-                            </button>
+                            {status === 'running' ? (
+                                /* Q-292: while a reply streams the primary button STOPS it (the partial
+                                   stays in the transcript). Follow-ups can still be queued with Enter. */
+                                <button
+                                    type="button"
+                                    aria-label="Stop generating"
+                                    onClick={onStop}
+                                    className="p-2 rounded-lg transition-all bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white active:scale-95 shadow-sm"
+                                >
+                                    <Square className="w-4 h-4" fill="currentColor" />
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    aria-label={isQueuing ? 'Queuing message' : 'Send message'}
+                                    onClick={handleStart}
+                                    disabled={isQueuing || (!chatInput.trim() && attachments.length === 0)}
+                                    className={`p-2 rounded-lg transition-all ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-300 dark:text-zinc-600' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white active:scale-95 shadow-sm'}`}
+                                >
+                                    {isQueuing ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ArrowUpRight className="w-4.5 h-4.5" />}
+                                </button>
+                            )}
                         </div>
                     </div>
 

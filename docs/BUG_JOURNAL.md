@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 8 — chat cancel) — **Q-292** an in-flight chat reply couldn't be
+  stopped: no `requestCancel`, so a user waited out the 30s prompt timeout or restarted the server.
+  Made the shared `promptWithTimeout` accept an OPTIONAL external abort signal, composed with its
+  timeout AC, and classify the abort by cause — external → `LLM_CANCELLED` (graceful, keep the
+  streamed partial + drop the mid-decode session like the timeout path), timer → `LLM_TIMEOUT`
+  (unchanged). Added `requestChatCancel()`, a WS `stop_chat` frame, a hook `stopChat()`, and a
+  Stop button that replaces Send while streaming. Verified WITHOUT a model: a fake session drives
+  the full cancel/timeout/normal/pre-aborted branch matrix (6 cases). Lesson: a "needs a running
+  model" cancel is still unit-testable — the seam is `session.prompt(signal)`, so fake the session
+  and assert the CLASSIFICATION, not the tokens. (Seam+fake, same lesson as the native automation.)
+
 - 2026-07-06 (audit R1-R20 batch 7 — trust loop over WS) — **Q-281** the trust loop's pause/intervene
   was HTTP-only (`POST /api/agent/intervene`+`/resume`) and the renderer had NO senders, so a running
   mission couldn't be halted from the live channel it streams down. Added WS `pause`/`intervene`/`resume`

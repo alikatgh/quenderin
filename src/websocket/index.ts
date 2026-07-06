@@ -416,6 +416,12 @@ export class WebSocketManager {
                                 isRunning: this.agentService.isRunning,
                             }));
                         }
+                    } else if (data.type === 'stop_chat') {
+                        // Q-292: cancel the in-flight CHAT generation (distinct from the agent's pause).
+                        // The generalChat call in progress resolves with its streamed partial, which the
+                        // chat handler ships as the normal chat_response — the client just sees the
+                        // stream end early, so no special frame is needed here.
+                        this.llmService.requestChatCancel();
                     }
                 } catch (err) {
                     logger.error("Failed to parse ws message", err);

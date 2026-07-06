@@ -169,6 +169,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
      *  Metal/GPU device before exit (see shutdown's doc comment). */
     private llamaEngine: { dispose(): Promise<void> } | null = null;
     private isGeneratingChat: boolean = false;
+    /** Q-292: cancel handle for the CURRENT chat generation. Non-null only while `generalChat`
+     *  is streaming; `requestChatCancel()` aborts it so a user "stop" ends the native decode within
+     *  a token instead of waiting out the 30s prompt timeout. Chat-only — the agent has pause/stop. */
+    private chatAbort: AbortController | null = null;
     /** Agent/daemon generateAction calls share the same model but do not use the chat session. */
     private isGeneratingAction: boolean = false;
     private tokenBuffer: string = "";
@@ -274,6 +278,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return { isGenerating: this.isInferenceBusy(), buffer: this.tokenBuffer };
     }
 
+    /** Q-292: stop the in-flight chat generation. Aborts the current prompt's signal so
+     *  node-llama-cpp ends the native decode; `generalChat` then resolves gracefully with the
+     *  streamed partial (a deliberate stop is not an error). No-op when nothing is generating. */
+    public requestChatCancel(): void {
+        if (this.chatAbort) {
+            logger.log('[LLM] Chat generation cancel requested by user.');
+            this.chatAbort.abort();
+        }
+    }
+
     /** Switch the active preset (persona). Resets chat session so the new system prompt takes effect. */
     public setPreset(presetId: string): void {
         const preset = getPresetById(presetId);
@@ -297,13 +311,29 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             onTextChunk?: (chunk: string) => void;
         },
         timeoutMs: number,
-        label: string
+        label: string,
+        externalSignal?: AbortSignal
     ): Promise<string> {
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), timeoutMs);
+        // Q-292: compose an optional external cancel (user "stop chat") with the timeout — either
+        // aborts the same native decode. The action path passes no signal, so its behaviour is
+        // unchanged. We classify the abort by CAUSE below: an external cancel is a deliberate stop
+        // (LLM_CANCELLED, the caller keeps the partial), the timer is a hang (LLM_TIMEOUT, retried).
+        const onExternalAbort = () => ac.abort();
+        if (externalSignal) {
+            if (externalSignal.aborted) ac.abort();   // already cancelled before the decode began
+            else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+        }
         try {
             return await session.prompt(prompt, { ...options, signal: ac.signal });
         } catch (err: unknown) {
+            // External cancel takes precedence over the timeout classification: the user asked to stop.
+            if (externalSignal?.aborted) {
+                const cancelErr: NodeJS.ErrnoException = new Error(`${label} cancelled`);
+                cancelErr.code = 'LLM_CANCELLED';
+                throw cancelErr;
+            }
             if (ac.signal.aborted) {
                 const timeoutErr: NodeJS.ErrnoException = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
                 timeoutErr.code = 'LLM_TIMEOUT';
@@ -312,6 +342,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw err;
         } finally {
             clearTimeout(timer);
+            if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
         }
     }
 
@@ -1070,6 +1101,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         logger.log("[Assistant] Starting private conversation...");
         this.tokenBuffer = "";
+        // Q-292: fresh cancel handle for this generation. Captured locally so all three prompt calls
+        // (main, timeout-retry, tool-follow-up) share the ONE signal a user "stop" aborts.
+        this.chatAbort = new AbortController();
+        const cancelSignal = this.chatAbort.signal;
 
         // --- Generation metadata tracking ---
         const startTime = performance.now();
@@ -1103,7 +1138,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     userMsg,
                     promptOptions,
                     this.promptTimeoutMs,
-                    'Chat generation'
+                    'Chat generation',
+                    cancelSignal
                 );
             } catch (err: unknown) {
                 if (errCode(err) === 'LLM_TIMEOUT') {
@@ -1118,7 +1154,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         userMsg,
                         promptOptions,
                         this.promptTimeoutMs,
-                        'Chat generation retry'
+                        'Chat generation retry',
+                        cancelSignal
                     );
                 } else {
                     throw err;
@@ -1153,7 +1190,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                                 } : undefined
                             },
                             this.promptTimeoutMs,
-                            'Tool follow-up generation'
+                            'Tool follow-up generation',
+                            cancelSignal
                         );
                         finalResponse = stripToolCalls(stripControlTokens(followUp.trim()));
                     } catch {
@@ -1176,12 +1214,31 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             this.chatTurnCount++;
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
+            this.chatAbort = null;
             this.touchActivity();
             return { text: finalResponse, meta };
         } catch (error) {
+            const partial = this.tokenBuffer;   // capture BEFORE the reset below wipes it
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
+            this.chatAbort = null;
             this.touchActivity();
+            // Q-292: a user "stop" is not a failure. Return what streamed so far (kept in the
+            // transcript, same as the native stopGenerating). An aborted prompt leaves the session
+            // mid-decode, so drop it like the timeout path does — the next message rebuilds a fresh
+            // session (history resets; an acceptable cost for a deliberate stop).
+            if (errCode(error) === 'LLM_CANCELLED') {
+                this.disposeChatSession();
+                const totalDurationMs = performance.now() - startTime;
+                const meta: GenerationMeta = {
+                    tokenCount,
+                    durationMs: Math.round(totalDurationMs),
+                    tokensPerSecond: totalDurationMs > 0 ? parseFloat((tokenCount / (totalDurationMs / 1000)).toFixed(1)) : 0,
+                    timeToFirstTokenMs: firstTokenTime !== null ? Math.round(firstTokenTime - startTime) : 0,
+                };
+                logger.log(`[LLM] Chat cancelled by user after ${tokenCount} tokens.`);
+                return { text: stripControlTokens(partial.trim()), meta };
+            }
             logger.error("Error during general chat generation:", error);
             throw error; // Bubble up original error for OOM detection
         }
