@@ -1,5 +1,6 @@
 import { Capability, CapabilityTier, BlastRadius, ActionPreview } from './capability.js';
 import { MacAutomation, escapeAppleScriptString } from './macAutomation.js';
+import { expandTilde } from '../../utils/paths.js';
 
 /**
  * The first native-macOS capabilities (the sharpened mission: "say a thing, Quenderin does it on
@@ -223,6 +224,52 @@ export class FrontAppCapability implements Capability {
             return name ? `The frontmost app is ${name}.` : 'Could not tell which app is frontmost.';
         } catch (e) {
             return describeMacError(e, 'read the active app');
+        }
+    }
+}
+
+/** T1: reveal a file or folder in Finder — shows and selects it, brings Finder to front. A "show me"
+ *  action with no data change (the natural finish to a file task). Input: a path (a leading ~ is
+ *  expanded). Read-only tier: it navigates, it doesn't mutate. */
+export class FinderRevealCapability implements Capability {
+    readonly name = 'mac.finder.reveal';
+    readonly purpose = 'Reveal a file or folder in Finder. Input: a path, e.g. "~/Downloads/report.pdf".';
+    readonly tier = CapabilityTier.ReadOnly;
+    readonly blastRadius: BlastRadius = { kind: 'read', resource: 'Finder (shows a file)' };
+
+    constructor(private readonly mac: MacAutomation) { }
+
+    /** A plausible filesystem path, tilde-expanded. Rejects empties and control chars. */
+    private clean(input: string): string | null {
+        const p = expandTilde(input.trim());
+        // eslint-disable-next-line no-control-regex
+        return p.length > 0 && !/[ -]/.test(p) ? p : null;
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const p = this.clean(input);
+        return { summary: p ? `Would show "${p}" in Finder (read-only).` : 'Input is a file or folder path.', mutates: false };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const p = this.clean(input);
+        if (!p) return 'Input is a file or folder path, e.g. "~/Downloads".';
+        const esc = escapeAppleScriptString(p);
+        const script = [
+            'tell application "Finder"',
+            `  reveal (POSIX file "${esc}")`,
+            '  activate',
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            return `Showed "${p}" in Finder.`;
+        } catch (e) {
+            const msg = (e as Error)?.message ?? '';
+            if (/can.t|isn.t|not found|-1728|-10006/i.test(msg)) return `Couldn't find "${p}" to show.`;
+            return describeMacError(e, `show "${p}" in Finder`);
         }
     }
 }
@@ -569,6 +616,7 @@ export function macCapabilities(mac: MacAutomation): Capability[] {
         new ClipboardReadCapability(mac),
         new CalendarTodayCapability(mac),
         new ShortcutListCapability(mac),
+        new FinderRevealCapability(mac),
         // Action (T2 — per-run approval)
         new OpenAppCapability(mac),
         new OpenURLCapability(mac),

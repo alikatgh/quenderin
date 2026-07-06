@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { MacAutomation, escapeAppleScriptString } from '../src/services/capability/macAutomation.js';
+import os from 'os';
 import {
     CalendarTodayCapability, CalendarAddCapability, ReminderAddCapability,
     FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability, OpenURLCapability, MailDraftCapability,
-    ShortcutListCapability, ShortcutRunCapability,
+    ShortcutListCapability, ShortcutRunCapability, FinderRevealCapability,
 } from '../src/services/capability/macCapabilities.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
@@ -144,6 +145,36 @@ describe('mac.calendar.add (T2 — robust offset-based dates, approved, undoable
 
     it('is macOS-only off darwin', async () => {
         expect(await new CalendarAddCapability(new FakeMac('ok', false)).run('x | 2026-07-10 10:00')).toBe('This runs on macOS only.');
+    });
+});
+
+describe('mac.finder.reveal (T1 — "show me", no approval, tilde-expanded)', () => {
+    it('reveals a path in Finder without approval, expanding a leading ~', async () => {
+        const mac = new FakeMac('ok');
+        const consent = new InMemoryConsentStore(); consent.setGranted('mac.finder.reveal', true);
+        const out = await new CapabilityRunner(consent).execute(new FinderRevealCapability(mac), '~/Downloads');   // no approver needed
+        expect(out).toContain('Showed');
+        expect(mac.scripts[0]).toContain('reveal (POSIX file "');
+        expect(mac.scripts[0]).toContain(os.homedir() + '/Downloads');   // ~ expanded
+        expect(mac.scripts[0]).toContain('activate');
+    });
+
+    it('allows spaces in a path but rejects empty/control-char input', async () => {
+        const mac = new FakeMac('ok');
+        expect(await new FinderRevealCapability(mac).run('~/My Documents')).toContain('Showed');   // spaces OK
+        expect(await new FinderRevealCapability(new FakeMac('ok')).run('   ')).toContain('a file or folder path');
+    });
+
+    it('escapes a quote in the path, rejects a newline-injection outright, and is macOS-only off darwin', async () => {
+        // A quote (no control char) reaches the script and is escaped.
+        const mac = new FakeMac('ok');
+        await new FinderRevealCapability(mac).run('/tmp/x" do shell script "rm');
+        expect(mac.scripts[0]).toContain('\\"');
+        // A path with a newline is a control char → refused BEFORE any script is built (defense in depth).
+        const mac2 = new FakeMac('ok');
+        expect(await new FinderRevealCapability(mac2).run('/tmp/x\ndo shell script "rm')).toContain('a file or folder path');
+        expect(mac2.scripts).toHaveLength(0);
+        expect(await new FinderRevealCapability(new FakeMac('ok', false)).run('/tmp')).toBe('This runs on macOS only.');
     });
 });
 
