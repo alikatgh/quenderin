@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 18 — backend reliability) — **Q-405** `generateAction` (agent/daemon)
+  called `session.prompt()` with NO timeout — a stalled native decode hung the mission FOREVER (the
+  chat path already had `promptWithTimeout`). Routed it through the same tested timeout → a hang now
+  throws `LLM_TIMEOUT`, which the agent loop surfaces cleanly. **Q-297** `GET /api/sessions/:id` →
+  `loadSession()` read DISK only, but the active session flushes on a debounce → a fetch of the CURRENT
+  session returned a STALE transcript (missing the newest messages). loadSession now serves the
+  in-memory copy for the active id; test adds a message then reads it back without a flush. **Q-346**
+  CSP `connect-src` listed `localhost:*` but not the `127.0.0.1` loopback alias — a cross-alias fetch/WS
+  (page at one, connecting to the other) isn't `'self'` and silently failed; added the symmetric
+  127.0.0.1 entries (loopback, no new exposure). Verified: 432 TS tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 17 — markdown sanitization cascade, SECURITY) — **Q-314/Q-315**
   extend Q-273: I'd sanitized the MAIN chat bubble's markdown links/images, but two other ReactMarkdown
   sites still rendered UNTRUSTED output raw — the `error`-type bubble (`GeneralChatArea:353`, NO

@@ -1040,10 +1040,19 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 : userPrompt;
 
             try {
-                const response = await session.prompt(finalPrompt, {
-                    maxTokens: options.maxTokens || HW.actionMaxTokens,
-                    temperature: options.temperature || 0.1
-                });
+                // Q-405: route through promptWithTimeout so a stalled native decode can't hang the
+                // agent FOREVER (the chat path already does this). On a hang it throws LLM_TIMEOUT,
+                // which the agent loop surfaces as a clean error instead of a wedged mission.
+                const response = await this.promptWithTimeout(
+                    session,
+                    finalPrompt,
+                    {
+                        maxTokens: options.maxTokens || HW.actionMaxTokens,
+                        temperature: options.temperature || 0.1
+                    },
+                    this.promptTimeoutMs,
+                    'Action generation'
+                );
                 return response.trim();
             } finally {
                 try { sequence.dispose(); } catch { /* already disposed */ }

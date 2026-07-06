@@ -143,6 +143,10 @@ export class SessionService {
 
     /** Load a specific session by ID */
     public loadSession(id: string): Session | null {
+        // Q-297: the ACTIVE session lives in memory and only reaches disk on a debounced flush, so the
+        // on-disk copy lags behind the live transcript. When the caller asks for the current session,
+        // serve the fresh in-memory copy; otherwise read from disk.
+        if (id === this.currentSessionId && this.currentSession) return this.currentSession;
         ensureDir();
         try {
             const raw = fs.readFileSync(sessionPath(id), 'utf8');

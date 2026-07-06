@@ -51,7 +51,11 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     app.use((req, res, next) => {
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
+            // Q-346: allow the 127.0.0.1 loopback alias too, symmetric to localhost. The dashboard can
+            // be served from EITHER local hostname (Electron / the CLI-opened URL differ), and a
+            // cross-alias fetch/WS (page at 127.0.0.1 → localhost, or vice-versa) isn't 'self' — without
+            // both, the API/WS silently fails on one of them. Both are loopback, so no new exposure.
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
         );
         // The CLI delivers the per-launch auth token in the opened URL (`?token=`). Suppress the
         // Referer so that token can't leak to any cross-origin resource the page might request.
