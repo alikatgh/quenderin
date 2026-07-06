@@ -407,8 +407,13 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw err;
         }
         if (this.isInferenceBusy()) {
+            // Q-283: THROW, don't silently return — a bare return let WS emit `model_switched` and
+            // REST return "Model switched." while nothing changed. Both callers already catch
+            // switchModel throws (they must — unknown/missing model throw), so this reports failure.
             logger.warn('[Lifecycle] Cannot switch model during active generation');
-            return;
+            const err = new Error('INFERENCE_BUSY');
+            (err as NodeJS.ErrnoException).code = 'INFERENCE_BUSY';
+            throw err;
         }
         if (this.loadedModelId === modelId) {
             this.activeModelId = modelId;
@@ -795,6 +800,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         // ─── Disk Space Check ─────────────────────────────────────────
         // Estimate required space: model file + 500MB buffer for OS/other ops
+        let diskLowMessage: string | null = null;
         try {
             const estimatedSizeGb = entry.ramGb; // rough: download size ≈ RAM footprint for GGUF
             const estimatedBytes = estimatedSizeGb * (1024 ** 3);
@@ -806,18 +812,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             if (freeRam < estimatedBytes * 0.5) {
                 logger.warn(`[LLM] Low system memory (${(freeRam / (1024 ** 3)).toFixed(1)}GB free). Download may cause swapping.`);
             }
-            // Check disk space on the target directory
+            // Check disk space on the target directory. Capture the result but DON'T abort inside
+            // this try — the catch is for the check ITSELF failing (can't stat), which stays non-fatal.
             const diskCheck = await this.checkDiskSpace(dir, estimatedBytes + bufferBytes);
-            if (!diskCheck.ok) {
-                logger.warn(`[LLM] ${diskCheck.message}`);
-                this.emit('action_required', {
-                    code: 'DISK_SPACE_LOW',
-                    title: 'Insufficient Disk Space',
-                    message: diskCheck.message
-                });
-            }
+            if (!diskCheck.ok) diskLowMessage = diskCheck.message;
         } catch {
-            // Non-fatal — proceed with download even if disk check fails
+            // Non-fatal — the disk CHECK failed (not the same as "definitely low"); proceed.
+        }
+        if (diskLowMessage) {
+            // Q-287: a definitive low-disk result must ABORT — previously it only emitted the event
+            // and fell through, downloading multiple GB into a low-disk condition.
+            logger.warn(`[LLM] ${diskLowMessage}`);
+            this.emit('action_required', { code: 'DISK_SPACE_LOW', title: 'Insufficient Disk Space', message: diskLowMessage });
+            const err = new Error(diskLowMessage);
+            (err as NodeJS.ErrnoException).code = 'DISK_SPACE_LOW';
+            throw err;
         }
 
         try {

@@ -44,6 +44,11 @@ program
   .option('-s, --steps <number>', 'Maximum allowed steps', '20')
   .action(async (goal: string, options) => {
     try {
+      // Q-278: `agent` is the LEGACY device-driving research loop (raw screenshot→coordinate
+      // actions), which lacks the governed spine — no consent/preview/per-run approval/undo/ledger.
+      // The governed agent is `quenderin do "<goal>"`. Make that explicit so nobody assumes parity.
+      console.error(dim('Note: `agent` is the legacy research loop (no consent/approval/undo spine).'));
+      console.error(dim('For the governed agent — asks before every change, undo, audit log — use `quenderin do "<goal>"`.'));
       const targetOS = process.env.TARGET_OS || 'android';
       const deviceProvider = targetOS === 'desktop' ? new DesktopProvider() : new AndroidProvider();
 

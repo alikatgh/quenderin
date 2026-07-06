@@ -45,18 +45,27 @@ export class MetricsService {
         });
     }
 
-    public async appendMetrics(metrics: AgentMetrics): Promise<void> {
-        try {
-            const data = await fs.readFile(this.telemetryPath, 'utf-8');
-            let records: AgentMetrics[] = JSON.parse(data);
-            if (records.length >= 1000) {
-                records = records.slice(-999);
+    // Q-285: appendMetrics is read-modify-write on one JSON file; two concurrent agent runs
+    // interleave and lose records (last write wins). Serialize every write through a promise chain —
+    // single process, so an in-memory mutex is enough (no file lock). Each read-modify-write runs to
+    // completion before the next begins; the caller awaits its own link.
+    private writeChain: Promise<void> = Promise.resolve();
+
+    public appendMetrics(metrics: AgentMetrics): Promise<void> {
+        this.writeChain = this.writeChain.then(async () => {
+            try {
+                const data = await fs.readFile(this.telemetryPath, 'utf-8');
+                let records: AgentMetrics[] = JSON.parse(data);
+                if (records.length >= 1000) {
+                    records = records.slice(-999);
+                }
+                records.push(metrics);
+                await fs.writeFile(this.telemetryPath, JSON.stringify(records, null, 2), 'utf-8');
+            } catch (error) {
+                logger.error('Failed to write telemetry data:', error);
             }
-            records.push(metrics);
-            await fs.writeFile(this.telemetryPath, JSON.stringify(records, null, 2), 'utf-8');
-        } catch (error) {
-            logger.error('Failed to write telemetry data:', error);
-        }
+        });
+        return this.writeChain;
     }
 
     public async getMetrics(): Promise<AgentMetrics[]> {

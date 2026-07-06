@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 2) — Four more. **Q-285** `metrics.appendMetrics` read-modify-wrote
+  one JSON file → concurrent agent runs lost records; serialize via an in-memory write-chain (single
+  process, no file lock). **Q-283** `switchModel()` silently `return`ed when inference was busy → WS
+  emitted `model_switched` / REST returned success while nothing changed; now THROWS `INFERENCE_BUSY`
+  (both callers already catch switchModel throws). **Q-287** a definitive low-disk result only emitted
+  an event then fell through and downloaded GBs anyway — and it was inside a "non-fatal" try/catch;
+  split so a check-FAILURE stays non-fatal but a low-disk RESULT throws `DISK_SPACE_LOW`. **Q-278**
+  `quenderin agent` (legacy raw-action loop) now prints that it lacks the governed spine and points to
+  `quenderin do`. Lesson: an "abort" that lives inside a non-fatal try/catch never aborts; and a
+  read-modify-write on a shared file needs serialization even in one process.
+
 - 2026-07-06 (audit R1-R20 batch 1) — Five findings fixed. **Q-277** (SEC) `fs.read` followed a
   plainly-named symlink out of the workspace (`readFileSync` follows links) → realpath-containment
   check. **Q-274** (SEC) `GET /api/metrics` (agent goal/step history) wasn't in
