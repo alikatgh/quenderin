@@ -109,9 +109,14 @@ export interface AuditLedger {
 
 export class InMemoryAuditLedger implements AuditLedger {
     private readonly stored: AuditEntry[] = [];
+    /** @param maxEntries 0 (default) = unbounded — fine for a short-lived CLI run. A LONG-LIVED consumer
+     *  (the dashboard's AgentService, Q-549) passes a cap so a multi-hour session can't grow it without
+     *  bound; the oldest entries are evicted first. */
+    constructor(private readonly maxEntries = 0) { }
     append(entry: AuditEntry): void {
         // Redact-then-truncate: the ledger is a record, never a place a leaked secret lives.
         this.stored.push({ ...entry, input: redactSecrets(entry.input).slice(0, 200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0, 200) : entry.outcome });
+        if (this.maxEntries > 0 && this.stored.length > this.maxEntries) this.stored.shift();
     }
     entries(): AuditEntry[] { return [...this.stored]; }
 }

@@ -97,7 +97,9 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
     // Path prefixes whose GETs return user data and therefore require the token regardless of method.
     // Q-274: /api/metrics returns agent mission history (goal_text, success, steps) — protect it too.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics'];
+    // Q-549: /api/agent/ledger returns the device agent's action history (goal + what was tapped) — user
+    // data, so its GET requires the token like the other read-protected prefixes.
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent'];
     const requiresAuth = (req: express.Request): boolean => {
         if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         if (req.method === 'GET' && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
@@ -153,6 +155,12 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const manualAction = sanitizeManualAction(raw);
             agentService.resume(manualAction);
             res.json({ message: "Agent loop resumed.", manualAction });
+        });
+
+        // Q-549 (governance Step 1): the device agent's action flight recorder — each executed tap/scroll/
+        // type with its decision (allowed/failed/blocked/error) + goal. Token-gated (see PROTECTED_READ_PREFIXES).
+        app.get('/api/agent/ledger', (_req, res) => {
+            res.json({ ledger: agentService.actionLedger.entries() });
         });
     }
 

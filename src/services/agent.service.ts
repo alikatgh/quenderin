@@ -5,8 +5,9 @@ import { OcrService } from "./ocr.service.js";
 import { MemoryService } from "./memory.service.js";
 import { PromptBuilder } from "./agent/promptBuilder.js";
 import { redactSecrets } from "./capability/redaction.js";
-import { ActionExecutor } from "./agent/actionExecutor.js";
+import { ActionExecutor, SafetyViolationError } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
+import { AuditLedger, InMemoryAuditLedger } from "./capability/capability.js";
 import { AgentEvents, AgentAction, IDeviceProvider, ILlmProvider } from "../types/index.js";
 import { MetricsService } from "./metrics.service.js";
 import { getHardwareProfile } from "../utils/hardware.js";
@@ -95,6 +96,13 @@ export class AgentService {
      *  which (a) ends any in-flight generateAction decode within a token and (b) breaks the loop + the
      *  pause-wait. Distinct from pause(), which parks and can resume. The local-agent trust superpower. */
     private _abortController: AbortController | null = null;
+    /** Q-549 (governance Step 1): a per-action flight recorder for the DEVICE agent — the same
+     *  auditability the governed capability path has, adapted to a continuous tap/scroll loop. Every
+     *  executed action is recorded with its decision (allowed / failed / blocked / error) and the goal it
+     *  served, so a run is reviewable after the fact. Bounded (this agent is long-lived) + secret-redacted
+     *  by the ledger's append. Read-only observability — it adds NO gate, so it can't stall the loop.
+     *  Surfaced via GET /api/agent/ledger (token-gated). */
+    public readonly actionLedger: AuditLedger = new InMemoryAuditLedger(500);
 
     public get isPaused(): boolean { return this._isPaused; }
     public get isRunning(): boolean { return this._isRunning; }
@@ -120,6 +128,34 @@ export class AgentService {
             this._abortController.abort();
         }
         this._isPaused = false;   // a stop during a pause must break the pause-wait, not stay parked
+    }
+
+    /** Q-549: compact, human-readable descriptor of a device action for the audit ledger (a `text` field
+     *  is secret-redacted by the ledger's append, so a typed credential never lands in the record). */
+    private static describeAction(a: ParsedAgentAction): string {
+        const parts: string[] = [];
+        if (a.id !== undefined) parts.push(`id=${a.id}`);
+        if (a.x !== undefined && a.y !== undefined) parts.push(`(${a.x},${a.y})`);
+        if (a.direction) parts.push(`dir=${a.direction}`);
+        if (a.key) parts.push(`key=${a.key}`);
+        if (a.text) parts.push(`text=${a.text}`);
+        return parts.join(' ') || '-';
+    }
+
+    /** Q-549: record one device action in the flight recorder. Pure side-effect (append-only) — never
+     *  throws into the loop; a ledger failure must not stop the agent. */
+    private recordAction(a: ParsedAgentAction, decision: string, outcome: string, goal: string): void {
+        try {
+            this.actionLedger.append({
+                timestampMs: Date.now(),
+                capability: `device.${a.action?.toLowerCase() ?? 'unknown'}`,
+                tier: 0,
+                input: AgentService.describeAction(a),
+                decision,
+                outcome,
+                goal,
+            });
+        } catch { /* observability must never break the loop */ }
     }
 
     constructor(
@@ -349,9 +385,11 @@ export class AgentService {
             }
             emitter.emit('decide', commandText);
 
+            // Hoisted so the outer catch can ledger a blocked/errored action (Q-549) — null on a pure
+            // parse failure (nothing to record).
+            let actionObj: ParsedAgentAction | null = null;
             try {
                 // 6. Parse and Execute Action (Universal Tool Loop)
-                let actionObj: ParsedAgentAction | null = null;
                 try {
                     const jsonStr = firstJsonObject(commandText);   // first COMPLETE object, not first-{..last-} (H13)
                     if (jsonStr) {
@@ -418,6 +456,7 @@ export class AgentService {
                 const success = await this.actionExecutor.execute(actionObj as AgentAction, preStateElements, emitter);
 
                 if (success) {
+                    this.recordAction(actionObj, 'allowed', 'executed', goal);   // Q-549 flight recorder
                     // 7. Re-verify the UI after settling
                     const postState = await this.uiVerifier.waitForIdle(emitter);
 
@@ -429,11 +468,17 @@ export class AgentService {
                     // Overwrite the current loop state with the newly grabbed post-state so step #2 doesn't double dip
                     previousUiHash = postState.hash;
                 } else {
+                    this.recordAction(actionObj, 'failed', 'execute returned false', goal);
                     actionHistory.push(`[Failed] Failed to execute ${actionType}`);
                 }
 
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
+                // Q-549: ledger a blocked (safety-refused) or errored action. Null actionObj = a pure parse
+                // failure — no device action to record.
+                if (actionObj) {
+                    this.recordAction(actionObj, err instanceof SafetyViolationError ? 'blocked' : 'error', message, goal);
+                }
                 emitter.emit('error', `**Command Execution Failed**\nI couldn't run the last command. Troubleshooting steps:\n1. Wait a moment; I am automatically retrying.\n2. If this persists, ensure your device hasn't disconnected.\n3. Check the terminal running \`npm run dev\` for more detailed connectivity issues.`);
                 actionHistory.push(`[Failed] Action error: ${message}`);
                 // Small backoff before next step

@@ -352,6 +352,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R24 — Q-549 Step 1: device-agent audit ledger) — implemented the safe first step of the
+  governance migration (owner-greenlit). `AgentService.actionLedger` = a bounded `InMemoryAuditLedger(500)`
+  flight recorder; every executed action is recorded with its decision (allowed/failed/blocked/error) + the
+  goal, secret-redacted. Recorded at the 3 loop exits (success / execute-false / caught throw — hoisted
+  `actionObj` so the catch can ledger a blocked/errored action; SafetyViolationError → 'blocked'). Read-only
+  — `recordAction` swallows its own errors so observability can NEVER stall the loop. Surfaced at token-gated
+  `GET /api/agent/ledger` (added `/api/agent` to PROTECTED_READ_PREFIXES). Added a `maxEntries` cap to the
+  shared `InMemoryAuditLedger` (0=unbounded default; the long-lived dashboard agent passes 500). 469 tests
+  (+4: recording allowed/blocked + route 401/entries), typecheck + lint clean. Steps 2-4 (bulk brake,
+  per-run approval, unify types) remain — they add BLOCKING gates and need their own change + owner call.
+
 - 2026-07-06 (audit R29/R23 — Q-610 doc fix + Q-541/542/545 triage) — **Q-610** website/README "Configure
   before launch" still told the launcher to set a Formspree endpoint; the site has NO `<form>` (removed in
   Q-642) and uses GitHub CTAs — reworded to say so. **By-design (no change):** Q-545 (voice `command`

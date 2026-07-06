@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import { AgentService, AgentEventEmitter, firstJsonObject } from '../src/services/agent.service.js';
+import { SafetyViolationError } from '../src/services/agent/actionExecutor.js';
 import type { ILlmProvider, IDeviceProvider, UIElement } from '../src/types/index.js';
 import type { UiParserService } from '../src/services/uiParser.service.js';
 import type { MetricsService } from '../src/services/metrics.service.js';
@@ -212,6 +213,44 @@ describe('AgentService.runAgentLoop — integration', () => {
         expect(execSpy).toHaveBeenCalledTimes(1);              // step 1 ran; step 2 never started
         expect(agent.isRunning).toBe(false);                  // controller cleared on exit
         expect(events.status.some((s: unknown) => String(s).includes('Stopped'))).toBe(true);
+    });
+
+    it('Q-549: records each executed device action in the audit ledger with its decision + goal', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')                      // intent
+            .mockResolvedValueOnce('{"action":"click","id":1}')   // step 1 → executes
+            .mockResolvedValueOnce('{"action":"done"}');          // step 2 → done
+        const llm = createLlmStub({ generateAction });
+        const { agent } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<a/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<b/>', hash: 'h2', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<b/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        const emitter1 = new AgentEventEmitter();
+        captureEvents(emitter1);   // attaches an 'error' listener so benign self-healing warnings don't throw
+        await agent.runAgentLoop('open the settings screen', emitter1, [], 5);
+        const entries = agent.actionLedger.entries();
+        expect(entries).toHaveLength(1);   // the 'done' action isn't a device action
+        expect(entries[0]).toMatchObject({ capability: 'device.click', decision: 'allowed', input: 'id=1', goal: 'open the settings screen' });
+    });
+
+    it('Q-549: records a safety-refused action as "blocked"', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')
+            .mockResolvedValue('{"action":"click","id":1}');
+        const llm = createLlmStub({ generateAction });
+        const { agent } = buildAgent({ llm });
+        // The executor refuses the action (a destructive target) by throwing — the loop must ledger it.
+        (agent as unknown as { actionExecutor: { execute: unknown } }).actionExecutor.execute =
+            vi.fn().mockRejectedValue(new SafetyViolationError('Safety Block: nope'));
+        const emitter2 = new AgentEventEmitter();
+        captureEvents(emitter2);
+        await agent.runAgentLoop('tap something', emitter2, [], 1);
+        const entries = agent.actionLedger.entries();
+        expect(entries.some(e => e.decision === 'blocked' && e.capability === 'device.click')).toBe(true);
     });
 
     it('stops with a wall-clock timeout before exhausting the step budget', async () => {

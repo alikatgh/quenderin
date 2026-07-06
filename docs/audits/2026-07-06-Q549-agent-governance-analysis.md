@@ -49,9 +49,11 @@ Feature-by-feature — which governance features fit a continuous device agent, 
 Do **not** replace `AgentService` with `createGovernedAgent`; the loop model is right for the surface.
 Instead, port the governance features that fit, smallest-blast-radius first, each behind a test:
 
-- **Step 1 — Audit ledger (additive, safe).** Give `AgentService` an `AuditLedger` (reuse
-  `src/services/capability/capability.ts`'s) and record each executed action + decision. No behavior
-  change; pure observability. Ships the "flight recorder" parity.
+- **Step 1 — Audit ledger (additive, safe).** ✅ **DONE (2026-07-06).** `AgentService.actionLedger` is a
+  bounded (`InMemoryAuditLedger(500)`) flight recorder; every executed action is recorded with its
+  decision (allowed / failed / blocked / error) + the goal, secret-redacted. Read-only (adds no gate) and
+  surfaced at token-gated `GET /api/agent/ledger`. No behavior change. Tests: recording (allowed +
+  safety-blocked) and the route (401 / entries).
 - **Step 2 — Bulk brake (additive, one gate).** After N device actions in a mission, emit a
   `bulk_confirm` event and pause until the user approves continuing (reuse the WS pause/intervene
   channel that already exists). Mirrors `passesBulkGuard`.
