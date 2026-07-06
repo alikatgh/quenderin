@@ -463,6 +463,16 @@ highest-leverage capability for the mission — one typed, governed door onto th
 surface. Verified: 335 TS tests (9 new — approval gating, injection break-out, blocklist refusal,
 input passing, output capture, missing-shortcut), lint + parity green.
 
+**Post-M4 — `mac.calendar.add`, and the robust-date technique (2026-07-06).** Calendar is now two-way
+(read via `mac.calendar.today`, write here). The reason naive AppleScript calendar code is flaky is
+date construction — locale-dependent `date "…"` strings and finicky month-component coercion. The fix:
+compute the target as an **offset in seconds from now in JS** (reliable) and let AppleScript do
+`(current date) + offset` — pure arithmetic, no parsing, no locale. This makes it exactly as
+verifiable as every other `mac.*` (FakeMac + an injected clock for a deterministic offset), not the
+unverifiable-fragility I'd wrongly assumed. Undo deletes the event by title within its target-day
+window (so it can't nuke a same-named event on another day). Verified: 400 TS tests (5 new — offset
+script shape, escaping, bad-input rejection incl. Feb 30, day-window undo), lint + parity green.
+
 **Post-M4 — undo made durable across sessions (2026-07-05).** The trust loop's `undo` only worked
 *inside the run that made the changes* (`RunSession` is in-memory). The biggest remaining trust gap:
 crash, or say "no" then change your mind, or realise an hour later it mis-filed something → no

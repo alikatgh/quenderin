@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MacAutomation, escapeAppleScriptString } from '../src/services/capability/macAutomation.js';
 import {
-    CalendarTodayCapability, ReminderAddCapability,
+    CalendarTodayCapability, CalendarAddCapability, ReminderAddCapability,
     FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability, OpenURLCapability, MailDraftCapability,
     ShortcutListCapability, ShortcutRunCapability,
 } from '../src/services/capability/macCapabilities.js';
@@ -102,6 +102,48 @@ describe('mac.reminders.add (T2 — approved, injection-safe)', () => {
         const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
         const out = await runner.execute(new ReminderAddCapability(denied), 'x');
         expect(out).toContain('System Settings');
+    });
+});
+
+describe('mac.calendar.add (T2 — robust offset-based dates, approved, undoable)', () => {
+    const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('mac.calendar.add', true); return c; };
+
+    it('creates an event using (current date)+offset, NOT a locale-fragile date string', async () => {
+        const mac = new FakeMac('ok');
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), async () => true);
+        // Inject a fixed clock (epoch 0) so the offset is deterministic; compute it the same way.
+        const out = await runner.execute(new CalendarAddCapability(mac, () => 0), 'Standup | 2026-07-10 09:00 | 30');
+        const expectedOffset = Math.round(new Date(2026, 6, 10, 9, 0).getTime() / 1000);
+        expect(out).toContain('Added "Standup"');
+        expect(mac.scripts[0]).toContain(`set d to (current date) + (${expectedOffset})`);   // no date-string parsing
+        expect(mac.scripts[0]).toContain('summary:"Standup"');
+        expect(mac.scripts[0]).toContain('(30 * minutes)');                                   // the duration
+    });
+
+    it('defaults to 60 minutes and escapes a malicious title', async () => {
+        const mac = new FakeMac('ok');
+        await new CalendarAddCapability(mac, () => 0).run('a"} do shell script "x | 2026-01-02 10:00');
+        expect(mac.scripts[0]).toContain('(60 * minutes)');
+        expect(mac.scripts[0]).toContain('\\"');                        // the quote is escaped
+        expect(mac.scripts[0]).not.toMatch(/summary:"a"\}/);            // no unescaped break-out
+    });
+
+    it('rejects bad input (no time, bad format, impossible date, bad duration)', async () => {
+        const cap = new CalendarAddCapability(new FakeMac('ok'));
+        for (const bad of ['just a title', 'x | 2026-13-01 10:00', 'x | 2026-02-30 10:00', 'x | 2026-07-10 25:00', 'x | 2026-07-10 10:00 | -5']) {
+            expect(await cap.run(bad)).toContain('<title> | <YYYY-MM-DD HH:MM>');
+        }
+    });
+
+    it('undo deletes that title within the target DAY window (not every same-named event)', async () => {
+        const mac = new FakeMac('ok');
+        const out = await new CalendarAddCapability(mac, () => 0).undo('Standup | 2026-07-10 09:00');
+        expect(out).toContain('Removed "Standup"');
+        expect(mac.scripts[0]).toMatch(/delete \(every event whose summary is "Standup" and start date ≥ ds and start date ≤ de\)/);
+    });
+
+    it('is macOS-only off darwin', async () => {
+        expect(await new CalendarAddCapability(new FakeMac('ok', false)).run('x | 2026-07-10 10:00')).toBe('This runs on macOS only.');
     });
 });
 

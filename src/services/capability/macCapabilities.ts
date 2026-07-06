@@ -51,6 +51,100 @@ export class CalendarTodayCapability implements Capability {
     }
 }
 
+/**
+ * T2: add an event to Calendar — makes the calendar two-way (read via mac.calendar.today, write
+ * here). ROBUST date handling is the trick: we compute the target as an OFFSET in seconds from now
+ * in JS (reliable), and let AppleScript do `(current date) + offset` — NO locale-fragile date-string
+ * parsing or month-component coercion, which is where naive AppleScript calendar code breaks.
+ * Undoable (deletes the event we made, scoped to its title on its day). Input:
+ * "<title> | <YYYY-MM-DD HH:MM> | <duration minutes>" (duration optional, default 60).
+ */
+export class CalendarAddCapability implements Capability {
+    readonly name = 'mac.calendar.add';
+    readonly purpose = 'Add an event to macOS Calendar. Input: "<title> | <YYYY-MM-DD HH:MM> | <minutes>" (minutes optional, default 60).';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'macOS Calendar' };
+
+    constructor(private readonly mac: MacAutomation, private readonly now: () => number = () => Date.now()) { }
+
+    private parse(input: string): { title: string; target: Date; durMin: number } | null {
+        const parts = input.split('|').map(s => s.trim());
+        if (parts.length < 2) return null;
+        const title = parts[0];
+        const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/.exec(parts[1]);
+        if (!title || !m) return null;
+        const y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5];
+        if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+        const target = new Date(y, mo - 1, d, h, mi, 0, 0);
+        // Reject rolled-over dates (JS turns Feb 30 into Mar 2) — the components must round-trip.
+        if (isNaN(target.getTime()) || target.getFullYear() !== y || target.getMonth() !== mo - 1 || target.getDate() !== d) return null;
+        let durMin = 60;
+        if (parts[2]) { const n = parseInt(parts[2], 10); if (isNaN(n) || n <= 0) return null; durMin = Math.min(n, 24 * 60); }
+        return { title, target, durMin };
+    }
+
+    /** Seconds from now to `to` — so AppleScript builds the date as `(current date) + offset`. */
+    private offsetSec(to: Date): number { return Math.round((to.getTime() - this.now()) / 1000); }
+
+    private human(d: Date): string {
+        const p = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const p = this.parse(input);
+        if (!p) return { summary: 'Input must be "<title> | <YYYY-MM-DD HH:MM> | <minutes>".', mutates: false };
+        return { summary: `Add "${p.title}" to Calendar on ${this.human(p.target)} for ${p.durMin} min (delete it in Calendar to undo).`, mutates: true };
+    }
+
+    async run(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const p = this.parse(input);
+        if (!p) return 'Input must be "<title> | <YYYY-MM-DD HH:MM> | <minutes>".';
+        const script = [
+            'tell application "Calendar"',
+            '  tell (first calendar whose writable is true)',
+            `    set d to (current date) + (${this.offsetSec(p.target)})`,
+            `    make new event with properties {summary:"${escapeAppleScriptString(p.title)}", start date:d, end date:d + (${p.durMin} * minutes)}`,
+            '  end tell',
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            return `Added "${p.title}" to your calendar on ${this.human(p.target)}.`;
+        } catch (e) {
+            return describeMacError(e, 'add the calendar event');
+        }
+    }
+
+    /** Undo = delete events with that title on the target DAY (a bounded window, so it can't nuke a
+     *  same-named event on another day; the ±1s create slop is well inside the day). */
+    async undo(input: string): Promise<string> {
+        if (!this.mac.available()) return NOT_MAC;
+        const p = this.parse(input);
+        if (!p) return 'Nothing to undo.';
+        const dayStart = new Date(p.target.getFullYear(), p.target.getMonth(), p.target.getDate(), 0, 0, 0);
+        const dayEnd = new Date(p.target.getFullYear(), p.target.getMonth(), p.target.getDate(), 23, 59, 59);
+        const script = [
+            'tell application "Calendar"',
+            '  tell (first calendar whose writable is true)',
+            `    set ds to (current date) + (${this.offsetSec(dayStart)})`,
+            `    set de to (current date) + (${this.offsetSec(dayEnd)})`,
+            `    delete (every event whose summary is "${escapeAppleScriptString(p.title)}" and start date ≥ ds and start date ≤ de)`,
+            '  end tell',
+            'end tell',
+            'return "ok"',
+        ].join('\n');
+        try {
+            await this.mac.runAppleScript(script);
+            return `Removed "${p.title}" from your calendar.`;
+        } catch (e) {
+            return describeMacError(e, 'remove the calendar event');
+        }
+    }
+}
+
 /** T2: add a Reminder with a title. A create — low-stakes and reversible (the user deletes it). */
 export class ReminderAddCapability implements Capability {
     readonly name = 'mac.reminders.add';
@@ -480,6 +574,7 @@ export function macCapabilities(mac: MacAutomation): Capability[] {
         new OpenURLCapability(mac),
         new NoteCreateCapability(mac),
         new ReminderAddCapability(mac),
+        new CalendarAddCapability(mac),
         new MailDraftCapability(mac),   // drafts, never sends
         // The Shortcuts library (T3 — per-run approval): the user's whole automation surface
         new ShortcutRunCapability(mac),
