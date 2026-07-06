@@ -1061,7 +1061,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return Math.max(3, Math.min(25, Math.floor(ctxSize / 100)));
     }
 
-    public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string): Promise<string> {
+    public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string, signal?: AbortSignal): Promise<string> {
         this.isGeneratingAction = true;
         try {
             const { context } = await this.getModelAndContext();
@@ -1089,7 +1089,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         temperature: options.temperature || 0.1
                     },
                     this.promptTimeoutMs,
-                    'Action generation'
+                    'Action generation',
+                    signal   // Q-537: agent hard-stop — an aborted signal ends the decode within a token
                 );
                 return response.trim();
             } finally {

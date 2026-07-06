@@ -349,6 +349,28 @@ describe('AgentService — pause / resume', () => {
         expect(overrideArg).toBe('click the blue Login button');
         expect((events.status as string[]).some((s) => s.includes('Human Override'))).toBe(true);
     });
+
+    it('Q-523: stop() hard-stops a running mission mid-loop', async () => {
+        let n = 0;
+        let agentRef: AgentService;
+        // Decision returns scroll forever (would run to maxSteps); fire the kill switch on step 1's decide.
+        const generateAction = vi.fn().mockImplementation(async () => {
+            n++;
+            if (n === 3) agentRef.stop();
+            return '{"action":"scroll","direction":"down"}';
+        });
+        const { agent } = buildAgent({ llm: createLlmStub({ generateAction }) });
+        agentRef = agent;
+
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+        await agent.runAgentLoop('keep scrolling', emitter, [], 10);
+
+        // Stopped early — nowhere near maxSteps=10 (~2 generateAction calls per step), Stopped status fired.
+        expect(generateAction.mock.calls.length).toBeLessThan(6);
+        expect((events.status as string[]).some((s) => s.includes('Stopped'))).toBe(true);
+        expect(agent.isRunning).toBe(false);
+    });
 });
 
 describe('app.ts — pause/resume HTTP routes', () => {

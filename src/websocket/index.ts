@@ -422,6 +422,11 @@ export class WebSocketManager {
                         // chat handler ships as the normal chat_response — the client just sees the
                         // stream end early, so no special frame is needed here.
                         this.llmService.requestChatCancel();
+                    } else if (data.type === 'stop_agent') {
+                        // Q-523: the agent kill switch over the live channel. Distinct from pause (which
+                        // parks and can resume) — this hard-stops the running mission: it aborts the
+                        // in-flight decode and breaks the loop, which then emits its own 'done'.
+                        this.agentService.stop();
                     }
                 } catch (err) {
                     logger.error("Failed to parse ws message", err);

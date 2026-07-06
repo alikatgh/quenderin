@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 Wave 1 — **Q-523/Q-537** the agent kill switch) — the agent had pause
+  (park + resume) but NO hard-stop, and `generateAction` took no AbortSignal, so a running mission
+  couldn't be halted mid-decode. Built it end-to-end: **Q-537** threaded an optional `signal` through
+  `generateAction` → the (already-Q-292) external-cancel path of `promptWithTimeout` (ends the decode
+  within a token); **Q-523** `AgentService.stop()` aborts a per-run `_abortController` AND clears pause
+  (so a stop WHILE paused breaks the wait — Q-538/539), the loop checks `stopped()` at the step top +
+  after the pause wait, and a mid-decode abort lands as `LLM_CANCELLED` → clean break; a `stop_agent`
+  WS handler + `stopAgent()` hook sender expose it live. Test: stop() mid-loop halts far short of
+  maxSteps with a "Stopped" status. This is the local-agent trust superpower a cloud agent can't offer.
+  440 tests (+1), typecheck:src/ui + lint:src/ui clean.
+
 - 2026-07-06 (audit R21-R30 Wave 1 — **Q-615 P0** inference mutex) — the background daemon's
   `generateAction` and the foreground `generalChat` share ONE model + context, and two concurrent
   native decodes corrupt the KV state (the daemon's `shouldDeferInference` check-then-act is a TOCTOU

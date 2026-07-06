@@ -389,6 +389,14 @@ export function useAgentSocket() {
         }
     };
 
+    // Q-523: hard-stop a running agent mission (the kill switch — distinct from pause). The server
+    // aborts the in-flight decode and breaks the loop, which emits its own 'done'.
+    const stopAgent = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'stop_agent' }));
+        }
+    };
+
     // Q-313: open a past conversation from the Recent list. Fetches the saved transcript and rehydrates
     // the chat log so the user actually SEES it (clicking Recent used to only switch the view). Returns
     // whether it loaded, so the caller can switch to the chat view only on success.
@@ -416,6 +424,6 @@ export function useAgentSocket() {
         wsReady,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession
+        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession
     };
 }

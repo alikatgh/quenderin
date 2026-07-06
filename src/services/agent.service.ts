@@ -87,6 +87,10 @@ export class AgentService {
     private _pendingManualOverride: string | null = null;
     private _isRunning: boolean = false;
     private currentGoal: string = "";
+    /** Q-523: the agent HARD-STOP (kill switch). Non-null only while a run is active; stop() aborts it,
+     *  which (a) ends any in-flight generateAction decode within a token and (b) breaks the loop + the
+     *  pause-wait. Distinct from pause(), which parks and can resume. The local-agent trust superpower. */
+    private _abortController: AbortController | null = null;
 
     public get isPaused(): boolean { return this._isPaused; }
     public get isRunning(): boolean { return this._isRunning; }
@@ -102,6 +106,16 @@ export class AgentService {
         }
         this._isPaused = false;
         logger.info(`[AgentService] Agent resumed${manualAction ? ' with manual override' : ''}.`);
+    }
+
+    /** Q-523: hard-stop the running mission. Aborts the in-flight decode and clears pause so a stop
+     *  issued WHILE paused also exits the wait loop. No-op when nothing is running. */
+    public stop(): void {
+        if (this._abortController) {
+            logger.info('[AgentService] Hard-stop requested — aborting the mission.');
+            this._abortController.abort();
+        }
+        this._isPaused = false;   // a stop during a pause must break the pause-wait, not stay parked
     }
 
     constructor(
@@ -150,6 +164,9 @@ export class AgentService {
             return;
         }
         this._isRunning = true;
+        // Q-523: a fresh kill-switch per run. (Pause state is deliberately NOT reset — see the Q-426
+        // note: pre-run pause/override is a supported, tested setup.)
+        this._abortController = new AbortController();
         // NB (Q-426, INTENTIONALLY not "fixed"): pause state is deliberately NOT reset here. Pausing (or
         // resuming with a manual override) BEFORE a run is a supported setup — start paused to review, or
         // seed the first step — pinned by the "blocks in the pause loop" + "applies a manual override"
@@ -161,6 +178,7 @@ export class AgentService {
             await this._runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs);
         } finally {
             this._isRunning = false;
+            this._abortController = null;
         }
     }
 
@@ -200,7 +218,9 @@ export class AgentService {
                 const intentRaw = await this.llmProvider.generateAction(
                     INTENT_CLASSIFIER_PROMPT,
                     `User Request: "${goal}"`,
-                    { maxTokens: 10, temperature: 0.1 }
+                    { maxTokens: 10, temperature: 0.1 },
+                    undefined,
+                    this._abortController?.signal
                 );
                 isChat = intentRaw.trim().toUpperCase().includes("CHAT");
             }
@@ -211,7 +231,9 @@ export class AgentService {
                 const response = await this.llmProvider.generateAction(
                     "You are a helpful AI assistant. Answer the user's question directly and concisely based on the context provided. If you need to perform an action on the device, say so.",
                     prompt,
-                    { maxTokens: 500, temperature: 0.7 }
+                    { maxTokens: 500, temperature: 0.7 },
+                    undefined,
+                    this._abortController?.signal
                 );
                 emitter.emit('status', response);
                 emitter.emit('done');
@@ -222,7 +244,13 @@ export class AgentService {
         }
 
         let timedOut = false;
+        // Q-523: hard-stop convenience — true once stop() has aborted this run.
+        const stopped = () => this._abortController?.signal.aborted ?? false;
+        if (stopped()) { emitter.emit('status', ' Stopped — you halted the agent.'); emitter.emit('done'); return; }
         while (step < maxSteps && !isDone) {
+            // Q-523: hard-stop takes precedence over everything — a stop issued between steps ends the
+            // mission immediately (the kill switch a LOCAL agent can offer that a cloud one can't).
+            if (stopped()) { emitter.emit('status', ' Stopped — you halted the agent.'); break; }
             // Overall wall-clock budget — the step cap alone can't bound a loop whose individual
             // steps are slow. Checked before each step so a long mission stops cleanly (audit).
             if (Date.now() - startTimeMs >= maxWallClockMs) { timedOut = true; break; }
@@ -246,10 +274,13 @@ export class AgentService {
             emitter.emit('status', ` Observed ${state.elements.length} elements.`);
 
             // 3. Pause Check (Human-in-the-Loop)
-            while (this._isPaused) {
+            // Q-538/539: a hard-stop must break the pause wait too — otherwise stop() while paused would
+            // spin here forever (stop() also clears _isPaused, so this loop exits either way).
+            while (this._isPaused && !stopped()) {
                 emitter.emit('status', " Agent paused for manual human correction. Waiting for resume...");
                 await new Promise(r => setTimeout(r, 1000));
             }
+            if (stopped()) { emitter.emit('status', ' Stopped — you halted the agent.'); break; }
 
             // Did the human provide a manual override while we were paused?
             if (this._pendingManualOverride) {
@@ -273,7 +304,8 @@ export class AgentService {
                         "Briefly describe the interactive elements visible on this screen in one sentence.",
                         "",
                         { maxTokens: 100, temperature: 0.1 },
-                        state.screenshotPath
+                        state.screenshotPath,
+                        this._abortController?.signal
                     );
                 } catch (e) {
                     logger.debug("[AgentService] Eye formulation failed:", e);
@@ -292,8 +324,17 @@ export class AgentService {
                     step === 1 ? SYSTEM_PROMPT : "",
                     prompt,
                     { maxTokens: 150, temperature: 0.1 },
-                    state.screenshotPath
+                    state.screenshotPath,
+                    this._abortController?.signal
                 );
+            } catch (e: unknown) {
+                // Q-523: a hard-stop lands mid-decode as LLM_CANCELLED — end the mission cleanly rather
+                // than treating it as a model error. (The finally below still frees the screenshot.)
+                if ((e as NodeJS.ErrnoException)?.code === 'LLM_CANCELLED') {
+                    emitter.emit('status', ' Stopped — you halted the agent.');
+                    break;
+                }
+                throw e;
             } finally {
                 // Screenshot has been consumed by the LLM calls — delete it to free /tmp space (2–5 MB
                 // per frame) on EVERY path. A throw in generateAction previously skipped the unlink and
