@@ -406,6 +406,11 @@ function AppContent() {
     lockConfiguredRef.current = configured;
   }, [settings.privacyLockEnabled, settings.privacyPassphrase]);
 
+  // Always-latest settings, so the async migration below merges into the CURRENT settings, not the stale
+  // snapshot its closure captured (adversarial-verify P2: reverting a field changed during the hash window).
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   // Q-530: one-time migration — a passphrase persisted before Q-530 is PLAINTEXT in localStorage. Hash
   // it and re-persist so the plaintext is scrubbed. Idempotent (isPassphraseHash guard) and gated by a
   // ref so it fires once; PrivacyLock still accepts the plaintext until this lands, so nobody is locked
@@ -416,7 +421,9 @@ function AppContent() {
     if (!pp || isPassphraseHash(pp) || passphraseMigratedRef.current) return;
     passphraseMigratedRef.current = true;
     hashPassphrase(pp)
-      .then(h => updateSettings({ ...settings, privacyPassphrase: h }))
+      // Merge into settingsRef.current (latest), NOT the closure's `settings`: hashing is async, and any
+      // other setting changed during that window must not be clobbered by a stale-snapshot re-persist.
+      .then(h => updateSettings({ ...settingsRef.current, privacyPassphrase: h }))
       .catch(() => { passphraseMigratedRef.current = false; });
   }, [settings.privacyPassphrase]);
 

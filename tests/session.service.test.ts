@@ -96,6 +96,28 @@ describe('SessionService', () => {
         expect(service.activeSessionId()).toBe(a);
     });
 
+    it('Q-596/Q-597: addMessageTo persists to the PINNED session even after a switch (no misfile)', () => {
+        // A chat starts in A (pinned). A session switch to B lands mid-"generation" (flushes A). The
+        // completing turn must still land in A — not the now-current B.
+        const a = service.startSession();
+        service.addMessage('user', 'hello');
+        const b = service.startSession();               // switch to B, flushing A
+        expect(service.activeSessionId()).toBe(b);
+
+        service.addMessageTo(a, 'user', 'question in A');   // pinned to A, though B is current
+        service.addMessageTo(a, 'assistant', 'answer in A');
+
+        expect(service.loadSession(a)?.messages.map(m => m.content)).toEqual(['hello', 'question in A', 'answer in A']);
+        expect(service.loadSession(b)?.messages ?? []).toHaveLength(0);   // B never got A's turn
+    });
+
+    it('Q-596/Q-597: addMessageTo on the active session behaves like addMessage', () => {
+        const a = service.startSession();
+        service.addMessageTo(a, 'user', 'x');
+        expect(service.activeSessionId()).toBe(a);
+        expect(service.loadSession(a)?.messages.map(m => m.content)).toEqual(['x']);
+    });
+
     it('destroy cancels pending flush timer', () => {
         service.startSession();
         service.addMessage('user', 'test');

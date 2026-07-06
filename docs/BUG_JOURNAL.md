@@ -352,6 +352,21 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (SELF-AUDIT via adversarial-verify workflow — 3 regressions THIS SESSION introduced) — a
+  multi-agent Opus verification of the session's own fixes caught three real regressions (report:
+  docs/audits/2026-07-06-adversarial-verification.md). **Q-596/Q-597 session-switch race (P1, one leg
+  CONFIRMED by a 2nd skeptic):** the chat handler persisted the turn AFTER `await generalChat` using the
+  CURRENT session, but new_session/activate_session can switch it mid-generation → the turn misfiled into
+  the wrong conversation. Fixed at the root: `SessionService.addMessageTo(id,…)` + the chat handler PINS
+  the session id before the await and persists to it regardless of later switches (test: switch mid-turn,
+  turn still lands in the pinned session). **Q-534 tray icon (P1):** the path used `../../public` but
+  main.js compiles to dist/src/electron (outDir ./dist + rootDir ./), so it resolved to the non-existent
+  dist/public → icon stayed empty → Q-534 was UNFIXED. Now `../../../public` (verified it resolves to the
+  real favicon). **Q-530 migration stale-closure (P2):** the async migration re-persisted a stale settings
+  snapshot, reverting any field changed during the hash window; now merges into a settingsRef (latest).
+  474 tests (+2), typecheck + lint clean. Lesson: adversarially verify your OWN session's fixes — the
+  session-switch handlers I ADDED (Q-596/597) reintroduced the very class of bug they targeted.
+
 - 2026-07-06 (audit R22 — Q-526 relaunch banner for a missing token) — apiFetch silently omits the auth
   header when no token is present, so every protected route 401s with an opaque error and the app looks
   broken with no hint why. Real trigger: Q-525 STRIPS `?token=` from the URL after first read, so a plain

@@ -112,6 +112,30 @@ export class SessionService {
         this.scheduleFlush();
     }
 
+    /** Q-596/Q-597: append to a SPECIFIC session by id, regardless of which session is active NOW. The
+     *  chat handler pins the session id at the START of a turn and persists to IT after the async
+     *  generation — so a session switch (new_session / activate_session / open-a-past-conversation) that
+     *  lands mid-generation can no longer misfile the completing turn into the wrong conversation (the
+     *  adversarial-verify P1). When the id is still active this IS addMessage(); otherwise the target was
+     *  switched away (already flushed to disk by startSession/activateSession) so load → append → write it. */
+    public addMessageTo(id: string, role: 'user' | 'assistant', content: string): void {
+        if (id === this.currentSessionId) { this.addMessage(role, content); return; }
+        const session = this.loadSession(id);
+        if (!session) { logger.warn(`[Session] addMessageTo: session ${id} is gone; message not persisted`); return; }
+        if (role === 'user' && session.messages.filter(m => m.role === 'user').length === 0) {
+            session.title = content.slice(0, 80).replace(/\n/g, ' ');
+        }
+        const now = new Date().toISOString();
+        session.messages.push({ role, content, timestamp: now });
+        session.updatedAt = now;
+        if (session.messages.length > MAX_MESSAGES_PER_SESSION) {
+            session.messages = session.messages.slice(-MAX_MESSAGES_PER_SESSION);
+        }
+        ensureDir();
+        try { fs.writeFileSync(sessionPath(id), JSON.stringify(session, null, 2), 'utf8'); }
+        catch (err) { logger.error('[Session] addMessageTo persist failed:', err); }
+    }
+
     /** Retrieve a list of all session summaries, newest first */
     public listSessions(): SessionSummary[] {
         ensureDir();

@@ -83,12 +83,15 @@ async function bootstrap() {
 
     // 3. Native Tray (created once for the app lifetime). Q-534: use a REAL icon — createEmpty() rendered
     //    an invisible menu-bar item. favicon.png ships in the bundle (public/** is in electron-builder
-    //    `files:`, unlike brand/), resolved relative to the compiled main.js (dist/electron → ../../public)
-    //    so the path holds in dev and inside the packaged asar. Guarded: an unreadable asset falls back to
-    //    the empty icon rather than aborting boot. Visual result is best-verified on a real launch.
+    //    `files:`, unlike brand/). main.js compiles to dist/src/electron/main.js (tsconfig outDir ./dist,
+    //    rootDir ./, so src/ is preserved), so __dirname is dist/src/electron and public/ is THREE levels
+    //    up (dist/src/electron -> dist/src -> dist -> root/public); the same relative path holds inside the
+    //    packaged asar. (The adversarial-verify pass caught the earlier ../../public — that resolved to the
+    //    non-existent dist/public, so the icon stayed empty and Q-534 was effectively unfixed.) Guarded:
+    //    an unreadable asset falls back to the empty icon rather than aborting boot.
     let icon = nativeImage.createEmpty();
     try {
-        const loaded = nativeImage.createFromPath(path.join(__dirname, '..', '..', 'public', 'favicon.png'));
+        const loaded = nativeImage.createFromPath(path.join(__dirname, '..', '..', '..', 'public', 'favicon.png'));
         if (!loaded.isEmpty()) icon = loaded.resize({ width: 18, height: 18 });
     } catch { /* keep the empty fallback */ }
     tray = new Tray(icon);

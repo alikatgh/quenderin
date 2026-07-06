@@ -284,6 +284,11 @@ export class WebSocketManager {
                         // atomically after success (below).
                         // Classify intent so the UI can display routing info
                         const intent = classifyIntent(message);
+                        // Q-596/Q-597: PIN the session this turn belongs to, before the await. A
+                        // new_session / activate_session that arrives while generalChat() is streaming
+                        // switches the ACTIVE session, so persisting to "current" afterward misfiles the
+                        // turn (adversarial-verify P1). addMessageTo writes to the pinned session regardless.
+                        const turnSessionId = this.sessionService?.activeSessionId();
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
                         try {
                             // Streaming tool-call suppression:
@@ -331,9 +336,13 @@ export class WebSocketManager {
                                 streamBuf = '';
                             });
                             // Persist the whole turn now that it succeeded — user THEN assistant, so a
-                            // failed generation never leaves an orphaned user turn (Q-286).
-                            this.sessionService?.addMessage('user', message);
-                            this.sessionService?.addMessage('assistant', result.text);
+                            // failed generation never leaves an orphaned user turn (Q-286). Q-596/Q-597:
+                            // to the PINNED session, not "current" — a mid-generation switch must not
+                            // misfile this turn.
+                            if (turnSessionId && this.sessionService) {
+                                this.sessionService.addMessageTo(turnSessionId, 'user', message);
+                                this.sessionService.addMessageTo(turnSessionId, 'assistant', result.text);
+                            }
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: unknown) {
                             const eCode = getErrorCode(e);
