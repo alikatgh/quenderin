@@ -329,7 +329,29 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   forever when offline — check "is the work already done?" BEFORE enqueueing, not inside the worker.
   (Android launch restore)
 
+- **Shell conveniences don't apply to quoted args or file-sourced values.** `~`, globs, and env-var
+  expansion are done by the SHELL before your program runs — so a bare `--workspace ~/x` works, but a
+  quoted `"~/x"` or a value read from a config/JSON file reaches you literal, and `path.resolve('~/x')`
+  makes `<cwd>/~/x`. Expand `~` (and anything shell-ish) yourself for any path that can come from a
+  quoted flag or a file. (expandTilde, 2026-07-06)
+
+- **Preview/no-op modes must ledger what ACTUALLY ran, not the happy-path label.** A dry-run/simulate
+  path that logs a skipped step as `allowed`/`ok` (with a made-up result) turns the audit into a lie.
+  Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
+
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-06 (CLI) — `--workspace`/config path didn't expand a leading `~` (src/index.ts, fixed via
+  src/utils/paths.ts `expandTilde`). Symptom: `--workspace "~/Downloads"` (quoted) or a config
+  `{"workspace":"~/Downloads"}` errored "not a folder" — following our own documented example broke.
+  Cause: `path.resolve('~/Downloads')` → `<cwd>/~/Downloads` (literal ~); the SHELL expands ~, but a
+  QUOTED arg / file-sourced value never touches the shell. Fix: expand ~ ourselves before resolve.
+
+- 2026-07-06 (agent) — Dry-run PLAN ledgered reads as `allowed` though nothing ran (runner.ts
+  executePlan). Symptom: a preview-only plan's audit showed a read as succeeded with a made-up
+  outcome. Cause: `previews[i].mutates ? 'dryRun' : 'allowed'` — but in a mutating plan the WHOLE
+  plan is preview-only, reads included. Fix: log every step `'dryRun'`. Lesson: in a no-op/preview
+  mode, the audit must reflect what ACTUALLY executed (nothing), never the would-have-run label.
 
 - 2026-07-05 (CLI) — Persistence: FileAuditLedger (JSONL, torn-tail-safe) + file-backed skill
   memory under ~/.quenderin/, wired into `quenderin do`. Makes the reliability loop REAL across
