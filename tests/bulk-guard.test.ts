@@ -55,6 +55,31 @@ describe('CapabilityRunner bulk guard (single-action path)', () => {
         for (let i = 0; i < 50; i++) await runner.execute(cap, `n${i}`);
         expect(cap.ran).toBe(50);
     });
+
+    it('Q-384: setRunGoal resets the per-run window so run 2 does not inherit run 1 changes', async () => {
+        const cap = new Counter();
+        let bulkPrompts = 0;
+        const approve = async (p: { summary: string }) => {
+            if (p.summary.startsWith('⚠️')) { bulkPrompts++; return false; }
+            return true;
+        };
+        const runner = new CapabilityRunner(grant(), new InMemoryAuditLedger(), approve, () => 0, undefined, 3);   // threshold 3
+
+        // Run 1: 2 changes — under the threshold, no bulk prompt.
+        runner.setRunGoal('task one');
+        await runner.execute(cap, 'a');
+        await runner.execute(cap, 'b');
+
+        // Run 2: a NEW task. Without the reset, mutationsThisRun would still be 2, so 'd' (the run's 2nd
+        // change) would trip the brake at 3. With the reset it gets a fresh window of 3.
+        runner.setRunGoal('task two');
+        await runner.execute(cap, 'c');
+        await runner.execute(cap, 'd');
+        await runner.execute(cap, 'e');
+
+        expect(bulkPrompts).toBe(0);   // no premature brake in run 2 (would be 1 without the fix)
+        expect(cap.ran).toBe(5);       // all five ran (would be 3 without the fix)
+    });
 });
 
 describe('CapabilityRunner bulk guard (plan path)', () => {

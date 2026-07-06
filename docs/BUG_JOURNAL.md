@@ -341,6 +341,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 12 — backend safety, TS-verified) — swept the verifiable-layer
+  findings I'd never examined (was working from the P0s). **Q-384** `setRunGoal` (the run-start hook)
+  didn't reset `mutationsThisRun`, so the bulk-brake window LEAKED across runs — run 2's brake fired
+  after far fewer than `bulkThreshold` of its own changes. Reset it there → discriminating test (5 ran,
+  0 premature prompts; would be 3 ran / 1 prompt without the fix). **Q-298/Q-348** graceful `shutdown()`
+  freed llama/voice/OCR but never `sessionService.destroy()` → a SIGINT between the last message and the
+  debounced flush timer dropped the conversation tail; added the synchronous `destroy()` (flushNow is
+  `writeFileSync`). RULED OUT as false-positives (same discipline as Q-324/325): **Q-381** (plan bulk-
+  brake "skipped" — but a plan is a pre-approved batch with an up-front count + kill-switch between
+  steps; the mid-plan re-ask is redundant, and adding it broke the tested design) and **Q-347** (`/ready`
+  true at HTTP-bind "before LLM" — but the LLM loads LAZILY on-demand, so ready-at-bind is correct;
+  gating on an eager load that never happens would be the bug). Verified: 423 TS tests (+1), lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 11 — JNI, NDK-syntax-checked) — corrected ANOTHER "can't verify"
   overreach: the full Android toolchain IS installed (NDK clang + `android/log.h`, SDK, gradle,
   emulator), so `clang++ --target=aarch64-linux-android26 -fsyntax-only` (with the vendored llama.h)

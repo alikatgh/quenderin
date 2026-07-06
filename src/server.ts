@@ -175,6 +175,11 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         clearInterval(cleanupTimer);
         backgroundDaemon.stop();
         voiceService.shutdown();
+        // Q-298/Q-348: flush buffered session writes to disk BEFORE exit. SessionService debounces
+        // saves on a timer, so a SIGINT between the last message and the timer firing would drop the
+        // tail of the conversation. destroy() does a SYNCHRONOUS flushNow() + clears the timer, so it
+        // completes here (unlike the fire-and-forget async teardown below).
+        sessionService.destroy();
         // Free the native llama model/context AND the llama engine itself — shutdown() disposes the
         // engine handle that unloadModel() leaves alive, avoiding the ggml-metal atexit assert on a
         // graceful shutdown / in-process restart (Q-145). Fire-and-forget like the other async teardown.

@@ -41,7 +41,13 @@ export class CapabilityRunner {
     private runGoal?: string;
 
     /** Tell the runner what task the upcoming actions serve (the agent sets this at run start). */
-    setRunGoal(goal: string | undefined): void { this.runGoal = goal?.trim() || undefined; }
+    setRunGoal(goal: string | undefined): void {
+        this.runGoal = goal?.trim() || undefined;
+        // Q-384: the bulk-brake window is PER-RUN. This is the run-start hook (desktopAgent calls it
+        // right before agent.run), so a fresh task must NOT inherit the previous run's mutation count —
+        // otherwise run 2's brake fires after far fewer than `bulkThreshold` of its OWN changes.
+        this.mutationsThisRun = 0;
+    }
 
     private log(cap: Capability, input: string, decision: string, outcome?: string): void {
         this.ledger.append({ timestampMs: this.now(), capability: cap.name, tier: cap.tier, input, decision, outcome, goal: this.runGoal });
