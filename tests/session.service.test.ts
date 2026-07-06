@@ -74,6 +74,28 @@ describe('SessionService', () => {
         expect(service.activeSessionId()).toBe(rolled);
     });
 
+    it('Q-597: activateSession adopts a saved session so new messages append to IT', () => {
+        // Open conversation A, leave a message in it, then start B (which flushes A to disk).
+        const a = service.startSession();
+        service.addMessage('user', 'first message in A');
+        const b = service.startSession();
+        expect(service.activeSessionId()).toBe(b);
+
+        // Re-open A from the sidebar → it must become the active session again.
+        const adopted = service.activateSession(a);
+        expect(adopted?.id).toBe(a);
+        expect(service.activeSessionId()).toBe(a);
+
+        // A new message now lands in A (its original message is still there), not in B.
+        service.addMessage('user', 'second message in A');
+        const reloaded = service.loadSession(a);
+        expect(reloaded?.messages.map(m => m.content)).toEqual(['first message in A', 'second message in A']);
+
+        // An unknown id is a no-op: the active session is left unchanged.
+        expect(service.activateSession('does-not-exist-xyz')).toBeNull();
+        expect(service.activeSessionId()).toBe(a);
+    });
+
     it('destroy cancels pending flush timer', () => {
         service.startSession();
         service.addMessage('user', 'test');

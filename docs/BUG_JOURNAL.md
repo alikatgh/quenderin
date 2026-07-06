@@ -352,6 +352,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R28 — Q-597 opening a past chat didn't switch the server session) — `loadSession()`
+  rehydrated the UI transcript but left the server's `currentSessionId` pointed at the previous session, so
+  the next message appended to the WRONG conversation (Q-313 follow-on, same class as Q-596). Added
+  `SessionService.activateSession(id)` (flush outgoing → adopt the saved one; null if not found) + a
+  `activate_session` WS message; the client's `loadSession` sends it after a successful rehydrate. Test:
+  open A, start B, re-open A → A is active again and a new message lands in A (both messages present); an
+  unknown id is a no-op. 463 tests (+1), typecheck + lint clean on both sides.
+
 - 2026-07-06 (audit R26 — Q-581 ⌘2 silently no-ops on Mac) — the ⌘2 shortcut did
   `rail = agent != nil ? .agent : rail`, so when the agent was unavailable the keystroke set `rail = rail`
   — a silent no-op with no hint why. The `.agent` destination already renders an honest "The agent needs a

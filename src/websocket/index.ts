@@ -448,6 +448,15 @@ export class WebSocketManager {
                             const sessionId = this.sessionService.startSession();
                             ws.send(JSON.stringify({ type: 'session_started', sessionId }));
                         }
+                    } else if (data.type === 'activate_session') {
+                        // Q-597: opening a past conversation must also make it the ACTIVE server session —
+                        // otherwise the client shows the old transcript while the next message appends to the
+                        // still-current one (wrong conversation). Adopt by id; confirm with session_started so
+                        // the client's id stays in sync. Unknown/invalid id → no-op (active session unchanged).
+                        if (this.sessionService && typeof data.sessionId === 'string') {
+                            const adopted = this.sessionService.activateSession(data.sessionId);
+                            if (adopted) ws.send(JSON.stringify({ type: 'session_started', sessionId: adopted.id }));
+                        }
                     }
                 } catch (err) {
                     logger.error("Failed to parse ws message", err);

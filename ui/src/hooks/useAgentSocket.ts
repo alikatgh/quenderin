@@ -432,6 +432,12 @@ export function useAgentSocket() {
             setLogs(restored);
             setStatus('idle');
             lastUserChatLogRef.current = null;
+            // Q-597: also make this the ACTIVE server session, so the next message appends to the opened
+            // conversation and not the one that happened to be current. Rehydrating the UI alone left the
+            // server pointed at the previous session (Q-313 follow-on).
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'activate_session', sessionId }));
+            }
             return true;
         } catch {
             return false;

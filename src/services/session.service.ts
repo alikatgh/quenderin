@@ -157,6 +157,22 @@ export class SessionService {
         }
     }
 
+    /** Q-597: make a SAVED session the active one, so subsequent addMessage() appends to IT — used when
+     *  the user opens a past conversation from the sidebar. Rehydrating the UI alone left the server still
+     *  pointed at the previous session, so the next message landed in the wrong conversation. Flushes the
+     *  outgoing session first, then adopts the requested one. Returns null (active session unchanged) if
+     *  the id isn't found on disk. No-op that returns the current session when it's already active. */
+    public activateSession(id: string): Session | null {
+        if (id === this.currentSessionId && this.currentSession) return this.currentSession;
+        const loaded = this.loadSession(id);
+        if (!loaded) return null;
+        this.flushNow(); // persist the outgoing active session before switching away from it
+        this.currentSession = loaded;
+        this.currentSessionId = id;
+        this.dirty = false;
+        return loaded;
+    }
+
     /** Delete a session by ID */
     public deleteSession(id: string): boolean {
         try {
