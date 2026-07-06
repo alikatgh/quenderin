@@ -4,6 +4,7 @@ import { AgentService, AgentEventEmitter } from '../services/agent.service.js';
 import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
+import { composeChatMessage } from '../utils/chatCompose.js';
 import { SessionService } from '../services/session.service.js';
 import { ALLOWED_CONTEXT_SIZES, MAX_GOAL_LENGTH, MAX_CHAT_LENGTH, MAX_SEND_BUFFER_BYTES, MAX_ATTACHMENTS, MAX_ATTACHMENT_SIZE, WS_HEARTBEAT_INTERVAL_MS } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
@@ -249,6 +250,10 @@ export class WebSocketManager {
                             return;
                         }
 
+                        // Q-284: fold any attached documents into what the MODEL sees (the chat path
+                        // used to drop them); the clean `message` is still what we persist + classify.
+                        const chatAttachments = sanitizeAttachments(data.attachments);
+                        const modelInput = composeChatMessage(message, chatAttachments);
                         // Q-286: DON'T persist the user turn yet — if generalChat throws, the session
                         // would keep a user message with no assistant reply (an orphan). Persist both
                         // atomically after success (below).
@@ -264,7 +269,7 @@ export class WebSocketManager {
                             const TOOL_CLOSE = '</tool_call>';
                             let streamBuf = '';
 
-                            const result = await this.llmService.generalChat(message, (token) => {
+                            const result = await this.llmService.generalChat(modelInput, (token) => {
                                 if (ws.readyState !== WebSocket.OPEN) return;
                                 streamBuf += token;
 
