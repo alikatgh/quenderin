@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 17 — markdown sanitization cascade, SECURITY) — **Q-314/Q-315**
+  extend Q-273: I'd sanitized the MAIN chat bubble's markdown links/images, but two other ReactMarkdown
+  sites still rendered UNTRUSTED output raw — the `error`-type bubble (`GeneralChatArea:353`, NO
+  components override) and the agent-message bubble (`ChatArea`, code-only override, no `a`/`img`). An
+  error string can echo LLM/tool output, so a link there is a live one-click exfil vector. Fixed via
+  the CASCADE (one rule beats N sites): extracted `safeMarkdownComponents` (the `a`/`img`/`code`
+  overrides) into `ui/src/lib/markdownComponents.tsx` and pointed ALL THREE untrusted sites at it; the
+  Docs viewer (TRUSTED bundled markdown, needs real links/images) intentionally keeps defaults.
+  Centralizing means a future ReactMarkdown can't silently reopen the hole. Verified: typecheck:ui +
+  lint:ui clean, 431 TS tests. Q-309-312/Q-418 confirmed ALREADY fixed (my Q-489-492/Q-274).
+
 - 2026-07-06 (audit R1-R20 batch 16 — defensive tail) — **Q-379** `boxToGeometry` computed
   `width=x2-x1` / `height=y2-y1` directly, so inverted bounds (RTL layouts / malformed a11y data)
   produced a NEGATIVE width/height and a wrong origin — breaks any downstream hit-test/overlay that
