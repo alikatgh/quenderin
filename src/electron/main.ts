@@ -32,6 +32,11 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true,
+            // Q-524: run the renderer in a sandbox. The renderer displays untrusted agent/LLM/on-screen
+            // content, so a sandboxed OS process is the right blast radius. Safe here because the preload
+            // only touches process.argv/process.env — both available in Electron's sandboxed preload
+            // polyfill — and talks to the renderer purely through contextBridge.
+            sandbox: true,
             // Hand the per-launch token to the renderer via argv — preload.ts reads
             // `--quenderin-auth=` and exposes it on window.quenderinAuth (Q-001/Q-011). A local
             // attacker process cannot read another process's argv. Set before every createWindow()
@@ -76,8 +81,16 @@ async function bootstrap() {
     // 2. Create the Electron Window — platform-aware chrome (loads PORT, carries AUTH_TOKEN)
     createWindow();
 
-    // 3. Native Tray (created once for the app lifetime)
-    const icon = nativeImage.createEmpty();
+    // 3. Native Tray (created once for the app lifetime). Q-534: use a REAL icon — createEmpty() rendered
+    //    an invisible menu-bar item. favicon.png ships in the bundle (public/** is in electron-builder
+    //    `files:`, unlike brand/), resolved relative to the compiled main.js (dist/electron → ../../public)
+    //    so the path holds in dev and inside the packaged asar. Guarded: an unreadable asset falls back to
+    //    the empty icon rather than aborting boot. Visual result is best-verified on a real launch.
+    let icon = nativeImage.createEmpty();
+    try {
+        const loaded = nativeImage.createFromPath(path.join(__dirname, '..', '..', 'public', 'favicon.png'));
+        if (!loaded.isEmpty()) icon = loaded.resize({ width: 18, height: 18 });
+    } catch { /* keep the empty fallback */ }
     tray = new Tray(icon);
     tray.setToolTip('Quenderin Agent');
     tray.setContextMenu(Menu.buildFromTemplate([

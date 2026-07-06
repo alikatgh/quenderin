@@ -352,6 +352,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R22/R25 — Q-524 + Q-534 Electron hardening/UX) — **Q-524** the BrowserWindow ran the
+  renderer UNSANDBOXED despite showing untrusted agent/LLM/on-screen content; added `sandbox: true` (safe
+  because the preload only reads process.argv/env, both in Electron's sandboxed-preload polyfill, and
+  talks to the renderer via contextBridge only). **Q-534** the Tray used `nativeImage.createEmpty()` → an
+  invisible menu-bar item; now loads the bundled `public/favicon.png` (resolved ../../public from the
+  compiled main.js so it holds in dev + asar), resized to 18px, guarded to fall back to empty on any read
+  error. typecheck:src clean; both are Electron-runtime behaviours best confirmed on a real launch.
+  NB Q-533 (token via argv not URL) is BY DESIGN — putting it in the URL would reintroduce Q-525/Q-564;
+  Q-563/Q-618 (token readable on window) is already contained by CSP `connect-src 'self'`+loopback (an
+  XSS can't reach an external host to exfiltrate it), so no risky token-hiding redesign.
+
 - 2026-07-06 (audit R28 — Q-596 second tab hijacks the session) — every WS `on('connection')` called
   `startSession()`, which flushed+abandoned the current session and made a fresh empty one — so a second
   tab / a page refresh / a reconnect clobbered the active session and the first client's next message
