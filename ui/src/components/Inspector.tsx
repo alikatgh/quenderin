@@ -20,6 +20,13 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
         if (!Number.isNaN(x) && !Number.isNaN(y)) targetTap = { x, y };
     }
 
+    // Q-634: derive the device coordinate space from the elements themselves — the root/decor view
+    // spans the screen, so its right/bottom edge ≈ the screen width/height. Hardcoding 1080×2400
+    // misaligned the overlay + tap crosshair on any device with a different resolution. Fall back to
+    // 1080×2400 only before the first sync (no elements yet).
+    const screenW = currentUI.length ? Math.max(...currentUI.map(n => n.rect.x + n.rect.width), 1) : 1080;
+    const screenH = currentUI.length ? Math.max(...currentUI.map(n => n.rect.y + n.rect.height), 1) : 2400;
+
     return (
         <div
             className={`flex-shrink-0 bg-white dark:bg-[#18181b] border-l border-zinc-200 dark:border-zinc-800 transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 right-0 md:sticky md:top-0 md:self-stretch md:inset-auto z-40 shadow-[-8px_0_24px_rgba(0,0,0,0.06)] dark:shadow-none ${isOpen ? 'w-full sm:w-[380px] xl:w-[420px] translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}
@@ -57,10 +64,10 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                             </div>
                         ) : (
                             currentUI.map(node => {
-                                const left = (node.rect.x / 1080) * 100;
-                                const top = (node.rect.y / 2400) * 100;
-                                const width = (node.rect.width / 1080) * 100;
-                                const height = (node.rect.height / 2400) * 100;
+                                const left = (node.rect.x / screenW) * 100;
+                                const top = (node.rect.y / screenH) * 100;
+                                const width = (node.rect.width / screenW) * 100;
+                                const height = (node.rect.height / screenH) * 100;
 
                                 return (
                                     <div
@@ -85,8 +92,8 @@ export function Inspector({ isOpen, currentUI, logs, screenshotBase64 }: Inspect
                             <div
                                 className="absolute w-8 h-8 rounded-full border-[1.5px] border-orange-400/80 bg-orange-500/20 z-[80] pointer-events-none shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all duration-500"
                                 style={{
-                                    left: `${(targetTap.x / 1080) * 100}%`,
-                                    top: `${(targetTap.y / 2400) * 100}%`,
+                                    left: `${(targetTap.x / screenW) * 100}%`,
+                                    top: `${(targetTap.y / screenH) * 100}%`,
                                     transform: 'translate(-50%, -50%)'
                                 }}
                             >
