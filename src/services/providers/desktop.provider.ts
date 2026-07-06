@@ -19,9 +19,9 @@ interface ScreenshotLike {
 }
 
 export class DesktopProvider extends EventEmitter implements IDeviceProvider {
-    private robot: RobotJsLike | null = null;
-    private robotLoaded = false;
     // Memoize the in-flight init PROMISE, not a boolean flag — see getScreenshotFn (deep-hunt race fix).
+    // Q-272: the robot path had the same latent race (boolean flipped before the import resolved).
+    private robotPromise: Promise<RobotJsLike | null> | null = null;
     private screenshotFnPromise: Promise<ScreenshotLike> | null = null;
 
     constructor() {
@@ -32,19 +32,23 @@ export class DesktopProvider extends EventEmitter implements IDeviceProvider {
      * Lazily import robotjs via ESM-compatible dynamic import.
      * robotjs is optional — desktop mode is gracefully degraded if it isn't installed.
      */
-    private async getRobot(): Promise<RobotJsLike | null> {
-        if (this.robotLoaded) return this.robot;
-        this.robotLoaded = true;
-        try {
-            const mod = await import('robotjs');
-            this.robot = (mod.default ?? mod) as RobotJsLike;
-        } catch {
-            logger.warn(
-                "[DesktopProvider] 'robotjs' is not installed or failed to compile. " +
-                "Desktop input control is disabled. Install it with 'npm install robotjs' if needed."
-            );
+    private getRobot(): Promise<RobotJsLike | null> {
+        // Concurrent callers await the SAME import; none can observe a half-initialized "loaded" state.
+        if (!this.robotPromise) {
+            this.robotPromise = (async (): Promise<RobotJsLike | null> => {
+                try {
+                    const mod = await import('robotjs');
+                    return (mod.default ?? mod) as RobotJsLike;
+                } catch {
+                    logger.warn(
+                        "[DesktopProvider] 'robotjs' is not installed or failed to compile. " +
+                        "Desktop input control is disabled. Install it with 'npm install robotjs' if needed."
+                    );
+                    return null;
+                }
+            })();
         }
-        return this.robot;
+        return this.robotPromise;
     }
 
     /**

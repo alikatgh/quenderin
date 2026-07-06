@@ -53,6 +53,23 @@ describe('fs.read', () => {
         fs.writeFileSync(path.join(ws, 'bin.dat'), Buffer.from([0xff, 0xfe, 0x00, 0x01]));
         expect(await cap.run('bin.dat')).toContain("isn't a UTF-8");
     });
+
+    it('Q-277: refuses a plainly-named symlink that escapes the workspace, allows one that stays inside', async () => {
+        // A secret OUTSIDE the workspace, plus an inside file to link to.
+        const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'qsecret-'));
+        fs.writeFileSync(path.join(outside, 'passwd'), 'root:x:0:0');
+        touch('real.txt', 'legit');
+        try {
+            fs.symlinkSync(path.join(outside, 'passwd'), path.join(ws, 'escape.txt'));   // escapes ↑
+            fs.symlinkSync(path.join(ws, 'real.txt'), path.join(ws, 'inside.txt'));       // stays inside
+            const cap = new FsReadCapability(workspace);
+            expect(await cap.run('escape.txt')).toContain('outside the workspace');       // refused
+            expect(await cap.run('escape.txt')).not.toContain('root:x');                  // never leaked
+            expect(await cap.run('inside.txt')).toBe('legit');                            // intra-workspace link OK
+        } finally {
+            fs.rmSync(outside, { recursive: true, force: true });
+        }
+    });
 });
 
 describe('fs.move', () => {

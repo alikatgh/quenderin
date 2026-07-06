@@ -25,7 +25,7 @@ describe('read-route auth (Q-007)', () => {
 
     it('rejects unauthenticated GETs to user-data routes with 401', async () => {
         await withApp(async (base) => {
-            for (const path of ['/api/sessions', '/api/notes', '/api/memory/trajectories', '/diagnostics']) {
+            for (const path of ['/api/sessions', '/api/notes', '/api/memory/trajectories', '/diagnostics', '/api/metrics']) {
                 const res = await fetch(`${base}${path}`);
                 expect(res.status, `${path} should require auth`).toBe(401);
             }

@@ -88,7 +88,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // X-Auth-Token header or ?token= (opened-URL path). Empty token ⇒ fail closed. Sender: ui/src/lib/api.ts.
     const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
     // Path prefixes whose GETs return user data and therefore require the token regardless of method.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics'];
+    // Q-274: /api/metrics returns agent mission history (goal_text, success, steps) — protect it too.
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics'];
     const requiresAuth = (req: express.Request): boolean => {
         if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         if (req.method === 'GET' && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;

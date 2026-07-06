@@ -64,8 +64,22 @@ export class FsReadCapability extends WorkspaceCapability implements Capability 
         if (!d) return NO_WS;
         if (!safeName(input)) return 'Input is a plain file name in the workspace — no paths.';
         const file = path.join(d, input.trim());
+        // Q-277: `safeName` blocks paths in the NAME, but a plainly-named SYMLINK inside the
+        // workspace could point at /etc/passwd — readFileSync would follow it. Resolve the real
+        // path and refuse anything that escapes the workspace (realpath'd on both sides so an
+        // intra-workspace link is fine and macOS's /tmp→/private/tmp doesn't false-positive).
+        let realFile: string;
         try {
-            const buf = fs.readFileSync(file);
+            const realWs = fs.realpathSync(d);
+            realFile = fs.realpathSync(file);
+            if (realFile !== realWs && !realFile.startsWith(realWs + path.sep)) {
+                return `"${input.trim()}" resolves outside the workspace — refused.`;
+            }
+        } catch {
+            return `No file named "${input.trim()}" in the workspace (or it isn't readable).`;
+        }
+        try {
+            const buf = fs.readFileSync(realFile);
             const slice = buf.length > this.maxBytes ? buf.subarray(0, this.maxBytes) : buf;
             const text = slice.toString('utf8');
             if (text.includes('�')) return `"${input.trim()}" isn't a UTF-8 text file.`;

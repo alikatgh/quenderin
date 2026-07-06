@@ -12,6 +12,11 @@ export interface SkillRecord {
     tools: string[];   // capability names used, in order, on a run that reached an answer
 }
 
+/** Hard caps so a hand-edited/poisoned ~/.quenderin/agent-skills.json can't bloat the planner
+ *  preamble (Q-280). Real goals are a sentence; real tool sequences are a handful of steps. */
+const MAX_GOAL_LEN = 300;
+const MAX_TOOLS = 40;
+
 /** Lowercase word tokens, deduped — the unit of goal similarity. */
 function tokens(text: string): Set<string> {
     return new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 2));
@@ -38,11 +43,11 @@ export class SkillMemory {
     /** Remember that `tools` accomplished `goal`. Ignores empty runs; de-dupes an identical goal
      *  (keeps the most recent tool sequence for it). */
     record(goal: string, tools: string[]): void {
-        const g = goal.trim();
+        const g = goal.trim().slice(0, MAX_GOAL_LEN);   // Q-280: bound what can reach the preamble
         if (!g || tools.length === 0) return;
         const existing = this.records.findIndex(r => r.goal.toLowerCase() === g.toLowerCase());
         if (existing >= 0) this.records.splice(existing, 1);
-        this.records.push({ goal: g, tools: [...tools] });
+        this.records.push({ goal: g, tools: tools.slice(0, MAX_TOOLS) });
         while (this.records.length > this.capacity) this.records.shift();
     }
 
@@ -72,7 +77,9 @@ export class SkillMemory {
         for (const r of records) {
             const rec = r as Partial<SkillRecord>;
             if (typeof rec?.goal === 'string' && Array.isArray(rec.tools) && rec.tools.every(t => typeof t === 'string')) {
-                this.records.push({ goal: rec.goal, tools: rec.tools });
+                // Q-280: the file on disk is untrusted (hand-edit / local attacker) — cap goal length
+                // and tool count so a poisoned entry can't bloat the planner preamble via recall().
+                this.records.push({ goal: rec.goal.slice(0, MAX_GOAL_LEN), tools: rec.tools.slice(0, MAX_TOOLS) });
             }
             if (this.records.length >= this.capacity) break;
         }

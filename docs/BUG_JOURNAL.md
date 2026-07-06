@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 1) — Five findings fixed. **Q-277** (SEC) `fs.read` followed a
+  plainly-named symlink out of the workspace (`readFileSync` follows links) → realpath-containment
+  check. **Q-274** (SEC) `GET /api/metrics` (agent goal/step history) wasn't in
+  PROTECTED_READ_PREFIXES → added. **Q-280** skill memory `restore()` had no goal/tool caps → a
+  poisoned ~/.quenderin file could bloat the planner preamble; cap 300/40. **Q-272** `getRobot()`
+  flipped a boolean before `await import` resolved (race) → memoize the promise (twin of the
+  screenshot-path fix). **Q-273** (SEC) UI ReactMarkdown guarded `<img>` but not `<a>` → LLM
+  one-click exfil/phishing links; safe-scheme-only + noopener + visible destination. Lesson:
+  "the file/name is untrusted" applies to symlinks (realpath, don't trust the name) and to every
+  on-disk state you restore (cap it); and a boolean memo before an await is always a race.
+
 - 2026-07-06 (CLI) — `--workspace`/config path didn't expand a leading `~` (src/index.ts, fixed via
   src/utils/paths.ts `expandTilde`). Symptom: `--workspace "~/Downloads"` (quoted) or a config
   `{"workspace":"~/Downloads"}` errored "not a folder" — following our own documented example broke.

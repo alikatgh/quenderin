@@ -58,6 +58,14 @@ describe('skill memory persistence', () => {
         expect(m.size).toBe(1);
         expect(m.recall('ok task')[0].tools).toEqual(['a']);
     });
+
+    it('Q-280: caps goal length and tool count on restore (poisoned file can\'t bloat the preamble)', () => {
+        const m = new SkillMemory();
+        m.restore([{ goal: 'x'.repeat(5000), tools: Array.from({ length: 500 }, (_, i) => `t${i}`) }]);
+        const rec = m.snapshot()[0];
+        expect(rec.goal.length).toBe(300);      // capped
+        expect(rec.tools.length).toBe(40);      // capped
+    });
 });
 
 describe('undo journal persistence — cross-session `quenderin undo`', () => {
