@@ -113,24 +113,26 @@ export class MacUiTypeCapability implements Capability {
 
 /** T2: click a menu-bar item, e.g. "File > Save As" — the menu bar reaches actions no window button
  *  exposes (Export, Select All, Preferences…). Per-run approval; the resolved item is blocklist-
- *  re-checked (so "File > Delete Everything" is refused). v1 is one level deep (Menu > Item). */
+ *  re-checked (so "File > Delete Everything" is refused). Supports nested submenus of any depth
+ *  (Q-279): "Format > Font > Bold". */
 export class MacUiMenuCapability implements Capability {
     readonly name = 'mac.ui.menu';
-    readonly purpose = 'Click a menu-bar item in the frontmost app. Input: "<Menu> > <Item>", e.g. "File > Save As".';
+    readonly purpose = 'Click a menu-bar item in the frontmost app. Input: "<Menu> > <Item>" (nesting OK, e.g. "Format > Font > Bold").';
     readonly tier = CapabilityTier.AppAction;
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the frontmost app' };
 
     constructor(private readonly ui: MacUi) { }
 
-    private parse(input: string): [string, string] | null {
+    /** Split a "A > B > C" path; require at least a menu and an item, every segment non-empty. */
+    private parse(input: string): string[] | null {
         const parts = input.split('>').map(s => s.trim());
-        return parts.length === 2 && parts[0] && parts[1] ? [parts[0], parts[1]] : null;
+        return parts.length >= 2 && parts.every(Boolean) ? parts : null;
     }
 
     async plan(input: string): Promise<ActionPreview> {
         if (!this.ui.available()) return { summary: NO_MAC, mutates: false };
         const p = this.parse(input);
-        return p ? { summary: `Click menu "${p[0]} > ${p[1]}" in the frontmost app.`, mutates: true }
+        return p ? { summary: `Click menu "${p.join(' > ')}" in the frontmost app.`, mutates: true }
                  : { summary: 'Input must be "<Menu> > <Item>", e.g. "File > Save As".', mutates: false };
     }
 
@@ -138,11 +140,11 @@ export class MacUiMenuCapability implements Capability {
         if (!this.ui.available()) return NO_MAC;
         const p = this.parse(input);
         if (!p) return 'Input must be "<Menu> > <Item>", e.g. "File > Save As".';
-        // Defense in depth: re-check the resolved menu path (the runner scanned the raw input too).
-        const hit = matchedBlockedKeyword(`${p[0]} ${p[1]}`);
+        // Defense in depth: re-check the WHOLE resolved menu path (the runner scanned the raw input too).
+        const hit = matchedBlockedKeyword(p.join(' '));
         if (hit) return `Refused: that menu item looks like a blocked action ('${hit}').`;
         try { await this.ui.clickMenu(p); } catch (e) { return describe(e); }
-        return `Clicked menu "${p[0]} > ${p[1]}".`;
+        return `Clicked menu "${p.join(' > ')}".`;
     }
 }
 

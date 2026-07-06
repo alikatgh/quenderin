@@ -126,11 +126,12 @@ describe('mac.ui.type + mac.ui.key (T2)', () => {
 });
 
 describe('mac.ui.menu (T2 — reach the menu bar, approved & blocklist-guarded)', () => {
-    it('clicks a "<Menu> > <Item>" path after approval', async () => {
+    it('clicks a "<Menu> > <Item>" path after approval, and accepts nested submenus (Q-279)', async () => {
         const ui = new FakeMacUi([]);
         const runner = new CapabilityRunner(grant('mac.ui.menu'), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new MacUiMenuCapability(ui), 'File > Save As')).toContain('Clicked menu "File > Save As"');
-        expect(ui.menus).toEqual([['File', 'Save As']]);
+        expect(await runner.execute(new MacUiMenuCapability(ui), 'Edit > Find > Find Next')).toContain('Clicked menu "Edit > Find > Find Next"');
+        expect(ui.menus).toEqual([['File', 'Save As'], ['Edit', 'Find', 'Find Next']]);   // deeper path passes through
     });
 
     it('rejects a malformed path and refuses a blocked menu item', async () => {

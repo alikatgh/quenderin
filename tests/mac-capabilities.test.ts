@@ -6,6 +6,7 @@ import {
     FrontAppCapability, ClipboardReadCapability, OpenAppCapability, NoteCreateCapability, OpenURLCapability, MailDraftCapability,
     ShortcutListCapability, ShortcutRunCapability, FinderRevealCapability,
 } from '../src/services/capability/macCapabilities.js';
+import { OsascriptMacUi } from '../src/services/capability/macUi.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
 
@@ -145,6 +146,17 @@ describe('mac.calendar.add (T2 — robust offset-based dates, approved, undoable
 
     it('is macOS-only off darwin', async () => {
         expect(await new CalendarAddCapability(new FakeMac('ok', false)).run('x | 2026-07-10 10:00')).toBe('This runs on macOS only.');
+    });
+});
+
+describe('OsascriptMacUi.clickMenu — nested submenus (Q-279)', () => {
+    it('nests submenus of any depth, and keeps the 2-level form for shallow paths', async () => {
+        const mac = new FakeMac('ok');
+        const ui = new OsascriptMacUi(mac);
+        await ui.clickMenu(['Format', 'Font', 'Bold']);
+        expect(mac.scripts[0]).toContain('click menu item "Bold" of menu "Font" of menu item "Font" of menu "Format" of menu bar 1');
+        await ui.clickMenu(['File', 'Save As']);
+        expect(mac.scripts[1]).toContain('click menu item "Save As" of menu "File" of menu bar 1');
     });
 });
 

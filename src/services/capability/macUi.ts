@@ -96,12 +96,21 @@ export class OsascriptMacUi implements MacUi {
     }
 
     async clickMenu(path: string[]): Promise<void> {
-        // v1: top menu > item (e.g. "File" > "Save As") — covers the overwhelming majority of tasks.
-        const [menu, item] = path.map(escapeAppleScriptString);
+        // Q-279: support ANY depth, not just two levels. macOS nests submenus as
+        //   menu item "Bold" of menu "Font" of menu item "Font" of menu "Format" of menu bar 1
+        // i.e. the last element is a `menu item`, then each earlier level adds `of menu "X"` and
+        // (unless it's the top menu bar) `of menu item "X"`.
+        const esc = path.map(escapeAppleScriptString);
+        let ref = `menu item "${esc[esc.length - 1]}"`;
+        for (let i = esc.length - 2; i >= 0; i--) {
+            ref += ` of menu "${esc[i]}"`;
+            if (i > 0) ref += ` of menu item "${esc[i]}"`;
+        }
+        ref += ' of menu bar 1';
         const script = [
             'tell application "System Events"',
             '  tell (first application process whose frontmost is true)',
-            `    click menu item "${item}" of menu "${menu}" of menu bar 1`,
+            `    click ${ref}`,
             '  end tell',
             'end tell',
             'return "ok"',
