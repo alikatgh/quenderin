@@ -44,11 +44,12 @@ type AgentMessage =
     | { type: 'decide'; command: string }
     | { type: 'action'; message: string }
     | { type: 'chat_stream'; text: string }
-    | { type: 'chat_response'; message: string; meta?: LogEntry['meta'] }
+    | { type: 'chat_response'; message: string; meta?: LogEntry['meta']; intent?: string }   // Q-294: server sends intent
     | { type: 'error'; message: string }
     | { type: 'done' }
     | { type: 'action_required'; data: RequiredAction }
     | { type: 'model_download_progress'; data?: { progress?: number } }
+    | { type: 'model_switched'; modelId: string; activeModel?: string }   // Q-291: server emits on switch
     | { type: 'preset_changed'; presetId: string };
 
 export function useAgentSocket() {

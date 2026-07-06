@@ -243,9 +243,9 @@ export class WebSocketManager {
                             return;
                         }
 
-                        // Persist user message to session
-                        this.sessionService?.addMessage('user', message);
-
+                        // Q-286: DON'T persist the user turn yet — if generalChat throws, the session
+                        // would keep a user message with no assistant reply (an orphan). Persist both
+                        // atomically after success (below).
                         // Classify intent so the UI can display routing info
                         const intent = classifyIntent(message);
                         ws.send(JSON.stringify({ type: 'status', message: `Thinking...` }));
@@ -294,7 +294,9 @@ export class WebSocketManager {
                                 this.safeSend(ws, JSON.stringify({ type: 'chat_stream', text: streamBuf }));
                                 streamBuf = '';
                             });
-                            // Persist assistant response to session
+                            // Persist the whole turn now that it succeeded — user THEN assistant, so a
+                            // failed generation never leaves an orphaned user turn (Q-286).
+                            this.sessionService?.addMessage('user', message);
                             this.sessionService?.addMessage('assistant', result.text);
                             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'chat_response', message: result.text, meta: result.meta, intent: intent.intent }));
                         } catch (e: unknown) {
