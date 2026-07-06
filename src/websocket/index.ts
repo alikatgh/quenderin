@@ -210,6 +210,14 @@ export class WebSocketManager {
                             ws.send(JSON.stringify({ type: 'error', message: 'Goal is required.' }));
                             return;
                         }
+                        // Q-539: reject a concurrent start LOUDLY. runAgentLoop's internal guard silently
+                        // ignores a second start, so the client (which optimistically flipped to "running")
+                        // was left showing a phantom mission. Tell it plainly instead — no 'done', because
+                        // the FIRST mission is still running and must not be marked finished.
+                        if (this.agentService.isRunning) {
+                            ws.send(JSON.stringify({ type: 'error', message: 'An agent task is already running. Stop it before starting a new one.' }));
+                            return;
+                        }
                         ws.send(JSON.stringify({ type: 'status', message: `Initializing agent goal: ${goal}` }));
 
                         const emitter = new AgentEventEmitter();

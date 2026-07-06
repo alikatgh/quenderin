@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R23 — Q-539 concurrent start) — a second `start` while an agent was running was
+  SILENTLY ignored server-side (runAgentLoop's `_isRunning` guard just returns), yet the client had
+  already optimistically flipped to "running" and wiped the in-flight mission's logs → a phantom UI.
+  Fixed both sides: the WS `start` handler now rejects a concurrent start with a clear error (and NO
+  'done' — the first mission is still live); `sendGoal` bails early when `status === 'running'`, adding
+  a "already running — stop it first" note instead of clobbering. typecheck:src/ui + lint:src/ui clean,
+  449 tests.
+
 - 2026-07-06 (audit R26 — Q-578 iOS cellular opt-in) — the DownloadPolicy reason string tells the user
   to "allow cellular downloads in settings", but no such setting existed (the escape hatch was
   advertised-but-unimplemented). Added `AppSettings.allowCellularDownloads` (UserDefaults, default OFF)

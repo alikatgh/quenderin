@@ -284,6 +284,18 @@ export function useAgentSocket() {
         const ws = ensureSocketOpen();
         if (!ws) return false;
 
+        // Q-539: don't clobber a mission that's already running — the server rejects a concurrent start,
+        // so optimistically wiping the in-flight agent's logs + status (below) would just desync the UI.
+        if (status === 'running') {
+            setLogs((prev) => capLogs([...prev, {
+                id: `busy-${crypto.randomUUID()}`,
+                type: 'error',
+                message: 'An agent task is already running. Stop it before starting a new one.',
+                timestamp: new Date().toLocaleTimeString(),
+            }]));
+            return false;
+        }
+
         setStatus('running');
         setLogs([{
             id: 'start', type: 'status', message: `Goal set: ${goal}${attachments.length > 0 ? ` (with ${attachments.length} attachments)` : ''}`, timestamp: new Date().toLocaleTimeString()
