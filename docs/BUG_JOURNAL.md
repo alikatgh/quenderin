@@ -4,6 +4,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Hashing at compare-time is theatre if the plaintext is already persisted.** A secret (passphrase,
+  token) that lives in localStorage/config as PLAINTEXT gains nothing from being SHA-256'd only when
+  the lock checks it — the plaintext is already exfiltratable. Hash at the PERSISTENCE boundary; keep
+  the plaintext in an ephemeral in-memory draft that is discarded on save; migrate any legacy plaintext
+  once on load, with the reader accepting both formats so no one is locked out mid-migration. (Q-530)
+
 - **Two "can this device run it?" sources diverge at the boundary.** A band lookup (RAM → model) and a
   budget gate (85% usage) each look right alone, but at band edges the band picks what the gate blocks —
   and the UI shows "RECOMMENDED" on a disabled row. Derive the OFFERED pick through the gate (largest
@@ -340,6 +346,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-06 (audit R22 — Q-530 passphrase plaintext in localStorage) — the privacy-lock passphrase was
+  persisted inside `quenderin_settings` as PLAINTEXT; PrivacyLock hashed it only at compare-time, which
+  protects nothing when the plaintext is already in storage. Fix: persist ONLY the SHA-256 hash —
+  extracted `ui/src/lib/passphrase.ts` (`hashPassphrase`+`isPassphraseHash`), SettingsArea now keeps the
+  typed value in an ephemeral in-memory draft and hashes on save, PrivacyLock compares digests (accepts
+  legacy plaintext too so no lockout), App migrates any legacy plaintext once on load. WS omit unchanged
+  (the hash never leaves the client either). 453 tests (+3: SHA-256 vector + never-plaintext + format),
+  typecheck:ui + lint:ui clean. Generalized to a top-section pattern bullet.
 
 - 2026-07-06 (audit R21-R30 — Q-592 JNI not compiled in CI) — the JNI bridge `android/jni/llama_jni.cpp`
   was built by NOTHING in CI: the `:app:assembleDebug` job skips the native build (no `jni/llama.cpp`

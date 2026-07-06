@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, BrainCircuit, Download, Trash2, HardDrive, Zap, Cpu, FileText, Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
+import { hashPassphrase } from '../lib/passphrase.js';
 
 interface Settings {
     contextSize: number;
@@ -89,6 +90,10 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
 
 export function SettingsArea({ onBack, currentSettings, onSave, onReset, onThemeChange, contextOptions, hardwareTier, hardwareArch, hardwareCpuCores, lastOutageInfo, onClearOutageHistory, readinessStage }: SettingsAreaProps) {
     const [settings, setSettings] = useState<Settings>(currentSettings);
+    // Q-530: the passphrase the user types lives ONLY in this in-memory draft — it is hashed on save and
+    // never stored in `settings` (which is what gets persisted to localStorage). Empty draft on save =
+    // "keep the existing passphrase" (the input starts blank; we never round-trip the stored hash into it).
+    const [passphraseDraft, setPassphraseDraft] = useState('');
     const [isSaved, setIsSaved] = useState(false);
     const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
     const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted
@@ -146,6 +151,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     useEffect(() => {
         setSettings(currentSettings);
+        setPassphraseDraft(''); // never surface the stored hash in the input; a fresh view starts blank
     }, [currentSettings]);
 
     const refreshCatalog = () => {
@@ -195,8 +201,15 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         manualPayloadRef.current.select();
     }, [manualDiagnosticsPayload]);
 
-    const handleSave = () => {
-        onSave(settings);
+    const handleSave = async () => {
+        // Q-530: hash the typed passphrase HERE so only the digest is ever persisted. A blank draft
+        // means "unchanged" — keep whatever hash is already stored (settings.privacyPassphrase is never
+        // mutated to plaintext by this component). Disabling the lock leaves the hash in place, harmless.
+        const privacyPassphrase = passphraseDraft
+            ? await hashPassphrase(passphraseDraft)
+            : settings.privacyPassphrase;
+        onSave({ ...settings, privacyPassphrase });
+        setPassphraseDraft('');
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 2000);
     };
@@ -503,9 +516,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         id="privacy-passphrase"
                                         type="password"
                                         autoComplete="new-password"
-                                        value={settings.privacyPassphrase}
-                                        onChange={(e) => setSettings({ ...settings, privacyPassphrase: e.target.value })}
-                                        placeholder="Enter passphrase"
+                                        value={passphraseDraft}
+                                        onChange={(e) => setPassphraseDraft(e.target.value)}
+                                        placeholder={settings.privacyPassphrase ? 'Passphrase set — type to change' : 'Enter passphrase'}
                                         className="w-full bg-zinc-50 dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 rounded-xl py-2 px-4 shadow-inner outline-none transition-all"
                                     />
                                     <p className="mt-2 text-[12px] text-red-500 font-medium">Warning: If lost, local conversation history cannot be un-encrypted.</p>

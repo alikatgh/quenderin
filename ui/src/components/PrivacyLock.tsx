@@ -1,17 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import { hashPassphrase, isPassphraseHash } from '../lib/passphrase.js';
 
 /** Max failed attempts before lockout (ported from off-grid-mobile auth store) */
 const MAX_FAILED_ATTEMPTS = 5;
 /** Lockout duration in ms (5 minutes) */
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
-
-/** Hash a passphrase with SHA-256 so we never compare plaintext */
-async function hashPassphrase(input: string): Promise<string> {
-    const encoded = new TextEncoder().encode(input);
-    const digest = await crypto.subtle.digest('SHA-256', encoded);
-    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEnabled: boolean, expectedPassphrase?: string, onUnlock: () => void }) {
     const [passphrase, setPassphrase] = useState('');
@@ -51,11 +45,15 @@ export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEna
 
         if (!expectedPassphrase) return;
 
-        // Compare SHA-256 hashes instead of plaintext
-        const inputHash = await hashPassphrase(passphrase);
-        const expectedHash = await hashPassphrase(expectedPassphrase);
+        // `expectedPassphrase` is the STORED value, which is a SHA-256 hash (Q-530) — hash the input and
+        // compare digests. A value that isn't a 64-hex hash is a legacy plaintext passphrase written
+        // before Q-530; compare it directly so an existing user isn't locked out before App's one-time
+        // migration re-hashes it. The plaintext branch never persists anything.
+        const matches = isPassphraseHash(expectedPassphrase)
+            ? (await hashPassphrase(passphrase)) === expectedPassphrase
+            : passphrase === expectedPassphrase;
 
-        if (inputHash === expectedHash) {
+        if (matches) {
             setFailedAttempts(0);
             setLockoutUntil(null);
             onUnlock();

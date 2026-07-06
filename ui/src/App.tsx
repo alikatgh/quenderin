@@ -10,6 +10,7 @@ import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
 import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { hashPassphrase, isPassphraseHash } from './lib/passphrase.js';
 
 // Lazy-load heavy components — they import syntax highlighter, markdown,
 // and data-fetching code that isn't needed on initial render.
@@ -400,6 +401,20 @@ function AppContent() {
     }
     lockConfiguredRef.current = configured;
   }, [settings.privacyLockEnabled, settings.privacyPassphrase]);
+
+  // Q-530: one-time migration — a passphrase persisted before Q-530 is PLAINTEXT in localStorage. Hash
+  // it and re-persist so the plaintext is scrubbed. Idempotent (isPassphraseHash guard) and gated by a
+  // ref so it fires once; PrivacyLock still accepts the plaintext until this lands, so nobody is locked
+  // out in the interim. On failure the ref resets so a later load can retry.
+  const passphraseMigratedRef = useRef(false);
+  useEffect(() => {
+    const pp = settings.privacyPassphrase;
+    if (!pp || isPassphraseHash(pp) || passphraseMigratedRef.current) return;
+    passphraseMigratedRef.current = true;
+    hashPassphrase(pp)
+      .then(h => updateSettings({ ...settings, privacyPassphrase: h }))
+      .catch(() => { passphraseMigratedRef.current = false; });
+  }, [settings.privacyPassphrase]);
 
   useEffect(() => {
     if (!requiredAction) {
