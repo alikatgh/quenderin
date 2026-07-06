@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 16 — defensive tail) — **Q-379** `boxToGeometry` computed
+  `width=x2-x1` / `height=y2-y1` directly, so inverted bounds (RTL layouts / malformed a11y data)
+  produced a NEGATIVE width/height and a wrong origin — breaks any downstream hit-test/overlay that
+  assumes non-negative dims. Normalized the corners (min/max) first; the center is a midpoint so tap
+  points are unchanged. 3 tests. Also triaged (left) **Q-383** (`mac.ui.key` "no blocklist rescan" —
+  it already uses a strict ALLOWLIST of nav keys + per-run approval, and the capability has no screen
+  context to rescan; the threat isn't actionable) and the P2/P3 tail (Q-475 cgroup over-estimate,
+  Q-378 OCR id off-by-one, Q-471 Windows mem fallback) as low-impact.
+
 - 2026-07-06 (audit R1-R20 batch 15 — the perf P0) — **Q-504 (P0)** `PromptBuilder.buildEnvironment`
   runs on EVERY agent step and did TWO embedding-RAG lookups each time: `findSimilarGoal(goal)` (goal
   is CONSTANT across a run) and `findRelevantCorrections(uiText)` (UI often unchanged between steps

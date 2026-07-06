@@ -5,12 +5,18 @@ import { UIElement } from '../types/index.js';
 // (extractBounds) and OcrService's synthetic nodes produce geometrically consistent UIElements
 // off a single rounding rule. Inputs are assumed integral (pixel coords); center is rounded.
 export function boxToGeometry(x1: number, y1: number, x2: number, y2: number) {
+    // Q-379: normalize the corners before computing the rect. Inverted bounds (x2<x1 or y2<y1 — seen
+    // with RTL layouts and malformed accessibility data) otherwise yield a NEGATIVE width/height and a
+    // wrong origin, which breaks any downstream hit-testing / overlay that assumes w,h >= 0. The center
+    // (midpoint) is order-independent, so tap coordinates are unchanged.
+    const left = Math.min(x1, x2), right = Math.max(x1, x2);
+    const top = Math.min(y1, y2), bottom = Math.max(y1, y2);
     return {
         center: {
-            x: Math.round(x1 + (x2 - x1) / 2),
-            y: Math.round(y1 + (y2 - y1) / 2)
+            x: Math.round((left + right) / 2),
+            y: Math.round((top + bottom) / 2)
         },
-        rect: { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
+        rect: { x: left, y: top, width: right - left, height: bottom - top }
     };
 }
 
