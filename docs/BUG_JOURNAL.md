@@ -341,6 +341,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R29 — Q-606 STATUS.md stale counts) — STATUS.md claimed **195** Swift tests and
+  **177** Android checks; the actuals are **285** (`swift test`) and **251** (`kotlinc CoreVerify`).
+  Updated both. Doc-only; the numbers were re-measured this session.
+
 - 2026-07-06 (audit R23 — Q-543 pressure-unload churn) — the memory-pressure monitor unloaded the model
   whenever it was over the hard budget and `!isInferenceBusy()`. But BETWEEN agent steps isInferenceBusy
   is false, so under pressure it unloaded mid-run and the very next step reloaded (churn/latency, the
