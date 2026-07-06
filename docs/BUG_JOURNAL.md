@@ -352,6 +352,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R25 — Q-568 self-host the fonts) — the UI pulled Inter + JetBrains Mono from Google
+  Fonts on every load (a `<link>` to fonts.googleapis + preconnects) — an IP/timing leak + a hard network
+  dependency that contradicts the offline/privacy-first mission. Self-hosted them (owner-greenlit): added
+  `@fontsource-variable/inter` + `@fontsource-variable/jetbrains-mono`, imported in main.tsx (Vite bundles
+  the woff2 into the build), removed the Google `<link>`s from index.html, and pointed the CSS/tailwind
+  font stacks at 'Inter Variable'/'JetBrains Mono Variable' (with the old names + system fonts as fallback).
+  Tightened the CSP to drop the Google font hosts (font-src 'self' now). Rebuilt public/. VERIFIED in a
+  real browser (vite dev): body computed 'Inter Variable', the woff2 loaded from node_modules, `document.
+  fonts` has Inter Variable loaded, and ZERO requests/links to fonts.g*.com. 469 tests, typecheck + lint
+  clean on both sides. Lesson: an offline-first app must make zero third-party requests — audit the HTML
+  `<link>`s, not just the fetch/XHR code.
+
 - 2026-07-06 (audit R24 — Q-549 Step 1: device-agent audit ledger) — implemented the safe first step of the
   governance migration (owner-greenlit). `AgentService.actionLedger` = a bounded `InMemoryAuditLedger(500)`
   flight recorder; every executed action is recorded with its decision (allowed/failed/blocked/error) + the

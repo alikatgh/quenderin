@@ -18,7 +18,8 @@
 
     body {
         @apply bg-[var(--surface-page)] text-zinc-900 antialiased selection:bg-purple-500/30 transition-colors duration-500;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        /* Q-568: 'Inter Variable' is the self-hosted @fontsource family; 'Inter' + system fonts fall back. */
+        font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
         overflow: hidden;
     }
 
@@ -29,7 +30,7 @@
     code,
     pre,
     .font-mono {
-        font-family: 'JetBrains Mono', monospace !important;
+        font-family: 'JetBrains Mono Variable', 'JetBrains Mono', monospace !important;
     }
 
     :focus-visible {

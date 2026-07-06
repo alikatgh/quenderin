@@ -58,7 +58,10 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             // Q-561: frame-ancestors 'none' (no clickjacking — the dashboard is never meant to be
             // embedded), object-src 'none' (no <object>/<embed> plugin vectors), base-uri 'self' (a
             // injected <base> can't rewrite every relative URL to an attacker origin).
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
+            // Q-568: fonts are self-hosted (bundled @fontsource), so the CSP no longer needs to allow
+            // Google's font hosts — an offline/privacy-first app makes ZERO third-party requests. font-src
+            // 'self' covers the bundled woff2; style-src keeps 'unsafe-inline' for the app's inline styles.
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
         );
         // The CLI delivers the per-launch auth token in the opened URL (`?token=`). Suppress the
         // Referer so that token can't leak to any cross-origin resource the page might request.
