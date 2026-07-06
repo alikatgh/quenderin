@@ -573,7 +573,12 @@ final class ModelLibraryController: ObservableObject {
             // concurrently and corrupt it (Q-003). If it's already in flight elsewhere, don't
             // start a second writer — reflect the in-progress state and bail.
             guard await DownloadCoordinator.shared.claim(filename) else {
-                self?.states[entry.id] = .downloading(0)
+                // Another downloader (e.g. the onboarding installer) already owns this file. Don't start a
+                // second writer — and crucially don't leave the card stuck at .downloading(0) with NO task,
+                // which made downloadAllMissing()'s `while case .downloading` poll spin forever and
+                // deadlocked the whole sequential queue (adversarial-verify P1). Reflect that it's being
+                // fetched elsewhere so the queue advances; a later refresh() picks the finished file off disk.
+                self?.states[entry.id] = .failed("Already downloading elsewhere — it’ll finish there.")
                 self?.tasks[entry.id] = nil
                 return
             }

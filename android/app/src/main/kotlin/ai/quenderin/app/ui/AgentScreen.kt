@@ -73,10 +73,21 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     val session = remember {
         AgentSession(engine, tools).apply {
             onChange = {
-                steps = this.steps
-                answer = this.answer
-                running = this.isRunning
-                haltReason = this.haltReason
+                // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background
+                // thread — writing Compose snapshot state directly off the main thread is a threading
+                // violation (missed/torn recompositions; a crash in strict/debug builds). Snapshot the
+                // session's values here, then marshal the Compose writes onto the main dispatcher, exactly
+                // like the ChatScreen fix. Main.immediate keeps a same-thread emit synchronous.
+                val s = this.steps
+                val a = this.answer
+                val r = this.isRunning
+                val h = this.haltReason
+                scope.launch(Dispatchers.Main.immediate) {
+                    steps = s
+                    answer = a
+                    running = r
+                    haltReason = h
+                }
             }
         }
     }

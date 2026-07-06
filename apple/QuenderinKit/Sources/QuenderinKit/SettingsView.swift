@@ -444,7 +444,15 @@ public struct SettingsView: View {
                             modelActions(installed)
                         }
                     }
-                    .onDelete { offsets in offsets.forEach { deleteModel(installedModels[$0]) } }
+                    .onDelete { offsets in
+                        // Snapshot the targets BEFORE deleting: deleteModel() calls reloadModelStorage()
+                        // which reassigns installedModels, so indexing it per-iteration reads a shrinking
+                        // array — an out-of-range crash on a multi-row delete, or the wrong model on
+                        // {0,1}. Resolve all indices against the current array once, then delete by value.
+                        // (Mirrors ConversationHistoryView's stable-id snapshot.)
+                        let targets = offsets.map { installedModels[$0] }
+                        targets.forEach { deleteModel($0) }
+                    }
                     LabeledRow(title: "Total on device", value: fileSize(totalModelBytes))
                 }
                 Text("The ⋯ menu on each model can delete it and free space — the active model is protected.")

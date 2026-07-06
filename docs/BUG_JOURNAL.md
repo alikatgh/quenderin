@@ -352,6 +352,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (fresh-hunt bugs from the adversarial-verify workflow — never-audited native surfaces) — the
+  Opus fleet's fresh hunt on iOS SwiftUI / Android Compose / JNI (surfaces the 2026-06-27 deep-hunt never
+  reached) found real pre-existing bugs. **iOS SettingsView.swift:447 (P1):** `.onDelete` deleted by index
+  while deleteModel() reassigns installedModels mid-loop → OOB crash / wrong model on a multi-row delete;
+  now snapshots targets by value first. **iOS ModelsLibraryView.swift:575 (P1):** a failed DownloadCoordinator
+  claim left the card at `.downloading(0)` with no task → downloadAllMissing()'s `while case .downloading`
+  poll spun forever, deadlocking the queue; now sets a non-downloading state so it advances. **Android
+  AgentScreen.kt:75 (P1):** onChange wrote Compose state from Dispatchers.IO (the Q-228 bug ChatScreen
+  already fixed; AgentScreen never got it) → now marshals onto Dispatchers.Main.immediate. **JNI
+  llama_jni.cpp:100+112 (P2):** optional GetMethodID/GetFieldID lookups left a pending exception uncleared
+  → next JNI call UB → ART abort; now ExceptionClear after each (matches thermalPoll's Q-338 rule). swift
+  build clean, JNI syntax-check clean; the Android app-module + JNI are on-device-verified.
+
 - 2026-07-06 (SELF-AUDIT via adversarial-verify workflow — 3 regressions THIS SESSION introduced) — a
   multi-agent Opus verification of the session's own fixes caught three real regressions (report:
   docs/audits/2026-07-06-adversarial-verification.md). **Q-596/Q-597 session-switch race (P1, one leg

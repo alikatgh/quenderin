@@ -99,6 +99,10 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         jclass cls = env->GetObjectClass(sink);
         on_token = env->GetMethodID(cls, "onToken", "(Ljava/lang/String;)V");
         env->DeleteLocalRef(cls);   // L3: don't pin the class local-ref for the whole stream
+        // A failed lookup (R8/ProGuard rename or signature drift) leaves a pending NoSuchMethodError.
+        // on_token==null is HANDLED (emit() falls back to accumulate), but the pending exception must be
+        // cleared or the NEXT JNI call in the token loop is UB → ART aborts the whole process.
+        if (!on_token && env->ExceptionCheck()) env->ExceptionClear();
     }
 
     // Resolve the cancellation field once; polled lock-free each token (M3).
@@ -112,6 +116,10 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         cancel_fid = env->GetFieldID(tcls, "cancelRequested", "Z");
         recommended_threads_mid = env->GetMethodID(tcls, "recommendedThreads", "()I");
         env->DeleteLocalRef(tcls);
+        // Both are OPTIONAL (null-checked at their use sites: cancelled()/thermalPoll). A failed lookup
+        // (renamed/removed member) leaves a pending NoSuchField/MethodError; clear it here or the decode
+        // loop's next JNI call is UB → ART aborts the process. Same rule as thermalPoll's Q-338 guard.
+        if (env->ExceptionCheck()) env->ExceptionClear();
     }
 
     auto emit = [&](const std::string& p) -> bool {
