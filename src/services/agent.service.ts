@@ -4,6 +4,7 @@ import { UiParserService } from "./uiParser.service.js";
 import { OcrService } from "./ocr.service.js";
 import { MemoryService } from "./memory.service.js";
 import { PromptBuilder } from "./agent/promptBuilder.js";
+import { redactSecrets } from "./capability/redaction.js";
 import { ActionExecutor } from "./agent/actionExecutor.js";
 import { UiVerifier } from "./agent/uiVerifier.js";
 import { AgentEvents, AgentAction, IDeviceProvider, ILlmProvider } from "../types/index.js";
@@ -159,7 +160,10 @@ export class AgentService {
     }
 
     private async _runAgentLoop(goal: string, emitter: AgentEventEmitter, attachments: { name: string, content: string }[], maxSteps: number, maxWallClockMs: number): Promise<void> {
-        logger.info(`[AgentService] Starting mission: ${goal}`);
+        // Q-357: the goal is logged for troubleshooting, but a spoken/typed CREDENTIAL in it must not
+        // persist in the app log. redactSecrets masks key/token/password SHAPES while keeping the goal
+        // readable. (The command intent itself is the user's own local log; only secrets are scrubbed.)
+        logger.info(`[AgentService] Starting mission: ${redactSecrets(goal)}`);
         if (attachments.length > 0) {
             logger.info(`[AgentService] Context enriched with ${attachments.length} attachments.`);
         }

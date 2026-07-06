@@ -341,6 +341,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 13 — voice/log privacy) — **Q-357** the agent goal was logged
+  verbatim (`server.ts` voice trigger AND `agent.service` mission start), so a spoken/typed CREDENTIAL
+  would persist in the app log. Wrapped both sites in the existing (tested) `redactSecrets` — masks
+  key/token/password SHAPES while keeping the goal readable for troubleshooting. Fixed BOTH sites, not
+  just the flagged one: voice → runAgentLoop hits the mission-start log too, so redacting only the
+  voice site would still leak. RULED OUT: **Q-359** (voice "no isRunning guard" — `runAgentLoop`
+  already guards `_isRunning` internally for ALL callers, line 139; a server-level guard is redundant),
+  and DEFERRED **Q-358** (voice uses a throwaway emitter → no dashboard progress: real, but needs
+  routing to the per-connection WS emitter — architectural, secondary feature). Left **Q-369**
+  (bounds:null in the LLM node view) and **Q-370** (OCR nodes clickable:true): agent-behavior tuning
+  where the RIGHT value (spatial-info vs token-budget; OCR-fallback tap targets) needs a running
+  agent+model to validate — a blind flip degrades agent success invisibly (same boundary as Q-339).
+
 - 2026-07-06 (audit R1-R20 batch 12 — backend safety, TS-verified) — swept the verifiable-layer
   findings I'd never examined (was working from the P0s). **Q-384** `setRunGoal` (the run-start hook)
   didn't reset `mutationsThisRun`, so the bulk-brake window LEAKED across runs — run 2's brake fired

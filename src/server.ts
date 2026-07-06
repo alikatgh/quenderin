@@ -9,6 +9,7 @@ import { WebSocketManager } from './websocket/index.js';
 import { generateAuthToken } from './security/authToken.js';
 import { AgentService } from './services/agent.service.js';
 import { AgentEventEmitter } from './services/agent.service.js';
+import { redactSecrets } from './services/capability/redaction.js';
 import { AndroidProvider } from './services/providers/android.provider.js';
 import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { BackgroundDaemonService } from './services/backgroundDaemon.service.js';
@@ -146,7 +147,9 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     // Boot Voice Control — pipe spoken commands into the agent with the correct signature
     voiceService.on('error', (e) => logger.warn(`[Voice Control] ${e}`));
     voiceService.on('command', (spokenCommand: string) => {
-        logger.info(`[Voice Trigger] Executing objective: "${spokenCommand}"`);
+        // Q-357: don't persist a spoken credential in the log — redactSecrets masks secret shapes
+        // (the agent loop redacts the same goal again at its own mission-start log).
+        logger.info(`[Voice Trigger] Executing objective: "${redactSecrets(spokenCommand)}"`);
         agentService.runAgentLoop(spokenCommand, new AgentEventEmitter(), [], 20)
             .catch((e) => logger.error(`[Voice Trigger] Agent loop failed for "${spokenCommand}":`, e));
     });
