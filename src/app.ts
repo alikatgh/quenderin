@@ -55,7 +55,10 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             // be served from EITHER local hostname (Electron / the CLI-opened URL differ), and a
             // cross-alias fetch/WS (page at 127.0.0.1 → localhost, or vice-versa) isn't 'self' — without
             // both, the API/WS silently fails on one of them. Both are loopback, so no new exposure.
-            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com;"
+            // Q-561: frame-ancestors 'none' (no clickjacking — the dashboard is never meant to be
+            // embedded), object-src 'none' (no <object>/<embed> plugin vectors), base-uri 'self' (a
+            // injected <base> can't rewrite every relative URL to an attacker origin).
+            "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
         );
         // The CLI delivers the per-launch auth token in the opened URL (`?token=`). Suppress the
         // Referer so that token can't leak to any cross-origin resource the page might request.

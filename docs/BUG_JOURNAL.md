@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 Wave 1 — Q-561 CSP hardening) — the Content-Security-Policy set
+  default/connect/img/script/style/font but omitted three standard hardening directives. Added
+  `frame-ancestors 'none'` (clickjacking — the local dashboard is never meant to be embedded),
+  `object-src 'none'` (no `<object>`/`<embed>` plugin vectors), `base-uri 'self'` (an injected `<base>`
+  can't rewrite every relative URL to an attacker origin). Test asserts all three on a served 200 route
+  (/health — a 404 gets Express's own finalhandler CSP, not ours). LEFT: Q-562 (no-origin CORS is
+  intentional for Electron/CLI and gated by auth), Q-572 (SECURITY.md rate-limit claim — a doc/code
+  mismatch, not a runtime bug). 444 tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R21-R30 Wave 1 — Q-525 token out of the URL) — the CLI/browser path delivers the
   auth token in `?token=`, and `authToken()` re-read it from `window.location.search` on EVERY call, so
   it lingered in the address bar / browser history / bookmarks (shoulder-surf + history-exfil vector).
