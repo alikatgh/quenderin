@@ -399,10 +399,10 @@ html[data-theme-mode="dark"] {
   --text-secondary: #b9bccb;
   --text-muted: #8b8fa3;
   --border: #2a2a35;
-  --brand: #8b83ff;
-  --brand-hover: #a39cff;
-  --accent-soft: rgba(139,131,255,0.16);
-  --accent-border: rgba(139,131,255,0.45);
+  --brand: #5FA8B0;              /* brightened teal for dark bg — NOT Stripe purple (brand is teal/copper) */
+  --brand-hover: #7CC0C8;
+  --accent-soft: rgba(95,168,176,0.16);
+  --accent-border: rgba(95,168,176,0.45);
 }
 /* Floating product cards / annotations should read dark too */
 html[data-theme-mode="dark"] .phone-annot { background: var(--surface-tint); }

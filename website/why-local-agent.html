@@ -44,12 +44,18 @@
     but it can't un-fire an action already sent to your machine. Quenderin checks a signal on
     <em>your</em> computer between every step — press stop and the next step simply never runs.
     No round-trip, no lag.</li>
-    <li><strong>Read what it did — and what it refused.</strong> Every action lands in a plain,
-    append-only log you own, including the ones it declined. The agent's reasoning isn't a
-    remote black box; it's a file you can open.</li>
-    <li><strong>Undo the whole task.</strong> Changed your mind after it ran? One click reverses
-    everything the agent did, newest-first. A cloud service can't offer transactional undo of
-    your local changes; a local one can.</li>
+    <li><strong>Read what it did — grouped by task, and including what it refused.</strong> Every
+    action lands in a plain, append-only log you own, grouped under the task that caused it
+    (<code>quenderin history</code>). The agent's reasoning isn't a remote black box; it's a file
+    you can open — where a cloud agent gives you an opaque chat transcript.</li>
+    <li><strong>Undo the whole task — even later.</strong> Changed your mind an hour after it ran,
+    in a brand-new session? <code>quenderin undo</code> reverses everything the agent did,
+    newest-first. A cloud service can't offer transactional undo of your local machine; a local
+    one can, and it survives closing the app.</li>
+    <li><strong>See it before you commit to it.</strong> <code>--dry-run</code> executes the
+    read-only steps for real (so the plan is grounded in your actual folder) but only
+    <em>previews</em> anything that would change — an exact, side-effect-free rehearsal a cloud
+    agent can't give you of your own machine.</li>
     <li><strong>Nothing writes without your yes.</strong> Every action that changes something
     shows you a plain-language preview and waits for approval — a plan you read before it runs.</li>
   </ul>
