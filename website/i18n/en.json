@@ -11,8 +11,8 @@
   "nav.faq": "FAQ",
 
   "hero.eyebrow": "Offline · Private · Yours",
-  "hero.title": "An AI that lives on your phone—not in someone’s cloud.",
-  "hero.lede": "Quenderin runs large language models <strong>fully on your device</strong>. No internet, no API keys, no telemetry. Download a model once over Wi-Fi, and your assistant keeps working on a plane, in a tent, anywhere your signal doesn’t.",
+  "hero.title": "An AI that runs on your machine—and can run it for you.",
+  "hero.lede": "Quenderin runs large language models <strong>fully on your device</strong> — no internet, no API keys, no telemetry. Private chat on your phone, offline. And on your Mac, an agent that <strong>operates the computer for you</strong>: files, apps, your Apple Shortcuts — asking before every change, and undoable after. Nothing ever leaves the machine.",
   "hero.cta1": "View on GitHub",
   "hero.cta2": "See how it works",
   "hero.spec1": "offline",
