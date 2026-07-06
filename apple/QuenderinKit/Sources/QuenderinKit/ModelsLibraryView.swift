@@ -315,10 +315,19 @@ private struct LibraryRow: View {
             case .notInstalled:
                 Button { onDownload() } label: { Label("Download", systemImage: "arrow.down.circle") }
                     .buttonStyle(.bordered)
-            case .failed:
-                Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
+            case .failed(let reason):
+                VStack(alignment: .trailing, spacing: 4) {
+                    Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
+                    if let reason {   // Q-271: say WHY (e.g. blocked on cellular), don't just offer a bare Retry
+                        Text(reason)
+                            .font(.caption2)
+                            .foregroundStyle(palette.onSurfaceVariant)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 200)
+                    }
+                }
             }
         }
         .padding(12)
@@ -394,7 +403,9 @@ final class ModelLibraryController: ObservableObject {
         case notInstalled
         case downloading(Double)
         case installed
-        case failed
+        /// Optional reason shown to the user — the network gate (Q-271) fills it ("on cellular…"),
+        /// a transport failure leaves it nil (the generic Retry affordance is enough).
+        case failed(String?)
     }
 
     /// What a dropped .gguf turned out to be (see `importGGUF`).
@@ -458,8 +469,33 @@ final class ModelLibraryController: ObservableObject {
 
     @Published private(set) var states: [String: ModelState] = [:]
     private var tasks: [String: Task<Void, Never>] = [:]
-    private let downloader = URLSessionModelDownloader()
-    private let modelsDir = OnboardingModel.defaultModelsDir()
+    private let downloader: ModelDownloader
+    private let modelsDir: URL
+    /// Network gate for the library's LIVE downloads (Q-271) — twin of OnboardingModel's. Injected
+    /// for tests; live by default via a captured monitor so the gate bites on-device with no wiring.
+    private let networkStatus: () -> NetworkStatus
+    private let downloadPolicy: () -> DownloadPolicy
+
+    init(
+        downloader: ModelDownloader = URLSessionModelDownloader(),
+        modelsDir: URL? = nil,
+        networkStatus: (() -> NetworkStatus)? = nil,
+        downloadPolicy: (() -> DownloadPolicy)? = nil
+    ) {
+        self.downloader = downloader
+        self.modelsDir = modelsDir ?? OnboardingModel.defaultModelsDir()
+        if let networkStatus {
+            self.networkStatus = networkStatus
+        } else {
+            #if canImport(Network)
+            let monitor = LiveNetworkMonitor()
+            self.networkStatus = { monitor.status }   // closure retains the monitor for our lifetime
+            #else
+            self.networkStatus = { .wifi }
+            #endif
+        }
+        self.downloadPolicy = downloadPolicy ?? { .wifiOnly }
+    }
 
     func refresh() {
         let installed = Set(FileManagerModelStorage(directory: modelsDir).installedFilenames())
@@ -473,7 +509,9 @@ final class ModelLibraryController: ObservableObject {
     var installedCount: Int { states.values.filter { $0 == .installed }.count }
 
     var missingModels: [ModelEntry] {
-        ModelCatalog.models.filter { state(of: $0) == .notInstalled || state(of: $0) == .failed }
+        ModelCatalog.models.filter {
+            switch state(of: $0) { case .notInstalled, .failed: return true; default: return false }
+        }
     }
 
     private var missingBytes: Int64 {
@@ -518,6 +556,13 @@ final class ModelLibraryController: ObservableObject {
 
     func download(_ entry: ModelEntry) {
         guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        // Network gate (Q-271): twin of OnboardingModel — refuse a multi-GB cellular pull under a
+        // Wi-Fi-only policy on the LIVE path, not just in the checklist. Race-free (positive .cellular
+        // only, so a warming-up monitor never blocks Wi-Fi). Surfaces the reason on the card.
+        if networkStatus() == .cellular, !downloadPolicy().allows(.cellular) {
+            states[entry.id] = .failed(downloadPolicy().reason(for: .cellular))
+            return
+        }
         states[entry.id] = .downloading(0)
         let destination = modelsDir.appendingPathComponent(entry.filename)
         let filename = entry.filename
@@ -546,7 +591,7 @@ final class ModelLibraryController: ObservableObject {
                 }
             } catch {
                 try? FileManager.default.removeItem(at: destination)   // never leave a corrupt file behind
-                if !Task.isCancelled { self?.states[entry.id] = .failed }
+                if !Task.isCancelled { self?.states[entry.id] = .failed(nil) }
             }
             self?.tasks[entry.id] = nil
             if Task.isCancelled { self?.refresh() }

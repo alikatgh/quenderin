@@ -341,17 +341,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
-- 2026-07-06 (audit R1-R20 batch 9 — download policy on the live path) — **Q-271/Q-289 (P0, primary
-  path)** the iOS DownloadPolicy was consulted only by the pre-download checklist (`Preflight`), never
-  by the LIVE download — so first-run onboarding would burn multi-GB of cellular data. `OnboardingModel.
-  install()` now gates right after the disk preflight, and it's LIVE by default (captures a
-  `LiveNetworkMonitor`, no app wiring needed). Gate is RACE-FREE: blocks only on a POSITIVE `.cellular`
-  reading, so a warming-up monitor (`.none`) never falsely blocks a real Wi-Fi download. Injected
-  status+policy closures (like `availableDiskBytes`) → 2 swift tests (cellular+wifiOnly → blocked with
-  the policy reason, downloader untouched; cellular+wifiOrCellular → proceeds). Lesson: "needs a device"
-  network gating is still unit-testable — the monitor is the seam, the POLICY is the tested decision;
-  gate on the positive signal to stay race-free. STILL OPEN (scoped): the library path (`ModelLibrary
-  Controller`, needs a reason slot on `.failed`) and Android `WorkManagerModelDownloader` (needs NDK/Gradle).
+- 2026-07-06 (audit R1-R20 batch 9 — download policy on BOTH iOS live paths) — **Q-271/Q-289 (P0)**
+  the iOS DownloadPolicy was consulted only by the pre-download checklist (`Preflight`), never by the
+  LIVE downloads — so a user could burn multi-GB of cellular data. Fixed BOTH iOS call sites the same
+  way: `OnboardingModel.install()` (first run) and `ModelLibraryController.download()` (add-a-model)
+  now gate right where they start, LIVE by default (each captures a `LiveNetworkMonitor`, no app
+  wiring). Gate is RACE-FREE: blocks only on a POSITIVE `.cellular` reading, so a warming-up monitor
+  (`.none`) never falsely blocks Wi-Fi. Made both injectable (closures / an injectable controller
+  init) → 4 swift tests (cellular+wifiOnly → blocked with the policy reason, downloader untouched;
+  cellular+wifiOrCellular → proceeds). `ModelState.failed` gained a reason slot so the library card
+  says WHY, not just "Retry". Lesson: "needs a device" network gating is still unit-testable — the
+  monitor is the seam, the POLICY is the tested decision; gate on the positive signal to stay
+  race-free. STILL OPEN: only the Android twin `WorkManagerModelDownloader` (needs the NDK/Gradle toolchain).
 
 - 2026-07-06 (audit R1-R20 batch 8 — chat cancel) — **Q-292** an in-flight chat reply couldn't be
   stopped: no `requestCancel`, so a user waited out the 30s prompt timeout or restarted the server.
