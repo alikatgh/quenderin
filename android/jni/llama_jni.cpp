@@ -50,7 +50,12 @@ std::once_flag g_backend_once;  // llama_backend_init exactly once per process, 
 
 // Tokenize `text` with the model's vocab.
 std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& text, bool add_bos) {
-    int n = -llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), nullptr, 0, add_bos, true);
+    const int n = -llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), nullptr, 0, add_bos, true);
+    // The zero-capacity probe returns -(needed); n is the token count. Guard n <= 0: empty text yields 0
+    // (→ empty result), and a future llama.cpp whose probe returns a POSITIVE value would make n negative —
+    // passed to vector(n) as size_t it requests ~SIZE_MAX elements and crashes the process. Fail to an
+    // empty tokenization instead of a bad_alloc. (adversarial-verify P3.)
+    if (n <= 0) return {};
     std::vector<llama_token> tokens(n);
     llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), tokens.data(), n, add_bos, true);
     return tokens;
