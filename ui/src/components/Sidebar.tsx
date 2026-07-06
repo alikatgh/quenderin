@@ -20,6 +20,7 @@ interface SidebarProps {
     currentView: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings';
     setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings') => void;
     onNewGoal: () => void;
+    onSelectSession: (id: string) => void;   // Q-313: open a past conversation from Recent
     activeModel?: string;
     hardwareTier?: string;
 }
@@ -31,7 +32,7 @@ const TIER_STYLES: Record<string, { label: string; dot: string }> = {
     embedded:    { label: 'Embedded',    dot: 'bg-red-500' },
 };
 
-export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, currentView, setCurrentView, onNewGoal, activeModel = 'Loading AI...', hardwareTier }: SidebarProps) {
+export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, currentView, setCurrentView, onNewGoal, onSelectSession, activeModel = 'Loading AI...', hardwareTier }: SidebarProps) {
     const modelLabel = activeModel.includes('/') ? activeModel.split('/').pop()! : activeModel;
     const backendReady = readinessReady ?? false;
     const backendStage = readinessStage ?? 'unknown';
@@ -114,7 +115,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                             {recentSessions.map(s => (
                                 <button
                                     key={s.id}
-                                    onClick={() => setCurrentView('general_chat')}
+                                    onClick={() => onSelectSession(s.id)}
                                     className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors group"
                                 >
                                     <p className="text-[12px] text-zinc-600 dark:text-zinc-400 truncate group-hover:text-zinc-900 dark:group-hover:text-zinc-200">{s.title}</p>

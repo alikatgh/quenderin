@@ -345,7 +345,7 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat } = useAgentSocket();
+  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
 
@@ -516,6 +516,14 @@ function AppContent() {
           onNewGoal={() => {
             handleNewGoal();
             if (window.innerWidth < 1280) setSidebarOpen(false);
+          }}
+          onSelectSession={(id) => {
+            // Q-313: open the clicked conversation — load its transcript, THEN switch to the chat view
+            // (only on a successful load, so a fetch failure doesn't drop you into an empty screen).
+            loadSession(id).then((ok) => {
+              if (ok) setCurrentView('general_chat');
+              if (window.innerWidth < 1280) setSidebarOpen(false);
+            });
           }}
           activeModel={activeModel}
           hardwareTier={healthData?.hardware?.tier}

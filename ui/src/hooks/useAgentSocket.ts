@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { UIElement, LogEntry, RequiredAction } from '../types/index.js';
-import { authToken } from '../lib/api.js';
+import { authToken, apiFetch } from '../lib/api.js';
 
 /** Default settings with safe defaults — used for merge on load and reset */
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -389,10 +389,33 @@ export function useAgentSocket() {
         }
     };
 
+    // Q-313: open a past conversation from the Recent list. Fetches the saved transcript and rehydrates
+    // the chat log so the user actually SEES it (clicking Recent used to only switch the view). Returns
+    // whether it loaded, so the caller can switch to the chat view only on success.
+    const loadSession = async (sessionId: string): Promise<boolean> => {
+        try {
+            const res = await apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+            if (!res.ok) return false;
+            const session = await res.json() as { messages?: { role: string; content: string; timestamp?: string }[] };
+            const restored: LogEntry[] = (session.messages ?? []).map((m, i) => ({
+                id: `restored-${sessionId}-${i}`,
+                type: m.role === 'user' ? 'chat' : 'chat_response',
+                message: m.content,
+                timestamp: m.timestamp ?? '',
+            }));
+            setLogs(restored);
+            setStatus('idle');
+            lastUserChatLogRef.current = null;
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
     return {
         wsReady,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat
+        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession
     };
 }

@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 23 — Recent opens the conversation) — **Q-313** clicking a Recent
+  session only switched the VIEW — it never loaded that session's `id`, so the transcript you clicked
+  never appeared (dead link). Built the load path: `useAgentSocket.loadSession(id)` fetches the saved
+  transcript (auth'd), maps `SessionMessage{role,content}` → `LogEntry` (user→`chat`,
+  assistant→`chat_response`), rehydrates `logs`, and returns success; Sidebar gained an
+  `onSelectSession` prop; App switches to the chat view ONLY on a successful load. Scope: DISPLAY-first
+  (you can now review past conversations) — CONTINUING one server-side would need a WS `switch_session`
+  message + server session-switch (follow-on). typecheck:ui + lint:ui clean.
+
 - 2026-07-06 (audit R1-R20 batch 22 — touch voice) — **Q-318** the general-chat voice button used
   mouse-only events (`onMouseDown/Up/Leave`), so press-and-hold-to-talk never fired on TOUCH devices.
   Switched to Pointer events (`onPointerDown/Up/Leave`) — one input model covering mouse + touch + pen
