@@ -42,6 +42,28 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertFalse(session.isRunning)
     }
 
+    /// Q-641: the loop's hard-stop — a cancelled run halts at the step boundary with `.cancelled`
+    /// instead of grinding to maxSteps (the iOS twin of the desktop Q-523 kill switch).
+    func testAgentLoopHonorsCancellation() async {
+        // Would keep calling the tool forever (never answers) — but cancellation halts it immediately.
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"calculator","input":"1 + 1"}"#,
+            #"{"tool":"calculator","input":"2 + 2"}"#,
+        ])
+        let loop = AgentLoop(engine: engine, tools: [CalculatorTool()], maxSteps: 5)
+        let run = await loop.run(goal: "keep going", isCancelled: { true })
+        XCTAssertEqual(run.haltReason, .cancelled)
+        XCTAssertTrue(run.steps.isEmpty)   // stopped at the first step boundary, before any step ran
+    }
+
+    @MainActor
+    func testSessionCancelIsNoOpWhenIdle() {
+        let engine = ScriptedInferenceEngine(replies: [#"{"answer":"x"}"#])
+        let session = AgentSession(engine: engine, tools: [])
+        session.cancel()   // nothing running → safe no-op, doesn't wedge anything
+        XCTAssertFalse(session.isRunning)
+    }
+
     /// End-to-end: the SHIPPED export path (loop → session.run → exportMarkdown → AgentRunExporter),
     /// not just the exporter in isolation — catches glue bugs like `lastGoal` not being stored.
     @MainActor

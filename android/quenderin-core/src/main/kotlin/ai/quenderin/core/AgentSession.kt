@@ -7,12 +7,18 @@ package ai.quenderin.core
  * `AgentSession`.
  */
 class AgentSession(
-    engine: InferenceEngine,
+    private val engine: InferenceEngine,
     tools: List<AgentTool>,
     maxSteps: Int = 6,
     var onChange: () -> Unit = {},
 ) {
     private val loop = AgentLoop(engine, tools, maxSteps)
+
+    /** Q-641: the current run's stop flag. cancel() flips it (and interrupts the in-flight decode); the
+     *  loop checks it each step boundary and halts with CANCELLED. @Volatile — cancel() may run on the
+     *  main thread while the loop runs off-main. Twin of iOS AgentSession.cancel() / desktop Q-523. */
+    @Volatile
+    private var cancelRequested = false
 
     @Volatile
     var steps: List<AgentStep> = emptyList()
@@ -58,16 +64,18 @@ class AgentSession(
             isRunning = true
         }
         lastGoal = goal
+        cancelRequested = false   // Q-641: fresh per run
         try {
             steps = emptyList()
             answer = null
             haltReason = null
             onChange()
 
-            val result = loop.run(goal) { step ->
-                steps = steps + step
-                onChange()
-            }
+            val result = loop.run(
+                goal,
+                onStep = { step -> steps = steps + step; onChange() },
+                isCancelled = { cancelRequested },
+            )
 
             answer = result.answer
             haltReason = result.haltReason
@@ -75,6 +83,17 @@ class AgentSession(
             isRunning = false
             onChange()
         }
+    }
+
+    /**
+     * Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the flag so the loop
+     * ends at its next step boundary with CANCELLED. No-op when nothing is running. Twin of iOS
+     * `AgentSession.cancel()` / the desktop Q-523 kill switch.
+     */
+    fun cancel() {
+        if (!isRunning) return
+        cancelRequested = true
+        engine.requestCancel()
     }
 
     /**

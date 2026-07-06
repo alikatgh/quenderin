@@ -341,6 +341,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 — Q-641 native agent cancel, CROSS-PLATFORM) — the Apple `AgentSession` had no
+  mid-run cancel (ChatModel does), so a running mission ground to maxSteps. Added the kill switch on
+  BOTH mobile platforms (twin of desktop Q-523): a new `HaltReason.cancelled`/`CANCELLED` + userMessage
+  + exporter branch; `AgentLoop.run` takes an `isCancelled` checked at each step boundary → halts with
+  `.cancelled`; `AgentSession.cancel()` flips a per-run Sendable/@Volatile flag AND `engine.requestCancel()`
+  (interrupts the in-flight decode). Kept the enums in lockstep (parity). NB: Kotlin needs `onStep` LAST
+  (trailing-lambda binds to the last param, unlike Swift's forward scan) so the param order differs by
+  platform — behavior identical. Verified: swift test 289 (+2), CoreVerify 252 (+1). (A UI stop button
+  wiring `session.cancel()` is the remaining device-side follow-on.)
+
 - 2026-07-06 (audit R23 — Q-539 concurrent start) — a second `start` while an agent was running was
   SILENTLY ignored server-side (runAgentLoop's `_isRunning` guard just returns), yet the client had
   already optimistically flipped to "running" and wiped the in-flight mission's logs → a phantom UI.

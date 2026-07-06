@@ -811,6 +811,11 @@ fun main() {
         val r = AgentLoop(ScriptedInferenceEngine(listOf(same, same, same)), listOf(EchoTool()), maxSteps = 6).run("x")
         r.haltReason == AgentRun.HaltReason.STALLED && r.steps.size == 1
     })
+    check("Q-641: agent loop halts with CANCELLED at a step boundary (parity with iOS/desktop kill switch)", run {
+        val engine = ScriptedInferenceEngine(listOf("""{"tool":"echo","input":"a"}""", """{"tool":"echo","input":"b"}"""))
+        val r = AgentLoop(engine, listOf(EchoTool()), maxSteps = 5).run("keep going", isCancelled = { true })
+        r.haltReason == AgentRun.HaltReason.CANCELLED && r.steps.isEmpty()
+    })
     check("agent loop streams steps live via onStep", run {
         val engine = ScriptedInferenceEngine(listOf("""{"tool":"calculator","input":"1+1"}""", """{"answer":"done"}"""))
         val streamed = mutableListOf<AgentStep>()

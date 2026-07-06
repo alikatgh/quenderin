@@ -1,6 +1,15 @@
 import Foundation
 import Combine
 
+/// Q-641: a Sendable, thread-safe stop flag shared between the @MainActor session and the loop's
+/// `isCancelled` closure. A fresh one is minted per run so a late cancel can't leak into the next.
+final class CancelFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var flag = false
+    var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return flag }
+    func cancel() { lock.lock(); flag = true; lock.unlock() }
+}
+
 /// Bindable model for the agent loop — the M4 twin of `ChatModel`. A SwiftUI view binds
 /// to it, calls `run(goal:)`, and renders `steps` / `answer` / `isRunning`. Tools + engine
 /// are injected, so it runs on the mock today and on `LlamaEngine` once llama.cpp is linked,
@@ -15,6 +24,10 @@ public final class AgentSession: ObservableObject {
     private var lastGoal = ""
 
     private var loop: AgentLoop
+    /// Kept so `cancel()` can interrupt an in-flight decode (Q-641), the way ChatModel holds its engine.
+    private let engine: InferenceEngine
+    /// The current run's stop flag — a fresh one per run so a late cancel can't leak into the next.
+    private var cancelFlag = CancelFlag()
 
     /// Per-run approvals for mutating capabilities — the view observes `approvals.pending` and
     /// shows an Allow / Don't-allow dialog; the runner awaits the answer.
@@ -22,9 +35,19 @@ public final class AgentSession: ObservableObject {
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
                 runner: CapabilityRunner? = nil) {
+        self.engine = engine
         let broker = approvals
         let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) })
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved)
+    }
+
+    /// Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the run's flag so
+    /// the loop ends at its next step boundary with `.cancelled`. No-op when nothing is running. Twin of
+    /// the desktop Q-523 kill switch; mirrors `ChatModel.stopGenerating()`.
+    public func cancel() {
+        guard isRunning else { return }
+        cancelFlag.cancel()
+        engine.requestCancel()
     }
 
     /// The app's full wiring: persistent consent (Settings toggles), the on-disk ledger, and
@@ -52,9 +75,11 @@ public final class AgentSession: ObservableObject {
         answer = nil
         haltReason = nil
         isRunning = true
+        cancelFlag = CancelFlag()   // Q-641: fresh stop flag for this run
         defer { isRunning = false }
 
-        let result = await loop.run(goal: goal)
+        let flag = cancelFlag
+        let result = await loop.run(goal: goal, isCancelled: { flag.isCancelled })
         steps = result.steps
         answer = result.answer
         haltReason = result.haltReason

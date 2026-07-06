@@ -25,6 +25,7 @@ object AgentRunExporter {
             AgentRun.HaltReason.BLOCKED -> "stopped by the safety filter"
             AgentRun.HaltReason.PLAN_ERROR -> "stopped (could not form a plan)"
             AgentRun.HaltReason.STALLED -> "stopped (stuck repeating a step)"
+            AgentRun.HaltReason.CANCELLED -> "stopped (you halted it)"
         }
         val toolsUsed = LinkedHashSet<String>()
         run.steps.forEach { step ->

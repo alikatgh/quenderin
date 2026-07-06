@@ -6,7 +6,7 @@ data class AgentStep(val decision: AgentDecision, val observation: String?)
 
 /** The result of running the agent to completion. */
 data class AgentRun(val steps: List<AgentStep>, val answer: String?, val haltReason: HaltReason) {
-    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR, STALLED }
+    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR, STALLED, CANCELLED }
 }
 
 /**
@@ -21,6 +21,7 @@ val AgentRun.HaltReason.userMessage: String?
         AgentRun.HaltReason.BLOCKED -> "The agent stopped: a step was blocked by the on-device safety filter."
         AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
         AgentRun.HaltReason.STALLED -> "The agent got stuck repeating the same step. Try rephrasing the goal."
+        AgentRun.HaltReason.CANCELLED -> "Stopped — you halted the agent."
     }
 
 /**
@@ -40,7 +41,9 @@ class AgentLoop(
 ) {
     private val maxSteps = maxOf(1, maxSteps)
 
-    fun run(goal: String, onStep: (AgentStep) -> Unit = {}): AgentRun {
+    // NB: `onStep` stays LAST so existing `run(goal) { … }` trailing-lambda calls still bind to it
+    // (Kotlin binds a trailing lambda to the last param — no Swift-style forward scan).
+    fun run(goal: String, isCancelled: () -> Boolean = { false }, onStep: (AgentStep) -> Unit = {}): AgentRun {
         val steps = mutableListOf<AgentStep>()
         var transcript = preamble(goal)
         // Reliability guards for a weak on-device model (twins of the desktop CapabilityAgent):
@@ -58,6 +61,9 @@ class AgentLoop(
         }
 
         repeat(maxSteps) {
+            // Q-641: hard-stop (kill switch) — checked at each step boundary so AgentSession.cancel()
+            // ends the mission with CANCELLED instead of grinding to maxSteps. Twin of iOS / desktop Q-523.
+            if (isCancelled()) return AgentRun(steps, null, AgentRun.HaltReason.CANCELLED)
             val reply = try {
                 engine.complete(transcript)
             } catch (t: Throwable) {

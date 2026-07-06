@@ -9,7 +9,7 @@ public struct AgentStep: Sendable, Equatable {
 
 /// The result of running the agent to completion.
 public struct AgentRun: Sendable, Equatable {
-    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError, stalled }
+    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError, stalled, cancelled }
     public let steps: [AgentStep]
     public let answer: String?
     public let haltReason: HaltReason
@@ -26,6 +26,7 @@ public extension AgentRun.HaltReason {
         case .blocked:   return "The agent stopped: a step was blocked by the on-device safety filter."
         case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
         case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
+        case .cancelled: return "Stopped — you halted the agent."
         }
     }
 }
@@ -53,7 +54,8 @@ public struct AgentLoop: Sendable {
 
     public func run(
         goal: String,
-        onStep: @Sendable (AgentStep) -> Void = { _ in }
+        onStep: @Sendable (AgentStep) -> Void = { _ in },
+        isCancelled: @Sendable () -> Bool = { false }
     ) async -> AgentRun {
         var steps: [AgentStep] = []
         var transcript = preamble(goal: goal)
@@ -72,6 +74,10 @@ public struct AgentLoop: Sendable {
         }
 
         for _ in 0..<maxSteps {
+            // Q-641: the hard-stop (kill switch) — checked at each step boundary. `AgentSession.cancel()`
+            // flips the flag (and interrupts the in-flight decode via the engine), so a running mission
+            // ends here with `.cancelled` instead of grinding to maxSteps. Twin of the desktop Q-523.
+            if isCancelled() { return AgentRun(steps: steps, answer: nil, haltReason: .cancelled) }
             let reply: String
             do {
                 reply = try await engine.complete(prompt: transcript)
