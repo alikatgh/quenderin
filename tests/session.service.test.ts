@@ -62,6 +62,18 @@ describe('SessionService', () => {
         expect(service.activeSessionId()).toBe(id2);
     });
 
+    it('Q-596: activeSessionId adopts the existing session instead of rolling a new one', () => {
+        // A WS connect now ADOPTS via activeSessionId() — a second tab / a reconnect must return the SAME
+        // session, not clobber the first one with a fresh empty session (which was the hijack bug).
+        const first = service.startSession();
+        expect(service.activeSessionId()).toBe(first); // second connect
+        expect(service.activeSessionId()).toBe(first); // third connect
+        // The explicit new_session path (the "New Conversation" button) still rolls a fresh session.
+        const rolled = service.startSession();
+        expect(rolled).not.toBe(first);
+        expect(service.activeSessionId()).toBe(rolled);
+    });
+
     it('destroy cancels pending flush timer', () => {
         service.startSession();
         service.addMessage('user', 'test');

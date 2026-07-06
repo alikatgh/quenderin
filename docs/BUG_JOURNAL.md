@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **An unconditional "start fresh" side-effect on every connect/mount clobbers shared state.** A WS
+  `on('connection')` (or a component mount) that ALWAYS `startSession()` / resets means a second tab, a
+  page refresh, or a reconnect after a network blip silently destroys the in-progress session — the
+  other client's next write lands in the wrong place. Make connect ADOPT the existing state (`activeX()`
+  that reuses-or-creates) and move "start fresh" to an EXPLICIT client action. (Q-596)
 - **Hashing at compare-time is theatre if the plaintext is already persisted.** A secret (passphrase,
   token) that lives in localStorage/config as PLAINTEXT gains nothing from being SHA-256'd only when
   the lock checks it — the plaintext is already exfiltratable. Hash at the PERSISTENCE boundary; keep
@@ -346,6 +351,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-06 (audit R28 — Q-596 second tab hijacks the session) — every WS `on('connection')` called
+  `startSession()`, which flushed+abandoned the current session and made a fresh empty one — so a second
+  tab / a page refresh / a reconnect clobbered the active session and the first client's next message
+  landed in the wrong one. Fix: connect now `activeSessionId()` (adopt the existing session, create only
+  if none); added an explicit `new_session` WS message + wired the client's `resetSession()`/"New
+  Conversation" button to send it, so starting fresh is a deliberate action (reload no longer resets —
+  it resumes, which is better UX). 454 tests (+1: adopt-vs-roll invariant), typecheck + lint clean.
+  Generalized to a top-section pattern bullet.
 
 - 2026-07-06 (audit R22 — Q-530 passphrase plaintext in localStorage) — the privacy-lock passphrase was
   persisted inside `quenderin_settings` as PLAINTEXT; PrivacyLock hashed it only at compare-time, which

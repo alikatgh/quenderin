@@ -161,9 +161,14 @@ export class WebSocketManager {
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
 
-            // Start a new session and tell the client its ID (for export/history)
+            // Q-596: ADOPT the active session rather than unconditionally starting a new one. Every WS
+            // connect (a second tab, a page refresh, a reconnect after a network blip) used to call
+            // startSession(), which flushed+abandoned the in-progress session and created an empty one —
+            // so the first tab's next message landed in the wrong session (hijack), and a reconnect lost
+            // the running conversation. activeSessionId() reuses the current session and only creates one
+            // when none exists. Starting a fresh conversation is now an explicit client action ('new_session').
             if (this.sessionService) {
-                const sessionId = this.sessionService.startSession();
+                const sessionId = this.sessionService.activeSessionId();
                 ws.send(JSON.stringify({ type: 'session_started', sessionId }));
             }
 
@@ -435,6 +440,14 @@ export class WebSocketManager {
                         // parks and can resume) — this hard-stops the running mission: it aborts the
                         // in-flight decode and breaks the loop, which then emits its own 'done'.
                         this.agentService.stop();
+                    } else if (data.type === 'new_session') {
+                        // Q-596: the EXPLICIT "start a fresh conversation" path. Connect now adopts the
+                        // active session instead of rolling a new one, so the client asks for a new session
+                        // deliberately (the "New Conversation" button) rather than by reconnecting.
+                        if (this.sessionService) {
+                            const sessionId = this.sessionService.startSession();
+                            ws.send(JSON.stringify({ type: 'session_started', sessionId }));
+                        }
                     }
                 } catch (err) {
                     logger.error("Failed to parse ws message", err);

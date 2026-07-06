@@ -346,6 +346,12 @@ export function useAgentSocket() {
         setCurrentUI([]);
         setRequiredAction(null);
         lastUserChatLogRef.current = null;
+        // Q-596: also roll a fresh backend session. Connect now ADOPTS the active session instead of
+        // starting a new one, so clearing the UI alone would leave the server appending to the old
+        // conversation — the explicit new_session frame is what actually starts a new one.
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'new_session' }));
+        }
     };
 
     const clearRequiredAction = () => setRequiredAction(null);
