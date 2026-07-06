@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 26 — voice download completeness) — **Q-420** the voice-model
+  download treated the target FOLDER's mere existence as "complete: 100%", so an interrupted extraction
+  (network drop / ENOSPC — likely on this disk-limited box) left a PARTIAL folder that masqueraded as a
+  ready model, and voice failed at runtime. Now gated on a `.extraction-complete` marker written ONLY
+  after a fully-clean run (a per-file OR pipeline error sets a `extractionFailed` flag that suppresses
+  it); a leftover partial folder (no marker) is wiped and re-fetched, not merged into. **Q-424** (no
+  Vosk-zip checksum) BLOCKED — pinning one needs the correct sha256, which I can't obtain without
+  downloading the multi-GB zip here. Verified: 438 TS tests, typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 25 — token log hygiene) — **Q-355** the CLI/browser path delivers the
   per-launch auth token in the URL (`?token=…`); the errorHandler logged `originalUrl` verbatim, so any
   errored request on such a URL wrote the LIVE token into the logs (which get pasted into bug reports).

@@ -270,9 +270,17 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         try {
             const voiceDir = path.join(os.homedir(), '.quenderin', 'models', 'voice');
             const targetPath = path.join(voiceDir, 'vosk-model-small-en-us-0.15');
+            const completeMarker = path.join(targetPath, '.extraction-complete');
 
-            if (await fs.stat(targetPath).catch(() => null)) {
+            // Q-420: a folder EXISTING is not the same as the model being COMPLETE — an interrupted
+            // extraction (network drop, ENOSPC) leaves a partial folder that would masquerade as a ready
+            // model, and voice then fails at runtime. Gate on a marker written only after a fully-clean
+            // extraction; a leftover partial folder (no marker) is wiped and re-fetched, not merged into.
+            if (await fs.stat(completeMarker).catch(() => null)) {
                 return res.json({ message: "Voice model already exists.", progress: 100 });
+            }
+            if (await fs.stat(targetPath).catch(() => null)) {
+                await fs.rm(targetPath, { recursive: true, force: true }).catch(() => {});
             }
 
             await fs.mkdir(voiceDir, { recursive: true });
@@ -304,6 +312,9 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                     const pathMod = await import('path');
                     const fsMod = await import('fs');
                     const safeRoot = pathMod.resolve(voiceDir);
+                    // Q-420: track any per-file or pipeline failure so the completion marker below is
+                    // written ONLY on a fully-clean extraction (a half-written model must re-download).
+                    let extractionFailed = false;
                     nodeStream
                         .pipe(unzipper.Parse())
                         .on('entry', (entry: any) => {
@@ -317,11 +328,17 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                             // A per-file write error (ENOSPC/permission) emits 'error' on THIS stream;
                             // the outer pipeline's 'error' below doesn't cover it, so without this
                             // handler it's an unhandled 'error' event → uncaught exception → process exit.
-                            out.on('error', (e: Error) => logger.error(`Failed to write extracted file ${dest}:`, e));
+                            out.on('error', (e: Error) => { extractionFailed = true; logger.error(`Failed to write extracted file ${dest}:`, e); });
                             entry.pipe(out);
                         })
-                        .on('close', () => logger.info('Voice model extracted.'))
-                        .on('error', (e: Error) => logger.error('Failed to extract voice model:', e));
+                        .on('close', () => {
+                            // Q-420: stamp completeness ONLY on a clean run — a marker present lets a
+                            // future call trust the folder; a partial extraction leaves none and re-fetches.
+                            if (extractionFailed) { logger.warn('[Voice] Extraction incomplete — not marking model complete.'); return; }
+                            try { fsMod.writeFileSync(completeMarker, new Date().toISOString()); } catch (e) { logger.error('[Voice] Failed to write completion marker:', e); }
+                            logger.info('Voice model extracted.');
+                        })
+                        .on('error', (e: Error) => { extractionFailed = true; logger.error('Failed to extract voice model:', e); });
 
                 } catch (e) {
                     logger.error("Voice download pipeline failed:", e);
