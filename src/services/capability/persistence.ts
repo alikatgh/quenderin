@@ -4,6 +4,7 @@ import os from 'os';
 import { AuditEntry, AuditLedger } from './capability.js';
 import { SkillMemory } from './skillMemory.js';
 import { UndoAction, isUndoAction } from './undo.js';
+import { redactSecrets } from './redaction.js';
 
 /**
  * On-disk state for the CLI agent, so "the agent gets better at what you repeat" and "review what
@@ -48,7 +49,8 @@ export class FileAuditLedger implements AuditLedger {
     constructor(private readonly file: string = LEDGER_PATH) { }
 
     append(entry: AuditEntry): void {
-        const row: AuditEntry = { ...entry, input: entry.input.slice(0, 200), outcome: entry.outcome?.slice(0, 200) };
+        // Redact-then-truncate: a leaked API key / token in an input or outcome never reaches disk.
+        const row: AuditEntry = { ...entry, input: redactSecrets(entry.input).slice(0, 200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0, 200) : entry.outcome };
         try {
             fs.mkdirSync(path.dirname(this.file), { recursive: true });
             fs.appendFileSync(this.file, JSON.stringify(row) + '\n');

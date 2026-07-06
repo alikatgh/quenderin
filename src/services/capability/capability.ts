@@ -6,6 +6,7 @@
  * consent/preview/approval/ledger discipline. Now device-driving runs behind the same spine as
  * the native apps' file capabilities.
  */
+import { redactSecrets } from './redaction.js';
 
 /** The risk tier the agent climbs one rung at a time (§4). Higher = more dangerous, more gated. */
 export enum CapabilityTier {
@@ -106,7 +107,8 @@ export interface AuditLedger {
 export class InMemoryAuditLedger implements AuditLedger {
     private readonly stored: AuditEntry[] = [];
     append(entry: AuditEntry): void {
-        this.stored.push({ ...entry, input: entry.input.slice(0, 200), outcome: entry.outcome?.slice(0, 200) });
+        // Redact-then-truncate: the ledger is a record, never a place a leaked secret lives.
+        this.stored.push({ ...entry, input: redactSecrets(entry.input).slice(0, 200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0, 200) : entry.outcome });
     }
     entries(): AuditEntry[] { return [...this.stored]; }
 }
