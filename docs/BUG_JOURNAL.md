@@ -352,6 +352,21 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R31 residual triage — no code change, recorded so nobody re-investigates) —
+  **Already fixed by earlier work:** Q-544 (eye/vision generateAction already gets `_abortController.signal`
+  via Q-537), Q-546 (chat timeout-retry: a real cancel throws LLM_CANCELLED not LLM_TIMEOUT so the retry
+  isn't entered, and the retry shares the same cancelSignal — Q-292). **By-design for a LOCAL-first app:**
+  Q-559 (manual override enters LLM context "unredacted" — it MUST stay intact for the agent to act on it,
+  the model is on-device so nothing exfiltrates, and the override isn't logged; the log already redacts the
+  goal per Q-644). **Deliberate / not worth speculative change:** Q-555 (fixed 0.70 RAG threshold — tier
+  scaling is a guess without on-device profiling), Q-553 (kill honored BETWEEN steps, not mid-`run()` —
+  interface-wide change to thread a signal into every capability for modest gain; steps are short).
+  **Blocked (need external resources / decisions):** Q-633 (apex CSP — needs a website DEPLOY, user-auth),
+  Q-586 (JNI double-BOS — needs on-device model run; disk-blocked), Q-640 (wake-word poll — needs on-device
+  power profiling), Q-623 (Android cellular Settings UI — app module, SDK build), Q-568 (self-host fonts —
+  needs a deps-vs-design decision), Q-526 (opaque 401 — needs a relaunch-banner UX decision). **Architectural
+  (own project):** Q-549 (legacy AgentService governance), Q-637 (consolidate the three intent systems).
+
 - 2026-07-06 (audit R24 triage — Q-551 by-design + Q-548/570/572 non-issues) — **Q-551** "a 20+ op plan
   bypasses the per-change re-ask": explored adding a mid-plan bulk brake, then REVERTED — it re-asked
   "already made N changes?" on a plan the user JUST reviewed in full (loud ⚠️ banner + every step's
