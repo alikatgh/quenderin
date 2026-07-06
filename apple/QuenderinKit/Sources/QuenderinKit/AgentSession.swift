@@ -43,6 +43,10 @@ public final class AgentSession: ObservableObject {
     /// `onStep`; this view-model sets the final transcript, which is enough for the UI and
     /// avoids cross-actor step plumbing — adopt `AsyncStream` later for token-by-token.)
     public func run(goal: String) async {
+        // Q-327: reentrancy guard — a second goal submitted while a run is in flight (the `await`
+        // below yields the MainActor) would reset `steps`/`answer` out from under the live loop and
+        // run two loops at once. Mirror `clear()`'s guard: one run at a time.
+        guard !isRunning else { return }
         lastGoal = goal
         steps = []
         answer = nil
