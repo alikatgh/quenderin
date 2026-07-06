@@ -341,6 +341,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 25 — token log hygiene) — **Q-355** the CLI/browser path delivers the
+  per-launch auth token in the URL (`?token=…`); the errorHandler logged `originalUrl` verbatim, so any
+  errored request on such a URL wrote the LIVE token into the logs (which get pasted into bug reports).
+  Redact `?token=…`/`&token=…` → `<redacted>` in the logged URL. The token stays in the URL bar
+  (unavoidable for URL delivery) but no longer persists in logs. Test spies the logger and asserts the
+  secret is gone / `<redacted>` present. Verified: 438 TS tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 24 — delete-loaded-model guard) — **Q-419** `DELETE /api/models/:id`
   unlinked the file with NO check that it's the LOADED model — deleting the active model left the
   native handle mapped to a vanished file (next load/switch fails confusingly), and deleting mid-

@@ -3,7 +3,11 @@ import logger from '../utils/logger.js';
 
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
     const method = _req.method;
-    const url = _req.originalUrl ?? _req.url;
+    // Q-355: the CLI/browser path delivers the per-launch auth token in the URL (`?token=…`). Strip it
+    // from anything we LOG — an error on such a request would otherwise write the live token into the
+    // logs (which get pasted into bug reports). The token stays in the URL bar (unavoidable for URL
+    // delivery), but it must not persist in our logs.
+    const url = (_req.originalUrl ?? _req.url).replace(/([?&]token=)[^&\s]*/gi, '$1<redacted>');
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
 

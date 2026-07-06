@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { errorHandler } from '../src/middlewares/errorHandler.js';
+import logger from '../src/utils/logger.js';
 
 /**
  * Q-423: the cors() origin callback rejects a disallowed origin with `new Error('CORS: …')`, which
@@ -24,5 +25,16 @@ describe('errorHandler status mapping (Q-423)', () => {
         const res = mockRes();
         errorHandler(new Error('database exploded'), req, res, vi.fn());
         expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    it('redacts ?token= from the logged URL (Q-355)', () => {
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined as unknown as void);
+        const res = mockRes();
+        const tokened = { method: 'GET', url: '/api/x?token=SUPERSECRET&y=1', originalUrl: '/api/x?token=SUPERSECRET&y=1' } as unknown as Request;
+        errorHandler(new Error('boom'), tokened, res, vi.fn());
+        const logged = errorSpy.mock.calls.map(c => String(c[0])).join(' ');
+        expect(logged).not.toContain('SUPERSECRET');
+        expect(logged).toContain('<redacted>');
+        errorSpy.mockRestore();
     });
 });
