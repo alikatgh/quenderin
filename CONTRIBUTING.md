@@ -52,6 +52,13 @@ Follow the design system: interactive state never changes geometry; hairline
 borders (no shadows); hierarchy in weight + size; tabular numbers; monospace for
 codes/metrics. Density over decoration — this is a developer power tool.
 
+## Extending the agent (adding a capability)
+
+The computer-use agent is a growing library of governed capabilities, and adding one is one of the
+most useful contributions you can make. There's a step-by-step guide — the tier model, the seam+fake
+pattern that keeps it testable, the safety rules, wiring, and tests:
+**[docs/ADDING_A_CAPABILITY.md](docs/ADDING_A_CAPABILITY.md)**.
+
 ## Native mobile (`apple/`)
 
 The Swift package unit-tests on a Mac with `swift test` (Swift 6 / Xcode 16+).

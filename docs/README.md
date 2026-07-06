@@ -19,6 +19,7 @@ on-device AI agent.
 | [FRONTEND.md](FRONTEND.md) | The React/Vite UI — components, state, the agent socket hook, theming |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, scripts, build, test, lint, project layout |
 | [AGENT_AUTONOMY_PLAN.md](AGENT_AUTONOMY_PLAN.md) | **The plan for the mission** — local autonomous computer usage: the Shortcuts-shaped capability ladder, the consent/safety spine, and Milestone 0 (`fs.read`) |
+| [ADDING_A_CAPABILITY.md](ADDING_A_CAPABILITY.md) | **Contributor guide** — how to add a governed capability: the tier model, the seam+fake pattern, safety rules, wiring, and tests |
 | [ICON_EXTRACTION.md](ICON_EXTRACTION.md) | How the app icon is cut perfectly from the artwork — sharpness detection, the 5.8% inset math, per-platform derivation (written for future agent sessions) |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
 
