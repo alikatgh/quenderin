@@ -99,10 +99,25 @@ private func headingFont(_ level: Int) -> Font {
 /// Inline markdown → AttributedString via SwiftUI's native inline-only parser, falling back to the
 /// plain string if it can't be parsed. Runs ONCE per block at parse time.
 private func inline(_ s: String) -> AttributedString {
-    (try? AttributedString(
+    let parsed = (try? AttributedString(
         markdown: s,
         options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
     )) ?? AttributedString(s)
+    return sanitizeLinks(parsed)
+}
+
+/// Q-326 (twin of the UI's Q-273): chat markdown is UNTRUSTED LLM output. A link like
+/// `[click](javascript:…)` or `[click](https://evil/?leak=…)` renders tappable. Neutralize any link
+/// whose scheme isn't http(s)/mailto — it becomes plain text, so no dangerous scheme is one tap away.
+func sanitizeLinks(_ attr: AttributedString) -> AttributedString {
+    var result = attr
+    var unsafe: [Range<AttributedString.Index>] = []
+    for run in result.runs where run.link != nil {
+        let scheme = run.link?.scheme?.lowercased() ?? ""
+        if scheme != "http" && scheme != "https" && scheme != "mailto" { unsafe.append(run.range) }
+    }
+    for range in unsafe { result[range].link = nil }
+    return result
 }
 
 // ── Block parsing (line-oriented; a blank line separates blocks) ──────────────
