@@ -46,8 +46,18 @@ const IMAGE_PATTERNS = [
 const cache = new Map<string, ClassificationResult>();
 const MAX_CACHE_SIZE = 200;
 
+/** djb2 hash → compact, collision-resistant key material for the intent cache. */
+function hashString(s: string): string {
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+}
+
 function cacheKey(input: string): string {
-    return input.toLowerCase().trim().slice(0, 200);
+    // Q-635: key on the WHOLE normalized message (length + hash), not its first 200 chars — two long
+    // messages that share a 200-char prefix but diverge later must NOT collide to one cached intent.
+    const norm = input.toLowerCase().trim();
+    return `${norm.length}:${hashString(norm)}`;
 }
 
 /** Bounded insert — evict the oldest entry when full so the cache can't grow past MAX_CACHE_SIZE.
@@ -72,7 +82,9 @@ export function classifyIntent(input: string): ClassificationResult {
     const result = runRegexClassification(input);
     setCached(key, result);
 
-    logger.log(`[Intent] "${input.slice(0, 60)}..." → ${result.intent} (${result.confidence}, ${result.source})`);
+    // Q-636: log the OUTCOME + message LENGTH only, never the content — the classifier sees EVERY user
+    // message, so a plaintext snippet in the logs is a privacy leak (same rule as Q-357 / Q-644).
+    logger.log(`[Intent] ${input.length} chars → ${result.intent} (${result.confidence}, ${result.source})`);
     return result;
 }
 

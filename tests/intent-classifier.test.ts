@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { classifyIntent, classifyWithLlmFallback, clearIntentCache, intentCacheSize } from '../src/services/intentClassifier.js';
+import logger from '../src/utils/logger.js';
 
 describe('classifyIntent', () => {
     describe('action intents', () => {
@@ -61,5 +62,27 @@ describe('cache is bounded on BOTH write paths', () => {
             await classifyWithLlmFallback(`ambiguous freeform phrase number ${i} here`, llm);
         }
         expect(intentCacheSize()).toBeLessThanOrEqual(200);
+    });
+});
+
+describe('intent cache + logging hardening (Q-635 / Q-636)', () => {
+    it('Q-635: messages sharing a 200-char prefix are classified independently (no collision)', () => {
+        clearIntentCache();
+        const prefix = 'x'.repeat(210);
+        const rCode = classifyIntent(prefix + ' ```python\nprint(1)\n```');   // code-fence pattern
+        const rChat = classifyIntent(prefix + ' good morning friend');         // no pattern → chat
+        expect(rCode.intent).toBe('code');
+        // With the old first-200-char key these shared a slot, so this would return the cached 'code'.
+        expect(rChat.intent).toBe('chat');
+    });
+
+    it('Q-636: logs the length + result, never the message content', () => {
+        const spy = vi.spyOn(logger, 'log').mockImplementation(() => undefined as unknown as void);
+        classifyIntent('my secret plan to surprise Alice at 5pm');
+        const logged = spy.mock.calls.map((c) => String(c[0])).join(' ');
+        expect(logged).toContain('[Intent]');
+        expect(logged).not.toContain('secret');
+        expect(logged).not.toContain('Alice');
+        spy.mockRestore();
     });
 });

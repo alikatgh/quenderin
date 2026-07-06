@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 Wave 1 — intent classifier hardening) — **Q-635** the intent cache keyed on the
+  first 200 chars, so two long messages sharing a prefix but diverging later COLLIDED to one cached
+  classification (a chat could be mis-served an earlier code intent). Re-keyed on the WHOLE normalized
+  message (length + djb2 hash). **Q-636** the classifier logged a plaintext snippet of EVERY user
+  message — a privacy leak (it sees them all); now logs only the length + result (same rule as
+  Q-357/Q-644). Tests: prefix-sharing messages classify independently; the log omits the content.
+  10 intent tests (+2), typecheck + lint clean.
+
 - 2026-07-06 (audit R21-R30 Wave 1 — **Q-583 P0 / Q-584** Android app-layer DownloadPolicy) — the
   Kotlin CORE gate (Q-271 twin) was live but the app never fed it the real network, so it defaulted to
   WIFI and the cellular gate was DEAD (the R21-R30 regression). Wired it: `OnboardingScreen.kt` now
