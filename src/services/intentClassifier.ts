@@ -1,8 +1,15 @@
 /**
  * Intent Classifier (ported from off-grid-mobile pattern)
  *
- * Classifies user messages into intents using regex-first approach with
- * optional LLM fallback. Results are cached for repeated patterns.
+ * The SINGLE intent classifier: a fast, LLM-free regex pass that labels a user message
+ * action | code | chat | math | image (with a confidence). Results are cached for repeated patterns.
+ *
+ * Q-637: this used to ALSO ship a `classifyWithLlmFallback` — a second, divergent LLM classifier with
+ * its OWN 5-category prompt that no production code called. It was removed: it could only drift against
+ * the one LLM intent step that IS live — the agent loop's chat-vs-action `INTENT_CLASSIFIER_PROMPT`
+ * (agent.service.ts), which runs regex-first (this module) and only calls the LLM to break a
+ * low-confidence tie. The WebSocket chat path uses this regex result directly (surfaced to the UI as
+ * routing info). Keep it this way: one regex classifier here, one LLM tiebreak in the agent — no third.
  */
 import logger from '../utils/logger.js';
 
@@ -61,8 +68,9 @@ function cacheKey(input: string): string {
 }
 
 /** Bounded insert — evict the oldest entry when full so the cache can't grow past MAX_CACHE_SIZE.
- *  BOTH write paths (regex + LLM fallback) must go through this; the LLM-fallback path used to
- *  `cache.set` directly and leaked the cache unbounded on a long session of low-confidence inputs. */
+ *  The one write path (classifyIntent) goes through this, so a long session of distinct messages can't
+ *  leak the cache unbounded. (Historically a second, LLM-fallback path `cache.set` here directly and
+ *  leaked; that path was removed in Q-637, but the bound stays as the single insert's guarantee.) */
 function setCached(key: string, result: ClassificationResult): void {
     if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
         const firstKey = cache.keys().next().value;
@@ -111,57 +119,6 @@ function runRegexClassification(input: string): ClassificationResult {
 
     // Default to chat
     return { intent: 'chat', confidence: 'low', source: 'default' };
-}
-
-/**
- * LLM-based fallback classifier (for when regex confidence is 'low').
- * Takes a classify function that wraps LLM prompt.
- */
-export async function classifyWithLlmFallback(
-    input: string,
-    llmClassify: (prompt: string) => Promise<string>
-): Promise<ClassificationResult> {
-    // Try regex first
-    const regexResult = classifyIntent(input);
-    if (regexResult.confidence === 'high' || regexResult.confidence === 'medium') {
-        return regexResult;
-    }
-
-    // LLM fallback for low-confidence classifications
-    try {
-        const classifierPrompt = `Classify this user request into exactly one category: ACTION, CODE, CHAT, MATH, or IMAGE.
-- ACTION: User wants to interact with a device (tap, open, navigate)
-- CODE: User wants code generated or debugged
-- CHAT: General conversation or knowledge questions
-- MATH: Mathematical calculations
-- IMAGE: Image/visual generation requests
-
-User request: "${input.slice(0, 500)}"
-
-Reply with exactly one word: ACTION, CODE, CHAT, MATH, or IMAGE.`;
-
-        const llmResponse = await llmClassify(classifierPrompt);
-        const parsed = llmResponse.trim().toUpperCase();
-
-        const intentMap: Record<string, Intent> = {
-            'ACTION': 'action',
-            'CODE': 'code',
-            'CHAT': 'chat',
-            'MATH': 'math',
-            'IMAGE': 'image',
-        };
-
-        const mapped = intentMap[parsed];
-        if (mapped) {
-            const result: ClassificationResult = { intent: mapped, confidence: 'medium', source: 'llm' };
-            setCached(cacheKey(input), result);   // bounded — was a bare cache.set (unbounded leak)
-            return result;
-        }
-    } catch (err) {
-        logger.warn('[Intent] LLM fallback failed, using regex result:', err);
-    }
-
-    return regexResult;
 }
 
 /** Clear the classification cache (useful on preset switch) */

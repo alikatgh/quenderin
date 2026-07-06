@@ -352,6 +352,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 — Q-637 consolidate the intent systems) — three intent code paths could drift:
+  the shared regex `classifyIntent` (intentClassifier.ts), the agent's inline chat-vs-action LLM prompt
+  (`INTENT_CLASSIFIER_PROMPT`, agent.service.ts), and a SECOND divergent LLM classifier
+  `classifyWithLlmFallback` with its own 5-category prompt — which had ZERO production callers (only a
+  test). Removed the dead `classifyWithLlmFallback`: it could only drift against the one live LLM step.
+  Now it's one regex classifier (shared by the WS chat path + the agent, surfaced to the UI) + one LLM
+  tiebreak (the agent's, run only on a low-confidence regex result). Rewrote the cache-bound test to
+  exercise the single remaining write path; cross-referenced the design in both files. 465 tests,
+  typecheck + lint clean. (Q-549 legacy-agent governance is the other architectural item — left for a
+  focused pass; it rewires security-critical gating and shouldn't be a tail-end change.)
+
 - 2026-07-06 (audit R21-R31 residual triage — no code change, recorded so nobody re-investigates) —
   **Already fixed by earlier work:** Q-544 (eye/vision generateAction already gets `_abortController.signal`
   via Q-537), Q-546 (chat timeout-retry: a real cancel throws LLM_CANCELLED not LLM_TIMEOUT so the retry

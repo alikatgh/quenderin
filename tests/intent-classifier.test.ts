@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { classifyIntent, classifyWithLlmFallback, clearIntentCache, intentCacheSize } from '../src/services/intentClassifier.js';
+import { classifyIntent, clearIntentCache, intentCacheSize } from '../src/services/intentClassifier.js';
 import logger from '../src/utils/logger.js';
 
 describe('classifyIntent', () => {
@@ -53,13 +53,14 @@ describe('classifyIntent', () => {
     });
 });
 
-describe('cache is bounded on BOTH write paths', () => {
-    it('LLM-fallback inserts never grow the cache past MAX_CACHE_SIZE (no leak)', async () => {
+describe('cache is bounded (no leak)', () => {
+    it('Q-637: distinct-message inserts never grow the cache past MAX_CACHE_SIZE', () => {
         clearIntentCache();
-        // Each input is low-confidence (no regex pattern matches) → the LLM fallback runs and caches.
-        const llm = async () => 'CHAT';
+        // 260 distinct messages, each cached via the single setCached() insert. The bound must hold — a
+        // long session of unique inputs can't leak the cache. (This used to be exercised via the removed
+        // classifyWithLlmFallback path; classifyIntent is now the only write path.)
         for (let i = 0; i < 260; i++) {
-            await classifyWithLlmFallback(`ambiguous freeform phrase number ${i} here`, llm);
+            classifyIntent(`ambiguous freeform phrase number ${i} here`);
         }
         expect(intentCacheSize()).toBeLessThanOrEqual(200);
     });

@@ -54,6 +54,10 @@ Example output:
 
 Respond ONLY with valid JSON or XML. Do not provide any conversational filler.`;
 
+// Q-637: the ONE LLM intent step. The agent runs the shared regex classifier (intentClassifier.ts) first
+// and only falls back to this coarse chat-vs-action prompt to break a low-confidence tie on capable
+// hardware. There is deliberately no second LLM classifier (the divergent classifyWithLlmFallback was
+// removed) — one regex classifier + this one tiebreak, so intent behavior can't drift across code paths.
 const INTENT_CLASSIFIER_PROMPT = `Classify the user's request into one of two categories: "ACTION" or "CHAT".
 - ACTION: The user wants you to interact with the Android device (e.g., "Open Settings", "Tap Search", "Find Spotify").
 - CHAT: The user is asking a general question, discussing files, or asking for knowledge (e.g., "What is the capital of France?", "Summarize this code", "Who wrote this?").
