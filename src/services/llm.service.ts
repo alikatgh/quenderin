@@ -657,6 +657,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 };
 
                 const requestedCtx = effectiveCtx;
+                // Q-415: the "Context ready" log must report the ACTUAL context that was created — the
+                // fallbacks below can HALVE it (or drop to the floor), and logging the requested size hid
+                // that a session is running with far less context than asked for (a real OOM/perf debug clue).
+                let actualCtx = requestedCtx;
                 try {
                     // Attempt 1: full context + flash attention
                     context = await tryCreateContext(requestedCtx, true);
@@ -674,16 +678,19 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         try {
                             // Attempt 3: halved context, no flash attention
                             context = await tryCreateContext(reducedCtx, false);
+                            actualCtx = reducedCtx;
                             useFlashAttention = false;
                         } catch {
                             logger.warn(`[LLM] Reduced context failed, trying minimal (${HW.contextFloor})...`);
                             // Attempt 4: hardware floor, no flash attention
                             context = await tryCreateContext(HW.contextFloor, false);
+                            actualCtx = HW.contextFloor;
                             useFlashAttention = false;
                         }
                     }
                 }
-                logger.log(`[LLM] Context ready: ${requestedCtx} tokens, flashAttention=${useFlashAttention ? 'on' : 'off'}, gpu=${resolvedGpuBackend}, tier=${HW.tier}`);
+                const ctxNote = actualCtx === requestedCtx ? `${actualCtx}` : `${actualCtx} (requested ${requestedCtx})`;
+                logger.log(`[LLM] Context ready: ${ctxNote} tokens, flashAttention=${useFlashAttention ? 'on' : 'off'}, gpu=${resolvedGpuBackend}, tier=${HW.tier}`);
                 this.modelInstance = model;
                 this.contextInstance = context;
                 this.loadedModelId = selected.entry.id;

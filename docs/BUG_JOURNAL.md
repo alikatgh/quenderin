@@ -341,6 +341,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 27 — context log accuracy) — **Q-415** the "Context ready" log printed
+  the REQUESTED context size, but the fallback ladder can halve it (or drop to the hardware floor) when
+  the full size won't allocate — so a session silently running on far less context than asked for looked
+  fine in the logs, hiding a real OOM/perf debug clue. Track `actualCtx` through the fallbacks and log
+  `actual (requested N)` when they differ. typecheck + 438 tests + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 26 — voice download completeness) — **Q-420** the voice-model
   download treated the target FOLDER's mere existence as "complete: 100%", so an interrupted extraction
   (network drop / ENOSPC — likely on this disk-limited box) left a PARTIAL folder that masqueraded as a
