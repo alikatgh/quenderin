@@ -341,6 +341,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 22 — touch voice) — **Q-318** the general-chat voice button used
+  mouse-only events (`onMouseDown/Up/Leave`), so press-and-hold-to-talk never fired on TOUCH devices.
+  Switched to Pointer events (`onPointerDown/Up/Leave`) — one input model covering mouse + touch + pen
+  — matching the agent view's ChatArea, which was already correct. typecheck:ui + lint:ui clean.
+
 - 2026-07-06 (audit R1-R20 batch 21 — feature gaps: notes CRUD) — **Q-304/Q-422** the notes API had
   GET (list + read) and DELETE but NO create — you couldn't write a note over HTTP even though
   `MemoryService.saveNote()` (title sanitizer + write lock) already existed, just unexposed. Added

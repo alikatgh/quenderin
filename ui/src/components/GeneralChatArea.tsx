@@ -420,9 +420,12 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                 type="button"
                                 aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
                                 aria-pressed={isRecording}
-                                onMouseDown={startRecording}
-                                onMouseUp={stopRecording}
-                                onMouseLeave={isRecording ? stopRecording : undefined}
+                                // Q-318: Pointer events (not mouse-only) so press-and-hold to talk works on
+                                // TOUCH devices too — a tap/hold never fires onMouseDown reliably. Matches
+                                // the agent view's ChatArea, which already uses pointer events.
+                                onPointerDown={startRecording}
+                                onPointerUp={stopRecording}
+                                onPointerLeave={isRecording ? stopRecording : undefined}
                                 className={`p-2 rounded-lg transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                             >
                                 <Mic className="w-4.5 h-4.5" />
