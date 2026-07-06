@@ -242,6 +242,12 @@ export class WebSocketManager {
                             ws.send(JSON.stringify({ type: 'error', message: 'Message is required.' }));
                             return;
                         }
+                        // Q-275: single-flight — a rapid double-send would overlap two generalChat calls
+                        // and interleave their session writes. Reject while one is already generating.
+                        if (this.llmService.isCurrentlyGenerating().isGenerating) {
+                            ws.send(JSON.stringify({ type: 'error', message: 'Still generating the previous reply — please wait.' }));
+                            return;
+                        }
 
                         // Q-286: DON'T persist the user turn yet — if generalChat throws, the session
                         // would keep a user message with no assistant reply (an orphan). Persist both
