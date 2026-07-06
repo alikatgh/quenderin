@@ -150,6 +150,11 @@ export class AgentService {
             return;
         }
         this._isRunning = true;
+        // NB (Q-426, INTENTIONALLY not "fixed"): pause state is deliberately NOT reset here. Pausing (or
+        // resuming with a manual override) BEFORE a run is a supported setup — start paused to review, or
+        // seed the first step — pinned by the "blocks in the pause loop" + "applies a manual override"
+        // tests. The code can't distinguish an intentional pre-run pause from a stale one, and the design
+        // honors both; resetting here would break that contract. See docs/BUG_JOURNAL.md.
         // try/finally guarantees the running flag clears on EVERY exit — a throw used to leave it
         // stuck `true`, permanently dead-locking all future runAgentLoop() calls (H7).
         try {

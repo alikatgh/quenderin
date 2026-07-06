@@ -341,6 +341,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 28 — Q-426 is by-design; the TEST caught my wrong fix) — **Q-426**
+  ("intervene/resume — no running-loop validation") looked like the Q-384 family: `runAgentLoop` never
+  resets `_isPaused`, so a `pause()` when no loop is running seemed to leak into the next mission. I
+  added a per-run reset — and TWO existing tests went red: "blocks in the pause loop" and "applies a
+  manual override" both deliberately `pause()`/seed an override BEFORE the run and expect it honored on
+  step 1. So pre-run pause is an INTENDED, tested contract (start paused to review; seed the first step)
+  — the code can't tell an intentional pre-run pause from a stale one, and the design honors both.
+  Reverted; left an explanatory code comment so the next audit doesn't re-attempt it. Lesson: run the
+  suite BEFORE trusting a "stale state" fix — the existing tests ARE the spec. Green at 438.
+
 - 2026-07-06 (audit R1-R20 batch 27 — context log accuracy) — **Q-415** the "Context ready" log printed
   the REQUESTED context size, but the fallback ladder can halve it (or drop to the hardware floor) when
   the full size won't allocate — so a session silently running on far less context than asked for looked
