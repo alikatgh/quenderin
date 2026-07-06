@@ -146,10 +146,17 @@ export class CapabilityAgent {
 }
 
 /** A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing. */
+// Q-552: the stall guard compares action signatures, so whitespace-only differences in the model's
+// input (`1 + 1` vs `1  +  1`, trailing spaces, a stray newline) used to read as DIFFERENT actions and
+// slip past the "you already ran this" check — the agent re-executed an identical action, repeating side
+// effects. Collapse whitespace runs + trim so those unify. Deliberately NOT stripping ALL whitespace:
+// that would fuse genuinely-distinct string args (`type("a b")` vs `type("ab")`) and halt too eagerly.
+// This normalization is for the SIGNATURE only — execution always uses the raw, unmodified input.
+const normSig = (s: string): string => s.trim().replace(/\s+/g, ' ');
 function signatureOf(d: Exclude<Decision, { kind: 'answer' }>): string {
     return d.kind === 'tool'
-        ? `${d.name}(${d.input})`
-        : `plan[${d.calls.map(c => `${c.name}(${c.input})`).join(', ')}]`;
+        ? `${d.name}(${normSig(d.input)})`
+        : `plan[${d.calls.map(c => `${c.name}(${normSig(c.input)})`).join(', ')}]`;
 }
 
 /**

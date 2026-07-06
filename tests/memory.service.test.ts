@@ -24,7 +24,7 @@ vi.mock('../src/utils/logger.js', () => ({
     },
 }));
 
-import { MemoryService, type CorrectionEntry } from '../src/services/memory.service.js';
+import { MemoryService, isRelevantPastGoal, type CorrectionEntry } from '../src/services/memory.service.js';
 
 // Typed view onto the private surface we exercise directly. cosineSimilarity and
 // MAX_CORRECTIONS are private; accessing them via a cast is intentional per the
@@ -195,5 +195,35 @@ describe('MemoryService MAX_CORRECTIONS cap', () => {
         expect(records.length).toBe(cap);
         // After 50 more pushes, the newest id is cap+49 and it is last.
         expect(records[records.length - 1].id).toBe(String(cap + 49));
+    });
+});
+
+describe('isRelevantPastGoal (Q-554 — no false-positive trajectory hints)', () => {
+    it('accepts an exact (case-insensitive) match', () => {
+        expect(isRelevantPastGoal('open the settings app', 'open the settings app')).toBe(true);
+        expect(isRelevantPastGoal('Open The Settings App'.toLowerCase(), 'open the settings app')).toBe(true);
+    });
+
+    it('accepts a SUBSTANTIAL past goal contained on word boundaries', () => {
+        // past goal is ≥3 words / ≥12 chars and appears as a whole phrase in the current goal.
+        expect(isRelevantPastGoal('please open the settings app now', 'open the settings app')).toBe(true);
+    });
+
+    it('rejects a short/generic past goal that used to match almost anything', () => {
+        expect(isRelevantPastGoal('open the fridge inventory app', 'open')).toBe(false); // <3 words / <12 chars
+        expect(isRelevantPastGoal('go to the bank branch locator', 'go')).toBe(false);
+        expect(isRelevantPastGoal('launch the app store and search', 'app')).toBe(false);
+    });
+
+    it('rejects a substantial past goal that only matches MID-WORD (no word boundary)', () => {
+        // "start the app" IS a substring of "re[start the app]liance" but the leading 'e' means it's not a
+        // word-boundary match, so it must be refused rather than treated as a relevant prior goal.
+        expect(isRelevantPastGoal('restart the appliance now', 'start the app')).toBe(false);
+        // Same phrase on a real boundary DOES match.
+        expect(isRelevantPastGoal('please start the app for me', 'start the app')).toBe(true);
+    });
+
+    it('rejects when the past goal is not contained at all', () => {
+        expect(isRelevantPastGoal('book a flight to tokyo tonight', 'order groceries from the store')).toBe(false);
     });
 });

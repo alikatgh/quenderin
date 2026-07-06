@@ -50,6 +50,17 @@ describe('ActionExecutor coordinate-click safety', () => {
         expect(clicks).toHaveLength(0); // never reached the device
     });
 
+    it('Q-550: blocks a coordinate click landing just OUTSIDE a destructive element (touch slop)', async () => {
+        const { provider, clicks } = deviceStub();
+        const exec = new ActionExecutor(provider);
+        // Confirm button occupies y∈[0,80]; tap at y=90 is 10px below it — outside the rect but inside the
+        // OS touch-slop radius, so it must still be safety-checked and refused.
+        const els = [uiElement(1, 'Confirm transfer', { x: 0, y: 0, width: 200, height: 80 })];
+        await expect(run(exec, { action: 'click', x: 100, y: 90 } as AgentAction, els))
+            .rejects.toBeInstanceOf(SafetyViolationError);
+        expect(clicks).toHaveLength(0);
+    });
+
     it('allows a coordinate click on a benign element', async () => {
         const { provider, clicks } = deviceStub();
         const exec = new ActionExecutor(provider);

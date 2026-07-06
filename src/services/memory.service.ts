@@ -38,6 +38,27 @@ export interface CorrectionEntry {
     timestamp: string;
 }
 
+/**
+ * Q-554: decide whether a stored goal is a relevant retrieval hint for the current goal. Both args are
+ * already lower-cased. An exact match always qualifies. A SUBSTRING hit only qualifies when the past goal
+ * is SUBSTANTIAL (≥3 words AND ≥12 chars) and lands on word boundaries — the old raw `current.includes(past)`
+ * let a short/generic past goal ("open", "go", "app") match almost any current goal and inject an
+ * irrelevant trajectory. Pure + exported so the matching rule is unit-testable without touching the store.
+ */
+export function isRelevantPastGoal(currentLower: string, pastLower: string): boolean {
+    const past = pastLower.trim();
+    const current = currentLower.trim();
+    if (!past) return false;
+    if (past === current) return true;
+    const substantial = past.length >= 12 && past.split(/\s+/).length >= 3;
+    if (!substantial) return false;
+    const i = current.indexOf(past);
+    if (i < 0) return false;
+    const before = i === 0 ? '' : current[i - 1];
+    const after = i + past.length >= current.length ? '' : current[i + past.length];
+    return !/\w/.test(before) && !/\w/.test(after);
+}
+
 /** Process-wide singleton so HTTP routes and tool handlers share one write lock. */
 let sharedMemoryService: MemoryService | null = null;
 
@@ -321,12 +342,10 @@ export class MemoryService {
             const data = await fs.readFile(this.memoryPath, 'utf-8');
             const records: TrajectoryEntry[] = JSON.parse(data);
 
-            // Simple exact/includes matching for POC
-            // A more advanced version would use normalized embeddings
             const lowerGoal = goal.toLowerCase();
             // Copy before reverse — `records.reverse()` mutates the parsed array in place, which
-            // becomes a real bug the moment the parse is cached (see audit C4/M15).
-            const match = [...records].reverse().find(r => r.goal.toLowerCase() === lowerGoal || lowerGoal.includes(r.goal.toLowerCase()));
+            // becomes a real bug the moment the parse is cached (see audit C4/M15). Most-recent match wins.
+            const match = [...records].reverse().find(r => isRelevantPastGoal(lowerGoal, r.goal.toLowerCase()));
 
             return match || null;
         } catch {

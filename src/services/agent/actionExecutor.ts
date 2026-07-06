@@ -28,13 +28,19 @@ export class ActionExecutor {
         }
     }
 
-    /** Every UI element whose bounding box contains the point — used to re-apply the safety blocklist
-     *  to a raw coordinate click (which has no target element of its own). */
+    /** Every UI element whose bounding box (expanded by the OS touch-slop margin) contains the point —
+     *  used to re-apply the safety blocklist to a raw coordinate click (which has no target element of
+     *  its own). Q-550: the strict point-in-rect test let a tap landing JUST OUTSIDE a destructive
+     *  control's reported rect — but within the radius the OS still resolves to that control — dodge the
+     *  blocklist. The slop margin (≈ Android's ~8dp ViewConfiguration touch slop) closes that gap. It can
+     *  only ADD elements to the safety check, never remove one, so a click can never become less safe. */
+    private static readonly TOUCH_SLOP_PX = 24;
     private elementsContaining(x: number, y: number, elements: UIElement[]): UIElement[] {
+        const slop = ActionExecutor.TOUCH_SLOP_PX;
         return elements.filter(e =>
             e.rect &&
-            x >= e.rect.x && x <= e.rect.x + e.rect.width &&
-            y >= e.rect.y && y <= e.rect.y + e.rect.height);
+            x >= e.rect.x - slop && x <= e.rect.x + e.rect.width + slop &&
+            y >= e.rect.y - slop && y <= e.rect.y + e.rect.height + slop);
     }
 
     /** Refuse a blatantly destructive GOAL before the agent loop starts (H10). Throws SafetyViolationError. */

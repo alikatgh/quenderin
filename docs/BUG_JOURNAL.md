@@ -352,6 +352,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R24 — Q-550/552/554 agent safety + heuristics) — **Q-550** a raw coordinate click
+  re-applied the destructive-action blocklist only to elements STRICTLY containing the point; a tap just
+  outside a "confirm" control's rect (but within OS touch-slop, so the OS still resolves it) dodged the
+  check. Expanded `elementsContaining` by a 24px slop margin — only ever ADDS elements to the check, never
+  removes. **Q-552** the capability stall guard compared action signatures with raw input, so
+  whitespace-only variants (`1 + 1` vs `1  +  1`) read as different actions and re-executed identically;
+  `normSig` collapses whitespace (not all — that would fuse distinct string args). **Q-554** `findSimilarGoal`
+  used `current.includes(past)`, so a short past goal ("open","go") matched almost anything; extracted a
+  pure `isRelevantPastGoal` (exact, or substantial ≥3-word/≥12-char past goal on word boundaries). 460
+  tests (+6), typecheck + lint clean. NB Q-556 (per-step safety) is already covered — `execute` runs
+  checkSafety on the target + containing elements + input every step; re-running the immutable goal check
+  adds nothing and a whole-screen scan would over-block.
+
 - 2026-07-06 (audit R22 — Q-527/528/529/531/536 Settings/Docs robustness) — a cluster of
   ignored-response-status UI bugs. **Q-529** `handleDeleteNote` removed the note from the list even when
   the DELETE failed (optimistic) → it silently reappeared on refresh; now only removes on `r.ok`.
