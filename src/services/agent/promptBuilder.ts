@@ -27,6 +27,32 @@ export function wrapUntrustedData(label: string, content: string): string {
 export class PromptBuilder {
     constructor(private memoryService: MemoryService) { }
 
+    // Q-504 (perf ship-blocker): buildEnvironment runs on EVERY agent step, and both memory lookups
+    // below are embedding RAG (embed the query, scan the store) — expensive. But the goal is CONSTANT
+    // across a run, and the UI text is often UNCHANGED between steps (the agent re-observes the same
+    // screen while it reasons). So memoize each by its input and skip the re-embed when the key matches
+    // the previous call. A run is sequential on one PromptBuilder instance, so a 1-entry cache suffices.
+    private lastGoal?: string;
+    private lastPastMemory?: Awaited<ReturnType<MemoryService['findSimilarGoal']>>;
+    private lastUiText?: string;
+    private lastCorrections?: Awaited<ReturnType<MemoryService['findRelevantCorrections']>>;
+
+    private async similarGoalCached(goal: string): Promise<Awaited<ReturnType<MemoryService['findSimilarGoal']>>> {
+        if (goal !== this.lastGoal || this.lastPastMemory === undefined) {
+            this.lastGoal = goal;
+            this.lastPastMemory = await this.memoryService.findSimilarGoal(goal);
+        }
+        return this.lastPastMemory;
+    }
+
+    private async relevantCorrectionsCached(uiText: string): Promise<Awaited<ReturnType<MemoryService['findRelevantCorrections']>>> {
+        if (uiText !== this.lastUiText || this.lastCorrections === undefined) {
+            this.lastUiText = uiText;
+            this.lastCorrections = await this.memoryService.findRelevantCorrections(uiText);
+        }
+        return this.lastCorrections;
+    }
+
     public async buildEnvironment(goal: string, textRepresentation: string, actionHistory: string[], eyeDescription: string = "", attachments: { name: string, content: string }[] = []): Promise<string> {
         let pastTrajectoryHint = "";
         let untrustedCorrections = "";
@@ -36,7 +62,7 @@ export class PromptBuilder {
         // "winning" sequence. Present it as a FENCED hint (observation), not a trusted system command, so
         // the planner may consider it but must re-verify each step against the current screen; execution
         // still passes the action safety gate (deep-hunt HIGH — was injected as trusted context).
-        const pastMemory = await this.memoryService.findSimilarGoal(goal);
+        const pastMemory = await this.similarGoalCached(goal);
         if (pastMemory) {
             pastTrajectoryHint = '\n\n' + wrapUntrustedData(
                 'PAST_TRAJECTORY_HINT',
@@ -45,7 +71,7 @@ export class PromptBuilder {
         }
 
         // 2. Self-Correction RAG (Semantic UI Match) — user-authored rules are untrusted input
-        const relevantCorrections = await this.memoryService.findRelevantCorrections(textRepresentation);
+        const relevantCorrections = await this.relevantCorrectionsCached(textRepresentation);
         if (relevantCorrections && relevantCorrections.length > 0) {
             const rules = relevantCorrections.map(c => `- ${c.correctionString}`).join('\n');
             untrustedCorrections = wrapUntrustedData(

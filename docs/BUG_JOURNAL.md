@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 15 — the perf P0) — **Q-504 (P0)** `PromptBuilder.buildEnvironment`
+  runs on EVERY agent step and did TWO embedding-RAG lookups each time: `findSimilarGoal(goal)` (goal
+  is CONSTANT across a run) and `findRelevantCorrections(uiText)` (UI often unchanged between steps
+  while the agent reasons). Both re-embedded from scratch every step. Added a 1-entry memoize keyed by
+  input (goal / UI text) → unchanged input reuses the last result. Test: 3 same-screen steps → 1 embed
+  each; a screen change re-embeds the UI RAG but NOT the constant goal RAG. Also DEFERRED **Q-507**
+  (C5: background daemon shares LlmService with no inference SEMAPHORE): the daemon already DEFERS to
+  the foreground (`shouldDeferInference`), so the real gap is a narrow TOCTOU race whose proper fix is
+  an async mutex in the inference core — a hot-path change needing concurrent-load verification with a
+  real model (same boundary as Q-292). Verified: 428 TS tests (+2), typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 14 — hot-path perf) — **Q-505/Q-470** `availableMemBytes()` did a
   BLOCKING `execSync('vm_stat')` (macOS) / `/proc` read on EVERY call, and it's on hot paths (the LLM
   memory-pressure monitor, `/health` polling, every tool handler) — tens of ms of event-loop stall
