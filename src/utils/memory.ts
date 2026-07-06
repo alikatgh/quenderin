@@ -13,8 +13,19 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 
+// Q-505/Q-470: availableMemBytes() runs on hot paths — the LLM memory-pressure monitor, /health
+// polling, and every tool handler — and each call does a BLOCKING execSync('vm_stat') (macOS) or a
+// synchronous /proc read (Linux), tens of ms of event-loop stall apiece. Readily-available memory
+// doesn't change meaningfully within a second, so memoize the reading for a short TTL. The signature
+// stays SYNCHRONOUS (many callers depend on that), but the blocking probe now runs at most once per
+// TTL instead of on every call. Slightly-stale is fine — the value is advisory (fit checks / pressure).
+let memCacheBytes = 0;
+let memCacheAtMs = 0;
+export const MEM_CACHE_TTL_MS = 1000;
+
 /**
- * Returns the number of bytes that are *readily* available for a new process.
+ * Returns the number of bytes that are *readily* available for a new process. Cached for
+ * `MEM_CACHE_TTL_MS` to keep the blocking probe off hot paths (Q-505).
  *
  * - **macOS**: parses `vm_stat` and sums free + inactive + speculative +
  *   purgeable pages multiplied by the VM page size.
@@ -22,6 +33,17 @@ import os from 'os';
  * - **Fallback**: `os.freemem()` (used on Windows and on error).
  */
 export function availableMemBytes(): number {
+    const now = Date.now();
+    if (memCacheBytes > 0 && now - memCacheAtMs < MEM_CACHE_TTL_MS) return memCacheBytes;
+    memCacheBytes = computeAvailableMemBytes();
+    memCacheAtMs = now;
+    return memCacheBytes;
+}
+
+/** Test-only: drop the cache so a test can observe a fresh probe. */
+export function __resetMemCacheForTests(): void { memCacheBytes = 0; memCacheAtMs = 0; }
+
+function computeAvailableMemBytes(): number {
     try {
         // In containers, cgroup limits may be lower than physical RAM.
         // Check cgroup first and cap the result accordingly.

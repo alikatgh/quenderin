@@ -341,6 +341,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 14 — hot-path perf) — **Q-505/Q-470** `availableMemBytes()` did a
+  BLOCKING `execSync('vm_stat')` (macOS) / `/proc` read on EVERY call, and it's on hot paths (the LLM
+  memory-pressure monitor, `/health` polling, every tool handler) — tens of ms of event-loop stall
+  apiece. Added a short-TTL memoize (1 s): signature stays SYNCHRONOUS (many callers depend on it),
+  but the blocking probe now runs at most once per second. Slightly-stale is fine — the value is
+  advisory (fit checks / pressure). Test proves rapid calls share ONE probe + re-probe after the TTL
+  (darwin execSync-count) plus a platform-agnostic value-stability check. Lesson: a sync API on a hot
+  path doesn't have to go async to stop blocking — a TTL memoize keeps the signature and kills the
+  repeat cost. (Q-475 cgroup-over-estimate is a separate P2 in the same file, left.)
+
 - 2026-07-06 (audit R1-R20 batch 13 — voice/log privacy) — **Q-357** the agent goal was logged
   verbatim (`server.ts` voice trigger AND `agent.service` mission start), so a spoken/typed CREDENTIAL
   would persist in the app log. Wrapped both sites in the existing (tested) `redactSecrets` — masks
