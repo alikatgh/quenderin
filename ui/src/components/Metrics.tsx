@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Activity, ArrowLeft, Target, Trophy, Clock, Zap, Download } from 'lucide-react';
+import { apiFetch } from '../lib/api.js';
 
 interface MetricRecord {
     id: string;
@@ -123,7 +124,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/metrics')
+        apiFetch('/api/metrics')
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {

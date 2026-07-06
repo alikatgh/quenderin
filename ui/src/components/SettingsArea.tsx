@@ -114,13 +114,13 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     useEffect(() => {
         if (notesOpen) {
-            fetch('/api/notes').then(r => r.ok ? r.json() : null).then(d => { if (d?.notes) setNotes(d.notes); }).catch(() => {});
+            apiFetch('/api/notes').then(r => r.ok ? r.json() : null).then(d => { if (d?.notes) setNotes(d.notes); }).catch(() => {});
         }
     }, [notesOpen]);
 
     useEffect(() => {
         if (memoryOpen) {
-            fetch('/api/memory/trajectories').then(r => r.ok ? r.json() : null).then(d => { if (d) { setTrajectories(d.trajectories); setMemoryTotal(d.total); } }).catch(() => {});
+            apiFetch('/api/memory/trajectories').then(r => r.ok ? r.json() : null).then(d => { if (d) { setTrajectories(d.trajectories); setMemoryTotal(d.total); } }).catch(() => {});
         }
     }, [memoryOpen]);
 
@@ -214,7 +214,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2500);
                 try {
-                    const response = await fetch(`/diagnostics?historyLimit=5&diagnosticsId=${encodeURIComponent(diagnosticsId)}`, {
+                    const response = await apiFetch(`/diagnostics?historyLimit=5&diagnosticsId=${encodeURIComponent(diagnosticsId)}`, {
                         cache: 'no-store',
                         signal: controller.signal,
                         headers: {

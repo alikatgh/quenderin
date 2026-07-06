@@ -11,7 +11,10 @@ export function authToken(): string {
 
 /**
  * `fetch` that attaches the auth token. Use it for EVERY state-changing call (POST/PUT/PATCH/DELETE)
- * — the server rejects un-tokened mutating requests with 401. Read-only GETs may use plain `fetch`.
+ * AND for every GET to a user-data route — since Q-007/Q-274 the server also 401s un-tokened GETs to
+ * `/api/sessions`, `/api/notes`, `/api/memory`, `/api/metrics`, `/diagnostics`. Plain `fetch` is only
+ * safe for genuinely public probes (health/hardware). (Q-489: the old "GETs may use plain fetch" note
+ * was stale and 401'd every Settings/Sidebar/Metrics panel.)
  */
 export function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
     const headers = new Headers(init.headers);

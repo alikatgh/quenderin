@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 3 — **P0**) — The auth hardening (Q-007/Q-274) protected the
+  user-data GET routes server-side, but the Electron UI still called them with plain `fetch()` → **401
+  → dead Settings/Sidebar/Metrics panels** (Q-489–492, Q-309/311/312/313). Root cause: a stale doc
+  comment in `ui/src/lib/api.ts` said "read-only GETs may use plain fetch." Fixed the comment and
+  routed all five protected-route reads (`/api/sessions`, `/api/notes`, `/api/memory`, `/api/metrics`,
+  `/diagnostics`) through `apiFetch` (attaches `X-Auth-Token`). Lesson: when you add auth to a route,
+  grep EVERY caller the same commit — a server-side gate + client callers that don't send the token is
+  a self-inflicted P0, and the stale "plain fetch OK" comment is what propagated it.
+
 - 2026-07-06 (audit R1-R20 batch 2) — Four more. **Q-285** `metrics.appendMetrics` read-modify-wrote
   one JSON file → concurrent agent runs lost records; serialize via an in-memory write-chain (single
   process, no file lock). **Q-283** `switchModel()` silently `return`ed when inference was busy → WS

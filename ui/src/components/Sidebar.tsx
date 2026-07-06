@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, BookOpen, BrainCircuit, Smartphone, SlidersHorizontal, Clock, MessageSquareText, BarChart3, type LucideIcon } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
+import { apiFetch } from '../lib/api.js';
 
 interface SessionSummary {
     id: string;
@@ -38,7 +39,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
     const [recentSessions, setRecentSessions] = useState<SessionSummary[]>([]);
 
     useEffect(() => {
-        fetch('/api/sessions')
+        apiFetch('/api/sessions')
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data?.sessions) setRecentSessions(data.sessions.slice(0, 5));
