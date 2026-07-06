@@ -98,6 +98,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
     const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted
     const [modelActionType, setModelActionType] = useState<'download' | 'delete' | null>(null);
+    // Q-528: the last failed model action, so a rejected download/delete (bad id, missing/expired token)
+    // shows the user WHY instead of just clearing the spinner as if it had succeeded.
+    const [modelActionError, setModelActionError] = useState<{ id: string; message: string } | null>(null);
     const [diagCopied, setDiagCopied] = useState(false);
     const [diagCopiedFromFallback, setDiagCopiedFromFallback] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
@@ -131,8 +134,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
     const handleDeleteNote = async (filename: string) => {
         setDeletingNote(filename);
-        await apiFetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
-        setNotes(prev => prev.filter(n => n.filename !== filename));
+        // Q-529: only drop the note from the UI when the DELETE actually succeeded. The old optimistic
+        // remove made a failed delete look successful — the note silently reappeared on the next refresh.
+        const ok = await apiFetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' })
+            .then(r => r.ok)
+            .catch(() => false);
+        if (ok) setNotes(prev => prev.filter(n => n.filename !== filename));
         setDeletingNote(null);
     };
 
@@ -155,9 +162,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     }, [currentSettings]);
 
     const refreshCatalog = () => {
-        fetch('/api/models/catalog')
-            .then(r => r.json())
-            .then(d => setModelCatalog(d.catalog ?? []))
+        // Q-527: go through apiFetch (auth header + shared error handling) like every neighbouring call,
+        // and guard on r.ok so a 5xx doesn't get JSON.parse'd as an error page and blank the catalog.
+        apiFetch('/api/models/catalog')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setModelCatalog(d.catalog ?? []); })
             .catch(() => {});
     };
 
@@ -168,12 +177,22 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const handleDownloadModel = async (modelId: string) => {
         setModelActionId(modelId);
         setModelActionType('download');
+        setModelActionError(null);
         try {
-            await apiFetch('/api/models/download', {
+            // Q-528: surface a rejected START. The old code ignored res.ok, so a 400/401 (bad id, missing
+            // or expired token) cleared the spinner as if the download had begun. Progress itself still
+            // streams over the WS model_download_progress channel; this only reports the kickoff POST.
+            const res = await apiFetch('/api/models/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ modelId }),
             });
+            if (!res.ok) {
+                const detail = await res.json().catch(() => null);
+                setModelActionError({ id: modelId, message: detail?.error || `Download failed (${res.status})` });
+            }
+        } catch {
+            setModelActionError({ id: modelId, message: 'Download failed — is the backend reachable?' });
         } finally {
             // Poll catalog after a short delay to pick up download status
             setTimeout(refreshCatalog, 2000);
@@ -186,8 +205,15 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         if (!confirm('Delete this model from disk? You will need to re-download it to use it again.')) return;
         setModelActionId(modelId);
         setModelActionType('delete');
+        setModelActionError(null);
         try {
-            await apiFetch(`/api/models/${modelId}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/models/${modelId}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const detail = await res.json().catch(() => null);
+                setModelActionError({ id: modelId, message: detail?.error || `Delete failed (${res.status})` });
+            }
+        } catch {
+            setModelActionError({ id: modelId, message: 'Delete failed — is the backend reachable?' });
         } finally {
             setTimeout(refreshCatalog, 500);
             setModelActionId(null);
@@ -597,6 +623,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 {!m.isDownloaded && <span className="text-zinc-400">{m.sizeLabel}</span>}
                                                 <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">{m.quantization}</span>
                                             </div>
+                                            {modelActionError?.id === m.id && (
+                                                <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1">
+                                                    <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {modelActionError.message}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="flex-shrink-0">
                                             {m.isDownloaded ? (
@@ -754,7 +785,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                 <div className="mt-10 pt-6 border-t border-zinc-200/60 dark:border-zinc-800/50 flex flex-col items-center text-center">
                     <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                        Quenderin v0.0.1 — Settings saved to your browser.
+                        Quenderin v0.0.1 — Settings are saved on this device; context size &amp; memory-safety also apply to the running agent.
                     </p>
                 </div>
             </div>

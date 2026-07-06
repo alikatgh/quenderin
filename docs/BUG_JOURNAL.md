@@ -352,6 +352,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R22 — Q-527/528/529/531/536 Settings/Docs robustness) — a cluster of
+  ignored-response-status UI bugs. **Q-529** `handleDeleteNote` removed the note from the list even when
+  the DELETE failed (optimistic) → it silently reappeared on refresh; now only removes on `r.ok`.
+  **Q-528** `handleDownloadModel`/`handleDeleteModel` ignored `res.ok`, so a 400/401 just cleared the
+  spinner as if it worked; added a per-model `modelActionError` surfaced inline under the row.
+  **Q-527** `refreshCatalog` used raw `fetch` + unconditional `.json()`; now `apiFetch` + `r.ok` guard.
+  **Q-536** Docs used raw `fetch` → `apiFetch` (public today, auth-ready). **Q-531** footer "saved to your
+  browser" → precise device-local copy. typecheck:ui + lint:ui clean; failure-path behaviour is best
+  confirmed in the running app with a simulated 4xx. (Q-532 health poll left as-is — `/health` is public.)
+
 - 2026-07-06 (audit R22/R25 — Q-524 + Q-534 Electron hardening/UX) — **Q-524** the BrowserWindow ran the
   renderer UNSANDBOXED despite showing untrusted agent/LLM/on-screen content; added `sandbox: true` (safe
   because the preload only reads process.argv/env, both in Electron's sandboxed-preload polyfill, and

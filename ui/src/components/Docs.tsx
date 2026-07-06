@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BookOpen, ArrowLeft, ChevronRight, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { apiFetch } from '../lib/api.js';
 
 interface DocsProps {
     onBack: () => void;
@@ -26,7 +27,9 @@ export function Docs({ onBack }: DocsProps) {
         const fetchMarkdown = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(`/api/docs/${activeFile}`);
+                // Q-536: go through apiFetch like every other data call — the docs route is public today,
+                // but this attaches the auth header for free if it's ever moved behind the token gate.
+                const response = await apiFetch(`/api/docs/${activeFile}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch: ${response.status}`);
                 }
