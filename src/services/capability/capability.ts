@@ -31,6 +31,9 @@ export function mutates(b: BlastRadius): boolean {
 export interface ActionPreview {
     summary: string;
     mutates: boolean;
+    /** The risk tier of the action, added by the runner before it calls the approver — lets an
+     *  approver decide per-tier (e.g. auto-approve reversible T2 but still ask for T3 app-driving). */
+    tier?: CapabilityTier;
 }
 
 /**

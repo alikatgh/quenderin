@@ -1,5 +1,5 @@
 import {
-    Capability, ConsentStore, AuditLedger, ActionPreview, RunSession,
+    Capability, CapabilityTier, ConsentStore, AuditLedger, ActionPreview, RunSession,
     InMemoryConsentStore, InMemoryAuditLedger, requiresConsent, mutates,
 } from './capability.js';
 import { matchedBlockedKeyword } from './safety.js';
@@ -118,7 +118,7 @@ export class CapabilityRunner {
                 this.log(capability, input, 'needsApproval');
                 return 'This action changes things and needs your per-run approval, which this surface can\'t ask for. Not done.';
             }
-            if (!await this.approve(preview)) {
+            if (!await this.approve({ ...preview, tier: capability.tier })) {
                 this.log(capability, input, 'declined');
                 return `You declined: ${preview.summary} Nothing was changed.`;
             }
@@ -185,7 +185,10 @@ export class CapabilityRunner {
             const banner = this.bulkThreshold > 0 && changeCount > this.bulkThreshold
                 ? `⚠️ This plan makes ${changeCount} changes — review carefully.\n`
                 : '';
-            const combined: ActionPreview = { summary: `${banner}The agent proposes this plan:\n${numbered}`, mutates: true };
+            // The plan's tier is its most dangerous step — so a plan containing a T3 app action
+            // still prompts under a tier-aware auto-approver, even if the rest is reversible.
+            const planTier = items.reduce<number>((t, item) => Math.max(t, item.capability.tier), 0) as CapabilityTier;
+            const combined: ActionPreview = { summary: `${banner}The agent proposes this plan:\n${numbered}`, mutates: true, tier: planTier };
             if (!this.approve) {
                 items.forEach(item => this.log(item.capability, item.input, 'needsApproval'));
                 return 'This plan changes things and needs your approval, which this surface can\'t ask for. Nothing was done.';

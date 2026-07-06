@@ -16,7 +16,7 @@ import { MetricsService } from './services/metrics.service.js';
 import { OcrService } from './services/ocr.service.js';
 import { MemoryService, setSharedMemoryService } from './services/memory.service.js';
 import { OsascriptAutomation } from './services/capability/macAutomation.js';
-import { InMemoryConsentStore } from './services/capability/capability.js';
+import { InMemoryConsentStore, CapabilityTier } from './services/capability/capability.js';
 import { createGovernedAgent } from './services/capability/desktopAgent.js';
 import { macCapabilities } from './services/capability/macCapabilities.js';
 import { fileCapabilities } from './services/capability/fileCapabilities.js';
@@ -245,7 +245,7 @@ program
   .option('-s, --max-steps <n>', 'how many steps the agent may take (default 8; raise for multi-item tasks)')
   .option('-g, --gui', 'allow clicking/typing in any macOS app via accessibility (needs the Accessibility permission)')
   .option('-n, --dry-run', 'show exactly what it would do — read for real, but change nothing')
-  .option('-y, --yes', 'auto-approve every change (use with care)')
+  .option('-y, --yes', 'auto-approve reversible changes (still asks for app control / GUI)')
   .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; dryRun?: boolean; yes?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
@@ -299,9 +299,15 @@ program
       process.once('SIGINT', () => { console.log(dim('\n(stopping — finishing the current step)')); ac.abort(); });
 
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-      const approve = (preview: { summary: string }): Promise<boolean> => {
-        if (options.yes) { console.log(dim(`  auto-approved: ${preview.summary}`)); return Promise.resolve(true); }
-        return new Promise(res => rl.question(`\n${bold(preview.summary)}\n  Allow? [y/N] `, a => res(/^y(es)?$/i.test(a.trim()))));
+      const approve = (preview: { summary: string; tier?: number }): Promise<boolean> => {
+        // --yes auto-approves REVERSIBLE actions (≤ T2), but app-driving / GUI (T3) is the highest
+        // blast radius, so it still asks — you can't rubber-stamp clicking around your apps.
+        if (options.yes && (preview.tier ?? 0) < CapabilityTier.AppAction) {
+          console.log(dim(`  auto-approved: ${preview.summary}`));
+          return Promise.resolve(true);
+        }
+        const note = options.yes ? dim(' (app control — approving each one even with --yes)') : '';
+        return new Promise(res => rl.question(`\n${bold(preview.summary)}${note}\n  Allow? [y/N] `, a => res(/^y(es)?$/i.test(a.trim()))));
       };
 
       // Persisted across runs: the ledger (review what it's done) and skill memory (it gets
