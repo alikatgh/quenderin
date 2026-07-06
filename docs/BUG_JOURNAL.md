@@ -352,6 +352,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R24 triage — Q-551 by-design + Q-548/570/572 non-issues) — **Q-551** "a 20+ op plan
+  bypasses the per-change re-ask": explored adding a mid-plan bulk brake, then REVERTED — it re-asked
+  "already made N changes?" on a plan the user JUST reviewed in full (loud ⚠️ banner + every step's
+  summary + one informed approval), i.e. redundant friction, and doesn't help the auto-approver case (same
+  approver). The full-preview+banner+single-approval IS the bulk consent; changes still count toward the
+  run so the next SINGLE action trips the brake. Added a test pinning this (guards against re-adding the
+  brake I just tried). Runner change is comment-only. **Non-issues (no change, documented):** Q-548
+  (settings_update drops themePreference/chatLogDedupeMs — both genuinely client-only), Q-570 (iOS bg
+  downloader allowsCellularAccess=true — dormant class, policy enforced upstream by design), Q-572
+  (SECURITY.md already says "no rate limiting" honestly — the false-claim was fixed pre-R21).
+
 - 2026-07-06 (audit R28/R23 — Q-598 flush perf + Q-560 kill-switch coverage) — **Q-598** `flushNow` runs on
   every debounced write (≈ every few seconds while chatting) and called `pruneOldSessions → listSessions`,
   which reads + JSON.parses EVERY session file — an O(n) disk stall on a hot path. Re-writing the current

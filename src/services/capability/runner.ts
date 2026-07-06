@@ -217,6 +217,12 @@ export class CapabilityRunner {
                 results.push(`Stopped by you after step ${i} of ${items.length}. The remaining steps did not run.`);
                 return results.join('\n');
             }
+            // Q-551 (by design): NO per-step bulk re-ask inside a plan. Unlike the single-action path —
+            // where each change is unpreviewed, so the brake re-asks after N — a plan is FULLY previewed
+            // up front (every step's summary) with a loud "⚠️ makes N changes" banner and taken under ONE
+            // informed approval. That IS the bulk consent for the batch; a mid-plan re-ask on a plan the
+            // user just reviewed in full would be redundant friction. The plan's changes still increment
+            // mutationsThisRun, so the run's brake fires on the NEXT single action if the run keeps going.
             try {
                 const result = await item.capability.run(item.input);
                 this.log(item.capability, item.input, 'allowed', result);

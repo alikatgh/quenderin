@@ -101,4 +101,24 @@ describe('CapabilityRunner bulk guard (plan path)', () => {
         expect(seen).not.toContain('⚠️');
         expect(seen).toContain('The agent proposes this plan');
     });
+
+    it('Q-551 (by design): a fully-previewed plan runs under ONE approval — no per-step bulk re-ask', async () => {
+        // The plan is previewed in full with a loud banner and approved once; that IS the bulk consent.
+        // A mid-plan "already made N changes?" re-ask on a plan the user just reviewed would be redundant.
+        const cap = new Counter();
+        const ledger = new InMemoryAuditLedger();
+        let bulkPrompts = 0;
+        const approve = async (p: { summary: string }) => {
+            if (p.summary.includes('already made')) { bulkPrompts++; return false; }
+            return true; // approve the (fully-previewed) plan
+        };
+        const runner = new CapabilityRunner(grant(), ledger, approve, () => 0, undefined, 3); // threshold 3
+        const items = Array.from({ length: 5 }, (_, i) => ({ capability: cap, input: `f${i}` }));
+        await runner.executePlan(items);
+
+        expect(cap.ran).toBe(5);            // all 5 run under the single informed approval (banner shown)
+        expect(bulkPrompts).toBe(0);        // no per-step re-ask inside the approved, previewed plan
+        // The plan's changes still count toward the run so the NEXT single action can trip the brake.
+        expect((runner as unknown as { mutationsThisRun: number }).mutationsThisRun).toBe(5);
+    });
 });
