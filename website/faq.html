@@ -120,7 +120,11 @@
         </details>
         <details>
           <summary data-i18n="fq.q.agent">Can it actually do things, or just chat?</summary>
-          <p data-i18n-html="fq.a.agent">It includes a tool-using agent for small tasks, with a <strong>hard safety blocklist</strong> it cannot override on its own: it will never autonomously pay, delete, transfer money, or touch credentials. Anything sensitive is surfaced for you to confirm.</p>
+          <p data-i18n-html="fq.a.agent">Yes &mdash; a lot. On a Mac it can organize files, drive apps, and run your Apple Shortcuts (the <a href="blog-computer-use.html">launch post</a> has the details). It's a <strong>governed</strong> agent: it asks before every change, keeps a local log you can review, and can undo a whole task. A hard safety blocklist it can't override means it will never autonomously pay, delete, transfer money, or touch credentials.</p>
+        </details>
+        <details>
+          <summary data-i18n="fq.q.agentsafe">Can the agent mess up my computer?</summary>
+          <p data-i18n-html="fq.a.agentsafe">By design, it's hard to. Nothing that changes anything runs without your explicit yes for that step; file tasks are limited to a folder <em>you</em> grant, and never overwrite or truly delete (things move to a visible Trash you can restore from). You can stop it instantly with <kbd>Ctrl-C</kbd>, and <code>quenderin undo</code> reverses the last task &mdash; even in a new session, an hour later. Want to look before you leap? <code>--dry-run</code> shows exactly what it would do while changing nothing.</p>
         </details>
         <details>
           <summary data-i18n="fq.q.size">How big is a model download?</summary>
