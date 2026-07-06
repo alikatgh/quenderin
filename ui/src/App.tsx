@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Menu, PanelRightClose, PanelRightOpen, TerminalSquare, ArrowRight, Download, CheckCircle2, BrainCircuit, Mic } from 'lucide-react';
 import { useAgentSocket } from './hooks/useAgentSocket.js';
-import { apiFetch } from './lib/api.js';
+import { apiFetch, hasAuthToken } from './lib/api.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ChatArea } from './components/ChatArea.js';
@@ -251,6 +251,10 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [forceShowTroubleshooter, setForceShowTroubleshooter] = useState(false);
+  // Q-526: capture token presence once on mount (authToken() is cached + strips the URL on first read).
+  // Without a token every protected route 401s opaquely — surface a relaunch banner instead.
+  const [tokenPresent] = useState(() => hasAuthToken());
+  const [tokenBannerDismissed, setTokenBannerDismissed] = useState(false);
   const [healthData, setHealthData] = useState<{
     contextOptions?: number[];
     recommendedModelId?: string;
@@ -483,6 +487,14 @@ function AppContent() {
         expectedPassphrase={settings.privacyPassphrase}
         onUnlock={() => setIsLocked(false)}
       />
+      {/* Q-526: a missing per-launch token means every protected route 401s — tell the user WHY and how
+          to fix it (relaunch) instead of leaving the app silently broken. */}
+      {!tokenPresent && !tokenBannerDismissed && (
+        <div role="alert" className="fixed top-0 inset-x-0 z-[998] flex items-center justify-center gap-3 px-4 py-2.5 bg-amber-500 text-amber-950 text-[13px] font-medium shadow-md">
+          <span>Session token missing — Quenderin can’t reach the local agent. Relaunch it from the launcher (or reopen the link the CLI printed) to reconnect.</span>
+          <button onClick={() => setTokenBannerDismissed(true)} className="ml-1 rounded px-2 py-0.5 text-amber-950/70 hover:bg-amber-950/10 transition-colors" aria-label="Dismiss">✕</button>
+        </div>
+      )}
       {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} downloadProgress={downloadProgress} />}
       {requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide

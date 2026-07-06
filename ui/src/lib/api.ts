@@ -37,6 +37,17 @@ export function authToken(): string {
 }
 
 /**
+ * Q-526: is a per-launch token available at all? When it isn't, apiFetch sends no auth header and every
+ * protected route 401s with an opaque error — the app looks broken with no hint why. The renderer uses
+ * this to show a "relaunch to reconnect" banner instead. A missing token is a real state: the Electron
+ * preload always supplies one, but the CLI/browser path reads it from `?token=` which Q-525 STRIPS from
+ * the URL after first read — so a plain page refresh (no cached token, no `?token=` left) lands here.
+ */
+export function hasAuthToken(): boolean {
+    return authToken() !== '';
+}
+
+/**
  * `fetch` that attaches the auth token. Use it for EVERY state-changing call (POST/PUT/PATCH/DELETE)
  * AND for every GET to a user-data route — since Q-007/Q-274 the server also 401s un-tokened GETs to
  * `/api/sessions`, `/api/notes`, `/api/memory`, `/api/metrics`, `/diagnostics`. Plain `fetch` is only

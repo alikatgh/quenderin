@@ -352,6 +352,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R22 — Q-526 relaunch banner for a missing token) — apiFetch silently omits the auth
+  header when no token is present, so every protected route 401s with an opaque error and the app looks
+  broken with no hint why. Real trigger: Q-525 STRIPS `?token=` from the URL after first read, so a plain
+  page refresh (no cached token, no `?token=` left) has none. Added `hasAuthToken()` to api.ts; App shows
+  a dismissible amber "Session token missing — relaunch to reconnect" banner when it's false (captured once
+  on mount). Test covers all three sources: absent → false, `?token=` → true, preload → true. Guidance,
+  not a silent break. 472 tests (+3), typecheck + lint clean.
+
 - 2026-07-06 (audit R25 — Q-568 self-host the fonts) — the UI pulled Inter + JetBrains Mono from Google
   Fonts on every load (a `<link>` to fonts.googleapis + preconnects) — an IP/timing leak + a hard network
   dependency that contradicts the offline/privacy-first mission. Self-hosted them (owner-greenlit): added
