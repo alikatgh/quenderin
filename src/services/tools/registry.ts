@@ -8,6 +8,14 @@ import { getHardwareProfile } from '../../utils/hardware.js';
 
 const HW = getHardwareProfile();
 
+/** Q-639: the ONE source of truth for how many tool calls a single response may make — the tool prompt
+ *  TELLS the model this number, and the executor ENFORCES it. They were out of sync (prompt said 1/2/3
+ *  by tier, the executor hardcoded 5), so a weak model could emit more calls than promised and have them
+ *  silently run. Scales down on constrained hardware (fewer, cheaper tool round-trips). */
+export function maxToolCallsPerResponse(): number {
+    return HW.tier === 'embedded' ? 1 : HW.tier === 'constrained' ? 2 : 3;
+}
+
 export interface ToolParameter {
     name: string;
     type: 'string' | 'number' | 'boolean';
@@ -99,6 +107,6 @@ export function buildToolPrompt(): string {
 Available tools:
 ${toolDescriptions}
 
-You may use up to ${HW.tier === 'embedded' ? 1 : HW.tier === 'constrained' ? 2 : 3} tool calls per response. After using a tool, the result will be provided and you should incorporate it into your answer.
+You may use up to ${maxToolCallsPerResponse()} tool calls per response. After using a tool, the result will be provided and you should incorporate it into your answer.
 If you don't need any tools, just respond normally without tool call tags.`;
 }

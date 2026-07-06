@@ -7,7 +7,7 @@ import path from 'path';
 import { availableMemBytes } from '../../utils/memory.js';
 import { safeCalculate, CalculatorError } from './calculator.js';
 import { runUnitConversion } from './unitConvert.js';
-import { ToolCall, ToolResult, AVAILABLE_TOOLS } from './registry.js';
+import { ToolCall, ToolResult, AVAILABLE_TOOLS, maxToolCallsPerResponse } from './registry.js';
 import { getSharedMemoryService } from '../memory.service.js';
 import logger from '../../utils/logger.js';
 
@@ -214,8 +214,8 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
 
 /** Execute multiple tool calls (with safety limits) */
 export async function executeToolCalls(calls: ToolCall[]): Promise<ToolResult[]> {
-    const MAX_CALLS = 5;
-    const limited = calls.slice(0, MAX_CALLS);
+    // Q-639: enforce the SAME cap the tool prompt advertises (was a hardcoded 5 vs the prompt's 1/2/3).
+    const limited = calls.slice(0, maxToolCallsPerResponse());
     const results: ToolResult[] = [];
     for (const call of limited) {
         results.push(await executeTool(call));

@@ -341,6 +341,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 — Q-639 tool-call cap sync) — the tool PROMPT told the model "up to 1/2/3 tool
+  calls per response" (by hardware tier), but the executor hardcoded `MAX_CALLS = 5` — so a weak model
+  could emit more calls than promised and have them silently run. Extracted the ONE source of truth
+  `maxToolCallsPerResponse()` (registry.ts, the non-cyclic leaf both sides import) and pointed both the
+  prompt and `executeToolCalls` at it. Test pins the parity: the prompt string contains "up to N" and
+  the executor caps at exactly N. 450 tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R31 — Q-641 native agent cancel, CROSS-PLATFORM) — the Apple `AgentSession` had no
   mid-run cancel (ChatModel does), so a running mission ground to maxSteps. Added the kill switch on
   BOTH mobile platforms (twin of desktop Q-523): a new `HaltReason.cancelled`/`CANCELLED` + userMessage
