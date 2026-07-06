@@ -30,6 +30,11 @@ import androidx.work.workDataOf
 class WorkManagerModelDownloader(
     private val context: Context,
     private val pollMs: Long = 250,
+    // Q-584: the WorkManager network constraint. Wi-Fi-only (the default DownloadPolicy) → UNMETERED,
+    // so a deferred/parked download never runs on metered cellular even if the OnboardingModel gate was
+    // somehow bypassed OR Wi-Fi drops mid-download. When Q-578's cellular opt-in toggle lands, the app
+    // passes `false` for a policy of wifiOrCellular.
+    private val requireUnmetered: Boolean = true,
 ) : ModelDownloader {
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
@@ -51,7 +56,10 @@ class WorkManagerModelDownloader(
         val workManager = WorkManager.getInstance(context)
 
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)   // gate Wi-Fi-only at the DownloadPolicy layer
+            // Q-584: UNMETERED under the Wi-Fi-only default (was CONNECTED = any network). The
+            // DownloadPolicy gate in OnboardingModel is the primary check; this is the WorkManager-layer
+            // backstop so a metered cellular pull can't slip through a deferred/parked download.
+            .setRequiredNetworkType(if (requireUnmetered) NetworkType.UNMETERED else NetworkType.CONNECTED)
             .setRequiresStorageNotLow(true)
             .build()
 

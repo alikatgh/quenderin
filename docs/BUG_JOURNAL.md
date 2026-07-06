@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 Wave 1 — **Q-583 P0 / Q-584** Android app-layer DownloadPolicy) — the
+  Kotlin CORE gate (Q-271 twin) was live but the app never fed it the real network, so it defaulted to
+  WIFI and the cellular gate was DEAD (the R21-R30 regression). Wired it: `OnboardingScreen.kt` now
+  reads `ConnectivityManager`/`NetworkCapabilities` → `NetworkStatus` and passes `networkStatus` +
+  `downloadPolicy = WIFI_ONLY` into `OnboardingModel` (the seams my core fix already exposed). **Q-584**
+  `WorkManagerModelDownloader` constraint `CONNECTED` → `UNMETERED` (via a `requireUnmetered` param, so
+  Q-578's opt-in can flip it) — a WorkManager-layer backstop so a deferred/parked download can't run on
+  metered cellular. Symbols cross-checked against the core (enums + seam signatures match; CoreVerify
+  exit 0). CANNOT compile the app module here (Android SDK/Gradle exceeds 2.3 GB disk) — per the audit
+  prompt the USER verifies on the arm64 emulator (cellular download blocked under Wi-Fi-only).
+
 - 2026-07-06 (audit R21-R30 Wave 1 — Q-561 CSP hardening) — the Content-Security-Policy set
   default/connect/img/script/style/font but omitted three standard hardening directives. Added
   `frame-ancestors 'none'` (clickjacking — the local dashboard is never meant to be embedded),

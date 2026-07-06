@@ -4,13 +4,17 @@ import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.DiskSpace
+import ai.quenderin.core.DownloadPolicy
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.ModelSelection
+import ai.quenderin.core.NetworkStatus
 import ai.quenderin.core.OnboardingModel
 import ai.quenderin.core.OnboardingPhase
 import ai.quenderin.core.StorageCheckResult
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ModalBottomSheet
@@ -76,6 +80,24 @@ import kotlinx.coroutines.withContext
  * [ChatScreen]. Maps the core's listener (`onChange`) into Compose state and runs the
  * blocking download/load on [Dispatchers.IO]. Twin of iOS `RootView`.
  */
+/**
+ * Q-583: map the device's active connection to the core's [NetworkStatus] so the download gate can
+ * refuse a large cellular pull. Uses the NetworkCapabilities API (API 23+): anything with internet
+ * that isn't cellular (Wi-Fi, Ethernet) is treated as unmetered → WIFI; a positive cellular transport
+ * → CELLULAR (gated); no active/internet-capable network → NONE.
+ */
+private fun currentNetworkStatus(context: android.content.Context): NetworkStatus {
+    val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        ?: return NetworkStatus.NONE
+    val network = cm.activeNetwork ?: return NetworkStatus.NONE
+    val caps = cm.getNetworkCapabilities(network) ?: return NetworkStatus.NONE
+    return when {
+        !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) -> NetworkStatus.NONE
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkStatus.CELLULAR
+        else -> NetworkStatus.WIFI
+    }
+}
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot(
@@ -98,6 +120,12 @@ fun AppRoot(
             recallActiveModelID = { prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null) },
             rememberActiveModelID = { id -> prefs.edit().putString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, id).apply() },
             activeModelFileExists = { File(modelsDir, it.filename).isFile },
+            // Q-583 (P0): wire the LIVE network status from ConnectivityManager so the core's cellular
+            // gate (Q-271 twin) actually bites — it defaults to WIFI, so without this the gate was dead.
+            // Read at download time (not captured once) so a Wi-Fi→cellular switch is seen. Policy is the
+            // safe WIFI_ONLY default; Q-578 adds a Settings opt-in toggle.
+            networkStatus = { currentNetworkStatus(context) },
+            downloadPolicy = { DownloadPolicy.WIFI_ONLY },
         ).apply { onChange = { phase = it } }
     }
     // Relaunch fast-path: restore the last successfully-loaded model straight to Ready instead of
