@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R29/R31 — Q-643 + Q-608 build/CI config) — **Q-643** the Electron bundle globbed
+  `node_modules/**/*` (full tree). Rather than DROP the glob (risks pruning a needed transitive dep,
+  unverifiable without an electron-builder run), ADDED exclusions for provably non-runtime files only —
+  test/example dirs, `*.map`, `*.d.ts`, `*.md` — a real size win with zero runtime risk. **Q-608** the
+  finding wants coverage regressions to block, but `fail_ci_if_error` governs UPLOAD errors, not
+  coverage — added a `codecov.yml` with project (auto/1% threshold) + patch status checks (the real
+  knob), lenient + inert-until-codecov-configured; branch protection makes it BLOCK. Both YAML validated.
+
 - 2026-07-06 (audit R31 — Q-642 stale launch item) — LAUNCH_CHECKLIST §5 still told the launcher to
   "replace the Formspree form at website/index.html:339", but that form was removed long ago — the site
   drives everything through GitHub CTAs (Star/View/Ask on GitHub) and has no `<form>` at all. Marked the

@@ -61,6 +61,13 @@ files:
   - node_modules/**/*
   - public/**/*
   - package.json
+  # Q-643: trim non-runtime bloat from the bundled node_modules. These globs exclude ONLY files that
+  # never execute in the packaged app — test/example fixtures, sourcemaps, and TypeScript type
+  # declarations — so no production dependency is dropped (unlike removing the node_modules glob
+  # wholesale, which risks pruning a needed transitive dep). Real size win, zero runtime risk.
+  - "!node_modules/**/{test,tests,__tests__,example,examples,.github,.nyc_output,coverage}/**"
+  - "!node_modules/**/*.{map,d.ts,markdown}"
+  - "!node_modules/**/*.md"
 # Enable the asar archive (audit HIGH #9): app source ships as a single read-only archive instead
 # of loose, trivially-modifiable files. Native addons (*.node) and the modules that load them can't
 # run from inside an asar, so unpack them — the **/*.node catch-all plus the known native packages.

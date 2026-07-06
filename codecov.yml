@@ -1,0 +1,20 @@
+# Q-608: make coverage a real, visible PR signal. `fail_ci_if_error` in the workflow only governs
+# codecov UPLOAD errors (a codecov outage), NOT coverage regressions — this file is the actual knob.
+# Lenient by design so it informs without flapping on noise; to make it BLOCK a merge, mark the
+# "codecov/project" (and/or "codecov/patch") check "Required" in the repo's branch-protection rules.
+# Inert until codecov is configured for the repo, so it's safe to land now.
+coverage:
+  status:
+    project:
+      default:
+        target: auto        # compare against the base commit — a real drop turns the check red
+        threshold: 1%       # tolerate a 1% dip before failing (avoids flapping on measurement noise)
+        informational: false
+    patch:
+      default:
+        target: 70%         # changed lines should carry a reasonable amount of coverage
+        threshold: 5%
+
+comment:
+  layout: "reach, diff, files"
+  require_changes: true     # only comment when coverage actually moved
