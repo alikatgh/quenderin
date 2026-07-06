@@ -41,7 +41,16 @@ class CapabilityRunner(
             AuditEntry.of(now(), capability.name, capability.tier.ordinal, input, decision, outcome),
         )
 
-        return when (val decision = CapabilityGate.assess(capability, input, consent.isGranted(capability.name))) {
+        // Twin-drift fix: fail CLOSED if assess()/plan() throws. iOS wraps this in do/catch that ledgers
+        // "error" and returns a graceful refusal; Kotlin called it bare, so a throwing plan() escaped
+        // execute() with NO ledger row — breaking the fail-closed + flight-recorder invariant.
+        val decision = try {
+            CapabilityGate.assess(capability, input, consent.isGranted(capability.name))
+        } catch (t: Throwable) {
+            log("error", t.message)
+            return "Couldn't preview ${capability.name}: ${t.message}"
+        }
+        return when (decision) {
             is GateDecision.Blocked -> {
                 log("blocked(${decision.keyword})", null)
                 "Refused: touches a blocked action ('${decision.keyword}')."
@@ -100,7 +109,16 @@ class CapabilityRunner(
                 log(item, "needsConsent", null)
                 return "Needs your permission first: \"${item.first.name}\" isn't granted in Settings. Nothing was done."
             }
-            previews.add(item.first.plan(item.second))
+            // Twin-drift fix: a plan() that throws must be a clean nothing-done refusal (fail-closed), not
+            // an uncaught exception tearing down the whole agent turn — iOS guards this with `try?`; Kotlin
+            // called plan() bare. Ledger "error" and refuse the whole plan, keeping all-or-nothing intact.
+            val preview = try {
+                item.first.plan(item.second)
+            } catch (t: Throwable) {
+                log(item, "error", t.message)
+                return "Couldn't preview step ${previews.size + 1} (${item.first.name}): ${t.message}. Nothing was done."
+            }
+            previews.add(preview)
         }
 
         // ── One aggregate approval when anything writes.

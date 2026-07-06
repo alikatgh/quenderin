@@ -352,6 +352,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (TWIN-DRIFT batch 2 — CapabilityRunner fail-closed + MemoryFitness; P0 REFUTED on own read) —
+  **CapabilityRunner.kt (P1):** `execute()` and `executePlan()` called `assess()`/`plan()` bare, so a
+  throwing preview escaped uncaught with NO ledger row (iOS guards both) — wrapped each in
+  `try/catch(Throwable)` that ledgers "error" and returns the graceful fail-closed refusal, restoring the
+  all-or-nothing + flight-recorder invariant. **MemoryFitness.kt (P1):** the WARNING message was the
+  numberless "will leave the system tight"; now surfaces the concrete remaining-GB like iOS (byte-identical
+  wording). CoreVerify green. **P0 (Android loads unverified model) REFUTED:** the twin agent (scoped to
+  OnboardingModel/OfflineReadiness) couldn't see `ModelDownloadEngine.kt:84-92`, which DOES re-verify a
+  pre-existing file's SHA-256 vs `model.sha256` and truncates+re-downloads on mismatch — the exact Swift
+  gate, just in the download engine (cleaner layer) not inline. Same behavior, different layer; no fix
+  needed. (Discipline: verify a scoped-agent finding against the full code before acting.) Deferred (still
+  in the report's fix-next): the both-disagree contract calls (AgentDecision plan-parse, persist-mid-stream)
+  + the P2/P3 seam-normalization batch + the 2 un-scored subsystems (re-run).
+
 - 2026-07-06 (TWIN-DRIFT audit — 24 confirmed iOS↔Android drifts; batch 1 fixed) — a 56-agent Opus twin-diff
   (report: docs/audits/2026-07-06-twin-drift-audit.md; memory [[cross-platform-twin-drift]]) found 24
   confirmed Swift↔Kotlin drifts. Batch 1 (verified both platforms): **SafetyBlocklist.swift (P2 SECURITY):**

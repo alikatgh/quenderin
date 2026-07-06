@@ -34,7 +34,9 @@ object MemoryFitness {
             )
             usageAfterLoad > budgetWarning -> MemoryCheckResult(
                 true, MemorySeverity.WARNING, required, freeGB,
-                "${model.label} will leave the system tight.",
+                // Twin-drift fix: surface the concrete remaining-GB figure like iOS, not the numberless
+                // "will leave the system tight" — same WARNING condition, actionable-message parity.
+                "${model.label} will leave only ${fmt(freeGB - required)}GB free. System may be slow.",
             )
             else -> MemoryCheckResult(
                 true, MemorySeverity.SAFE, required, freeGB,
