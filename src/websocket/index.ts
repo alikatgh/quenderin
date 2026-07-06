@@ -55,12 +55,23 @@ export class WebSocketManager {
     private activeActionRequiredHandler: ((payload: any) => void) | null = null;
     private activeDownloadProgressHandler: ((payload: any) => void) | null = null;
 
+    /** Throttle for the congestion warning so a slow connection doesn't spam the log per token. */
+    private lastCongestionWarnMs = 0;
+
     /** Send with backpressure check — drops messages when the send buffer is full
      *  to prevent unbounded memory growth on slow connections */
     private safeSend(ws: WebSocket, data: string): void {
         if (ws.readyState !== WebSocket.OPEN) return;
         if (ws.bufferedAmount > MAX_SEND_BUFFER_BYTES) {
-            // Connection is congested — drop non-critical messages to prevent OOM
+            // Q-293: congested — drop this streaming frame to avoid OOM. This is NOT data loss: the
+            // final `chat_response` is sent via ws.send() with the COMPLETE text, so a slow client
+            // still gets the whole message; only the live token-by-token stream is choppy. But don't
+            // drop SILENTLY — log it (throttled) so congestion is observable.
+            const now = Date.now();
+            if (now - this.lastCongestionWarnMs > 2000) {
+                this.lastCongestionWarnMs = now;
+                logger.warn(`[WS] Send buffer congested (${ws.bufferedAmount} bytes) — dropping stream frames; the final message is still delivered in full.`);
+            }
             return;
         }
         ws.send(data);

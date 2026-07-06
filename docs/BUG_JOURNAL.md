@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 6 — backend features) — **Q-284** the WS chat path dropped
+  `attachments` (generalChat takes a string) → "ask about this file" ignored the file; added
+  `composeChatMessage()` to fold labeled docs into the model input (clean message still persisted).
+  **Q-293** `safeSend` dropped congested `chat_stream` frames SILENTLY → now a throttled warn, and
+  the comment records the key fact: it's NOT data loss (the final `chat_response` ships the complete
+  text via `ws.send`), only choppy live streaming. Lesson: before "fixing" a dropped-frame path,
+  check whether the COMPLETE payload arrives by another route — here it does, so the fix is visibility
+  + a truthful comment, not flow-control.
+
 - 2026-07-06 (audit R1-R20 batch 5 — backend + native) — **Q-275** WS chat had no single-flight guard
   → a double-send overlapped two `generalChat` calls; reject while `isCurrentlyGenerating()`. **Q-279**
   `mac.ui.menu` was two levels only → now nests any depth (`menu item "Bold" of menu "Font" of menu
