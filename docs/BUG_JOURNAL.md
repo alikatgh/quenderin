@@ -352,6 +352,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R27 — Q-588 Android empty-reply notice, TWIN PARITY) — iOS `ChatModel` replaces a
+  silently-empty assistant bubble with an honest "The model returned an empty reply…" notice; the Android
+  twin (`quenderin-core/ChatModel.kt`) left it blank. Ported the same guard at settle: `settled.isBlank()`
+  && the generation is still active (`myGen == activeGeneration`) → notice, else the settled text — mirroring
+  iOS's `!stopRequested` (a user Stop bumps activeGeneration, so a deliberately-stopped reply keeps its
+  partial). writeAssistant already drops a superseded write. CoreVerify 253 (+1: empty-reply → notice),
+  compiled + ran locally (all passed). Same wording both platforms.
+
 - 2026-07-06 (audit R28 — Q-599 daemon habit telemetry had no route) — `MetricsService.getHabits()` (the
   background daemon's autonomous-run log) existed and was written to, but nothing exposed it over REST, so
   the telemetry was invisible. Added `GET /api/metrics/habits` inside the existing `if (metricsService)`

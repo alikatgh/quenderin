@@ -141,8 +141,18 @@ class ChatModel(
             // fired and the placeholder is still empty) — with duplicate-paragraph runs collapsed
             // (DegenerationGuard; the sampler penalty upstream prevents most, this cleans the rest).
             val settled = DegenerationGuard.collapseRepeatedParagraphs(reply)
-            writeAssistant(myGen, placeholderIndex, settled)
-            return settled
+            // Q-588: never leave a silently EMPTY assistant bubble — an engine that produced zero tokens gets
+            // an honest notice, mirroring iOS ChatModel. Only when this generation is still active: a user
+            // Stop supersedes it (activeGeneration bumped), and then the streamed partial should stand,
+            // exactly as iOS's `!stopRequested` guard. (writeAssistant also drops a superseded write.)
+            val stillActive = synchronized(lock) { myGen == activeGeneration }
+            val finalText = if (settled.isBlank() && stillActive) {
+                "The model returned an empty reply. Try rephrasing, or pick a larger model in the Model library."
+            } else {
+                settled
+            }
+            writeAssistant(myGen, placeholderIndex, finalText)
+            return finalText
         } finally {
             synchronized(lock) {
                 // Only the CURRENT generation owns isGenerating; a superseded send must not clear a flag a

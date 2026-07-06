@@ -335,6 +335,13 @@ fun main() {
     // engine adds one emit per token in between; the mock (non-streaming fallback) does not.
     check("chat emits user, assistant placeholder, then settle", sizes == listOf(1, 2, 2))
     check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
+    check("Q-588: an empty engine reply becomes an honest notice, not a silent blank bubble", run {
+        val e = MockInferenceEngine(cannedReply = "")
+        e.load(ModelCatalog.smallest, "/dev/null")
+        val c = ChatModel(e)
+        val r = c.send("hi")
+        r.contains("empty reply") && c.messages.last().text.contains("empty reply")
+    })
 
     // --- ConversationContext (chat memory + context-window budgeting; twin of Swift) ---
     check("conversation context keeps multi-turn history (no amnesia)", run {
