@@ -1211,43 +1211,51 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
 
             // ─── Tool Call Processing ───────────────────────────────────────
-            // If the response contains tool calls, execute them and re-prompt
+            // Q-638: execute tool calls and re-prompt in a LOOP, not once. The model can CHAIN tools
+            // (use tool A's result to decide a call to tool B); the old single round stripped that
+            // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
+            // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
+            const MAX_TOOL_ROUNDS = 3;
             let finalResponse = stripControlTokens(response.trim());
             let toolCallsMade = false;
 
-            if (hasToolCalls(finalResponse)) {
-                toolCallsMade = true;
+            for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);
-                if (calls.length > 0) {
-                    const results = await executeToolCalls(calls);
-                    const resultContext = formatToolResults(results);
+                if (calls.length === 0) break;
+                toolCallsMade = true;
+                const results = await executeToolCalls(calls);
+                const resultContext = formatToolResults(results);
 
-                    // Re-prompt with tool results
-                    try {
-                        const followUp = await this.promptWithTimeout(
-                            this.generalChatSession!,
-                            `Here are the tool results:\n${resultContext}\n\nPlease provide your final answer incorporating these results.`,
-                            {
-                                maxTokens: responseMaxTokens,
-                                temperature: this.activePreset.temperature,
-                                onTextChunk: onToken ? (chunk) => {
-                                    const clean = stripControlTokensWithOptions(chunk, { trim: false });
-                                    if (!clean) return;
-                                    tokenCount++;
-                                    if (onToken) onToken(clean);
-                                } : undefined
-                            },
-                            this.promptTimeoutMs,
-                            'Tool follow-up generation',
-                            cancelSignal
-                        );
-                        finalResponse = stripToolCalls(stripControlTokens(followUp.trim()));
-                    } catch {
-                        logger.warn('[LLM] Tool follow-up prompt failed, using stripped response');
-                        finalResponse = stripToolCalls(finalResponse);
-                    }
+                // Re-prompt with the tool results. Do NOT strip tool calls off the follow-up here — the
+                // loop re-checks `hasToolCalls` so a chained call runs next round instead of being lost.
+                try {
+                    const followUp = await this.promptWithTimeout(
+                        this.generalChatSession!,
+                        `Here are the tool results:\n${resultContext}\n\nUse them to answer, or call another tool if you still need more information.`,
+                        {
+                            maxTokens: responseMaxTokens,
+                            temperature: this.activePreset.temperature,
+                            onTextChunk: onToken ? (chunk) => {
+                                const clean = stripControlTokensWithOptions(chunk, { trim: false });
+                                if (!clean) return;
+                                tokenCount++;
+                                if (onToken) onToken(clean);
+                            } : undefined
+                        },
+                        this.promptTimeoutMs,
+                        'Tool follow-up generation',
+                        cancelSignal
+                    );
+                    finalResponse = stripControlTokens(followUp.trim());
+                } catch {
+                    logger.warn('[LLM] Tool follow-up prompt failed, using stripped response');
+                    finalResponse = stripToolCalls(finalResponse);
+                    break;
                 }
             }
+            // Hit the round cap (or a non-empty parse) with tool markup still present → strip it so the
+            // user never sees raw tool-call JSON as the answer.
+            if (hasToolCalls(finalResponse)) finalResponse = stripToolCalls(finalResponse);
 
             const finalEndTime = performance.now();
             const totalDurationMs = finalEndTime - startTime;

@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 Wave 1 — Q-638 multi-round tool loop) — `generalChat` executed tool calls
+  ONCE: on the follow-up it ran `stripToolCalls`, so if the model CHAINED (use tool A's result to call
+  tool B) the second call was stripped, never run. Refactored to a bounded loop (`MAX_TOOL_ROUNDS = 3`):
+  each round executes the calls, re-prompts, and the follow-up is NOT stripped so the loop re-checks
+  `hasToolCalls` — a chained call runs next round; after the cap any leftover markup is stripped so the
+  user never sees raw tool JSON. Native-coupled path → verified by typecheck + the bounded-loop
+  structure + no regression (447 tests); runtime chaining needs a model. typecheck + lint clean.
+
 - 2026-07-06 (audit R31 Wave 1 — Q-634 Inspector resolution) — the device Inspector overlay + tap
   crosshair mapped element bounds against a HARDCODED 1080×2400, so on any other resolution (smaller
   phones, tablets, high-DPI) the boxes drifted off the real elements. Now derives the coordinate space
