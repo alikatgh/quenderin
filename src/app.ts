@@ -19,6 +19,7 @@ import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
 import { isAuthorized } from './security/authToken.js';
+import { sanitizeManualAction } from './utils/agentControl.js';
 import logger from './utils/logger.js';
 
 /** Pre-built goal templates to help users get started quickly */
@@ -126,10 +127,11 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         });
 
         app.post('/api/agent/resume', (req, res) => {
-            // Type + length guard (M7/L7): manualAction is interpolated into the LLM action-history
-            // context, so a non-string (object/array) is a prompt-injection vector; cap the length too.
+            // manualAction is interpolated into the LLM action-history context, so a non-string
+            // (object/array) is a prompt-injection vector and the length must be capped. Shared with
+            // the WS resume handler via sanitizeManualAction (Q-281) — one guard, both transports.
             const raw = (req.body as { manualAction?: unknown } | undefined)?.manualAction;
-            const manualAction = typeof raw === 'string' ? raw.slice(0, 4000).trim() : undefined;
+            const manualAction = sanitizeManualAction(raw);
             agentService.resume(manualAction);
             res.json({ message: "Agent loop resumed.", manualAction });
         });

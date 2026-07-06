@@ -5,6 +5,7 @@ import { IDeviceProvider } from '../types/index.js';
 import { LlmService } from '../services/llm.service.js';
 import { VoiceService } from '../services/voice.service.js';
 import { composeChatMessage } from '../utils/chatCompose.js';
+import { sanitizeManualAction } from '../utils/agentControl.js';
 import { SessionService } from '../services/session.service.js';
 import { ALLOWED_CONTEXT_SIZES, MAX_GOAL_LENGTH, MAX_CHAT_LENGTH, MAX_SEND_BUFFER_BYTES, MAX_ATTACHMENTS, MAX_ATTACHMENT_SIZE, WS_HEARTBEAT_INTERVAL_MS } from '../constants.js';
 import { classifyIntent } from '../services/intentClassifier.js';
@@ -387,6 +388,34 @@ export class WebSocketManager {
                         this.voiceService.manualCaptureStart();
                     } else if (data.type === 'manual_voice_stop') {
                         this.voiceService.manualCaptureStop();
+                    } else if (data.type === 'pause' || data.type === 'intervene') {
+                        // Q-281: the trust loop's "stop and take over" over the LIVE channel. The agent
+                        // event stream already flows down this socket, so pausing here (vs. a separate
+                        // HTTP round-trip) lets the UI halt a running run the instant the user reacts to
+                        // what they see streaming. `intervene` is the trust-loop framing, `pause` the
+                        // plain one — same effect. The step loop checks _isPaused between steps, so an
+                        // in-flight step finishes, then the loop parks (Q-152 semantics unchanged).
+                        this.agentService.pause();
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'agent_paused',
+                                isPaused: this.agentService.isPaused,
+                                isRunning: this.agentService.isRunning,
+                            }));
+                        }
+                    } else if (data.type === 'resume') {
+                        // Optional human override for the next step — same guard as HTTP /api/agent/resume
+                        // (a non-string or a paste-bomb would poison the LLM action-history context).
+                        const manualAction = sanitizeManualAction(data.manualAction);
+                        this.agentService.resume(manualAction);
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'agent_resumed',
+                                manualAction: manualAction ?? null,
+                                isPaused: this.agentService.isPaused,
+                                isRunning: this.agentService.isRunning,
+                            }));
+                        }
                     }
                 } catch (err) {
                     logger.error("Failed to parse ws message", err);

@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 7 — trust loop over WS) — **Q-281** the trust loop's pause/intervene
+  was HTTP-only (`POST /api/agent/intervene`+`/resume`) and the renderer had NO senders, so a running
+  mission couldn't be halted from the live channel it streams down. Added WS `pause`/`intervene`/`resume`
+  handlers + hook senders + a real `Pause & take over` / `Resume` (with optional one-off override) control
+  in the run view. Extracted the resume `manualAction` guard (type + 4000-cap — it's interpolated into the
+  LLM action-history, an injection surface) into pure `sanitizeManualAction`, now shared by BOTH transports
+  and unit-tested (6 cases). Lesson: when a control already exists on one transport, exposing it on another
+  is plumbing + ONE shared guard — don't re-implement (or worse, re-inline) the validation per transport.
+
 - 2026-07-06 (audit R1-R20 batch 6 — backend features) — **Q-284** the WS chat path dropped
   `attachments` (generalChat takes a string) → "ask about this file" ignored the file; added
   `composeChatMessage()` to fold labeled docs into the model input (clean message still persisted).

@@ -50,6 +50,8 @@ type AgentMessage =
     | { type: 'action_required'; data: RequiredAction }
     | { type: 'model_download_progress'; data?: { progress?: number } }
     | { type: 'model_switched'; modelId: string; activeModel?: string }   // Q-291: server emits on switch
+    | { type: 'agent_paused'; isPaused: boolean; isRunning: boolean }     // Q-281: trust-loop pause ack
+    | { type: 'agent_resumed'; manualAction: string | null; isPaused: boolean; isRunning: boolean }
     | { type: 'preset_changed'; presetId: string };
 
 export function useAgentSocket() {
@@ -63,6 +65,7 @@ export function useAgentSocket() {
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const [wsReady, setWsReady] = useState(false);
     const [activePresetId, setActivePresetId] = useState<string>('general');
+    const [agentPaused, setAgentPaused] = useState(false);   // Q-281: true while a run is parked for intervention
     const [settings, setSettings] = useState<AppSettings>(() => {
         try {
             const saved = localStorage.getItem('quenderin_settings');
@@ -195,6 +198,12 @@ export function useAgentSocket() {
                     return;
                 } else if (data.type === 'preset_changed') {
                     setActivePresetId(data.presetId);
+                    return;
+                } else if (data.type === 'agent_paused') {
+                    setAgentPaused(data.isPaused);   // Q-281: reflect the trust-loop pause in the UI
+                    return;
+                } else if (data.type === 'agent_resumed') {
+                    setAgentPaused(data.isPaused);
                     return;
                 }
 
@@ -353,10 +362,29 @@ export function useAgentSocket() {
         setActivePresetId(presetId);
     };
 
+    // Q-281: the trust loop over the live channel. `pauseAgent` parks a running mission for manual
+    // takeover; `resumeAgent` continues, optionally handing the agent a one-off human instruction for
+    // the next step. Optimistically flips `agentPaused` so the button reacts instantly; the server's
+    // agent_paused/agent_resumed ack reconciles it.
+    const pauseAgent = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'pause' }));
+            setAgentPaused(true);
+        }
+    };
+
+    const resumeAgent = (manualAction?: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            const trimmed = manualAction?.trim();
+            wsRef.current.send(JSON.stringify({ type: 'resume', ...(trimmed ? { manualAction: trimmed } : {}) }));
+            setAgentPaused(false);
+        }
+    };
+
     return {
         wsReady,
-        logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId,
+        logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop
+        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent
     };
 }

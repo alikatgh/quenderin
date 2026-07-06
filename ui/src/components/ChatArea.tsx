@@ -15,15 +15,20 @@ interface ChatAreaProps {
     setCurrentView: (view: 'chat' | 'docs') => void;
     onVoiceStart: () => void;
     onVoiceStop: () => void;
+    /** Trust-loop pause/intervene (Q-281): halt a running mission for manual takeover, then resume. */
+    agentPaused: boolean;
+    onPause: () => void;
+    onResume: (manualAction?: string) => void;
 }
 
 interface GoalTemplate { id: string; category: string; label: string; template: string; }
 
-export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView, onVoiceStart, onVoiceStop }: ChatAreaProps) {
+export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView, onVoiceStart, onVoiceStop, agentPaused, onPause, onResume }: ChatAreaProps) {
     const logsEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [templates, setTemplates] = useState<GoalTemplate[]>([]);
+    const [override, setOverride] = useState('');   // Q-281: optional instruction handed to the agent on resume
 
     useEffect(() => {
         let cancelled = false;
@@ -179,11 +184,48 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                                             </div>
                                         ))}
 
-                                        {status === 'running' && (
-                                            <div className="flex items-center gap-1.5 mt-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0ms]" />
-                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:150ms]" />
-                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:300ms]" />
+                                        {status === 'running' && !agentPaused && (
+                                            <div className="flex items-center gap-3 mt-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0ms]" />
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:150ms]" />
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:300ms]" />
+                                                </div>
+                                                {/* Q-281: the trust loop — halt the mission the instant you want to take over. */}
+                                                <button
+                                                    type="button"
+                                                    onClick={onPause}
+                                                    className="text-xs font-medium px-2.5 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                >
+                                                    Pause &amp; take over
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {status === 'running' && agentPaused && (
+                                            <div className="mt-2 flex flex-col gap-2 rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+                                                <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                    Paused — you're in control
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={override}
+                                                        onChange={(e) => setOverride(e.target.value)}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') { onResume(override); setOverride(''); } }}
+                                                        placeholder="Optional: tell the agent what to do next…"
+                                                        maxLength={4000}
+                                                        className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { onResume(override); setOverride(''); }}
+                                                        className="text-xs font-semibold px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors whitespace-nowrap"
+                                                    >
+                                                        Resume
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

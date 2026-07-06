@@ -345,7 +345,7 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop } = useAgentSocket();
+  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
 
@@ -626,6 +626,9 @@ function AppContent() {
               setCurrentView={setCurrentView}
               onVoiceStart={manualVoiceStart}
               onVoiceStop={manualVoiceStop}
+              agentPaused={agentPaused}
+              onPause={pauseAgent}
+              onResume={resumeAgent}
             />
           )}
         </div>
