@@ -791,7 +791,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async downloadModel(modelId?: string): Promise<void> {
-        if (this.isDownloading) return;
+        if (this.isDownloading) {
+            // Q-408: only ONE download runs at a time (a single slot). Don't THROW here — the common
+            // case is a benign double-trigger (double-click / auto + manual) that callers shouldn't have
+            // to catch — but don't drop it SILENTLY either: log it so a genuinely-different queued
+            // request that never starts is diagnosable (cf. Q-293's visible-not-silent backpressure).
+            logger.warn(`[LLM] Download already in progress — ignoring concurrent request for "${modelId ?? 'default'}".`);
+            return;
+        }
         this.isDownloading = true;
 
         const entry = MODEL_CATALOG.find(m => m.id === (modelId ?? MODEL_CATALOG[0].id)) ?? MODEL_CATALOG[0];

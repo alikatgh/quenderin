@@ -341,6 +341,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 20 — the last clean one) — **Q-408** a concurrent `downloadModel`
+  (double-click / auto+manual) hit `if (this.isDownloading) return` and was dropped SILENTLY. Kept the
+  single-slot guard (throwing would force every caller to catch a benign double-trigger) but made the
+  drop VISIBLE with a warn, so a genuinely-different queued request that never starts is diagnosable
+  (same visible-not-silent principle as Q-293). Confirmed **Q-407** already fixed (it IS the Q-283
+  throw). This closes the clean, meaningful-impact, verifiable BUG remediation across the audit — 44
+  findings fixed with tests over TS/UI/Swift/Kotlin/JNI. The rest is categorically different: feature
+  gaps (Q-313/317/406/409...), needs-a-running-model (Q-339/369/370/507), needs-disk/emulator (Android
+  app-module), by-design/false-positive (Q-324/325/347/381/359/343/383), a fundamental tension (Q-349),
+  or marginal container/Windows P2/P3 nits (Q-475/471/378/415/416...). See the batch entries above.
+
 - 2026-07-06 (audit R1-R20 batch 19 — HTTP semantics + the tail triage) — **Q-423** a disallowed CORS
   origin threw `new Error('CORS: …')` → the generic errorHandler returned 500, misreporting a client
   ORIGIN-POLICY denial as a server crash (pollutes monitoring). Map `CORS:`-prefixed errors to 403;
