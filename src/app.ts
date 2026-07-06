@@ -125,6 +125,18 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 res.status(500).json({ error: 'Failed to fetch metrics' });
             }
         });
+
+        // Q-599: getHabits() (the background daemon's autonomous-run telemetry) had no route, so it was
+        // invisible to any client. Expose it here — under the /api/metrics prefix, so it inherits the same
+        // token gate (PROTECTED_READ_PREFIXES) as the mission history and isn't left open like a public GET.
+        app.get('/api/metrics/habits', async (_req, res) => {
+            try {
+                const habits = await metricsService.getHabits();
+                res.json({ habits });
+            } catch {
+                res.status(500).json({ error: 'Failed to fetch habits' });
+            }
+        });
     }
 
     if (agentService) {

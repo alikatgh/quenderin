@@ -352,6 +352,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R28 — Q-599 daemon habit telemetry had no route) — `MetricsService.getHabits()` (the
+  background daemon's autonomous-run log) existed and was written to, but nothing exposed it over REST, so
+  the telemetry was invisible. Added `GET /api/metrics/habits` inside the existing `if (metricsService)`
+  block — under the `/api/metrics` prefix so it inherits the same token gate as mission history (not left
+  open like a public GET). Test injects a stub MetricsService: 401 without token, `{habits:[…]}` with. 462
+  tests (+2), typecheck clean.
+
 - 2026-07-06 (audit R24 — Q-550/552/554 agent safety + heuristics) — **Q-550** a raw coordinate click
   re-applied the destructive-action blocklist only to elements STRICTLY containing the point; a tap just
   outside a "confirm" control's rect (but within OS touch-slop, so the OS still resolves it) dodged the
