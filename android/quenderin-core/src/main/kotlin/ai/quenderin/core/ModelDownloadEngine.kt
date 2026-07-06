@@ -70,6 +70,29 @@ class ModelDownloadEngine(
     private val isCancelled: () -> Boolean = { false },
 ) : ModelDownloader {
 
+    /** (path, size) of the last file that passed the full integrity gate, so [needsFetch] followed by
+     *  [download] in the same flow (launch restore, model switch) doesn't stream the multi-GB SHA-256
+     *  twice. Same-size TOCTOU window is milliseconds inside one install call — the Swift twin's
+     *  verify-then-load has the identical window. Cleared whenever the final file is discarded. */
+    @Volatile
+    private var lastVerified: Pair<String, Long>? = null
+
+    /** Path of an existing, integrity-verified (magic + pinned SHA-256) download at the final
+     *  destination, or null when a real fetch is needed. The C3 gate for reusing leftovers. */
+    private fun verifiedExistingPath(model: ModelEntry): String? {
+        val finalPath = "$destinationDir/${model.filename}"
+        val size = sink.existingSize(finalPath)
+        if (size <= 0) return null
+        if (lastVerified == finalPath to size) return finalPath
+        if (!ModelIntegrity.hasGGUFMagic(sink.head(finalPath, 4))) return null
+        val expectedSha = model.sha256
+        if (expectedSha != null && !sink.sha256(finalPath).equals(expectedSha, ignoreCase = true)) return null
+        lastVerified = finalPath to size
+        return finalPath
+    }
+
+    override fun needsFetch(model: ModelEntry): Boolean = verifiedExistingPath(model) == null
+
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
         val finalPath = "$destinationDir/${model.filename}"
         val tempPath = "$finalPath.part"
@@ -81,14 +104,15 @@ class ModelDownloadEngine(
         // "returns the existing path without re-fetching" contract OnboardingModel.restore()
         // already documents — it just wasn't implemented here, so every re-entry re-fetched the
         // full multi-GB file from byte 0.
-        if (sink.existingSize(finalPath) > 0 && ModelIntegrity.hasGGUFMagic(sink.head(finalPath, 4))) {
-            val expectedSha = model.sha256
-            if (expectedSha == null || sink.sha256(finalPath).equals(expectedSha, ignoreCase = true)) {
-                onProgress(1.0)
-                return finalPath
-            }
-            // Existing file fails integrity — don't trust it; discard and fall through to a real download.
+        verifiedExistingPath(model)?.let {
+            onProgress(1.0)
+            return it
+        }
+        // Existing bytes failed the gate — don't trust them; discard and fall through to a real
+        // download (Swift parity: install() deletes on ANY verify failure, bad magic included).
+        if (sink.existingSize(finalPath) > 0) {
             sink.truncate(finalPath)
+            lastVerified = null
         }
 
         var existing = sink.existingSize(tempPath)
@@ -167,6 +191,9 @@ class ModelDownloadEngine(
             }
 
             sink.finalize(tempPath, finalPath)
+            // The bytes at finalPath just passed the gate above — remember so the next
+            // verifiedExistingPath (e.g. the load-failure restore() path) skips the re-hash.
+            lastVerified = finalPath to downloaded
             store.updateProgress(model.id, bytesDownloaded = downloaded, totalBytes = if (total > 0) total else downloaded)
             onProgress(1.0)
             // Mirror iOS: a finished download leaves the resume table (it's no longer in-flight).
@@ -183,6 +210,7 @@ class ModelDownloadEngine(
             // Clear any partially-written final file (e.g. a cross-filesystem copy that failed
             // after the rename fallback) so no half-written model is left behind a passed gate (C3-4).
             runCatching { sink.truncate(finalPath) }
+            lastVerified = null
             store.setState(model.id, PersistedDownload.State.FAILED)
             if (t is DownloadException) throw t
             throw DownloadException("download failed for ${model.filename}: ${t.message}")

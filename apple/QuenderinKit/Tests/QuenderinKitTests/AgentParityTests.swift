@@ -40,6 +40,13 @@ final class AgentParityTests: XCTestCase {
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"plan":[{"tool":"fs.move","input":"a to B"},{"input":"orphan"}]}"#)), "nil")
         // parity:decision-plan-answer-precedence - answer > plan > tool.
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"answer":"done","plan":[{"tool":"echo","input":"x"}]}"#)), "answer:done")
+        // parity:decision-plan-mixed-member - a non-object plan member invalidates the WHOLE plan and NEVER
+        // falls through to the top-level tool (Swift used to run useTool(fallback) while Android ran
+        // Plan([a]) — same model output, two different tool executions; twin-drift audit agent-loop P1).
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"plan":[{"tool":"a","input":"x"},"garbage"],"tool":"fallback","input":"y"}"#)), "nil")
+        // parity:decision-plan-primitive-members - a plan of primitives is a malformed plan → nil; the
+        // top-level tool must NOT execute (Swift used to run useTool(calc); twin-drift audit agent-loop P2).
+        XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"plan":["a","b"],"tool":"calc","input":"2+2"}"#)), "nil")
         // parity:decision-unicode-escape - the raw-string input carries the literal \uXXXX escape the model emits;
         // the expected uses Swift's \u{...} (cafe-acute + smiley). Android's hand-rolled unescaper had to learn \u
         // to match this - without it, non-ASCII answers rendered as "cafu00e9" on Android only.

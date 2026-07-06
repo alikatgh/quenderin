@@ -43,12 +43,20 @@ public struct ConversationContext: Sendable, Equatable {
     /// The most recent turns that fit the context budget — the windowing half of `build`, without
     /// the flat formatting — for engines that format the conversation with the model's OWN chat
     /// template instead. Twin of Kotlin `ConversationContext.windowedHistory`.
-    public func windowedHistory(_ history: [ChatMessage]) -> [ChatMessage] {
+    ///
+    /// `contextTokensOverride` is the loaded engine's ACTUAL `n_ctx` (often 512–2048 on phones,
+    /// sized from the device's memory at load) — when supplied it replaces the configured
+    /// `contextTokens`, so the trim matches the real native window instead of a hardcoded 4096
+    /// that silently overflows it (Q-167; this override existed only on Android until the
+    /// twin-drift audit). Nil (mock/scripted engines and the pure prompt-building tests) falls
+    /// back to `contextTokens`.
+    public func windowedHistory(_ history: [ChatMessage], contextTokensOverride: Int? = nil) -> [ChatMessage] {
+        let budget = historyBudget(effectiveContextTokens: contextTokensOverride ?? contextTokens)
         var kept: [ChatMessage] = []
         var used = 0
         for message in history.reversed() {                 // newest → oldest
             let cost = Self.estimateTokens(Self.line(for: message))
-            if kept.isEmpty || used + cost <= historyBudget {
+            if kept.isEmpty || used + cost <= budget {
                 kept.append(message)
                 used += cost
             } else {
@@ -59,10 +67,11 @@ public struct ConversationContext: Sendable, Equatable {
         return kept
     }
 
-    /// Tokens available for history after the system prompt and the trailing primer.
-    var historyBudget: Int {
+    /// Tokens available for history after the system prompt and the trailing primer, given the
+    /// effective context window (the loaded engine's real `n_ctx` when known — see `windowedHistory`).
+    private func historyBudget(effectiveContextTokens: Int) -> Int {
         let overhead = Self.estimateTokens(systemPrompt) + Self.estimateTokens(Self.assistantPrimer)
-        return max(0, contextTokens - reservedForResponse - overhead)
+        return max(0, effectiveContextTokens - reservedForResponse - overhead)
     }
 
     private static let assistantPrimer = "Assistant:"

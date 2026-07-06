@@ -39,6 +39,10 @@ class OnboardingModel(
     // keeps JVM/tests unmetered. downloadPolicy defaults to the safe WIFI_ONLY.
     private val networkStatus: () -> NetworkStatus = { NetworkStatus.WIFI },
     private val downloadPolicy: () -> DownloadPolicy = { DownloadPolicy.WIFI_ONLY },
+    // Free bytes on the volume that holds the models (StatFs in the app layer), for the
+    // download disk preflight. The core is filesystem-free, so this is a seam; the null
+    // default skips the check on the JVM/tests. Twin of Swift `availableDiskBytes(modelsDir)`.
+    private val availableDiskBytes: () -> Long? = { null },
 ) {
     companion object {
         /** Preferences key for the remembered model id — same string as Swift's
@@ -154,15 +158,34 @@ class OnboardingModel(
             isInstalling = true
         }
         try {
-            // Network preflight (Q-271, twin of Swift): don't burn multi-GB of cellular under a
-            // Wi-Fi-only policy. Race-free — a POSITIVE cellular reading only, so a warming-up monitor
-            // (WIFI/NONE default) never falsely blocks. The reason tells the user how to proceed.
-            if (networkStatus() == NetworkStatus.CELLULAR && !downloadPolicy().allows(NetworkStatus.CELLULAR)) {
-                phase = OnboardingPhase.Failed(
-                    downloadPolicy().reason(NetworkStatus.CELLULAR)
-                        ?: "You're on cellular. Connect to Wi-Fi to download this model."
-                )
-                return
+            // Preflights guard the DOWNLOAD, not the load: a model already integrity-verified on
+            // disk needs no network and no free space, so gating it was a spurious block — on
+            // cellular, a Settings switch to an on-disk model failed with "connect to Wi-Fi"
+            // while iOS loaded it (twin-drift fix: Swift runs both gates inside `if !fileExists`).
+            // needsFetch() is the downloader's own verified-file check, so a corrupt leftover
+            // still takes the gated download path; its fail-safe default is true (gates run).
+            if (downloader.needsFetch(model)) {
+                // Disk preflight: refuse to START a download that cannot finish — a 9 GB pull that
+                // dies at 95% full is exactly the failure DiskSpace exists to prevent (twin of
+                // Swift install()'s storageCheck; previously Android only checked in the UI layer).
+                val freeBytes = availableDiskBytes()
+                if (freeBytes != null) {
+                    val storage = DiskSpace.check(model, freeBytes)
+                    if (!storage.hasRoom) {
+                        phase = OnboardingPhase.Failed(storage.message)
+                        return
+                    }
+                }
+                // Network preflight (Q-271, twin of Swift): don't burn multi-GB of cellular under a
+                // Wi-Fi-only policy. Race-free — a POSITIVE cellular reading only, so a warming-up monitor
+                // (WIFI/NONE default) never falsely blocks. The reason tells the user how to proceed.
+                if (networkStatus() == NetworkStatus.CELLULAR && !downloadPolicy().allows(NetworkStatus.CELLULAR)) {
+                    phase = OnboardingPhase.Failed(
+                        downloadPolicy().reason(NetworkStatus.CELLULAR)
+                            ?: "You're on cellular. Connect to Wi-Fi to download this model."
+                    )
+                    return
+                }
             }
             // The model we'll fall back to if this one fails to load (a model SWITCH from Settings) — so
             // a bad pick can't strand the user with no model (H1). null on first-run onboarding.

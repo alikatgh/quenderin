@@ -42,4 +42,23 @@ final class ConversationContextTests: XCTestCase {
         let prompt = ConversationContext(systemPrompt: "").build(history: [u("hi")])
         XCTAssertTrue(prompt.hasPrefix("User: hi"), "no leading blank lines when there is no system prompt")
     }
+
+    // Q-167: chat history is trimmed to the engine's REAL loaded n_ctx, not a hardcoded 4096.
+    // Twin of the CoreVerify "windowedHistory trims to the smaller real n_ctx override" check —
+    // the override existed only on Android until the twin-drift audit.
+    func testWindowedHistoryTrimsToRealContextOverride() {
+        // Six ~10-token turns. A 4096-token window keeps them all; the real phone window (a small
+        // n_ctx) must drop the oldest — proving the override, not the fixed 4096, drives the trim.
+        let ctx = ConversationContext(systemPrompt: "", reservedForResponse: 0)
+        let history = (1...6).map { i in
+            ChatMessage(role: i % 2 == 1 ? .user : .assistant, text: "message number \(i) goes here now")
+        }
+        let big = ctx.windowedHistory(history, contextTokensOverride: 4096)
+        let small = ctx.windowedHistory(history, contextTokensOverride: 48)   // ~48-token native window
+        XCTAssertEqual(big.count, history.count, "roomy window keeps everything")
+        XCTAssertLessThan(small.count, history.count, "tight real window drops the oldest")
+        XCTAssertEqual(small.last, history.last, "newest turn always kept")
+        XCTAssertEqual(ctx.windowedHistory(history, contextTokensOverride: nil).count, history.count,
+                       "nil falls back to the configured contextTokens")
+    }
 }

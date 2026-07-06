@@ -36,12 +36,17 @@ public enum AgentDecisionParser {
         if let answer = object["answer"] as? String {
             return .finalAnswer(answer)
         }
-        if let planItems = object["plan"] as? [[String: Any]] {
-            // STRICT: every item needs a nonempty "tool", and an empty plan is no decision —
-            // a half-parseable plan must fail loudly, not execute partially.
+        if let planItems = object["plan"] as? [Any] {
+            // STRICT and AUTHORITATIVE: a top-level "plan" array is THE decision — any non-object
+            // member, missing/empty "tool", or empty array is a parse failure (nil), NEVER a
+            // fall-through to the top-level "tool" key. The old cast to [[String: Any]] nil'd on a
+            // MIXED array ([{…}, "garbage"]) and fell through to `tool`, so the same garbled output
+            // ran a bare tool here while Android half-executed a plan — two different tool
+            // executions from one model output (twin-drift audit, agent-loop P1/P2).
             let calls = planItems.compactMap { item -> ToolCall? in
-                guard let tool = item["tool"] as? String, !tool.isEmpty else { return nil }
-                return ToolCall(name: tool, input: item["input"] as? String ?? "")
+                guard let dict = item as? [String: Any],
+                      let tool = dict["tool"] as? String, !tool.isEmpty else { return nil }
+                return ToolCall(name: tool, input: dict["input"] as? String ?? "")
             }
             guard !calls.isEmpty, calls.count == planItems.count else { return nil }
             return .plan(calls)

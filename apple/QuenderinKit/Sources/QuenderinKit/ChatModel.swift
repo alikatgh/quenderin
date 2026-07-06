@@ -85,6 +85,17 @@ public final class ChatModel: ObservableObject {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
 
+        isGenerating = true
+        stopRequested = false
+        defer { isGenerating = false }
+
+        // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
+        // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,
+        // iOS didn't; twin-drift audit). Awaited BEFORE any transcript mutation and only AFTER
+        // `isGenerating` is set: every await yields the main actor, and a reentrant send must not
+        // slip past the guard (the @MainActor+await journal pattern).
+        let realContextTokens = await engine.loadedContextTokens()
+
         messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
         // Chat-structured generation: pass the budget-windowed history so the engine formats it
         // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
@@ -97,14 +108,10 @@ public final class ChatModel: ObservableObject {
             composed.text = message.engineText
             composed.documents = []
             return composed
-        })
+        }, contextTokensOverride: realContextTokens)
         var assistant = ChatMessage(role: .assistant, text: "")
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
-
-        isGenerating = true
-        stopRequested = false
-        defer { isGenerating = false }
 
         do {
             let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)

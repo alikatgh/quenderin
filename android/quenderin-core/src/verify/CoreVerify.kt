@@ -127,6 +127,13 @@ fun main() {
         decisionTag(AgentDecisionParser.parse("""{"plan":[{"tool":"fs.move","input":"a to B"},{"input":"orphan"}]}""")) == "nil")
     check("parity: answer takes precedence over plan",  // parity:decision-plan-answer-precedence
         decisionTag(AgentDecisionParser.parse("""{"answer":"done","plan":[{"tool":"echo","input":"x"}]}""")) == "answer:done")
+    // A top-level plan array is AUTHORITATIVE: malformed → nil, never a fall-through to the bare
+    // tool. splitObjects used to drop non-object members silently, so Kotlin half-executed a plan
+    // that Swift ran as useTool(fallback) — twin-drift audit agent-loop P1/P2.
+    check("parity: a non-object plan member invalidates the whole plan, no tool fall-through",  // parity:decision-plan-mixed-member
+        decisionTag(AgentDecisionParser.parse("""{"plan":[{"tool":"a","input":"x"},"garbage"],"tool":"fallback","input":"y"}""")) == "nil")
+    check("parity: a plan of primitives is nil, the top-level tool must not execute",  // parity:decision-plan-primitive-members
+        decisionTag(AgentDecisionParser.parse("""{"plan":["a","b"],"tool":"calc","input":"2+2"}""")) == "nil")
     // Input is a regular string with `\\u` so it carries the LITERAL 6-char escape the model emits;
     // the expected uses `\u` (compiler-decoded to é / ☺), pinning the decode without typed-accent
     // ambiguity. Was mangled to "cafu00e9" before the unescaper learned \u (iOS's JSON always did this).
@@ -300,6 +307,37 @@ fun main() {
     check("Q-271: onboarding proceeds on cellular when the user has permitted it", run {
         val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader(),
             networkStatus = { NetworkStatus.CELLULAR }, downloadPolicy = { DownloadPolicy.WIFI_OR_CELLULAR })
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        onb.phase is OnboardingPhase.Ready
+    })
+
+    // --- Twin-drift fix: the preflights guard the DOWNLOAD, not the load (Swift runs them inside
+    // `if !fileExists`). A model already verified on disk (needsFetch=false) must load on cellular
+    // under Wi-Fi-only, and must ignore a full disk — no network, no new bytes are needed.
+    check("twin-drift: a verified on-disk model loads on cellular under Wi-Fi-only (gates are download-only)", run {
+        val downloader = object : ModelDownloader {
+            override fun needsFetch(model: ModelEntry): Boolean = false   // verified file already on disk
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String = "/models/on-disk.gguf"
+        }
+        val onb = OnboardingModel(MockInferenceEngine(), downloader,
+            networkStatus = { NetworkStatus.CELLULAR }, downloadPolicy = { DownloadPolicy.WIFI_ONLY },
+            availableDiskBytes = { 0L })   // full disk must not matter either — nothing gets written
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        onb.phase is OnboardingPhase.Ready
+    })
+    check("twin-drift: disk preflight refuses a doomed download up front with the DiskSpace message", run {
+        var downloads = 0
+        val downloader = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String { downloads++; return "/dev/null" }
+        }
+        val onb = OnboardingModel(MockInferenceEngine(), downloader,
+            availableDiskBytes = { 1024L })   // ~1 KB free vs a multi-hundred-MB model
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        val ph = onb.phase
+        downloads == 0 && ph is OnboardingPhase.Failed && ph.reason.contains("Not enough space")
+    })
+    check("twin-drift: the null disk seam (JVM default) skips the preflight — download proceeds", run {
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
         onb.acceptAndPrepare(ModelCatalog.smallest)
         onb.phase is OnboardingPhase.Ready
     })
@@ -919,6 +957,14 @@ fun main() {
         var last = 0.0
         val path = ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(sampleModel) { last = it }
         path == finalFile && last == 1.0 && http.lastOffset == -1L && sink.files[finalFile]?.size == 100
+    })
+    check("needsFetch: false for a verified on-disk file, true when missing or corrupt", run {
+        val verified = FakeFileSink().apply { files[finalFile] = payload }
+        val corrupt = FakeFileSink().apply { files[finalFile] = ByteArray(100) { 0 } }   // no GGUF magic
+        val http = FakeHttpRangeClient(payload, supportsResume = true)
+        !ModelDownloadEngine(http, verified, DownloadStore(), "/models").needsFetch(sampleModel) &&
+            ModelDownloadEngine(http, corrupt, DownloadStore(), "/models").needsFetch(sampleModel) &&
+            ModelDownloadEngine(http, FakeFileSink(), DownloadStore(), "/models").needsFetch(sampleModel)
     })
     check("a corrupt existing final file is discarded and re-downloaded, not trusted", run {
         val sink = FakeFileSink().apply { files[finalFile] = ByteArray(100) { 0 } } // no GGUF magic

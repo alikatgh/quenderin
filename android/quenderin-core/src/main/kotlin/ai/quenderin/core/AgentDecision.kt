@@ -23,14 +23,19 @@ object AgentDecisionParser {
         // Precedence when several keys appear: answer > plan > tool — identical on iOS.
         extractString(json, "answer")?.let { return AgentDecision.FinalAnswer(it) }
         extractArray(json, "plan")?.let { arrayBody ->
-            // STRICT: every item needs a nonempty "tool", and an empty plan is no decision —
-            // a half-parseable plan must fail loudly, not execute partially (parity with iOS).
-            val objects = splitObjects(arrayBody)
-            val calls = objects.mapNotNull { obj ->
+            // STRICT and AUTHORITATIVE: a top-level "plan" array is THE decision — any non-object
+            // member, torn object, missing/empty "tool", or empty array is a parse failure (null),
+            // NEVER a fall-through to the top-level "tool" key. splitObjects used to silently drop
+            // non-object members ("garbage" strings) so the size guard passed over the survivors and
+            // a garbled plan half-executed here while iOS ran the bare tool — same model output, two
+            // different tool executions (twin-drift audit, agent-loop P1/P2; both parsers now agree).
+            val objects = splitObjects(arrayBody) ?: return null
+            val calls = objects.map { obj ->
                 val tool = extractString(obj, "tool")
-                if (tool.isNullOrEmpty()) null else ToolCall(tool, extractString(obj, "input") ?: "")
+                if (tool.isNullOrEmpty()) return null
+                ToolCall(tool, extractString(obj, "input") ?: "")
             }
-            return if (calls.isNotEmpty() && calls.size == objects.size) AgentDecision.Plan(calls) else null
+            return if (calls.isNotEmpty()) AgentDecision.Plan(calls) else null
         }
         val tool = extractString(json, "tool")
         if (!tool.isNullOrEmpty()) {
@@ -101,17 +106,23 @@ object AgentDecisionParser {
         return null
     }
 
-    /** Split an array body into its balanced top-level `{ ... }` objects (strings skipped). */
-    private fun splitObjects(body: String): List<String> {
+    /** Split an array body into its balanced top-level `{ ... }` objects (strings skipped inside
+     *  them). Returns null when ANY top-level member is not an object — a "garbage" string, number,
+     *  nested array, or torn brace — so a mixed plan is a whole-plan failure, never a silent
+     *  partial (parity with iOS, whose all-or-nothing member check nils the same inputs). */
+    private fun splitObjects(body: String): List<String>? {
         val objects = mutableListOf<String>()
         var i = 0
         while (i < body.length) {
-            if (body[i] == '{') {
-                val obj = firstJsonObject(body.substring(i)) ?: break
-                objects.add(obj)
-                i += obj.length
-            } else {
-                i++
+            val c = body[i]
+            when {
+                c.isWhitespace() || c == ',' -> i++
+                c == '{' -> {
+                    val obj = firstJsonObject(body.substring(i)) ?: return null   // torn output
+                    objects.add(obj)
+                    i += obj.length
+                }
+                else -> return null   // non-object member — the whole plan is invalid
             }
         }
         return objects

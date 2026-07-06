@@ -126,6 +126,9 @@ fun AppRoot(
             // safe WIFI_ONLY default; Q-578 adds a Settings opt-in toggle.
             networkStatus = { currentNetworkStatus(context) },
             downloadPolicy = { DownloadPolicy.WIFI_ONLY },
+            // Disk preflight for the live install path (twin of Swift storageCheck): refuse a
+            // download that can't finish, instead of dying at 95% with a generic failure.
+            availableDiskBytes = { android.os.StatFs(context.filesDir.path).availableBytes },
         ).apply { onChange = { phase = it } }
     }
     // Relaunch fast-path: restore the last successfully-loaded model straight to Ready instead of

@@ -37,6 +37,25 @@ class WorkManagerModelDownloader(
     private val requireUnmetered: Boolean = true,
 ) : ModelDownloader {
 
+    /** (path, size) of the last file that passed the sha gate, so OnboardingModel's [needsFetch]
+     *  preflight followed by [download] doesn't stream the multi-GB SHA-256 twice per restore/switch.
+     *  Mirrors ModelDownloadEngine's memo. */
+    @Volatile
+    private var lastVerified: Pair<String, Long>? = null
+
+    /** The on-disk file for [model] if it passes the pinned-sha gate, else null. */
+    private fun verifiedExistingFile(model: ModelEntry): File? {
+        val existing = File(context.filesDir, "models/${model.filename}")
+        if (!existing.isFile) return null
+        if (lastVerified == existing.absolutePath to existing.length()) return existing
+        val expected = model.sha256
+        if (expected != null && !JvmFileSink().sha256(existing.absolutePath).equals(expected, ignoreCase = true)) return null
+        lastVerified = existing.absolutePath to existing.length()
+        return existing
+    }
+
+    override fun needsFetch(model: ModelEntry): Boolean = verifiedExistingFile(model) == null
+
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
         // Already fully on disk and integrity-verified → hand it back without waking WorkManager.
         // This is what makes the cold-launch restore work OFFLINE: the CONNECTED constraint below
@@ -44,14 +63,11 @@ class WorkManagerModelDownloader(
         // model you already have" call forever. Twin of the Swift install() skip-download path
         // (testInstallSkipsDownloadWhenFileExists) — the sha gate still rejects a corrupted file,
         // which then falls through to a real (resumable) download.
-        val existing = File(context.filesDir, "models/${model.filename}")
-        if (existing.isFile) {
-            val expected = model.sha256
-            if (expected == null || JvmFileSink().sha256(existing.absolutePath).equals(expected, ignoreCase = true)) {
-                onProgress(1.0)
-                return existing.absolutePath
-            }
+        verifiedExistingFile(model)?.let {
+            onProgress(1.0)
+            return it.absolutePath
         }
+        lastVerified = null
 
         val workManager = WorkManager.getInstance(context)
 

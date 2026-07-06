@@ -58,6 +58,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
+- **A strictness guard measured against a lenient extractor's output is theatre.** Kotlin's plan
+  parser checked `calls.size == objects.size`, but `splitObjects` had ALREADY silently dropped
+  non-object members — the guard could never see the garbage it existed to reject, so a garbled plan
+  half-executed. Make the extractor itself fail on malformed members (return null, not survivors),
+  and decide fall-through-vs-fail semantics EXPLICITLY at the key level. (twin-drift AgentDecision)
+- **Preflight gates belong to the operation that needs them, not the entry point.** A cellular/disk
+  gate at the top of an install flow also blocks the no-download path (model already on disk →
+  spurious "connect to Wi-Fi"). Scope each gate behind "is the gated operation actually needed?"
+  (Swift's `if !fileExists`; Kotlin's `needsFetch()` seam). (twin-drift OnboardingModel)
 - **Lazy-init memoized by a FLAG flips before the `await` resolves → double-init race.** `if (loaded)
   return x; loaded = true; x = await import(...)` — a second concurrent caller sees `loaded === true` but
   `x` still undefined and runs the init AGAIN. Memoize the in-flight **PROMISE** (`if (!p) p = init();
@@ -351,6 +360,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-07 (TWIN-DRIFT batch 3 — plan-parse contract + download-gate placement + real-n_ctx on iOS) —
+  **AgentDecision (P1, both):** a top-level `plan` array is now AUTHORITATIVE on both platforms — a
+  non-object/primitive member nils the WHOLE plan, never falls through to the bare `tool` (Swift's
+  `[[String:Any]]` cast fell through; Kotlin's splitObjects silently dropped garbage members); 2 new
+  parity vectors. **OnboardingModel.kt (P1):** disk preflight added + cellular gate now runs only when
+  `needsFetch()` (new ModelDownloader seam, memoized SHA) — an on-disk model no longer Wi-Fi-blocks
+  (twin of Swift's `if !fileExists` block). **ConversationContext.swift (P1):** `contextTokensOverride`
+  ported from Kotlin (Q-167); LlamaEngine exposes `loadedContextTokens()`, ChatModel awaits it AFTER
+  `isGenerating=true` (reentrancy). swift test 295 + CoreVerify 259 + parity script green.
 
 - 2026-07-06 (TWIN-DRIFT batch 2 — CapabilityRunner fail-closed + MemoryFitness; P0 REFUTED on own read) —
   **CapabilityRunner.kt (P1):** `execute()` and `executePlan()` called `assess()`/`plan()` bare, so a

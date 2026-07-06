@@ -71,6 +71,13 @@ public protocol InferenceEngine: Sendable {
     /// Synchronous + non-blocking by design so it can signal a generation that holds the engine.
     /// Default no-op for engines that don't support interruption (mock, scripted, tests).
     func requestCancel()
+
+    /// The ACTUAL context-window size (`n_ctx`, in tokens) of the LOADED model, or nil when unknown
+    /// or nothing is loaded. The real engine sizes this from the device's memory at load — often
+    /// 512–2048 on phones — so chat history must be trimmed to THIS, not a hardcoded 4096 that
+    /// silently overflows the native window (Q-167, twin of Kotlin `loadedContextTokens`). The
+    /// default nil keeps mock/scripted engines and their tests unchanged.
+    func loadedContextTokens() async -> Int?
 }
 
 /// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the
@@ -86,6 +93,8 @@ func flatTranscriptPrompt(system: String, history: [ChatMessage]) -> String {
 
 public extension InferenceEngine {
     func requestCancel() {}
+
+    func loadedContextTokens() async -> Int? { nil }
 
     func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         try await generate(prompt: flatTranscriptPrompt(system: system, history: history), options: options)

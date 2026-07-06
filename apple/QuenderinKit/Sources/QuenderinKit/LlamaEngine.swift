@@ -31,6 +31,10 @@ import llama
 public actor LlamaEngine: InferenceEngine {
 
     private var loaded: String?
+    /// The `n_ctx` the loaded context was actually created with (sized from the device budget in
+    /// `loadLocked`), or nil when nothing is loaded. Surfaced via `loadedContextTokens()` so the
+    /// chat layer trims history to the REAL native window, not a hardcoded 4096 (Q-167 twin).
+    private var loadedNCtx: Int?
     /// Device app-memory budget (GB); `n_ctx` is sized from this + the model's footprint at load so
     /// the KV cache doesn't OOM memory-tight phones (M1 + footprint-aware).
     private let deviceBudgetGB: Double
@@ -59,6 +63,10 @@ public actor LlamaEngine: InferenceEngine {
 
     public func loadedModelID() async -> String? { loaded }
 
+    /// The real `n_ctx` of the loaded context — an actor-property read, so it never waits on
+    /// `nativeLock` (a decode in flight can't stall the chat layer asking for the window size).
+    public func loadedContextTokens() async -> Int? { loadedNCtx }
+
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw InferenceError.modelFileMissing(path: fileURL.path)
@@ -66,7 +74,8 @@ public actor LlamaEngine: InferenceEngine {
         #if canImport(llama)
         cancelState.withLock { $0 = true }   // stop any running generation before we free the context
         loaded = nil                         // nothing loaded until the new model succeeds
-        try loadLocked(entry: entry, path: fileURL.path)
+        loadedNCtx = nil
+        loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
         #else
         throw InferenceError.loadFailed(
@@ -82,6 +91,7 @@ public actor LlamaEngine: InferenceEngine {
         unloadLocked()
         #endif
         loaded = nil
+        loadedNCtx = nil
     }
 
     /// Best-effort: interrupt an in-flight `generate` (e.g. a stop button). The switch path
@@ -183,7 +193,9 @@ public actor LlamaEngine: InferenceEngine {
     /// The native load, under `nativeLock` (synchronous → manual lock is allowed here, unlike the
     /// async `load()`). Frees any previous model first (free-before-reassign; C1) and throws on
     /// failure, leaving `model`/`context`/`vocab` nil so the engine reports "not loaded".
-    nonisolated private func loadLocked(entry: ModelEntry, path: String) throws {
+    /// Returns the `n_ctx` the context was created with, for `loadedContextTokens()` (the caller
+    /// stores it on the actor — this nonisolated helper can't write actor state itself).
+    nonisolated private func loadLocked(entry: ModelEntry, path: String) throws -> Int {
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
@@ -244,6 +256,7 @@ public actor LlamaEngine: InferenceEngine {
         context = ctx
         vocab = llama_model_get_vocab(m)
         cachedTokens = []   // fresh context ⇒ empty KV cache
+        return nctx
     }
 
     /// The native unload, under `nativeLock` (synchronous).

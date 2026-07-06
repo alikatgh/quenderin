@@ -110,6 +110,20 @@
    "input": "{\"answer\":\"done\",\"plan\":[{\"tool\":\"echo\",\"input\":\"x\"}]}",
    "expected": "answer:done",
    "note": "Precedence answer > plan > tool, identical on both platforms."
+  },
+  {
+   "id": "decision-plan-mixed-member",
+   "category": "decision-parser",
+   "input": "{\"plan\":[{\"tool\":\"a\",\"input\":\"x\"},\"garbage\"],\"tool\":\"fallback\",\"input\":\"y\"}",
+   "expected": "nil",
+   "note": "AUTHORITATIVE plan: a non-object member invalidates the WHOLE plan and NEVER falls through to the top-level tool. Swift used to run useTool(fallback), Kotlin used to run Plan([a]) — same output, two different tool executions (twin-drift audit agent-loop P1)."
+  },
+  {
+   "id": "decision-plan-primitive-members",
+   "category": "decision-parser",
+   "input": "{\"plan\":[\"a\",\"b\"],\"tool\":\"calc\",\"input\":\"2+2\"}",
+   "expected": "nil",
+   "note": "A plan of primitives is a malformed plan → nil on both; the top-level tool must NOT execute. Swift used to run useTool(calc) while Android halted with PLAN_ERROR (twin-drift audit agent-loop P2)."
   }
  ]
 }

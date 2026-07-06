@@ -8,6 +8,9 @@ data class MemoryCheckResult(
     val requiredGB: Double,
     val availableGB: Double,
     val message: String,
+    /** Headroom left once the model is loaded (free − required); negative when it doesn't fit.
+     *  Twin of Swift `remainingAfterLoadGB` — the WARNING message surfaces this figure. */
+    val remainingAfterLoadGB: Double = availableGB - requiredGB,
 )
 
 /** "Can this device load this model?" — same 0.85/0.65 budgets as Swift/desktop. */
