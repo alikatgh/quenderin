@@ -34,6 +34,11 @@ class OnboardingModel(
     private val recallActiveModelID: () -> String? = { null },
     private val rememberActiveModelID: (String?) -> Unit = {},
     private val activeModelFileExists: (ModelEntry) -> Boolean = { false },
+    // Network gate for the live download (Q-271, twin of Swift OnboardingModel). The core is
+    // Android-framework-free, so status is a seam the app fills from ConnectivityManager; the default
+    // keeps JVM/tests unmetered. downloadPolicy defaults to the safe WIFI_ONLY.
+    private val networkStatus: () -> NetworkStatus = { NetworkStatus.WIFI },
+    private val downloadPolicy: () -> DownloadPolicy = { DownloadPolicy.WIFI_ONLY },
 ) {
     companion object {
         /** Preferences key for the remembered model id — same string as Swift's
@@ -51,6 +56,12 @@ class OnboardingModel(
     /** The most recent recommendation — where a CANCELLED download returns (a change of mind is
      *  not a failure). Kept by the phase setter so both start() paths feed it. */
     private var lastRecommended: OnboardingPhase.Recommended? = null
+
+    /** Serializes [acceptAndPrepare] (Q-336, twin of Swift `isInstalling`): a concurrent accept —
+     *  double-tap, or a model-picker switch overlapping an in-flight download/load — would race
+     *  `phase` and `engine.load()`. @Volatile + the check-and-set under `this` keeps it a no-op. */
+    @Volatile
+    private var isInstalling = false
 
     /**
      * The full selector result (rationale + heat/battery + alternatives) when the pick
@@ -135,43 +146,64 @@ class OnboardingModel(
 
     /** Proceed from Recommended → download → load → ready for [model]. Blocking; call off-main. */
     fun acceptAndPrepare(model: ModelEntry) {
-        // The model we'll fall back to if this one fails to load (a model SWITCH from Settings) — so a
-        // bad pick can't strand the user with no model (H1). null on first-run onboarding.
-        val previousId = engine.loadedModelId
-
-        val path = try {
-            phase = OnboardingPhase.Downloading(model, 0.0)
-            downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
-        } catch (c: DownloadCancelledException) {
-            // User cancel → back to the recommendation screen, not a Failed dead end. The engine
-            // kept the .part, so a retry resumes. (Twin of the Apple install() cancel path.)
-            phase = lastRecommended ?: OnboardingPhase.Failed("Download cancelled.")
-            return
-        } catch (t: Throwable) {
-            phase = OnboardingPhase.Failed("Download failed: ${t.message}")
-            return
+        // Q-336: serialize — a concurrent accept (double-tap, or the model picker overlapping a prior
+        // download/load) would race `phase` + engine.load(). Twin of Swift install()'s isInstalling
+        // guard. Sequential calls still work: the flag is cleared in the finally below.
+        synchronized(this) {
+            if (isInstalling) return
+            isInstalling = true
         }
         try {
-            // Interrupt any in-flight generation so the switch's load() isn't blocked behind it (M3).
-            engine.requestCancel()
-            phase = OnboardingPhase.Loading(model)
-            engine.load(model, path)
-        } catch (t: Throwable) {
-            // load() already freed the previously-loaded model before failing (free-before-reassign),
-            // so on a failed SWITCH restore the prior model rather than leaving the engine empty (H1).
-            val previous = previousId
-                ?.takeIf { it != model.id }
-                ?.let { id -> ModelCatalog.models.firstOrNull { it.id == id } }
-            if (previous != null && restore(previous)) {
-                phase = OnboardingPhase.Ready(previous)
-                rememberActiveModelID(previous.id)
-            } else {
-                phase = OnboardingPhase.Failed("Couldn't load ${model.label}: ${t.message}")
+            // Network preflight (Q-271, twin of Swift): don't burn multi-GB of cellular under a
+            // Wi-Fi-only policy. Race-free — a POSITIVE cellular reading only, so a warming-up monitor
+            // (WIFI/NONE default) never falsely blocks. The reason tells the user how to proceed.
+            if (networkStatus() == NetworkStatus.CELLULAR && !downloadPolicy().allows(NetworkStatus.CELLULAR)) {
+                phase = OnboardingPhase.Failed(
+                    downloadPolicy().reason(NetworkStatus.CELLULAR)
+                        ?: "You're on cellular. Connect to Wi-Fi to download this model."
+                )
+                return
             }
-            return
+            // The model we'll fall back to if this one fails to load (a model SWITCH from Settings) — so
+            // a bad pick can't strand the user with no model (H1). null on first-run onboarding.
+            val previousId = engine.loadedModelId
+
+            val path = try {
+                phase = OnboardingPhase.Downloading(model, 0.0)
+                downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
+            } catch (c: DownloadCancelledException) {
+                // User cancel → back to the recommendation screen, not a Failed dead end. The engine
+                // kept the .part, so a retry resumes. (Twin of the Apple install() cancel path.)
+                phase = lastRecommended ?: OnboardingPhase.Failed("Download cancelled.")
+                return
+            } catch (t: Throwable) {
+                phase = OnboardingPhase.Failed("Download failed: ${t.message}")
+                return
+            }
+            try {
+                // Interrupt any in-flight generation so the switch's load() isn't blocked behind it (M3).
+                engine.requestCancel()
+                phase = OnboardingPhase.Loading(model)
+                engine.load(model, path)
+            } catch (t: Throwable) {
+                // load() already freed the previously-loaded model before failing (free-before-reassign),
+                // so on a failed SWITCH restore the prior model rather than leaving the engine empty (H1).
+                val previous = previousId
+                    ?.takeIf { it != model.id }
+                    ?.let { id -> ModelCatalog.models.firstOrNull { it.id == id } }
+                if (previous != null && restore(previous)) {
+                    phase = OnboardingPhase.Ready(previous)
+                    rememberActiveModelID(previous.id)
+                } else {
+                    phase = OnboardingPhase.Failed("Couldn't load ${model.label}: ${t.message}")
+                }
+                return
+            }
+            phase = OnboardingPhase.Ready(model)
+            rememberActiveModelID(model.id)   // next cold launch restores this model directly
+        } finally {
+            isInstalling = false
         }
-        phase = OnboardingPhase.Ready(model)
-        rememberActiveModelID(model.id)   // next cold launch restores this model directly
     }
 
     /** Best-effort reload of a previously-working model after a failed switch. Its file is still on

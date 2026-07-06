@@ -341,6 +341,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 10 — Android CORE twins, kotlinc-verified) — corrected my own
+  "Android needs the toolchain" overreach: `quenderin-core` is PURE Kotlin, verifiable with
+  `kotlinc` + the CoreVerify harness (only the app module / JNI need Gradle/NDK). Fixed the two R6
+  findings that live in core: **Q-336** `OnboardingModel.acceptAndPrepare()` had no re-entry guard
+  (double-tap / picker-overlap races `phase` + `engine.load()`) → added the `isInstalling`
+  check-and-set (twin of Swift's guard); **Q-271 twin** the Kotlin onboarding download didn't gate
+  on `DownloadPolicy` either — added the same race-free positive-`.cellular` gate + injected
+  status/policy seams (app fills from ConnectivityManager). Left **Q-340** alone: ChatModel's
+  `send()` returning `""` on concurrent send MATCHES the Swift twin (silent no-op at the model
+  layer; "surface busy" belongs at the transport layer) — "fixing" it would break parity. Verified:
+  CoreVerify 251/251 (+3), exit 0. STILL OPEN: app-module R6 (WorkManager Q-334/335/345, Compose
+  Q-337/342, JNI Q-338/339/343/344) — genuinely need the Android SDK/NDK. Lesson: [[native-automation-is-verifiable]]
+  extends to Android core — `kotlinc` alone verifies the pure logic; don't defer it as "needs Gradle".
+
 - 2026-07-06 (audit R1-R20 batch 9 — download policy on BOTH iOS live paths) — **Q-271/Q-289 (P0)**
   the iOS DownloadPolicy was consulted only by the pre-download checklist (`Preflight`), never by the
   LIVE downloads — so a user could burn multi-GB of cellular data. Fixed BOTH iOS call sites the same

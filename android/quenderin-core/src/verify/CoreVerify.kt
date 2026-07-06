@@ -285,6 +285,42 @@ fun main() {
         sel.confidence == SelectionConfidence.UNSUPPORTED && onb.phase is OnboardingPhase.Failed
     })
 
+    // --- Q-271 (twin of Swift): the LIVE onboarding download honors DownloadPolicy, not just the checklist ---
+    check("Q-271: onboarding blocks a cellular download under Wi-Fi-only — engine untouched, reason surfaced", run {
+        var downloads = 0
+        val downloader = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String { downloads++; return "/dev/null" }
+        }
+        val onb = OnboardingModel(MockInferenceEngine(), downloader,
+            networkStatus = { NetworkStatus.CELLULAR }, downloadPolicy = { DownloadPolicy.WIFI_ONLY })
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        val ph = onb.phase
+        downloads == 0 && ph is OnboardingPhase.Failed && ph.reason.contains("Wi-Fi")
+    })
+    check("Q-271: onboarding proceeds on cellular when the user has permitted it", run {
+        val onb = OnboardingModel(MockInferenceEngine(), MockModelDownloader(),
+            networkStatus = { NetworkStatus.CELLULAR }, downloadPolicy = { DownloadPolicy.WIFI_OR_CELLULAR })
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        onb.phase is OnboardingPhase.Ready
+    })
+    // Q-336: a re-entrant acceptAndPrepare (here fired from the progress callback via onChange) must be
+    // ignored so a double-tap / picker overlap can't run two downloads+loads racing phase and the engine.
+    check("Q-336: a re-entrant acceptAndPrepare is ignored — exactly one download runs", run {
+        var downloads = 0
+        lateinit var onb: OnboardingModel
+        val downloader = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+                downloads++
+                onProgress(0.5)   // drives a Downloading phase → onChange → the re-entrant call below
+                return "/dev/null"
+            }
+        }
+        onb = OnboardingModel(MockInferenceEngine(), downloader)
+        onb.onChange = { ph -> if (ph is OnboardingPhase.Downloading) onb.acceptAndPrepare(ModelCatalog.smallest) }
+        onb.acceptAndPrepare(ModelCatalog.smallest)
+        downloads == 1 && onb.phase is OnboardingPhase.Ready
+    })
+
     // --- ChatModel (M2): send runs the engine, transcript accumulates ---
     val chatEngine = MockInferenceEngine(cannedReply = "Running on-device.")
     chatEngine.load(ModelCatalog.smallest, "/dev/null")
