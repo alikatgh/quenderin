@@ -302,6 +302,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return this.activePreset.id;
     }
 
+    /** Q-615: serializes ALL native decodes. generalChat (foreground) and generateAction (the
+     *  background daemon) share one model + context; two concurrent decodes corrupt the KV state. Every
+     *  generation path funnels through promptWithTimeout, so one mutex here is the single chokepoint. */
+    private inferenceMutex: Promise<void> = Promise.resolve();
+
     private async promptWithTimeout(
         session: LlamaChatSession,
         prompt: string,
@@ -314,35 +319,51 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         label: string,
         externalSignal?: AbortSignal
     ): Promise<string> {
-        const ac = new AbortController();
-        const timer = setTimeout(() => ac.abort(), timeoutMs);
-        // Q-292: compose an optional external cancel (user "stop chat") with the timeout — either
-        // aborts the same native decode. The action path passes no signal, so its behaviour is
-        // unchanged. We classify the abort by CAUSE below: an external cancel is a deliberate stop
-        // (LLM_CANCELLED, the caller keeps the partial), the timer is a hang (LLM_TIMEOUT, retried).
-        const onExternalAbort = () => ac.abort();
-        if (externalSignal) {
-            if (externalSignal.aborted) ac.abort();   // already cancelled before the decode began
-            else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+        // A stop that arrived before we even queue: don't take the lock, just report cancelled.
+        if (externalSignal?.aborted) {
+            const cancelErr: NodeJS.ErrnoException = new Error(`${label} cancelled`);
+            cancelErr.code = 'LLM_CANCELLED';
+            throw cancelErr;
         }
+        // Q-615: acquire the inference lock (queue behind any in-flight decode) BEFORE arming the
+        // timeout — a decode waiting its turn must not "time out" against wall-clock spent queued. The
+        // lock always releases (finally), so `await prev` never rejects. The daemon also skips-if-busy
+        // upstream, so this mostly closes the narrow TOCTOU window where the foreground starts mid-check.
+        const prev = this.inferenceMutex;
+        let release!: () => void;
+        this.inferenceMutex = new Promise<void>((r) => { release = r; });
+        await prev;
         try {
-            return await session.prompt(prompt, { ...options, signal: ac.signal });
-        } catch (err: unknown) {
-            // External cancel takes precedence over the timeout classification: the user asked to stop.
-            if (externalSignal?.aborted) {
-                const cancelErr: NodeJS.ErrnoException = new Error(`${label} cancelled`);
-                cancelErr.code = 'LLM_CANCELLED';
-                throw cancelErr;
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), timeoutMs);
+            // Q-292: compose an optional external cancel (user "stop chat" / agent stop) with the timeout
+            // — either aborts the same native decode. Classify the abort by CAUSE: an external cancel is
+            // a deliberate stop (LLM_CANCELLED, caller keeps the partial), the timer is a hang (LLM_TIMEOUT).
+            const onExternalAbort = () => ac.abort();
+            if (externalSignal) {
+                if (externalSignal.aborted) ac.abort();   // cancelled while it was queued
+                else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
             }
-            if (ac.signal.aborted) {
-                const timeoutErr: NodeJS.ErrnoException = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
-                timeoutErr.code = 'LLM_TIMEOUT';
-                throw timeoutErr;
+            try {
+                return await session.prompt(prompt, { ...options, signal: ac.signal });
+            } catch (err: unknown) {
+                if (externalSignal?.aborted) {
+                    const cancelErr: NodeJS.ErrnoException = new Error(`${label} cancelled`);
+                    cancelErr.code = 'LLM_CANCELLED';
+                    throw cancelErr;
+                }
+                if (ac.signal.aborted) {
+                    const timeoutErr: NodeJS.ErrnoException = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+                    timeoutErr.code = 'LLM_TIMEOUT';
+                    throw timeoutErr;
+                }
+                throw err;
+            } finally {
+                clearTimeout(timer);
+                if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
             }
-            throw err;
         } finally {
-            clearTimeout(timer);
-            if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+            release();
         }
     }
 

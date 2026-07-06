@@ -112,3 +112,35 @@ describe('LlmService chat cancel (Q-292)', () => {
         expect(() => svc.requestChatCancel()).not.toThrow();
     });
 });
+
+/**
+ * Q-615: the background daemon's generateAction and the foreground generalChat share ONE model +
+ * context — two concurrent native decodes corrupt the KV state. Every generation funnels through
+ * promptWithTimeout, which now holds a mutex so decodes QUEUE instead of overlap.
+ */
+describe('LlmService inference mutex (Q-615)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call = (svc: LlmService, session: unknown) =>
+        (svc as any).promptWithTimeout(session, 'p', { maxTokens: 8, temperature: 0.1 }, 5000, 'test');
+
+    it('serializes concurrent decodes — the second starts only after the first ends', async () => {
+        const svc = new LlmService();
+        const events: string[] = [];
+        const slowSession = (id: string) => ({
+            prompt: async () => {
+                events.push(`${id}:start`);
+                await new Promise((r) => setTimeout(r, 20));
+                events.push(`${id}:end`);
+                return id;
+            },
+        });
+        await Promise.all([call(svc, slowSession('A')), call(svc, slowSession('B'))]);
+
+        // No interleave: one pair fully brackets the other (without the mutex both would start first).
+        expect(events).toHaveLength(4);
+        const serialized =
+            events.indexOf('A:end') < events.indexOf('B:start') ||
+            events.indexOf('B:end') < events.indexOf('A:start');
+        expect(serialized).toBe(true);
+    });
+});

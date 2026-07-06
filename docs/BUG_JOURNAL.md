@@ -341,6 +341,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 Wave 1 — **Q-615 P0** inference mutex) — the background daemon's
+  `generateAction` and the foreground `generalChat` share ONE model + context, and two concurrent
+  native decodes corrupt the KV state (the daemon's `shouldDeferInference` check-then-act is a TOCTOU
+  window). Added a mutex at the single chokepoint every generation funnels through —
+  `promptWithTimeout` — so decodes QUEUE instead of overlap. The lock is acquired BEFORE the timeout is
+  armed (a queued decode must not time out against wall-clock it spent waiting), and always releases in
+  `finally` (so `await prev` never rejects, and a hung decode self-heals via its own 30s timeout →
+  abort → release). Test: two concurrent decodes never interleave (one pair fully brackets the other).
+  439 tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 29 — idle/download guard) — **Q-416** the idle-unload timer fired on
   `!busy && !initPromise && modelInstance` but ignored an in-flight DOWNLOAD. A download doesn't use the
   loaded model, but it usually precedes a switch/load, so idle-unloading mid-download just churns RAM
