@@ -341,6 +341,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 29 — idle/download guard) — **Q-416** the idle-unload timer fired on
+  `!busy && !initPromise && modelInstance` but ignored an in-flight DOWNLOAD. A download doesn't use the
+  loaded model, but it usually precedes a switch/load, so idle-unloading mid-download just churns RAM
+  (unload now → reload seconds later). Added `!this.isDownloading` to the guard — conservative:
+  idle-unload only when truly idle. 438 tests, typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 28 — Q-426 is by-design; the TEST caught my wrong fix) — **Q-426**
   ("intervene/resume — no running-loop validation") looked like the Q-384 family: `runAgentLoop` never
   resets `_isPaused`, so a `pause()` when no loop is running seemed to leak into the next mission. I

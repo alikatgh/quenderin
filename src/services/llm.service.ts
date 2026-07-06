@@ -370,7 +370,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private resetIdleTimer(): void {
         if (this.idleTimer) clearTimeout(this.idleTimer);
         this.idleTimer = setTimeout(() => {
-            if (!this.isInferenceBusy() && !this.initPromise && this.modelInstance) {
+            // Q-416: also hold off while a download is in flight. Even though a download doesn't use the
+            // loaded model, a download usually precedes a switch/load, so unloading here just churns RAM
+            // (unload now → reload seconds later). Conservative: idle-unload only when truly idle.
+            if (!this.isInferenceBusy() && !this.initPromise && !this.isDownloading && this.modelInstance) {
                 logger.log(`[Lifecycle] Unloading model after ${this.idleTimeoutMs / 60000}min idle to free RAM`);
                 this.unloadModel();
             }
