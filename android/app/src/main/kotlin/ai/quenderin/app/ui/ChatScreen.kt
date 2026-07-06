@@ -125,10 +125,14 @@ fun ChatScreen(
     }
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    // Keep the newest message in view as the transcript grows / a reply streams in.
-    LaunchedEffect(messages.size, busy) {
-        val count = messages.size + if (busy) 1 else 0
-        if (count > 0) listState.animateScrollToItem(count - 1)
+    // Keep the newest message in view as the transcript grows AND as a reply streams in. Key on the last
+    // message's LENGTH too: a streaming reply replaces the last message token-by-token, so messages.size
+    // never changes — a size-only key would never re-fire and the growing bubble scrolls off the bottom.
+    // The scroll target accounts for the always-present DayDivider at LazyColumn index 0 (line ~164), so
+    // the last item index is messages.size + (busy?1:0); the old count-1 stopped one row short.
+    LaunchedEffect(messages.size, messages.lastOrNull()?.text?.length ?: 0, busy) {
+        val lastIndex = messages.size + if (busy) 1 else 0
+        if (lastIndex > 0) listState.animateScrollToItem(lastIndex)
     }
 
     // imePadding() lifts the whole chat (and its composer) above the soft keyboard. Needed because

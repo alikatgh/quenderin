@@ -352,6 +352,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (adversarial-verify fresh-hunt, Android P2 follow-ups) — two more Compose bugs from the fresh
+  hunt. **ChatScreen.kt auto-scroll (P2):** `LaunchedEffect(messages.size, busy)` never re-fired during a
+  STREAMING reply (the last message grows token-by-token but the list SIZE is constant) so the bubble
+  scrolled off-screen; also off-by-one — the always-present DayDivider at index 0 means the last item is
+  `messages.size + (busy?1:0)`, not `count-1`. Now keys on the last message's length too and scrolls to the
+  correct index. **SettingsScreen.kt model delete (P2):** unlinking a multi-GB GGUF ran as blocking FS I/O
+  in the click lambda (main thread) → UI freeze / ANR; now the unlink runs on Dispatchers.IO, then
+  reloadModels() refreshes state back on Main. Both are app-module (on-device-verified).
+
 - 2026-07-06 (fresh-hunt bugs from the adversarial-verify workflow — never-audited native surfaces) — the
   Opus fleet's fresh hunt on iOS SwiftUI / Android Compose / JNI (surfaces the 2026-06-27 deep-hunt never
   reached) found real pre-existing bugs. **iOS SettingsView.swift:447 (P1):** `.onDelete` deleted by index

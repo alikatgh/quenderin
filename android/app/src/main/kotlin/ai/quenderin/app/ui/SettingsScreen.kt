@@ -44,6 +44,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Settings / manage — twin of iOS `SettingsView`. Shows the active model, on-device storage
@@ -60,6 +64,7 @@ fun SettingsScreen(
     onDeepThinkingChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     // Read on entry (the tab recomposes fresh each visit); the index file is tiny.
     val conversationCount = remember { persistence.loadIndex().size }
     var showPicker by remember { mutableStateOf(false) }
@@ -177,9 +182,17 @@ fun SettingsScreen(
                             if (!installed.isActive) {
                                 TextButton(
                                     onClick = {
-                                        ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
-                                            .delete(installed.id)
-                                        reloadModels()
+                                        // Deleting a model unlinks a multi-GB GGUF — blocking FS I/O that
+                                        // froze the UI / risked an ANR when run directly in the click lambda
+                                        // (main thread). Do the unlink on Dispatchers.IO, then refresh state
+                                        // back on the caller (Main) so the list write stays on the UI thread.
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+                                                    .delete(installed.id)
+                                            }
+                                            reloadModels()
+                                        }
                                     },
                                     modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
                                 ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
