@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>A computer-use agent that never leaves your Mac</title>
+<meta name="description" content="Quenderin's agent now drives your Mac — files, apps, Apple Shortcuts, and any GUI via accessibility — entirely on-device. A private alternative to cloud computer-use agents like Cowork: it asks before every change, logs it, and can undo the whole task, even in a new session." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-computer-use.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>A computer-use agent that never leaves your Mac</h1>
+  <p class="legal-updated">6 July 2026 · from <a href="blog.html">the dev log</a></p>
+
+  <p>A few weeks ago Quenderin's agent learned to organize a folder. Today it can drive most of
+  your Mac — and it does the whole thing <strong>on your machine</strong>, with no screen, no
+  files, and no intent ever streamed to anyone's datacenter. If you've looked at cloud
+  computer-use agents like Cowork and wanted the capability without handing a remote company a
+  live feed of your desktop, this is that.</p>
+
+  <h2>What it can do now</h2>
+  <p>From the terminal, <code>quenderin do "&lt;anything&gt;"</code>:</p>
+  <ul>
+    <li><strong>Files.</strong> Grant a folder with <code>--workspace ~/Downloads</code> and it can
+      list, read, move, rename, create, and trash-to-a-visible-folder — never overwriting, never
+      really deleting.</li>
+    <li><strong>Apps it can script.</strong> Calendar, Reminders, Notes, Mail (drafts only — it
+      never hits send), Clipboard, opening apps and URLs.</li>
+    <li><strong>Your Apple Shortcuts.</strong> <code>mac.shortcuts.run</code> invokes any shortcut
+      you've built, by name — so your entire existing automation library becomes something you can
+      ask for in plain language.</li>
+    <li><strong>Any app at all.</strong> With <code>--gui</code> it reads the frontmost app through
+      the accessibility layer and clicks buttons, picks menu items (<em>File&nbsp;›&nbsp;Export</em>),
+      types, and navigates — not just AppleScript-friendly apps. This is the part that matches what
+      a cloud agent does, done locally.</li>
+  </ul>
+
+  <h2>The part a cloud agent can't copy</h2>
+  <p>Capability isn't the interesting bit — control is. Every mutating step is governed by the same
+  boring spine, and it buys you four things a remote agent structurally can't offer:</p>
+  <ul>
+    <li><strong>Stop, instantly.</strong> The kill switch is checked on <em>your</em> machine between
+      every step. <kbd>Ctrl-C</kbd> and the next step never runs — no round-trip to a server that
+      already fired the action.</li>
+    <li><strong>Review, per task.</strong> <code>quenderin history</code> is a plain, local log of
+      everything it did <em>and refused</em>, grouped under the task that caused it. A cloud service
+      hands you an opaque chat transcript; this is a file you own.</li>
+    <li><strong>Undo the whole task — even later.</strong> <code>quenderin undo</code> reverses what
+      a run changed, newest-first, and it works from a fresh session an hour afterwards. Transactional
+      undo of your local machine is not something a datacenter can do for you.</li>
+    <li><strong>Rehearse it first.</strong> <code>--dry-run</code> executes the read-only steps for
+      real — so the plan is grounded in your actual folder — but only <em>previews</em> anything that
+      would change. See exactly what it would do, touching nothing.</li>
+  </ul>
+  <p>And underneath all of it: <strong>no AI middleman</strong>. The model that reasons about your
+  screen and files runs on your CPU. The apps you use still see what you hand them, but no AI company
+  ever gets a copy. For anyone in law, medicine, or finance, that's the line between "can use an
+  agent" and "can't." More on the trade-offs: <a href="why-local-agent.html">why a local agent beats
+  a cloud one</a>.</p>
+
+  <h2>Built to fail safely on a small model</h2>
+  <p>On-device models are smaller than frontier ones, so the honest engineering question isn't "can
+  it be brilliant" — it's "does it fail gracefully." Two guards make it usable in practice: if the
+  model gets stuck repeating the same step, it's nudged once and then stops cleanly instead of
+  looping; if it emits malformed output, it's shown the format and given another try rather than
+  dying. And every step streams to your terminal as it happens, so you watch it work and can pull
+  the plug the moment something looks off.</p>
+
+  <h2>The honest boundaries</h2>
+  <p>The full computer-driving surface is <strong>macOS-first</strong> and behind an explicit
+  <code>--gui</code> opt-in that needs the system Accessibility permission — it's the most powerful
+  thing here, so it's off by default. A small local model will sometimes pick the wrong step; that's
+  exactly why nothing runs without your per-run yes, why app control still asks even under
+  <code>--yes</code>, and why undo exists. Any credentials that pass through are masked before they
+  reach the on-disk log. Nothing here is autonomous by surprise.</p>
+
+  <h2>Try it</h2>
+  <p>It ships with the source today — <code>quenderin capabilities</code> lists the whole toolkit,
+  and <a href="download.html">the download page</a> has the one-line install. It's free and
+  open-source, as the chat apps and the model library always will be. Where this is all going, stage
+  by stage: <a href="roadmap.html">the roadmap</a>.</p>
+</main>
+</body>
+</html>
