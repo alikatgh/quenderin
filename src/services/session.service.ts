@@ -72,6 +72,10 @@ export class SessionService {
     /** Start a fresh session (called when user begins a new conversation) */
     public startSession(): string {
         this.flushNow();
+        // Q-598: prune here — the only place the persisted-session count grows — instead of on every
+        // flushNow (a hot path). The outgoing session was just flushed above, so it's counted; the new
+        // in-memory session isn't on disk yet, so it's never a prune target.
+        this.pruneOldSessions();
         const id = randomUUID();
         const now = new Date().toISOString();
         this.currentSession = { id, title: 'New Conversation', createdAt: now, updatedAt: now, messages: [] };
@@ -228,7 +232,10 @@ export class SessionService {
         try {
             fs.writeFileSync(sessionPath(this.currentSession.id), JSON.stringify(this.currentSession, null, 2), 'utf8');
             this.dirty = false;
-            this.pruneOldSessions();
+            // Q-598: do NOT prune here. flushNow runs on every debounced write (≈ every few seconds while
+            // chatting), and pruneOldSessions → listSessions reads + JSON.parses EVERY session file — an
+            // O(n) disk stall on a hot path. Re-writing the current session never grows the session count,
+            // so pruning only needs to run when a NEW session is created (see startSession).
         } catch (err) {
             logger.error('[Session] Failed to persist session:', err);
         }

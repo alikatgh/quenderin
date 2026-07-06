@@ -187,6 +187,33 @@ describe('AgentService.runAgentLoop — integration', () => {
         expect(events.decide.length).toBe(2);
     });
 
+    it('Q-560: stop() hard-stops the legacy AgentService loop mid-run — no further steps run', async () => {
+        // The planner would keep clicking every step; the user hits Stop WHILE step 1 executes. The loop's
+        // step-top stopped() check must then break before step 2 — the legacy-AgentService twin of the
+        // capability kill switch (tests/kill-switch.test.ts covered only the CapabilityRunner/Agent path).
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')                    // intent classification
+            .mockResolvedValue('{"action":"click","id":1}');    // every step decision
+        const llm = createLlmStub({ generateAction });
+        const { agent } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<a/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<b/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        const execSpy = vi.fn().mockImplementation(async () => { agent.stop(); return true; });
+        (agent as any).actionExecutor.execute = execSpy;
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+
+        await agent.runAgentLoop('open the settings screen', emitter, [], 5);
+
+        expect(execSpy).toHaveBeenCalledTimes(1);              // step 1 ran; step 2 never started
+        expect(agent.isRunning).toBe(false);                  // controller cleared on exit
+        expect(events.status.some((s: unknown) => String(s).includes('Stopped'))).toBe(true);
+    });
+
     it('stops with a wall-clock timeout before exhausting the step budget', async () => {
         // generateAction would keep clicking forever; the wall-clock budget (0 ms = already past)
         // must stop the loop before a single step runs. (Audit: no overall wall-clock timeout.)

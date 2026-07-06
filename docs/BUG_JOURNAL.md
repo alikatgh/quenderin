@@ -352,6 +352,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R28/R23 — Q-598 flush perf + Q-560 kill-switch coverage) — **Q-598** `flushNow` runs on
+  every debounced write (≈ every few seconds while chatting) and called `pruneOldSessions → listSessions`,
+  which reads + JSON.parses EVERY session file — an O(n) disk stall on a hot path. Re-writing the current
+  session never grows the count, so moved the prune to `startSession` (the only place it grows); flush is
+  now O(1). **Q-560** the kill-switch tests covered only the CapabilityRunner/Agent path, not the legacy
+  `AgentService` WS stop added in Q-523. Added a test: `stop()` during step 1's execute → the step-top
+  `stopped()` check breaks before step 2 (execute called once, isRunning false, 'Stopped' status emitted).
+  464 tests (+1), typecheck + lint clean.
+
 - 2026-07-06 (audit R28 — Q-597 opening a past chat didn't switch the server session) — `loadSession()`
   rehydrated the UI transcript but left the server's `currentSessionId` pointed at the previous session, so
   the next message appended to the WRONG conversation (Q-313 follow-on, same class as Q-596). Added
