@@ -352,6 +352,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R24 — Q-549 legacy-agent governance, ANALYSIS not a rewrite) — the dashboard drives
+  the device via the legacy `AgentService` (continuous observe→decide→act loop), not the governed
+  `createGovernedAgent`/`CapabilityRunner` path. These are DIFFERENT execution models, not two impls of
+  one: the governed path approves each discrete mutating capability + undoes it, which doesn't map onto a
+  fine-grained tap/scroll/type loop (per-tap approval is unusable; you can't un-tap). So the dashboard's
+  blocklist+pause+kill-switch+caps is an appropriate, different safety model — a drop-in swap is wrong.
+  Wrote `docs/audits/2026-07-06-Q549-agent-governance-analysis.md`: which governance features FIT
+  (ledger, bulk brake, opt-in per-run approval) vs don't (per-tap approval, undo), and an incremental
+  migration (ledger → bulk brake → per-run approval → unify types), safest first. Deliberately NOT coded:
+  rewiring device-agent safety at a sweep's tail is where a dead-locking gate regression lands; each step
+  needs its own change + test + an owner decision. Q-637 (intent) is the other architectural item, DONE.
+
 - 2026-07-06 (audit R31 — Q-637 consolidate the intent systems) — three intent code paths could drift:
   the shared regex `classifyIntent` (intentClassifier.ts), the agent's inline chat-vs-action LLM prompt
   (`INTENT_CLASSIFIER_PROMPT`, agent.service.ts), and a SECOND divergent LLM classifier
