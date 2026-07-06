@@ -104,6 +104,63 @@ final class OnboardingModelTests: XCTestCase {
         }
     }
 
+    /// Q-271: the LIVE download path must refuse a large cellular pull under a Wi-Fi-only policy —
+    /// previously the policy was consulted only by the pre-download checklist, so `install()` would
+    /// happily burn multi-GB of the user's cellular data. A downloader that fails if touched proves
+    /// the gate blocked BEFORE the network was hit (the failure carries the policy reason, not the
+    /// transport error).
+    func testInstallBlocksCellularUnderWifiOnlyPolicy() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // No file on disk → the download path is reached (not the "already installed" fast path).
+        let entry = ModelEntry(
+            id: "stub", label: "Stub", filename: "stub.gguf", ramGB: 1, sizeLabel: "100 B",
+            paramsBillions: 0.001, quantization: "Q2_K", urlString: "https://example.com/stub.gguf", sha256: nil
+        )
+        let model = OnboardingModel(
+            downloader: MockModelDownloader(behavior: .failTransport(reason: "network must NOT be touched")),
+            engine: MockInferenceEngine(),
+            modelsDir: dir,
+            availableDiskBytes: { _ in .max },     // disk must not decide this test
+            networkStatus: { .cellular },          // on cellular…
+            downloadPolicy: { .wifiOnly }          // …under the safe default policy
+        )
+        await model.install(entry)
+
+        guard case let .failed(message) = model.phase else {
+            return XCTFail("expected .failed (cellular blocked), got \(model.phase)")
+        }
+        // The message is the POLICY reason, proving we never reached the (failing) downloader.
+        XCTAssertEqual(message, DownloadPolicy.wifiOnly.reason(for: .cellular))
+        XCTAssertFalse(message.contains("network must NOT be touched"), "downloader was invoked despite the Wi-Fi-only gate")
+    }
+
+    /// Q-271: the gate is not a blanket cellular ban — when the user has opted into cellular
+    /// downloads the LIVE path proceeds. Here the download is REACHED (and then fails transport),
+    /// proving the gate let it through rather than short-circuiting on the connection type.
+    func testInstallAllowsCellularWhenPolicyPermits() async throws {
+        let dir = freshModelsDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let entry = ModelEntry(
+            id: "stub", label: "Stub", filename: "stub.gguf", ramGB: 1, sizeLabel: "100 B",
+            paramsBillions: 0.001, quantization: "Q2_K", urlString: "https://example.com/stub.gguf", sha256: nil
+        )
+        let model = OnboardingModel(
+            downloader: MockModelDownloader(behavior: .failTransport(reason: "reached the network")),
+            engine: MockInferenceEngine(),
+            modelsDir: dir,
+            availableDiskBytes: { _ in .max },
+            networkStatus: { .cellular },
+            downloadPolicy: { .wifiOrCellular }    // user allowed cellular → don't block
+        )
+        await model.install(entry)
+
+        guard case let .failed(message) = model.phase else {
+            return XCTFail("expected .failed (transport, past the gate), got \(model.phase)")
+        }
+        XCTAssertTrue(message.contains("reached the network"), "the gate blocked a policy-permitted cellular download")
+    }
+
     func testInstallRejectsAndRefetchesAnInvalidExistingFile() async throws {
         let dir = freshModelsDir()
         defer { try? FileManager.default.removeItem(at: dir) }

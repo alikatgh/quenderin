@@ -51,12 +51,22 @@ public final class OnboardingModel: ObservableObject {
     private let rememberActiveModelID: (String?) -> Void
     static let activeModelDefaultsKey = "quenderin.activeModelID"
 
+    /// Network gate for the LIVE download path (Q-271). A multi-GB pull on cellular can cost real
+    /// money, so `install()` consults the policy before starting — not just the pre-download
+    /// checklist (`Preflight`). Injected as closures (like `availableDiskBytes`) so tests drive the
+    /// decision without real connectivity; the iOS app passes a live `LiveNetworkMonitor`. The
+    /// defaults (`.wifi` / `.wifiOnly`) keep desktop/CLI — which aren't metered — open.
+    private let networkStatus: () -> NetworkStatus
+    private let downloadPolicy: () -> DownloadPolicy
+
     public init(
         downloader: ModelDownloader,
         engine: InferenceEngine,
         modelsDir: URL? = nil,
         deviceProfile: IOSDeviceProfile? = nil,
         availableDiskBytes: ((URL) -> Int64)? = nil,
+        networkStatus: (() -> NetworkStatus)? = nil,
+        downloadPolicy: (() -> DownloadPolicy)? = nil,
         recallActiveModelID: (() -> String?)? = nil,
         rememberActiveModelID: ((String?) -> Void)? = nil
     ) {
@@ -65,6 +75,22 @@ public final class OnboardingModel: ObservableObject {
         self.modelsDir = modelsDir ?? Self.defaultModelsDir()
         self.deviceProfile = deviceProfile
         self.availableDiskBytes = availableDiskBytes ?? { DiskSpace.availableBytes(at: $0) }
+        if let networkStatus {
+            self.networkStatus = networkStatus
+        } else {
+            #if canImport(Network)
+            // Live by default: capture a monitor so the gate actually bites on a real device without
+            // the app having to wire it. The closure retains `monitor`, keeping the NWPathMonitor
+            // alive for this model's lifetime (it stops delivering once deallocated). A Mac/ethernet
+            // reports `.wifi` (never `.cellular`), so desktop onboarding is unaffected; a warming-up
+            // monitor reports `.none`, which the race-free gate lets through.
+            let monitor = LiveNetworkMonitor()
+            self.networkStatus = { monitor.status }
+            #else
+            self.networkStatus = { .wifi }   // no Network framework (e.g. Linux CI) → unmetered
+            #endif
+        }
+        self.downloadPolicy = downloadPolicy ?? { .wifiOnly }
         self.recallActiveModelID = recallActiveModelID
             ?? { UserDefaults.standard.string(forKey: Self.activeModelDefaultsKey) }
         self.rememberActiveModelID = rememberActiveModelID
@@ -190,6 +216,15 @@ public final class OnboardingModel: ObservableObject {
             let storage = storageCheck(for: model)
             guard storage.hasRoom else {
                 phase = .failed(storage.message)
+                return
+            }
+            // Network preflight (Q-271): honor the download policy on the LIVE path, not only in the
+            // checklist. Gate on a POSITIVE cellular reading — a warming-up monitor (.none) falls
+            // through so a genuine Wi-Fi download is never falsely blocked by startup latency, and a
+            // real offline state surfaces as the downloader's own error. Design intent recorded at
+            // BackgroundModelDownloader: "gate cellular at the DownloadPolicy layer, not here."
+            if networkStatus() == .cellular, !downloadPolicy().allows(.cellular) {
+                phase = .failed(downloadPolicy().reason(for: .cellular) ?? "Cellular downloads are turned off. Connect to Wi-Fi to download this model.")
                 return
             }
             phase = .downloading(model, progress: 0)
