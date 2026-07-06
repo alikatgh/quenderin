@@ -347,6 +347,20 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             res.send(content);
         });
 
+        // Q-304/Q-422: create a note. The read (GET) + delete existed, but there was no way to WRITE
+        // one over the API — the underlying MemoryService.saveNote() (with its title sanitizer + write
+        // lock) was already there, just unexposed. Mutating route → the global auth middleware already
+        // requires the token; express.json() parses the body.
+        app.post('/api/notes', async (req, res) => {
+            const body = req.body as { title?: unknown; content?: unknown } | undefined;
+            const title = typeof body?.title === 'string' ? body.title : '';
+            const content = typeof body?.content === 'string' ? body.content : '';
+            if (!title.trim()) return res.status(400).json({ error: 'A note title is required.' });
+            const result = await memoryService.saveNote(title, content);
+            if ('error' in result) return res.status(400).json({ error: result.error });
+            res.status(201).json({ message: 'Note saved.', path: result.path });
+        });
+
         app.delete('/api/notes/:filename', async (req, res) => {
             const safe = sanitizeNoteFilename(req.params.filename);
             if (!safe) return res.status(400).json({ error: 'Invalid filename' });

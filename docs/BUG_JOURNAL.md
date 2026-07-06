@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 21 — feature gaps: notes CRUD) — **Q-304/Q-422** the notes API had
+  GET (list + read) and DELETE but NO create — you couldn't write a note over HTTP even though
+  `MemoryService.saveNote()` (title sanitizer + write lock) already existed, just unexposed. Added
+  `POST /api/notes` → it's a mutating `/api/` route so the global auth gate covers it automatically,
+  and `express.json()` already parses the body; a blank title is rejected (400) before touching
+  storage. 3 route tests (201 create + saveNote called; 400 blank title, storage untouched; 401 no
+  token). This is the first of the buildable FEATURE gaps (vs the clean-bug work) — a no-decision CRUD
+  completion where the service method existed and only the endpoint was missing.
+
 - 2026-07-06 (audit R1-R20 batch 20 — the last clean one) — **Q-408** a concurrent `downloadModel`
   (double-click / auto+manual) hit `if (this.isDownloading) return` and was dropped SILENTLY. Kept the
   single-slot guard (throwing would force every caller to catch a benign double-trigger) but made the
