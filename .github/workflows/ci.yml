@@ -138,6 +138,25 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon --console=plain
 
+  mobile-android-jni:
+    name: Android JNI (C++ syntax-check)
+    runs-on: ubuntu-latest
+    # Q-592: nothing else in CI compiles the JNI bridge (android/jni/llama_jni.cpp) — the app build
+    # skips it (no jni/llama.cpp checked in), so an NDK/native regression could ship undetected. This
+    # syntax-checks it with the pre-installed NDK clang against real llama.cpp headers (HEAD of
+    # ggml-org/llama.cpp — the same ref android/verify-llama-link.sh clones for the on-device build).
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch llama.cpp headers (shallow, matches verify-llama-link.sh)
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp
+      - name: Syntax-check the JNI bridge
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
+          NDK_CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" \
+          LLAMA_INCLUDE=/tmp/llama.cpp/include \
+          GGML_INCLUDE=/tmp/llama.cpp/ggml/include \
+            bash scripts/check-jni-syntax.sh
+
   catalog-parity:
     name: Model catalog parity
     runs-on: ubuntu-latest

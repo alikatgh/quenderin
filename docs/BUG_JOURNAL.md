@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 — Q-592 JNI not compiled in CI) — the JNI bridge `android/jni/llama_jni.cpp`
+  was built by NOTHING in CI: the `:app:assembleDebug` job skips the native build (no `jni/llama.cpp`
+  checked in), so an NDK/native regression could ship undetected. Extracted the proven syntax-check into
+  `scripts/check-jni-syntax.sh` (parameterized: `NDK_CLANG` / `LLAMA_INCLUDE` / `GGML_INCLUDE`; runs
+  `clang++ --target=aarch64-linux-android26 -fsyntax-only -std=c++17 -Wall`) and added a `mobile-android-jni`
+  CI job that clones ggml-org/llama.cpp HEAD for headers (same ref `verify-llama-link.sh` uses) and runs it.
+  Script verified locally (exit 0, "✓ JNI syntax OK"); the CI job itself is best-effort until it runs on a
+  real runner. Lesson: "the app builds" ≠ "the native bridge compiles" when the native build is opt-in.
+
 - 2026-07-06 (audit R29/R31 — Q-643 + Q-608 build/CI config) — **Q-643** the Electron bundle globbed
   `node_modules/**/*` (full tree). Rather than DROP the glob (risks pruning a needed transitive dep,
   unverifiable without an electron-builder run), ADDED exclusions for provably non-runtime files only —
