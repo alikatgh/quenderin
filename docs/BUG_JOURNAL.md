@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R23 — Q-543 pressure-unload churn) — the memory-pressure monitor unloaded the model
+  whenever it was over the hard budget and `!isInferenceBusy()`. But BETWEEN agent steps isInferenceBusy
+  is false, so under pressure it unloaded mid-run and the very next step reloaded (churn/latency, the
+  "reload race"). Added a recent-activity grace via the existing `lastActivityTimestamp` (generateAction
+  already stamps it): keep the model for `PRESSURE_ACTIVE_GRACE_MS` (30s) of activity, unload only once
+  genuinely idle. Extracted the decision to a pure `shouldUnloadUnderPressure` → 2 tests (active→keep,
+  idle→unload, below-budget→never, mid-inference→never). 449 tests (+2), typecheck + lint clean.
+
 - 2026-07-06 (audit R31 Wave 1 — Q-638 multi-round tool loop) — `generalChat` executed tool calls
   ONCE: on the follow-up it ran `stripToolCalls`, so if the model CHAINED (use tool A's result to call
   tool B) the second call was stripped, never run. Refactored to a bounded loop (`MAX_TOOL_ROUNDS = 3`):

@@ -233,6 +233,20 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         logger.log(`[Hardware] ${HW.tier} tier detected: ${HW.platform}/${HW.arch}, ${HW.cpuCores} cores, ${HW.totalRamGb.toFixed(1)}GB RAM, GPU=${HW.tryGpuOffload}, nativeAddons=${HW.nativeAddonsLikely}, timeoutX=${HW.timeoutMultiplier}`);
     }
 
+    /** Q-543: how long after the last inference the model is protected from a pressure-unload. Agent
+     *  steps are seconds apart and `isInferenceBusy()` is false BETWEEN them, so without this grace the
+     *  pressure monitor unloads mid-run and the very next step reloads (churn/latency). A live session
+     *  keeps the model; a genuinely-idle one under pressure still unloads once the grace lapses. */
+    private static readonly PRESSURE_ACTIVE_GRACE_MS = 30_000;
+
+    /** True when critical memory pressure warrants unloading: over the hard budget, not mid-inference,
+     *  and not within the recent-activity grace (Q-543). Pure over instance state so it's unit-tested. */
+    private shouldUnloadUnderPressure(usageRatio: number, nowMs: number): boolean {
+        if (usageRatio <= HW.memoryBudgetHard) return false;
+        if (this.isInferenceBusy()) return false;
+        return (nowMs - this.lastActivityTimestamp) > LlmService.PRESSURE_ACTIVE_GRACE_MS;
+    }
+
     /** Start periodic memory pressure checks while model is loaded */
     private startMemoryPressureMonitor(): void {
         if (this.memoryPressureTimer) return;
@@ -245,7 +259,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             const totalGb = os.totalmem() / (1024 ** 3);
             const usageRatio = 1 - (freeGb / totalGb);
 
-            if (usageRatio > HW.memoryBudgetHard && !this.isInferenceBusy()) {
+            if (this.shouldUnloadUnderPressure(usageRatio, Date.now())) {
                 logger.warn(`[Memory] Pressure critical (${(usageRatio * 100).toFixed(0)}% used, ${freeGb.toFixed(1)}GB free). Unloading model to prevent OOM.`);
                 this.unloadModel();
             } else if (usageRatio > HW.memoryBudgetHard * 0.95) {

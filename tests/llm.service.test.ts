@@ -118,6 +118,35 @@ describe('LlmService chat cancel (Q-292)', () => {
  * context — two concurrent native decodes corrupt the KV state. Every generation funnels through
  * promptWithTimeout, which now holds a mutex so decodes QUEUE instead of overlap.
  */
+/**
+ * Q-543: the memory-pressure monitor unloaded the model whenever it was over the hard budget and not
+ * mid-inference — but between agent steps isInferenceBusy() is false, so it churned (unload → the next
+ * step reloads). shouldUnloadUnderPressure adds a recent-activity grace: keep the model for a live
+ * session, unload only once it's genuinely idle under pressure.
+ */
+describe('LlmService pressure-unload grace (Q-543)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const decide = (svc: LlmService, ratio: number, nowMs: number) => (svc as any).shouldUnloadUnderPressure(ratio, nowMs);
+
+    it('keeps the model while recently active, unloads once genuinely idle under pressure', () => {
+        const svc = new LlmService();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (svc as any).lastActivityTimestamp = 1000;
+        expect(decide(svc, 0.99, 6000)).toBe(false);    // critical pressure, active 5s ago → keep
+        expect(decide(svc, 0.99, 41000)).toBe(true);    // critical pressure, idle 40s → unload
+    });
+
+    it('never unloads below the hard memory budget, or mid-inference', () => {
+        const svc = new LlmService();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (svc as any).lastActivityTimestamp = 0;
+        expect(decide(svc, 0.3, 10_000_000)).toBe(false);   // low pressure → never
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (svc as any).isGeneratingChat = true;
+        expect(decide(svc, 0.99, 10_000_000)).toBe(false);  // mid-inference → never
+    });
+});
+
 describe('LlmService inference mutex (Q-615)', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const call = (svc: LlmService, session: unknown) =>
