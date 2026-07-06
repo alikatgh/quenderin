@@ -341,6 +341,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 11 — JNI, NDK-syntax-checked) — corrected ANOTHER "can't verify"
+  overreach: the full Android toolchain IS installed (NDK clang + `android/log.h`, SDK, gradle,
+  emulator), so `clang++ --target=aarch64-linux-android26 -fsyntax-only` (with the vendored llama.h)
+  compile-checks the JNI without a device. Fixed **Q-338** `thermalPoll` called `CallIntMethod`
+  without an `ExceptionCheck` — a pending Java exception makes the NEXT JNI call UB → ART aborts the
+  whole process. Added check-and-clear-and-skip: unlike `emit`'s C3 path (a CRITICAL callback, which
+  propagates by stopping), thermalPoll is a non-critical thread-count hint, so clear + skip beats
+  aborting generation. Syntax-check exit 0. Deliberately LEFT: **Q-343** (all 4 null-handle sites
+  consistently return "" — a deliberate policy, not a one-site bug), **Q-339** (add_bos on a chat-
+  templated prompt is model/template-SPECIFIC; a blind flip risks removing a needed BOS — needs on-
+  device token inspection), **Q-344** (flat fallback on a rare template-apply failure is a reasonable
+  degradation, only an observability nit). Lesson: the tell for "leave it" is a SEMANTIC choice you
+  can't RUN to settle (Q-339) vs. a mechanical UB with one right answer (Q-338).
+
 - 2026-07-06 (audit R1-R20 batch 10 — Android CORE twins, kotlinc-verified) — corrected my own
   "Android needs the toolchain" overreach: `quenderin-core` is PURE Kotlin, verifiable with
   `kotlinc` + the CoreVerify harness (only the app module / JNI need Gradle/NDK). Fixed the two R6

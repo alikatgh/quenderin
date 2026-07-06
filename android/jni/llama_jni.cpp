@@ -135,6 +135,12 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     auto thermalPoll = [&]() -> int {
         if (!recommended_threads_mid) return 0;
         int n = env->CallIntMethod(thiz, recommended_threads_mid);
+        // Q-338: recommendedThreads() is a Java upcall — if it threw, a JNI exception is now pending and
+        // the NEXT JNI call (cancelled()/emit(), same token loop) would be UB → ART aborts the whole
+        // process. Unlike emit's C3 path (a CRITICAL callback, which propagates by stopping), thermalPoll
+        // is a non-critical optimization: clear the exception and skip this adjustment so generation
+        // continues rather than crashing over a thread-count hint.
+        if (env->ExceptionCheck()) { env->ExceptionClear(); return 0; }
         if (n <= 0 || n == last_threads) return 0;
         last_threads = n;
         return n;
