@@ -200,6 +200,16 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             if (!fsSync.existsSync(filePath)) {
                 return res.status(404).json({ error: 'Model file not found on disk.' });
             }
+            // Q-419: don't unlink the file out from under a live load. If this is the loaded model,
+            // refuse while it's mid-generation (would corrupt the in-flight decode); otherwise unload it
+            // first so the native handle isn't left mapped to a file that's about to vanish.
+            const life = llmService.getModelLifecycleInfo();
+            if (life.loadedModelId === entry.id) {
+                if (life.isGenerating) {
+                    return res.status(409).json({ error: 'This model is generating a response right now — try again in a moment.' });
+                }
+                llmService.unloadModel();
+            }
             try {
                 await fs.unlink(filePath);
                 // Also clean up any stale download metadata

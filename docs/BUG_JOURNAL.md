@@ -341,6 +341,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R1-R20 batch 24 — delete-loaded-model guard) — **Q-419** `DELETE /api/models/:id`
+  unlinked the file with NO check that it's the LOADED model — deleting the active model left the
+  native handle mapped to a vanished file (next load/switch fails confusingly), and deleting mid-
+  generation would corrupt the decode. Added the guard: if it's the loaded model, 409 while generating,
+  else `unloadModel()` first, then delete. SKIPPED **Q-425** (switch has no RAM-fit gate): the load
+  path already OOM-prevents, and a hard pre-block on the conservative RAM BANDS would wrongly refuse a
+  downloaded borderline model the user deliberately wants — warn-vs-block is better left to the
+  load-time guard. Verified: 437 TS tests, typecheck + lint clean.
+
 - 2026-07-06 (audit R1-R20 batch 23 — Recent opens the conversation) — **Q-313** clicking a Recent
   session only switched the VIEW — it never loaded that session's `id`, so the transcript you clicked
   never appeared (dead link). Built the load path: `useAgentSocket.loadSession(id)` fetches the saved
