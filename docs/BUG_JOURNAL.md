@@ -341,6 +341,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R31 — Q-642 stale launch item) — LAUNCH_CHECKLIST §5 still told the launcher to
+  "replace the Formspree form at website/index.html:339", but that form was removed long ago — the site
+  drives everything through GitHub CTAs (Star/View/Ask on GitHub) and has no `<form>` at all. Marked the
+  item RESOLVED so nobody hunts for a Formspree endpoint that isn't there. Doc-only.
+
 - 2026-07-06 (audit R31 — Q-639 tool-call cap sync) — the tool PROMPT told the model "up to 1/2/3 tool
   calls per response" (by hardware tier), but the executor hardcoded `MAX_CALLS = 5` — so a weak model
   could emit more calls than promised and have them silently run. Extracted the ONE source of truth

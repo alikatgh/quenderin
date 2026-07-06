@@ -39,9 +39,10 @@ You'll see coherent output ("the sky is blue because…") at ~177 tok/s (Mac) / 
 | `website/legal.html:40`   | `[PHONE, if required]` |
 | `website/legal.html:50`   | `[NAME & ADDRESS of the person responsible]` |
 
-## 5. Waitlist form (or remove it)
-- [ ] `website/index.html:339` — replace `action="https://formspree.io/f/your-form-id"` with a
-      real endpoint, **or** delete the `<form>` (the form already degrades honestly until then).
+## 5. Waitlist form — RESOLVED (Q-642)
+- [x] The waitlist `<form>` was removed; the site drives everything through GitHub CTAs instead
+      ("Star on GitHub" / "View on GitHub" / "Ask on GitHub"). There is no Formspree endpoint to
+      configure, so this launch item no longer applies.
 
 ## 6. Website deploy (GitHub Pages)
 - [ ] The deploy workflow needs to live at `.github/workflows/` — pushing it requires a token
