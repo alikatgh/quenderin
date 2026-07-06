@@ -64,6 +64,19 @@ describe('dry run — preview writes, execute reads, change nothing', () => {
         expect(fs.existsSync(path.join(ws, 'a.txt'))).toBe(true);   // untouched
     });
 
+    it('a mixed read+write plan ledgers EVERY step as dryRun (a read never ran, so isn\'t "allowed")', async () => {
+        fs.writeFileSync(path.join(ws, 'a.txt'), 'x');
+        const ledger = new InMemoryAuditLedger();
+        const consent = new InMemoryConsentStore(); ['fs.list', 'fs.move'].forEach(id => consent.setGranted(id, true));
+        const runner = new CapabilityRunner(consent, ledger, undefined, () => 0, undefined, 20, true);
+        await runner.executePlan([
+            { capability: new FsListCapability(workspace), input: '' },              // a read
+            { capability: new FsMoveCapability(workspace), input: 'a.txt to docs' },  // a write
+        ]);
+        expect(ledger.entries().map(e => e.decision)).toEqual(['dryRun', 'dryRun']);   // NOT ['allowed','dryRun']
+        expect(fs.existsSync(path.join(ws, 'a.txt'))).toBe(true);                       // read never ran either
+    });
+
     it('CONTROL: without dry run the same move actually happens', async () => {
         fs.writeFileSync(path.join(ws, 'a.txt'), 'x');
         const consent = new InMemoryConsentStore(); consent.setGranted('fs.move', true);

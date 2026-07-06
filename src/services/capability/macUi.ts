@@ -60,10 +60,17 @@ export class OsascriptMacUi implements MacUi {
             'return out',
         ].join('\n');
         const raw = await this.mac.runAppleScript(script);
-        return raw.split('\n')
-            .map(line => line.split('\t'))
-            .filter(parts => parts.length === 2 && parts[1].trim())
-            .map(([role, label]) => ({ role: role.trim(), label: label.trim() }));
+        // Split on the FIRST tab only, so a label that itself contains a tab is preserved intact
+        // (role is always a single token) rather than silently dropped.
+        const out: MacUiElement[] = [];
+        for (const line of raw.split('\n')) {
+            const i = line.indexOf('\t');
+            if (i < 0) continue;
+            const role = line.slice(0, i).trim();
+            const label = line.slice(i + 1).trim();
+            if (label) out.push({ role, label });
+        }
+        return out;
     }
 
     async click(label: string): Promise<void> {

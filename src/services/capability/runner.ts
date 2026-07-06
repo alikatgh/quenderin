@@ -170,10 +170,12 @@ export class CapabilityRunner {
                 return `Couldn't preview step ${previews.length + 1} (${item.capability.name}): ${String(e)}. Nothing was done.`;
             }
         }
-        // ── Dry run: if any step mutates, show the WHOLE plan and stop — nothing runs.
+        // ── Dry run: if any step mutates, show the WHOLE plan and stop — nothing runs. Every step is
+        //    ledgered 'dryRun', including reads: in preview-only mode NOTHING executed, so logging a
+        //    read as 'allowed' (with a made-up outcome) would misrepresent the audit.
         if (this.dryRun && previews.some(p => p.mutates)) {
             const numbered = previews.map((p, i) => `${i + 1}. ${p.summary}`).join('\n');
-            items.forEach((item, i) => this.log(item.capability, item.input, previews[i].mutates ? 'dryRun' : 'allowed', previews[i].summary));
+            items.forEach((item, i) => this.log(item.capability, item.input, 'dryRun', previews[i].summary));
             return `[dry run] The agent would run this plan (nothing was changed):\n${numbered}`;
         }
         // ── One aggregate approval when anything writes.
