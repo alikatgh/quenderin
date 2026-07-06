@@ -334,7 +334,9 @@ fun main() {
     // placeholder is appended (2), then after it settles to the final text (2). A real streaming
     // engine adds one emit per token in between; the mock (non-streaming fallback) does not.
     check("chat emits user, assistant placeholder, then settle", sizes == listOf(1, 2, 2))
-    check("chat rejects an empty message", runCatching { chat.send("   ") }.isFailure)
+    // Twin-drift fix: an empty send is a SILENT no-op returning "" (matches iOS ChatModel), not a throw.
+    check("chat empty message is a silent no-op (returns \"\", twin of iOS)",
+        chat.send("   ") == "" && chat.messages.map { it.role } == listOf(Role.USER, Role.ASSISTANT))
     check("Q-588: an empty engine reply becomes an honest notice, not a silent blank bubble", run {
         val e = MockInferenceEngine(cannedReply = "")
         e.load(ModelCatalog.smallest, "/dev/null")

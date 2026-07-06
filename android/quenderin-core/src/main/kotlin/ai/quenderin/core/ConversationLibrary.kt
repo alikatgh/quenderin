@@ -59,7 +59,10 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
                 ?.replace("**", "")?.replace("`", "")?.replace("#", "")
                 ?.trim() ?: return ""
             if (trimmed.isEmpty()) return ""
-            val collapsed = trimmed.split(Regex("\\s+")).joinToString(" ")
+            // Twin-drift fix: collapse ALL Unicode whitespace (incl. U+00A0 NBSP), not just ASCII \s. iOS
+            // uses Character.isWhitespace, so an ASCII-only split drifted the persisted title/preview (and
+            // its code-point count → truncation point). [\s\p{Z}] adds the Unicode separators to match.
+            val collapsed = trimmed.split(Regex("[\\s\\p{Z}]+")).joinToString(" ")
             val limit = 80
             val body = if (collapsed.codePointCount(0, collapsed.length) <= limit) {
                 collapsed
@@ -76,7 +79,10 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
         fun titleFromFirstUserMessage(text: String?): String {
             val trimmed = (text ?: "").trim()
             if (trimmed.isEmpty()) return "New conversation"
-            val collapsed = trimmed.split(Regex("\\s+")).joinToString(" ")
+            // Twin-drift fix: collapse ALL Unicode whitespace (incl. U+00A0 NBSP), not just ASCII \s. iOS
+            // uses Character.isWhitespace, so an ASCII-only split drifted the persisted title/preview (and
+            // its code-point count → truncation point). [\s\p{Z}] adds the Unicode separators to match.
+            val collapsed = trimmed.split(Regex("[\\s\\p{Z}]+")).joinToString(" ")
             val limit = 40
             // Truncate by CODE POINTS, not UTF-16 units, so the cut matches iOS's scalar-based cut
             // exactly (cross-platform title parity) AND never lands mid-surrogate (a lone high

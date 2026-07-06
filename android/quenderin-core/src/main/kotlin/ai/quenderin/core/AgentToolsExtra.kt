@@ -162,7 +162,11 @@ object DateCalc {
             val isMinus = lower.contains("minus") || lower.contains("subtract") || lower.contains("before")
             val isPlus = lower.contains("plus") || lower.contains("add") || lower.contains("after")
             if (!isPlus && !isMinus) return null
-            return dates[0].plusDays((if (isMinus) -n else n).toLong()).toString()
+            // Twin-drift fix: LocalDate.plusDays THROWS DateTimeException on year overflow (caps at year
+            // ±999,999,999) and nothing upstream catches it — a huge Int day-offset (well within the parse)
+            // crashed the tool, violating this file's "tolerate LLM garbage, never throw" contract. iOS's
+            // Calendar.date(byAdding:) returns nil instead; runCatching → graceful null fallback here.
+            return runCatching { dates[0].plusDays((if (isMinus) -n else n).toLong()).toString() }.getOrNull()
         }
 
         return null

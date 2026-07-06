@@ -84,8 +84,12 @@ class ChatModel(
     @JvmOverloads
     fun send(text: String, documents: List<AttachedDocument> = emptyList()): String {
         val trimmed = text.trim()
-        // Documents alone are a legitimate send ("summarize this file" with no extra words).
-        require(trimmed.isNotEmpty() || documents.isNotEmpty()) { "Message is empty" }
+        // Documents alone are a legitimate send ("summarize this file" with no extra words). Twin-drift
+        // fix: an empty send is a SILENT no-op (return ""), matching iOS ChatModel's `guard … else { return }`
+        // — the old `require(...)` threw IllegalArgumentException, crashing the send coroutine on Android
+        // while iOS ignored it, and it was inconsistent even with this file's own already-generating guard
+        // (which returns "" too).
+        if (trimmed.isEmpty() && documents.isEmpty()) return ""
         // The user line + placeholder assistant slot + this generation's id are established atomically
         // under the lock, so a concurrent reset/restore either happens fully before (this send sees the
         // new transcript) or fully after (it bumps our id and we drop our writes below), never

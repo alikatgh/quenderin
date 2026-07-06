@@ -352,6 +352,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (TWIN-DRIFT audit — 24 confirmed iOS↔Android drifts; batch 1 fixed) — a 56-agent Opus twin-diff
+  (report: docs/audits/2026-07-06-twin-drift-audit.md; memory [[cross-platform-twin-drift]]) found 24
+  confirmed Swift↔Kotlin drifts. Batch 1 (verified both platforms): **SafetyBlocklist.swift (P2 SECURITY):**
+  ICU `\b` counted a combining mark as a word-char, so `"pin"+U+0301` FAILED-OPEN on iOS while Android
+  blocked it — switched Swift to Kotlin's `(?<![\p{L}\p{N}_])…(?![…])` lookaround boundary (marks are now
+  boundaries → blocks; real words piné/pin½/opinion still pass). **ChatModel.kt (P1):** empty send `require`
+  THREW (crash) vs iOS silent no-op → now returns "". **ConversationLibrary.kt (P1):** title/preview
+  whitespace collapse was ASCII-only (`\s+`) vs iOS all-Unicode → `[\s\p{Z}]+`. **AgentToolsExtra.kt DateCalc
+  (P2):** `plusDays` THREW DateTimeException on year-overflow vs iOS nil → runCatching → null. swift build +
+  CoreVerify green (empty-msg check updated to the new no-op contract). Remaining drifts (P0 SHA re-verify,
+  disk preflight, CapabilityRunner guards, etc.) in the report's Fix-next list.
+
 - 2026-07-06 (adversarial-verify fresh-hunt, Android P2 follow-ups) — two more Compose bugs from the fresh
   hunt. **ChatScreen.kt auto-scroll (P2):** `LaunchedEffect(messages.size, busy)` never re-fired during a
   STREAMING reply (the last message grows token-by-token but the list SIZE is constant) so the bubble

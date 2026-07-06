@@ -37,7 +37,15 @@ public enum SafetyBlocklist {
             // Multi-word phrases ("send money") are specific enough as substrings; single words need
             // word boundaries so "pay" doesn't fire on "repay", "pin" on "opinion", etc. (M9)
             if keyword.contains(" ") { return haystack.contains(keyword) }
-            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+            // Twin-drift SECURITY fix: use an explicit [\p{L}\p{N}_] lookaround boundary (the SAME as the
+            // Kotlin twin), NOT ICU `\b`. ICU's `\b` counts a nonspacing combining mark (\p{Mn}, e.g.
+            // U+0301) as a word char, so "pin"+U+0301 had NO boundary and the keyword FAILED TO MATCH —
+            // iOS/macOS passed it through (fail-OPEN) while Android blocked it. The lookaround excludes
+            // marks from the word class, so a mark adjacent to a keyword IS a boundary → it matches → it
+            // blocks. Real words are unaffected: "piné" (é ∈ \p{L}), "pin½" (½ ∈ \p{N}), "opinion",
+            // "repin", "pin_" all stay non-matches, identical to the Kotlin side.
+            let esc = NSRegularExpression.escapedPattern(for: keyword)
+            let pattern = "(?<![\\p{L}\\p{N}_])\(esc)(?![\\p{L}\\p{N}_])"
             return haystack.range(of: pattern, options: .regularExpression) != nil
         }
     }
