@@ -486,9 +486,15 @@ answer"), and if the model insists, halts `stalled` immediately. The CLI turns t
 actionable message ("the model got stuck repeating itself — try rephrasing, or a bigger model with
 `-m`"). This is the graceful-degradation a big cloud model rarely needs but a small local one does —
 exactly the kind of practical robustness that makes the local agent usable, not just capable.
-(Follow-up: port the same guard to the native Swift/Kotlin `AgentLoop` twins; parity today covers the
-decision PARSER, which is unchanged.) Verified: 354 TS tests (2 new — stuck→one-execution→stalled,
-and nudge→recovery), lint + parity green. Paired with a CLI `--max-steps <n>` (default 8, clamped
+Verified: 354 TS tests (2 new — stuck→one-execution→stalled, and nudge→recovery), lint + parity green.
+
+**Ported to the native twins (2026-07-06):** the same loop guard + parse-failure recovery now live in
+the Swift and Kotlin `AgentLoop` (on-device apps run local models too, so they need it just as much) —
+identical logic, a shared `stalled` halt reason (`STALLED`) with a parity `userMessage`, and the same
+"nudge once, then bail" shape. The `AgentRunExporter` twins gained the `stalled` status line too.
+Twin-drift closed. Verified: Swift `swift test` 284 pass (3 new AgentLoop cases), Kotlin CoreVerify
+ALL PASSED (4 new/updated checks: consecutive-failure planError, single-slip recovery, distinct-input
+maxSteps cap, repeat→STALLED-runs-once), agent-parity green (the decision parser is untouched). Paired with a CLI `--max-steps <n>` (default 8, clamped
 [1,50]): the canonical multi-item chore the user cited ("friend + message 20 users from a list")
 needs *dozens* of steps, and the loop guard is exactly what makes raising the budget safe — distinct
 per-item actions don't trip the consecutive-repeat guard, but a stuck run still bails early. And its

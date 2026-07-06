@@ -758,11 +758,22 @@ fun main() {
         val engine = ScriptedInferenceEngine(listOf("""{"tool":"echo","input":"delete my files and pay"}"""))
         AgentLoop(engine, listOf(EchoTool())).run("do it").haltReason == AgentRun.HaltReason.BLOCKED
     })
-    check("agent loop halts cleanly on a non-JSON plan",
-        AgentLoop(ScriptedInferenceEngine(listOf("not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
+    check("agent loop halts planError after CONSECUTIVE non-JSON replies (one nudge first)",
+        AgentLoop(ScriptedInferenceEngine(listOf("not json", "still not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
+    check("agent loop RECOVERS from a single malformed reply (nudge → proceed)", run {
+        val engine = ScriptedInferenceEngine(listOf("oops not json", """{"answer":"recovered"}"""))
+        val r = AgentLoop(engine, listOf(EchoTool())).run("x")
+        r.haltReason == AgentRun.HaltReason.ANSWERED && r.answer == "recovered"
+    })
     check("agent loop caps runaway steps", run {
-        val engine = ScriptedInferenceEngine(List(10) { """{"tool":"echo","input":"loop"}""" })
+        // Distinct inputs each step so the runaway isn't a stall — this pins the maxSteps cap itself.
+        val engine = ScriptedInferenceEngine(List(10) { """{"tool":"echo","input":"loop$it"}""" })
         AgentLoop(engine, listOf(EchoTool()), maxSteps = 3).run("x").haltReason == AgentRun.HaltReason.MAX_STEPS
+    })
+    check("agent loop halts STALLED when the model repeats the same action (runs it once)", run {
+        val same = """{"tool":"echo","input":"a"}"""
+        val r = AgentLoop(ScriptedInferenceEngine(listOf(same, same, same)), listOf(EchoTool()), maxSteps = 6).run("x")
+        r.haltReason == AgentRun.HaltReason.STALLED && r.steps.size == 1
     })
     check("agent loop streams steps live via onStep", run {
         val engine = ScriptedInferenceEngine(listOf("""{"tool":"calculator","input":"1+1"}""", """{"answer":"done"}"""))

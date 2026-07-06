@@ -6,7 +6,7 @@ data class AgentStep(val decision: AgentDecision, val observation: String?)
 
 /** The result of running the agent to completion. */
 data class AgentRun(val steps: List<AgentStep>, val answer: String?, val haltReason: HaltReason) {
-    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR }
+    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR, STALLED }
 }
 
 /**
@@ -20,6 +20,7 @@ val AgentRun.HaltReason.userMessage: String?
         AgentRun.HaltReason.MAX_STEPS -> "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
         AgentRun.HaltReason.BLOCKED -> "The agent stopped: a step was blocked by the on-device safety filter."
         AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
+        AgentRun.HaltReason.STALLED -> "The agent got stuck repeating the same step. Try rephrasing the goal."
     }
 
 /**
@@ -42,6 +43,14 @@ class AgentLoop(
     fun run(goal: String, onStep: (AgentStep) -> Unit = {}): AgentRun {
         val steps = mutableListOf<AgentStep>()
         var transcript = preamble(goal)
+        // Reliability guards for a weak on-device model (twins of the desktop CapabilityAgent):
+        // `parseFailures` recovers from malformed JSON (nudge + retry, not instant death); `stall`
+        // catches the model re-emitting the SAME action (nudge, then halt STALLED). Both nudge the
+        // transcript only — a nudge isn't a step the agent took.
+        var prevSig: String? = null
+        var lastObs = ""
+        var stall = 0
+        var parseFailures = 0
 
         fun record(step: AgentStep) {
             steps.add(step)
@@ -55,28 +64,47 @@ class AgentLoop(
                 return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
             }
             val decision = AgentDecisionParser.parse(reply)
-                ?: return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
+            if (decision == null) {
+                // Malformed output: nudge with the contract and retry; halt only if it slips again.
+                parseFailures++
+                if (parseFailures >= 2) return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
+                transcript += "\n" + PARSE_NUDGE
+                return@repeat
+            }
+            parseFailures = 0
 
-            when (decision) {
-                is AgentDecision.FinalAnswer -> {
-                    // The safety gate also applies to the final answer (H14): a jailbroken/fine-tuned
-                    // on-device model could emit blocked content as an answer, bypassing the tool-only gate.
-                    if (SafetyBlocklist.isBlocked(decision.answer)) {
-                        record(AgentStep(decision, "Refused: answer touches a blocked topic."))
-                        return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
-                    }
-                    record(AgentStep(decision, null))
-                    return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
+            // A final answer has no action to repeat — handle (and safety-gate, H14) before the guard.
+            if (decision is AgentDecision.FinalAnswer) {
+                if (SafetyBlocklist.isBlocked(decision.answer)) {
+                    record(AgentStep(decision, "Refused: answer touches a blocked topic."))
+                    return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                 }
+                record(AgentStep(decision, null))
+                return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
+            }
+
+            // Stuck detection: the model re-proposed the exact action it just ran. Don't re-execute
+            // (that repeats side effects / re-fails identically) — nudge, and bail if it insists.
+            val sig = signatureOf(decision)
+            if (sig == prevSig) {
+                stall++
+                if (stall >= 2) return AgentRun(steps, null, AgentRun.HaltReason.STALLED)
+                transcript += "\nYou already ran $sig and got: $lastObs — do something different, or reply {\"answer\":\"…\"} if the task is done."
+                return@repeat
+            }
+            stall = 0
+
+            val observation: String = when (decision) {
+                is AgentDecision.FinalAnswer -> ""   // unreachable — handled above
                 is AgentDecision.UseTool -> {
                     // Safety gate — refuse blocked actions before they ever run.
                     if (SafetyBlocklist.isBlocked(decision.input) || SafetyBlocklist.isBlocked(decision.name)) {
                         record(AgentStep(decision, "Refused: touches a blocked action."))
                         return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                     }
-                    val observation = execute(decision.name, decision.input)
-                    record(AgentStep(decision, observation))
-                    transcript += "\nUsed ${decision.name}(${decision.input}) → $observation"
+                    val obs = execute(decision.name, decision.input)
+                    transcript += "\nUsed ${decision.name}(${decision.input}) → $obs"
+                    obs
                 }
                 is AgentDecision.Plan -> {
                     // Safety gate per step, BEFORE anything runs — a plan containing a blocked
@@ -94,15 +122,31 @@ class AgentLoop(
                         if (capability == null) { unknown = call.name; break }
                         resolved.add(capability to call.input)
                     }
-                    val observation = if (unknown != null) "No such tool: $unknown. Plan not executed."
+                    val obs = if (unknown != null) "No such tool: $unknown. Plan not executed."
                     else runner.executePlan(resolved)
-                    record(AgentStep(decision, observation))
                     val described = decision.calls.joinToString(", ") { "${it.name}(${it.input})" }
-                    transcript += "\nProposed plan [$described] → $observation"
+                    transcript += "\nProposed plan [$described] → $obs"
+                    obs
                 }
             }
+
+            record(AgentStep(decision, observation))
+            prevSig = sig
+            lastObs = observation
         }
         return AgentRun(steps, null, AgentRun.HaltReason.MAX_STEPS)
+    }
+
+    /** A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing. */
+    private fun signatureOf(decision: AgentDecision): String = when (decision) {
+        is AgentDecision.FinalAnswer -> "answer"
+        is AgentDecision.UseTool -> "${decision.name}(${decision.input})"
+        is AgentDecision.Plan -> "plan[" + decision.calls.joinToString(", ") { "${it.name}(${it.input})" } + "]"
+    }
+
+    private companion object {
+        /** The corrective nudge shown after a malformed reply — the exact JSON contract, once. */
+        const val PARSE_NUDGE = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
     }
 
     private fun execute(name: String, input: String): String {

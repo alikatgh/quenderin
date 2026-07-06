@@ -9,7 +9,7 @@ public struct AgentStep: Sendable, Equatable {
 
 /// The result of running the agent to completion.
 public struct AgentRun: Sendable, Equatable {
-    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError }
+    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError, stalled }
     public let steps: [AgentStep]
     public let answer: String?
     public let haltReason: HaltReason
@@ -25,6 +25,7 @@ public extension AgentRun.HaltReason {
         case .maxSteps:  return "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
         case .blocked:   return "The agent stopped: a step was blocked by the on-device safety filter."
         case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
+        case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
         }
     }
 }
@@ -56,6 +57,14 @@ public struct AgentLoop: Sendable {
     ) async -> AgentRun {
         var steps: [AgentStep] = []
         var transcript = preamble(goal: goal)
+        // Reliability guards for a weak on-device model (twins of the desktop CapabilityAgent):
+        // `parseFailures` recovers from malformed JSON (nudge + retry, not instant death); `stall`
+        // catches the model re-emitting the SAME action (nudge, then halt .stalled). Both nudge the
+        // transcript only — a nudge isn't a step the agent took.
+        var prevSig: String?
+        var lastObs = ""
+        var stall = 0
+        var parseFailures = 0
 
         func record(_ step: AgentStep) {
             steps.append(step)
@@ -71,19 +80,43 @@ public struct AgentLoop: Sendable {
             }
 
             guard let decision = AgentDecisionParser.parse(reply) else {
-                return AgentRun(steps: steps, answer: nil, haltReason: .planError)
+                // Malformed output: nudge with the contract and retry; halt only if it slips again.
+                parseFailures += 1
+                if parseFailures >= 2 {
+                    return AgentRun(steps: steps, answer: nil, haltReason: .planError)
+                }
+                transcript += "\n" + Self.parseNudge
+                continue
             }
+            parseFailures = 0
 
-            switch decision {
-            case .finalAnswer(let answer):
-                // The safety gate also applies to the final answer (H14): a jailbroken/fine-tuned
-                // on-device model could emit blocked content as an answer, bypassing the tool-only gate.
+            // A final answer has no action to repeat — handle (and safety-gate, H14) before the guard.
+            if case .finalAnswer(let answer) = decision {
                 if SafetyBlocklist.isBlocked(answer) {
                     record(AgentStep(decision: decision, observation: "Refused: answer touches a blocked topic."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
                 record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
+            }
+
+            // Stuck detection: the model re-proposed the exact action it just ran. Don't re-execute
+            // (that repeats side effects / re-fails identically) — nudge, and bail if it insists.
+            let sig = Self.signature(of: decision)
+            if sig == prevSig {
+                stall += 1
+                if stall >= 2 {
+                    return AgentRun(steps: steps, answer: nil, haltReason: .stalled)
+                }
+                transcript += "\nYou already ran \(sig) and got: \(lastObs) — do something different, or reply {\"answer\":\"…\"} if the task is done."
+                continue
+            }
+            stall = 0
+
+            let observation: String
+            switch decision {
+            case .finalAnswer:
+                observation = ""   // unreachable — handled above
 
             case .useTool(let name, let input):
                 // Safety gate — refuse blocked actions before they ever run.
@@ -91,9 +124,7 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "Refused: touches a blocked action."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
-
-                let observation = await execute(name: name, input: input)
-                record(AgentStep(decision: decision, observation: observation))
+                observation = await execute(name: name, input: input)
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
 
             case .plan(let calls):
@@ -114,19 +145,36 @@ public struct AgentLoop: Sendable {
                     }
                     resolved.append((capability, call.input))
                 }
-                let observation: String
                 if let unknown {
                     observation = "No such tool: \(unknown). Plan not executed."
                 } else {
                     observation = await runner.executePlan(resolved)
                 }
-                record(AgentStep(decision: decision, observation: observation))
                 let described = calls.map { "\($0.name)(\($0.input))" }.joined(separator: ", ")
                 transcript += "\nProposed plan [\(described)] → \(observation)"
             }
+
+            record(AgentStep(decision: decision, observation: observation))
+            prevSig = sig
+            lastObs = observation
         }
 
         return AgentRun(steps: steps, answer: nil, haltReason: .maxSteps)
+    }
+
+    /// The corrective nudge shown after a malformed reply — the exact JSON contract, once.
+    static let parseNudge = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+
+    /// A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing.
+    static func signature(of decision: AgentDecision) -> String {
+        switch decision {
+        case .finalAnswer:
+            return "answer"
+        case .useTool(let name, let input):
+            return "\(name)(\(input))"
+        case .plan(let calls):
+            return "plan[" + calls.map { "\($0.name)(\($0.input))" }.joined(separator: ", ") + "]"
+        }
     }
 
     private func execute(name: String, input: String) async -> String {

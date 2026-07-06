@@ -22,6 +22,7 @@ public enum AgentRunExporter {
         case .maxSteps:  status = "stopped at the step limit"
         case .blocked:   status = "stopped by the safety filter"
         case .planError: status = "stopped (could not form a plan)"
+        case .stalled:   status = "stopped (stuck repeating a step)"
         }
         var toolsUsed: [String] = []
         for step in run.steps {

@@ -99,11 +99,36 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(run.steps.count, 2)
     }
 
-    func testHaltsOnUnparseablePlan() async {
-        let engine = ScriptedInferenceEngine(replies: ["I refuse to emit JSON"])
+    func testHaltsOnUnparseablePlanAfterConsecutiveFailures() async {
+        // A weak model gets ONE corrective nudge; two malformed replies in a row halt planError.
+        let engine = ScriptedInferenceEngine(replies: ["I refuse to emit JSON", "still no JSON"])
         let loop = AgentLoop(engine: engine, tools: [])
         let run = await loop.run(goal: "x")
         XCTAssertEqual(run.haltReason, .planError)
+    }
+
+    func testRecoversFromOneMalformedReply() async {
+        // The nudge lets the model fix its formatting and continue — one slip shouldn't kill the run.
+        let engine = ScriptedInferenceEngine(replies: [
+            "oops, not JSON",
+            #"{"answer":"recovered"}"#,
+        ])
+        let loop = AgentLoop(engine: engine, tools: [EchoTool()])
+        let run = await loop.run(goal: "x")
+
+        XCTAssertEqual(run.haltReason, .answered)
+        XCTAssertEqual(run.answer, "recovered")
+    }
+
+    func testHaltsStalledWhenRepeatingTheSameAction() async {
+        // A model stuck re-emitting the same tool halts .stalled and runs the side effect only once.
+        let same = #"{"tool":"echo","input":"a"}"#
+        let engine = ScriptedInferenceEngine(replies: [same, same, same])
+        let loop = AgentLoop(engine: engine, tools: [EchoTool()], maxSteps: 6)
+        let run = await loop.run(goal: "stuck")
+
+        XCTAssertEqual(run.haltReason, .stalled)
+        XCTAssertEqual(run.steps.count, 1)   // executed once; the repeats were nudged, not re-run
     }
 
     func testUnknownToolIsObservedNotFatal() async {
@@ -127,7 +152,7 @@ final class AgentLoopTests: XCTestCase {
 
     func testEveryNonAnswerHaltExplainsItself() {
         // Each silent dead-end must give the user a non-empty, distinct reason.
-        let reasons: [AgentRun.HaltReason] = [.maxSteps, .blocked, .planError]
+        let reasons: [AgentRun.HaltReason] = [.maxSteps, .blocked, .planError, .stalled]
         let messages = reasons.map { $0.userMessage }
         XCTAssertTrue(messages.allSatisfy { ($0?.isEmpty == false) })
         XCTAssertEqual(Set(messages.compactMap { $0 }).count, reasons.count)
