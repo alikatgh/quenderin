@@ -352,6 +352,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R29/R23 — Q-610 doc fix + Q-541/542/545 triage) — **Q-610** website/README "Configure
+  before launch" still told the launcher to set a Formspree endpoint; the site has NO `<form>` (removed in
+  Q-642) and uses GitHub CTAs — reworded to say so. **By-design (no change):** Q-545 (voice `command`
+  starts the agent with "no auth" — it's a PHYSICAL-hardware trigger gated by PICOVOICE_ACCESS_KEY + mic
+  access, not a network request the per-launch token model covers, and the spoken goal still runs
+  assertGoalSafe), Q-542 (single `activeWs` — one active connection is fine for a local single-user tool;
+  Q-596 already fixed the session side), Q-541 (chat_stream backpressure has no UI indicator — acceptable
+  for a localhost socket; tokens are best-effort and the final settle carries the full text).
+
 - 2026-07-06 (audit R24 — Q-549 legacy-agent governance, ANALYSIS not a rewrite) — the dashboard drives
   the device via the legacy `AgentService` (continuous observe→decide→act loop), not the governed
   `createGovernedAgent`/`CapabilityRunner` path. These are DIFFERENT execution models, not two impls of

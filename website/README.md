@@ -78,9 +78,9 @@ Import the repo → set **Root Directory** to `website`. `vercel.json` handles t
 
 ## Configure before launch
 
-- **Waitlist form** — `index.html` has a `<form action="https://formspree.io/f/your-form-id">`.
-  Replace that endpoint with your own [Formspree](https://formspree.io) (or other)
-  form ID. The "Star on GitHub" CTA works without any setup.
+- **Waitlist form** — none. The site drives everything through GitHub CTAs
+  ("Star on GitHub" / "View on GitHub" / "Ask on GitHub"), so there's no form
+  endpoint to configure (the old Formspree `<form>` was removed — see Q-642).
 - **Custom domain** — update the `canonical`, Open Graph `og:url`/`og:image`, and
   `sitemap.xml`/`robots.txt` URLs from `alikatgh.github.io/quenderin` to your domain.
 - **OG image** — `og-image.svg` works on most platforms; some social scrapers
