@@ -4,6 +4,7 @@ import os from 'os';
 import { pipeline, env } from '@xenova/transformers';
 import logger from '../utils/logger.js';
 import { sanitizeNoteFilename, sanitizeNoteTitle } from '../utils/notes.js';
+import { redactSecrets } from './capability/redaction.js';
 
 export interface NoteSummary {
     filename: string;
@@ -185,7 +186,9 @@ export class MemoryService {
                 });
 
                 await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
-                logger.info(`Memory forcefully updated with Manual Override for goal: ${goal}`);
+                // Q-644: redact any secret in the goal before logging (a credential typed into a goal
+                // must not persist in the log — same rule as Q-357).
+                logger.info(`Memory forcefully updated with Manual Override for goal: ${redactSecrets(goal)}`);
             } catch (error) {
                 logger.error('Failed to inject manual override memory:', error);
             }
