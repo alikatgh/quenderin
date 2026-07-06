@@ -3,10 +3,37 @@
  * requires this token on the WS upgrade AND on state-changing HTTP routes. Electron delivers it via
  * the preload (`window.quenderinAuth`); the CLI/browser path via the opened URL's `?token=`.
  */
+
+/**
+ * Q-525: pure helper — pull `token` out of a query string and rebuild the URL WITHOUT it, preserving
+ * any other params + the hash. Kept DOM-free so it's unit-testable. `authToken()` uses it to strip the
+ * token from the address bar (see below).
+ */
+export function extractAndStripToken(search: string, pathname: string, hash: string): { token: string; cleanUrl: string } {
+    const params = new URLSearchParams(search);
+    const token = params.get('token') ?? '';
+    params.delete('token');
+    const qs = params.toString();
+    return { token, cleanUrl: pathname + (qs ? `?${qs}` : '') + hash };
+}
+
+// Captured ONCE at first use. `null` = not read yet; `''` = read, none present.
+let cachedToken: string | null = null;
+
 export function authToken(): string {
-    return (window as { quenderinAuth?: { token?: string } }).quenderinAuth?.token
-        || new URLSearchParams(window.location.search).get('token')
-        || '';
+    if (cachedToken !== null) return cachedToken;
+    // Electron: the preload delivers it out-of-band (never in the URL) — nothing to strip.
+    const fromPreload = (window as { quenderinAuth?: { token?: string } }).quenderinAuth?.token;
+    if (fromPreload) { cachedToken = fromPreload; return cachedToken; }
+    // CLI/browser: it arrives in `?token=`. Read it once, then Q-525: strip it from the URL with
+    // replaceState (no navigation/reload) so it doesn't linger in the address bar, browser history, or
+    // a bookmark — a shoulder-surf + history-exfil vector. We keep the value cached for the session.
+    const { token, cleanUrl } = extractAndStripToken(window.location.search, window.location.pathname, window.location.hash);
+    if (token) {
+        try { window.history.replaceState(null, '', cleanUrl); } catch { /* non-browser / restricted */ }
+    }
+    cachedToken = token;
+    return cachedToken;
 }
 
 /**

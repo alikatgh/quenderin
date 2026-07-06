@@ -341,6 +341,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-06 (audit R21-R30 Wave 1 — Q-525 token out of the URL) — the CLI/browser path delivers the
+  auth token in `?token=`, and `authToken()` re-read it from `window.location.search` on EVERY call, so
+  it lingered in the address bar / browser history / bookmarks (shoulder-surf + history-exfil vector).
+  Now read ONCE and cached, and stripped from the URL with `history.replaceState` (no navigation/reload)
+  the first time — other query params + the hash preserved. Complements the server-side Q-355 log
+  redaction. Extracted the DOM-free core `extractAndStripToken` → 3 tests (strip, preserve params+hash,
+  none-present). 443 tests (+3), typecheck:ui + lint:ui clean.
+
 - 2026-07-06 (audit R21-R30 Wave 1 — **Q-523/Q-537** the agent kill switch) — the agent had pause
   (park + resume) but NO hard-stop, and `generateAction` took no AbortSignal, so a running mission
   couldn't be halted mid-decode. Built it end-to-end: **Q-537** threaded an optional `signal` through
