@@ -4,7 +4,8 @@
 
 <h1 align="center">Quenderin</h1>
 
-<p align="center"><strong>A personal AI that lives on your device — not in someone's cloud.</strong></p>
+<p align="center"><strong>An AI that runs on your device — and can run it for you.</strong></p>
+<p align="center">Private on-device chat, and a local computer-use agent — a governed, private alternative to cloud agents like Cowork.</p>
 
 <p align="center">
   <a href="https://quenderin.org">quenderin.org</a> ·
@@ -39,8 +40,13 @@ graded **Quality: Low**, in the UI, on purpose).
 - **A task router** that suggests the best *installed* model for each new chat (code →
   the coder model, reasoning → the reasoning model) — a one-tap suggestion, never a
   silent switch.
-- **A tool-using agent** (calculator, unit converter, dates) with a hard safety
-  blocklist: it will never autonomously pay, delete, transfer, or touch credentials.
+- **A local computer-use agent** — on a Mac, `quenderin do "<goal>"` organizes files, drives
+  any app (via accessibility), and runs your Apple Shortcuts, all governed by a trust loop a
+  cloud agent can't match: it asks before every change, keeps a reviewable per-task log
+  (`quenderin history`), can undo a whole task even in a new session (`quenderin undo`), and
+  previews without touching anything (`--dry-run`) — plus a hard safety blocklist it can't
+  override (never autonomously pay, delete, transfer, or touch credentials). [Why local beats
+  the cloud here](https://quenderin.org/why-local-agent.html).
 - **Guardrails that respect you**: repetition-loop detection, split-character-safe
   streaming (Cyrillic and emoji arrive intact), honest empty-reply notices, and a
   [public ledger of every failure mode we know about](docs/KNOWN_FAILURE_MODES.md).
@@ -71,6 +77,17 @@ quenderin chat                      # interactive REPL (slash commands: /model /
 quenderin models                    # what's installed / downloadable
 quenderin download llama32-1b       # fetch a model
 git diff | quenderin chat -p "review this change"    # pipe mode: one answer, plain stdout
+```
+
+And on a Mac, the **computer-use agent** — every change asks first, and nothing leaves the machine:
+
+```bash
+quenderin capabilities                                  # everything it can do, by tier
+quenderin do "organize this" --workspace ~/Downloads    # governed file tasks (undoable)
+quenderin do "reply to the top email" --gui             # click/type in any app via accessibility
+quenderin do "..." --dry-run                            # rehearse: show what it would do, change nothing
+quenderin history                                       # a per-task audit log of what it did
+quenderin undo                                          # reverse the last task — even in a new session
 ```
 
 ## Getting started
