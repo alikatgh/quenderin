@@ -789,14 +789,28 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         }
                     }
                 }
+                // Report what flash-attention ACTUALLY is, not what we asked for. createContext
+                // accepts `flashAttention: true` and then SILENTLY turns it off (a warning, no throw)
+                // when the model/arch can't support it (Grok, Gemma2, unsupported head dims) — so
+                // `useFlashAttention` (our request) lied "on" while the real decode ran without it,
+                // masking a ~15-25% throughput gap in every diagnostic. The context exposes the real
+                // state via `.flashAttention`; trust that, and keep the request as the fallback for a
+                // binding old enough not to have the getter.
+                const modelSupportsFlash = typeof (model as any)?.flashAttentionSupported === 'boolean'
+                    ? (model as any).flashAttentionSupported : undefined;
+                const ctxFlash = (context as any)?.flashAttention;
+                const actualFlashAttention = typeof ctxFlash === 'boolean' ? ctxFlash : useFlashAttention;
+                if (useFlashAttention && !actualFlashAttention) {
+                    logger.warn(`[LLM] Flash attention was requested but the model does not support it${modelSupportsFlash === false ? ' (flashAttentionSupported=false)' : ''} — decode runs without it.`);
+                }
                 const ctxNote = actualCtx === requestedCtx ? `${actualCtx}` : `${actualCtx} (requested ${requestedCtx})`;
-                logger.log(`[LLM] Context ready: ${ctxNote} tokens, flashAttention=${useFlashAttention ? 'on' : 'off'}, gpu=${resolvedGpuBackend}, tier=${HW.tier}`);
+                logger.log(`[LLM] Context ready: ${ctxNote} tokens, flashAttention=${actualFlashAttention ? 'on' : 'off'}${modelSupportsFlash === false ? ' (unsupported by model)' : ''}, gpu=${resolvedGpuBackend}, tier=${HW.tier}`);
                 this.modelInstance = model;
                 this.contextInstance = context;
                 this.loadedModelId = selected.entry.id;
                 this.modelLoadTimestamp = Date.now();
                 this.gpuBackendUsed = resolvedGpuBackend;
-                this.flashAttentionActive = useFlashAttention;
+                this.flashAttentionActive = actualFlashAttention;
                 this.actualContextSize = actualCtx;
                 this.startMemoryPressureMonitor();
                 return { model, context };

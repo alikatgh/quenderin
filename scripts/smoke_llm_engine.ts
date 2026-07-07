@@ -74,7 +74,11 @@ if (process.argv.includes('--bench')) {
         const sorted = [...timings.slice(1)].sort((a, b) => a - b);   // step 1 pays the model load
         const p50 = sorted[Math.floor(sorted.length / 2)];
         const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+        // Surface the ACTUAL decode config (read back from the context, not requested) so the
+        // numbers are attributable: a flashAttention=off run is a different regime than =on.
+        const info = llm.getModelLifecycleInfo();
         console.log(`\nBench (${N} cached steps, ${llm.getActiveModelLabel()}):`);
+        console.log(`  engine: gpu=${info.gpuBackend}, flashAttention=${info.flashAttention ? 'on' : 'off'}`);
         console.log(`  step1 (incl. load): ${timings[0].toFixed(0)}ms`);
         console.log(`  cached p50: ${p50.toFixed(0)}ms   p95: ${p95.toFixed(0)}ms`);
         console.log(`  fresh-sequence control: ${freshMs.toFixed(0)}ms   speedup ×${(freshMs / p50).toFixed(2)}`);

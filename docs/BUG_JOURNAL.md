@@ -377,6 +377,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (flashAttention diagnostic reported the request, not reality) — `flashAttentionActive`
+  was set from our request var; node-llama-cpp's `createContext({flashAttention:true})` SILENTLY
+  turns it off (warning, no throw) for unsupported archs (Grok/Gemma2/bad head dims), so every log
+  + lifecycle read claimed "on" while decode ran without it — masking a ~15-25% throughput gap.
+  Fix: read the real state from `context.flashAttention`; surface it in the bench. Lesson: never
+  report a requested capability as active — read the post-creation state back from the library.
+
 - 2026-07-07 (Android device.status locale drift) — DevicePerception.kt formatted free-GB with
   `"%.1f".format()` (default locale → "1,5" in de/fr, Eastern-Arabic digits in ar) while the iOS
   twin's `String(format:)` renders POSIX ("1.5"). This string is MODEL-FACING (device.status tool
