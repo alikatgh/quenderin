@@ -277,7 +277,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** Start the conversation over without unloading the model (CLI `/clear`, UI "new chat"). */
     public resetChat(): void {
         this.disposeChatSession();
-        this.chatTurnCount = 0;
     }
 
     constructor() {
@@ -492,7 +491,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.grammarCache.clear();
         void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
         void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
-        this.chatTurnCount = 0;
         this.initPromise = null;
         this.loadedModelId = null;
         this.activeModelEntry = null;
@@ -1131,18 +1129,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
     }
 
-    // Tracks how many turns the current generalChatSession has seen.
-    // Scale max turns with the actual context the hardware can handle:
-    //   256 ctx → 3 turns, 512 → 6, 1024 → 12, 2048 → 20
-    private chatTurnCount: number = 0;
-    private get MAX_CHAT_TURNS(): number {
-        // Budget against the context that was ACTUALLY created — the fallback chain can halve the
-        // request or drop to the hardware floor, and auto-tuning routinely shrinks it below the
-        // user setting. Budgeting on the setting let a 25-turn budget loose on a 512-token context.
-        const ctxSize = this.actualContextSize > 0 ? this.actualContextSize : this.currentSettings.contextSize;
-        return Math.max(3, Math.min(25, Math.floor(ctxSize / 100)));
-    }
-
     public async generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string> {
         this.isGeneratingAction = true;
         try {
@@ -1261,13 +1247,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             typeof _llamaBindings?.defineChatSessionFunction === 'function';
 
         const ensureSession = () => {
-            // Reset session when it approaches the context limit to prevent OOM.
-            // At ~80 tokens/turn and a 2048-token context the session starts thrashing around turn 20.
-            if (!this.generalChatSession || this.chatTurnCount >= this.MAX_CHAT_TURNS) {
-                if (this.chatTurnCount >= this.MAX_CHAT_TURNS) {
-                    logger.log(`[LLM] Chat session reached ${this.MAX_CHAT_TURNS} turns — resetting to free context window`);
-                }
-                // Free the outgoing session's KV-cache sequence slot before allocating a new one,
+            // NO periodic amnesia reset. The old code disposed the session every MAX_CHAT_TURNS
+            // (≈20) turns — total conversation memory loss the user could feel. node-llama-cpp's
+            // built-in contextShift keeps an overflowing session alive with the SYSTEM PROMPT
+            // pinned and recent turns retained (live-verified 2026-07-07 on a 512-token context:
+            // 14 turns of real overflow, no crash, ~2× turn latency while shifting, the system
+            // prompt's facts still recalled at the end). A session is created only when missing;
+            // explicit resets (resetChat, preset switch, timeout retry) still dispose it.
+            if (!this.generalChatSession) {
+                // Free any outgoing session's KV-cache sequence slot before allocating a new one,
                 // or the slot leaks and context.getSequence() below eventually throws "No sequences left".
                 this.disposeChatSession();
                 // plainChat (the CLI): skip the ~465-token tool preamble. On a RAM-pressed
@@ -1288,7 +1276,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
                 });
-                this.chatTurnCount = 0;
             }
         };
 
@@ -1440,7 +1427,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             };
 
             logger.log(`[LLM] Finished streaming. ${meta.tokenCount} tokens @ ${meta.tokensPerSecond} tok/s, TTFT ${meta.timeToFirstTokenMs}ms${toolCallCount > 0 ? ` (${toolCallCount} tool calls)` : ''}`);
-            this.chatTurnCount++;
             this.isGeneratingChat = false;
             this.tokenBuffer = "";
             this.chatAbort = null;

@@ -377,6 +377,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (chat amnesia every ~20 turns) — generalChat disposed its session at MAX_CHAT_TURNS,
+  wiping ALL conversation memory on a schedule. Live experiment (512-token ctx, 14 overflowing
+  turns) proved node-llama-cpp's built-in contextShift keeps the session alive with the system
+  prompt PINNED and recent turns retained (~2× turn latency while shifting; early facts recalled
+  after eviction). Removed the turn cap + counter entirely; explicit resets (resetChat, preset
+  switch, timeout retry) remain. Lesson: before hand-rolling a lifecycle guard, TEST whether the
+  library already handles the failure mode — ours traded a solved problem for scheduled amnesia.
+
 - 2026-07-07 (intent skip-path sent math to the tap loop) — the LLM-skip branch mapped
   `isChat = intent === 'chat'`, but the classifier's only HIGH-confidence intents are math/code —
   so "what is 2+2?" went to device-tapping ACTION mode wherever the skip fired. Fix:
