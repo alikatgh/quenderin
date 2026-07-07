@@ -39,4 +39,45 @@ object AgentGoalHistory {
         val trimmed = goal.trim()
         return entries.filter { it.goal != trimmed }
     }
+
+    /**
+     * Encode to a portable, dependency-free string — one escaped `lastUsedAt\tgoal` row per entry,
+     * the same wire discipline as [ConversationStore] (real tabs/newlines are escaped, so tab and
+     * newline are safe separators and any goal text round-trips intact). The app edge owns WHERE
+     * the string lives; this object owns only the shape.
+     */
+    fun encode(entries: List<AgentGoalEntry>): String =
+        entries.joinToString("\n") { "${it.lastUsedAt}\t${escape(it.goal)}" }
+
+    /** Decode; blank/corrupt input is an EMPTY history, never an error (losing a recents list
+     *  must not break the agent screen). A torn row is dropped, the rest survive. */
+    fun decode(text: String): List<AgentGoalEntry> {
+        if (text.isBlank()) return emptyList()
+        return text.split("\n").mapNotNull { line ->
+            val fields = line.split('\t')
+            if (fields.size != 2) return@mapNotNull null
+            val ts = fields[0].toLongOrNull() ?: return@mapNotNull null
+            val goal = unescape(fields[1])
+            if (goal.isEmpty()) null else AgentGoalEntry(goal, ts)
+        }
+    }
+
+    private fun escape(s: String): String =
+        s.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
+    private fun unescape(s: String): String = buildString {
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c == '\\' && i + 1 < s.length) {
+                when (s[i + 1]) {
+                    '\\' -> append('\\'); 'n' -> append('\n'); 'r' -> append('\r'); 't' -> append('\t')
+                    else -> { append(c); append(s[i + 1]) }
+                }
+                i += 2
+            } else {
+                append(c); i += 1
+            }
+        }
+    }
 }

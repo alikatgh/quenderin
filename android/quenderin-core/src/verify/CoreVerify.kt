@@ -1799,6 +1799,15 @@ fun main() {
         list = AgentGoalHistory.record("drop", 2, list)
         AgentGoalHistory.remove("drop", list).map { it.goal } == listOf("keep")
     })
+    check("goal history encode/decode round-trips hostile text; corrupt input decodes empty", run {
+        var list = AgentGoalHistory.record("tabs\tand\nnewlines \\ backslash", 41, emptyList())
+        list = AgentGoalHistory.record("plain goal", 42, list)
+        val roundtrip = AgentGoalHistory.decode(AgentGoalHistory.encode(list)) == list
+        val empty = AgentGoalHistory.decode("").isEmpty() && AgentGoalHistory.decode("notvalid").isEmpty()
+        val tornRowDropped = AgentGoalHistory.decode("42\tok goal\ngarbage-no-tab\n43\talso ok")
+            .map { it.goal } == listOf("ok goal", "also ok")
+        roundtrip && empty && tornRowDropped
+    })
 
     println()
     if (failures == 0) {

@@ -1,5 +1,7 @@
 package ai.quenderin.app
 
+import ai.quenderin.core.AgentGoalEntry
+import ai.quenderin.core.AgentGoalHistory
 import ai.quenderin.core.ConsentStore
 import android.content.Context
 import android.database.Cursor
@@ -19,6 +21,50 @@ class PrefsConsentStore(context: Context) : ConsentStore {
     override fun isGranted(capabilityId: String): Boolean = prefs.getBoolean(capabilityId, false)
     override fun setGranted(capabilityId: String, granted: Boolean) {
         prefs.edit().putBoolean(capabilityId, granted).apply()
+    }
+}
+
+/**
+ * Persistent recents for agent goals — the app edge of core [AgentGoalHistory] (which owns ALL
+ * the policy: trim, dedupe-to-top, cap; CoreVerify-pinned in lockstep with the iOS twin's tests).
+ * SharedPreferences-backed like the workspace grant and consent on this same screen: `apply()`
+ * persists asynchronously, so record-at-submit never does disk I/O on the main thread. Twin of
+ * Swift `AgentGoalHistoryStore` (which uses a JSON file — the POLICY is the cross-platform twin,
+ * each edge keeps its platform's native persistence idiom).
+ */
+class AgentGoalHistoryStore(context: Context) {
+    private val prefs = context.getSharedPreferences("quenderin", Context.MODE_PRIVATE)
+
+    var entries: List<AgentGoalEntry> = AgentGoalHistory.decode(prefs.getString(KEY, "") ?: "")
+        private set
+
+    /** Record a submitted goal (recents semantics — newest first, deduped, capped). */
+    fun record(goal: String): List<AgentGoalEntry> {
+        entries = AgentGoalHistory.record(goal, System.currentTimeMillis(), entries)
+        persist()
+        return entries
+    }
+
+    /** Remove one goal from the list. */
+    fun remove(goal: String): List<AgentGoalEntry> {
+        entries = AgentGoalHistory.remove(goal, entries)
+        persist()
+        return entries
+    }
+
+    /** Forget everything — the user's one-tap privacy affordance. */
+    fun clear(): List<AgentGoalEntry> {
+        entries = emptyList()
+        persist()
+        return entries
+    }
+
+    private fun persist() {
+        prefs.edit().putString(KEY, AgentGoalHistory.encode(entries)).apply()
+    }
+
+    private companion object {
+        const val KEY = "agent.goalHistory"
     }
 }
 

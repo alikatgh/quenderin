@@ -1,11 +1,13 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.AgentGoalHistoryStore
 import ai.quenderin.app.DocTree
 import ai.quenderin.app.DocUndoJournal
 import ai.quenderin.app.PrefsConsentStore
 import ai.quenderin.app.SafDocTree
 import ai.quenderin.app.copyAttachmentToCache
 import ai.quenderin.app.docWorkspaceCapabilities
+import ai.quenderin.core.AgentGoalEntry
 import ai.quenderin.core.ActionPreview
 import ai.quenderin.core.AgentDecision
 import ai.quenderin.core.AgentRun
@@ -88,6 +90,11 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     var running by remember { mutableStateOf(false) }
     var haltReason by remember { mutableStateOf<AgentRun.HaltReason?>(null) }
     var goal by remember { mutableStateOf("") }
+    // Every goal the user has run, newest first — the re-use affordance (twin of iOS
+    // AgentRecentGoals). The store persists via SharedPreferences (async apply, no
+    // main-thread I/O); this snapshot mirrors it into Compose state.
+    val goalHistory = remember { AgentGoalHistoryStore(context) }
+    var recentGoals by remember { mutableStateOf(goalHistory.entries) }
 
     // ── Governance wiring (the iOS AgentView twin, previously missing on Android — every
     // T1+ capability fail-closed refused because the app never injected a runner). ──
@@ -198,8 +205,15 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
 
         if (!hasContent && !running) {
             // Centered guidance (twin of chat's centered empty state) — no top-stuck block with a big
-            // empty middle.
-            AgentEmptyState(Modifier.weight(1f), onPick = { goal = it })
+            // empty middle. Below the examples: the user's own recent goals, tap to re-use,
+            // long-press to remove, one button to forget all (twin of iOS AgentRecentGoals).
+            AgentEmptyState(
+                Modifier.weight(1f),
+                onPick = { goal = it },
+                recents = recentGoals,
+                onRemoveRecent = { recentGoals = goalHistory.remove(it) },
+                onClearRecents = { recentGoals = goalHistory.clear() },
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -392,6 +406,9 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 onClick = {
                     val g = goal.trim()
                     goal = ""
+                    // Recorded at SUBMIT, not completion (twin of iOS): a cancelled or halted
+                    // goal is still one the user typed and may want back.
+                    recentGoals = goalHistory.record(g)
                     // Set running synchronously on the calling (main) thread so a rapid
                     // double-tap can't enqueue a second run before IO flips the flag.
                     running = true
@@ -458,8 +475,15 @@ private fun AgentHaltBanner(message: String) {
  * more than one tool (convert → calculate, date → divide), showcasing agentic work instead of a
  * single-shot calculation.
  */
+@OptIn(ExperimentalFoundationApi::class)   // combinedClickable (tap = re-use, long-press = remove)
 @Composable
-private fun AgentEmptyState(modifier: Modifier = Modifier, onPick: (String) -> Unit = {}) {
+private fun AgentEmptyState(
+    modifier: Modifier = Modifier,
+    onPick: (String) -> Unit = {},
+    recents: List<AgentGoalEntry> = emptyList(),
+    onRemoveRecent: (String) -> Unit = {},
+    onClearRecents: () -> Unit = {},
+) {
     Column(
         modifier.fillMaxWidth().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -495,6 +519,45 @@ private fun AgentEmptyState(modifier: Modifier = Modifier, onPick: (String) -> U
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { onPick(example) },
+                )
+            }
+        }
+        // The user's own past goals, newest first — tap to re-use (drops into the field, ready
+        // to edit or run again), long-press to remove one, one button to forget all. Twin of iOS
+        // AgentRecentGoals; rendered only on the empty state — once a run is on screen, the
+        // transcript owns the space.
+        if (recents.isNotEmpty()) {
+            Spacer(Modifier.height(22.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "RECENT GOALS",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                recents.forEach { entry ->
+                    Text(
+                        "↺ ${entry.goal}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { onPick(entry.goal) },
+                                onLongClick = { onRemoveRecent(entry.goal) },
+                            )
+                            .semantics {
+                                customActions = listOf(
+                                    CustomAccessibilityAction("Remove from recents") {
+                                        onRemoveRecent(entry.goal); true
+                                    },
+                                )
+                            },
+                    )
+                }
+                Text(
+                    "Clear recent goals",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { onClearRecents() },
                 )
             }
         }
