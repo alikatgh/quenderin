@@ -467,31 +467,50 @@ private struct MacScrollObserver: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator {
-        var token: NSObjectProtocol?
+    /// Selector-based observer ON PURPOSE: the block API's `using:` closure is `@Sendable` in
+    /// newer SDKs, so touching the main-actor `contentView`/`onChange` inside it is a hard error
+    /// on Swift 6.1 (CI) while 6.2 accepts it — a toolchain-dependent build. A `@MainActor`
+    /// coordinator with an `@objc` selector has no Sendable boundary at all: the bounds-change
+    /// notification posts on the main thread, which is exactly this class's isolation.
+    @MainActor
+    final class Coordinator: NSObject {
+        var onChange: ((CGFloat) -> Void)?
+        weak var clipView: NSClipView?
+        var observing = false
+
+        @objc func boundsDidChange(_ note: Notification) {
+            guard let clip = clipView else { return }
+            onChange?(clip.documentRect.height - clip.bounds.maxY)
+        }
+
         deinit {
-            if let token { NotificationCenter.default.removeObserver(token) }
+            NotificationCenter.default.removeObserver(self)   // thread-safe, isolation-free API
         }
     }
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
+        context.coordinator.onChange = onChange
         DispatchQueue.main.async { [weak view] in
-            guard let view, context.coordinator.token == nil,
+            guard let view, !context.coordinator.observing,
                   let scroll = view.enclosingScrollView else { return }
-            scroll.contentView.postsBoundsChangedNotifications = true
-            context.coordinator.token = NotificationCenter.default.addObserver(
-                forName: NSView.boundsDidChangeNotification,
-                object: scroll.contentView, queue: .main
-            ) { [weak scroll] _ in
-                guard let clip = scroll?.contentView else { return }
-                onChange(clip.documentRect.height - clip.bounds.maxY)
-            }
+            let clip = scroll.contentView
+            clip.postsBoundsChangedNotifications = true
+            context.coordinator.clipView = clip
+            context.coordinator.observing = true
+            NotificationCenter.default.addObserver(
+                context.coordinator,
+                selector: #selector(Coordinator.boundsDidChange(_:)),
+                name: NSView.boundsDidChangeNotification,
+                object: clip
+            )
         }
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onChange = onChange   // keep the latest closure (view updates rebuild it)
+    }
 }
 #endif
 

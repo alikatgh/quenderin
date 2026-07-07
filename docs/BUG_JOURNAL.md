@@ -361,6 +361,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (CI red ×5: ChatView MacScrollObserver vs Swift 6.1) — NotificationCenter's block API
+  (`using:`) is `@Sendable` in newer SDKs, so touching main-actor `contentView`/`onChange` inside it
+  hard-errors on CI's Swift 6.1 while LOCAL 6.2 accepts it — local `swift test` green, CI red for 5
+  pushes and nobody noticed (the "watch CI" step was skipped). Fixed with a selector-based `@MainActor`
+  Coordinator (no Sendable boundary at all). Lesson: green-local ≠ green-CI when toolchains differ —
+  CHECK the run after every push; prefer APIs with no Sendable seam in UI glue code.
+
 - 2026-07-07 (Q-549 Step 2 — bulk brake on the legacy device agent) — maxSteps + wall-clock bound
   RUNTIME but not CHANGE VOLUME: a mission could tap/type dozens of times with no human checkpoint.
   `agent.service.ts` now counts EXECUTED actions and at every Nth (default 20, twin of the capability
