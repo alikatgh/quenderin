@@ -5,6 +5,9 @@ on-device AI agent.
 
 ## Start here
 
+- **[ROADMAP.md](ROADMAP.md)** — the ONE consolidated roadmap: where the project
+  is, the four horizons (ship → agent v1 → monetization → moat), the owner
+  decision queue, and the permanent anti-goals. When plans disagree, this wins.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the whole system: the offline-first
   thesis, the desktop (Electron) app, the native-mobile destination, and the
   agent loop. Read this first.
@@ -13,6 +16,7 @@ on-device AI agent.
 
 | Doc | What it covers |
 |-----|----------------|
+| [ROADMAP.md](ROADMAP.md) | **The consolidated roadmap** — current state, horizons 0–3, decision queue, anti-goals |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, data flow, the OODA agent loop, the two products |
 | [BACKEND.md](BACKEND.md) | The `src/` services — LLM, agent, session, memory, voice, OCR, daemons, tools, device providers |
 | [API.md](API.md) | The REST routes **and** the full WebSocket message protocol |
