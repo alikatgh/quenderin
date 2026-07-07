@@ -377,6 +377,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (Android device.status locale drift) — DevicePerception.kt formatted free-GB with
+  `"%.1f".format()` (default locale → "1,5" in de/fr, Eastern-Arabic digits in ar) while the iOS
+  twin's `String(format:)` renders POSIX ("1.5"). This string is MODEL-FACING (device.status tool
+  output), so the two platforms fed the model different numbers — the same drift the seam-norm
+  series just killed in core. Fix: `String.format(Locale.ROOT, …)`. Lesson: any model-facing
+  number needs a fixed locale; grep new app-layer format sites, not just core. (platform audit F1)
+
 - 2026-07-07 (chat amnesia every ~20 turns) — generalChat disposed its session at MAX_CHAT_TURNS,
   wiping ALL conversation memory on a schedule. Live experiment (512-token ctx, 14 overflowing
   turns) proved node-llama-cpp's built-in contextShift keeps the session alive with the system

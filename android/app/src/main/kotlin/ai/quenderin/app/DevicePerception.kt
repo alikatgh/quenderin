@@ -8,6 +8,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.BatteryManager
 import android.os.StatFs
+import java.util.Locale
 
 /**
  * T1 device PERCEPTION for the phone agent — the Android twins of the Swift
@@ -56,7 +57,12 @@ class DeviceStatusCapability(private val context: Context) : Capability {
         if (battery != null && battery in 0..100) parts.add("Battery: $battery%")
         runCatching {
             val free = StatFs(context.filesDir.path).availableBytes
-            parts.add("Free storage: ${"%.1f".format(free / 1_000_000_000.0)} GB")
+            // Locale.ROOT, not the default locale: this string is MODEL-FACING (device.status tool
+            // output) and must match the iOS twin, whose String(format:) renders in the POSIX/C
+            // locale. Default-locale "%.1f" yields "1,5" in de/fr (or Eastern-Arabic digits in ar) —
+            // the exact cross-platform number drift the seam-normalization series just eliminated in
+            // core. Twin: iOS DeviceStatusCapability.
+            parts.add("Free storage: ${String.format(Locale.ROOT, "%.1f", free / 1_000_000_000.0)} GB")
         }
         return if (parts.isEmpty()) "Couldn't read the device status here." else parts.joinToString(" · ")
     }
