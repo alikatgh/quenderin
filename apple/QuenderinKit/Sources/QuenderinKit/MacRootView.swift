@@ -37,6 +37,8 @@ public struct MacRootView: View {
     public var body: some View {
         // WhatsApp anatomy: a fixed icon RAIL (sections) · list column · detail. Each rail
         // destination is a dedicated page, not a row squeezed into the chats sidebar.
+        // Chat→agent handoff: when chat posts a goal ("Run it with the Agent"), jump the rail to
+        // the Agent page — AgentView consumes and runs the pending goal on appear.
         HStack(spacing: 0) {
             railColumn
             Divider()
@@ -64,6 +66,10 @@ public struct MacRootView: View {
             if selection.isEmpty, let id = conversations.currentID {
                 selection = [id]
             }
+        }
+        // Chat posted a goal via the handoff bar — switch to the Agent page, which consumes it.
+        .onReceive(AgentHandoff.shared.$pending) { pending in
+            if pending != nil { rail = .agent }
         }
         // A SINGLE selected row opens that conversation (open() persists the one being left);
         // a multi-selection changes nothing until the user picks a bulk action.

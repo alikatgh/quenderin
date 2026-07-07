@@ -10,6 +10,9 @@ public struct ChatView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var draft: String = ""
     @State private var suggestionDismissed = false
+    /// The last sent message when it read as a computer task — drives the "Run it with the
+    /// Agent" handoff bar above the composer (see `ActionIntent`). Cleared on tap or dismiss.
+    @State private var agentSuggestion: String?
     /// Documents queued for the NEXT send (chips above the composer) — extracted at attach time,
     /// cleared once the message goes out. Milestone 1: documents-as-text in chat.
     @State private var pendingDocuments: [AttachedDocument] = []
@@ -77,6 +80,10 @@ public struct ChatView: View {
         let prompt = draft.trimmingCharacters(in: .whitespaces)
         // Documents alone are a legitimate send ("summarize this file" with no extra words).
         guard !prompt.isEmpty || !pendingDocuments.isEmpty, !model.isGenerating else { return }
+        // Chat can't act — but when the message IS an action ("open browser and write email…"),
+        // redirect PROSE from the model isn't help, it's homework (live report: "not working at
+        // all"). Detect it in code and offer the real thing: one tap runs it on the Agent surface.
+        agentSuggestion = ActionIntent.looksLikeComputerTask(prompt) ? prompt : nil
         let documents = pendingDocuments
         pendingDocuments = []
         attachmentNotice = nil
@@ -202,6 +209,42 @@ public struct ChatView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal)
+
+            // The chat→agent handoff bar: the user's last message was an operate-the-computer
+            // ask, so offer to actually DO it — one tap switches to the Agent and runs the goal
+            // (which then previews + asks before any change, as always).
+            if let suggestion = agentSuggestion {
+                HStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.caption)
+                        .foregroundStyle(p.primary)
+                    Text("This looks like a task for the Agent.")
+                        .font(.callout)
+                        .foregroundStyle(p.onSurfaceVariant)
+                    Button("Run it with the Agent") {
+                        agentSuggestion = nil
+                        AgentHandoff.shared.send(suggestion)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(p.primary)
+                    .accessibilityLabel("Run this request with the Agent")
+                    Spacer()
+                    Button {
+                        agentSuggestion = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(p.onSurfaceVariant)
+                    .accessibilityLabel("Dismiss agent suggestion")
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(p.primary.opacity(0.08))
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+            }
 
             composer(palette: p)
                 .frame(maxWidth: 760)     // same centered column as the transcript on wide panes

@@ -11,6 +11,8 @@ public struct RootView: View {
     private let agent: AgentSession?
     @State private var needsWelcome = WelcomeGate.needsWelcome()
     @State private var needsConsent = ConsentGate.needsConsent()
+    /// iOS tab selection — programmatic so the chat→agent handoff can jump to the Agent tab.
+    @State private var tab = 0
 
     public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
@@ -53,25 +55,33 @@ public struct RootView: View {
                 // not the phone's TabView in a window.
                 MacRootView(onboarding: onboarding, conversations: conversations, agent: agent, model: model)
                 #else
-                TabView {
+                TabView(selection: $tab) {
                     ChatHomeView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Same install flow the Settings picker uses: download (if needed) → load → swap.
                         onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
+                        .tag(0)
                     if let agent {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
+                            .tag(1)
                     }
                     ModelsLibraryView(activeModelID: model.id, onSelectModel: { picked in
                         onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Models", systemImage: "books.vertical") }
+                        .tag(2)
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Reuse the onboarding install flow: download (if needed) → load → swap.
                         onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
+                        .tag(3)
+                }
+                // Chat posted a goal via the handoff bar — jump to the Agent tab, which consumes it.
+                .onReceive(AgentHandoff.shared.$pending) { pending in
+                    if pending != nil, agent != nil { tab = 1 }
                 }
                 #endif
     }
