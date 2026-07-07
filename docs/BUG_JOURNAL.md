@@ -15,6 +15,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the plaintext in an ephemeral in-memory draft that is discarded on save; migrate any legacy plaintext
   once on load, with the reader accepting both formats so no one is locked out mid-migration. (Q-530)
 
+- **A conservative safety blocklist refuses legitimate UI labels.** `mac.ui.*` re-checks the RESOLVED
+  element/menu label against `SafetyBlocklist` (defense in depth) — so the ubiquitous **Format** menu
+  trips `"format"`, a **Delete** button trips `"delete"`, a **Buy** button trips `"buy"`. The action is
+  then refused, not clicked. This is DELIBERATE and faithful to the TS twin (better a false refusal than
+  a wiped disk / an accidental purchase), but when a menu "mysteriously" won't click, check whether its
+  path contains a blocked keyword before hunting for an AX bug. (macUiCapabilities re-check)
 - **Two "can this device run it?" sources diverge at the boundary.** A band lookup (RAM → model) and a
   budget gate (85% usage) each look right alone, but at band edges the band picks what the gate blocks —
   and the UI shows "RECOMMENDED" on a disabled row. Derive the OFFERED pick through the gate (largest

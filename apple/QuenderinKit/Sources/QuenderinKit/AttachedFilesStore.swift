@@ -89,7 +89,12 @@ public enum AgentToolkit {
         // spine gates them: T1 needs consent, T2/T3 additionally per-run approval via the Agent
         // screen's dialog, every action ledgered. The Settings pane picks these up automatically
         // because it reads THIS list.
-        tools += macCapabilities(mac: OsascriptAutomation()).map { $0 as AgentTool }
+        let mac = OsascriptAutomation()
+        tools += macCapabilities(mac: mac).map { $0 as AgentTool }
+        // GUI-driving (mac.ui.*) rides the SAME osascript seam — click/type/menu into ANY app via the
+        // accessibility tree, not just the AppleScript-scriptable ones ("screen → click"). The model
+        // taps by visible label (never a fabricated pixel); the same spine gates every action.
+        tools += macUiCapabilities(ui: OsascriptMacUi(mac: mac)).map { $0 as AgentTool }
         #else
         // T1 device PERCEPTION on the phone (owner sign-off 2026-07-07; PRODUCT.md revised):
         // clipboard + today's calendar, read-only, consent-gated — the senses macOS gets from
