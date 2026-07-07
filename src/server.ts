@@ -10,6 +10,15 @@ import { generateAuthToken } from './security/authToken.js';
 import { AgentService } from './services/agent.service.js';
 import { AgentEventEmitter } from './services/agent.service.js';
 import { redactSecrets } from './services/capability/redaction.js';
+import { DashboardTaskService } from './services/capability/dashboardTasks.js';
+import { createGovernedAgent } from './services/capability/desktopAgent.js';
+import { InMemoryConsentStore } from './services/capability/capability.js';
+import { OsascriptAutomation } from './services/capability/macAutomation.js';
+import { OsascriptMacUi } from './services/capability/macUi.js';
+import { macCapabilities } from './services/capability/macCapabilities.js';
+import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
+import { fileCapabilities } from './services/capability/fileCapabilities.js';
+import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
 import { AndroidProvider } from './services/providers/android.provider.js';
 import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { BackgroundDaemonService } from './services/backgroundDaemon.service.js';
@@ -137,6 +146,36 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const voiceService = new VoiceService();
     const sessionService = new SessionService();
 
+    // The GOVERNED task agent behind the dashboard — the same assembly as the CLI's
+    // `quenderin do` (createGovernedAgent over the real LlmService + osascript seams), with the
+    // renderer's dialog as the approver. Consent mirrors the CLI: the capabilities in play are
+    // granted because the PER-RUN approval is the real gate; skill memory is shared and persisted
+    // after each run so the agent improves across tasks and relaunches.
+    const skillMemory = loadSkillMemory();
+    const taskService = new DashboardTaskService((deps) => {
+        const mac = new OsascriptAutomation();
+        const macAvailable = mac.available();
+        const workspaceDir = deps.workspace;
+        const consent = new InMemoryConsentStore();
+        if (macAvailable) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+        if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
+        const macUi = deps.gui && macAvailable ? new OsascriptMacUi(mac) : undefined;
+        if (macUi) macUiCapabilities(macUi).forEach(c => consent.setGranted(c.name, true));
+        return createGovernedAgent({
+            llm: llmService,
+            mac: macAvailable ? mac : undefined,
+            macUi,
+            workspace: workspaceDir ? () => workspaceDir : undefined,
+            consent,
+            approve: deps.approve,
+            signal: deps.signal,
+            ledger: new FileAuditLedger(),
+            memory: skillMemory,
+            dryRun: deps.dryRun,
+        });
+    });
+    taskService.on('finished', () => saveSkillMemory(skillMemory));
+
     // Wire LlmService into /health so it reports the real loaded model
     setHealthLlmService(llmService);
 
@@ -218,7 +257,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
         server.headersTimeout = 70 * 1000;      // Must be > keepAliveTimeout
 
         server.listen(selectedPort, BIND_HOST, async () => {
-            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken);
+            new WebSocketManager(server, agentService, deviceProvider, llmService, voiceService, sessionService, authToken, taskService);
             setReadiness(true, 'serving', `Listening on ${BIND_HOST}:${selectedPort}`);
             logger.critical(`Dashboard running at http://localhost:${selectedPort}`);
             if (effectiveOpenBrowser) {
@@ -229,7 +268,14 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
                     logger.warn(`[Server] Failed to auto-open browser: ${message}`);
+                    logger.critical(`Open this URL manually: http://localhost:${selectedPort}/?token=${authToken}`);
                 }
+            } else {
+                // Without the auto-open, the tokened URL was never communicated AT ALL — the auth
+                // is fail-closed, so `--no-open` (or any non-interactive launch) locked the user out
+                // of their own dashboard. Printing it to the local terminal is the same exposure as
+                // handing it to `open`: both are visible only to the local user.
+                logger.critical(`Open this URL to connect: http://localhost:${selectedPort}/?token=${authToken}`);
             }
             resolve({ port: selectedPort, authToken });
         });

@@ -12,6 +12,7 @@ import { classifyIntent } from '../services/intentClassifier.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import logger from '../utils/logger.js';
 import { extractWsToken, isAuthorized } from '../security/authToken.js';
+import { DashboardTaskService, TaskApprovalRequest } from '../services/capability/dashboardTasks.js';
 
 /** Validate and sanitize attachment arrays from WebSocket messages */
 function sanitizeAttachments(raw: unknown): { name: string; content: string }[] {
@@ -55,6 +56,8 @@ export class WebSocketManager {
     // even if the old WebSocket's 'close' event never fires (e.g. network drop).
     private activeActionRequiredHandler: ((payload: any) => void) | null = null;
     private activeDownloadProgressHandler: ((payload: any) => void) | null = null;
+    private activeTaskStepHandler: ((line: string) => void) | null = null;
+    private activeTaskApprovalHandler: ((req: TaskApprovalRequest) => void) | null = null;
 
     /** Throttle for the congestion warning so a slow connection doesn't spam the log per token. */
     private lastCongestionWarnMs = 0;
@@ -90,7 +93,10 @@ export class WebSocketManager {
         private sessionService?: SessionService,
         /** Per-launch auth token required on the WS upgrade (audit HIGH #1). Empty ⇒ fail closed
          *  (every connection rejected) — never fail open. */
-        private authToken: string = ''
+        private authToken: string = '',
+        /** The GOVERNED task agent (createGovernedAgent behind approval/undo seams) — the
+         *  dashboard twin of `quenderin do`. Optional so tests of the legacy paths are unchanged. */
+        private taskService?: DashboardTaskService
     ) {
         // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
         this.wss = new WebSocketServer({ server, path: '/ws' });
@@ -153,6 +159,10 @@ export class WebSocketManager {
             if (this.activeDownloadProgressHandler) {
                 this.llmService.off('model_download_progress', this.activeDownloadProgressHandler);
             }
+            if (this.taskService) {
+                if (this.activeTaskStepHandler) this.taskService.off('step', this.activeTaskStepHandler);
+                if (this.activeTaskApprovalHandler) this.taskService.off('approval_request', this.activeTaskApprovalHandler);
+            }
 
             this.activeWs = ws;
             // Mark alive for heartbeat
@@ -197,6 +207,24 @@ export class WebSocketManager {
             this.voiceService.on('action_required', pushActionRequired);
             this.llmService.on('action_required', pushActionRequired);
             this.llmService.on('model_download_progress', pushModelDownloadProgress);
+
+            // The governed task channel: steps stream live; an approval question renders the
+            // renderer's dialog. Registered per-connection with the same stale-cleanup discipline
+            // as the handlers above, so a dead socket never keeps a question addressed to nobody.
+            const pushTaskStep = (line: string) => {
+                this.safeSend(ws, JSON.stringify({ type: 'task_step', line }));
+            };
+            const pushTaskApproval = (req: TaskApprovalRequest) => {
+                // NOT safeSend: an approval question must never be silently dropped by backpressure —
+                // if the socket is congested/dead the send fails and the close handler declines it.
+                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'task_approval_request', ...req }));
+            };
+            if (this.taskService) {
+                this.activeTaskStepHandler = pushTaskStep;
+                this.activeTaskApprovalHandler = pushTaskApproval;
+                this.taskService.on('step', pushTaskStep);
+                this.taskService.on('approval_request', pushTaskApproval);
+            }
 
             ws.on('message', async (message) => {
                 try {
@@ -449,6 +477,56 @@ export class WebSocketManager {
                         // parks and can resume) — this hard-stops the running mission: it aborts the
                         // in-flight decode and breaks the loop, which then emits its own 'done'.
                         this.agentService.stop();
+                    } else if (data.type === 'task_start') {
+                        // The governed task path — the dashboard twin of `quenderin do`. Distinct
+                        // from the legacy 'start' (the continuous device loop): here a local model
+                        // proposes discrete capabilities and every mutation needs the user's yes.
+                        if (!this.taskService) {
+                            ws.send(JSON.stringify({ type: 'task_error', message: 'Tasks are not available in this build.' }));
+                            return;
+                        }
+                        const goal = typeof data.goal === 'string' ? data.goal.slice(0, MAX_GOAL_LENGTH).trim() : '';
+                        if (!goal) {
+                            ws.send(JSON.stringify({ type: 'task_error', message: 'A goal is required.' }));
+                            return;
+                        }
+                        const workspace = typeof data.workspace === 'string' && data.workspace.trim()
+                            ? data.workspace.trim().slice(0, 1024) : null;
+                        try {
+                            const result = await this.taskService.start(goal, {
+                                workspace,
+                                gui: data.gui === true,
+                                dryRun: data.dryRun === true,
+                            });
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'task_done', ...result }));
+                            }
+                        } catch (e: unknown) {
+                            const msg = e instanceof Error ? e.message : 'The task failed.';
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'task_error', message: msg }));
+                            }
+                        }
+                    } else if (data.type === 'task_approve') {
+                        // FAIL-CLOSED shape: anything but approved === true is a NO.
+                        if (this.taskService && typeof data.id === 'string') {
+                            this.taskService.answer(data.id, data.approved === true);
+                        }
+                    } else if (data.type === 'task_stop') {
+                        this.taskService?.stop();
+                    } else if (data.type === 'task_undo') {
+                        if (!this.taskService) return;
+                        try {
+                            const report = await this.taskService.undoLast();
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'task_undone', report }));
+                            }
+                        } catch (e: unknown) {
+                            const msg = e instanceof Error ? e.message : 'Undo failed.';
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'task_error', message: msg }));
+                            }
+                        }
                     } else if (data.type === 'new_session') {
                         // Q-596: the EXPLICIT "start a fresh conversation" path. Connect now adopts the
                         // active session instead of rolling a new one, so the client asks for a new session
@@ -478,6 +556,13 @@ export class WebSocketManager {
                 this.voiceService.off('action_required', pushActionRequired);
                 this.llmService.off('action_required', pushActionRequired);
                 this.llmService.off('model_download_progress', pushModelDownloadProgress);
+                if (this.taskService) {
+                    this.taskService.off('step', pushTaskStep);
+                    this.taskService.off('approval_request', pushTaskApproval);
+                    // FAIL-CLOSED: the renderer that was being asked is gone — its open approval
+                    // question is answered NO, so the run can't hang (or be approved by nobody).
+                    this.taskService.declinePending();
+                }
                 // Clear instance refs so we don't double-remove on the next connection
                 if (this.activeActionRequiredHandler === pushActionRequired) {
                     this.activeActionRequiredHandler = null;
@@ -485,6 +570,8 @@ export class WebSocketManager {
                 if (this.activeDownloadProgressHandler === pushModelDownloadProgress) {
                     this.activeDownloadProgressHandler = null;
                 }
+                if (this.activeTaskStepHandler === pushTaskStep) this.activeTaskStepHandler = null;
+                if (this.activeTaskApprovalHandler === pushTaskApproval) this.activeTaskApprovalHandler = null;
             });
         });
     }

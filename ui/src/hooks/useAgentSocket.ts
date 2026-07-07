@@ -52,7 +52,28 @@ type AgentMessage =
     | { type: 'model_switched'; modelId: string; activeModel?: string }   // Q-291: server emits on switch
     | { type: 'agent_paused'; isPaused: boolean; isRunning: boolean }     // Q-281: trust-loop pause ack
     | { type: 'agent_resumed'; manualAction: string | null; isPaused: boolean; isRunning: boolean }
-    | { type: 'preset_changed'; presetId: string };
+    | { type: 'preset_changed'; presetId: string }
+    // The governed task channel (the dashboard twin of `quenderin do`):
+    | { type: 'task_step'; line: string }
+    | { type: 'task_approval_request'; id: string; summary: string; mutates: boolean; tier?: number }
+    | { type: 'task_done'; answer: string | null; halt: string; undoable: number }
+    | { type: 'task_error'; message: string }
+    | { type: 'task_undone'; report: string };
+
+/** One row in the governed-task activity feed. */
+export interface TaskLogItem {
+    id: string;
+    kind: 'info' | 'step' | 'answer' | 'halt' | 'error' | 'undone';
+    text: string;
+}
+
+/** An approval question awaiting the user's explicit yes/no (fail-closed on anything else). */
+export interface TaskApproval {
+    id: string;
+    summary: string;
+    mutates: boolean;
+    tier?: number;
+}
 
 export function useAgentSocket() {
     const MAX_LOG_ENTRIES = 300;
@@ -66,6 +87,11 @@ export function useAgentSocket() {
     const [wsReady, setWsReady] = useState(false);
     const [activePresetId, setActivePresetId] = useState<string>('general');
     const [agentPaused, setAgentPaused] = useState(false);   // Q-281: true while a run is parked for intervention
+    // The governed task channel (Tasks view) — separate state from the legacy agent/chat log.
+    const [taskStatus, setTaskStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+    const [taskLog, setTaskLog] = useState<TaskLogItem[]>([]);
+    const [taskApproval, setTaskApproval] = useState<TaskApproval | null>(null);
+    const [taskUndoable, setTaskUndoable] = useState(0);
     const [settings, setSettings] = useState<AppSettings>(() => {
         try {
             const saved = localStorage.getItem('quenderin_settings');
@@ -204,6 +230,41 @@ export function useAgentSocket() {
                     return;
                 } else if (data.type === 'agent_resumed') {
                     setAgentPaused(data.isPaused);
+                    return;
+                } else if (data.type === 'task_step') {
+                    setTaskLog((prev) => [...prev, { id: `ts-${crypto.randomUUID()}`, kind: 'step', text: data.line }]);
+                    return;
+                } else if (data.type === 'task_approval_request') {
+                    setTaskApproval({ id: data.id, summary: data.summary, mutates: data.mutates, tier: data.tier });
+                    return;
+                } else if (data.type === 'task_done') {
+                    setTaskApproval(null);
+                    setTaskUndoable(data.undoable);
+                    setTaskStatus('done');
+                    setTaskLog((prev) => {
+                        const next = [...prev];
+                        if (data.answer) {
+                            next.push({ id: `ta-${crypto.randomUUID()}`, kind: 'answer', text: data.answer });
+                        } else {
+                            const why: Record<string, string> = {
+                                stalled: 'The model got stuck repeating itself — try rephrasing the goal, or a bigger model.',
+                                maxSteps: 'Reached the step limit before finishing — try a smaller, more specific goal.',
+                                planError: "The model's reply couldn't be parsed — try again, or a bigger model.",
+                                cancelled: 'Stopped at your request.',
+                            };
+                            next.push({ id: `th-${crypto.randomUUID()}`, kind: 'halt', text: why[data.halt] ?? data.halt });
+                        }
+                        return next;
+                    });
+                    return;
+                } else if (data.type === 'task_error') {
+                    setTaskApproval(null);
+                    setTaskStatus('error');
+                    setTaskLog((prev) => [...prev, { id: `te-${crypto.randomUUID()}`, kind: 'error', text: data.message }]);
+                    return;
+                } else if (data.type === 'task_undone') {
+                    setTaskUndoable(0);
+                    setTaskLog((prev) => [...prev, { id: `tu-${crypto.randomUUID()}`, kind: 'undone', text: data.report }]);
                     return;
                 }
 
@@ -415,6 +476,40 @@ export function useAgentSocket() {
         }
     };
 
+    // ── The governed task channel (Tasks view) — the dashboard twin of `quenderin do`. ──
+    const startTask = (goal: string, opts: { workspace?: string; gui?: boolean; dryRun?: boolean } = {}) => {
+        const ws = ensureSocketOpen();
+        if (!ws) return false;
+        if (taskStatus === 'running') return false;   // the server rejects it too; don't desync the UI
+        setTaskStatus('running');
+        setTaskUndoable(0);
+        setTaskApproval(null);
+        setTaskLog([{ id: `ti-${crypto.randomUUID()}`, kind: 'info', text: `Task: ${goal}${opts.dryRun ? ' (dry run — nothing will change)' : ''}` }]);
+        ws.send(JSON.stringify({ type: 'task_start', goal, workspace: opts.workspace, gui: opts.gui === true, dryRun: opts.dryRun === true }));
+        return true;
+    };
+
+    // FAIL-CLOSED by shape: only an explicit `approved: true` allows; dismissals send false.
+    const answerTaskApproval = (id: string, approved: boolean) => {
+        setTaskApproval(null);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'task_approve', id, approved: approved === true }));
+        }
+    };
+
+    const stopTask = () => {
+        setTaskApproval(null);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'task_stop' }));
+        }
+    };
+
+    const undoTask = () => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'task_undo' }));
+        }
+    };
+
     // Q-313: open a past conversation from the Recent list. Fetches the saved transcript and rehydrates
     // the chat log so the user actually SEES it (clicking Recent used to only switch the view). Returns
     // whether it loaded, so the caller can switch to the chat view only on success.
@@ -448,6 +543,7 @@ export function useAgentSocket() {
         wsReady,
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
-        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession
+        manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
+        taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask
     };
 }

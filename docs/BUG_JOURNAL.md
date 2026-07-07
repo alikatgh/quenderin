@@ -361,6 +361,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (dashboard `--no-open` lockout) — the per-launch WS/API token was delivered ONLY via the
+  auto-opened browser URL (`src/server.ts`), so `--no-open` / non-interactive launches had NO way to
+  connect at all (fail-closed auth + uncommunicated token = locked out of your own dashboard). Now the
+  tokened URL is printed to the local terminal when auto-open is off or fails — same local-only
+  exposure as handing it to `open`. Lesson: a fail-closed gate needs a fail-open *communication* path.
+
 - 2026-07-07 (TWIN-DRIFT batch 3 — plan-parse contract + download-gate placement + real-n_ctx on iOS) —
   **AgentDecision (P1, both):** a top-level `plan` array is now AUTHORITATIVE on both platforms — a
   non-object/primitive member nils the WHOLE plan, never falls through to the bare `tool` (Swift's

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, BookOpen, BrainCircuit, Smartphone, SlidersHorizontal, Clock, MessageSquareText, BarChart3, type LucideIcon } from 'lucide-react';
+import { Sparkles, BookOpen, BrainCircuit, Smartphone, SlidersHorizontal, Clock, MessageSquareText, BarChart3, ListChecks, type LucideIcon } from 'lucide-react';
 import { LogEntry } from '../types/index.js';
 import { apiFetch } from '../lib/api.js';
 
@@ -17,8 +17,8 @@ interface SidebarProps {
     logs: LogEntry[];
     readinessStage?: string;
     readinessReady?: boolean;
-    currentView: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings';
-    setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings') => void;
+    currentView: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings' | 'tasks';
+    setCurrentView: (view: 'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings' | 'tasks') => void;
     onNewGoal: () => void;
     onSelectSession: (id: string) => void;   // Q-313: open a past conversation from Recent
     activeModel?: string;
@@ -129,6 +129,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
                 {/* Nav */}
                 <div className="mt-auto mx-1 space-y-0.5">
                     {navItem('general_chat', 'Chat', MessageSquareText)}
+                    {navItem('tasks', 'Tasks', ListChecks)}
                     {navItem('chat', 'Device Agent', Smartphone)}
                     {navItem('metrics', 'Metrics', BarChart3)}
 

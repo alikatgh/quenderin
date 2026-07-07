@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ChatArea } from './components/ChatArea.js';
 import { GeneralChatArea } from './components/GeneralChatArea.js';
+import { TasksArea } from './components/TasksArea.js';
 import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
 import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
@@ -246,7 +247,7 @@ function AppContent() {
     try { localStorage.setItem('quenderin_sidebar_open', String(open)); } catch { /* best-effort */ }
   };
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings'>('general_chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings' | 'tasks'>('general_chat');
   const [activeModel, setActiveModel] = useState<string>('Loading Model...');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -350,7 +351,7 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession } = useAgentSocket();
+  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
 
@@ -643,6 +644,18 @@ function AppContent() {
               <Metrics onBack={() => setCurrentView('general_chat')} />
             </Suspense>
             </ErrorBoundary>
+          ) : currentView === 'tasks' ? (
+            <TasksArea
+              status={taskStatus}
+              log={taskLog}
+              approval={taskApproval}
+              undoable={taskUndoable}
+              wsReady={wsReady}
+              onStart={startTask}
+              onApprove={answerTaskApproval}
+              onStop={stopTask}
+              onUndo={undoTask}
+            />
           ) : currentView === 'general_chat' ? (
             <GeneralChatArea
               logs={logs}
