@@ -71,7 +71,7 @@ public enum AgentToolkit {
 
     public static func standard(attachments: AttachedFilesStore = .shared,
                                 workspace: WorkspaceStore = .shared) -> [AgentTool] {
-        [
+        var tools: [AgentTool] = [
             CalculatorTool(),
             UnitConverterTool(),
             DateCalcTool(),
@@ -82,6 +82,14 @@ public enum AgentToolkit {
             FileRenameCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
             FileTrashCapability(workspace: { workspace.snapshot() }, journal: undoJournal),
         ]
+        #if os(macOS)
+        // The native mac.* library (H1: the macOS product is the Swift app) — the same governed
+        // spine gates them: T1 needs consent, T2/T3 additionally per-run approval via the Agent
+        // screen's dialog, every action ledgered. The Settings pane picks these up automatically
+        // because it reads THIS list.
+        tools += macCapabilities(mac: OsascriptAutomation()).map { $0 as AgentTool }
+        #endif
+        return tools
     }
 
     /// The toolkit's capabilities in display order (everything we ship IS a capability today).

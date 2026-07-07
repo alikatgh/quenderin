@@ -565,6 +565,26 @@ Prove the safety spine on the safest possible capability first.
 
 ---
 
+## Post-M4 — the mac.* library goes NATIVE (2026-07-07, the platform decision)
+
+The owner's 2026-07-07 call (docs/ROADMAP.md H1): the macOS product is the **Swift app**; the
+TS/Electron side is the lab, the CLI, and the future Windows/Linux vehicle. First native slice
+shipped: `MacAutomation.swift` (the seam + `escapeAppleScriptString`, twin semantics) with
+`OsascriptAutomation` (Process-based `osascript -e`, argv-only — both injection layers closed,
+watchdog timeout) and `MacCapabilities.swift` — the full 12-capability library ported template-
+for-template from the proven TS lab implementation (frontApp, clipboard.read, calendar.today,
+shortcuts.list, finder.reveal · app.open, safari.openURL, notes.create, reminders.add,
+calendar.add with the offset-seconds robust-date technique, mail.draft (never sends) ·
+shortcuts.run T3). Registered in `AgentToolkit` behind `#if os(macOS)`, so the EXISTING Swift
+spine gates everything with zero new plumbing: consent toggles appear in Settings automatically
+(the pane reads the toolkit), T2/T3 run through the Agent screen's per-run approval dialog, and
+every action lands in the ledger. Verified: 310 Swift tests (15 new — injection break-out,
+tier/membership, iCloud-Notes fallback, Feb-30 rejection + exact offset math, draft-never-sends,
+missing-shortcut mapping, permission-hint error surface, gate purity). Honest gap: the Swift
+`UndoJournal` is file-move-specific, so mac.* previews carry the manual undo path in words
+("delete it in Reminders to undo") — a generic action journal (the TS `RunSession` shape) is the
+named next step, alongside the model preamble teaching the new capability names.
+
 ## 8. How this maps to the audit
 
 The 2026-07-04 audit's agent-relevant findings feed straight into this:
