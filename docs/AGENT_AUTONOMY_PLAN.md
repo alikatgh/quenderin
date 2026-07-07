@@ -555,6 +555,18 @@ All" — the Export/Preferences/Select-All actions no window button exposes. Sam
 defense-in-depth blocklist re-check on the resolved path ("File > Delete Everything" refused). Plus
 `mac.ui.key` grew arrow + page keys so the agent can navigate lists and scroll panes.
 
+**Now shipping in the Swift app (2026-07-08).** Everything above was proven in the TS lab; this
+session ported the whole `mac.ui.*` toolkit into QuenderinKit — the actual macOS product (H1), not
+just the CLI. A `MacUi` seam + `OsascriptMacUi` (System Events, on the hardened `MacAutomation`
+runner) back the five capabilities: `mac.ui.observe` (T1) and `mac.ui.tap` / `mac.ui.type` /
+`mac.ui.menu` / `mac.ui.key` (T3 `appAction` — per-run approval), registered on the SAME
+`CapabilityRunner` spine (blocklist → consent → approval → ledger, zero new plumbing). `mac.ui.tap`'s
+did-it-register `verify()` is wired through a new optional `VerifiableCapability` protocol the runner
+calls best-effort (a strict no-op for every other capability). 17 Swift tests (label resolution,
+exact-wins, defense-in-depth refusal on the resolved label, nested menus, key whitelist, verify
+flags-unchanged / clears-changed, runner annotation) + full app build + live in the Settings
+capability list; 372/372 green, CI green. The Cowork-parity leap now reaches the shipping product.
+
 **Verification:** all of steps 1–2, 4 are pure logic → unit tests + parity, runs in CI
 today. Step 3's consent/preview/ledger flow is testable headless (inject a fake file
 picker). No new inference or device dependency. Feature-flagged off by default until the
