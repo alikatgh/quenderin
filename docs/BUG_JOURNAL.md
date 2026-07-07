@@ -394,14 +394,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
-- 2026-07-07 (Gemma 3 4B is a flaky tool-caller — model, not code) — driving the real agent, the 4B
-  model half the time answered "I can't operate a browser" on a clearly-actionable goal instead of
-  calling the tool it HAS. Not a code bug: the same goal succeeded on other runs (mac.safari.openURL
-  → opened the Google-Docs create URL live). The zero-action guard makes the bail HONEST; the real
-  fix is a stronger agent model (Qwen 7B / Llama 8B). Lesson: don't patch model-quality flakiness
-  with code — make the failure truthful and recommend a better model. (Grammar-forcing the first
-  action-step to tool|plan is a plausible future lever, but unverifiable under 4B non-determinism —
-  left unshipped rather than land an unverified decode change.)
+- 2026-07-07 (Gemma 3 4B bails on action goals → action-first grammar) — the 4B model half the time
+  answered "I can't operate a browser" on a clearly-actionable goal instead of calling the tool it
+  HAS. Fix (shipped + live-verified): on the FIRST step of an ActionIntent goal, decode under a
+  tool|plan-ONLY grammar (AgentDecisionGrammar.gbnfActionFirst — no `answer`), so {answer} is
+  UNSAMPLEABLE and the model must try a tool. Same browser goal that consistently zero-action-bailed
+  now reaches mac.safari.openURL and opens Google Docs. This is deterministic (grammar removes the
+  degree of freedom), so it's verifiable despite model non-determinism — the exception to "don't fix
+  model flakiness with code". All safety gates still apply to the forced tool; step 2+ use the full
+  grammar so it can answer when done. A stronger model (Qwen/Llama 7-8B) is still the bigger lever.
 
 - 2026-07-07 (mac.mail.draft: -600 launch race + no-account hang) — the draft AppleScript went
   straight to `make new outgoing message`; on a closed Mail that throws -600 "Application isn't

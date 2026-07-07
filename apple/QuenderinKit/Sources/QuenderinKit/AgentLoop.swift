@@ -99,7 +99,11 @@ public struct AgentLoop: Sendable {
                 // CANNOT emit prose instead of the JSON contract, so first-try parses replace the
                 // nudge-and-retry dance. Engines without grammar support ignore the option, and
                 // the parse-nudge path below still covers them (mock, ported engines).
-                reply = try await engine.complete(prompt: transcript, options: Self.decisionOptions)
+                // On the FIRST step of an action goal, use the tool|plan-only grammar so a weak
+                // model can't bail with {"answer":"I can't…"} before even trying a tool.
+                let firstActionStep = goalNeedsAction && steps.isEmpty
+                reply = try await engine.complete(prompt: transcript,
+                                                  options: firstActionStep ? Self.actionFirstOptions : Self.decisionOptions)
             } catch {
                 return AgentRun(steps: steps, answer: nil, haltReason: .planError)
             }
@@ -224,6 +228,9 @@ public struct AgentLoop: Sendable {
 
     /// Decision decode options: default sampling knobs + the decision grammar.
     static let decisionOptions = GenerationOptions(gbnfGrammar: AgentDecisionGrammar.gbnf)
+    /// First-action-step options: the tool|plan-only grammar (no `answer`) so a weak model must
+    /// try a tool instead of bailing on step 1 of an action goal.
+    static let actionFirstOptions = GenerationOptions(gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
 
     /// The recovery hint for a mistyped tool name. Live-caught: the model called "mail.draft"
     /// for "mac.mail.draft", and the bare "No such tool" observation left it NOTHING to recover

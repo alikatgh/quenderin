@@ -23,4 +23,23 @@ final class AgentDecisionGrammarTests: XCTestCase {
             XCTAssertTrue(g.contains(rule), "missing rule: \(rule)")
         }
     }
+
+    /// The action-first grammar (tool|plan only, no answer) — same cross-platform SHA pin as
+    /// CoreVerify's `ACTION_FIRST_SHA256`.
+    static let expectedActionFirstSHA256 = "cd6b367d688a1971b002933935c21ee43a8e538d27c482aecfb75494b9af7f7d"
+
+    func testActionFirstGrammarHashMatchesTheCrossPlatformPin() {
+        let digest = SHA256.hash(data: Data(AgentDecisionGrammar.gbnfActionFirst.utf8))
+        let hex = digest.map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(hex, Self.expectedActionFirstSHA256,
+                       "action-first grammar drifted — update BOTH twins and BOTH pins together")
+    }
+
+    func testActionFirstGrammarForbidsAnswer() {
+        let g = AgentDecisionGrammar.gbnfActionFirst
+        XCTAssertTrue(g.hasPrefix("root ::= ws ( tool | plan )"))
+        XCTAssertFalse(g.contains("answer"), "the whole point: {answer} must be unsampleable on step 1")
+        // still a valid tool/plan grammar
+        XCTAssertTrue(g.contains("tool ::=") && g.contains("plan ::=") && g.contains("ws ::="))
+    }
 }

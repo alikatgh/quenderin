@@ -967,6 +967,13 @@ fun main() {
         ModelIntegrity.sha256Hex(AgentDecisionGrammar.GBNF.toByteArray(Charsets.UTF_8)) == pin &&
             AgentDecisionGrammar.GBNF.startsWith("root ::=")
     })
+    check("action-first grammar is byte-identical to the Swift twin and forbids answer", run {
+        // Must equal AgentDecisionGrammarTests.expectedActionFirstSHA256.
+        val pin = "cd6b367d688a1971b002933935c21ee43a8e538d27c482aecfb75494b9af7f7d"
+        ModelIntegrity.sha256Hex(AgentDecisionGrammar.GBNF_ACTION_FIRST.toByteArray(Charsets.UTF_8)) == pin &&
+            !AgentDecisionGrammar.GBNF_ACTION_FIRST.contains("answer") &&
+            AgentDecisionGrammar.GBNF_ACTION_FIRST.startsWith("root ::= ws ( tool | plan )")
+    })
 
     check("a fabricated success after all-refused tools is withheld (NEEDS_PERMISSION, no answer)", run {
         // Live-caught on the Mac twin: consent-refused mail draft → the model answered

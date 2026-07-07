@@ -24,4 +24,21 @@ object AgentDecisionGrammar {
         "hex ::= [0-9a-fA-F]",
         "ws ::= [ \\t\\n\\r]*",
     ).joinToString("\n")
+
+    /**
+     * The ACTION-FIRST grammar: `tool | plan` only, no `answer`. Used on the FIRST step of an
+     * ActionIntent goal so a weak model can't bail with `{"answer":"I can't…"}` on a task it has
+     * the tools for — deterministic, not a nudge. All safety gates still apply; step 2+ use the
+     * full grammar. Byte-identical twin of Swift `AgentDecisionGrammar.gbnfActionFirst`.
+     */
+    val GBNF_ACTION_FIRST: String = listOf(
+        "root ::= ws ( tool | plan ) ws",
+        "tool ::= \"{\" ws \"\\\"tool\\\"\" ws \":\" ws string ws \",\" ws \"\\\"input\\\"\" ws \":\" ws string ws \"}\"",
+        "plan ::= \"{\" ws \"\\\"plan\\\"\" ws \":\" ws \"[\" ws tool ( ws \",\" ws tool )* ws \"]\" ws \"}\"",
+        "string ::= \"\\\"\" char* \"\\\"\"",
+        "char ::= [^\"\\\\\\x00-\\x1F] | \"\\\\\" escape",
+        "escape ::= [\"\\\\/bfnrt] | \"u\" hex hex hex hex",
+        "hex ::= [0-9a-fA-F]",
+        "ws ::= [ \\t\\n\\r]*",
+    ).joinToString("\n")
 }
