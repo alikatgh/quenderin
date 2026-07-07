@@ -394,6 +394,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (a small model INVENTS URLs → hand it the canonical ones) — Qwen3 4B, asked to "create
+  a Google Doc", guessed a fake `docs.google.com/document/d/<random>/edit` instead of a real blank
+  doc. A 4B can't KNOW deep-links. Fix: `mac.safari.openURL`'s `purpose` (what the model reads in the
+  tool list) now spells out Google's official `.new` create-shortcuts (docs.new / sheets.new /
+  slides.new) — short, so cheap in the prompt. Test guards BOTH that the hint is present (a future
+  "cleanup" can't silently bring the hallucination back) AND that every advertised URL passes the
+  tool's OWN validator (telling the model to open a URL the tool then rejects is self-sabotage).
+  Lesson: the tool description is where you supply facts a small model would otherwise hallucinate;
+  always assert the URLs you advertise pass your own gate.
+
 - 2026-07-08 (a mac automation TIMEOUT dead-ended the user) — live-caught: `mac.app.open` on a
   running-but-unauthorized Google Chrome HUNG `activate` → 20s watchdog → `.timeout` → the bare
   message "Timed out trying to open X", which strands the user. The hang is almost always an

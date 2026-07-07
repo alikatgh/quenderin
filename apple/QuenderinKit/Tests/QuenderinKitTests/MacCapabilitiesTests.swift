@@ -197,6 +197,21 @@ final class MacCapabilitiesTests: XCTestCase {
         XCTAssertTrue(mac.scripts[0].contains("open location \"https://quenderin.org/help\""))
     }
 
+    /// The tool's description spells out canonical create-URLs so a small model stops INVENTING
+    /// them. Two things must hold together: (1) the hint is present (or the hallucination returns
+    /// silently on a future "cleanup"), and (2) every URL we hand the model actually PASSES this
+    /// tool's own validator — telling it to open a URL the tool would then reject is self-sabotage.
+    func testOpenURLDescribesCanonicalCreateURLsThatItWillActuallyAccept() async throws {
+        let mac = FakeMac()
+        let cap = OpenURLCapability(mac: mac)
+        XCTAssertTrue(cap.purpose.contains("docs.new"), "the anti-hallucination create-URL hint went missing")
+        for url in ["https://docs.new", "https://sheets.new", "https://slides.new"] {
+            let out = try await cap.run(url)
+            XCTAssertTrue(out.contains("Opened"), "the tool must accept the URL it advertises: \(url)")
+        }
+        XCTAssertEqual(mac.scripts.count, 3, "each advertised create-URL should reach the seam")
+    }
+
     func testFinderRevealExpandsTildeAndRefusesControlChars() async throws {
         let mac = FakeMac()
         let cap = FinderRevealCapability(mac: mac)

@@ -297,7 +297,11 @@ public struct OpenAppCapability: Capability {
 /// T2: open a URL in the default browser. Common, low-stakes, reversible (close the tab).
 public struct OpenURLCapability: Capability {
     public let name = "mac.safari.openURL"
-    public let purpose = "Open a web URL in the browser. Input: an http(s) URL."
+    // The canonical create-URLs are spelled out because a small on-device model will otherwise
+    // INVENT one — live-caught: asked to "create a Google Doc", Qwen3 4B guessed a fake
+    // docs.google.com/document/d/<random>/edit instead of opening a real blank doc. Google's
+    // official .new shortcuts are short (cheap in the prompt) and land straight on a new file.
+    public let purpose = "Open a web URL in the browser. Input: an http(s) URL. To CREATE a new document, open its canonical URL — never invent one: https://docs.new (Google Doc), https://sheets.new (Sheet), https://slides.new (Slides)."
     public let tier = CapabilityTier.reversibleWrite
     public let blastRadius = BlastRadius.write(resource: "the browser (opens a page)")
     private let mac: any MacAutomation
