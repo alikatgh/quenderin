@@ -150,6 +150,51 @@ fun SettingsScreen(
             }
         }
 
+        // The agent capability pane — the Android twin of the iOS Settings → Agent section and the
+        // dashboard's "What it can do here": every T1+ capability in plain words with its consent
+        // toggle (the SAME PrefsConsentStore the Agent screen's runner reads, so this pane IS the
+        // grant), plus the last ledger rows — refusals included, the local flight recorder.
+        SettingsGroup("Agent") {
+            val consent = remember { ai.quenderin.app.PrefsConsentStore(context) }
+            // Metadata-only instances (empty seams) — listing runs nothing; the pane can't drift
+            // from the agent because both read the same capability classes and consent store.
+            val gated = remember {
+                listOf(ai.quenderin.core.FileReadCapability(grantedFiles = { emptyMap() })) +
+                    ai.quenderin.app.docWorkspaceCapabilities({ null }, ai.quenderin.app.DocUndoJournal())
+            }
+            Caption("Calculator, unit and date tools are always on — pure compute, no side effects.")
+            gated.forEach { cap ->
+                var granted by remember { mutableStateOf(consent.isGranted(cap.name)) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(cap.name, color = MaterialTheme.colorScheme.onSurface)
+                        Caption(cap.purpose)
+                    }
+                    Switch(
+                        checked = granted,
+                        onCheckedChange = { g ->
+                            granted = g
+                            consent.setGranted(cap.name, g)
+                        },
+                    )
+                }
+            }
+            val ledgerRows = remember {
+                ai.quenderin.core.FileAuditLedger(java.io.File(context.filesDir, "agent-ledger.jsonl"))
+                    .entries().takeLast(10).reversed()
+            }
+            if (ledgerRows.isNotEmpty()) {
+                Caption("Recent agent activity (newest first, refusals included):")
+                ledgerRows.forEach { row ->
+                    Text(
+                        "${if (row.decision == "allowed") "✓" else "✗"} ${row.capability} · ${row.decision}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
             SettingsGroup("Storage") {
                 LabeledRow("Saved conversations", conversationCount.toString())
                 Caption("Browse, switch, or clear conversations from the History button in Chat.")
