@@ -20,7 +20,11 @@ func describeMacError(_ error: Error, action: String) -> String {
     if let macError = error as? MacAutomationError {
         switch macError {
         case .notMac: return notMacMessage
-        case .timeout: return "Timed out trying to \(action)."
+        case .timeout:
+            // osascript blocks (→ our 20s watchdog → .timeout) most often because macOS is showing
+            // an Automation-permission prompt the user hasn't answered yet — the #1 first-run snag.
+            // A bare "Timed out" strands them; name the likely cause and the exact place to fix it.
+            return "Timed out trying to \(action). macOS may be waiting for you to allow Quenderin to control the app — answer the permission prompt if one is showing, or enable it in System Settings › Privacy & Security › Automation, then try again."
         case .script(let message):
             if message.range(of: "not allowed|Not authori|-1743|assistive access",
                              options: [.regularExpression, .caseInsensitive]) != nil {

@@ -218,6 +218,10 @@ final class MacCapabilitiesTests: XCTestCase {
         let timedOut = FakeMac(replies: [.failure(MacAutomationError.timeout)])
         let out = try await ClipboardReadCapability(mac: timedOut).run("")
         XCTAssertTrue(out.contains("Timed out"))
+        // A timeout is most often an unanswered Automation prompt — the message must point there,
+        // not dead-end. (Live-caught: `activate` on a running-but-unauthorized Chrome hung → timeout.)
+        XCTAssertTrue(out.contains("Privacy & Security › Automation"),
+                      "a timeout must guide the user to the Automation permission, not just say 'timed out'")
 
         let notMac = FakeMac(available: false)
         let refused = try await FrontAppCapability(mac: notMac).run("")

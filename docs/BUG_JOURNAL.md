@@ -394,6 +394,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (a mac automation TIMEOUT dead-ended the user) — live-caught: `mac.app.open` on a
+  running-but-unauthorized Google Chrome HUNG `activate` → 20s watchdog → `.timeout` → the bare
+  message "Timed out trying to open X", which strands the user. The hang is almost always an
+  unanswered macOS **Automation** permission prompt. Fix: one line in the SHARED
+  `describeMacError(.timeout)` now names the cause + the exact System Settings path, so ALL
+  capabilities inherit it. Lesson: a timeout is a diagnosis, not a dead end — fix it in the shared
+  mapper (one edit cascaded to the whole library), not per-capability.
+
 - 2026-07-08 (the model WAS the bottleneck — Qwen3 4B >> Gemma 3 4B, live-proven) — swapped the
   Mac app's model to Qwen3 4B (same 2.4GB footprint, keeps Gemma). Night-and-day on the SAME goal:
   Gemma emitted `calculator(2^10)` junk then bailed; Qwen3 did genuine 3-step tool use WITH recovery
