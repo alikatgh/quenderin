@@ -58,6 +58,23 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
+- **When code can detect the need, code must provide the affordance — never model text.** Recurred
+  3× in one session: chat "redirect to the Agent tab" prose (→ one-tap handoff button), "No such
+  tool: mail.draft" dead-end (→ "Did you mean mac.mail.draft?"), "grant it in Settings" homework (→
+  contextual "Allow & run again"). If a deterministic check knows the blocker/next-step, surface a
+  tap that does it — asking the user (or the model) to read, interpret, and re-navigate is the bug.
+- **A loop's halt reason must consult ground truth, not a lossy counter.** A run "stalled" that was
+  really stuck on a permission refusal (an unrelated scratchpad success broke the all-refused count)
+  → "try rephrasing" instead of "grant the capability". Read the STALLING/last observation, which the
+  loop already holds, rather than an aggregate that a stray success can mask. (halt precedence)
+- **Model-quality flakiness is not a code bug — make it honest, don't patch it.** A weak model (Gemma
+  3 4B) bailing on an actionable goal, looping, or refusing a tool it has is a MODEL limit. Guards
+  should make the failure truthful (zero-action withheld, honest halt) and the product should steer to
+  a stronger model — writing code to force the weak model rarely verifies and often over-fits.
+- **Launching a Mac app from AppleScript is async; a modal setup sheet is an infinite hang.** `tell
+  app "X" to activate` returns before X's scripting interface is ready (→ -600), so RETRY to readiness
+  (probe a cheap property in a bounded loop), never a fixed delay. And an unconfigured app (Mail with
+  0 accounts) pops a setup sheet that blocks the script forever — guard the precondition first. (mac.mail.draft)
 - **A modality simulated in prose is a hallucination faucet.** Passing an image PATH as text (or any
   "pretend you can see/hear X" marker) makes the model confabulate perception, fluently, every time —
   and downstream code treats it as ground truth. Either wire the real modality or drop the input;
@@ -376,6 +393,31 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-07 (Gemma 3 4B is a flaky tool-caller — model, not code) — driving the real agent, the 4B
+  model half the time answered "I can't operate a browser" on a clearly-actionable goal instead of
+  calling the tool it HAS. Not a code bug: the same goal succeeded on other runs (mac.safari.openURL
+  → opened the Google-Docs create URL live). The zero-action guard makes the bail HONEST; the real
+  fix is a stronger agent model (Qwen 7B / Llama 8B). Lesson: don't patch model-quality flakiness
+  with code — make the failure truthful and recommend a better model. (Grammar-forcing the first
+  action-step to tool|plan is a plausible future lever, but unverifiable under 4B non-determinism —
+  left unshipped rather than land an unverified decode change.)
+
+- 2026-07-07 (mac.mail.draft: -600 launch race + no-account hang) — the draft AppleScript went
+  straight to `make new outgoing message`; on a closed Mail that throws -600 "Application isn't
+  running", and a fixed launch+activate still RACED (activate returns before Mail's scripting iface
+  is up). Fix: probe `count of accounts` in a bounded retry that doubles as the readiness check,
+  activate INSIDE the retry. Plus: 0 accounts → a setup sheet HANGS the script forever, so detect it
+  and report "add an account" instead. Lesson: launching a Mac app from AppleScript is async — retry
+  to readiness, never a fixed delay; and a modal setup sheet is an infinite hang, guard the precondition.
+
+- 2026-07-07 (halt reason masked by a scratchpad success) — the loop said "stalled: try rephrasing"
+  when it was actually stuck on a consent-refused mac.safari.openURL, because a stray `calculator(1)`
+  success broke the all-attempts-refused count. Fix: check the STALLING observation itself (an
+  unrelated earlier success can't mask it) → NEEDS_PERMISSION, and the one-tap grant bar appears.
+  Also: "go to Settings to grant" is the same homework the chat handoff killed — a contextual "Allow
+  <cap> & run again" now grants standing consent (user tap, model-unreachable; per-run approval still
+  gates mutations; T4 excluded). Lesson: when code knows the exact blocker, code offers the fix.
 
 - 2026-07-07 (grammar legitimized narration-as-answer) — GBNF-constrained decisions (huge win:
   first-try parses) closed an ACCIDENTAL safety net: "Okay, let's calculate…" used to FAIL the
