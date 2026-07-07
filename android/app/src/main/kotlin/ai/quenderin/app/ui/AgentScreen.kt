@@ -1,7 +1,11 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.DocTree
+import ai.quenderin.app.DocUndoJournal
 import ai.quenderin.app.PrefsConsentStore
+import ai.quenderin.app.SafDocTree
 import ai.quenderin.app.copyAttachmentToCache
+import ai.quenderin.app.docWorkspaceCapabilities
 import ai.quenderin.core.ActionPreview
 import ai.quenderin.core.AgentDecision
 import ai.quenderin.core.AgentRun
@@ -99,13 +103,40 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     }
     val consent = remember { PrefsConsentStore(context) }
     var fsReadGranted by remember { mutableStateOf(consent.isGranted("fs.read")) }
+    // The workspace: ONE folder the user grants via the system picker (SAF tree). The grant URI
+    // persists across relaunches; the tree is rebuilt from it (null when the grant is gone).
+    val workspacePrefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
+    var workspaceTree by remember {
+        mutableStateOf<DocTree?>(
+            workspacePrefs.getString("workspace.treeUri", null)
+                ?.let { runCatching { SafDocTree.fromGrant(context, Uri.parse(it)) }.getOrNull() },
+        )
+    }
+    var workspaceGranted by remember { mutableStateOf(consent.isGranted("fs.move")) }
+    val undoJournal = remember { DocUndoJournal() }
+    var undoCount by remember { mutableStateOf(0) }
+    var undoNotice by remember { mutableStateOf<String?>(null) }
+    val pickWorkspace = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            workspacePrefs.edit().putString("workspace.treeUri", uri.toString()).apply()
+            workspaceTree = SafDocTree.fromGrant(context, uri)
+        }
+    }
     val session = remember {
         val runner = CapabilityRunner(
             consent = consent,
             ledger = FileAuditLedger(File(context.filesDir, "agent-ledger.jsonl")),
             approve = { preview -> broker.request(preview) },
         )
-        val allTools = tools + FileReadCapability(grantedFiles = { attachments.toMap() })
+        val allTools = tools +
+            FileReadCapability(grantedFiles = { attachments.toMap() }) +
+            docWorkspaceCapabilities(workspace = { workspaceTree }, journal = undoJournal)
         AgentSession(engine, allTools, runner = runner).apply {
             onChange = {
                 // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background
@@ -122,6 +153,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     answer = a
                     running = r
                     haltReason = h
+                    undoCount = undoJournal.count   // a run's moves surface the Undo button live
                 }
             }
         }
@@ -253,6 +285,59 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     },
                 )
             }
+        }
+
+        // The workspace: grant/revoke the ONE folder the agent may organize, plus the grouped
+        // consent switch (one visible gesture sets the four fs.* grants; every write still needs
+        // its per-run approval above) and the undo journal's counter-button.
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { pickWorkspace.launch(null) }, enabled = !running) {
+                Text(if (workspaceTree == null) "Grant a folder" else "Folder: ${workspaceTree?.name() ?: "(gone)"}")
+            }
+            if (workspaceTree != null) {
+                TextButton(onClick = {
+                    workspacePrefs.edit().remove("workspace.treeUri").apply()
+                    workspaceTree = null
+                }, enabled = !running) { Text("Revoke") }
+            }
+            Spacer(Modifier.weight(1f))
+            if (undoCount > 0) {
+                TextButton(onClick = {
+                    undoNotice = undoJournal.undoLast()
+                    undoCount = undoJournal.count
+                }, enabled = !running) { Text("Undo last move ($undoCount)") }
+            }
+        }
+        if (workspaceTree != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "The agent may organize the workspace folder",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = workspaceGranted,
+                    onCheckedChange = { granted ->
+                        workspaceGranted = granted
+                        listOf("fs.list", "fs.move", "fs.rename", "fs.trash").forEach { consent.setGranted(it, granted) }
+                    },
+                )
+            }
+        }
+        undoNotice?.let { notice ->
+            Text(
+                notice,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
         }
 
         // AI-content disclaimer (Generative-AI content policy).

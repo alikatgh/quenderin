@@ -578,8 +578,15 @@ the approval AlertDialog (dismiss = NO) + a Stop button that also releases the b
 attach flow (SAF pick → copied into app cache at attach time, size-capped — the Android twin of
 "extraction at attach time" — chips to remove, `fs.read` registered over the attachment map,
 consent as a visible switch where the feature lives). Verified: CoreVerify 263 (4 new broker
-checks) + `:app:assembleDebug` green. Remaining on the chip: the workspace fs.* UI (needs a
-SAF/DocumentFile adaptation of the File-based core seam) and a Settings capability pane twin.
+checks) + `:app:assembleDebug` green. **Workspace fs.\* landed the same day** via the SAF
+adaptation (`DocWorkspace.kt`): scoped storage forbids raw File writes to shared folders, so
+the four fs.\* capabilities got DocumentFile twins over a `DocTree` seam — SAME names, tiers,
+input contracts and message wording as the core File twins (one fs.\* surface; only the
+storage plumbing differs). `moveDocument` with a copy+delete fallback, never-overwrite,
+visible Trash/, a `DocUndoJournal` with the live "Undo last move (n)" button, the system
+folder picker with a persisted tree grant (+ Revoke), and a grouped consent switch (one
+gesture sets the four grants; per-run approval still gates every write). Remaining on the
+chip: the Settings capability-pane twin (toggles + ledger feed).
 
 ## Post-M4 — the mac.* library goes NATIVE (2026-07-07, the platform decision)
 

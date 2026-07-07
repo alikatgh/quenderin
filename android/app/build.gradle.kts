@@ -129,5 +129,6 @@ dependencies {
     // Background, resumable model downloads (ModelDownloadWorker + WorkManagerModelDownloader).
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.core:core-ktx:1.13.1") // NotificationCompat for the download notification
+    implementation("androidx.documentfile:documentfile:1.0.1") // SAF workspace fs.* (DocWorkspace.kt)
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
