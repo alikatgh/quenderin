@@ -148,12 +148,14 @@ public struct AgentLoop: Sendable {
             if sig == prevSig {
                 stall += 1
                 if stall >= 2 {
-                    // Reason precedence: a model that repeats a PERMISSION-REFUSED call isn't
-                    // confused — it has no other move. "Try rephrasing" is wrong advice there;
-                    // "grant the capability" is right (live-caught: mac.mail.draft refused →
-                    // retried → mislabeled .stalled).
+                    // Reason precedence: if the model got stuck ON a permission-refused action
+                    // (lastObs is the refusal), it isn't confused — it has no other move. "Try
+                    // rephrasing" is wrong there; "grant the capability" is right. Checking the
+                    // STALLING observation (not an all-attempts count) means an unrelated earlier
+                    // success — e.g. a stray calculator scratchpad call — can't mask it
+                    // (live-caught: openURL refused, but calculator(1) first → mislabeled .stalled).
                     let reason: AgentRun.HaltReason =
-                        (toolAttempts > 0 && refusedAttempts == toolAttempts) ? .needsPermission : .stalled
+                        Self.isPermissionRefusal(lastObs) ? .needsPermission : .stalled
                     return AgentRun(steps: steps, answer: nil, haltReason: reason)
                 }
                 transcript += "\nYou already ran \(sig) and got: \(lastObs) — do something different, or reply {\"answer\":\"…\"} if the task is done."
@@ -209,9 +211,9 @@ public struct AgentLoop: Sendable {
             lastObs = observation
         }
 
-        // Same precedence at the step cap: a mission that spent every attempt on permission
-        // refusals ran out of steps BECAUSE of the missing grant — say that, not "too complex".
-        if toolAttempts > 0 && refusedAttempts == toolAttempts {
+        // Same precedence at the step cap: if the run ended on a permission refusal, or every
+        // attempt was refused, the blocker is the missing grant — say that, not "too complex".
+        if Self.isPermissionRefusal(lastObs) || (toolAttempts > 0 && refusedAttempts == toolAttempts) {
             return AgentRun(steps: steps, answer: nil, haltReason: .needsPermission)
         }
         return AgentRun(steps: steps, answer: nil, haltReason: .maxSteps)

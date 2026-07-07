@@ -124,10 +124,12 @@ class AgentLoop(
             if (sig == prevSig) {
                 stall++
                 if (stall >= 2) {
-                    // Reason precedence: repeating a PERMISSION-REFUSED call isn't confusion — the
-                    // model has no other move. "Try rephrasing" is wrong advice there; "grant the
-                    // capability" is right (live-caught on the Mac twin).
-                    val reason = if (toolAttempts > 0 && refusedAttempts == toolAttempts)
+                    // Reason precedence: if the model got stuck ON a permission-refused action
+                    // (lastObs is the refusal), it has no other move — "grant the capability" is
+                    // the right advice, not "try rephrasing". Checking the STALLING observation
+                    // (not an all-attempts count) means an unrelated earlier success (a stray
+                    // scratchpad call) can't mask it (live-caught on the Mac twin).
+                    val reason = if (isPermissionRefusal(lastObs))
                         AgentRun.HaltReason.NEEDS_PERMISSION else AgentRun.HaltReason.STALLED
                     return AgentRun(steps, null, reason)
                 }
@@ -178,9 +180,9 @@ class AgentLoop(
             prevSig = sig
             lastObs = observation
         }
-        // Same precedence at the step cap: a mission that spent every attempt on permission
-        // refusals ran out of steps BECAUSE of the missing grant — say that, not "too complex".
-        if (toolAttempts > 0 && refusedAttempts == toolAttempts) {
+        // Same precedence at the step cap: if the run ended on a permission refusal, or every
+        // attempt was refused, the blocker is the missing grant — say that, not "too complex".
+        if (isPermissionRefusal(lastObs) || (toolAttempts > 0 && refusedAttempts == toolAttempts)) {
             return AgentRun(steps, null, AgentRun.HaltReason.NEEDS_PERMISSION)
         }
         return AgentRun(steps, null, AgentRun.HaltReason.MAX_STEPS)

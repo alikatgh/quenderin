@@ -20,8 +20,9 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var isRunning = false
     @Published public private(set) var answer: String?
     @Published public private(set) var haltReason: AgentRun.HaltReason?
-    /// The goal of the most recent run — kept so the run can be exported with its prompt as the heading.
-    private var lastGoal = ""
+    /// The goal of the most recent run — kept so the run can be exported with its prompt as the
+    /// heading, and so the permission-halt "Allow & run again" affordance can re-run it verbatim.
+    public private(set) var lastGoal = ""
 
     private var loop: AgentLoop
     /// Kept so `cancel()` can interrupt an in-flight decode (Q-641), the way ChatModel holds its engine.

@@ -15,6 +15,11 @@ public struct AgentView: View {
     @State private var undoNotice: String?
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var scheme
+    /// The SAME UserDefaults-backed consent the Settings pane and the session's runner use —
+    /// a grant made here (by an explicit user tap) is read live by the runner on the next run.
+    /// This is a USER gesture, never model-reachable; the security invariant is "the MODEL can't
+    /// self-grant", not "grants can only happen in Settings".
+    private let consentStore = UserDefaultsConsentStore()
 
     public init(session: AgentSession, attachments: AttachedFilesStore = .shared,
                 workspace: WorkspaceStore = .shared,
@@ -100,11 +105,17 @@ public struct AgentView: View {
                         runActions(palette: p, showShare: true)
                     } else if !session.isRunning, let message = session.haltReason?.userMessage {
                         // The agent stopped without an answer (step limit, safety gate, plan error):
-                        // say so, then GUIDE — show goals that work instead of blaming the phrasing.
-                        // No Share here: a run with no answer has no walkthrough worth exporting.
+                        // say so, then GUIDE. A PERMISSION halt is special — the goal was fine, it
+                        // just lacked a grant — so instead of "try a different goal", offer the
+                        // actual fix: allow the named capability and run it again.
                         AgentHaltBanner(message: message)
-                        AgentExampleList(palette: p, header: "It plans best with clear multi-step goals — try one of these:") { example in
-                            goal = example
+                        let grantable = grantableRefusedCapabilities
+                        if !grantable.isEmpty {
+                            grantAndRunBar(capabilities: grantable, palette: p)
+                        } else {
+                            AgentExampleList(palette: p, header: "It plans best with clear multi-step goals — try one of these:") { example in
+                                goal = example
+                            }
                         }
                         runActions(palette: p, showShare: false)
                     } else if session.steps.isEmpty, !session.isRunning {
@@ -265,6 +276,65 @@ public struct AgentView: View {
 
     /// Start the typed goal. On a plan failure ("try rephrasing it") the goal is handed back to the
     /// field so the user edits it instead of retyping from scratch.
+    /// The capabilities the last run was REFUSED for (missing consent) that are safe to offer a
+    /// contextual grant for — everything except T4 irreversible, which stays Settings-only and
+    /// deliberate. Read from the run's structured decisions (the refused step's tool name), never
+    /// by parsing observation strings.
+    private var grantableRefusedCapabilities: [String] {
+        // Fire for ANY permission-refused step in the run — not only a .needsPermission halt.
+        // A run can end .stalled or .maxSteps while the REAL blocker was a missing grant (e.g. a
+        // stray scratchpad call muddied the halt reason); offering the grant is always the fix.
+        guard !session.isRunning, session.haltReason != nil else { return [] }
+        let tierByName = Dictionary(AgentToolkit.capabilities().map { ($0.name, $0.tier) },
+                                    uniquingKeysWith: { first, _ in first })
+        var ordered: [String] = []
+        var seen = Set<String>()
+        func consider(_ name: String) {
+            guard !seen.contains(name), let tier = tierByName[name], tier != .irreversible else { return }
+            seen.insert(name); ordered.append(name)
+        }
+        for step in session.steps {
+            guard let obs = step.observation, AgentLoop.isPermissionRefusal(obs) else { continue }
+            switch step.decision {
+            case .useTool(let name, _): consider(name)
+            case .plan(let calls): calls.forEach { consider($0.name) }
+            case .finalAnswer: break
+            }
+        }
+        return ordered
+    }
+
+    /// The one-tap "Allow & run again" affordance on a permission halt. The tap grants STANDING
+    /// consent for the named capabilities (the same thing the Settings toggle does — an explicit
+    /// user gesture, unreachable by the model) and re-runs the exact goal. Any mutating capability
+    /// STILL fires its per-run approval dialog below before it changes anything, so this can never
+    /// produce a silent write — the honest subtitle says so.
+    @ViewBuilder
+    private func grantAndRunBar(capabilities: [String], palette p: QuenderinPalette) -> some View {
+        let tierByName = Dictionary(AgentToolkit.capabilities().map { ($0.name, $0.tier) },
+                                    uniquingKeysWith: { first, _ in first })
+        let anyMutating = capabilities.contains { (tierByName[$0] ?? .readOnly) > .readOnly }
+        let names = capabilities.map { "“\($0)”" }.joined(separator: ", ")
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                for name in capabilities { consentStore.setGranted(name, true) }
+                let g = session.lastGoal
+                Task { await session.run(goal: g) }
+            } label: {
+                Label("Allow \(names) and run again", systemImage: "checkmark.shield")
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(p.primary)
+            .accessibilityLabel("Allow \(capabilities.joined(separator: ", ")) and run the goal again")
+            if anyMutating {
+                Text("You'll still confirm before it makes any change — this only grants the standing permission.")
+                    .font(.caption)
+                    .foregroundStyle(p.onSurfaceVariant)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func run() {
         let g = goal.trimmingCharacters(in: .whitespaces)
         guard !session.isRunning, !g.isEmpty else { return }

@@ -59,6 +59,27 @@ final class AgentLoopTests: XCTestCase {
                        "a repeat caused BY a missing grant must say so, not 'try rephrasing'")
     }
 
+    /// Live-caught (the Google-Docs run): the model did an unrelated `calculator` scratchpad call
+    /// (a success), THEN got stuck on a consent-refused `mac.safari.openURL`. The old all-attempts
+    /// count saw one success + one refusal ≠ all-refused → mislabeled .stalled ("try rephrasing").
+    /// Checking the STALLING observation instead correctly reports .needsPermission.
+    func testStallOnRefusalAfterAnUnrelatedSuccessReportsNeedsPermission() async {
+        let consent = InMemoryConsentStore()   // nothing granted
+        let runner = CapabilityRunner(consent: consent, ledger: InMemoryAuditLedger())
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"calculator","input":"1"}"#,        // unrelated success (scratchpad)
+            #"{"tool":"fs.read","input":"plan.txt"}"#,     // refused — no consent
+            #"{"tool":"fs.read","input":"plan.txt"}"#,     // repeat → stall ON the refusal
+            #"{"tool":"fs.read","input":"plan.txt"}"#,
+        ])
+        let loop = AgentLoop(engine: engine,
+                             tools: AgentToolkit.standard(attachments: AttachedFilesStore()),
+                             runner: runner)
+        let run = await loop.run(goal: "compute then read my plan file")
+        XCTAssertEqual(run.haltReason, .needsPermission,
+                       "stuck on a refusal — even after an unrelated success — is a permission problem")
+    }
+
     /// Zero-action guard (live-caught): the model answered a bare "Done" with an EMPTY run log
     /// on an action goal. One nudge, then an honest halt — never "Done" over no work.
     func testZeroActionAnswerOnAnActionGoalIsNudgedThenWithheld() async {

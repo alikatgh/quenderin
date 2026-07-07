@@ -897,8 +897,19 @@ fun main() {
             """{"tool":"fs.read","input":"plan.txt"}""",
             """{"tool":"fs.read","input":"plan.txt"}""",
         ))
-        AgentLoop(engine, listOf(FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
+        val allRefused = AgentLoop(engine, listOf(FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
             .run("read my plan file").haltReason == AgentRun.HaltReason.NEEDS_PERMISSION
+        // Mixed case (live-caught Google-Docs run): an unrelated calculator success THEN stuck on a
+        // refusal must STILL report NEEDS_PERMISSION — checking the stalling obs, not an all-count.
+        val mixed = ScriptedInferenceEngine(listOf(
+            """{"tool":"calculator","input":"1"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+        ))
+        val mixedRefused = AgentLoop(mixed, listOf(CalculatorTool(), FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
+            .run("compute then read my plan").haltReason == AgentRun.HaltReason.NEEDS_PERMISSION
+        allRefused && mixedRefused
     })
 
     check("zero-action 'Done' on an action goal is nudged once, then withheld (like Swift)", run {
