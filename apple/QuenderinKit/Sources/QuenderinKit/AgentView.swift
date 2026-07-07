@@ -8,6 +8,7 @@ public struct AgentView: View {
     @ObservedObject private var attachments: AttachedFilesStore
     @ObservedObject private var workspace: WorkspaceStore
     @ObservedObject private var approvals: ApprovalBroker
+    @ObservedObject private var goalHistory: AgentGoalHistoryStore
     @State private var goal: String = ""
     @State private var showFilePicker = false
     @State private var showFolderPicker = false
@@ -16,11 +17,13 @@ public struct AgentView: View {
     @Environment(\.colorScheme) private var scheme
 
     public init(session: AgentSession, attachments: AttachedFilesStore = .shared,
-                workspace: WorkspaceStore = .shared) {
+                workspace: WorkspaceStore = .shared,
+                goalHistory: AgentGoalHistoryStore = .shared) {
         self.session = session
         self.attachments = attachments
         self.workspace = workspace
         self.approvals = session.approvals
+        self.goalHistory = goalHistory
     }
 
     public var body: some View {
@@ -99,6 +102,16 @@ public struct AgentView: View {
                         // First run: show what the agent can do instead of a blank screen.
                         // Tapping an example drops it into the field, ready to edit or run.
                         AgentEmptyState(palette: p) { example in goal = example }
+                        // Every goal the user has run, newest first — tap to re-use (drops into
+                        // the field, ready to edit or send again), remove one via the context
+                        // menu, or clear the lot. Same recall affordance chat gets from its
+                        // conversation list, sized for goals.
+                        if !goalHistory.entries.isEmpty {
+                            AgentRecentGoals(entries: goalHistory.entries, palette: p,
+                                             onPick: { goal = $0 },
+                                             onRemove: { goalHistory.remove($0) },
+                                             onClear: { goalHistory.clear() })
+                        }
                     }
                 }
                 .padding()
@@ -236,6 +249,9 @@ public struct AgentView: View {
     private func run() {
         let g = goal.trimmingCharacters(in: .whitespaces)
         guard !session.isRunning, !g.isEmpty else { return }
+        // Recorded at SUBMIT, not completion: a cancelled or halted goal is still one the user
+        // typed and may want back — the recents list is about recall, not about success.
+        goalHistory.record(g)
         goal = ""
         Task {
             await session.run(goal: g)
@@ -402,6 +418,52 @@ private struct AgentExampleList: View {
         }
         // No frame here: the empty state centers this as a block, the halt state leads it —
         // the parent stack's alignment decides.
+    }
+}
+
+/// The user's own past goals, newest first — the re-use affordance. Tap drops the goal into
+/// the field (same interaction as the examples, so recall and guidance feel like one system);
+/// context-menu removes one; the footer button forgets everything. Rendered only on the empty
+/// state: once a run is on screen, the transcript owns the space.
+private struct AgentRecentGoals: View {
+    let entries: [AgentGoalEntry]
+    let palette: QuenderinPalette
+    let onPick: (String) -> Void
+    let onRemove: (String) -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("RECENT GOALS")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.onSurfaceVariant)
+            ForEach(entries, id: \.goal) { entry in
+                Button { onPick(entry.goal) } label: {
+                    Label {
+                        Text(entry.goal).lineLimit(2)
+                    } icon: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button(role: .destructive) { onRemove(entry.goal) } label: {
+                        Label("Remove from recents", systemImage: "trash")
+                    }
+                }
+                .accessibilityLabel("Re-use goal: \(entry.goal)")
+            }
+            Button("Clear recent goals", action: onClear)
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .padding(.top, 2)
+                .accessibilityLabel("Clear recent goals")
+        }
+        .padding(.top, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

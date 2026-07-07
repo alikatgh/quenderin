@@ -1770,6 +1770,36 @@ fun main() {
         trashed && restored && previewHonest
     })
 
+    // ── AgentGoalHistory — the recents policy (twin of Swift AgentGoalHistoryTests) ──
+    check("goal history inserts newest first, trims, ignores empty", run {
+        var list = AgentGoalHistory.record("first goal", 1, emptyList())
+        list = AgentGoalHistory.record("second goal", 2, list)
+        val order = list.map { it.goal } == listOf("second goal", "first goal")
+        val trimmed = AgentGoalHistory.record("  padded \n", 3, emptyList()).single().goal == "padded"
+        val emptyIgnored = AgentGoalHistory.record("   \n ", 4, list) == list
+        order && trimmed && emptyIgnored
+    })
+    check("re-running a goal moves it to the top without duplicating (timestamp refreshed)", run {
+        var list = AgentGoalHistory.record("a", 1, emptyList())
+        list = AgentGoalHistory.record("b", 2, list)
+        list = AgentGoalHistory.record("a", 3, list)
+        list.map { it.goal } == listOf("a", "b") && list[0].lastUsedAt == 3L
+    })
+    check("goal history dedup is case-SENSITIVE (locale-drift guard) and the cap drops oldest", run {
+        var list = AgentGoalHistory.record("Convert 5 miles", 1, emptyList())
+        list = AgentGoalHistory.record("convert 5 miles", 2, list)
+        val caseSensitive = list.size == 2
+        var capped = emptyList<AgentGoalEntry>()
+        for (i in 0 until AgentGoalHistory.MAX_ENTRIES + 5) capped = AgentGoalHistory.record("goal $i", i.toLong(), capped)
+        caseSensitive && capped.size == AgentGoalHistory.MAX_ENTRIES &&
+            capped.first().goal == "goal ${AgentGoalHistory.MAX_ENTRIES + 4}" && capped.last().goal == "goal 5"
+    })
+    check("goal history remove drops the exact goal", run {
+        var list = AgentGoalHistory.record("keep", 1, emptyList())
+        list = AgentGoalHistory.record("drop", 2, list)
+        AgentGoalHistory.remove("drop", list).map { it.goal } == listOf("keep")
+    })
+
     println()
     if (failures == 0) {
         println("ALL PASSED")
