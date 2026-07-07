@@ -50,7 +50,45 @@ public struct CalculatorTool: Capability {
         if value.rounded() == value && abs(value) < 1e15 {
             return String(Int64(value))
         }
-        return String(value)
+        return NumberRender.canonical(value)
+    }
+}
+
+/// ONE number→string rendering for tool observations, byte-identical across the twins — the
+/// platform-native shortest-repr strings diverge in digits AND presentation ("1.18…e+21" here,
+/// "1.18…E21" on Android; plain vs sci thresholds differ too), feeding the agent loop different
+/// observations for the same value (twin-drift audit, agent-session P2). Contract: 12 significant
+/// digits with HALF-EVEN ties (C's correctly-rounded %.11e here; BigDecimal HALF_EVEN on the
+/// Kotlin twin — probed to agree, tie case included), plain decimal for exponents -5…14,
+/// canonical scientific ("1.18059162072e+21") outside.
+enum NumberRender {
+    static func canonical(_ v: Double) -> String {
+        guard v.isFinite else { return String(v) }
+        let formatted = String(format: "%.11e", v)              // "d.dddddddddddde±XX"
+        guard let eIdx = formatted.firstIndex(of: "e") else { return formatted }
+        var mantissa = String(formatted[..<eIdx])
+        let exponent = Int(formatted[formatted.index(after: eIdx)...]) ?? 0
+        let negative = mantissa.hasPrefix("-")
+        if negative { mantissa.removeFirst() }
+        var digits = mantissa.replacingOccurrences(of: ".", with: "")
+        while digits.count > 1 && digits.hasSuffix("0") { digits.removeLast() }
+        return assemble(sign: negative ? "-" : "", digits: digits, exponent: exponent)
+    }
+
+    /// The shared presentation half — same logic, token for token, as the Kotlin twin.
+    static func assemble(sign: String, digits: String, exponent: Int) -> String {
+        if exponent >= -5 && exponent <= 14 {
+            if exponent >= digits.count - 1 {
+                return sign + digits + String(repeating: "0", count: exponent - (digits.count - 1))
+            }
+            if exponent >= 0 {
+                let cut = digits.index(digits.startIndex, offsetBy: exponent + 1)
+                return sign + digits[..<cut] + "." + digits[cut...]
+            }
+            return sign + "0." + String(repeating: "0", count: -exponent - 1) + digits
+        }
+        let mantissa = digits.count == 1 ? digits : "\(digits.first!)." + String(digits.dropFirst())
+        return "\(sign)\(mantissa)e\(exponent >= 0 ? "+" : "-")\(abs(exponent))"
     }
 }
 

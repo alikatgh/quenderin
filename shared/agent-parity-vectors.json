@@ -133,6 +133,13 @@
    "note": "UnitConverter.format rounds half AWAY FROM ZERO on both platforms. Kotlin's Math.round is floor(x+0.5) — half toward +∞ — so -0.00025 rendered \"-0.0002\" on Android only (twin-drift audit agent-session P2). kotlin.math.round would be half-to-even — also wrong; the fix is definitional floor/ceil."
   },
   {
+   "id": "calc-canonical-render",
+   "category": "tool-format",
+   "input": "2^70",
+   "expected": "1.18059162072e+21",
+   "note": "The calculator's non-integral observation uses ONE canonical rendering on both twins: 12 significant digits, HALF-EVEN ties (C %.11e on iOS; BigDecimal HALF_EVEN on Android — probed to agree incl. the 1234567890.125 tie), plain decimal for exponents -5..14 (so 0.1+0.2 reads \"0.3\" everywhere), canonical sci outside. Platform toString diverged in digits AND shape (\"1.18…e+21\" vs \"1.18…E21\"; twin-drift audit agent-session P2)."
+  },
+  {
    "id": "tokenizer-decimal-digit-only",
    "category": "tool-format",
    "input": "5² m to ft",

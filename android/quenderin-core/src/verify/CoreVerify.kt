@@ -146,6 +146,11 @@ fun main() {
             UnitConverter.format(6.048E13) == "60480000000000" && UnitConverter.format(1.5) == "1.5")
     check("parity: digit scan is category-Nd only — superscript is not a number",  // parity:tokenizer-decimal-digit-only
         UnitConverterTool().run("5² m to ft") == "Can't convert ² m to ft — they measure different things.")
+    check("parity: the calculator renders one canonical number shape",  // parity:calc-canonical-render
+        CalculatorTool().run("2^70") == "1.18059162072e+21" &&
+            CalculatorTool().run("0.1 + 0.2") == "0.3" &&
+            NumberRender.canonical(1e-7) == "1e-7" &&
+            NumberRender.canonical(-1234567890.125) == "-1234567890.12")
     check("parity: M9 word boundaries don't false-block",  // parity:blocklist-safe-substrings
         listOf("please repay the favor", "in my opinion", "the company went bankrupt").none { SafetyBlocklist.isBlocked(it) })
     // Java's `\b` is ASCII-only by default, so it saw 'é' as a boundary and fired "pin" on "piné" /

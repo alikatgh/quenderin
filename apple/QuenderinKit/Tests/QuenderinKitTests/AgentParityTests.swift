@@ -69,6 +69,14 @@ final class AgentParityTests: XCTestCase {
         // so "5²" parses as 5 + unknown unit "² m" and both platforms answer identically.
         let out = try await UnitConverterTool().run("5² m to ft")
         XCTAssertEqual(out, "Can't convert ² m to ft — they measure different things.")
+        // parity:calc-canonical-render - one canonical rendering: 12 sig digits half-even, plain
+        // decimal in the everyday range (float noise like 0.1+0.2 reads "0.3"), canonical sci outside.
+        let huge = try await CalculatorTool().run("2^70")
+        XCTAssertEqual(huge, "1.18059162072e+21")
+        let noise = try await CalculatorTool().run("0.1 + 0.2")
+        XCTAssertEqual(noise, "0.3")
+        XCTAssertEqual(NumberRender.canonical(1e-7), "1e-7")
+        XCTAssertEqual(NumberRender.canonical(-1234567890.125), "-1234567890.12")
     }
 
     func testSafetyBlocklistParity() {

@@ -37,7 +37,44 @@ class CalculatorTool : Capability {
     override val purpose = "Evaluate arithmetic like \"12 * (3 + 4)\", \"2^10\", or \"sqrt(16)\" (+ - * / ^ %, parentheses, sqrt/abs/floor/ceil, pi/e)."
     override fun run(input: String): String {
         val value = ArithmeticParser.evaluate(input) ?: return "Couldn't evaluate \"$input\"."
-        return if (value == Math.rint(value) && abs(value) < 1e15) value.toLong().toString() else value.toString()
+        return if (value == Math.rint(value) && abs(value) < 1e15) value.toLong().toString() else NumberRender.canonical(value)
+    }
+}
+
+/**
+ * ONE number→string rendering for tool observations, byte-identical across the twins — the
+ * platform-native shortest-repr strings diverge in digits AND presentation ("1.18…E21" here,
+ * "1.18…e+21" on iOS; plain vs sci thresholds differ too), feeding the agent loop different
+ * observations for the same value (twin-drift audit, agent-session P2). Contract: 12 significant
+ * digits with HALF-EVEN ties (BigDecimal here; C's correctly-rounded %.11e on the Swift twin —
+ * probed to agree, tie case included), plain decimal for exponents -5…14, canonical scientific
+ * ("1.18059162072e+21") outside.
+ */
+object NumberRender {
+    fun canonical(v: Double): String {
+        if (!v.isFinite()) return v.toString()
+        val bd = java.math.BigDecimal(v).round(java.math.MathContext(12, java.math.RoundingMode.HALF_EVEN))
+        val negative = bd.signum() < 0
+        val unscaled = bd.unscaledValue().abs().toString()
+        val exponent = unscaled.length - 1 - bd.scale()
+        var digits = unscaled.trimEnd('0')
+        if (digits.isEmpty()) digits = "0"
+        return assemble(if (negative) "-" else "", digits, exponent)
+    }
+
+    /** The shared presentation half — same logic, token for token, as the Swift twin. */
+    internal fun assemble(sign: String, digits: String, exponent: Int): String {
+        if (exponent in -5..14) {
+            if (exponent >= digits.length - 1) {
+                return sign + digits + "0".repeat(exponent - (digits.length - 1))
+            }
+            if (exponent >= 0) {
+                return sign + digits.substring(0, exponent + 1) + "." + digits.substring(exponent + 1)
+            }
+            return sign + "0." + "0".repeat(-exponent - 1) + digits
+        }
+        val mantissa = if (digits.length == 1) digits else "${digits.first()}.${digits.substring(1)}"
+        return "$sign${mantissa}e${if (exponent >= 0) "+" else "-"}${kotlin.math.abs(exponent)}"
     }
 }
 
