@@ -1,6 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { ListChecks, Square, Undo2, FolderOpen } from 'lucide-react';
+import { ListChecks, Square, Undo2, FolderOpen, ChevronRight } from 'lucide-react';
 import { TaskLogItem, TaskApproval } from '../hooks/useAgentSocket.js';
+import { apiFetch } from '../lib/api.js';
+
+interface CapabilityInfo {
+    name: string;
+    purpose: string;
+    tier: number;
+    mutates: boolean;
+    needsWorkspace: boolean;
+}
+
+interface LedgerEntry {
+    timestampMs: number;
+    capability: string;
+    input: string;
+    decision: string;
+    outcome?: string;
+    goal?: string;
+}
+
+/** The CLI `history` glyphs, verbatim — one visual language for the trust loop everywhere. */
+const DECISION_GLYPHS: Record<string, { glyph: string; cls: string }> = {
+    allowed: { glyph: '✓', cls: 'text-emerald-600 dark:text-emerald-400' },
+    dryRun: { glyph: '○', cls: 'text-zinc-400 dark:text-zinc-500' },
+    blocked: { glyph: '✗', cls: 'text-red-600 dark:text-red-400' },
+    declined: { glyph: '✗', cls: 'text-amber-600 dark:text-amber-400' },
+    needsConsent: { glyph: '○', cls: 'text-amber-600 dark:text-amber-400' },
+    needsApproval: { glyph: '○', cls: 'text-amber-600 dark:text-amber-400' },
+    error: { glyph: '✗', cls: 'text-red-600 dark:text-red-400' },
+};
 
 /**
  * The Tasks view — the dashboard front-end for the GOVERNED agent (`quenderin do` with a GUI):
@@ -37,10 +66,40 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
     const [goal, setGoal] = useState('');
     const [workspace, setWorkspace] = useState('');
     const [dryRun, setDryRun] = useState(false);
+    const [capabilities, setCapabilities] = useState<CapabilityInfo[]>([]);
+    const [showCapabilities, setShowCapabilities] = useState(false);
+    const [history, setHistory] = useState<LedgerEntry[]>([]);
     const logEndRef = useRef<HTMLDivElement>(null);
     const declineRef = useRef<HTMLButtonElement>(null);
 
     const running = status === 'running';
+
+    // Discovery: what THIS machine's agent can do (once per mount — the library is static).
+    useEffect(() => {
+        apiFetch('/api/tasks/capabilities')
+            .then(r => (r.ok ? r.json() : null))
+            .then(data => { if (data?.capabilities) setCapabilities(data.capabilities); })
+            .catch(() => { /* the panel still works without the list */ });
+    }, []);
+
+    // The trust loop's review pillar: the per-task ledger, refreshed whenever a run settles.
+    useEffect(() => {
+        if (status === 'running') return;
+        apiFetch('/api/tasks/ledger')
+            .then(r => (r.ok ? r.json() : null))
+            .then(data => { if (data?.entries) setHistory(data.entries); })
+            .catch(() => { /* best-effort */ });
+    }, [status, undoable]);
+
+    // Newest-first tasks: group ledger rows by their goal stamp, preserving recency order.
+    const tasks: Array<{ goal: string; rows: LedgerEntry[] }> = [];
+    for (const entry of [...history].reverse()) {
+        const goalLabel = entry.goal || '(no task recorded)';
+        const last = tasks[tasks.length - 1];
+        if (last && last.goal === goalLabel) last.rows.push(entry);
+        else tasks.push({ goal: goalLabel, rows: [entry] });
+    }
+    const recentTasks = tasks.slice(0, 5);
 
     // Keep the newest activity in view; keyed on length so token-free step streams still scroll.
     useEffect(() => {
@@ -78,6 +137,45 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                             every change previewed and approved by you, all of it logged and undoable.
                             Nothing leaves this machine.
                         </p>
+                        {capabilities.length > 0 && (
+                            <div className="mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCapabilities(v => !v)}
+                                    aria-expanded={showCapabilities}
+                                    className="flex items-center gap-1 text-[12px] font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded"
+                                >
+                                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showCapabilities ? 'rotate-90' : ''}`} aria-hidden="true" />
+                                    What it can do here
+                                    <span className="tabular-nums font-normal text-zinc-400 dark:text-zinc-500">({capabilities.length})</span>
+                                </button>
+                                {showCapabilities && (
+                                    <div className="mt-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 p-3 space-y-3">
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Looks — runs without asking</p>
+                                            <ul className="mt-1 space-y-0.5">
+                                                {capabilities.filter(c => !c.mutates).map(c => (
+                                                    <li key={c.name} className="text-[12px] text-zinc-600 dark:text-zinc-400">
+                                                        <span className="font-mono text-zinc-800 dark:text-zinc-200">{c.name}</span> — {c.purpose}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Acts — asks you first, every run</p>
+                                            <ul className="mt-1 space-y-0.5">
+                                                {capabilities.filter(c => c.mutates).map(c => (
+                                                    <li key={c.name} className="text-[12px] text-zinc-600 dark:text-zinc-400">
+                                                        <span className="font-mono text-zinc-800 dark:text-zinc-200">{c.name}</span> — {c.purpose}
+                                                        {c.needsWorkspace && <span className="text-zinc-400 dark:text-zinc-500"> (needs a workspace folder)</span>}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Goal + options */}
@@ -164,6 +262,37 @@ export function TasksArea({ status, log, approval, undoable, wsReady, onStart, o
                                 </button>
                             )}
                             <div ref={logEndRef} />
+                        </div>
+                    )}
+
+                    {/* The review pillar: what the agent actually did to this machine, per task —
+                        including refusals. A cloud agent gives you an opaque chat log; this is a
+                        local record you own (same file the CLI's `quenderin history` reads). */}
+                    {recentTasks.length > 0 && (
+                        <div>
+                            <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Recent activity</h2>
+                            <div className="mt-2 space-y-3">
+                                {recentTasks.map((task, i) => (
+                                    <div key={`${task.goal}-${i}`} className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 p-3">
+                                        <p className="text-[12px] font-semibold text-zinc-800 dark:text-zinc-200">Task: {task.goal}</p>
+                                        <ul className="mt-1.5 space-y-1">
+                                            {task.rows.map((row, j) => {
+                                                const d = DECISION_GLYPHS[row.decision] ?? { glyph: '·', cls: 'text-zinc-400' };
+                                                return (
+                                                    <li key={j} className="text-[12px] text-zinc-600 dark:text-zinc-400 flex gap-1.5">
+                                                        <span className={`${d.cls} flex-shrink-0`} aria-hidden="true">{d.glyph}</span>
+                                                        <span className="min-w-0">
+                                                            <span className="font-mono text-zinc-700 dark:text-zinc-300">{row.capability}</span>
+                                                            {row.input && row.input !== '-' && <span> — {row.input}</span>}
+                                                            <span className="text-zinc-400 dark:text-zinc-500"> · {row.decision}</span>
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

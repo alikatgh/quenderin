@@ -21,6 +21,12 @@ import { getHardwareProfile } from './utils/hardware.js';
 import { isAuthorized } from './security/authToken.js';
 import { sanitizeManualAction } from './utils/agentControl.js';
 import logger from './utils/logger.js';
+import { FileAuditLedger } from './services/capability/persistence.js';
+import { OsascriptAutomation } from './services/capability/macAutomation.js';
+import { macCapabilities } from './services/capability/macCapabilities.js';
+import { ExecFileRunner } from './services/capability/platformAutomation.js';
+import { platformCapabilities } from './services/capability/platformCapabilities.js';
+import { fileCapabilities } from './services/capability/fileCapabilities.js';
 
 /** Pre-built goal templates to help users get started quickly */
 const GOAL_TEMPLATES = [
@@ -102,7 +108,9 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // Q-274: /api/metrics returns agent mission history (goal_text, success, steps) — protect it too.
     // Q-549: /api/agent/ledger returns the device agent's action history (goal + what was tapped) — user
     // data, so its GET requires the token like the other read-protected prefixes.
-    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent'];
+    // /api/tasks returns the governed agent's per-task action history (goals + what was done) —
+    // user data, token-gated like the device agent's ledger.
+    const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks'];
     const requiresAuth = (req: express.Request): boolean => {
         if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
         if (req.method === 'GET' && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
@@ -166,6 +174,37 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             res.json({ ledger: agentService.actionLedger.entries() });
         });
     }
+
+    // The governed TASK agent's flight recorder (~/.quenderin/agent-ledger.jsonl — shared with the
+    // CLI's `quenderin history`, so dashboard and terminal read ONE record). Newest-last; the UI
+    // groups rows per task via the `goal` stamp. Token-gated (PROTECTED_READ_PREFIXES).
+    app.get('/api/tasks/ledger', (_req, res) => {
+        const entries = new FileAuditLedger().entries();
+        res.json({ entries: entries.slice(-200) });
+    });
+
+    // What the governed agent can do on THIS machine — the discovery front door (`quenderin
+    // capabilities` for the dashboard). Listing is metadata-only: nothing is instantiated beyond
+    // the capability objects, nothing runs. fs.* are listed with a null workspace (they need one
+    // to act; the UI says so).
+    app.get('/api/tasks/capabilities', (_req, res) => {
+        const mac = new OsascriptAutomation();
+        const shell = new ExecFileRunner();
+        const caps = [
+            ...(mac.available() ? macCapabilities(mac) : []),
+            ...platformCapabilities(shell),
+            ...fileCapabilities(() => null),
+        ];
+        res.json({
+            capabilities: caps.map(c => ({
+                name: c.name,
+                purpose: c.purpose,
+                tier: c.tier,
+                mutates: c.blastRadius.kind === 'write' || c.blastRadius.kind === 'irreversible',
+                needsWorkspace: c.name.startsWith('fs.'),
+            })),
+        });
+    });
 
 
     if (llmService) {

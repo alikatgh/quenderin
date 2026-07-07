@@ -4,7 +4,9 @@ import { CommandRunner, powershell } from '../src/services/capability/platformAu
 import {
     platformCapabilities,
     WinClipboardReadCapability, WinOpenAppCapability, WinOpenURLCapability, WinExplorerRevealCapability,
+    WinFrontWindowCapability,
     LinuxClipboardReadCapability, LinuxOpenURLCapability, LinuxNotifyCapability, LinuxFilesRevealCapability,
+    LinuxFrontWindowCapability,
 } from '../src/services/capability/platformCapabilities.js';
 import { createGovernedAgent, ChatCompleter } from '../src/services/capability/desktopAgent.js';
 import { InMemoryConsentStore } from '../src/services/capability/capability.js';
@@ -121,12 +123,29 @@ describe('platform behavior', () => {
 
     it('platformCapabilities picks the right set per OS and stays empty on macOS', () => {
         expect(platformCapabilities(new FakeRunner('win32')).map(c => c.name)).toEqual([
-            'win.clipboard.read', 'win.explorer.reveal', 'win.app.open', 'win.url.open',
+            'win.frontApp', 'win.clipboard.read', 'win.explorer.reveal', 'win.app.open', 'win.url.open',
         ]);
         expect(platformCapabilities(new FakeRunner('linux')).map(c => c.name)).toEqual([
-            'linux.clipboard.read', 'linux.files.reveal', 'linux.url.open', 'linux.notify.send',
+            'linux.frontApp', 'linux.clipboard.read', 'linux.files.reveal', 'linux.url.open', 'linux.notify.send',
         ]);
         expect(platformCapabilities(new FakeRunner('darwin'))).toEqual([]);
+    });
+
+    it('front-window perception: fixed scripts, honest fallbacks', async () => {
+        const win = new FakeRunner('win32', [{ ok: 'Code|main.ts — quenderin' }]);
+        const out = await new WinFrontWindowCapability(win).run();
+        expect(out).toBe('The frontmost app is Code — "main.ts — quenderin".');
+        // The whole PowerShell script is the fixed template — zero interpolation points.
+        expect(win.calls[0].argv).toEqual(powershell(WinFrontWindowCapability.SCRIPT));
+        expect(win.calls[0].env).toBeUndefined();
+
+        const linux = new FakeRunner('linux', [{ ok: 'Firefox — quenderin.org' }]);
+        const lout = await new LinuxFrontWindowCapability(linux).run();
+        expect(lout).toBe('The frontmost window is "Firefox — quenderin.org".');
+        expect(linux.calls[0].argv).toEqual(['xdotool', 'getactivewindow', 'getwindowname']);
+
+        const wayland = new FakeRunner('linux', [{ err: { code: 'CMD_MISSING' } }]);
+        expect(await new LinuxFrontWindowCapability(wayland).run()).toContain('xdotool');
     });
 
     it('tiers are declared honestly (perception reads, actions mutate)', () => {
