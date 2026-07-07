@@ -500,7 +500,9 @@ describe('AgentService — pause / resume', () => {
         expect(decisionCalls.length).toBeGreaterThanOrEqual(2);
         for (const call of decisionCalls) {
             expect(call[0]).toContain('Valid actions');                       // schema-bearing system prompt, every step
-            expect(call[2]?.jsonSchema).toMatchObject({ type: 'object' });    // grammar constraint requested
+            // Grammar constraint requested, shaped oneOf-per-variant (a flat object schema makes
+            // the GBNF grammar emit EVERY property — junk fields on every action, live-caught).
+            expect(Array.isArray(call[2]?.jsonSchema?.oneOf)).toBe(true);
             expect(typeof call[2]?.cacheKey).toBe('string');                  // KV prefix reuse requested
         }
     });

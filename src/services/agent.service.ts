@@ -58,19 +58,21 @@ Respond ONLY with valid JSON or XML. Do not provide any conversational filler.`;
 /** JSON schema mirror of the SYSTEM_PROMPT action space. Passed as GenerationOptions.jsonSchema so
  *  a grammar-capable provider CANNOT emit anything but one valid action object — parse failures and
  *  the XML fallback become dead paths on the real engine (they remain for fakes/ported providers).
- *  Must stay in lockstep with AgentAction (types/index.ts) and the mobile twins' action space. */
+ *  Shaped as oneOf-per-variant, NOT one flat object: the GBNF grammar emits EVERY listed property,
+ *  so a flat schema forced junk fields onto every action (a "done" with a direction, a "scroll"
+ *  with an id — live-caught by scripts/smoke_llm_engine.ts). Each variant carries exactly the
+ *  fields its executor branch reads. Must stay in lockstep with AgentAction (types/index.ts) and
+ *  the mobile twins' action space. */
 const ACTION_JSON_SCHEMA: Record<string, unknown> = {
-    type: "object",
-    properties: {
-        action: { enum: ["click", "input", "scroll", "key", "done"] },
-        id: { type: "number" },
-        x: { type: "number" },
-        y: { type: "number" },
-        text: { type: "string" },
-        direction: { enum: ["up", "down", "left", "right"] },
-        key: { enum: ["back", "home", "enter"] },
-    },
-    required: ["action"],
+    oneOf: [
+        { type: "object", properties: { action: { const: "click" }, id: { type: "number" } } },
+        { type: "object", properties: { action: { const: "click" }, x: { type: "number" }, y: { type: "number" } } },
+        { type: "object", properties: { action: { const: "input" }, id: { type: "number" }, text: { type: "string" } } },
+        { type: "object", properties: { action: { const: "input" }, x: { type: "number" }, y: { type: "number" }, text: { type: "string" } } },
+        { type: "object", properties: { action: { const: "scroll" }, direction: { enum: ["up", "down", "left", "right"] } } },
+        { type: "object", properties: { action: { const: "key" }, key: { enum: ["back", "home", "enter"] } } },
+        { type: "object", properties: { action: { const: "done" } } },
+    ],
 };
 
 /** One mission = one KV-cache lineage. The stable prompt prefix (system prompt, goal, hints,

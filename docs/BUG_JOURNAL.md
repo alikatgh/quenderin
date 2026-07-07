@@ -66,6 +66,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   If each call builds a fresh session, conditioning a preamble on "first call only" means every later
   call runs without it. Verify the session's actual lifetime before optimizing away a re-send; make the
   re-send cheap (KV prefix cache) instead of skipping it. (SYSTEM_PROMPT step 2+)
+- **A GBNF JSON-schema grammar has no "optional": every listed property is emitted.** A flat schema
+  with 7 properties makes every output carry all 7 — junk fields that downstream branches may act on.
+  Shape constraint schemas as oneOf-per-variant, and smoke the grammar against the real engine
+  (scripts/smoke_llm_engine.ts); the type-checker can't see this. (ACTION_JSON_SCHEMA)
 - **A strictness guard measured against a lenient extractor's output is theatre.** Kotlin's plan
   parser checked `calls.size == objects.size`, but `splitObjects` had ALREADY silently dropped
   non-object members — the guard could never see the garbage it existed to reject, so a garbled plan
@@ -369,6 +373,23 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (grammar junk fields: flat schema) — the first ACTION_JSON_SCHEMA was one flat object;
+  GBNF JSON-schema grammars emit EVERY listed property, so clicks arrived with junk x/y/direction/key
+  (live-caught by scripts/smoke_llm_engine.ts). Fix: oneOf-per-action-variant, each carrying exactly
+  the fields its executor branch reads. Lesson: a constraint grammar doesn't do "optional" — shape
+  the schema as variants, and smoke-test grammars against the REAL engine, not just the type-checker.
+
+- 2026-07-07 (chat tools: XML scraping → native functions) — chat tool calls were regex-scraped
+  `<tool_call>` XML + a manual re-prompt loop; small models drift the format constantly. Fix:
+  `defineChatSessionFunction` bridge (tools/nativeFunctions.ts) — decoder-enforced calls, library-run
+  call/result loop, no markup in the stream; XML path retained for old bindings + mobile twins
+  (tool-format parity). Q-639 cap enforced in the handler. Verified live: calculator fired, "391".
+
+- 2026-07-07 (daemon fake vision) — backgroundDaemon asked the model to "describe what the user is
+  doing" from a screenshot passed as a text PATH → every habit-log description was hallucination.
+  Fix: log the measured signal only (diff %); daemon no longer takes an LLM provider at all (one
+  less background inference contending with chat/agent). Twin of the agent-Eye entry below.
+
 - 2026-07-07 (agent drunk: no schema after step 1) — `agent.service.ts` sent SYSTEM_PROMPT only when
   `step === 1`, but `generateAction` builds a FRESH session per call → steps 2+ never saw the action
   schema and improvised output format. Fix: send it every step (+ KV cacheKey makes the re-send ~free).
@@ -379,8 +400,8 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   text (`[IMAGE UPLOADED: …]`); the model described a screen it cannot see, and that hallucination was
   injected into every decision (plus a full extra inference/step). Fix: deleted the eye step and the
   text marker; `generateAction` now ignores imagePath with a debug log. Lesson: never simulate a
-  modality in prose — the model WILL confabulate, fluently. (backgroundDaemon habit log has the same
-  defect — tracked separately.)
+  modality in prose — the model WILL confabulate, fluently. (backgroundDaemon habit log had the same
+  defect — fixed the same day, see the daemon entry above.)
 
 - 2026-07-07 (agent drunk: unconstrained action decode) — action output was free text scraped by
   regex/XML fallback; small models drift formats constantly. Fix: `GenerationOptions.jsonSchema` →

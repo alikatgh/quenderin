@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { IDeviceProvider, ILlmProvider } from '../types/index.js';
+import { IDeviceProvider } from '../types/index.js';
 import { MetricsService } from './metrics.service.js';
 import { getHardwareProfile } from '../utils/hardware.js';
 import logger from '../utils/logger.js';
@@ -24,12 +24,12 @@ export class BackgroundDaemonService extends EventEmitter {
     /** Pre-allocated diff scratch buffer — reused every tick to avoid GC pressure */
     private diffScratch: Uint8Array | null = null;
 
+    // The daemon no longer runs ANY inference (the "habit description" call was fake vision —
+    // see BUG_JOURNAL 2026-07-07) so it takes no LLM provider and needs no busy-deferral hook:
+    // pixel diffing + an append to the habit log never contend with chat or the agent.
     constructor(
         private deviceProvider: IDeviceProvider,
-        private llmProvider: ILlmProvider,
         private metricsService: MetricsService,
-        /** Optional hook so server can also defer when the agent loop is active. */
-        private isInferenceBusy?: () => boolean,
     ) {
         super();
         const envPoll = Number(process.env.QUENDERIN_POLL_INTERVAL_MS);
@@ -106,13 +106,6 @@ export class BackgroundDaemonService extends EventEmitter {
         }
     }
 
-    private shouldDeferInference(): boolean {
-        if (this.isInferenceBusy?.()) {
-            return true;
-        }
-        return this.llmProvider.isCurrentlyGenerating().isGenerating;
-    }
-
     private async pollLoop() {
         while (this.isRunning) {
             try {
@@ -127,34 +120,22 @@ export class BackgroundDaemonService extends EventEmitter {
                 // 2. Visual Diffing
                 const { diffRatio } = await this.calculateVisualDiff(screenshotPath);
 
-                // 3. LLM Processing if screen changed significantly
+                // 3. Log activity if the screen changed significantly.
+                // The old code asked the LLM to "describe what the user is doing" while passing the
+                // screenshot as a TEXT PATH — no vision model is wired, so every stored description
+                // was pure hallucination presented as observation (see BUG_JOURNAL: "a modality
+                // simulated in prose is a hallucination faucet"). The log now records only what was
+                // actually measured. Reintroduce a description only behind a REAL multimodal provider.
                 if (diffRatio > this.diffThreshold) {
                     this.idleCycleCount = 0; // Reset backoff — screen is active
 
-                    if (this.shouldDeferInference()) {
-                        logger.debug('[Observer] Screen changed but LLM busy (chat/agent) — skipping habit inference.');
-                    } else {
-                        logger.debug(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%. Triggering LLM...`);
-
-                        // We don't provide a UI struct here. Pure zero-shot vision.
-                        // Assuming the provider (like LLaVA) accepts an imagePath and ignores system prompt if empty
-                        const description = await this.llmProvider.generateAction(
-                            "Describe what the user is doing right now in one sentence.",
-                            "",
-                            { maxTokens: 100, temperature: 0.2 },
-                            screenshotPath
-                        );
-
-                        logger.debug(`[Observer] ${description}`);
-
-                        // 4. Log to Habit Tracker Database
-                        await this.metricsService.appendHabitLog({
-                            id: Date.now().toString(),
-                            timestamp: new Date().toISOString(),
-                            diff_score: parseFloat(diffRatio.toFixed(3)),
-                            description: description
-                        });
-                    }
+                    logger.debug(`[Observer] Screen changed by ${(diffRatio * 100).toFixed(1)}%.`);
+                    await this.metricsService.appendHabitLog({
+                        id: Date.now().toString(),
+                        timestamp: new Date().toISOString(),
+                        diff_score: parseFloat(diffRatio.toFixed(3)),
+                        description: `Screen activity: ${(diffRatio * 100).toFixed(0)}% of pixels changed`
+                    });
                 } else {
                     this.idleCycleCount++;
                 }

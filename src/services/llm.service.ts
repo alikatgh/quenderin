@@ -10,6 +10,7 @@ let _llamaBindings: {
     LlamaContext: any;
     LlamaChatSession: any;
     LlamaLogLevel: any;
+    defineChatSessionFunction: any;
 } | null = null;
 let _llamaImportError: Error | null = null;
 
@@ -21,6 +22,7 @@ try {
         LlamaContext: mod.LlamaContext,
         LlamaChatSession: mod.LlamaChatSession,
         LlamaLogLevel: mod.LlamaLogLevel,
+        defineChatSessionFunction: mod.defineChatSessionFunction,
     };
 } catch (err) {
     _llamaImportError = err instanceof Error ? err : new Error(String(err));
@@ -42,9 +44,10 @@ import { ILlmProvider, GenerationMeta, GenerationOptions } from "../types/index.
 import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
 import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
-import { buildToolPrompt } from "./tools/registry.js";
+import { buildToolPrompt, maxToolCallsPerResponse } from "./tools/registry.js";
 import { hasToolCalls, parseToolCalls, stripToolCalls, formatToolResults } from "./tools/toolLoop.js";
 import { executeToolCalls } from "./tools/handlers.js";
+import { buildNativeChatFunctions } from "./tools/nativeFunctions.js";
 import { getHardwareProfile } from "../utils/hardware.js";
 import { verifyModelIntegrity } from "./modelIntegrity.js";
 import logger from "../utils/logger.js";
@@ -374,6 +377,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             onTextChunk?: (chunk: string) => void;
             /** Compiled node-llama-cpp grammar — constrains decoding to a JSON schema. */
             grammar?: any;
+            /** Native chat functions (mutually exclusive with grammar per node-llama-cpp). */
+            functions?: Record<string, unknown>;
         },
         timeoutMs: number,
         label: string,
@@ -1225,6 +1230,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw err;
         }
 
+        // Native function calling: when the bindings support it, tools are wired into the DECODER
+        // (defineChatSessionFunction) — the model cannot emit a malformed call, the call/result
+        // loop runs inside one prompt(), and no tool markup ever reaches the text stream. The XML
+        // protocol below remains the fallback for older bindings (and stays the mobile twins'
+        // wire format, pinned by the tool-format parity vectors).
+        const useNativeFunctions = !opts?.plainChat &&
+            typeof _llamaBindings?.defineChatSessionFunction === 'function';
+
         const ensureSession = () => {
             // Reset session when it approaches the context limit to prevent OOM.
             // At ~80 tokens/turn and a 2048-token context the session starts thrashing around turn 20.
@@ -1238,7 +1251,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // plainChat (the CLI): skip the ~465-token tool preamble. On a RAM-pressed
                 // machine the context auto-tunes small enough that persona+tools alone
                 // overflow it and chat fails before the first token (live-caught 2026-07-04).
-                const fullSystemPrompt = opts?.plainChat
+                // Native functions ALSO skip it: the library documents the functions to the model
+                // through the chat wrapper itself — the XML preamble would only teach the model a
+                // format that is no longer parsed (and waste ~465 tokens of a small context).
+                const fullSystemPrompt = (opts?.plainChat || useNativeFunctions)
                     ? this.activePreset.systemPrompt
                     : `${this.activePreset.systemPrompt}\n\n${buildToolPrompt()}`;
                 this.generalChatSession = this.createChatSession({
@@ -1273,9 +1289,24 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // Pi @ 1-2 tok/s: 128 tokens ≈ 1min. Desktop @ 20+ tok/s: 384 tokens ≈ 15s.
             const responseMaxTokens = Math.min(this.activePreset.maxTokens, HW.chatMaxTokens);
 
+            let toolCallsMade = false;
+            // Fresh functions map per response: it carries the per-response call-cap counter (Q-639).
+            const nativeFunctions = useNativeFunctions
+                ? buildNativeChatFunctions(_llamaBindings!.defineChatSessionFunction, (tool) => {
+                    toolCallsMade = true;
+                    logger.log(`[Tool] Native function call: ${tool}`);
+                })
+                : undefined;
+            // The native call/result loop runs INSIDE one prompt() — budget the timeout for the same
+            // number of decode rounds the XML path was allowed (1 answer + up to N tool rounds).
+            const chatTimeoutMs = useNativeFunctions
+                ? this.promptTimeoutMs * (1 + maxToolCallsPerResponse())
+                : this.promptTimeoutMs;
+
             const promptOptions = {
                 maxTokens: responseMaxTokens,
                 temperature: this.activePreset.temperature,
+                ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
                     const clean = stripControlTokensWithOptions(chunk, { trim: false });
                     if (!clean) return;
@@ -1294,7 +1325,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     this.generalChatSession!,
                     userMsg,
                     promptOptions,
-                    this.promptTimeoutMs,
+                    chatTimeoutMs,
                     'Chat generation',
                     cancelSignal
                 );
@@ -1310,7 +1341,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         this.generalChatSession!,
                         userMsg,
                         promptOptions,
-                        this.promptTimeoutMs,
+                        chatTimeoutMs,
                         'Chat generation retry',
                         cancelSignal
                     );
@@ -1319,14 +1350,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
-            // ─── Tool Call Processing ───────────────────────────────────────
+            // ─── Tool Call Processing (XML fallback path only) ──────────────
+            // With native functions the library already ran the call/result loop inside prompt()
+            // and the response is final text. The XML loop below serves older bindings.
             // Q-638: execute tool calls and re-prompt in a LOOP, not once. The model can CHAIN tools
             // (use tool A's result to decide a call to tool B); the old single round stripped that
             // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
             // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
-            const MAX_TOOL_ROUNDS = 3;
+            const MAX_TOOL_ROUNDS = useNativeFunctions ? 0 : 3;
             let finalResponse = stripControlTokens(response.trim());
-            let toolCallsMade = false;
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);

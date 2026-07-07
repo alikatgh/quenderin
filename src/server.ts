@@ -139,12 +139,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const memoryService = new MemoryService();
     setSharedMemoryService(memoryService);
     const agentService = new AgentService(llmService, deviceProvider, uiParserService, metricsService, ocrService, memoryService);
-    const backgroundDaemon = new BackgroundDaemonService(
-        deviceProvider,
-        llmService,
-        metricsService,
-        () => llmService.isCurrentlyGenerating().isGenerating || agentService.isRunning,
-    );
+    const backgroundDaemon = new BackgroundDaemonService(deviceProvider, metricsService);
     const voiceService = new VoiceService();
     const sessionService = new SessionService();
 
