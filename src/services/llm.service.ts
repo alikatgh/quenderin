@@ -1416,6 +1416,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // user never sees raw tool-call JSON as the answer.
             if (hasToolCalls(finalResponse)) finalResponse = stripToolCalls(finalResponse);
 
+            // Without a streaming callback nothing incremented tokenCount, so meta reported
+            // "0 tokens @ 0 tok/s" for a real answer (the CLI's non-streamed path, the smoke
+            // harness). Measure the actual output instead of reporting a lie. tok/s stays
+            // approximate when tool rounds ran — duration spans them — but approximate beats zero.
+            if (tokenCount === 0 && finalResponse.length > 0) {
+                try { tokenCount = this.modelInstance?.tokenize(finalResponse).length ?? 0; } catch { /* meta stays 0 */ }
+            }
+
             const finalEndTime = performance.now();
             const totalDurationMs = finalEndTime - startTime;
             const meta: GenerationMeta = {
