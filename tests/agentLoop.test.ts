@@ -534,6 +534,27 @@ describe('AgentService — pause / resume', () => {
         }
     });
 
+    it('routes a high-confidence knowledge goal (math) to knowledge mode with ZERO extra inference', async () => {
+        // "what is 17 * 23" → regex intent 'math', HIGH confidence. Two regressions pinned at once:
+        //  • high-confidence regex skips the LLM tiebreak on EVERY tier (old gate: embedded only,
+        //    so desktops paid one full inference per mission to re-confirm the regex);
+        //  • non-'action' intents map to knowledge mode (old `=== 'chat'` sent math/code/image —
+        //    the only HIGH-confidence intents — into device-tapping ACTION mode).
+        const generateAction = vi.fn().mockResolvedValue('The answer is 391.');
+        const llm = createLlmStub({ generateAction });
+        const { agent, waitForIdle } = buildAgent({ llm });
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+
+        await agent.runAgentLoop('what is 17 * 23?', emitter, [], 5);
+
+        expect(generateAction).toHaveBeenCalledTimes(1);          // ONLY the knowledge-mode answer
+        expect(generateAction.mock.calls[0][0]).toContain('helpful AI assistant');
+        expect(waitForIdle).not.toHaveBeenCalled();               // no device interaction at all
+        expect(events.done.length).toBe(1);
+        expect((events.status as string[]).some(s => s.includes('The answer is 391.'))).toBe(true);
+    });
+
     it('releases the mission KV cache (releaseActionCache) exactly once when the run ends', async () => {
         const releaseActionCache = vi.fn();
         const llm = createLlmStub({ releaseActionCache } as Partial<ILlmProvider>);

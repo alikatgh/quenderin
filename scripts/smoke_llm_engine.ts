@@ -9,6 +9,10 @@
  *
  * Requires a downloaded model in ~/.quenderin/models (any catalog entry).
  * Run from project root:  npx tsx scripts/smoke_llm_engine.ts
+ * Bench mode:             npx tsx scripts/smoke_llm_engine.ts --bench [steps]
+ *   Runs N (default 10) agent steps through the cached mission sequence and reports the
+ *   latency distribution + the cached-vs-fresh speedup, so decode/prefill regressions are a
+ *   number, not a feeling. Compare against docs/BENCH_BASELINE.md before/after engine changes.
  * Exit code 0 = all checks passed.
  */
 import { LlmService } from '../src/services/llm.service.js';
@@ -39,6 +43,46 @@ const llm = new LlmService();
 llm.on('action_required', (p: { code: string; message: string }) => {
     fail(`action_required ${p.code}: ${p.message}`);
 });
+
+/** Simulated per-step UI: a growing settings screen so each step's prompt differs realistically
+ *  (stable head, volatile tail) — the same shape the real agent produces after the prompt reorder. */
+function stepPrompt(step: number): string {
+    const elements = Array.from({ length: 6 + step }, (_, i) =>
+        `{"id":${i},"text":"Item ${i} of screen ${step}","interactable":true}`).join(',');
+    return `Goal: open settings and enable Wi-Fi. Previous: step ${step - 1} clicked OK.\nUI: [${elements}]\nWhat is your next JSON action?`;
+}
+
+// ── Bench mode: N cached-sequence steps + a fresh-sequence control ───────────
+if (process.argv.includes('--bench')) {
+    const stepsArg = Number(process.argv[process.argv.indexOf('--bench') + 1]);
+    const N = Number.isFinite(stepsArg) && stepsArg >= 3 ? stepsArg : 10;
+    try {
+        const timings: number[] = [];
+        for (let i = 1; i <= N; i++) {
+            const t = performance.now();
+            const out = await llm.generateAction(SYSTEM, stepPrompt(i),
+                { maxTokens: 150, temperature: 0, jsonSchema: ACTION_SCHEMA, cacheKey: 'bench' });
+            timings.push(performance.now() - t);
+            JSON.parse(out);   // every step must stay grammar-clean
+        }
+        llm.releaseActionCache('bench');
+        // Control: the same LAST prompt on a fresh sequence = the full re-prefill cost.
+        const t = performance.now();
+        await llm.generateAction(SYSTEM, stepPrompt(N), { maxTokens: 150, temperature: 0, jsonSchema: ACTION_SCHEMA });
+        const freshMs = performance.now() - t;
+
+        const sorted = [...timings.slice(1)].sort((a, b) => a - b);   // step 1 pays the model load
+        const p50 = sorted[Math.floor(sorted.length / 2)];
+        const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+        console.log(`\nBench (${N} cached steps, ${llm.getActiveModelLabel()}):`);
+        console.log(`  step1 (incl. load): ${timings[0].toFixed(0)}ms`);
+        console.log(`  cached p50: ${p50.toFixed(0)}ms   p95: ${p95.toFixed(0)}ms`);
+        console.log(`  fresh-sequence control: ${freshMs.toFixed(0)}ms   speedup ×${(freshMs / p50).toFixed(2)}`);
+    } finally {
+        await llm.shutdown();
+    }
+    process.exit(0);
+}
 
 try {
     // ── 1. Grammar-constrained action decode (fresh sequence) ────────────────

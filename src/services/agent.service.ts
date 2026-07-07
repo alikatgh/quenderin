@@ -288,13 +288,22 @@ export class AgentService {
         try {
             const { classifyIntent } = await import('./intentClassifier.js');
             const regexResult = classifyIntent(goal);
+            // Q-637 intent, now actually implemented: the LLM call exists ONLY to break a
+            // low-confidence tie. A HIGH-confidence regex verdict skips it on EVERY tier — the old
+            // gate skipped only on embedded/constrained, so powerful desktops paid a full inference
+            // per mission to re-confirm what the regex already knew. Medium still gets the LLM
+            // tiebreak on capable hardware (it can afford the check); constrained tiers trust it.
             const skipLlmClassification =
-                (HW.tier === 'embedded' || HW.tier === 'constrained') &&
-                (regexResult.confidence === 'high' || regexResult.confidence === 'medium');
+                regexResult.confidence === 'high' ||
+                ((HW.tier === 'embedded' || HW.tier === 'constrained') && regexResult.confidence === 'medium');
 
             let isChat = false;
             if (skipLlmClassification) {
-                isChat = regexResult.intent === 'chat';
+                // Everything except 'action' is knowledge mode. The old `=== 'chat'` mapped the
+                // classifier's OTHER knowledge intents (math/code/image — the only HIGH-confidence
+                // ones!) to isChat=false, sending "what is 2+2?" into device-tapping ACTION mode on
+                // every tier that skipped the LLM tiebreak.
+                isChat = regexResult.intent !== 'action';
             } else {
                 const intentRaw = await this.llmProvider.generateAction(
                     INTENT_CLASSIFIER_PROMPT,

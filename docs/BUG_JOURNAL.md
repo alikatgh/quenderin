@@ -377,6 +377,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (intent skip-path sent math to the tap loop) — the LLM-skip branch mapped
+  `isChat = intent === 'chat'`, but the classifier's only HIGH-confidence intents are math/code —
+  so "what is 2+2?" went to device-tapping ACTION mode wherever the skip fired. Fix:
+  `isChat = intent !== 'action'` + the skip now honors high confidence on EVERY tier (the Q-637
+  comment promised tiebreak-only; powerful desktops paid one inference per mission to re-confirm
+  the regex). Lesson: when a comment says "only as a tiebreak", test that the CODE agrees.
+
 - 2026-07-07 (tool-result leakage + budget starvation, native functions) — live 1B runs exposed three
   machinery gaps: an instructional memo message got parroted into the user answer (fix: memoized
   repeats return the ORIGINAL result verbatim); an `{error}` cap refusal read as retryable and looped
