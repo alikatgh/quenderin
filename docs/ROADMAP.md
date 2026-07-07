@@ -53,8 +53,22 @@ Every week unshipped is zero users compounding.
 Make the already-working governed agent a product someone else can use. Deep-dive:
 [AGENT_AUTONOMY_PLAN.md](AGENT_AUTONOMY_PLAN.md) §7 (M0–M4 shipped; this is what remains).
 
-1. **Electron approval dialog + agent surface** — the CLI loop already works; give it the
-   GUI front-end (approve, live plan view, history, capabilities pane, undo button).
+**Platform decision (owner, 2026-07-07):** the macOS *product* is the native Swift app —
+all Quenderin functionality on macOS ships there. The Electron/TS side keeps exactly three
+jobs: (a) the R&D lab where capability classes are proven cheaply (headless tests, fast
+iteration), (b) the `quenderin do` CLI (works today, dev-audience), (c) the future
+Windows/Linux vehicle. Its GUI stays lab-grade — no further product polish. Distribution
+consequence: full automation (Apple Events + Accessibility) is largely incompatible with
+App Store sandboxing, so the autonomy tier ships as a **notarized direct-download Swift
+app** (which also fits H2 — sell Pro direct from quenderin.org, no store cut); a MAS build
+can stay the bounded free chat product.
+
+1. **macOS-native agent surface in the Swift app** — the governance spine (tiers, gate →
+   approve → run → ledger, workspace fs.\*, plan preview, undo) already exists natively in
+   QuenderinKit; port the capability *library* from TS: `mac.*` (prefer native EventKit /
+   AX APIs over osascript where possible), skill memory, durable undo journal, dry-run —
+   plus the approval dialog and a Tasks pane in the Mac app. *(The Electron Tasks surface
+   shipped 2026-07-07 remains the lab's reference implementation of this exact loop.)*
 2. **Retire the legacy raw-action loop** — migrate `AgentService` to the governed
    `CapabilityAgent` per the Q-549 scoping analysis
    ([audits/2026-07-06-Q549-agent-governance-analysis.md](audits/2026-07-06-Q549-agent-governance-analysis.md));
