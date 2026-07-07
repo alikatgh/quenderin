@@ -40,6 +40,9 @@ export interface AgentEvents {
     done: () => void;
     action_required: (payload: { code: string, title: string, message: string }) => void;
     model_download_progress: (payload: { progress: number; modelId?: string }) => void;
+    /** Q-549 Step 2: the bulk brake fired — the loop SELF-paused after `executed` device actions
+     *  and is waiting for the user's Resume (or Stop). */
+    bulk_confirm: (payload: { executed: number; threshold: number }) => void;
 }
 
 export interface IDeviceProvider extends EventEmitter {

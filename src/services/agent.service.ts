@@ -190,6 +190,17 @@ export class AgentService {
         return 8 * 60 * 1000; // 8 minutes — generous; never fires in a normal interactive session
     }
 
+    /** Q-549 (governance Step 2): the bulk brake — after this many EXECUTED device actions in one
+     *  mission, the loop self-pauses and waits for the user's explicit Resume. maxSteps/wall-clock
+     *  bound RUNTIME but not CHANGE VOLUME; this mirrors the capability runner's `passesBulkGuard`
+     *  (same default of 20) adapted to the continuous loop's pause/intervene channel. 0 disables.
+     *  Override via QUENDERIN_BULK_BRAKE_ACTIONS. */
+    private static resolveBulkBrakeThreshold(): number {
+        const env = Number(process.env.QUENDERIN_BULK_BRAKE_ACTIONS);
+        if (Number.isFinite(env) && env >= 0) return env;
+        return 20;
+    }
+
     public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps(), maxWallClockMs: number = AgentService.resolveDefaultMaxWallClockMs()): Promise<void> {
         if (this._isRunning) {
             logger.warn('[AgentService] Agent loop already running — ignoring duplicate start.');
@@ -239,6 +250,9 @@ export class AgentService {
 
         const startTimeMs = Date.now();
         let totalRetries = 0;
+        // Q-549 Step 2: executed-action counter for the bulk brake (change volume, not runtime).
+        let executedActions = 0;
+        const bulkBrakeThreshold = AgentService.resolveBulkBrakeThreshold();
 
         // --- Intent Classification —  regex-first, LLM fallback ---
         // On embedded/constrained hardware, skip the LLM call entirely when
@@ -457,6 +471,16 @@ export class AgentService {
 
                 if (success) {
                     this.recordAction(actionObj, 'allowed', 'executed', goal);   // Q-549 flight recorder
+                    // Q-549 Step 2 — the bulk brake: N executed actions is a CHANGE-VOLUME checkpoint
+                    // the step/time caps don't provide. Self-pause and hand control to the human via
+                    // the EXISTING pause/intervene channel (the top-of-step wait); Resume continues,
+                    // Stop still hard-stops. Fires at every multiple so a long mission re-asks.
+                    executedActions++;
+                    if (bulkBrakeThreshold > 0 && executedActions % bulkBrakeThreshold === 0) {
+                        this._isPaused = true;
+                        emitter.emit('bulk_confirm', { executed: executedActions, threshold: bulkBrakeThreshold });
+                        emitter.emit('status', ` Bulk brake: ${executedActions} device actions this mission. Paused for your OK — press Resume to continue, or Stop to end here.`);
+                    }
                     // 7. Re-verify the UI after settling
                     const postState = await this.uiVerifier.waitForIdle(emitter);
 

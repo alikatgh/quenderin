@@ -361,6 +361,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (Q-549 Step 2 — bulk brake on the legacy device agent) — maxSteps + wall-clock bound
+  RUNTIME but not CHANGE VOLUME: a mission could tap/type dozens of times with no human checkpoint.
+  `agent.service.ts` now counts EXECUTED actions and at every Nth (default 20, twin of the capability
+  runner's passesBulkGuard; QUENDERIN_BULK_BRAKE_ACTIONS overrides) SELF-pauses via the existing
+  pause/intervene channel + emits `bulk_confirm` (WS forwards as agent_paused so the Resume UI shows).
+
 - 2026-07-07 (dashboard `--no-open` lockout) — the per-launch WS/API token was delivered ONLY via the
   auto-opened browser URL (`src/server.ts`), so `--no-open` / non-interactive launches had NO way to
   connect at all (fail-closed auth + uncommunicated token = locked out of your own dashboard). Now the

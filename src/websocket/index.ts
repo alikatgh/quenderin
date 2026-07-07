@@ -280,6 +280,19 @@ export class WebSocketManager {
                         });
                         emitter.on('action_required', pushActionRequired);
 
+                        // Q-549 Step 2: the bulk brake is a SERVER-initiated pause, so the client must be
+                        // told its pause state changed (agent_paused is otherwise only an ack of a client
+                        // 'pause'). Reuses the existing Resume/Stop UI — no new client controls needed.
+                        emitter.on('bulk_confirm', () => {
+                            if (ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({
+                                    type: 'agent_paused',
+                                    isPaused: this.agentService.isPaused,
+                                    isRunning: this.agentService.isRunning,
+                                }));
+                            }
+                        });
+
                         try {
                             // SECURITY: Never use client-supplied emitter — always use server-side one
                             const attachments = sanitizeAttachments(data.attachments);

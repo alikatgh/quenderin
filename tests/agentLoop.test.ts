@@ -331,6 +331,44 @@ describe('AgentService.runAgentLoop — integration', () => {
         expect(metrics.appendMetrics).toHaveBeenCalledTimes(1);
         expect((metrics.appendMetrics as any).mock.calls[0][0]).toMatchObject({ success: false });
     });
+
+    it('Q-549 Step 2: the bulk brake self-pauses after N executed actions; Resume continues', async () => {
+        // maxSteps/wall-clock bound RUNTIME; the brake bounds CHANGE VOLUME. With the threshold at 2,
+        // the second executed click must emit bulk_confirm with the loop SELF-paused; resume() then
+        // lets the mission finish. Mirrors the capability runner's passesBulkGuard, on the legacy loop.
+        const prevBrake = process.env.QUENDERIN_BULK_BRAKE_ACTIONS;
+        process.env.QUENDERIN_BULK_BRAKE_ACTIONS = '2';
+        try {
+            const generateAction = vi.fn()
+                .mockResolvedValueOnce('ACTION')                     // intent classification
+                .mockResolvedValueOnce('{"action":"click","id":1}')  // step 1 — executed
+                .mockResolvedValueOnce('{"action":"click","id":1}')  // step 2 — executed → brake fires
+                .mockResolvedValueOnce('{"action":"done"}');         // step 3 — after resume
+            const llm = createLlmStub({ generateAction });
+            const { agent, execute } = buildAgent({ llm });
+            const emitter = new AgentEventEmitter();
+            const events = captureEvents(emitter);
+
+            const brakes: Array<{ executed: number; threshold: number }> = [];
+            let pausedAtBrake = false;
+            emitter.on('bulk_confirm' as any, (payload: { executed: number; threshold: number }) => {
+                brakes.push(payload);
+                pausedAtBrake = agent.isPaused;   // the brake must have parked the loop…
+                agent.resume();                    // …and the user's Resume must release it
+            });
+
+            await agent.runAgentLoop('tap through the list', emitter, [], 5);
+
+            expect(brakes).toEqual([{ executed: 2, threshold: 2 }]);
+            expect(pausedAtBrake).toBe(true);
+            expect(execute).toHaveBeenCalledTimes(2);      // two clicks; 'done' executes nothing
+            expect(events.done.length).toBe(1);            // the mission still completed after Resume
+            expect(agent.isPaused).toBe(false);
+        } finally {
+            if (prevBrake === undefined) delete process.env.QUENDERIN_BULK_BRAKE_ACTIONS;
+            else process.env.QUENDERIN_BULK_BRAKE_ACTIONS = prevBrake;
+        }
+    });
 });
 
 describe('AgentService — pause / resume', () => {
