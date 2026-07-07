@@ -100,21 +100,32 @@ extension View {
     /// The app's "chrome" surface — Liquid Glass on OS 26+ (compiled with the 26 SDK),
     /// ultra-thin material on earlier systems. Chrome only (composer, pills, overlays):
     /// per Apple's Liquid Glass guidance the CONTENT layer (bubbles, text) stays opaque.
+    /// `#if swift(>=6.2)` is the COMPILE-time gate `#available` isn't: `glassEffect` is an
+    /// SDK symbol, so an older toolchain (CI's Xcode 16 / Swift 6.1) fails to compile it no
+    /// matter what the runtime check says. Swift 6.2 ⇔ the Xcode 26 SDK that has the symbol.
     @ViewBuilder func glassChrome<S: Shape>(in shape: S) -> some View {
+        #if swift(>=6.2)
         if #available(iOS 26.0, macOS 26.0, *) {
             self.glassEffect(.regular, in: shape)
         } else {
             self.background(.ultraThinMaterial, in: shape)
         }
+        #else
+        self.background(.ultraThinMaterial, in: shape)
+        #endif
     }
 
     /// Interactive glass (buttons): reacts to presses on OS 26+, tinted fill below.
     @ViewBuilder func glassChromeInteractive<S: Shape>(in shape: S, fallbackTint: Color) -> some View {
+        #if swift(>=6.2)
         if #available(iOS 26.0, macOS 26.0, *) {
             self.glassEffect(.regular.interactive(), in: shape)
         } else {
             self.background(fallbackTint, in: shape)
         }
+        #else
+        self.background(fallbackTint, in: shape)
+        #endif
     }
 }
 

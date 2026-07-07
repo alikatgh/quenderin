@@ -361,6 +361,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (CI red again ×6: Theme.swift glassEffect vs the Xcode 16 SDK) — the ChatView fix landed
+  but Theme.swift's Liquid Glass call still broke CI: `if #available(iOS 26…)` is a RUNTIME gate — the
+  SYMBOL must exist at compile time, and CI's older SDK doesn't have `glassEffect`. Wrapped in
+  `#if swift(>=6.2)` (Swift 6.2 ⇔ the Xcode 26 SDK) with the material fallback as the older-toolchain
+  branch. Lesson: for NEW-SDK symbols, `#available` alone never suffices — pair it with a compile-time
+  `#if swift(>=X)` gate; and a silent CI watcher is worthless — verify the watcher REPORTS, not just runs.
+
 - 2026-07-07 (CI red ×5: ChatView MacScrollObserver vs Swift 6.1) — NotificationCenter's block API
   (`using:`) is `@Sendable` in newer SDKs, so touching main-actor `contentView`/`onChange` inside it
   hard-errors on CI's Swift 6.1 while LOCAL 6.2 accepts it — local `swift test` green, CI red for 5
