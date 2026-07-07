@@ -247,7 +247,35 @@ public struct OpenAppCapability: Capability {
         guard mac.available else { return notMacMessage }
         let app = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !app.isEmpty else { return "Nothing to open — the app name is empty." }
-        let script = "tell application \"\(escapeAppleScriptString(app))\" to activate"
+        // `activate` on a NOT-running app kicks off its launch but often returns before the app can
+        // receive events → AppleScript -600 "Application isn't running" (live-caught: opening a
+        // closed Google Chrome). Retry ONLY on -600 (the launch race), so the retry gives the app
+        // time to come up; a genuinely-missing app (-1728 / "Can't get application") errors on the
+        // first try and exits immediately instead of spinning the full ~5s. (Twin of mac.mail.draft.)
+        let appLit = escapeAppleScriptString(app)
+        let script = """
+        set opened to false
+        set lastErr to ""
+        repeat 25 times
+            try
+                tell application "\(appLit)" to activate
+                set opened to true
+                exit repeat
+            on error errMsg number errNum
+                set lastErr to errMsg
+                if errNum is -600 then
+                    delay 0.2
+                else
+                    exit repeat
+                end if
+            end try
+        end repeat
+        if opened then
+            return "ok"
+        else
+            error lastErr
+        end if
+        """
         do {
             _ = try await mac.runAppleScript(script)
             return "Opened \"\(app)\"."

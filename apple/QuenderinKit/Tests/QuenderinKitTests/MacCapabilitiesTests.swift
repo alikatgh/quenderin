@@ -144,6 +144,26 @@ final class MacCapabilitiesTests: XCTestCase {
                           "activate must precede the draft")
     }
 
+    func testOpenAppRetriesTheLaunchRaceAndReportsSuccess() async throws {
+        let mac = FakeMac()
+        let out = try await OpenAppCapability(mac: mac).run("Google Chrome")
+        XCTAssertTrue(out.contains("Opened"))
+        let s = mac.scripts[0]
+        // Must retry ONLY on -600 (the launch race) — else opening a closed app fails outright
+        // (live-caught: mac.app.open on a not-running Chrome hit -600). A missing app (non-600)
+        // exits immediately instead of spinning.
+        XCTAssertTrue(s.contains("activate"))
+        XCTAssertTrue(s.contains("repeat") && s.contains("-600"),
+                      "must retry the -600 launch race")
+        XCTAssertTrue(s.contains("exit repeat"), "a non-600 error (missing app) must fail fast, not spin")
+    }
+
+    func testOpenAppStillMapsAMissingAppToAFriendlyMessage() async throws {
+        let mac = FakeMac(replies: [.failure(MacAutomationError.script(message: "Can’t get application \"Nope\" (-1728)"))])
+        let out = try await OpenAppCapability(mac: mac).run("Nope")
+        XCTAssertTrue(out.contains("Couldn't find an app named"), "got: \(out)")
+    }
+
     func testMailDraftReportsNoAccountInsteadOfHanging() async throws {
         // The unconfigured-Mac case (live-caught): 0 accounts → the script returns NO_ACCOUNT and
         // the capability turns it into a helpful message, never a hang or a false "drafted".

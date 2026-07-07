@@ -394,6 +394,23 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (the model WAS the bottleneck — Qwen3 4B >> Gemma 3 4B, live-proven) — swapped the
+  Mac app's model to Qwen3 4B (same 2.4GB footprint, keeps Gemma). Night-and-day on the SAME goal:
+  Gemma emitted `calculator(2^10)` junk then bailed; Qwen3 did genuine 3-step tool use WITH recovery
+  (tried `mac.app.open "Google Docs"` → failed → recovered to `mac.app.open "Google Chrome"` →
+  `mac.safari.openURL`). Set via UserDefaults `quenderin.activeModelID` + placing the SHA-verified
+  GGUF in the app container's models dir. Lesson: for on-device agents, MODEL CHOICE dominates —
+  Qwen/Llama tool-call far better than Gemma at the same size; a 7B+ is the next step (hallucinated a
+  fake doc-ID URL, which a bigger model avoids). The mechanism was always fine; the model wasn't.
+
+- 2026-07-08 (mac.app.open had the Mail -600 twin bug) — surfaced by the Qwen3 run: `mac.app.open`
+  did a bare `tell app "X" to activate`, which -600s on a not-running app (the launch race). Fix:
+  retry ONLY on -600 (give the app time to come up), fail fast on -1728/"can't get application" so a
+  bad name doesn't spin 5s. NB: a genuinely UNRESPONSIVE app (Automation-permission block, wedged
+  state) HANGS activate → osascript timeout, which no retry fixes — that's environmental, not the
+  race. Lesson: when one AppleScript launch bug is found (Mail), grep the whole mac.* library for the
+  same `to activate` shape — the twin was hiding in app.open.
+
 - 2026-07-07 (Gemma 3 4B bails on action goals → action-first grammar) — the 4B model half the time
   answered "I can't operate a browser" on a clearly-actionable goal instead of calling the tool it
   HAS. Fix (shipped + live-verified): on the FIRST step of an ActionIntent goal, decode under a
