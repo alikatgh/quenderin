@@ -35,6 +35,13 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        # T1 device perception (device.calendar.today) — read-only; the OS prompt is the grant.
+        NSCalendarsUsageDescription: >-
+          Quenderin's on-device assistant can read today's calendar events when you ask it to —
+          only with your permission, and nothing leaves your phone.
+        NSCalendarsFullAccessUsageDescription: >-
+          Quenderin's on-device assistant can read today's calendar events when you ask it to —
+          only with your permission, and nothing leaves your phone.
 
   # The macOS client — same sources, same QuenderinKit, Metal inference via the
   # xcframework's macos slice. Sandboxed + hardened runtime from day one so the

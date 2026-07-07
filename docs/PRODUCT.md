@@ -13,10 +13,10 @@ autonomous device-controller. The desktop Electron app is a separate research/de
 
 | | **Quenderin Mobile** (the product) | **Quenderin Desktop** (Electron prototype) |
 |---|---|---|
-| What it is | A private chat assistant + a SAFE pure-compute tool agent (math, unit/date conversion) | A research tool that can *drive* an Android device — read the screen, click, type |
+| What it is | A private chat assistant + a SAFE bounded agent (pure compute, user-granted file reads, read-only device perception) | A research tool that can *drive* an Android device — read the screen, click, type |
 | Runs | on the phone, via llama.cpp (Swift/JNI) | on a laptop, controlling a connected phone via ADB |
 | Ships to | App Store / Play Store | nowhere — dev-only |
-| The "agent" | bounded to **pure-compute tools** (`CalculatorTool`, `UnitConverterTool`, `DateCalcTool`) — no side effects, no device access | full device automation |
+| The "agent" | bounded to **T0–T1 + consented reversible file ops in ONE user-granted folder**: pure-compute tools, `fs.read` on user-attached files, read-only perception (clipboard, today's calendar, battery — each behind a consent toggle and the OS permission prompt), and the workspace `fs.*` behind per-run approval. **Revised 2026-07-07 by owner sign-off** (was T0-only); free-roaming device automation remains desktop-only, permanently | full device automation |
 
 **Why the split is load-bearing:** an autonomous device-controller on mobile means an Accessibility
 Service that clicks/types for the user — a store-review red flag (Google's automation/accessibility

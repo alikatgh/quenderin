@@ -136,7 +136,10 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
         )
         val allTools = tools +
             FileReadCapability(grantedFiles = { attachments.toMap() }) +
-            docWorkspaceCapabilities(workspace = { workspaceTree }, journal = undoJournal)
+            docWorkspaceCapabilities(workspace = { workspaceTree }, journal = undoJournal) +
+            // T1 device perception (owner sign-off 2026-07-07) — read-only senses, consent-gated
+            // like everything else; the Settings pane lists them from the same classes.
+            ai.quenderin.app.devicePerceptionCapabilities(context)
         AgentSession(engine, allTools, runner = runner).apply {
             onChange = {
                 // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background

@@ -160,7 +160,8 @@ fun SettingsScreen(
             // from the agent because both read the same capability classes and consent store.
             val gated = remember {
                 listOf(ai.quenderin.core.FileReadCapability(grantedFiles = { emptyMap() })) +
-                    ai.quenderin.app.docWorkspaceCapabilities({ null }, ai.quenderin.app.DocUndoJournal())
+                    ai.quenderin.app.docWorkspaceCapabilities({ null }, ai.quenderin.app.DocUndoJournal()) +
+                    ai.quenderin.app.devicePerceptionCapabilities(context)
             }
             Caption("Calculator, unit and date tools are always on — pure compute, no side effects.")
             gated.forEach { cap ->

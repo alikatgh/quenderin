@@ -88,7 +88,17 @@ public enum AgentToolkit {
         // screen's dialog, every action ledgered. The Settings pane picks these up automatically
         // because it reads THIS list.
         tools += macCapabilities(mac: OsascriptAutomation()).map { $0 as AgentTool }
+        #else
+        // T1 device PERCEPTION on the phone (owner sign-off 2026-07-07; PRODUCT.md revised):
+        // clipboard + today's calendar, read-only, consent-gated — the senses macOS gets from
+        // its mac.* twins above, provided natively here.
+        tools.append(DeviceClipboardReadCapability())
+        #if canImport(EventKit)
+        tools.append(CalendarTodayDeviceCapability(reader: EventKitCalendarReader()))
         #endif
+        #endif
+        // Battery + free storage — "can this device even do that?" — useful on every platform.
+        tools.append(DeviceStatusCapability())
         return tools
     }
 
