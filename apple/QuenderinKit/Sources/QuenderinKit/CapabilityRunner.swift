@@ -149,12 +149,27 @@ public struct CapabilityRunner: Sendable {
                 if preview.mutates, let undoable = capability as? any UndoableCapability {
                     session?.record(undoable, input: input)
                 }
-                return result
+                return await annotateWithVerification(capability, input: input, result: result)
             } catch {
                 log("error", outcome: "\(error)")
                 return "Tool error: \(error)"
             }
         }
+    }
+
+    /// Advisory post-condition: if the capability can verify itself and reports the action didn't
+    /// visibly take, annotate the observation the agent reads + ledger an 'unverified' note. Never
+    /// undoes anything (it already ran) — "the agent checks its own work", not a rollback. Best-
+    /// effort: verification is guarded so a non-verifiable capability is untouched, and the check is
+    /// purely advisory. Twin of the TS runner's `annotateWithVerification`.
+    private func annotateWithVerification(_ capability: Capability, input: String, result: String) async -> String {
+        guard let verifiable = capability as? any VerifiableCapability else { return result }
+        let v = await verifiable.verify(input)
+        guard !v.ok else { return result }
+        ledger.append(AuditEntry(timestamp: now(), capability: capability.name,
+                                 tier: capability.tier.rawValue, input: input,
+                                 decision: "unverified", outcome: v.detail))
+        return "\(result)\n(Couldn't confirm it worked: \(v.detail))"
     }
 
     /// Execute a multi-step PLAN with ONE aggregate approval (Milestone 3 — the Cowork UX).

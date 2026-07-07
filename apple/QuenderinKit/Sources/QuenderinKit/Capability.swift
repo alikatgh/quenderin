@@ -75,6 +75,19 @@ public protocol UndoableCapability: Capability {
     func undo(_ input: String) async throws -> String
 }
 
+/// A capability that CHECKS ITS OWN WORK after running — the agent confirms the action visibly took,
+/// without rolling anything back (it already happened). The runner calls `verify` best-effort after a
+/// successful run and annotates the observation ("Couldn't confirm it worked: …") when it reports the
+/// action didn't register. This is "the agent checks its own work", not a rollback — the load-bearing
+/// case is a GUI click that silently doesn't register (mac.ui.tap), the #1 accessibility-driving
+/// failure. Twin of the TS `Capability.verify?`.
+public protocol VerifiableCapability: Capability {
+    /// Advisory post-condition check, receiving the SAME input the successful `run(input)` did.
+    /// Returns whether the action visibly took, plus a human-readable detail. Best-effort — the
+    /// runner treats a throw/negative as advisory only, never a failure of the action itself.
+    func verify(_ input: String) async -> (ok: Bool, detail: String)
+}
+
 /// One task's reversible tail — every successful MUTATING run of an `UndoableCapability` is
 /// recorded here, and `undoAll()` reverses them newest-first (LIFO). The Swift twin of the TS
 /// `RunSession` that powers "undo this task" on the desktop lab/CLI.

@@ -41,13 +41,16 @@ public struct MacUiObserveCapability: Capability {
     }
 }
 
-/// T3: click an element BY ITS VISIBLE LABEL. Per-run approval.
-public struct MacUiTapCapability: Capability {
+/// T3: click an element BY ITS VISIBLE LABEL. Per-run approval; verify() checks the screen changed.
+public struct MacUiTapCapability: VerifiableCapability {
     public let name = "mac.ui.tap"
     public let purpose = "Click an element in the frontmost app by its visible label. Input: the label, e.g. \"Send\"."
     public let tier = CapabilityTier.appAction
     public let blastRadius = BlastRadius.write(resource: "the frontmost app")
     private let ui: any MacUi
+    /// Fingerprint of the screen captured just before the click, so verify() (a later call on the
+    /// SAME instance) can tell if anything changed. A reference box because `run` is non-mutating.
+    private let preTap = ScreenSignatureBox()
     public init(ui: any MacUi) { self.ui = ui }
 
     public func plan(_ input: String) async throws -> ActionPreview {
@@ -74,8 +77,21 @@ public struct MacUiTapCapability: Capability {
         if let hit = SafetyBlocklist.matches(in: "\(resolved.label) \(resolved.role)").first {
             return "Refused: that element looks like a blocked action ('\(hit)')."
         }
+        preTap.set(signature(els))
         do { try await ui.click(resolved.label) } catch { return describeUiError(error) }
         return "Clicked \"\(resolved.label)\"."
+    }
+
+    /// Did the click do anything? A GUI click that silently doesn't register is the #1 failure — if
+    /// the screen is byte-identical afterward, say so honestly rather than assume success. Advisory:
+    /// the runner annotates the observation; it never rolls the click back.
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        let after: [MacUiElement]
+        do { after = try await ui.observe() } catch { return (true, "could not re-read the screen") }
+        if signature(after) == preTap.get() {
+            return (false, "the screen did not change — the click may not have registered")
+        }
+        return (true, "the screen changed as expected")
     }
 }
 
@@ -177,6 +193,22 @@ public struct MacUiKeyCapability: Capability {
 private enum Resolved {
     case element(MacUiElement)
     case message(String)
+}
+
+/// A stable fingerprint of the screen — used by mac.ui.tap's verify() to tell if a click changed
+/// anything. Sorted so element re-ordering alone isn't read as a change.
+private func signature(_ els: [MacUiElement]) -> String {
+    els.map { "\($0.role):\($0.label)" }.sorted().joined(separator: "|")
+}
+
+/// A tiny lock-guarded box holding the pre-tap screen signature. `run` is non-mutating (the runner
+/// holds one shared capability value), so the before-state lives in a reference the same instance's
+/// later verify() reads back. Sequential in practice; the lock keeps it honest under any overlap.
+private final class ScreenSignatureBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = ""
+    func set(_ v: String) { lock.lock(); defer { lock.unlock() }; value = v }
+    func get() -> String { lock.lock(); defer { lock.unlock() }; return value }
 }
 
 /// Resolve a visible label to exactly one element, or an explanation (mirrors the TS `resolve`).

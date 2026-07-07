@@ -92,6 +92,65 @@ final class MacUiCapabilitiesTests: XCTestCase {
         XCTAssertTrue(ui.clicks.isEmpty, "plan must be side-effect-free")
     }
 
+    // MARK: tap verify() — the agent checks its own click landed
+
+    func testTapVerifyFlagsAnUnchangedScreen() async throws {
+        let ui = FakeMacUi(elements: els([("Send", "button")]))
+        let cap = MacUiTapCapability(ui: ui)
+        _ = try await cap.run("Send")                 // captures the pre-tap signature of [Send]
+        let v = await cap.verify("Send")              // screen still [Send] → nothing happened
+        XCTAssertFalse(v.ok)
+        XCTAssertTrue(v.detail.contains("did not change"))
+    }
+
+    func testTapVerifyPassesWhenTheScreenChanged() async throws {
+        let ui = FakeMacUi(elements: els([("Send", "button")]))
+        let cap = MacUiTapCapability(ui: ui)
+        _ = try await cap.run("Send")
+        ui.elements = els([("Message sent", "static text")])   // the click visibly changed the screen
+        let v = await cap.verify("Send")
+        XCTAssertTrue(v.ok)
+        XCTAssertTrue(v.detail.contains("changed"))
+    }
+
+    func testRunnerSurfacesAnUnverifiedTapToTheAgent() async throws {
+        // The spine wiring: a tap whose screen doesn't change comes back to the agent WITH the
+        // honest "couldn't confirm" note appended — the click still counts as run, just flagged.
+        let ui = FakeMacUi(elements: els([("Send", "button")]))
+        let consent = InMemoryConsentStore()
+        consent.setGranted("mac.ui.tap", true)
+        let runner = CapabilityRunner(consent: consent, approve: { _ in true })
+        let out = await runner.execute(MacUiTapCapability(ui: ui), input: "Send")
+        XCTAssertTrue(out.contains("Clicked \"Send\""), "the click itself still succeeds")
+        XCTAssertTrue(out.contains("Couldn't confirm it worked"),
+                      "an unchanged screen after a tap must be surfaced, not hidden as success")
+        XCTAssertEqual(ui.clicks, ["Send"])
+    }
+
+    func testRunnerLeavesAVerifiedTapUnannotated() async throws {
+        // The happy path: when the CLICK changes the screen, no scary note is appended. The fake
+        // mutates its elements inside click() (as a real UI would), so observe-before ≠ observe-after.
+        final class ClickChangesScreenUi: MacUi, @unchecked Sendable {
+            let available = true
+            var elements: [MacUiElement] = [MacUiElement(label: "Send", role: "button")]
+            private(set) var clicks: [String] = []
+            func observe() async throws -> [MacUiElement] { elements }
+            func click(_ label: String) async throws {
+                clicks.append(label)
+                elements = [MacUiElement(label: "Message sent", role: "static text")]
+            }
+            func typeText(_ text: String) async throws {}
+            func pressKey(_ key: String) async throws {}
+            func clickMenu(_ path: [String]) async throws {}
+        }
+        let consent = InMemoryConsentStore()
+        consent.setGranted("mac.ui.tap", true)
+        let runner = CapabilityRunner(consent: consent, approve: { _ in true })
+        let out = await runner.execute(MacUiTapCapability(ui: ClickChangesScreenUi()), input: "Send")
+        XCTAssertTrue(out.contains("Clicked \"Send\""))
+        XCTAssertFalse(out.contains("Couldn't confirm"), "a screen that changed must NOT be flagged")
+    }
+
     // MARK: type
 
     func testTypeSendsFullTextButTruncatesTheDisplay() async throws {
