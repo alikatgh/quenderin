@@ -10,9 +10,16 @@ class AgentSession(
     private val engine: InferenceEngine,
     tools: List<AgentTool>,
     maxSteps: Int = 6,
+    /** The app's full governance wiring (persistent consent, on-disk ledger, the approval
+     *  dialog's broker). Null keeps the bare fail-closed default. Twin of the iOS
+     *  AgentSession runner injection. NB: `onChange` stays LAST so existing trailing-lambda
+     *  callers (`AgentSession(engine, tools) { … }`) still bind to it — the AgentLoop lesson. */
+    runner: CapabilityRunner? = null,
     var onChange: () -> Unit = {},
 ) {
-    private val loop = AgentLoop(engine, tools, maxSteps)
+    private val loop =
+        if (runner != null) AgentLoop(engine, tools, maxSteps, runner)
+        else AgentLoop(engine, tools, maxSteps)
 
     /** Q-641: the current run's stop flag. cancel() flips it (and interrupts the in-flight decode); the
      *  loop checks it each step boundary and halts with CANCELLED. @Volatile — cancel() may run on the

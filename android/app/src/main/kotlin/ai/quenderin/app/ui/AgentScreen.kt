@@ -1,15 +1,28 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.PrefsConsentStore
+import ai.quenderin.app.copyAttachmentToCache
+import ai.quenderin.core.ActionPreview
 import ai.quenderin.core.AgentDecision
 import ai.quenderin.core.AgentRun
 import ai.quenderin.core.AgentSession
 import ai.quenderin.core.AgentStep
 import ai.quenderin.core.AgentTool
+import ai.quenderin.core.ApprovalBroker
+import ai.quenderin.core.CapabilityRunner
+import ai.quenderin.core.FileAuditLedger
+import ai.quenderin.core.FileReadCapability
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.SupportContact
 import ai.quenderin.core.userMessage
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.mutableStateMapOf
+import java.io.File
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -65,13 +78,35 @@ import kotlinx.coroutines.launch
 @Composable
 fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var steps by remember { mutableStateOf<List<AgentStep>>(emptyList()) }
     var answer by remember { mutableStateOf<String?>(null) }
     var running by remember { mutableStateOf(false) }
     var haltReason by remember { mutableStateOf<AgentRun.HaltReason?>(null) }
     var goal by remember { mutableStateOf("") }
+
+    // ── Governance wiring (the iOS AgentView twin, previously missing on Android — every
+    // T1+ capability fail-closed refused because the app never injected a runner). ──
+    // Attached files: the ONLY door into fs.read's granted map (a user pick, never a model path).
+    val attachments = remember { mutableStateMapOf<String, File>() }
+    // The approval dialog's broker: the agent thread blocks in request(); Compose shows the
+    // dialog from onRequest and answers on the main thread. Dismissal = NO.
+    var pendingApproval by remember { mutableStateOf<ActionPreview?>(null) }
+    val broker = remember {
+        ApprovalBroker().apply {
+            onRequest = { preview -> scope.launch(Dispatchers.Main.immediate) { pendingApproval = preview } }
+        }
+    }
+    val consent = remember { PrefsConsentStore(context) }
+    var fsReadGranted by remember { mutableStateOf(consent.isGranted("fs.read")) }
     val session = remember {
-        AgentSession(engine, tools).apply {
+        val runner = CapabilityRunner(
+            consent = consent,
+            ledger = FileAuditLedger(File(context.filesDir, "agent-ledger.jsonl")),
+            approve = { preview -> broker.request(preview) },
+        )
+        val allTools = tools + FileReadCapability(grantedFiles = { attachments.toMap() })
+        AgentSession(engine, allTools, runner = runner).apply {
             onChange = {
                 // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background
                 // thread — writing Compose snapshot state directly off the main thread is a threading
@@ -91,7 +126,19 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             }
         }
     }
-    val context = LocalContext.current
+    // The document picker — the user's attach gesture is what populates fs.read's map. The pick
+    // is copied into the app cache at attach time (see copyAttachmentToCache), so no SAF grant
+    // has to outlive this moment.
+    val pickDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val copied = copyAttachmentToCache(context, uri)
+                if (copied != null) {
+                    scope.launch(Dispatchers.Main.immediate) { attachments[copied.first] = copied.second }
+                }
+            }
+        }
+    }
 
     val hasContent = steps.isNotEmpty() || answer != null || haltReason != null
 
@@ -160,6 +207,54 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             }
         }
 
+        // Attachments: the only door into fs.read. Chips (tap to remove) + the consent switch —
+        // consent lives WHERE the feature lives, granted by a visible user gesture (twin of the
+        // iOS Settings toggle; a Settings pane twin can follow).
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { pickDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, enabled = !running) {
+                Text("Attach file")
+            }
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                attachments.keys.sorted().take(3).forEach { name ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.clickable(enabled = !running) { attachments.remove(name)?.delete() },
+                    ) {
+                        Text(
+                            "$name ✕",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (attachments.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "The agent may read attached files",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = fsReadGranted,
+                    onCheckedChange = { granted ->
+                        fsReadGranted = granted
+                        consent.setGranted("fs.read", granted)
+                    },
+                )
+            }
+        }
+
         // AI-content disclaimer (Generative-AI content policy).
         Text(
             SupportContact.AI_DISCLAIMER,
@@ -195,6 +290,15 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 }) { Text("Share") }
                 Spacer(Modifier.width(8.dp))
             }
+            if (running) {
+                // The kill switch: end the run at the next step boundary AND release a blocked
+                // approval question as a decline (a stop must never leave a thread waiting on a
+                // dialog nobody will answer).
+                TextButton(onClick = {
+                    session.cancel()
+                    broker.cancelPending()
+                }) { Text("Stop") }
+            }
             Button(
                 enabled = !running && goal.isNotBlank(),
                 onClick = {
@@ -207,6 +311,31 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 },
             ) { Text("Run") }
         }
+    }
+
+    // The per-run approval dialog — the heart of the trust loop (twin of the iOS AgentView
+    // dialog and the dashboard's modal). Dismissing without answering counts as NO.
+    pendingApproval?.let { preview ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingApproval = null
+                broker.answer(false)
+            },
+            title = { Text("Allow this action?") },
+            text = { Text("${preview.summary}\n\nNothing runs without your yes. Dismissing counts as no.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingApproval = null
+                    broker.answer(true)
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingApproval = null
+                    broker.answer(false)
+                }) { Text("Don't allow") }
+            },
+        )
     }
 }
 

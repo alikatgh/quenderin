@@ -341,6 +341,29 @@ fun main() {
         onb.acceptAndPrepare(ModelCatalog.smallest)
         onb.phase is OnboardingPhase.Ready
     })
+
+    // --- ApprovalBroker (the Compose dialog bridge — twin of iOS ApprovalBroker) ---
+    check("ApprovalBroker: a same-thread answer resolves request() without blocking", run {
+        val b = ApprovalBroker()
+        b.onRequest = { b.answer(true) }   // reentrant monitor: answering from inside onRequest works
+        b.request(ActionPreview("do it", true))
+    })
+    check("ApprovalBroker: a cross-thread answer releases the blocked agent thread", run {
+        val b = ApprovalBroker()
+        b.onRequest = { Thread { Thread.sleep(30); b.answer(false) }.start() }
+        !b.request(ActionPreview("do it", true))
+    })
+    check("ApprovalBroker: cancelPending releases an open question as NO (fail-closed stop)", run {
+        val b = ApprovalBroker()
+        b.onRequest = { Thread { Thread.sleep(30); b.cancelPending() }.start() }
+        !b.request(ActionPreview("do it", true))
+    })
+    check("ApprovalBroker: answer() with nothing pending is a harmless no-op", run {
+        val b = ApprovalBroker()
+        b.answer(true)   // must not throw or poison the next question
+        b.onRequest = { b.answer(false) }
+        !b.request(ActionPreview("x", true))
+    })
     // Q-336: a re-entrant acceptAndPrepare (here fired from the progress callback via onChange) must be
     // ignored so a double-tap / picker overlap can't run two downloads+loads racing phase and the engine.
     check("Q-336: a re-entrant acceptAndPrepare is ignored — exactly one download runs", run {

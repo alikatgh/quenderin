@@ -565,6 +565,22 @@ Prove the safety spine on the safest possible capability first.
 
 ---
 
+## Post-M4 — Android catches up: the governed agent surface on the phone (2026-07-07)
+
+The Android app ran the agent with the bare fail-closed runner and T0 tools only — the standing
+"Compose UI rides the backlog" chip. First slice closed, mirroring the iOS AgentView anatomy:
+**`ApprovalBroker.kt`** (core, kotlinc-verified — the agent's IO thread blocks in `request()`
+while Compose shows the dialog; reentrant same-thread answers work; `cancelPending()` releases a
+blocked question as NO so Stop can't strand a thread), **`AgentSession` runner injection** (the
+`runner` param sits BEFORE `onChange` so existing trailing-lambda callers still bind — the
+AgentLoop lesson), and the **AgentScreen wiring**: PrefsConsentStore + on-disk FileAuditLedger +
+the approval AlertDialog (dismiss = NO) + a Stop button that also releases the broker + the
+attach flow (SAF pick → copied into app cache at attach time, size-capped — the Android twin of
+"extraction at attach time" — chips to remove, `fs.read` registered over the attachment map,
+consent as a visible switch where the feature lives). Verified: CoreVerify 263 (4 new broker
+checks) + `:app:assembleDebug` green. Remaining on the chip: the workspace fs.* UI (needs a
+SAF/DocumentFile adaptation of the File-based core seam) and a Settings capability pane twin.
+
 ## Post-M4 — the mac.* library goes NATIVE (2026-07-07, the platform decision)
 
 The owner's 2026-07-07 call (docs/ROADMAP.md H1): the macOS product is the **Swift app**; the
