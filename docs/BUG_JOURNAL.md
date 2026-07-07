@@ -58,6 +58,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 - **Advertised-but-unimplemented surface.** A prompt/doc/interface lists capabilities the
   executor/provider doesn't implement (dead `pressKey`, advertised `swipe`). Keep the prompt,
   the type union, and the executor in lockstep. (C8, C9)
+- **A modality simulated in prose is a hallucination faucet.** Passing an image PATH as text (or any
+  "pretend you can see/hear X" marker) makes the model confabulate perception, fluently, every time —
+  and downstream code treats it as ground truth. Either wire the real modality or drop the input;
+  never fake it in the prompt. (agent Eye; backgroundDaemon habit log)
+- **"Send once" state (system prompt, schema, config) over a stateless transport silently vanishes.**
+  If each call builds a fresh session, conditioning a preamble on "first call only" means every later
+  call runs without it. Verify the session's actual lifetime before optimizing away a re-send; make the
+  re-send cheap (KV prefix cache) instead of skipping it. (SYSTEM_PROMPT step 2+)
 - **A strictness guard measured against a lenient extractor's output is theatre.** Kotlin's plan
   parser checked `calls.size == objects.size`, but `splitObjects` had ALREADY silently dropped
   non-object members — the guard could never see the garbage it existed to reject, so a garbled plan
@@ -360,6 +368,31 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-07 (agent drunk: no schema after step 1) — `agent.service.ts` sent SYSTEM_PROMPT only when
+  `step === 1`, but `generateAction` builds a FRESH session per call → steps 2+ never saw the action
+  schema and improvised output format. Fix: send it every step (+ KV cacheKey makes the re-send ~free).
+  Lesson: a "send once" optimization is only valid if the transport is actually stateful — verify the
+  session lifetime before conditioning on step number.
+
+- 2026-07-07 (agent drunk: fake vision) — the per-step "Autonomous Eye" passed a screenshot PATH as
+  text (`[IMAGE UPLOADED: …]`); the model described a screen it cannot see, and that hallucination was
+  injected into every decision (plus a full extra inference/step). Fix: deleted the eye step and the
+  text marker; `generateAction` now ignores imagePath with a debug log. Lesson: never simulate a
+  modality in prose — the model WILL confabulate, fluently. (backgroundDaemon habit log has the same
+  defect — tracked separately.)
+
+- 2026-07-07 (agent drunk: unconstrained action decode) — action output was free text scraped by
+  regex/XML fallback; small models drift formats constantly. Fix: `GenerationOptions.jsonSchema` →
+  `llama.createGrammarForJsonSchema` grammar on the decode (invalid JSON becomes unsampleable), with
+  null-grammar fallback to old behavior on fakes/old bindings. Lesson: constrain at the decoder, not
+  the parser.
+
+- 2026-07-07 (perf: full re-prefill every agent step) — every `generateAction` allocated + disposed a
+  fresh KV sequence, re-prefilling system+goal+attachments each step. Fix: `GenerationOptions.cacheKey`
+  → persistent sequence per mission (fresh session per call keeps steps stateless), prompt reordered
+  constant-blocks-first; released via `releaseActionCache` at mission end + on unload. Lesson: on CPU
+  inference prefill dominates — design prompts so their head is byte-stable across calls.
 
 - 2026-07-07 (CI red again ×6: Theme.swift glassEffect vs the Xcode 16 SDK) — the ChatView fix landed
   but Theme.swift's Liquid Glass call still broke CI: `if #available(iOS 26…)` is a RUNTIME gate — the

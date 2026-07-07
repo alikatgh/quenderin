@@ -475,6 +475,73 @@ describe('AgentService — pause / resume', () => {
         expect((events.status as string[]).some((s) => s.includes('Stopped'))).toBe(true);
         expect(agent.isRunning).toBe(false);
     });
+
+    // ─── Sober-agent regressions (2026-07-07 engine overhaul) ────────────────
+    // These pin the fixes for the three defects that made the agent erratic:
+    //  1. SYSTEM_PROMPT was sent only on step 1 while sessions are per-call → steps 2+ never saw
+    //     the action schema.  2. A per-step "eye" call hallucinated screen descriptions from an
+    //     image the model can't see.  3. Output was unconstrained text scraped by regex.
+
+    it('sends the action SYSTEM_PROMPT + JSON schema + cacheKey on EVERY decision step, not just step 1', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('{"action":"done"}')                       // intent classifier tiebreak
+            .mockResolvedValueOnce('{"action":"click","id":1}')               // step 1 decision
+            .mockResolvedValueOnce('{"action":"click","id":1}')               // step 2 decision
+            .mockResolvedValue('{"action":"done"}');                          // step 3 decision
+        const llm = createLlmStub({ generateAction });
+        const { agent } = buildAgent({ llm });
+
+        const emitter = new AgentEventEmitter();
+        captureEvents(emitter);   // registers an 'error' listener — a bare emitter would throw on it
+        await agent.runAgentLoop('open settings', emitter, [], 5);
+
+        // Decision calls are the ones prompted with the (stubbed) built environment.
+        const decisionCalls = generateAction.mock.calls.filter((c) => c[1] === 'PROMPT');
+        expect(decisionCalls.length).toBeGreaterThanOrEqual(2);
+        for (const call of decisionCalls) {
+            expect(call[0]).toContain('Valid actions');                       // schema-bearing system prompt, every step
+            expect(call[2]?.jsonSchema).toMatchObject({ type: 'object' });    // grammar constraint requested
+            expect(typeof call[2]?.cacheKey).toBe('string');                  // KV prefix reuse requested
+        }
+    });
+
+    it('never passes a screenshot to the LLM and makes no per-step eye call (vision is not wired)', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('{"action":"done"}')                       // intent classifier
+            .mockResolvedValueOnce('{"action":"click","id":1}')               // step 1
+            .mockResolvedValue('{"action":"done"}');                          // step 2
+        const llm = createLlmStub({ generateAction });
+        const { agent } = buildAgent({
+            llm,
+            verifierStates: [
+                // screenshotPath present — the old code fired an extra "describe this screen"
+                // inference per step and fed the model a text path it hallucinated against.
+                { elements: [makeUiElement(1)], textRepresentation: '<node id=1/>', hash: 'h1', screenshotPath: '/tmp/does-not-exist-shot.png' },
+                { elements: [makeUiElement(2)], textRepresentation: '<node id=2/>', hash: 'h2', screenshotPath: '/tmp/does-not-exist-shot.png' },
+            ],
+        });
+
+        const emitter = new AgentEventEmitter();
+        captureEvents(emitter);   // registers an 'error' listener — a bare emitter would throw on it
+        await agent.runAgentLoop('open settings', emitter, [], 5);
+
+        // 1 intent + 2 decisions = 3 calls. The old eye path added one MORE call per step.
+        expect(generateAction.mock.calls.length).toBe(3);
+        for (const call of generateAction.mock.calls) {
+            expect(call[3]).toBeUndefined();                                  // no imagePath ever reaches the LLM
+        }
+    });
+
+    it('releases the mission KV cache (releaseActionCache) exactly once when the run ends', async () => {
+        const releaseActionCache = vi.fn();
+        const llm = createLlmStub({ releaseActionCache } as Partial<ILlmProvider>);
+        const { agent } = buildAgent({ llm });
+
+        await agent.runAgentLoop('open settings', new AgentEventEmitter(), [], 5);
+
+        expect(releaseActionCache).toHaveBeenCalledTimes(1);
+        expect(releaseActionCache).toHaveBeenCalledWith('agent-mission');
+    });
 });
 
 describe('app.ts — pause/resume HTTP routes', () => {

@@ -38,7 +38,7 @@ import os from "os";
 import fs from "fs";
 import { availableMemBytes } from "../utils/memory.js";
 import { EventEmitter } from "events";
-import { ILlmProvider, GenerationMeta } from "../types/index.js";
+import { ILlmProvider, GenerationMeta, GenerationOptions } from "../types/index.js";
 import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
 import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
@@ -185,6 +185,48 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** Cached reference to the loaded model entry for per-request decisions */
     private activeModelEntry: ModelEntry | null = null;
 
+    // ─── Structured decoding + KV prefix reuse (the agent-reliability core) ──
+    /** Compiled grammars keyed by schema JSON. Grammars belong to the llama ENGINE, so the cache
+     *  is cleared whenever the engine handle is replaced or the model is unloaded. */
+    private grammarCache = new Map<string, any>();
+    /** Long-lived context sequences keyed by GenerationOptions.cacheKey. A reused sequence keeps
+     *  its KV state, so node-llama-cpp only prefills the part of the next prompt that diverges
+     *  from the previous one — the agent's per-step cost drops from "entire prompt" to "what
+     *  actually changed on screen". Sequences belong to the CONTEXT: cleared on unload. */
+    private actionSequences = new Map<string, any>();
+
+    /** Compile (once) a grammar that forces output to conform to `schema`. Returns null when the
+     *  engine can't build one (old bindings, unsupported schema feature) — callers then decode
+     *  unconstrained, which is exactly the pre-grammar behavior. */
+    private async grammarForSchema(schema: Record<string, unknown>): Promise<any | null> {
+        const engine = this.llamaEngine as any;
+        if (!engine || typeof engine.createGrammarForJsonSchema !== 'function') return null;
+        const key = JSON.stringify(schema);
+        const cached = this.grammarCache.get(key);
+        if (cached) return cached;
+        try {
+            const grammar = await engine.createGrammarForJsonSchema(schema);
+            this.grammarCache.set(key, grammar);
+            return grammar;
+        } catch (err) {
+            logger.warn('[LLM] Grammar compilation failed — decoding unconstrained:', err instanceof Error ? err.message : err);
+            return null;
+        }
+    }
+
+    /** Drop (and dispose) the persistent sequence for one cacheKey. Public via ILlmProvider so the
+     *  agent can free the mission's KV memory the moment the mission ends. */
+    public releaseActionCache(cacheKey: string): void {
+        const seq = this.actionSequences.get(cacheKey);
+        if (!seq) return;
+        this.actionSequences.delete(cacheKey);
+        try { seq.dispose(); } catch { /* already disposed */ }
+    }
+
+    private releaseAllActionCaches(): void {
+        for (const key of [...this.actionSequences.keys()]) this.releaseActionCache(key);
+    }
+
     // ─── Active Model Lifecycle (ported from off-grid-mobile) ───────────────
     private loadedModelId: string | null = null;
     private modelLoadTimestamp: number = 0;
@@ -207,12 +249,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     /** Create a LlamaChatSession using the dynamically imported class */
-    private createChatSession(opts: { contextSequence: any; systemPrompt?: string }): any {
+    private createChatSession(opts: { contextSequence: any; systemPrompt?: string; autoDisposeSequence?: boolean }): any {
         if (!_llamaBindings) throw new Error('LLM bindings not available');
-        // autoDisposeSequence: disposing the session frees its KV-cache sequence slot. Without it,
-        // each session rotation leaks a slot and context.getSequence() eventually throws
+        // autoDisposeSequence (default true): disposing the session frees its KV-cache sequence slot.
+        // Without it, each session rotation leaks a slot and context.getSequence() eventually throws
         // "No sequences left" — chat then fails permanently until a full model reload.
-        return new _llamaBindings.LlamaChatSession({ ...opts, autoDisposeSequence: true });
+        // generateAction's cacheKey path passes false: it OWNS its sequence across calls (KV prefix
+        // reuse) and frees it via releaseActionCache/unloadModel instead.
+        return new _llamaBindings.LlamaChatSession({ autoDisposeSequence: true, ...opts });
     }
 
     /** Dispose the general chat session (freeing its KV-cache sequence slot) and clear it. */
@@ -328,6 +372,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             maxTokens: number;
             temperature: number;
             onTextChunk?: (chunk: string) => void;
+            /** Compiled node-llama-cpp grammar — constrains decoding to a JSON schema. */
+            grammar?: any;
         },
         timeoutMs: number,
         label: string,
@@ -429,6 +475,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.modelInstance = null;
         this.contextInstance = null;
         this.disposeChatSession();
+        // Cached sequences belong to this context and cached grammars to this engine — a reload
+        // builds fresh ones; keeping stale handles would crash the first post-reload decode.
+        this.releaseAllActionCaches();
+        this.grammarCache.clear();
         void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
         void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
         this.chatTurnCount = 0;
@@ -455,6 +505,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.modelInstance = null;
         this.contextInstance = null;
         this.disposeChatSession();
+        this.releaseAllActionCaches();
+        this.grammarCache.clear();
         try { await context?.dispose(); } catch { /* already disposed */ }
         try { await model?.dispose(); } catch { /* already disposed */ }
         try { await this.llamaEngine?.dispose(); } catch { /* already disposed */ }
@@ -1075,40 +1127,83 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return Math.max(3, Math.min(25, Math.floor(ctxSize / 100)));
     }
 
-    public async generateAction(systemPrompt: string, userPrompt: string, options: any, imagePath?: string, signal?: AbortSignal): Promise<string> {
+    public async generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string> {
         this.isGeneratingAction = true;
         try {
             const { context } = await this.getModelAndContext();
-            // Use a new sequence per call — dispose it when done to free KV cache slots
-            const sequence = context.getSequence();
-            const session = this.createChatSession({
-                contextSequence: sequence,
-                systemPrompt: systemPrompt || undefined
-            });
 
-            // If a vision path was provided, notify the LLM this is a multimodal query (pseudo-implementation since node-llama-cpp's exact vision wrapper syntax varies by binding version)
-            const finalPrompt = imagePath
-                ? `${userPrompt}\n[IMAGE UPLOADED: ${imagePath}]`
-                : userPrompt;
+            // HONESTY OVER PRETENSE: no vision model is wired into this provider. The old code
+            // appended a text marker ("[IMAGE UPLOADED: <path>]") the model then confabulated
+            // against — every caller received fluent hallucination presented as perception.
+            // Until a real multimodal path exists, an image the model cannot see is IGNORED.
+            if (imagePath) {
+                logger.debug('[LLM] generateAction received an imagePath but no vision model is wired — ignoring the image.');
+            }
+
+            // Grammar-constrained decoding: with a schema, invalid output is unsampleable —
+            // the drunk-JSON failure mode is removed at the decoder, not patched in a parser.
+            const grammar = options.jsonSchema ? await this.grammarForSchema(options.jsonSchema) : null;
+
+            const promptOptions = {
+                maxTokens: options.maxTokens || HW.actionMaxTokens,
+                temperature: options.temperature || 0.1,
+                ...(grammar ? { grammar } : {})
+            };
+
+            const runDecode = async (useCachedSequence: boolean): Promise<string> => {
+                // cacheKey path: reuse ONE long-lived sequence so the stable prompt prefix
+                // (system prompt, goal, attachments, hints) stays in KV cache across calls.
+                // A FRESH session is created every call — semantics remain stateless; only
+                // the token cache persists. Ephemeral path: sequence disposed with the session.
+                let sequence: any;
+                let ownsSequence = true;
+                if (useCachedSequence && options.cacheKey) {
+                    const existing = this.actionSequences.get(options.cacheKey);
+                    sequence = existing ?? context.getSequence();
+                    if (!existing) this.actionSequences.set(options.cacheKey, sequence);
+                    ownsSequence = false;
+                } else {
+                    sequence = context.getSequence();
+                }
+                const session = this.createChatSession({
+                    contextSequence: sequence,
+                    systemPrompt: systemPrompt || undefined,
+                    autoDisposeSequence: ownsSequence
+                });
+                try {
+                    // Q-405: route through promptWithTimeout so a stalled native decode can't hang
+                    // the agent FOREVER. On a hang it throws LLM_TIMEOUT, which the agent loop
+                    // surfaces as a clean error instead of a wedged mission.
+                    const response = await this.promptWithTimeout(
+                        session,
+                        userPrompt,
+                        promptOptions,
+                        this.promptTimeoutMs,
+                        'Action generation',
+                        signal   // Q-537: agent hard-stop — an aborted signal ends the decode within a token
+                    );
+                    return response.trim();
+                } finally {
+                    // Owned sequence dies with the session (autoDisposeSequence); a cached one
+                    // survives — dispose only the session wrapper to keep its KV state.
+                    try { session.dispose(); } catch { /* already disposed */ }
+                }
+            };
 
             try {
-                // Q-405: route through promptWithTimeout so a stalled native decode can't hang the
-                // agent FOREVER (the chat path already does this). On a hang it throws LLM_TIMEOUT,
-                // which the agent loop surfaces as a clean error instead of a wedged mission.
-                const response = await this.promptWithTimeout(
-                    session,
-                    finalPrompt,
-                    {
-                        maxTokens: options.maxTokens || HW.actionMaxTokens,
-                        temperature: options.temperature || 0.1
-                    },
-                    this.promptTimeoutMs,
-                    'Action generation',
-                    signal   // Q-537: agent hard-stop — an aborted signal ends the decode within a token
-                );
-                return response.trim();
-            } finally {
-                try { sequence.dispose(); } catch { /* already disposed */ }
+                return await runDecode(Boolean(options.cacheKey));
+            } catch (err: unknown) {
+                // Deliberate cancel and genuine hang are real signals — never mask them with a
+                // retry. Anything else on the cached-sequence path is treated as cache poisoning
+                // (stale KV, disposed handle after a reload race): drop the sequence and run the
+                // same prompt once on a fresh one, restoring exact pre-cache behavior.
+                const code = errCode(err);
+                if (options.cacheKey && code !== 'LLM_CANCELLED' && code !== 'LLM_TIMEOUT') {
+                    logger.warn(`[LLM] Cached-sequence decode failed (${err instanceof Error ? err.message : err}); retrying on a fresh sequence.`);
+                    this.releaseActionCache(options.cacheKey);
+                    return await runDecode(false);
+                }
+                throw err;
             }
         } finally {
             this.isGeneratingAction = false;

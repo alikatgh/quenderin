@@ -13,6 +13,14 @@ export interface GenerationOptions {
     maxTokens?: number;
     temperature?: number;
     onTextChunk?: (chunk: string) => void;
+    /** When set, decoding is grammar-constrained to this JSON schema: the model is structurally
+     *  incapable of emitting output that doesn't parse. Providers without grammar support (fakes,
+     *  unavailable bindings) ignore it — callers must still run their text parser on the result. */
+    jsonSchema?: Record<string, unknown>;
+    /** Opaque key. Calls sharing a cacheKey reuse one KV-cache sequence, so the shared prompt
+     *  prefix (system prompt, goal, attachments) is not re-prefilled on every call. Purely a
+     *  performance hint — each call still behaves as an independent, stateless prompt. */
+    cacheKey?: string;
 }
 
 export interface UIElement {
@@ -56,6 +64,9 @@ export interface IDeviceProvider extends EventEmitter {
 export interface ILlmProvider extends EventEmitter {
     generalChat(prompt: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean }): Promise<{ text: string; meta: GenerationMeta }>;
     generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string>;
+    /** Free the KV-cache sequence held for a GenerationOptions.cacheKey (e.g. at mission end).
+     *  Optional: fakes and providers without KV reuse simply don't implement it. */
+    releaseActionCache?(cacheKey: string): void;
     /** True while chat or agent/action inference holds the shared model (GPU/CPU). */
     isCurrentlyGenerating(): { isGenerating: boolean; buffer: string };
 }

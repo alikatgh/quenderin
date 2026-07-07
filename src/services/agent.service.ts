@@ -55,6 +55,28 @@ Example output:
 
 Respond ONLY with valid JSON or XML. Do not provide any conversational filler.`;
 
+/** JSON schema mirror of the SYSTEM_PROMPT action space. Passed as GenerationOptions.jsonSchema so
+ *  a grammar-capable provider CANNOT emit anything but one valid action object — parse failures and
+ *  the XML fallback become dead paths on the real engine (they remain for fakes/ported providers).
+ *  Must stay in lockstep with AgentAction (types/index.ts) and the mobile twins' action space. */
+const ACTION_JSON_SCHEMA: Record<string, unknown> = {
+    type: "object",
+    properties: {
+        action: { enum: ["click", "input", "scroll", "key", "done"] },
+        id: { type: "number" },
+        x: { type: "number" },
+        y: { type: "number" },
+        text: { type: "string" },
+        direction: { enum: ["up", "down", "left", "right"] },
+        key: { enum: ["back", "home", "enter"] },
+    },
+    required: ["action"],
+};
+
+/** One mission = one KV-cache lineage. The stable prompt prefix (system prompt, goal, hints,
+ *  attachments) is prefilled once and reused every step instead of re-decoded from scratch. */
+const AGENT_CACHE_KEY = "agent-mission";
+
 // Q-637: the ONE LLM intent step. The agent runs the shared regex classifier (intentClassifier.ts) first
 // and only falls back to this coarse chat-vs-action prompt to break a low-confidence tie on capable
 // hardware. There is deliberately no second LLM classifier (the divergent classifyWithLlmFallback was
@@ -230,6 +252,9 @@ export class AgentService {
         } finally {
             this._isRunning = false;
             this._abortController = null;
+            // Free the mission's KV-cache sequence (multi-hundred-MB on large contexts). Also resets
+            // the prefix lineage so the NEXT mission's different goal/attachments start clean.
+            this.llmProvider.releaseActionCache?.(AGENT_CACHE_KEY);
         }
     }
 
@@ -272,7 +297,9 @@ export class AgentService {
                 const intentRaw = await this.llmProvider.generateAction(
                     INTENT_CLASSIFIER_PROMPT,
                     `User Request: "${goal}"`,
-                    { maxTokens: 10, temperature: 0.1 },
+                    // Grammar-constrained to the two legal labels — a rambling model can no longer
+                    // produce an unclassifiable answer that silently defaults the branch.
+                    { maxTokens: 10, temperature: 0.1, jsonSchema: { type: "string", enum: ["ACTION", "CHAT"] } },
                     undefined,
                     this._abortController?.signal
                 );
@@ -349,36 +376,31 @@ export class AgentService {
                 continue; // Immediately jump to the next verify loop step
             }
 
-            // Before building prompt, get eye description (Autonomous Eye)
-            emitter.emit('status', " Processing visual context...");
-            let eyeDescription = "";
-            if (state.screenshotPath) {
-                try {
-                    eyeDescription = await this.llmProvider.generateAction(
-                        "Briefly describe the interactive elements visible on this screen in one sentence.",
-                        "",
-                        { maxTokens: 100, temperature: 0.1 },
-                        state.screenshotPath,
-                        this._abortController?.signal
-                    );
-                } catch (e) {
-                    logger.debug("[AgentService] Eye formulation failed:", e);
-                }
-            }
+            // The old "Autonomous Eye" step is GONE, deliberately. It asked the model to
+            // "describe the elements visible on this screen" while passing the screenshot as a
+            // TEXT path the model could never see — a guaranteed hallucination, injected into
+            // every decision as if it were perception, at the price of a full extra inference
+            // per step. Removing it makes each step both more truthful and ~2× faster.
+            // Reintroduce only behind a provider that actually decodes image tokens.
 
             // 4. Build Prompt
-            const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory, eyeDescription, attachments);
+            const prompt = await this.promptBuilder.buildEnvironment(goal, state.textRepresentation, actionHistory, "", attachments);
 
             emitter.emit('status', " Deciding next action...");
 
             // 5. Generate LLM Action
             let commandText: string;
             try {
+                // SYSTEM_PROMPT on EVERY step. The old `step === 1 ? SYSTEM_PROMPT : ""` assumed a
+                // persistent session, but generateAction builds a fresh one per call — so from step
+                // 2 onward the model had NEVER seen the action schema and was improvising output
+                // format from context. This single conditional was the largest source of erratic
+                // agent behavior. The KV cacheKey makes the re-sent prompt near-free.
                 commandText = await this.llmProvider.generateAction(
-                    step === 1 ? SYSTEM_PROMPT : "",
+                    SYSTEM_PROMPT,
                     prompt,
-                    { maxTokens: 150, temperature: 0.1 },
-                    state.screenshotPath,
+                    { maxTokens: 150, temperature: 0.1, jsonSchema: ACTION_JSON_SCHEMA, cacheKey: AGENT_CACHE_KEY },
+                    undefined,   // screenshot path removed: the provider has no vision — see the Eye note above
                     this._abortController?.signal
                 );
             } catch (e: unknown) {
@@ -390,9 +412,10 @@ export class AgentService {
                 }
                 throw e;
             } finally {
-                // Screenshot has been consumed by the LLM calls — delete it to free /tmp space (2–5 MB
-                // per frame) on EVERY path. A throw in generateAction previously skipped the unlink and
-                // leaked the file until the periodic temp sweep (deep-hunt).
+                // Delete the step's screenshot to free /tmp space (2–5 MB per frame) on EVERY path.
+                // (No LLM consumes it anymore — the uiVerifier still captures one per idle-wait.)
+                // A throw in generateAction previously skipped the unlink and leaked the file until
+                // the periodic temp sweep (deep-hunt).
                 if (state.screenshotPath) {
                     fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
                 }
