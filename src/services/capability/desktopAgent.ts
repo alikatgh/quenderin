@@ -13,6 +13,8 @@ import { macCapabilities } from './macCapabilities.js';
 import { fileCapabilities } from './fileCapabilities.js';
 import { MacUi } from './macUi.js';
 import { macUiCapabilities } from './macUiCapabilities.js';
+import { CommandRunner } from './platformAutomation.js';
+import { platformCapabilities } from './platformCapabilities.js';
 
 /**
  * The production assembly — this is where "the engine with tests" becomes "the thing that runs on
@@ -46,6 +48,9 @@ export interface GovernedAgentDeps {
     /** macOS accessibility for the mac.ui.* GUI-driving capabilities (click/type into ANY app).
      *  Omit to exclude them — the most powerful surface, so it's opt-in (the CLI's `--gui`). */
     macUi?: MacUi;
+    /** Windows/Linux OS automation (clipboard, open URL/app, reveal, notify) — the win.* and
+     *  linux.* libraries. Omit to exclude them (e.g. on macOS, where mac.* covers the surface). */
+    shell?: CommandRunner;
     /** The granted workspace folder for the fs.* capabilities (organize/rename/trash/read/list).
      *  A function so the grant can change; returns null when none is granted. Omit to exclude fs.*. */
     workspace?: () => string | null;
@@ -87,6 +92,7 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
         ...(deps.workspace ? fileCapabilities(deps.workspace) : []),
         ...(deps.mac ? macCapabilities(deps.mac) : []),
         ...(deps.macUi ? macUiCapabilities(deps.macUi) : []),
+        ...(deps.shell ? platformCapabilities(deps.shell) : []),
         ...(deps.device ? appCapabilities(deps.device, parser) : []),
     ];
     const ledger = deps.ledger ?? new InMemoryAuditLedger();

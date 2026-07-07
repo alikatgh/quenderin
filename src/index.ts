@@ -27,6 +27,8 @@ import { replayUndo, UndoAction } from './services/capability/undo.js';
 import { formatCapabilities } from './services/capability/catalog.js';
 import { OsascriptMacUi } from './services/capability/macUi.js';
 import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
+import { ExecFileRunner } from './services/capability/platformAutomation.js';
+import { platformCapabilities } from './services/capability/platformCapabilities.js';
 
 const program = new Command();
 
@@ -270,8 +272,11 @@ program
         return;
       }
     }
-    if (!mac.available() && !workspaceDir) {
-      console.error('`quenderin do` needs macOS (for app control) or --workspace <dir> (for file tasks).');
+    // Windows/Linux OS automation (the win.*/linux.* libraries) — the mission's reach beyond
+    // macOS. The runner is argv-only with fixed commands, so there is no interpolation to escape.
+    const shell = new ExecFileRunner();
+    if (!mac.available() && !shell.available() && !workspaceDir) {
+      console.error('`quenderin do` needs macOS/Windows/Linux (for OS actions) or --workspace <dir> (for file tasks).');
       process.exitCode = 1;
       return;
     }
@@ -298,6 +303,7 @@ program
       const consent = new InMemoryConsentStore();
       // The per-change terminal prompt is the real gate here, so grant the capabilities in play.
       if (mac.available()) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+      if (shell.available()) platformCapabilities(shell).forEach(c => consent.setGranted(c.name, true));
       if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
       const macUi = guiEnabled && mac.available() ? new OsascriptMacUi(mac) : undefined;
       if (macUi) macUiCapabilities(macUi).forEach(c => consent.setGranted(c.name, true));
@@ -324,6 +330,7 @@ program
         llm,
         mac: mac.available() ? mac : undefined,
         macUi,
+        shell: shell.available() ? shell : undefined,
         workspace: workspaceDir ? () => workspaceDir : undefined,
         consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory, maxSteps,
         dryRun: options.dryRun ?? false,
@@ -393,7 +400,12 @@ program
   .description('List everything Quenderin can do — the governed capability library.')
   .action(() => {
     const mac = new OsascriptAutomation();
-    const caps = [...macCapabilities(mac), ...macUiCapabilities(new OsascriptMacUi(mac)), ...fileCapabilities(() => null)];
+    const shell = new ExecFileRunner();
+    const caps = [
+      ...(mac.available() ? [...macCapabilities(mac), ...macUiCapabilities(new OsascriptMacUi(mac))] : []),
+      ...platformCapabilities(shell),
+      ...fileCapabilities(() => null),
+    ];
     console.log(formatCapabilities(caps, { color: process.stdout.isTTY }));
   });
 

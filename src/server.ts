@@ -19,6 +19,8 @@ import { macCapabilities } from './services/capability/macCapabilities.js';
 import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
 import { fileCapabilities } from './services/capability/fileCapabilities.js';
 import { FileAuditLedger, loadSkillMemory, saveSkillMemory } from './services/capability/persistence.js';
+import { ExecFileRunner } from './services/capability/platformAutomation.js';
+import { platformCapabilities } from './services/capability/platformCapabilities.js';
 import { AndroidProvider } from './services/providers/android.provider.js';
 import { DesktopProvider } from './services/providers/desktop.provider.js';
 import { BackgroundDaemonService } from './services/backgroundDaemon.service.js';
@@ -155,9 +157,12 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     const taskService = new DashboardTaskService((deps) => {
         const mac = new OsascriptAutomation();
         const macAvailable = mac.available();
+        // Windows/Linux OS automation — the same governed tasks on every desktop OS (the mission).
+        const shell = new ExecFileRunner();
         const workspaceDir = deps.workspace;
         const consent = new InMemoryConsentStore();
         if (macAvailable) macCapabilities(mac).forEach(c => consent.setGranted(c.name, true));
+        if (shell.available()) platformCapabilities(shell).forEach(c => consent.setGranted(c.name, true));
         if (workspaceDir) fileCapabilities(() => workspaceDir).forEach(c => consent.setGranted(c.name, true));
         const macUi = deps.gui && macAvailable ? new OsascriptMacUi(mac) : undefined;
         if (macUi) macUiCapabilities(macUi).forEach(c => consent.setGranted(c.name, true));
@@ -165,6 +170,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
             llm: llmService,
             mac: macAvailable ? mac : undefined,
             macUi,
+            shell: shell.available() ? shell : undefined,
             workspace: workspaceDir ? () => workspaceDir : undefined,
             consent,
             approve: deps.approve,

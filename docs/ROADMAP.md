@@ -108,9 +108,10 @@ nothing leaves the machine."
 
 - **T1 perception on mobile** — read-only, consented (attach-a-PDF already ships; camera/
   image description next). *Requires the PRODUCT.md revision the plan flags — owner sign-off.*
-- **Windows/Linux** — per [WINDOWS_LINUX_STRATEGY.md](WINDOWS_LINUX_STRATEGY.md); the fs.\*
-  half of the agent already runs off-macOS (`--workspace`), full parity needs a UI-automation
-  surface per OS.
+- **Windows/Linux** — per [WINDOWS_LINUX_STRATEGY.md](WINDOWS_LINUX_STRATEGY.md). **Started
+  2026-07-07:** the win.\*/linux.\* capability libraries ship on the governed spine (argv-only
+  runner — no interpolation layer), wired into `quenderin do` and the dashboard Tasks service;
+  next is per-OS perception breadth and Linux app-launch.
 - **Opt-in connectors** (user's own OAuth to Google etc.) — a deliberate, opt-in departure
   from pure-local; never the default; design constraints in AGENT_AUTONOMY_PLAN §4b.
 - **Grounding R&D** — evaluate each small-model generation against the GUI-driving suite;
