@@ -32,4 +32,24 @@ final class DegenerationGuardTests: XCTestCase {
     func testShortTextIsNeverFlagged() {
         XCTAssertFalse(DegenerationGuard.looksDegenerate("hello hello hello"))
     }
+
+    // Twin-seam normalization (degeneration P2/P3): CODE POINTS + ONE trim set. The same pins
+    // live in CoreVerify — the same emoji/NEL text must answer the same on both platforms
+    // (Kotlin's UTF-16 units counted every astral char twice; Swift graphemes undercounted ZWJ).
+    func testEmojiWindowCountsCodePointsOnBothPlatforms() {
+        let emoji240 = String(repeating: "🌀", count: 240)   // below the 160×3 window on both now
+        let emoji480 = String(repeating: "🌀", count: 480)   // a genuine 3× loop of the window
+        XCTAssertFalse(DegenerationGuard.looksDegenerate(emoji240))
+        XCTAssertTrue(DegenerationGuard.looksDegenerate(emoji480))
+    }
+
+    func testCollapseGateCountsCodePointsAndSharesTheTrimSet() {
+        let emojiPara = String(repeating: "🌀", count: 30)   // 30 cps — below the 40-cp gate on both
+        XCTAssertEqual(DegenerationGuard.collapseRepeatedParagraphs("\(emojiPara)\n\n\(emojiPara)"),
+                       "\(emojiPara)\n\n\(emojiPara)")
+        // The unioned trim set: NEL (this side always trimmed) AND U+001C (newly trimmed here,
+        // Java-side always) both make a trailing-junk duplicate collapse identically.
+        XCTAssertEqual(DegenerationGuard.collapseRepeatedParagraphs("\(para)\n\n\(para)\u{0085}"), para)
+        XCTAssertEqual(DegenerationGuard.collapseRepeatedParagraphs("\(para)\n\n\(para)\u{001C}"), para)
+    }
 }

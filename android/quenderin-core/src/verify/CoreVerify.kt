@@ -198,6 +198,20 @@ fun main() {
         check("degeneration guard detects a verbatim-looping tail and not normal prose",
             DegenerationGuard.looksDegenerate(loop) && !DegenerationGuard.looksDegenerate(
                 "The forest was a vast and varied tapestry of life, where a variety of animals and plants could be found, and every day brought a different weather, a different visitor, and a different small problem to solve."))
+
+        // --- Twin-seam normalization (degeneration P2/P3): CODE POINTS + ONE trim set. Same
+        // pins live in DegenerationGuardTests.swift — the same emoji text must answer the same
+        // on both platforms (UTF-16 units counted every astral char twice here). ---
+        val emoji240 = "🌀".repeat(240)   // 240 code points — BELOW the 160×3 window on both now
+        val emoji480 = "🌀".repeat(480)   // a genuine 3× loop of the 160-cp window on both
+        check("parity pin: emoji window counts code points, not UTF-16 units",
+            !DegenerationGuard.looksDegenerate(emoji240) && DegenerationGuard.looksDegenerate(emoji480))
+        val emojiPara = "🌀".repeat(30)   // 30 cps (60 UTF-16 units) — below the 40-cp collapse gate
+        check("parity pin: the collapse gate counts code points (a 30-emoji repeat is kept)",
+            DegenerationGuard.collapseRepeatedParagraphs("$emojiPara\n\n$emojiPara") == "$emojiPara\n\n$emojiPara")
+        check("parity pin: the trim set includes NEL and the FS..US separators on both sides",
+            DegenerationGuard.collapseRepeatedParagraphs("$para\n\n$para\u0085") == para &&
+            DegenerationGuard.collapseRepeatedParagraphs("$para\n\n$para\u001C") == para)
     }
 
     // --- Inference seam (mock) ---

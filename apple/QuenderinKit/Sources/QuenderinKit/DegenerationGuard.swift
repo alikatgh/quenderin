@@ -34,6 +34,16 @@ public enum DegenerationGuard {
         return false
     }
 
+    /// The twins' ONE trim set: `.whitespacesAndNewlines` (which includes NEL U+0085 and the
+    /// non-breaking spaces) plus U+001C–U+001F — the separators Java's `isWhitespace` trims and
+    /// this side didn't (twin-drift audit, degeneration P3). Kotlin unions in NEL from its side.
+    static let trimSet = CharacterSet.whitespacesAndNewlines
+        .union(CharacterSet(charactersIn: "\u{1C}\u{1D}\u{1E}\u{1F}"))
+
+    static func trimEdges(_ s: String) -> String {
+        s.trimmingCharacters(in: trimSet)
+    }
+
     /// Collapse RUNS of identical paragraphs (exact match after trimming, and only
     /// substantial ones — ≥ `minLength` characters) down to a single copy. Distinct
     /// paragraphs and short intentional repeats ("Yes." / "Yes.") pass through untouched.
@@ -42,10 +52,13 @@ public enum DegenerationGuard {
         guard paragraphs.count > 1 else { return text }
         var out: [String] = []
         for paragraph in paragraphs {
+            let trimmed = trimEdges(paragraph)
+            // minLength counts CODE POINTS (unicode scalars) — grapheme `.count` saw a ZWJ family
+            // emoji as 1 where the Kotlin twin saw 7+, so the "substantial enough to collapse"
+            // gate fired at different real lengths (twin-drift audit, degeneration P3).
             if let last = out.last,
-               paragraph.trimmingCharacters(in: .whitespacesAndNewlines)
-                   == last.trimmingCharacters(in: .whitespacesAndNewlines),
-               paragraph.trimmingCharacters(in: .whitespacesAndNewlines).count >= minLength {
+               trimmed == trimEdges(last),
+               trimmed.unicodeScalars.count >= minLength {
                 continue   // an exact re-run of the previous substantial paragraph
             }
             out.append(paragraph)
