@@ -181,6 +181,36 @@
     });
   });
 
+  // Feature accordion — the whole card toggles its "more" panel; one open at a time.
+  // The <button> inside the h3 carries the semantics (aria-expanded/aria-controls, APG
+  // pattern); the card-wide handler is a convenience layer on top. Links inside a panel
+  // (e.g. the GitHub link) must keep working, so clicks on/inside <a> are left alone.
+  var accCells = Array.prototype.slice.call(document.querySelectorAll("#feat-acc .acc"));
+  if (accCells.length) {
+    var setOpen = function (cell, open) {
+      cell.classList.toggle("open", open);
+      var btn = cell.querySelector(".acc-btn");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    accCells.forEach(function (cell) {
+      cell.addEventListener("click", function (e) {
+        if (e.target.closest("a")) return;                    // links navigate, never toggle
+        // Selecting text inside THIS card isn't a toggle gesture — but a selection elsewhere
+        // on the page must not dead-switch the accordion (live-caught: a stray hero selection
+        // silently ate every card click).
+        var sel = window.getSelection && window.getSelection();
+        if (sel && !sel.isCollapsed && sel.anchorNode && cell.contains(sel.anchorNode)) return;
+        var wasOpen = cell.classList.contains("open");
+        accCells.forEach(function (other) { setOpen(other, false); });      // accordion: one open
+        setOpen(cell, !wasOpen);
+      });
+      // Keyboard on the real button: prevent the card handler double-firing on Enter/Space
+      // (a button click bubbles to the card, which is the same toggle — fine — but the
+      // card handler already runs once; nothing extra needed. The button exists so the
+      // toggle is reachable and announced by keyboard/AT.)
+    });
+  }
+
   // Scroll-progress bar (injected) — a thin brand line tracking read progress
   var prog = document.createElement("div");
   prog.className = "scroll-progress";

@@ -319,40 +319,65 @@
         <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
         <h2 data-i18n="feat.title">A real assistant, with nothing phoning home.</h2>
       </header>
-      <div class="bento">
-        <article class="cell span-2 reveal">
-          <h3 data-i18n="feat.offline.t">Truly offline</h3>
+      <!-- Each cell is an accordion item (WAI-ARIA APG pattern: heading > button + labelled
+           region). Click anywhere on the card to expand its longer story; one open at a time.
+           The expanded copy stays English until translated — missing i18n keys deliberately
+           leave the hard-coded text (see i18n.js). -->
+      <div class="bento" id="feat-acc">
+        <article class="cell span-2 reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><span data-i18n="feat.offline.t">Truly offline</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.offline.b">After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
           <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Airplane mode &middot; still answering</span></span></div>
+          <div class="acc-panel" id="feat-more-offline" role="region" aria-label="More about Truly offline"><div class="acc-inner">
+            <p data-i18n="feat.offline.m">The model is a file on your disk, and answering is just your own CPU and GPU doing math through llama.cpp &mdash; there is no service on the other end. Try it: turn on Airplane Mode and ask anything. The only network request Quenderin ever makes is the one-time model download.</p>
+          </div></div>
         </article>
-        <article class="cell reveal">
+        <article class="cell reveal acc">
           <div class="bignum">$0</div>
-          <h3 data-i18n="feat.free.t">Free, structurally</h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><span data-i18n="feat.free.t">Free, structurally</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.free.b">Not a promotion &mdash; there is no server to pay for. It runs on hardware you already own.</p>
+          <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about Free, structurally"><div class="acc-inner">
+            <p data-i18n="feat.free.m">No API meter, no token quota, no trial that expires &mdash; because there is no server farm computing on your behalf. Your machine does the work, and the MIT-licensed code can&rsquo;t be taken away from you. Free stays free structurally, not promotionally.</p>
+          </div></div>
         </article>
-        <article class="cell span-2 reveal">
-          <h3 data-i18n="feat.agent.t">Operates your Mac &mdash; locally</h3>
+        <article class="cell span-2 reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><span data-i18n="feat.agent.t">Operates your Mac &mdash; locally</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.agent.b">A private alternative to cloud computer-use agents: it drives your files, apps, and Apple Shortcuts, asks before every change, and can undo the whole task&mdash;while never autonomously touching:</p>
           <div class="cell-visual chips">
             <span class="chip chip-x" data-i18n="feat.agent.c1">Pay</span><span class="chip chip-x" data-i18n="feat.agent.c2">Delete</span><span class="chip chip-x" data-i18n="feat.agent.c3">Password</span><span class="chip chip-x" data-i18n="feat.agent.c4">Transfer</span>
           </div>
+          <div class="acc-panel" id="feat-more-agent" role="region" aria-label="More about Operates your Mac"><div class="acc-inner">
+            <p data-i18n="feat.agent.m">Every change is previewed first and waits for your explicit Allow &mdash; dismissing the dialog counts as no. Each action lands in an on-device audit ledger you can read afterwards, and the whole task can be undone in one tap. The blocked verbs aren&rsquo;t a policy promise: they&rsquo;re enforced by an on-device safety blocklist that ships in the open source.</p>
+          </div></div>
         </article>
-        <article class="cell reveal">
-          <h3 data-i18n="feat.priv.t">Private by design</h3>
+        <article class="cell reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><span data-i18n="feat.priv.t">Private by design</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.priv.b">No accounts, no analytics, no telemetry. Your conversations are yours.</p>
+          <div class="acc-panel" id="feat-more-priv" role="region" aria-label="More about Private by design"><div class="acc-inner">
+            <p data-i18n="feat.priv.m">Conversations are plain files on your own disk &mdash; export them, back them up, or delete them like anything else you own. There is no account to breach and no analytics SDK to leak: the app simply contains no tracking code.</p>
+          </div></div>
         </article>
-        <article class="cell reveal">
-          <h3 data-i18n="feat.hw.t">Hardware-adaptive</h3>
+        <article class="cell reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><span data-i18n="feat.hw.t">Hardware-adaptive</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.hw.b">It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
           <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
+          <div class="acc-panel" id="feat-more-hw" role="region" aria-label="More about Hardware-adaptive"><div class="acc-inner">
+            <p data-i18n="feat.hw.m">Quenderin reads your RAM and chip, then tells you honestly which models Fit, which are Tight, and which are Too big &mdash; before you download gigabytes. Context size, GPU offload, and thread count tune themselves to the machine, from a Raspberry Pi to an M-series Mac.</p>
+          </div></div>
         </article>
-        <article class="cell reveal">
-          <h3 data-i18n="feat.os.t">Open source</h3>
+        <article class="cell reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.os.b">MIT licensed. Read every line, audit every claim, build it yourself.</p>
+          <div class="acc-panel" id="feat-more-os" role="region" aria-label="More about Open source"><div class="acc-inner">
+            <p><span data-i18n="feat.os.m">The whole app is public &mdash; the inference wiring, the safety blocklist, the consent gates, the audit ledger. Don&rsquo;t take this page&rsquo;s word for any claim: read the code and check.</span> <a href="https://github.com/alikatgh/quenderin" rel="noopener">github.com/alikatgh/quenderin</a></p>
+          </div></div>
         </article>
-        <article class="cell reveal">
-          <h3 data-i18n="feat.resume.t">Resumable downloads</h3>
+        <article class="cell reveal acc">
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.resume.b">The model keeps downloading in the background&mdash;even if you switch apps the night before a trip.</p>
+          <div class="acc-panel" id="feat-more-resume" role="region" aria-label="More about Resumable downloads"><div class="acc-inner">
+            <p data-i18n="feat.resume.m">A dropped connection resumes from the exact byte where it stopped &mdash; quit the app, lose the Wi-Fi, come back tomorrow. And before any model is ever loaded, its SHA-256 checksum is verified, so a corrupted or tampered file is rejected rather than trusted.</p>
+          </div></div>
         </article>
       </div>
     </div>

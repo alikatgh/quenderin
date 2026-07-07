@@ -3,13 +3,11 @@
   "meta.description": "Quenderin runs large language models fully on your device. No internet, no API keys, no telemetry. Download a model once and your assistant works on a plane, in a tent, off the grid.",
   "skip": "Skip to content",
   "lang.label": "Language",
-
   "nav.how": "How it works",
   "nav.features": "Features",
   "nav.privacy": "Privacy",
   "nav.models": "Models",
   "nav.faq": "FAQ",
-
   "hero.eyebrow": "Offline · Private · Yours",
   "hero.title": "An AI that runs on your machine—and can run it for you.",
   "hero.lede": "Quenderin runs large language models <strong>fully on your device</strong> — no internet, no API keys, no telemetry. Private chat on your phone, offline. And on your Mac, an agent that <strong>operates the computer for you</strong>: files, apps, your Apple Shortcuts — asking before every change, and undoable after. Nothing ever leaves the machine.",
@@ -33,15 +31,12 @@
   "hero.dev.q": "Best knot for a tarp shelter?",
   "hero.dev.ai": "A <strong>taut-line hitch</strong> on the ridgeline—it grips under load but slides to re-tension when the wind picks up. For the corners, a prusik loop lets you adjust without untying.",
   "hero.dev.foot": "0 ms to a server · nothing left your phone",
-
   "trust.label": "Local inference, done right",
   "trust.1": "Local GGUF models",
   "trust.3": "Apple Silicon → Raspberry Pi",
   "trust.4": "MIT open source",
-
   "problem.title": "The cloud isn’t always there. Your AI shouldn’t vanish with your signal.",
   "problem.body": "Every other assistant is a thin client for a data center. Lose connection and it goes dark—and even when it works, your words travel to a server you don’t own. Quenderin flips that: the model lives <em>on the device in your hand</em>.",
-
   "how.eyebrow": "How it works",
   "how.title": "Download once. Run forever.",
   "how.s1t": "Probe",
@@ -56,33 +51,37 @@
   "how.ph.pct": "2.4 / 2.4 GB · complete",
   "how.ph.ready": "Ready to go offline",
   "how.ph.annot2": "Resumes in the background",
-
   "feat.eyebrow": "Features",
   "feat.title": "A real assistant, with nothing phoning home.",
   "feat.offline.t": "Truly offline",
   "feat.offline.b": "After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.",
+  "feat.offline.m": "The model is a file on your disk, and answering is just your own CPU and GPU doing math through llama.cpp — there is no service on the other end. Try it: turn on Airplane Mode and ask anything. The only network request Quenderin ever makes is the one-time model download.",
   "feat.offline.chip": "Airplane mode · still answering",
   "feat.free.t": "Forever free",
   "feat.free.b": "No subscriptions, no per-token billing. It runs on hardware you already own.",
+  "feat.free.m": "No API meter, no token quota, no trial that expires — because there is no server farm computing on your behalf. Your machine does the work, and the MIT-licensed code can’t be taken away from you. Free stays free structurally, not promotionally.",
   "feat.agent.t": "Operates your Mac — locally",
   "feat.agent.b": "A private alternative to cloud computer-use agents: it drives your files, apps, and Apple Shortcuts, asks before every change, and can undo the whole task — while never autonomously touching:",
+  "feat.agent.m": "Every change is previewed first and waits for your explicit Allow — dismissing the dialog counts as no. Each action lands in an on-device audit ledger you can read afterwards, and the whole task can be undone in one tap. The blocked verbs aren’t a policy promise: they’re enforced by an on-device safety blocklist that ships in the open source.",
   "feat.agent.c1": "Pay",
   "feat.agent.c2": "Delete",
   "feat.agent.c3": "Password",
   "feat.agent.c4": "Transfer",
   "feat.priv.t": "Private by design",
   "feat.priv.b": "No accounts, no analytics, no telemetry. Your conversations are yours.",
+  "feat.priv.m": "Conversations are plain files on your own disk — export them, back them up, or delete them like anything else you own. There is no account to breach and no analytics SDK to leak: the app simply contains no tracking code.",
   "feat.hw.t": "Hardware-adaptive",
   "feat.hw.b": "It picks a model that fits—and warns you before one that doesn’t.",
+  "feat.hw.m": "Quenderin reads your RAM and chip, then tells you honestly which models Fit, which are Tight, and which are Too big — before you download gigabytes. Context size, GPU offload, and thread count tune themselves to the machine, from a Raspberry Pi to an M-series Mac.",
   "feat.os.t": "Open source",
   "feat.os.b": "MIT licensed. Read every line, audit every claim, build it yourself.",
+  "feat.os.m": "The whole app is public — the inference wiring, the safety blocklist, the consent gates, the audit ledger. Don’t take this page’s word for any claim: read the code and check.",
   "feat.resume.t": "Resumable downloads",
   "feat.resume.b": "The model keeps downloading in the background—even if you switch apps the night before a trip.",
-
+  "feat.resume.m": "A dropped connection resumes from the exact byte where it stopped — quit the app, lose the Wi-Fi, come back tomorrow. And before any model is ever loaded, its SHA-256 checksum is verified, so a corrupted or tampered file is rejected rather than trusted.",
   "story.eyebrow": "Built for the edge of the map",
   "story.title": "You’re going off the grid for three days.",
   "story.body": "The night before, on hotel Wi-Fi, you download a model—and Quenderin keeps the download alive even when you switch apps, then shows a green <strong>“ready to go offline”</strong>. On the trail, with no bars, you still have a capable assistant in your pocket. That’s the whole point: an AI that doesn’t need the world to be online.",
-
   "priv.eyebrow": "Privacy",
   "priv.title": "Your data never had to leave. So it doesn’t.",
   "priv.c1": "No cloud calls after the model is downloaded",
@@ -96,7 +95,6 @@
   "priv.net.never": "never sent",
   "priv.net.noacct": "no account",
   "priv.net.foot": "0 B sent since launch · nothing left your device",
-
   "models.eyebrow": "Model catalog",
   "models.title": "Bring any model. Right-sized for your hardware.",
   "models.intro": "Quenderin runs on llama.cpp—so it runs <strong>any GGUF model</strong>: Llama, Qwen, DeepSeek, Mistral, Gemma, Phi. Here’s the curated shortlist it recommends from, sized for everything from a Raspberry Pi to an M-series Mac.",
@@ -115,7 +113,6 @@
   "models.r7": "Ultra-light — runs on a Pi",
   "models.r8": "Best quality for a strong device",
   "models.foot": "+ <strong>thousands more</strong> from Hugging Face—any GGUF works. Choosing is optional: Quenderin picks the best fit for your device automatically.",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Questions, answered.",
   "faq.intro": "It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here’s the rest.",
@@ -131,13 +128,11 @@
   "faq.a4": "No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs—down to a 0.4 GB ultra-light build.",
   "faq.q5": "When can I install it?",
   "faq.a5": "It’s open source and runnable from GitHub today. The polished mobile apps are on the way—star or watch the repo on GitHub to hear the moment they land.",
-
   "cta.title": "Bring your AI offline.",
   "cta.body": "It’s open source and runs from GitHub today. Star the repo to follow along—and watch releases to hear the moment the mobile apps land.",
   "cta.btn1": "Star on GitHub",
   "cta.btn2": "Watch releases →",
   "cta.consent": "No email, no account, no trackers—just the code. See our <a href=\"privacy.html\">Privacy Policy</a>.",
-
   "foot.tag": "Offline, private, on-device AI.",
   "foot.status": "Open source · in active development",
   "foot.col.product": "Product",
@@ -151,7 +146,6 @@
   "foot.legal.legal": "Legal Notice",
   "foot.legal.a11y": "Accessibility",
   "foot.note": "No cookies, analytics, or trackers—nothing loads from a third party.",
-
   "hw.lede": "Quenderin turns your phone or laptop into a self-contained AI. There's no server doing the thinking for you — the model itself lives on your device. Setup is three steps, and it only happens once.",
   "hw.s1t": "Probe your hardware",
   "hw.s1b": "On first launch, Quenderin reads what your device actually has — total and free RAM, the chip, and whether there's a usable GPU. It uses that to recommend the largest model your device can run <em>well</em>, not just the largest one that fits. If nothing fits comfortably, it tells you plainly instead of stalling.",
@@ -173,7 +167,6 @@
   "hw.rs.b2": "The result: a capable assistant that feels instant, instead of a flagship model that crawls. You can always override the recommendation and choose your own trade-off.",
   "hw.rs.link": "See the model catalog →",
   "hw.cta.b2": "Explore the features →",
-
   "ft.lede": "Quenderin isn't a stripped-down toy because it runs locally — it's a capable assistant that happens to need nobody's servers. Here's what that buys you.",
   "ft.offline.b": "After the one-time model download, there are <strong>zero network calls</strong>. It answers at 35,000 feet, on a train through a tunnel, or three days into a hike with no bars. Offline isn't a degraded mode — it's the normal mode.",
   "ft.free.b": "No subscriptions, no per-token billing. Inference runs on hardware you already own.",
@@ -185,7 +178,6 @@
   "ft.cta.t": "See what it can run.",
   "ft.cta.b": "Every feature above works with any model you choose — from a Raspberry Pi build to an M-series flagship.",
   "ft.cta.b1": "Browse the models →",
-
   "md.intro": "Quenderin runs on <strong>llama.cpp</strong>, so it runs <strong>any GGUF model</strong> — Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face. Below is the curated shortlist it recommends from, sized for everything from a Raspberry Pi to an M-series Mac.",
   "md.foot": "+ <strong>thousands more</strong> from Hugging Face — any GGUF works.",
   "md.rec.eye": "How recommendation works",
@@ -200,7 +192,6 @@
   "md.cta.t": "Run one on your device.",
   "md.cta.b": "It's open source and runs from GitHub today. Star the repo to follow along.",
   "md.cta.b2": "Read the FAQ →",
-
   "fq.q.models": "Which models can it run?",
   "fq.a.models": "Any <strong>GGUF</strong> model on llama.cpp—Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, and thousands more from Hugging Face. See the <a href=\"models.html\">model catalog</a> for the curated shortlist it recommends from.",
   "fq.q.agent": "Can it actually do things, or just chat?",
@@ -210,13 +201,11 @@
   "fq.q.size": "How big is a model download?",
   "fq.a.size": "Your choice—from about 0.4 GB for the ultra-light build to 9 GB for the flagship. It downloads once over Wi-Fi and resumes in the background if interrupted.",
   "fq.cta.b2": "How it works →",
-
   "calc.eyebrow": "Find your model",
   "calc.title": "What runs on your device?",
   "calc.intro": "Slide to your device's memory and see what Quenderin would recommend.",
   "calc.label": "Device memory",
   "calc.rec": "Recommended",
-
   "cmp.eyebrow": "The difference",
   "cmp.title": "Quenderin vs. a cloud assistant.",
   "cmp.cloud": "Cloud assistant",
@@ -238,13 +227,11 @@
   "cmp.r6": "Open source",
   "cmp.r6a": "Yes — MIT",
   "cmp.r6b": "Closed",
-
   "gs.eyebrow": "Run it today",
   "gs.title": "Up and running in four lines.",
   "gs.intro": "It's open source and runs from GitHub right now — on macOS or Linux.",
   "gs.copy": "Copy",
   "gs.platforms": "<strong>macOS</strong> &amp; <strong>Linux</strong> today · <strong>iOS</strong> &amp; <strong>Android</strong> in active development",
-
   "uc.eyebrow": "Made for",
   "uc.title": "When the cloud isn't an option.",
   "uc.1t": "Off the grid",
@@ -253,7 +240,6 @@
   "uc.2b": "Legal, medical, journalism, research — work that simply can't be sent to someone else's server. Nothing leaves the device.",
   "uc.3t": "Free for everyone",
   "uc.3b": "Students, hobbyists, the curious — a capable assistant with no subscription, no token meter, no account to create.",
-
   "gl.eyebrow": "Plain English",
   "gl.title": "The jargon, decoded.",
   "gl.1t": "On-device",

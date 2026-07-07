@@ -282,6 +282,24 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .cell h3 { font-size: 1.18rem; }
 .cell p { margin-top: 0.6rem; color: var(--text-secondary); }
 
+/* ---------- Feature accordion (expandable cells) ----------
+   The whole card is a click target; the h3 wraps the real <button> (APG accordion pattern).
+   Expansion animates via the grid-template-rows 0fr -> 1fr trick — no JS height math — and the
+   collapsed inner is visibility:hidden so it stays out of the tab order and the AT tree. Only
+   the chevron rotates; the control itself never changes geometry on state (UI rule). */
+.acc { cursor: pointer; }
+.acc-h { display: block; }
+.acc-btn { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+.acc-btn:focus-visible { outline: 2px solid var(--accent-border); outline-offset: 4px; border-radius: 4px; }
+.acc-chev { width: 14px; height: 14px; flex: 0 0 auto; align-self: center; color: var(--text-secondary); transition: transform var(--dur-base) var(--ease-out); }
+.acc.open .acc-chev { transform: rotate(180deg); }
+.acc-panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.35s var(--ease-out); }
+.acc-inner { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0.35s; }
+.acc.open .acc-panel { grid-template-rows: 1fr; }
+.acc.open .acc-inner { visibility: visible; }
+.acc-inner p { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.95rem; }
+.acc-inner a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+
 /* Checklist */
 .checklist { display: grid; gap: 1rem; max-width: 42rem; }
 .checklist li { position: relative; padding-left: 2rem; color: var(--text); font-size: 1.05rem; }
@@ -434,6 +452,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .hero-gradient::before, .hero-gradient::after, .dot-live { animation: none; }
   .btn, .step, .cell, .fit-bar-fill { transition: none; }
+  .acc-panel, .acc-inner, .acc-chev { transition: none; }
 }
 
 /* ---------- Responsive ---------- */
