@@ -66,6 +66,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   If each call builds a fresh session, conditioning a preamble on "first call only" means every later
   call runs without it. Verify the session's actual lifetime before optimizing away a re-send; make the
   re-send cheap (KV prefix cache) instead of skipping it. (SYSTEM_PROMPT step 2+)
+- **Small models PARROT tool results into their user-visible answer.** Any meta-commentary a tool
+  returns ("you already called this…", long cap directives) leaks verbatim into what the user reads.
+  Tool results must contain RESULTS only — memoized repeats return the original result verbatim,
+  refusals are one short sentence. (nativeFunctions memo/cap, live-caught ×2)
 - **A GBNF JSON-schema grammar has no "optional": every listed property is emitted.** A flat schema
   with 7 properties makes every output carry all 7 — junk fields that downstream branches may act on.
   Shape constraint schemas as oneOf-per-variant, and smoke the grammar against the real engine
@@ -372,6 +376,23 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-07 (tool-result leakage + budget starvation, native functions) — live 1B runs exposed three
+  machinery gaps: an instructional memo message got parroted into the user answer (fix: memoized
+  repeats return the ORIGINAL result verbatim); an `{error}` cap refusal read as retryable and looped
+  (fix: one short terminal sentence); function-call rounds ate the response's maxTokens leaving an
+  empty answer (fix: +96×cap allowance). Lesson: tool results are answer material — keep them pure.
+
+- 2026-07-07 (falsy-zero temperature) — `options.temperature || 0.1` turned an explicit greedy 0 into
+  0.1; agent decisions + intent classification now request 0 and get it (`??`). Known falsy-zero
+  pattern, new instance. Same commit: MAX_CHAT_TURNS budgeted on the USER SETTING context while the
+  fallback chain may have created half of it — now budgets on the tracked actualContextSize.
+
+- 2026-07-07 (UI dump vs small context) — buildLLMPromptRepresentation serialized nulls (~70 chars of
+  noise per empty node), never clamped, so one busy screen could exceed a 2048-token context alone.
+  Now: signal-only fields, structural-noise nodes dropped, per-node text capped at 200, block clamped
+  to a HW-tier char budget shedding decorative labels before interactable targets, ids + screen order
+  preserved. Desktop-only change — the mobile twins serialize their own trees (port if it proves out).
 
 - 2026-07-07 (grammar junk fields: flat schema) — the first ACTION_JSON_SCHEMA was one flat object;
   GBNF JSON-schema grammars emit EVERY listed property, so clicks arrived with junk x/y/direction/key

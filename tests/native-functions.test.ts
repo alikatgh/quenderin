@@ -46,22 +46,39 @@ describe('buildNativeChatFunctions — the native tool bridge', () => {
         expect(out).toMatchObject({ error: expect.stringContaining('sensitive') });
     });
 
-    it('enforces the Q-639 per-response cap: past the limit the model gets a visible refusal', async () => {
+    it('enforces the Q-639 per-response cap: past the limit the model gets a terminal directive', async () => {
         const cap = maxToolCallsPerResponse();
         const executed: string[] = [];
         const fns = build(t => executed.push(t));
         for (let i = 0; i < cap; i++) {
-            expect(await fns.calculator.handler({ expression: '1+1' })).toBe('2');
+            // Distinct args each time — identical repeats are memoized and don't count (see below).
+            expect(await fns.calculator.handler({ expression: `${i + 1}+1` })).toBe(String(i + 2));
         }
-        const over = await fns.calculator.handler({ expression: '1+1' });
-        expect(over).toMatchObject({ error: expect.stringContaining('limit') });
+        const over = await fns.calculator.handler({ expression: '100+1' });
+        // A plain-string terminal instruction, NOT an { error } object — models read errors as
+        // retryable and loop; a directive ends the response (live-caught on a 1B).
+        expect(typeof over).toBe('string');
+        expect(over).toContain('limit');
         expect(executed.length).toBe(cap);   // the over-cap call never reached the handler
+    });
+
+    it('memoizes an identical repeated call: no re-execution, no cap burn, the VERBATIM result again', async () => {
+        const executed: string[] = [];
+        const fns = build(t => executed.push(t));
+        expect(await fns.calculator.handler({ expression: '6*7' })).toBe('42');
+        // Verbatim, like any idempotent API — an instructional "you already called this" message
+        // gets copied into the model's user-visible answer (live-caught on a 1B).
+        expect(await fns.calculator.handler({ expression: '6*7' })).toBe('42');
+        expect(executed.length).toBe(1);           // executed exactly once
+        // Different args are NOT deduped.
+        expect(await fns.calculator.handler({ expression: '2+3' })).toBe('5');
+        expect(executed.length).toBe(2);
     });
 
     it('the cap counter is per-map (per response), not global', async () => {
         const cap = maxToolCallsPerResponse();
         const first = build();
-        for (let i = 0; i < cap; i++) await first.calculator.handler({ expression: '1' });
+        for (let i = 0; i < cap; i++) await first.calculator.handler({ expression: `${i}+0` });
         // A FRESH map (new response) starts from zero.
         const second = build();
         expect(await second.calculator.handler({ expression: '2+2' })).toBe('4');

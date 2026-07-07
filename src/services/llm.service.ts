@@ -11,6 +11,7 @@ let _llamaBindings: {
     LlamaChatSession: any;
     LlamaLogLevel: any;
     defineChatSessionFunction: any;
+    InputLookupTokenPredictor: any;
 } | null = null;
 let _llamaImportError: Error | null = null;
 
@@ -23,6 +24,7 @@ try {
         LlamaChatSession: mod.LlamaChatSession,
         LlamaLogLevel: mod.LlamaLogLevel,
         defineChatSessionFunction: mod.defineChatSessionFunction,
+        InputLookupTokenPredictor: mod.InputLookupTokenPredictor,
     };
 } catch (err) {
     _llamaImportError = err instanceof Error ? err : new Error(String(err));
@@ -235,6 +237,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     private modelLoadTimestamp: number = 0;
     /** Tracks actual GPU backend used after init (for diagnostics) */
     private gpuBackendUsed: string = 'unknown';
+    /** The context size the fallback chain ACTUALLY created — can be half (or the floor) of what was
+     *  requested. Session policy must budget against this, not the user setting (Q-415's sibling:
+     *  the log told the truth but the TURN BUDGET still believed the setting). 0 = no context yet. */
+    private actualContextSize: number = 0;
     private flashAttentionActive: boolean = false;
     /** Init timeout scaled by hardware: 45s × HW.timeoutMultiplier (e.g. 225s on Pi) */
     private readonly modelInitTimeoutMs: number = Math.round(45_000 * HW.timeoutMultiplier);
@@ -492,6 +498,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.activeModelEntry = null;
         this.gpuBackendUsed = 'unknown';
         this.flashAttentionActive = false;
+        this.actualContextSize = 0;
         if (this.idleTimer) {
             clearTimeout(this.idleTimer);
             this.idleTimer = null;
@@ -792,6 +799,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 this.modelLoadTimestamp = Date.now();
                 this.gpuBackendUsed = resolvedGpuBackend;
                 this.flashAttentionActive = useFlashAttention;
+                this.actualContextSize = actualCtx;
                 this.startMemoryPressureMonitor();
                 return { model, context };
             } catch (error: unknown) {
@@ -1128,7 +1136,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     //   256 ctx → 3 turns, 512 → 6, 1024 → 12, 2048 → 20
     private chatTurnCount: number = 0;
     private get MAX_CHAT_TURNS(): number {
-        const ctxSize = this.currentSettings.contextSize;
+        // Budget against the context that was ACTUALLY created — the fallback chain can halve the
+        // request or drop to the hardware floor, and auto-tuning routinely shrinks it below the
+        // user setting. Budgeting on the setting let a 25-turn budget loose on a 512-token context.
+        const ctxSize = this.actualContextSize > 0 ? this.actualContextSize : this.currentSettings.contextSize;
         return Math.max(3, Math.min(25, Math.floor(ctxSize / 100)));
     }
 
@@ -1151,7 +1162,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
             const promptOptions = {
                 maxTokens: options.maxTokens || HW.actionMaxTokens,
-                temperature: options.temperature || 0.1,
+                // ?? not ||: an explicit temperature 0 (greedy — the right choice for grammar-
+                // constrained action decoding) must stay 0, not silently become 0.1 (falsy-zero).
+                temperature: options.temperature ?? 0.1,
                 ...(grammar ? { grammar } : {})
             };
 
@@ -1164,7 +1177,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 let ownsSequence = true;
                 if (useCachedSequence && options.cacheKey) {
                     const existing = this.actionSequences.get(options.cacheKey);
-                    sequence = existing ?? context.getSequence();
+                    // Input-lookup (prompt-lookup) speculative decoding on mission sequences:
+                    // agent JSON echoes prompt tokens (element ids, action names, typed text), the
+                    // classic input-grounded case — several output tokens verified per decode step,
+                    // no draft model needed. Mispredictions cost only the wasted verify, correctness
+                    // is unaffected (predictions are validated by the real sampler, grammar included).
+                    sequence = existing ?? context.getSequence(
+                        typeof _llamaBindings?.InputLookupTokenPredictor === 'function'
+                            ? { tokenPredictor: new _llamaBindings.InputLookupTokenPredictor() }
+                            : undefined
+                    );
                     if (!existing) this.actionSequences.set(options.cacheKey, sequence);
                     ownsSequence = false;
                 } else {
@@ -1253,10 +1275,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // overflow it and chat fails before the first token (live-caught 2026-07-04).
                 // Native functions ALSO skip it: the library documents the functions to the model
                 // through the chat wrapper itself — the XML preamble would only teach the model a
-                // format that is no longer parsed (and waste ~465 tokens of a small context).
-                const fullSystemPrompt = (opts?.plainChat || useNativeFunctions)
+                // format that is no longer parsed (and waste ~465 tokens of a small context). One
+                // short directive remains: small models often IMITATE a function call as plain text
+                // instead of emitting the wrapper's real call syntax (live-caught on a 1B) — telling
+                // them not to measurably improves trigger reliability at a ~20-token cost.
+                const fullSystemPrompt = opts?.plainChat
                     ? this.activePreset.systemPrompt
-                    : `${this.activePreset.systemPrompt}\n\n${buildToolPrompt()}`;
+                    : useNativeFunctions
+                        ? `${this.activePreset.systemPrompt}\n\nWhen a calculation, conversion, file read, or lookup is needed, call the corresponding provided function. Never write an imitation of a function call as text.`
+                        : `${this.activePreset.systemPrompt}\n\n${buildToolPrompt()}`;
                 this.generalChatSession = this.createChatSession({
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
@@ -1289,11 +1316,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // Pi @ 1-2 tok/s: 128 tokens ≈ 1min. Desktop @ 20+ tok/s: 384 tokens ≈ 15s.
             const responseMaxTokens = Math.min(this.activePreset.maxTokens, HW.chatMaxTokens);
 
-            let toolCallsMade = false;
+            let toolCallCount = 0;
             // Fresh functions map per response: it carries the per-response call-cap counter (Q-639).
             const nativeFunctions = useNativeFunctions
                 ? buildNativeChatFunctions(_llamaBindings!.defineChatSessionFunction, (tool) => {
-                    toolCallsMade = true;
+                    toolCallCount++;
                     logger.log(`[Tool] Native function call: ${tool}`);
                 })
                 : undefined;
@@ -1303,8 +1330,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 ? this.promptTimeoutMs * (1 + maxToolCallsPerResponse())
                 : this.promptTimeoutMs;
 
+            // Function-call rounds consume generation tokens INSIDE the same prompt() — without an
+            // allowance, the calls eat the user-visible response budget and the final answer arrives
+            // truncated or empty (live-caught: a looping 1B ended with "" at maxTokens).
+            const functionCallAllowance = useNativeFunctions ? 96 * maxToolCallsPerResponse() : 0;
             const promptOptions = {
-                maxTokens: responseMaxTokens,
+                maxTokens: responseMaxTokens + functionCallAllowance,
                 temperature: this.activePreset.temperature,
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
@@ -1363,8 +1394,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {
                 const calls = parseToolCalls(finalResponse);
                 if (calls.length === 0) break;
-                toolCallsMade = true;
                 const results = await executeToolCalls(calls);
+                toolCallCount += results.length;
                 const resultContext = formatToolResults(results);
 
                 // Re-prompt with the tool results. Do NOT strip tool calls off the follow-up here — the
@@ -1405,9 +1436,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 durationMs: Math.round(totalDurationMs),
                 tokensPerSecond: totalDurationMs > 0 ? parseFloat((tokenCount / (totalDurationMs / 1000)).toFixed(1)) : 0,
                 timeToFirstTokenMs: firstTokenTime !== null ? Math.round(firstTokenTime - startTime) : 0,
+                toolCalls: toolCallCount,
             };
 
-            logger.log(`[LLM] Finished streaming. ${meta.tokenCount} tokens @ ${meta.tokensPerSecond} tok/s, TTFT ${meta.timeToFirstTokenMs}ms${toolCallsMade ? ' (with tool calls)' : ''}`);
+            logger.log(`[LLM] Finished streaming. ${meta.tokenCount} tokens @ ${meta.tokensPerSecond} tok/s, TTFT ${meta.timeToFirstTokenMs}ms${toolCallCount > 0 ? ` (${toolCallCount} tool calls)` : ''}`);
             this.chatTurnCount++;
             this.isGeneratingChat = false;
             this.tokenBuffer = "";

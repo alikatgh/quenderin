@@ -46,3 +46,67 @@ describe('UiParserService — bounds against a hostile UI dump', () => {
         expect(outcome === 'threw' || (typeof outcome === 'number' && outcome <= 501)).toBe(true);
     });
 });
+
+/**
+ * The LLM representation must be token-LEAN (no serialized nulls, no signal-free structural nodes,
+ * capped per-node text) and context-BUDGETED (interactable elements survive a clamp, decorative
+ * labels are dropped first, original ids + screen order preserved). A busy screen used to out-size
+ * the whole context of a small-RAM machine by itself.
+ */
+describe('UiParserService.buildLLMPromptRepresentation — lean + budgeted', () => {
+    const svc = new UiParserService();
+
+    function stateMapFor(xml: string) {
+        return svc.buildStateMap(svc.parseRawTree(xml));
+    }
+
+    it('emits only signal-bearing fields — never null placeholders', () => {
+        const xml = '<hierarchy><node text="Save" bounds="[0,0][10,10]" clickable="true"/><node content-desc="Back" bounds="[0,0][5,5]"/></hierarchy>';
+        const out = svc.buildLLMPromptRepresentation(stateMapFor(xml));
+        expect(out).not.toContain('null');
+        const nodes = JSON.parse(out);
+        expect(nodes[0]).toEqual({ id: 0, text: 'Save', interactable: true });
+        expect(nodes[1]).toEqual({ id: 1, desc: 'Back' });
+    });
+
+    it('drops nodes with no text, no description, and no interactivity (pure structure)', () => {
+        const xml = '<hierarchy><node bounds="[0,0][10,10]"/><node text="Real" bounds="[0,0][10,10]"/></hierarchy>';
+        const nodes = JSON.parse(svc.buildLLMPromptRepresentation(stateMapFor(xml)));
+        expect(nodes.length).toBe(1);
+        expect(nodes[0].text).toBe('Real');
+    });
+
+    it('caps per-node text at 200 chars (article bodies must not flood the prompt)', () => {
+        const long = 'x'.repeat(5000);
+        const xml = `<hierarchy><node text="${long}" bounds="[0,0][10,10]"/></hierarchy>`;
+        const nodes = JSON.parse(svc.buildLLMPromptRepresentation(stateMapFor(xml)));
+        expect(nodes[0].text.length).toBe(200);
+    });
+
+    it('under a tight budget, keeps interactable elements and sheds labels — original ids intact', () => {
+        let inner = '';
+        for (let i = 0; i < 40; i++) {
+            inner += `<node text="label with a reasonably long decorative caption ${i}" bounds="[0,0][1,1]"/>`;
+            inner += `<node text="btn${i}" bounds="[0,0][1,1]" clickable="true"/>`;
+        }
+        const map = stateMapFor(`<hierarchy><node>${inner}</node></hierarchy>`);
+        const out = svc.buildLLMPromptRepresentation(map, 2500);
+        expect(out.length).toBeLessThanOrEqual(2500);
+        const nodes = JSON.parse(out) as Array<{ id: number; text?: string; interactable?: boolean }>;
+        const targets = nodes.filter(n => n.interactable);
+        expect(targets.length).toBeGreaterThan(30);            // targets survived the clamp
+        expect(targets.length).toBeGreaterThan(nodes.length - targets.length); // labels shed first
+        // Ids are the ORIGINAL state-map ids (they must keep resolving for the executor)…
+        for (const n of nodes) expect(map.has(n.id)).toBe(true);
+        // …and output is in ascending id order (original screen order).
+        const ids = nodes.map(n => n.id);
+        expect([...ids].sort((a, b) => a - b)).toEqual(ids);
+    });
+
+    it('fits generous content without dropping anything when under budget', () => {
+        const xml = '<hierarchy><node text="A" bounds="[0,0][1,1]"/><node text="B" bounds="[0,0][1,1]" clickable="true"/></hierarchy>';
+        const nodes = JSON.parse(svc.buildLLMPromptRepresentation(stateMapFor(xml), 14000));
+        expect(nodes.length).toBe(2);
+        expect(nodes.map((n: { id: number }) => n.id)).toEqual([0, 1]);
+    });
+});

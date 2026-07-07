@@ -72,12 +72,25 @@ try {
     llm.releaseActionCache('smoke');
 
     // ── 3. Native chat function calling (calculator) ─────────────────────────
-    const { text } = await llm.generalChat('Use the calculator tool to compute 17 * 23 and tell me the result.');
-    if (!text.includes('391')) {
-        // Soft check: a 1B model may phrase oddly, but the tool result should appear.
-        console.warn(`⚠ chat answer did not contain 391 — inspect manually: "${text.slice(0, 200)}"`);
+    // Plumbing check (meta.toolCalls: did a handler EXECUTE without the machinery throwing?) is
+    // separate from the quality check (did 391 reach the answer?). On a 2-bit 1B both trigger and
+    // relay are stochastic — those are MODEL quality, soft-warned. Machinery bugs (handler throws,
+    // decode errors, timeout) already hard-fail via the outer try. Retry a few times: one clean
+    // called+answered run proves the full path.
+    let proved = false, called = false, lastText = '';
+    for (let attempt = 0; attempt < 3 && !proved; attempt++) {
+        const { text, meta } = await llm.generalChat('Use the calculator tool to compute 17 * 23 and tell me the result.');
+        called ||= (meta.toolCalls ?? 0) > 0;
+        proved = (meta.toolCalls ?? 0) > 0 && text.includes('391');
+        lastText = text;
+        llm.resetChat();   // independent attempts
+    }
+    if (proved) {
+        console.log(`✓ native function calling:         "${lastText.slice(0, 120).replace(/\n/g, ' ')}"`);
+    } else if (called) {
+        console.warn(`⚠ function executed but the model relayed the result poorly (model quality): "${lastText.slice(0, 160)}"`);
     } else {
-        console.log(`✓ native function calling:         "${text.slice(0, 120).replace(/\n/g, ' ')}"`);
+        console.warn(`⚠ model never triggered a function in 3 attempts (model quality, not plumbing): "${lastText.slice(0, 160)}"`);
     }
 
     console.log('\nAll engine smoke checks passed.');

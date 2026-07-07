@@ -50,23 +50,45 @@ export function buildNativeChatFunctions(
 ): Record<string, unknown> {
     let callsThisResponse = 0;
     const cap = maxToolCallsPerResponse();
+    // Small models LOOP: the same call with the same args, over and over, burning the whole token
+    // budget and ending the response empty (live-caught on a 1B via scripts/smoke_llm_engine.ts).
+    // Two defenses, both visible to the model rather than silent:
+    //  • identical repeat → the memoized result is returned WITHOUT re-execution or counting
+    //    against the cap, prefixed with an explicit "you already called this";
+    //  • past the cap → a terminal plain-string directive to answer now (an { error } object read
+    //    as "retryable" to some models; a definitive instruction stops the loop sooner).
+    const seenCalls = new Map<string, unknown>();
     const functions: Record<string, unknown> = {};
     for (const tool of AVAILABLE_TOOLS) {
         functions[tool.name] = defineChatSessionFunction({
             description: tool.description,
             params: paramsSchema(tool.parameters),
             handler: async (params: Record<string, unknown> | undefined) => {
+                const callKey = `${tool.name}:${JSON.stringify(params ?? {})}`;
+                if (seenCalls.has(callKey)) {
+                    // Return the memoized result VERBATIM, like any idempotent API. The first
+                    // version returned an instructional "you already called this…" paragraph —
+                    // and the small model copied the lecture into its user-visible answer
+                    // (live-caught). Tool results must contain results, never meta-commentary.
+                    logger.debug(`[Tool] Repeated identical native call to ${tool.name} — returning memoized result.`);
+                    return seenCalls.get(callKey);
+                }
                 callsThisResponse++;
                 if (callsThisResponse > cap) {
                     // Same visible-not-silent shape as Q-293/Q-408: the model learns WHY the
-                    // call didn't run instead of receiving a mystery failure.
+                    // call didn't run instead of receiving a mystery failure. Kept SHORT: small
+                    // models parrot tool results into their user-visible answer, so every word
+                    // here is a word that can leak (live-caught — a longer directive did).
                     logger.warn(`[Tool] Native call to ${tool.name} exceeded the per-response cap (${cap}) — refused.`);
-                    return { error: `Tool-call limit (${cap} per response) reached. Answer with the information you already have.` };
+                    return 'Tool limit reached. Answer now.';
                 }
                 onToolCall?.(tool.name);
                 const result = await executeTool({ tool: tool.name, args: params ?? {} });
                 // Plain string on success (models handle it best); structured error otherwise.
-                return result.success ? result.result : { error: result.error ?? 'Tool execution failed' };
+                const out = result.success ? result.result : { error: result.error ?? 'Tool execution failed' };
+                logger.debug(`[Tool] ${tool.name}(${JSON.stringify(params ?? {})}) → ${JSON.stringify(out).slice(0, 300)}`);
+                seenCalls.set(callKey, out);
+                return out;
             },
         });
     }

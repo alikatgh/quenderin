@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import { UIElement } from '../types/index.js';
+import { getHardwareProfile } from '../utils/hardware.js';
 
 // Derive center + rect from an `[x1,y1][x2,y2]` style box. Shared so the XML hierarchy parser
 // (extractBounds) and OcrService's synthetic nodes produce geometrically consistent UIElements
@@ -133,28 +134,65 @@ export class UiParserService {
         return stateMap;
     }
 
-    public buildLLMPromptRepresentation(stateMap: Map<number, UIElement>): string {
-        const llmNodes: {
-            id: number;
-            text: string | null;
-            contentDescription: string | null;
-            bounds: [number, number, number, number] | null;
-            isInteractable: boolean;
-        }[] = [];
+    /** Per-node text cap. A TextView holding an article body would otherwise dump thousands of
+     *  chars into the prompt — mostly noise for action planning, and a wide-open prompt-injection
+     *  surface. 200 chars keeps labels/buttons intact and clips only long prose. */
+    private static readonly MAX_NODE_TEXT_CHARS = 200;
+
+    /** Character budget for the serialized UI block, scaled to the hardware tier's realistic
+     *  context (chars ≈ 4 × tokens; the rest of the step prompt needs its own room).
+     *  Override via QUENDERIN_UI_BUDGET_CHARS. */
+    public static promptBudgetChars(): number {
+        const env = Number(process.env.QUENDERIN_UI_BUDGET_CHARS);
+        if (Number.isFinite(env) && env >= 500) return env;
+        const tier = getHardwareProfile().tier;
+        return tier === 'embedded' ? 3000 : tier === 'constrained' ? 6000 : 14000;
+    }
+
+    /**
+     * Serialize the UI for the planner — token-LEAN and context-BUDGETED.
+     *
+     * The old form serialized every node with all fields, nulls included
+     * (`{"id":9,"text":null,"contentDescription":null,"bounds":null,"isInteractable":false}` — ~70
+     * chars of pure noise per empty node) and never clamped, so a busy screen could exceed the
+     * whole context of a small-RAM machine by itself. Now:
+     *  • fields are emitted only when they carry signal (`text`, `desc`, `interactable:true`);
+     *  • nodes with no text, no description, and no interactivity are dropped entirely;
+     *  • per-node text is capped (MAX_NODE_TEXT_CHARS);
+     *  • the block is clamped to a hardware-scaled char budget — when over budget, decorative
+     *    labels are dropped first and interactable elements survive, in original screen order,
+     *    with their ORIGINAL ids (ids must keep mapping into the state map).
+     */
+    public buildLLMPromptRepresentation(stateMap: Map<number, UIElement>, maxChars: number = UiParserService.promptBudgetChars()): string {
+        type LeanNode = { id: number; text?: string; desc?: string; interactable?: true };
+        const interactable: LeanNode[] = [];
+        const labels: LeanNode[] = [];
 
         for (const el of stateMap.values()) {
             const isClickableClass = el.className.includes('Button') || el.className.includes('EditText');
             const isInteractable = el.clickable || el.scrollable || el.focusable || !!isClickableClass;
-
-            llmNodes.push({
-                id: el.id,
-                text: el.text.length > 0 ? el.text : null,
-                contentDescription: el.contentDesc.length > 0 ? el.contentDesc : null,
-                bounds: null,
-                isInteractable: isInteractable
-            });
+            const node: LeanNode = { id: el.id };
+            if (el.text.length > 0) node.text = el.text.slice(0, UiParserService.MAX_NODE_TEXT_CHARS);
+            if (el.contentDesc.length > 0) node.desc = el.contentDesc.slice(0, UiParserService.MAX_NODE_TEXT_CHARS);
+            if (isInteractable) node.interactable = true;
+            else if (node.text === undefined && node.desc === undefined) continue;   // pure structural noise
+            (isInteractable ? interactable : labels).push(node);
         }
 
-        return JSON.stringify(llmNodes);
+        // Fill the budget interactable-first (targets beat decoration), then restore original
+        // screen order (ids are assigned in traversal order) so spatial reading order survives.
+        const kept: LeanNode[] = [];
+        let used = 2;   // the surrounding "[]"
+        for (const node of [...interactable, ...labels]) {
+            const len = JSON.stringify(node).length + 1;   // +1 for the separating comma
+            if (used + len > maxChars) {
+                if (node.interactable) continue;   // a later, shorter target may still fit
+                break;                             // labels are already lowest priority — stop
+            }
+            kept.push(node);
+            used += len;
+        }
+        kept.sort((a, b) => a.id - b.id);
+        return JSON.stringify(kept);
     }
 }

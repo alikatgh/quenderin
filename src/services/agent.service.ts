@@ -300,8 +300,9 @@ export class AgentService {
                     INTENT_CLASSIFIER_PROMPT,
                     `User Request: "${goal}"`,
                     // Grammar-constrained to the two legal labels — a rambling model can no longer
-                    // produce an unclassifiable answer that silently defaults the branch.
-                    { maxTokens: 10, temperature: 0.1, jsonSchema: { type: "string", enum: ["ACTION", "CHAT"] } },
+                    // produce an unclassifiable answer that silently defaults the branch. Greedy:
+                    // classification must be deterministic.
+                    { maxTokens: 10, temperature: 0, jsonSchema: { type: "string", enum: ["ACTION", "CHAT"] } },
                     undefined,
                     this._abortController?.signal
                 );
@@ -401,7 +402,10 @@ export class AgentService {
                 commandText = await this.llmProvider.generateAction(
                     SYSTEM_PROMPT,
                     prompt,
-                    { maxTokens: 150, temperature: 0.1, jsonSchema: ACTION_JSON_SCHEMA, cacheKey: AGENT_CACHE_KEY },
+                    // temperature 0 (greedy): with the grammar constraining STRUCTURE, sampling noise
+                    // in the action CHOICE is pure downside — same screen + same goal should always
+                    // decide the same action (also what the mobile twins' parity mindset expects).
+                    { maxTokens: 150, temperature: 0, jsonSchema: ACTION_JSON_SCHEMA, cacheKey: AGENT_CACHE_KEY },
                     undefined,   // screenshot path removed: the provider has no vision — see the Eye note above
                     this._abortController?.signal
                 );

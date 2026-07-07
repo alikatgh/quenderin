@@ -6,6 +6,9 @@ export interface GenerationMeta {
     durationMs: number;
     tokensPerSecond: number;
     timeToFirstTokenMs: number;
+    /** Number of tool/function calls actually EXECUTED during this generation (0 = none).
+     *  Distinguishes "the model used a tool" from "the model fabricated tool-ish text". */
+    toolCalls?: number;
 }
 
 /** Options accepted by generateAction (all optional). */
