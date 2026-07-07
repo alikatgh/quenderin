@@ -12,6 +12,11 @@ public struct GenerationOptions: Sendable, Equatable {
     public var repeatPenalty: Double
     public var repeatLastN: Int
     public var stopSequences: [String]
+    /// A GBNF grammar to CONSTRAIN decoding (nil = unconstrained). Engines that support it
+    /// (`LlamaEngine`) mask every token that can't continue the grammar — output that doesn't
+    /// parse becomes unsampleable, the decoder-level fix for "the small model emitted prose
+    /// instead of the JSON contract". Engines without grammar support ignore the field.
+    public var gbnfGrammar: String?
 
     public init(
         maxTokens: Int = 512,
@@ -19,7 +24,8 @@ public struct GenerationOptions: Sendable, Equatable {
         topP: Double = 0.95,
         repeatPenalty: Double = 1.1,
         repeatLastN: Int = 256,
-        stopSequences: [String] = []
+        stopSequences: [String] = [],
+        gbnfGrammar: String? = nil
     ) {
         self.maxTokens = maxTokens
         self.temperature = temperature
@@ -27,6 +33,7 @@ public struct GenerationOptions: Sendable, Equatable {
         self.repeatPenalty = repeatPenalty
         self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences
+        self.gbnfGrammar = gbnfGrammar
     }
 }
 

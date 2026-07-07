@@ -346,6 +346,16 @@ public actor LlamaEngine: InferenceEngine {
         // The repetition penalty is what keeps Q2-class small models from looping the same
         // paragraph verbatim (docs/BUG_JOURNAL.md 2026-07-03). Kotlin twin: jni sampler chain.
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
+        // GBNF-constrained decoding (opt-in): masks every token that can't continue the grammar,
+        // so e.g. an agent decision CANNOT be prose. FIRST in the chain — top-p/temperature then
+        // renormalize over the legal set only (top-p before grammar could keep only illegal
+        // tokens). A grammar string that fails to parse returns NULL — skip it and decode
+        // unconstrained (mirrors the desktop's null-grammar fallback) rather than crash.
+        if let gbnf = options.gbnfGrammar, let v = vocab {
+            if let grammarSampler = llama_sampler_init_grammar(v, gbnf, "root") {
+                llama_sampler_chain_add(sampler, grammarSampler)
+            }
+        }
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
             Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(Float(options.topP), 1))
