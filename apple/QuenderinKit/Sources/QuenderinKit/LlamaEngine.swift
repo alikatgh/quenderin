@@ -9,6 +9,28 @@ import os
 import llama
 #endif
 
+/// Generation-scoped cancellation ledger — the fix for the stop→resend race (audit S2). The old
+/// single shared Bool had two failure modes, both user-visible: (a) a NEW generation reset the
+/// flag before the still-running decode observed it, so a Stop followed quickly by a new prompt
+/// let the old decode run to maxTokens (a dead Stop button + burned battery); (b) the old
+/// stream's late onTermination re-set the flag and killed the WRONG (new) generation — a
+/// spuriously empty reply. Each generation mints an id; cancellation marks ids up to a bound; a
+/// new generation can never unmark, and a stale termination can never reach past its own id.
+/// Pure + Sendable so the policy unit-tests without llama linked. Mirrors Android
+/// `ChatModel.activeGeneration`.
+struct GenerationCancelLedger: Sendable, Equatable {
+    private(set) var current: UInt64 = 0
+    private(set) var cancelledThrough: UInt64 = 0
+
+    /// Start a new generation; returns its id.
+    mutating func mint() -> UInt64 { current += 1; return current }
+    /// Cancel every generation minted so far — never a future one (user Stop, model switch, unload).
+    mutating func cancelAll() { cancelledThrough = current }
+    /// Cancel one generation and everything before it (that generation's stream terminated).
+    mutating func cancel(upTo gen: UInt64) { cancelledThrough = max(cancelledThrough, gen) }
+    func isCancelled(_ gen: UInt64) -> Bool { gen <= cancelledThrough }
+}
+
 /// Real on-device inference via **llama.cpp**.
 ///
 /// llama.cpp stays C/C++ — this actor is the *thin Swift adapter* that calls its
@@ -53,8 +75,9 @@ public actor LlamaEngine: InferenceEngine {
     nonisolated(unsafe) private var cachedTokens: [llama_token] = []
     /// Serializes every native access (load/unload/generate) so freeing can't race a decode (C1/C2).
     private let nativeLock = NSLock()
-    /// Set true to interrupt a running generation (model switch / explicit cancel) — M3.
-    private let cancelState = OSAllocatedUnfairLock(initialState: false)
+    /// Generation-scoped cancellation (S2 — see GenerationCancelLedger). A cancel marks every
+    /// generation minted SO FAR; a new generation mints a fresh id it alone answers for.
+    private let cancelState = OSAllocatedUnfairLock(initialState: GenerationCancelLedger())
     #endif
 
     public init(deviceBudgetGB: Double = 4.0) {
@@ -72,8 +95,8 @@ public actor LlamaEngine: InferenceEngine {
             throw InferenceError.modelFileMissing(path: fileURL.path)
         }
         #if canImport(llama)
-        cancelState.withLock { $0 = true }   // stop any running generation before we free the context
-        loaded = nil                         // nothing loaded until the new model succeeds
+        cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
+        loaded = nil                              // nothing loaded until the new model succeeds
         loadedNCtx = nil
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
@@ -87,7 +110,7 @@ public actor LlamaEngine: InferenceEngine {
 
     public func unload() async {
         #if canImport(llama)
-        cancelState.withLock { $0 = true }
+        cancelState.withLock { $0.cancelAll() }
         unloadLocked()
         #endif
         loaded = nil
@@ -98,21 +121,25 @@ public actor LlamaEngine: InferenceEngine {
     /// already cancels inside `load()`/`unload()`; this is for explicit user cancellation (M3).
     public nonisolated func requestCancel() {
         #if canImport(llama)
-        cancelState.withLock { $0 = true }
+        cancelState.withLock { $0.cancelAll() }
         #endif
     }
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
         #if canImport(llama)
-        cancelState.withLock { $0 = false }   // fresh generation
+        // Mint THIS generation's id — never reset a shared flag (S2): the old `= false` here
+        // erased a Stop aimed at the still-running previous decode, and the old onTermination's
+        // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
+        // generations minted before it.
+        let myGen = cancelState.withLock { $0.mint() }
         return AsyncThrowingStream { continuation in
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
             DispatchQueue.global(qos: .userInitiated).async {
-                self.runGeneration(prompt: prompt, options: options, into: continuation)
+                self.runGeneration(gen: myGen, prompt: prompt, options: options, into: continuation)
             }
-            continuation.onTermination = { _ in self.cancelState.withLock { $0 = true } }
+            continuation.onTermination = { _ in self.cancelState.withLock { $0.cancel(upTo: myGen) } }
         }
         #else
         throw InferenceError.loadFailed(reason: "llama.cpp not linked; use MockInferenceEngine.")
@@ -292,10 +319,14 @@ public actor LlamaEngine: InferenceEngine {
     /// The whole generation loop: tokenize → decode → sample → detokenize → yield → repeat. Runs
     /// on a background queue under `nativeLock` so it can't race a load()/unload() free.
     nonisolated private func runGeneration(
+        gen myGen: UInt64,
         prompt: String,
         options: GenerationOptions,
         into continuation: AsyncThrowingStream<String, Error>.Continuation
     ) {
+        // This generation answers ONLY for its own id — a cancel aimed at an older run, or a
+        // stale onTermination from a dead stream, can never stop it (S2).
+        let cancelled = { self.cancelState.withLock { $0.isCancelled(myGen) } }
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
@@ -365,7 +396,7 @@ public actor LlamaEngine: InferenceEngine {
         // decode is a single non-interruptible call, so check cancelState right around it and
         // bail before we start a long feedback loop (Q-005/Q-217). A big prompt can spend
         // seconds here; without this check Stop was completely dead until the first token.
-        if cancelState.withLock({ $0 }) { continuation.finish(); return }
+        if cancelled() { continuation.finish(); return }
         var toPrefill = Array(newTokens[reuse...])
         var prefillRC = decode(&toPrefill)
         if prefillRC == 1 && reuse > 0 {
@@ -398,7 +429,7 @@ public actor LlamaEngine: InferenceEngine {
                                       // below only after this token's own yield, same ordering as the
                                       // C++ `out += piece` happening before the fatal check).
         while produced < options.maxTokens {
-            if cancelState.withLock({ $0 }) { break }   // interrupted by a switch/cancel (M3)
+            if cancelled() { break }   // interrupted by a switch/cancel aimed at THIS generation (M3/S2)
             if produced % thermalSampleInterval == 0,
                let retuned = governor.update(level: ThermalMonitor.currentLevel()) {
                 llama_set_n_threads(context, Int32(retuned), Int32(retuned))
@@ -417,11 +448,18 @@ public actor LlamaEngine: InferenceEngine {
             let feedbackRC = decode(&one)
             if feedbackRC != 0 {
                 // Code 1 mid-stream = context filled while generating THIS reply — graceful stop,
-                // not a failure (mirrors llama_generate.h:126-132). A fatal (negative) code with
-                // nothing produced yet IS a failure; with partial output already yielded, keep it.
-                if feedbackRC != 1 && !yieldedAnyText {
-                    continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
-                    return
+                // not a failure (mirrors llama_generate.h:126-132); the KV is full but VALID, so
+                // the mirror stays. A fatal (negative) code leaves the KV state UNKNOWN — clear
+                // cache and mirror so the next turn re-prefills cleanly instead of reusing a
+                // possibly-desynced prefix (audit S3). With partial output already yielded, keep
+                // the text; with nothing yielded, it's a failure.
+                if feedbackRC != 1 {
+                    llama_memory_clear(mem, true)
+                    cachedTokens = []
+                    if !yieldedAnyText {
+                        continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
+                        return
+                    }
                 }
                 break
             }

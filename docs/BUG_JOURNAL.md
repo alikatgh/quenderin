@@ -377,6 +377,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (Swift engine stop→resend cancel race, audit S2/S3) — one shared cancel Bool: a new
+  generate() reset it before the running decode observed it (dead Stop), and the old stream's late
+  onTermination re-set it, killing the NEW generation (empty reply). Fix: GenerationCancelLedger —
+  each generation mints an id, cancel marks ids-so-far, termination cancels only its own id
+  (Android's activeGeneration design, ported). Plus S3: a FATAL mid-reply decode rc now clears
+  KV+mirror (state unknown) instead of leaving a desynced prefix for the next turn's reuse.
+  Lesson: one shared flag can't govern overlapping lifetimes — cancellation needs an identity.
+
 - 2026-07-07 (Mac Settings row silently dead) — AboutView opened Settings via the legacy
   `showSettingsWindow:` selector, REMOVED in macOS 14: the click no-ops with no error, and since
   capability consent lives in Settings, the entire agent trust loop dead-ended ("clickable but
