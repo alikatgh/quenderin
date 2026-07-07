@@ -75,7 +75,13 @@ class ConversationContext(
     companion object {
         const val DEFAULT_SYSTEM_PROMPT =
             "You are Quenderin, a helpful assistant running entirely on-device and offline. " +
-                "Be concise and accurate. You have no internet access."
+                "Be concise and accurate. You have no internet access. " +
+                // Chat has no tools — an "open the browser / send an email" ask typed here
+                // otherwise gets a fluent hallucination of an action that never happened
+                // (live user report on the Mac twin). Route it to the surface that CAN act.
+                "You cannot perform actions on this device from chat. If the user asks you to " +
+                "operate the device (open apps, send email, manage files), tell them to use the " +
+                "Agent tab, which can do such tasks with their permission."
         private const val ASSISTANT_PRIMER = "Assistant:"
 
         /**

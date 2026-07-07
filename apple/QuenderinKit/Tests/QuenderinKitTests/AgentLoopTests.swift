@@ -25,6 +25,48 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(collector.count, 2)
     }
 
+    /// Fabricated-success guard (live-caught on the Mac): every tool attempt was refused for
+    /// missing consent — NOTHING executed — yet the model answered "I have drafted the email…".
+    /// The loop must not present that lie as the outcome: it halts `.needsPermission`, drops the
+    /// fabricated answer, and the banner tells the user exactly how to grant the capability.
+    func testFabricatedSuccessAfterConsentRefusalIsWithheld() async {
+        let store = AttachedFilesStore()   // nothing attached; fs.read is consent-gated anyway
+        let consent = InMemoryConsentStore()               // nothing granted
+        let runner = CapabilityRunner(consent: consent, ledger: InMemoryAuditLedger())
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"fs.read","input":"plan.txt"}"#,     // refused: consent not granted
+            #"{"answer":"I have read your plan and summarized it."}"#,   // the lie
+        ])
+        let loop = AgentLoop(engine: engine, tools: AgentToolkit.standard(attachments: store), runner: runner)
+
+        let run = await loop.run(goal: "read my plan")
+
+        XCTAssertEqual(run.haltReason, .needsPermission)
+        XCTAssertNil(run.answer, "an answer claiming success after zero executed actions is withheld")
+        XCTAssertNotNil(run.haltReason.userMessage)
+        XCTAssertTrue(run.steps.contains { $0.observation?.contains("Needs your permission") ?? false })
+    }
+
+    /// The guard only fires when NOTHING ran: a mission where a pure tool executed fine keeps
+    /// its answer even if a later capability was refused (a partial result is a real result).
+    func testPartialExecutionKeepsTheAnswer() async {
+        let consent = InMemoryConsentStore()
+        let runner = CapabilityRunner(consent: consent, ledger: InMemoryAuditLedger())
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"calculator","input":"6 * 7"}"#,                      // executes (pure tool)
+            #"{"tool":"fs.read","input":"plan.txt"}"#,                      // refused: no consent
+            #"{"answer":"6*7 is 42; I could not read the plan without permission."}"#,
+        ])
+        let loop = AgentLoop(engine: engine,
+                             tools: AgentToolkit.standard(attachments: AttachedFilesStore()),
+                             runner: runner)
+
+        let run = await loop.run(goal: "multiply then read")
+
+        XCTAssertEqual(run.haltReason, .answered)
+        XCTAssertNotNil(run.answer)
+    }
+
     @MainActor
     func testAgentSessionPublishesResult() async {
         let engine = ScriptedInferenceEngine(replies: [

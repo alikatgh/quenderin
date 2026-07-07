@@ -890,6 +890,28 @@ fun main() {
     })
     check("agent loop halts planError after CONSECUTIVE non-JSON replies (one nudge first)",
         AgentLoop(ScriptedInferenceEngine(listOf("not json", "still not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
+    check("a fabricated success after all-refused tools is withheld (NEEDS_PERMISSION, no answer)", run {
+        // Live-caught on the Mac twin: consent-refused mail draft → the model answered
+        // "I have drafted the email…" — a fluent lie about an action that never happened.
+        val runner = CapabilityRunner(consent = InMemoryConsentStore(), ledger = InMemoryAuditLedger())
+        val engine = ScriptedInferenceEngine(listOf(
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"answer":"I have read your plan and summarized it."}""",
+        ))
+        val loop = AgentLoop(engine, listOf(FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
+        val withheld = loop.run("read my plan").let {
+            it.haltReason == AgentRun.HaltReason.NEEDS_PERMISSION && it.answer == null && it.haltReason.userMessage != null
+        }
+        // The guard only fires when NOTHING ran: a pure tool that executed keeps the answer.
+        val engine2 = ScriptedInferenceEngine(listOf(
+            """{"tool":"calculator","input":"6 * 7"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"answer":"42; could not read the plan without permission."}""",
+        ))
+        val partial = AgentLoop(engine2, listOf(CalculatorTool(), FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
+            .run("multiply then read")
+        withheld && partial.haltReason == AgentRun.HaltReason.ANSWERED && partial.answer != null
+    })
     check("agent loop RECOVERS from a single malformed reply (nudge → proceed)", run {
         val engine = ScriptedInferenceEngine(listOf("oops not json", """{"answer":"recovered"}"""))
         val r = AgentLoop(engine, listOf(EchoTool())).run("x")

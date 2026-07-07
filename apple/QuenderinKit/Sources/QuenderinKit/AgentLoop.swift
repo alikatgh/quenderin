@@ -9,7 +9,7 @@ public struct AgentStep: Sendable, Equatable {
 
 /// The result of running the agent to completion.
 public struct AgentRun: Sendable, Equatable {
-    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError, stalled, cancelled }
+    public enum HaltReason: String, Sendable { case answered, maxSteps, blocked, planError, stalled, cancelled, needsPermission }
     public let steps: [AgentStep]
     public let answer: String?
     public let haltReason: HaltReason
@@ -27,6 +27,7 @@ public extension AgentRun.HaltReason {
         case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
         case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
         case .cancelled: return "Stopped — you halted the agent."
+        case .needsPermission: return "The agent needs your permission for the tools it planned — nothing was done yet. Grant the capability named in the run log (Settings → Agent), then run the goal again."
         }
     }
 }
@@ -67,6 +68,13 @@ public struct AgentLoop: Sendable {
         var lastObs = ""
         var stall = 0
         var parseFailures = 0
+        // Fabricated-success guard (live-caught): a consent-refused tool call executes NOTHING,
+        // but a small model then happily answers "I have drafted the email…" — a fluent lie about
+        // an action that never happened. Track whether any tool observation was a real execution;
+        // if the model claims done while every attempt was a permission refusal, the run halts
+        // .needsPermission instead of presenting the fabrication as the outcome.
+        var toolAttempts = 0
+        var refusedAttempts = 0
 
         func record(_ step: AgentStep) {
             steps.append(step)
@@ -102,6 +110,13 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "Refused: answer touches a blocked topic."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
+                // Every tool attempt was refused for missing permission ⇒ NOTHING executed, so any
+                // answer implying the task happened is false. Drop it and say what's actually true.
+                // (A structured banner also beats an honest "I couldn't" — it names the fix.)
+                if toolAttempts > 0 && refusedAttempts == toolAttempts {
+                    record(AgentStep(decision: decision, observation: "The answer was withheld: no tool actually ran (permission was missing)."))
+                    return AgentRun(steps: steps, answer: nil, haltReason: .needsPermission)
+                }
                 record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
             }
@@ -131,6 +146,8 @@ public struct AgentLoop: Sendable {
                     return AgentRun(steps: steps, answer: nil, haltReason: .blocked)
                 }
                 observation = await execute(name: name, input: input)
+                toolAttempts += 1
+                if Self.isPermissionRefusal(observation) { refusedAttempts += 1 }
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
 
             case .plan(let calls):
@@ -170,6 +187,16 @@ public struct AgentLoop: Sendable {
 
     /// The corrective nudge shown after a malformed reply — the exact JSON contract, once.
     static let parseNudge = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+
+    /// True when a tool observation means the action did NOT execute for lack of the user's
+    /// permission. These prefixes are OUR OWN stable strings from `CapabilityRunner`
+    /// (consent gate, per-run decline, missing approver) — not model output. Kept in lockstep
+    /// with the Kotlin twin.
+    static func isPermissionRefusal(_ observation: String) -> Bool {
+        observation.hasPrefix("Needs your permission first:") ||
+        observation.hasPrefix("You declined:") ||
+        observation.hasPrefix("This action changes files and needs your per-run approval")
+    }
 
     /// A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing.
     static func signature(of decision: AgentDecision) -> String {

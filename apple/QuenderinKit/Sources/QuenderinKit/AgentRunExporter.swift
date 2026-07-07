@@ -24,6 +24,7 @@ public enum AgentRunExporter {
         case .planError: status = "stopped (could not form a plan)"
         case .stalled:   status = "stopped (stuck repeating a step)"
         case .cancelled: status = "stopped (you halted it)"
+        case .needsPermission: status = "stopped (permission not granted - nothing was done)"
         }
         var toolsUsed: [String] = []
         for step in run.steps {

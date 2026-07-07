@@ -377,6 +377,26 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (Mac Settings row silently dead) — AboutView opened Settings via the legacy
+  `showSettingsWindow:` selector, REMOVED in macOS 14: the click no-ops with no error, and since
+  capability consent lives in Settings, the entire agent trust loop dead-ended ("clickable but
+  opens nothing", live user report). Fix: `@Environment(\.openSettings)` on 14+ (availability-
+  gated subview), selector kept for 13 only. Lesson: a removed AppKit selector fails SILENTLY —
+  smoke-click every chrome affordance on a new major OS.
+
+- 2026-07-07 (agent fabricated success after refusal) — consent-refused `mac.mail.draft` executed
+  NOTHING, yet the model answered "I have drafted an email… review it in Mail" — a fluent lie the
+  UI presented as the outcome. Fix: AgentLoop (both twins) counts tool attempts vs permission
+  refusals (our own stable CapabilityRunner strings); all-refused + success claim → halt
+  NEEDS_PERMISSION, answer withheld, banner names the exact grant. Lesson: never let model text
+  claim an action the runner knows didn't happen — the loop holds ground truth.
+
+- 2026-07-07 (agent run rendered BLANK until step 1) — from Run until the first decision landed
+  (the slowest decode of the mission) the transcript area showed nothing; real goals read as
+  "it just stuck" and users quit. Fix: an always-on working row while isRunning ("Planning the
+  task… first step takes the longest"). Lesson: on-device latency is a UX feature to design for,
+  not an implementation detail — every waiting second needs visible motion.
+
 - 2026-07-07 (mobile FA: stale comment claimed blocked; reality = already auto-on) — LlamaEngine.swift
   said "enable flash-attention once the pinned params are known" (implying off); a probe test against
   the PINNED xcframework showed `llama_context_default_params().flash_attn_type == AUTO` — FA was

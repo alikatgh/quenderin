@@ -68,6 +68,15 @@ public struct AgentView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
                     }
+                    // While a run is live, SOMETHING must always be visibly happening. Before this
+                    // row existed, the screen was BLANK from Run until the first step landed — and
+                    // the first decision is the slowest decode of the mission (full prompt prefill
+                    // + plan generation on-device), so real goals read as "it just stuck" and users
+                    // quit the app (live user report). The composer spinner alone is not feedback.
+                    if session.isRunning {
+                        AgentWorkingRow(stepNumber: session.steps.count + 1,
+                                        firstStep: session.steps.isEmpty, palette: p)
+                    }
                     if let answer = session.answer {
                         MarkdownText(text: answer, color: .primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -464,6 +473,35 @@ private struct AgentRecentGoals: View {
         }
         .padding(.top, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The live "the agent is working" row — a spinner, which step it's on, and (on the first
+/// step) an honest expectation that on-device planning takes a moment. Present whenever a
+/// run is in flight so the screen can never read as frozen.
+private struct AgentWorkingRow: View {
+    let stepNumber: Int
+    let firstStep: Bool
+    let palette: QuenderinPalette
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            ProgressView().controlSize(.small)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(firstStep ? "Planning the task…" : "Working on step \(stepNumber)…")
+                    .font(.callout.weight(.medium))
+                if firstStep {
+                    Text("The model is thinking on-device — the first step takes the longest.")
+                        .font(.caption)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.surfaceVariant.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(firstStep ? "Planning the task" : "Working on step \(stepNumber)")
     }
 }
 

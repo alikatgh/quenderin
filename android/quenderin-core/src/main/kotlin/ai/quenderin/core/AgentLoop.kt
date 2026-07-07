@@ -6,7 +6,7 @@ data class AgentStep(val decision: AgentDecision, val observation: String?)
 
 /** The result of running the agent to completion. */
 data class AgentRun(val steps: List<AgentStep>, val answer: String?, val haltReason: HaltReason) {
-    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR, STALLED, CANCELLED }
+    enum class HaltReason { ANSWERED, MAX_STEPS, BLOCKED, PLAN_ERROR, STALLED, CANCELLED, NEEDS_PERMISSION }
 }
 
 /**
@@ -22,6 +22,7 @@ val AgentRun.HaltReason.userMessage: String?
         AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
         AgentRun.HaltReason.STALLED -> "The agent got stuck repeating the same step. Try rephrasing the goal."
         AgentRun.HaltReason.CANCELLED -> "Stopped — you halted the agent."
+        AgentRun.HaltReason.NEEDS_PERMISSION -> "The agent needs your permission for the tools it planned — nothing was done yet. Grant the capability named in the run log (Settings → Agent), then run the goal again."
     }
 
 /**
@@ -54,6 +55,12 @@ class AgentLoop(
         var lastObs = ""
         var stall = 0
         var parseFailures = 0
+        // Fabricated-success guard (live-caught on the Mac twin): a consent-refused tool call
+        // executes NOTHING, but a small model then answers "I have drafted the email…" — a fluent
+        // lie about an action that never happened. If the model claims done while every attempt
+        // was a permission refusal, halt NEEDS_PERMISSION instead of presenting the fabrication.
+        var toolAttempts = 0
+        var refusedAttempts = 0
 
         fun record(step: AgentStep) {
             steps.add(step)
@@ -85,6 +92,12 @@ class AgentLoop(
                     record(AgentStep(decision, "Refused: answer touches a blocked topic."))
                     return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                 }
+                // Every tool attempt was refused for missing permission ⇒ NOTHING executed, so any
+                // answer implying the task happened is false. Drop it and say what's actually true.
+                if (toolAttempts > 0 && refusedAttempts == toolAttempts) {
+                    record(AgentStep(decision, "The answer was withheld: no tool actually ran (permission was missing)."))
+                    return AgentRun(steps, null, AgentRun.HaltReason.NEEDS_PERMISSION)
+                }
                 record(AgentStep(decision, null))
                 return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
             }
@@ -109,6 +122,8 @@ class AgentLoop(
                         return AgentRun(steps, null, AgentRun.HaltReason.BLOCKED)
                     }
                     val obs = execute(decision.name, decision.input)
+                    toolAttempts++
+                    if (isPermissionRefusal(obs)) refusedAttempts++
                     transcript += "\nUsed ${decision.name}(${decision.input}) → $obs"
                     obs
                 }
@@ -153,6 +168,16 @@ class AgentLoop(
     private companion object {
         /** The corrective nudge shown after a malformed reply — the exact JSON contract, once. */
         const val PARSE_NUDGE = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+
+        /**
+         * True when a tool observation means the action did NOT execute for lack of the user's
+         * permission. These prefixes are OUR OWN stable strings from [CapabilityRunner] — not
+         * model output. Kept in lockstep with the Swift twin's `isPermissionRefusal`.
+         */
+        fun isPermissionRefusal(observation: String): Boolean =
+            observation.startsWith("Needs your permission first:") ||
+                observation.startsWith("You declined:") ||
+                observation.startsWith("This action changes files and needs your per-run approval")
     }
 
     private fun execute(name: String, input: String): String {

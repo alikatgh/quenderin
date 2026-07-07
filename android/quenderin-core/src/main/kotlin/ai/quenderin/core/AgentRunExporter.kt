@@ -26,6 +26,7 @@ object AgentRunExporter {
             AgentRun.HaltReason.PLAN_ERROR -> "stopped (could not form a plan)"
             AgentRun.HaltReason.STALLED -> "stopped (stuck repeating a step)"
             AgentRun.HaltReason.CANCELLED -> "stopped (you halted it)"
+            AgentRun.HaltReason.NEEDS_PERMISSION -> "stopped (permission not granted - nothing was done)"
         }
         val toolsUsed = LinkedHashSet<String>()
         run.steps.forEach { step ->

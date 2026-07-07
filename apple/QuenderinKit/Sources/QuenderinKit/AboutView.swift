@@ -31,8 +31,16 @@ struct AboutView: View {
                 .padding(.bottom, 28)
 
                 VStack(spacing: 0) {
-                    aboutRow(icon: "gearshape", title: "Settings", detail: "⌘,", external: false, palette: p) {
-                        openSettings()
+                    // macOS 14 removed the legacy `showSettingsWindow:` selector path — it fails
+                    // SILENTLY, so this row was "clickable but opens nothing" (live user report).
+                    // Use the SwiftUI openSettings action where it exists; the selector remains
+                    // only for macOS 13.
+                    if #available(macOS 14.0, *) {
+                        OpenSettingsRow(palette: p)
+                    } else {
+                        aboutRow(icon: "gearshape", title: "Settings", detail: "⌘,", external: false, palette: p) {
+                            openSettingsLegacy()
+                        }
                     }
                     hairline(p)
                     aboutRow(icon: "questionmark.circle", title: "Get help", detail: "quenderin.org/help", external: true, palette: p) {
@@ -77,7 +85,8 @@ struct AboutView: View {
         if let url = URL(string: urlString) { openURL(url) }
     }
 
-    private func openSettings() {
+    /// macOS 13 only — the selector this targets was removed in macOS 14 (it no-ops there).
+    private func openSettingsLegacy() {
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
@@ -88,6 +97,20 @@ struct AboutView: View {
     @ViewBuilder
     private func aboutRow(icon: String, title: String, detail: String, external: Bool, palette p: QuenderinPalette, action: @escaping () -> Void) -> some View {
         AboutRowButton(icon: icon, title: title, detail: detail, external: external, palette: p, action: action)
+    }
+}
+
+/// The Settings row on macOS 14+ — a separate view because `\.openSettings` only exists there,
+/// and an `@Environment` property can't be availability-gated inside a macOS-13-deployment view.
+@available(macOS 14.0, *)
+private struct OpenSettingsRow: View {
+    let palette: QuenderinPalette
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        AboutRowButton(icon: "gearshape", title: "Settings", detail: "⌘,", external: false, palette: palette) {
+            openSettings()
+        }
     }
 }
 
