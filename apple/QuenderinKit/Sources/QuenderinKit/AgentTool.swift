@@ -16,6 +16,15 @@ public protocol AgentTool: Sendable {
     func run(_ input: String) async throws -> String
 }
 
+extension Character {
+    /// A category-Nd decimal digit — the twin of Kotlin's `Char.isDigit()`. `isNumber` is wider
+    /// (superscripts ², vulgar fractions ½, Roman numerals Ⅷ), which made the twins parse
+    /// "5² m to ft" differently (twin-drift audit, agent-session P3). Nd on both platforms now.
+    var isDecimalDigit: Bool {
+        unicodeScalars.count == 1 && unicodeScalars.first?.properties.numericType == .decimal
+    }
+}
+
 /// Returns its input verbatim — a deterministic tool for tests and as the
 /// simplest possible example.
 public struct EchoTool: Capability {
@@ -63,7 +72,7 @@ enum ArithmeticParser {
             if !ident.isEmpty { tokens.append(ident); ident = "" }
         }
         for char in text where !char.isWhitespace {
-            if char.isNumber || char == "." {
+            if char.isDecimalDigit || char == "." {
                 if !ident.isEmpty { flush() }        // letter→digit boundary
                 number.append(char)
             } else if char.isLetter {

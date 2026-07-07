@@ -110,7 +110,22 @@ object UnitConverter {
 
     fun format(v: Double): String {
         if (v == Math.rint(v) && abs(v) < 1e12) return v.toLong().toString()
-        return (Math.round(v * 10000) / 10000.0).toString()   // up to 4 decimal places
+        // Beyond the Long-scaled range the hand-rolled path below can't run; platform rendering
+        // (astronomically rare for a unit conversion, and recorded as the twins' one loose end).
+        if (abs(v) >= 9e14) return v.toString()
+        // Hand-rolled to be BYTE-IDENTICAL with the Swift twin, fixing two seams at once
+        // (twin-drift audit, agent-session P2): (1) rounding is half-AWAY-FROM-ZERO,
+        // definitionally (floor/ceil of the shifted value) — Math.round is floor(x+0.5), half
+        // toward +∞, so format(-0.00025) said "-0.0002" here and "-0.0003" on iOS; (2) the
+        // RENDERING never goes scientific — Double.toString says "3.0E-4" below 1e-3 and
+        // "6.048E13" above 1e7 where Swift says "0.0003" / plain digits.
+        val scaled = v * 10000
+        val units = (if (scaled >= 0) Math.floor(scaled + 0.5) else Math.ceil(scaled - 0.5)).toLong()
+        val sign = if (units < 0) "-" else ""
+        val absUnits = if (units < 0) -units else units
+        val whole = absUnits / 10000
+        val frac = (absUnits % 10000).toString().padStart(4, '0').trimEnd('0')
+        return if (frac.isEmpty()) "$sign$whole" else "$sign$whole.$frac"
     }
 }
 

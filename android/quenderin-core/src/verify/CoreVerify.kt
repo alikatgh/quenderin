@@ -141,6 +141,11 @@ fun main() {
         AgentDecisionParser.parse("{\"answer\":\"caf\\u00e9 \\u263a\"}") == AgentDecision.FinalAnswer("café ☺"))
     check("parity: decision parser still decodes short escapes (\\n \\t)",  // parity:decision-short-escape
         AgentDecisionParser.parse("{\"answer\":\"a\\tb\\nc\"}") == AgentDecision.FinalAnswer("a\tb\nc"))
+    check("parity: unit format rounds half away from zero and never goes scientific",  // parity:unit-format-half-away-from-zero
+        UnitConverter.format(-0.00025) == "-0.0003" && UnitConverter.format(0.00025) == "0.0003" &&
+            UnitConverter.format(6.048E13) == "60480000000000" && UnitConverter.format(1.5) == "1.5")
+    check("parity: digit scan is category-Nd only — superscript is not a number",  // parity:tokenizer-decimal-digit-only
+        UnitConverterTool().run("5² m to ft") == "Can't convert ² m to ft — they measure different things.")
     check("parity: M9 word boundaries don't false-block",  // parity:blocklist-safe-substrings
         listOf("please repay the favor", "in my opinion", "the company went bankrupt").none { SafetyBlocklist.isBlocked(it) })
     // Java's `\b` is ASCII-only by default, so it saw 'é' as a boundary and fired "pin" on "piné" /

@@ -124,6 +124,20 @@
    "input": "{\"plan\":[\"a\",\"b\"],\"tool\":\"calc\",\"input\":\"2+2\"}",
    "expected": "nil",
    "note": "A plan of primitives is a malformed plan → nil on both; the top-level tool must NOT execute. Swift used to run useTool(calc) while Android halted with PLAN_ERROR (twin-drift audit agent-loop P2)."
+  },
+  {
+   "id": "unit-format-half-away-from-zero",
+   "category": "tool-format",
+   "input": "-0.00025",
+   "expected": "-0.0003",
+   "note": "UnitConverter.format rounds half AWAY FROM ZERO on both platforms. Kotlin's Math.round is floor(x+0.5) — half toward +∞ — so -0.00025 rendered \"-0.0002\" on Android only (twin-drift audit agent-session P2). kotlin.math.round would be half-to-even — also wrong; the fix is definitional floor/ceil."
+  },
+  {
+   "id": "tokenizer-decimal-digit-only",
+   "category": "tool-format",
+   "input": "5² m to ft",
+   "expected": "Can't convert ² m to ft — they measure different things.",
+   "note": "Digit scans use category Nd on both (Kotlin isDigit(); Swift isDecimalDigit). Swift's Character.isNumber also matched superscripts/fractions/Roman numerals, so \"5²\" swallowed the ² into the number on iOS and the two platforms answered differently (twin-drift audit agent-session P3)."
   }
  ]
 }

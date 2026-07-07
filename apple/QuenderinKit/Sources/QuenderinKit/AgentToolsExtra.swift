@@ -85,7 +85,7 @@ enum UnitConverter {
         let left = parts[0].trimmingCharacters(in: .whitespaces)
         var numStr = ""
         var idx = left.startIndex
-        while idx < left.endIndex, left[idx].isNumber || left[idx] == "." || left[idx] == "-" {
+        while idx < left.endIndex, left[idx].isDecimalDigit || left[idx] == "." || left[idx] == "-" {
             numStr.append(left[idx]); idx = left.index(after: idx)
         }
         guard let value = Double(numStr) else { return nil }
@@ -108,7 +108,20 @@ enum UnitConverter {
 
     static func format(_ v: Double) -> String {
         if v.rounded() == v && abs(v) < 1e12 { return String(Int64(v)) }
-        return String((v * 10000).rounded() / 10000)   // up to 4 decimal places
+        // Beyond the Int64-scaled range the hand-rolled path below can't run; platform rendering
+        // (astronomically rare for a unit conversion, and recorded as the twins' one loose end).
+        if abs(v) >= 9e14 { return String(v) }
+        // Hand-rolled to be BYTE-IDENTICAL with the Kotlin twin (twin-drift audit, agent-session
+        // P2): rounding half-away-from-zero, up to 4 decimals, never scientific notation, and no
+        // platform shortest-repr quirks ("60480000000000.0" here vs "6.048E13" there before).
+        let units = Int64((v * 10000).rounded())
+        let sign = units < 0 ? "-" : ""
+        let absUnits = units.magnitude
+        let whole = absUnits / 10000
+        var frac = String(absUnits % 10000)
+        frac = String(repeating: "0", count: 4 - frac.count) + frac
+        while frac.hasSuffix("0") { frac.removeLast() }
+        return frac.isEmpty ? "\(sign)\(whole)" : "\(sign)\(whole).\(frac)"
     }
 }
 

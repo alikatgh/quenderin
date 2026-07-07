@@ -56,6 +56,21 @@ final class AgentParityTests: XCTestCase {
         XCTAssertEqual(tag(AgentDecisionParser.parse(#"{"answer":"a\tb\nc"}"#)), "answer:a\tb\nc")
     }
 
+    func testToolFormatParity() async throws {
+        // parity:unit-format-half-away-from-zero - Kotlin's Math.round was half-toward-+∞; both twins
+        // now round half AWAY FROM ZERO, so the same conversion renders the same digits everywhere.
+        XCTAssertEqual(UnitConverter.format(-0.00025), "-0.0003")
+        XCTAssertEqual(UnitConverter.format(0.00025), "0.0003")
+        // …and the rendering never goes scientific (Double.toString said "6.048E13" on Android,
+        // String(Double) said "60480000000000.0" on iOS — both now plain, trimmed digits).
+        XCTAssertEqual(UnitConverter.format(60480000000000.0), "60480000000000")
+        XCTAssertEqual(UnitConverter.format(1.5), "1.5")
+        // parity:tokenizer-decimal-digit-only - Nd on both: the superscript is NOT part of the number,
+        // so "5²" parses as 5 + unknown unit "² m" and both platforms answer identically.
+        let out = try await UnitConverterTool().run("5² m to ft")
+        XCTAssertEqual(out, "Can't convert ² m to ft — they measure different things.")
+    }
+
     func testSafetyBlocklistParity() {
         // parity:blocklist-safe-substrings - M9: substring false-positives that word boundaries must NOT block.
         for safe in ["please repay the favor", "in my opinion", "the company went bankrupt"] {
