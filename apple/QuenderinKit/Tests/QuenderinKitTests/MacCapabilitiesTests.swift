@@ -131,7 +131,26 @@ final class MacCapabilitiesTests: XCTestCase {
         let out = try await cap.run("to: a@b.com | subject: Hello | body: Hi there")
         XCTAssertTrue(out.contains("not sent"))
         XCTAssertTrue(mac.scripts[0].contains("outgoing message"))
-        XCTAssertFalse(mac.scripts[0].contains("send msg"), "drafting must NEVER send")
+        XCTAssertFalse(mac.scripts[0].lowercased().contains("send "), "drafting must NEVER send")
+        let s = mac.scripts[0]
+        // Must activate Mail (launch + foreground so the draft is visible) BEFORE drafting, or a
+        // closed Mail returns -600 (live-caught) — and RETRY until Mail is ready rather than race.
+        XCTAssertTrue(s.contains("activate"), "must foreground/launch Mail")
+        XCTAssertTrue(s.contains("repeat") && s.contains("on error"),
+                      "must retry the readiness probe (a fixed delay races → -600)")
+        XCTAssertTrue(s.contains("count of accounts"),
+                      "must check for a configured account (else make-message HANGS on the setup sheet)")
+        XCTAssertLessThan(s.range(of: "activate")!.lowerBound, s.range(of: "outgoing message")!.lowerBound,
+                          "activate must precede the draft")
+    }
+
+    func testMailDraftReportsNoAccountInsteadOfHanging() async throws {
+        // The unconfigured-Mac case (live-caught): 0 accounts → the script returns NO_ACCOUNT and
+        // the capability turns it into a helpful message, never a hang or a false "drafted".
+        let mac = FakeMac(replies: [.success("NO_ACCOUNT")])
+        let out = try await MailDraftCapability(mac: mac).run("to: a@b.com | subject: Hi | body: yo")
+        XCTAssertTrue(out.contains("no email account"), "got: \(out)")
+        XCTAssertFalse(out.contains("Drafted"), "must not claim a draft was made")
     }
 
     func testShortcutRunPassesInputCapturesOutputAndMapsMissingShortcut() async throws {

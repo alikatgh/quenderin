@@ -589,16 +589,45 @@ public struct MailDraftCapability: Capability {
     public func run(_ input: String) async throws -> String {
         guard mac.available else { return notMacMessage }
         guard let f = parse(input) else { return "Input must include a valid \"to: <address>\"." }
-        let script = [
-            "tell application \"Mail\"",
-            "  set msg to make new outgoing message with properties {subject:\"\(escapeAppleScriptString(f.subject))\", content:\"\(escapeAppleScriptString(f.body))\", visible:true}",
-            "  tell msg to make new to recipient with properties {address:\"\(escapeAppleScriptString(f.to))\"}",
-            "end tell",
-            "return \"ok\"",
-            // Deliberately NO `send msg` — drafting is T2, sending is a human decision.
-        ].joined(separator: "\n")
+        // `activate` KICKS OFF the launch (and foregrounds Mail so the draft is visible), but it
+        // returns before Mail's scripting interface is ready — a `make new outgoing message`
+        // fired immediately then throws AppleScript -600 "Application isn't running" (live-caught:
+        // a fixed launch+activate sequence still raced; the -600 fired AT the activate). So don't
+        // guess a delay — probe `count of accounts` in a bounded RETRY (that probe doubles as the
+        // readiness check: it -600s until Mail is up, then returns), and only then draft.
+        // A count of 0 means Mail has NO email account — `make new outgoing message` would pop an
+        // account-setup sheet and HANG the script forever (live-caught on an unconfigured Mac).
+        // Detect it and fail fast with a helpful message instead of hanging.
+        // Deliberately NO `send` anywhere — drafting is T2; sending is a human decision.
+        let subject = escapeAppleScriptString(f.subject)
+        let body = escapeAppleScriptString(f.body)
+        let to = escapeAppleScriptString(f.to)
+        // activate lives INSIDE the retry too: a transient -600 on activate itself (Mail mid-launch
+        // or briefly wedged) then retries instead of failing the whole draft.
+        let script = """
+        set acctCount to -1
+        repeat 30 times
+            try
+                tell application "Mail" to activate
+                tell application "Mail" to set acctCount to (count of accounts)
+                exit repeat
+            on error
+                delay 0.2
+            end try
+        end repeat
+        if acctCount is -1 then error "Mail did not become ready in time"
+        if acctCount is 0 then return "NO_ACCOUNT"
+        tell application "Mail"
+            set msg to make new outgoing message with properties {subject:"\(subject)", content:"\(body)", visible:true}
+            tell msg to make new to recipient with properties {address:"\(to)"}
+        end tell
+        return "ok"
+        """
         do {
-            _ = try await mac.runAppleScript(script)
+            let result = try await mac.runAppleScript(script)
+            if result.contains("NO_ACCOUNT") {
+                return "Mail has no email account set up on this Mac, so I can't create a draft. Add an account in Mail → Settings → Accounts, then ask me again."
+            }
             return "Drafted an email to \(f.to) (open in Mail, not sent — review and send it yourself)."
         } catch {
             return describeMacError(error, action: "draft the email")
