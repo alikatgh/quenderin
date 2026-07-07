@@ -320,14 +320,29 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     // Never exceed n_ctx on tight devices where the budgeter picked a small window.
     cp.n_batch  = std::min<uint32_t>(512, cp.n_ctx);
     cp.n_ubatch = cp.n_batch;
-    // Quantize the KV cache on memory-tight devices (KVCacheType.nativeId: 0 f16, 1 q8_0). q8_0 is
-    // safe for both K and V on the standard (non-flash-attention) path; the Kotlin side already sized
+    // Flash Attention EXPLICITLY on AUTO (twin of iOS LlamaEngine.loadLocked): llama.cpp enables
+    // it whenever the model supports it, and resolves to disabled — not a hard failure — when it
+    // can't. The pinned llama.cpp's default already IS auto, but that default was `false` in older
+    // versions; pin the behavior instead of trusting a default that has changed before.
+    cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO;
+    // Quantize the KV cache on memory-tight devices (KVCacheType.nativeId: 0 f16, 1 q8_0). NB: in
+    // modern llama.cpp a QUANTIZED V-cache requires Flash Attention — fine wherever FA auto-enables;
+    // the retry below covers models where AUTO resolves to disabled. The Kotlin side already sized
     // n_ctx for this dtype, so the smaller per-token cost buys back context instead of memory.
     if (kv_cache_quant == 1) {
         cp.type_k = GGML_TYPE_Q8_0;
         cp.type_v = GGML_TYPE_Q8_0;
     }
     llama_context* ctx = llama_init_from_model(model, cp);
+    if (!ctx && kv_cache_quant == 1) {
+        // Quantized V-cache without Flash Attention support → init fails. Retry with f16 KV (more
+        // memory, always valid) rather than failing the load on exactly the memory-tight devices
+        // that picked q8_0. Twin of iOS LlamaEngine.loadLocked's fallback.
+        LOGE("context init failed with q8_0 KV cache — retrying with f16 (model likely lacks flash-attention support)");
+        cp.type_k = GGML_TYPE_F16;
+        cp.type_v = GGML_TYPE_F16;
+        ctx = llama_init_from_model(model, cp);
+    }
     if (!ctx) { LOGE("context init failed"); llama_model_free(model); return 0; }
 
     // Sampler chain matching iOS (top-p → temperature → dist) so output isn't the repetitive,

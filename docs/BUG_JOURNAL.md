@@ -377,6 +377,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (mobile FA: stale comment claimed blocked; reality = already auto-on) — LlamaEngine.swift
+  said "enable flash-attention once the pinned params are known" (implying off); a probe test against
+  the PINNED xcframework showed `llama_context_default_params().flash_attn_type == AUTO` — FA was
+  already active wherever supported, and the audit's "15-25% on the table" claim was wrong. Fix: set
+  AUTO explicitly on both twins (that default was `false` in older llama.cpp), pin the enum contract
+  in LlamaFlashAttentionTests, and add the q8_0→f16 KV retry (quantized V REQUIRES FA; a model where
+  AUTO resolves off would fail to load on exactly the tight devices that pick q8_0). Lesson: probe the
+  pinned binary before trusting a comment — even your own audit's.
+
 - 2026-07-07 (flashAttention diagnostic reported the request, not reality) — `flashAttentionActive`
   was set from our request var; node-llama-cpp's `createContext({flashAttention:true})` SILENTLY
   turns it off (warning, no throw) for unsupported archs (Grok/Gemma2/bad head dims), so every log

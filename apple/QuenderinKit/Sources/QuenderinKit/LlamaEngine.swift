@@ -221,6 +221,13 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         var ctxParams = llama_context_default_params()
+        // Flash Attention EXPLICITLY on AUTO — llama.cpp enables it whenever the model supports it
+        // (a real Metal decode win + required for quantized V-cache) and resolves to disabled, not a
+        // hard failure, when it can't (ENABLED would abort context init on unsupported archs). The
+        // pinned framework's default already IS auto, but that default was `false` in older
+        // llama.cpp — pin the behavior instead of trusting a default that has changed before.
+        // (LlamaFlashAttentionTests pins the enum contract against framework bumps.)
+        ctxParams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
         // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
         // per-token memory, near-lossless), which the cache-aware n_ctx then turns into ~2× context.
         let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
@@ -229,7 +236,10 @@ public actor LlamaEngine: InferenceEngine {
         let nctx = ContextWindow.recommend(
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         ctxParams.n_ctx = UInt32(nctx)
-        // q8_0 is safe for both K and V on the standard (non-flash-attention) path.
+        // NB: in modern llama.cpp a QUANTIZED V-cache requires Flash Attention — with FA auto-on
+        // this works wherever the model supports FA; the init-failure fallback below covers the
+        // models where AUTO resolves to disabled. (The old "q8_0 is safe without FA" note was wrong
+        // for this framework version.)
         let ggmlCacheType: ggml_type = (kvCacheType == .q8_0) ? GGML_TYPE_Q8_0 : GGML_TYPE_F16
         ctxParams.type_k = ggmlCacheType
         ctxParams.type_v = ggmlCacheType
@@ -244,10 +254,17 @@ public actor LlamaEngine: InferenceEngine {
             level: ThermalMonitor.currentLevel(), baseThreads: baseThreads))
         ctxParams.n_threads = threads
         ctxParams.n_threads_batch = threads
-        // (Metal flash-attention is a further ~15-25% win but the field name varies across
-        //  llama.cpp versions — enable it once the pinned commit's `llama_context_params` is known.)
 
-        guard let ctx = llama_init_from_model(m, ctxParams) else {
+        var ctxOrNil = llama_init_from_model(m, ctxParams)
+        if ctxOrNil == nil && kvCacheType == .q8_0 {
+            // A quantized V-cache needs Flash Attention; on a model where AUTO resolved to
+            // disabled, init fails. Retry with f16 KV (more memory, always valid) rather than
+            // failing the whole load on exactly the memory-tight devices that picked q8_0.
+            ctxParams.type_k = GGML_TYPE_F16
+            ctxParams.type_v = GGML_TYPE_F16
+            ctxOrNil = llama_init_from_model(m, ctxParams)
+        }
+        guard let ctx = ctxOrNil else {
             llama_model_free(m)
             throw InferenceError.loadFailed(reason: "llama_init_from_model returned null")
         }
