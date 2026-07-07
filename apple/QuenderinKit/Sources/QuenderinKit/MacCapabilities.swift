@@ -296,8 +296,8 @@ public struct OpenURLCapability: Capability {
     }
 }
 
-/// T2: add a Reminder with a title. A create — low-stakes; delete it in Reminders to undo.
-public struct ReminderAddCapability: Capability {
+/// T2: add a Reminder with a title. A create — undoable (the session deletes what it added).
+public struct ReminderAddCapability: UndoableCapability {
     public let name = "mac.reminders.add"
     public let purpose = "Add a reminder to macOS Reminders. Input: the reminder text."
     public let tier = CapabilityTier.reversibleWrite
@@ -331,10 +331,30 @@ public struct ReminderAddCapability: Capability {
             return describeMacError(error, action: "add the reminder")
         }
     }
+
+    /// Undo = delete the reminder(s) with that exact name. Right after a session that just created
+    /// it, this reverses that create. (Limitation, same as the TS twin: deletes any reminder of
+    /// the same name — the honest v1 tradeoff for a dependency-free undo.)
+    public func undo(_ input: String) async throws -> String {
+        guard mac.available else { return notMacMessage }
+        let title = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let script = [
+            "tell application \"Reminders\"",
+            "  delete (every reminder whose name is \"\(escapeAppleScriptString(title))\")",
+            "end tell",
+            "return \"ok\"",
+        ].joined(separator: "\n")
+        do {
+            _ = try await mac.runAppleScript(script)
+            return "Removed the reminder \"\(title)\"."
+        } catch {
+            return describeMacError(error, action: "remove the reminder")
+        }
+    }
 }
 
-/// T2: create a Note with a title/body. A create — delete the note in Notes to undo. Approved.
-public struct NoteCreateCapability: Capability {
+/// T2: create a Note with a title/body. A create — undoable (the session deletes what it made).
+public struct NoteCreateCapability: UndoableCapability {
     public let name = "mac.notes.create"
     public let purpose = "Create a note in macOS Notes. Input: the note text (first line becomes the title)."
     public let tier = CapabilityTier.reversibleWrite
@@ -383,6 +403,25 @@ public struct NoteCreateCapability: Capability {
             }
         }
     }
+
+    /// Undo = delete the note(s) whose name matches the created title (first line of the input).
+    public func undo(_ input: String) async throws -> String {
+        guard mac.available else { return notMacMessage }
+        let title = String(input.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\n", maxSplits: 1)[0])
+        let script = [
+            "tell application \"Notes\"",
+            "  delete (every note whose name is \"\(escapeAppleScriptString(title))\")",
+            "end tell",
+            "return \"ok\"",
+        ].joined(separator: "\n")
+        do {
+            _ = try await mac.runAppleScript(script)
+            let shown = title.count > 60 ? String(title.prefix(60)) + "…" : title
+            return "Removed the note \"\(shown)\"."
+        } catch {
+            return describeMacError(error, action: "remove the note")
+        }
+    }
 }
 
 /// T2: add an event to Calendar — makes the calendar two-way (read via mac.calendar.today, write
@@ -391,7 +430,7 @@ public struct NoteCreateCapability: Capability {
 /// date-string parsing or month-component coercion, which is where naive AppleScript calendar
 /// code breaks (the technique the TS twin proved). Input:
 /// "<title> | <YYYY-MM-DD HH:MM> | <duration minutes>" (duration optional, default 60).
-public struct CalendarAddCapability: Capability {
+public struct CalendarAddCapability: UndoableCapability {
     public let name = "mac.calendar.add"
     public let purpose = "Add an event to macOS Calendar. Input: \"<title> | <YYYY-MM-DD HH:MM> | <minutes>\" (minutes optional, default 60)."
     public let tier = CapabilityTier.reversibleWrite
@@ -474,6 +513,32 @@ public struct CalendarAddCapability: Capability {
             return "Added \"\(p.title)\" to your calendar on \(human(p.target))."
         } catch {
             return describeMacError(error, action: "add the calendar event")
+        }
+    }
+
+    /// Undo = delete events with that title on the target DAY (a bounded window, so it can't nuke
+    /// a same-named event on another day; the create slop is well inside the day).
+    public func undo(_ input: String) async throws -> String {
+        guard mac.available else { return notMacMessage }
+        guard let p = parse(input) else { return "Nothing to undo." }
+        let cal = Calendar(identifier: .gregorian)
+        let dayStart = cal.startOfDay(for: p.target)
+        let dayEnd = dayStart.addingTimeInterval(24 * 3600 - 1)
+        let script = [
+            "tell application \"Calendar\"",
+            "  tell (first calendar whose writable is true)",
+            "    set ds to (current date) + (\(offsetSeconds(to: dayStart)))",
+            "    set de to (current date) + (\(offsetSeconds(to: dayEnd)))",
+            "    delete (every event whose summary is \"\(escapeAppleScriptString(p.title))\" and start date ≥ ds and start date ≤ de)",
+            "  end tell",
+            "end tell",
+            "return \"ok\"",
+        ].joined(separator: "\n")
+        do {
+            _ = try await mac.runAppleScript(script)
+            return "Removed \"\(p.title)\" from your calendar."
+        } catch {
+            return describeMacError(error, action: "remove the calendar event")
         }
     }
 }

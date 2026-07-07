@@ -66,6 +66,59 @@ public extension Capability {
     }
 }
 
+/// A capability whose successful run can be REVERSED — the generic half of the trust loop's
+/// undo (the file-move `UndoJournal` predates this and stays for fs.*). `undo(input)` receives
+/// the SAME input the successful `run(input)` did and plays the inverse (delete the reminder it
+/// added, remove the calendar event it made). Twin of the TS capabilities' optional `undo`.
+public protocol UndoableCapability: Capability {
+    /// Reverse a previously successful `run(input)`. Returns a human-readable report.
+    func undo(_ input: String) async throws -> String
+}
+
+/// One task's reversible tail — every successful MUTATING run of an `UndoableCapability` is
+/// recorded here, and `undoAll()` reverses them newest-first (LIFO). The Swift twin of the TS
+/// `RunSession` that powers "undo this task" on the desktop lab/CLI.
+public final class RunSession: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [(capability: any UndoableCapability, input: String)] = []
+
+    public init() {}
+
+    public func record(_ capability: any UndoableCapability, input: String) {
+        lock.lock(); defer { lock.unlock() }
+        recorded.append((capability, input))
+    }
+
+    public var count: Int {
+        lock.lock(); defer { lock.unlock() }
+        return recorded.count
+    }
+
+    /// Snapshot-and-clear, synchronously — manual NSLock is banned in async contexts, so the
+    /// async `undoAll` takes its LIFO batch through this sync helper.
+    private func drain() -> [(capability: any UndoableCapability, input: String)] {
+        lock.lock(); defer { lock.unlock() }
+        let items = Array(recorded.reversed())
+        recorded = []
+        return items
+    }
+
+    /// Reverse everything this session recorded, newest-first. Best-effort: a failed reversal is
+    /// reported and the rest still roll back. Drains the session (undo can't double-apply).
+    public func undoAll() async -> String {
+        let toUndo = drain()
+        var lines: [String] = []
+        for item in toUndo {
+            do {
+                lines.append(try await item.capability.undo(item.input))
+            } catch {
+                lines.append("Couldn't undo \(item.capability.name) (\(item.input)): \(error)")
+            }
+        }
+        return lines.isEmpty ? "Nothing to undo." : lines.joined(separator: "\n")
+    }
+}
+
 /// The ordered pre-flight decision, computed WITHOUT running the capability (§6).
 public enum GateDecision: Sendable, Equatable {
     case blocked(keyword: String)     // input touches the safety blocklist — refuse outright

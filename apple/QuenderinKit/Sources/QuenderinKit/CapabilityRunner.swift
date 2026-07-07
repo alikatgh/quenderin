@@ -89,13 +89,19 @@ public struct CapabilityRunner: Sendable {
     /// exist"; this says "yes, do THIS one, now" — the Shortcuts distinction, kept.
     private let approve: (@Sendable (ActionPreview) async -> Bool)?
 
+    /// The run's reversible tail: successful mutating runs of `UndoableCapability`s are recorded
+    /// here so "undo this task" can reverse them LIFO. Nil = no session tracking (tests, T0 surfaces).
+    private let session: RunSession?
+
     public init(consent: ConsentStore = InMemoryConsentStore(),
                 ledger: AuditLedger = InMemoryAuditLedger(),
                 approve: (@Sendable (ActionPreview) async -> Bool)? = nil,
+                session: RunSession? = nil,
                 now: @escaping @Sendable () -> Date = { Date() }) {
         self.consent = consent
         self.ledger = ledger
         self.approve = approve
+        self.session = session
         self.now = now
     }
 
@@ -139,6 +145,10 @@ public struct CapabilityRunner: Sendable {
             do {
                 let result = try await capability.run(input)
                 log("allowed", outcome: result)
+                // Record the reversible tail AFTER success only — a failed run has nothing to undo.
+                if preview.mutates, let undoable = capability as? any UndoableCapability {
+                    session?.record(undoable, input: input)
+                }
                 return result
             } catch {
                 log("error", outcome: "\(error)")
@@ -199,6 +209,9 @@ public struct CapabilityRunner: Sendable {
             do {
                 let result = try await item.capability.run(item.input)
                 log(item, "allowed", outcome: result)
+                if previews[index].mutates, let undoable = item.capability as? any UndoableCapability {
+                    session?.record(undoable, input: item.input)
+                }
                 results.append("\(index + 1). \(result)")
             } catch {
                 log(item, "error", outcome: "\(error)")

@@ -580,10 +580,14 @@ spine gates everything with zero new plumbing: consent toggles appear in Setting
 (the pane reads the toolkit), T2/T3 run through the Agent screen's per-run approval dialog, and
 every action lands in the ledger. Verified: 310 Swift tests (15 new — injection break-out,
 tier/membership, iCloud-Notes fallback, Feb-30 rejection + exact offset math, draft-never-sends,
-missing-shortcut mapping, permission-hint error surface, gate purity). Honest gap: the Swift
-`UndoJournal` is file-move-specific, so mac.* previews carry the manual undo path in words
-("delete it in Reminders to undo") — a generic action journal (the TS `RunSession` shape) is the
-named next step, alongside the model preamble teaching the new capability names.
+missing-shortcut mapping, permission-hint error surface, gate purity). The model preamble
+teaches the new names automatically (AgentLoop builds it from name+purpose). **Generic undo
+delivered same day:** `UndoableCapability` + `RunSession` (the TS RunSession's Swift twin) —
+the runner records every successful mutating run of an undoable capability (single actions AND
+plan steps), `AgentSession.undoTask()` reverses them LIFO, and the Agent screen shows
+"Undo task changes (n)" next to the workspace journal's "Undo last move". Reminders/Notes/
+Calendar creates implement `undo` with the ported TS templates (calendar bounded to the target
+day). Verified: 313 Swift tests (LIFO order, drain-once, declined/read-only record nothing).
 
 ## 8. How this maps to the audit
 

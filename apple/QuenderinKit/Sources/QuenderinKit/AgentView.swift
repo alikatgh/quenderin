@@ -207,6 +207,18 @@ public struct AgentView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(p.primary)
                     }
+
+                    // The generic trust-loop undo: reverse the last task's mac.* creates etc.,
+                    // newest-first (the workspace journal above covers file moves).
+                    if session.undoableActions > 0 {
+                        Button("Undo task changes (\(session.undoableActions))") {
+                            Task { undoNotice = await session.undoTask() }
+                        }
+                        .font(.caption)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(p.primary)
+                        .disabled(session.isRunning)
+                    }
                 }
                 if let notice = undoNotice {
                     Text(notice).font(.caption).foregroundStyle(p.onSurfaceVariant)

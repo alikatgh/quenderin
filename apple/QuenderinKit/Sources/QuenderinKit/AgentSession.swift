@@ -33,11 +33,17 @@ public final class AgentSession: ObservableObject {
     /// shows an Allow / Don't-allow dialog; the runner awaits the answer.
     public let approvals = ApprovalBroker()
 
+    /// The session's reversible tail (generic undo — mac.* creates etc.). `undoableActions`
+    /// mirrors its count for SwiftUI; "Undo task changes" plays it back LIFO.
+    public let undoSession = RunSession()
+    @Published public private(set) var undoableActions = 0
+
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
                 runner: CapabilityRunner? = nil) {
         self.engine = engine
         let broker = approvals
-        let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) })
+        let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) },
+                                                  session: undoSession)
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved)
     }
 
@@ -58,7 +64,8 @@ public final class AgentSession: ObservableObject {
         // Rebuild the loop with a runner that has BOTH the stores and this session's approvals.
         let broker = approvals
         let runner = CapabilityRunner(consent: consent, ledger: ledger,
-                                      approve: { preview in await broker.request(preview) })
+                                      approve: { preview in await broker.request(preview) },
+                                      session: undoSession)
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner)
     }
 
@@ -83,6 +90,15 @@ public final class AgentSession: ObservableObject {
         steps = result.steps
         answer = result.answer
         haltReason = result.haltReason
+        undoableActions = undoSession.count   // surface the run's reversible tail to the UI
+    }
+
+    /// Reverse everything the LAST task changed (LIFO — the generic trust-loop undo; the
+    /// workspace UndoJournal covers file moves separately). Returns the human report.
+    public func undoTask() async -> String {
+        let report = await undoSession.undoAll()
+        undoableActions = 0
+        return report
     }
 
     /// The completed run as a shareable Markdown walkthrough (``AgentRunExporter``), or nil while a run

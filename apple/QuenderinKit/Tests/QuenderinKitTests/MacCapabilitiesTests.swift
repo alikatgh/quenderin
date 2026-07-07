@@ -211,4 +211,56 @@ final class MacCapabilitiesTests: XCTestCase {
         XCTAssertTrue(names.contains("mac.shortcuts.run"))
         #endif
     }
+
+    // MARK: the generic undo — RunSession through the real runner
+
+    func testUndoTemplatesReverseTheCreates() async throws {
+        let mac = FakeMac()
+        _ = try await ReminderAddCapability(mac: mac).undo("water the plants")
+        XCTAssertTrue(mac.scripts[0].contains("delete (every reminder whose name is \"water the plants\")"))
+        _ = try await NoteCreateCapability(mac: mac).undo("Groceries\nmilk, eggs")
+        XCTAssertTrue(mac.scripts[1].contains("delete (every note whose name is \"Groceries\")"))
+
+        var comps = DateComponents(); comps.year = 2026; comps.month = 1; comps.day = 1
+        let fixedNow = Calendar(identifier: .gregorian).date(from: comps)!
+        _ = try await CalendarAddCapability(mac: mac, now: { fixedNow }).undo("Dentist | 2026-01-02 10:30")
+        // Bounded to the target DAY: 24h and 48h-1s offsets from the fixed clock.
+        XCTAssertTrue(mac.scripts[2].contains("set ds to (current date) + (86400)"))
+        XCTAssertTrue(mac.scripts[2].contains("set de to (current date) + (\(2 * 86400 - 1))"))
+        XCTAssertTrue(mac.scripts[2].contains("delete (every event whose summary is \"Dentist\""))
+    }
+
+    func testRunnerRecordsApprovedWritesAndUndoAllReversesLIFO() async throws {
+        let mac = FakeMac()
+        let consent = InMemoryConsentStore()
+        consent.setGranted("mac.reminders.add", true)
+        consent.setGranted("mac.notes.create", true)
+        let session = RunSession()
+        let runner = CapabilityRunner(consent: consent, approve: { _ in true }, session: session)
+
+        _ = await runner.execute(ReminderAddCapability(mac: mac), input: "water the plants")
+        _ = await runner.execute(NoteCreateCapability(mac: mac), input: "Trip ideas")
+        XCTAssertEqual(session.count, 2)
+
+        let report = await session.undoAll()
+        // Newest-first: the note reverses before the reminder.
+        XCTAssertTrue(report.range(of: "note")!.lowerBound < report.range(of: "reminder")!.lowerBound)
+        XCTAssertEqual(session.count, 0, "undo drains the session — it can never double-apply")
+        XCTAssertTrue(mac.scripts.contains { $0.contains("delete (every note") })
+        XCTAssertTrue(mac.scripts.contains { $0.contains("delete (every reminder") })
+    }
+
+    func testDeclinedOrReadOnlyRunsRecordNothing() async throws {
+        let mac = FakeMac()
+        let consent = InMemoryConsentStore()
+        consent.setGranted("mac.reminders.add", true)
+        consent.setGranted("mac.frontApp", true)
+        let session = RunSession()
+        let declined = CapabilityRunner(consent: consent, approve: { _ in false }, session: session)
+        _ = await declined.execute(ReminderAddCapability(mac: mac), input: "buy a boat")
+        XCTAssertEqual(session.count, 0, "a declined write has nothing to undo")
+        let allowed = CapabilityRunner(consent: consent, approve: { _ in true }, session: session)
+        _ = await allowed.execute(FrontAppCapability(mac: mac), input: "")
+        XCTAssertEqual(session.count, 0, "perception records nothing")
+    }
 }
