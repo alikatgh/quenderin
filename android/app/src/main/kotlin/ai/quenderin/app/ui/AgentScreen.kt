@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -220,6 +221,13 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(steps) { step -> AgentStepRow(step) }
+                // While a run is live, SOMETHING must always be visibly happening — before this
+                // row the screen was BLANK from Run until the first step landed, and the first
+                // decision is the mission's slowest decode, so real goals read as "it just stuck"
+                // (live user report on the Mac twin; same gap here). Twin of iOS AgentWorkingRow.
+                if (running) {
+                    item { AgentWorkingRow(stepNumber = steps.size + 1, firstStep = steps.isEmpty()) }
+                }
                 answer?.let { a ->
                     item {
                         // Long-press the answer to report it (Generative-AI flag mechanism).
@@ -441,6 +449,42 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 }) { Text("Don't allow") }
             },
         )
+    }
+}
+
+/**
+ * The live "the agent is working" row — a spinner, which step it's on, and (on the first step)
+ * an honest expectation that on-device planning takes a moment. Present whenever a run is in
+ * flight so the screen can never read as frozen. Compose twin of iOS `AgentWorkingRow`.
+ */
+@Composable
+private fun AgentWorkingRow(stepNumber: Int, firstStep: Boolean) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(12.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    if (firstStep) "Planning the task…" else "Working on step $stepNumber…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (firstStep) {
+                    Text(
+                        "The model is thinking on-device — the first step takes the longest.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
 
