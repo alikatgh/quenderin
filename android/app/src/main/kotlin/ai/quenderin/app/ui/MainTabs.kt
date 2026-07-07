@@ -111,7 +111,9 @@ fun MainTabs(
                 )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 1)) {
-                AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool(), EchoTool()))
+                // EchoTool deliberately not shipped (dev/demo tool — weak models grab it as a scratchpad
+                // and burn mission steps on it; live-caught on the Mac twin).
+                AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool()))
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
                 SettingsScreen(

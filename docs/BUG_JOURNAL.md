@@ -377,6 +377,27 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-07 (grammar legitimized narration-as-answer) — GBNF-constrained decisions (huge win:
+  first-try parses) closed an ACCIDENTAL safety net: "Okay, let's calculate…" used to FAIL the
+  JSON parse and draw a retry nudge; under the grammar it became a legal {"answer":…} ending the
+  mission with no work. Fix: preamble contract line ("answer is ONLY the final result") + the
+  zero-action guard below. Lesson: removing a failure mode can remove a guard that was leaning on
+  it — re-run the WHOLE flow live after a decoder change, not just the parser tests.
+
+- 2026-07-07 (agent-loop truth guards, three live catches in one session) — (a) "Done" over an
+  EMPTY run log: zero-action guard — an action-goal answer with no tool attempts gets one nudge,
+  then is withheld; (b) "No such tool: mail.draft" dead-end: near-miss suggester ("Did you mean
+  mac.mail.draft?") — the loop knows the list; (c) stall-over-refusal mislabeled "try rephrasing":
+  reason precedence — all-attempts-refused wins as NEEDS_PERMISSION however the loop ends. All
+  twinned + fixture-pinned. Lesson: the loop holds ground truth; every exit path must consult it.
+
+- 2026-07-07 (redirect prose is not a feature) — chat detecting an action ask and REPLYING with
+  instructions ("use the Agent tab") still failed the user ("not working at all"): reading,
+  interpreting, navigating, retyping is homework. Fix: deterministic ActionIntent (twinned,
+  fixture-pinned) + a one-tap "Run it with the Agent" bar → AgentHandoff switches the shell and
+  auto-runs. EchoTool also evicted from the shipped toolkit (models used it as a scratchpad).
+  Lesson: when code can detect the need, code must provide the affordance — never model text.
+
 - 2026-07-07 (Swift engine stop→resend cancel race, audit S2/S3) — one shared cancel Bool: a new
   generate() reset it before the running decode observed it (dead Stop), and the old stream's late
   onTermination re-set it, killing the NEW generation (empty reply). Fix: GenerationCancelLedger —

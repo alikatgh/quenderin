@@ -890,6 +890,73 @@ fun main() {
     })
     check("agent loop halts planError after CONSECUTIVE non-JSON replies (one nudge first)",
         AgentLoop(ScriptedInferenceEngine(listOf("not json", "still not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
+    check("a stall over PERMISSION-refused attempts reports NEEDS_PERMISSION, not 'try rephrasing'", run {
+        val runner = CapabilityRunner(consent = InMemoryConsentStore(), ledger = InMemoryAuditLedger())
+        val engine = ScriptedInferenceEngine(listOf(
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+            """{"tool":"fs.read","input":"plan.txt"}""",
+        ))
+        AgentLoop(engine, listOf(FileReadCapability(grantedFiles = { emptyMap() })), runner = runner)
+            .run("read my plan file").haltReason == AgentRun.HaltReason.NEEDS_PERMISSION
+    })
+
+    check("zero-action 'Done' on an action goal is nudged once, then withheld (like Swift)", run {
+        val lazyEngine = ScriptedInferenceEngine(listOf("""{"answer":"Done"}""", """{"answer":"Done"}"""))
+        val withheld = AgentLoop(lazyEngine, listOf(CalculatorTool())).run("open browser and write email to i@alink.ru").let {
+            it.haltReason == AgentRun.HaltReason.PLAN_ERROR && it.answer == null &&
+                it.steps.any { s -> s.observation?.contains("none were taken") == true }
+        }
+        val recovering = ScriptedInferenceEngine(listOf(
+            """{"answer":"Done"}""",
+            """{"tool":"calculator","input":"2 + 2"}""",
+            """{"answer":"It is 4."}""",
+        ))
+        val recovered = AgentLoop(recovering, listOf(CalculatorTool())).run("open the calculator app and compute 2+2")
+        val direct = AgentLoop(ScriptedInferenceEngine(listOf("""{"answer":"4"}""")), listOf(CalculatorTool())).run("what is 2 plus 2")
+        withheld && recovered.haltReason == AgentRun.HaltReason.ANSWERED && recovered.answer == "It is 4." &&
+            direct.haltReason == AgentRun.HaltReason.ANSWERED && direct.answer == "4"
+    })
+
+    check("unknown-tool message suggests the near-miss (mail.draft → mac.mail.draft), like Swift", run {
+        val available = listOf("calc", "units", "datecalc", "mac.mail.draft", "mac.app.open", "fs.read")
+        val msg = AgentLoop.unknownToolMessage("mail.draft", available)
+        msg.contains("No such tool: mail.draft.") && msg.contains("Did you mean \"mac.mail.draft\"") &&
+            AgentLoop.unknownToolMessage("clac", available).contains("\"calc\"") &&
+            AgentLoop.unknownToolMessage("weathersat", available) == "No such tool: weathersat."
+    })
+
+    check("ActionIntent classifies the shared fixtures like the Swift twin", run {
+        val tasks = listOf(
+            "open browser and write email to i@alink.ru",
+            "Open Safari and search for flights",
+            "send an email to my landlord about the lease",
+            "compose a message to the team",
+            "organize my downloads folder",
+            "clean up the files on my desktop",
+            "move the PDF files to the archive folder",
+            "run my morning shortcut",
+            "create a folder called Taxes 2026",
+        )
+        val chat = listOf(
+            "what is an email address",
+            "how does a browser render HTML",
+            "why did my message bounce",
+            "explain the difference between a file and a folder",
+            "who invented the shortcut for copy and paste",
+            "convert 5 miles to km, then take 20% of that",
+            "days until 2027-01-01",
+        )
+        tasks.all { ActionIntent.looksLikeComputerTask(it) } && chat.none { ActionIntent.looksLikeComputerTask(it) }
+    })
+
+    check("decision grammar is byte-identical to the Swift twin (cross-platform SHA pin)", run {
+        // Must equal AgentDecisionGrammarTests.expectedSHA256 — drift breaks a build, not the field.
+        val pin = "0fa943fd15171ce95fa4f15a3ead3bcaed72250977041e802c892931eea382b8"
+        ModelIntegrity.sha256Hex(AgentDecisionGrammar.GBNF.toByteArray(Charsets.UTF_8)) == pin &&
+            AgentDecisionGrammar.GBNF.startsWith("root ::=")
+    })
+
     check("a fabricated success after all-refused tools is withheld (NEEDS_PERMISSION, no answer)", run {
         // Live-caught on the Mac twin: consent-refused mail draft → the model answered
         // "I have drafted the email…" — a fluent lie about an action that never happened.

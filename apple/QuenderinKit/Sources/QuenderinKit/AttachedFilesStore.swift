@@ -75,7 +75,9 @@ public enum AgentToolkit {
             CalculatorTool(),
             UnitConverterTool(),
             DateCalcTool(),
-            EchoTool(),
+            // EchoTool is deliberately NOT shipped: it's a dev/demo tool, and weak models grab it
+            // as a scratchpad — a live mission burned its first two steps echoing an email address
+            // before attempting the real work. Tests that need it construct it directly.
             FileReadCapability(grantedFiles: { attachments.snapshot() }),
             FileListCapability(workspace: { workspace.snapshot() }),
             FileMoveCapability(workspace: { workspace.snapshot() }, journal: undoJournal),

@@ -61,6 +61,12 @@ class AgentLoop(
         // was a permission refusal, halt NEEDS_PERMISSION instead of presenting the fabrication.
         var toolAttempts = 0
         var refusedAttempts = 0
+        // Zero-action guard (live-caught on the Mac twin, sibling of the fabricated-success
+        // guard): the model answered a bare "Done" with an EMPTY run log. For a goal that reads
+        // as a computer task (ActionIntent), an answer with zero attempts gets ONE corrective
+        // nudge; if the model still answers without acting, the run halts honestly.
+        val goalNeedsAction = ActionIntent.looksLikeComputerTask(goal)
+        var nudgedForNoAction = false
 
         fun record(step: AgentStep) {
             steps.add(step)
@@ -98,6 +104,16 @@ class AgentLoop(
                     record(AgentStep(decision, "The answer was withheld: no tool actually ran (permission was missing)."))
                     return AgentRun(steps, null, AgentRun.HaltReason.NEEDS_PERMISSION)
                 }
+                // Zero attempts on an action goal: "Done" over no work is a lie. One nudge, then halt.
+                if (toolAttempts == 0 && goalNeedsAction) {
+                    if (!nudgedForNoAction) {
+                        nudgedForNoAction = true
+                        transcript += "\nYou have not taken any action yet, so an answer now would be false. This goal requires acting through a tool — pick the right one from the list and use it."
+                        return@repeat
+                    }
+                    record(AgentStep(decision, "The answer was withheld: the goal requires actions, but none were taken."))
+                    return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
+                }
                 record(AgentStep(decision, null))
                 return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
             }
@@ -107,7 +123,14 @@ class AgentLoop(
             val sig = signatureOf(decision)
             if (sig == prevSig) {
                 stall++
-                if (stall >= 2) return AgentRun(steps, null, AgentRun.HaltReason.STALLED)
+                if (stall >= 2) {
+                    // Reason precedence: repeating a PERMISSION-REFUSED call isn't confusion — the
+                    // model has no other move. "Try rephrasing" is wrong advice there; "grant the
+                    // capability" is right (live-caught on the Mac twin).
+                    val reason = if (toolAttempts > 0 && refusedAttempts == toolAttempts)
+                        AgentRun.HaltReason.NEEDS_PERMISSION else AgentRun.HaltReason.STALLED
+                    return AgentRun(steps, null, reason)
+                }
                 transcript += "\nYou already ran $sig and got: $lastObs — do something different, or reply {\"answer\":\"…\"} if the task is done."
                 return@repeat
             }
@@ -143,7 +166,7 @@ class AgentLoop(
                         if (capability == null) { unknown = call.name; break }
                         resolved.add(capability to call.input)
                     }
-                    val obs = if (unknown != null) "No such tool: $unknown. Plan not executed."
+                    val obs = if (unknown != null) unknownToolMessage(unknown, tools.map { it.name }) + " Plan not executed."
                     else runner.executePlan(resolved)
                     val described = decision.calls.joinToString(", ") { "${it.name}(${it.input})" }
                     transcript += "\nProposed plan [$described] → $obs"
@@ -155,6 +178,11 @@ class AgentLoop(
             prevSig = sig
             lastObs = observation
         }
+        // Same precedence at the step cap: a mission that spent every attempt on permission
+        // refusals ran out of steps BECAUSE of the missing grant — say that, not "too complex".
+        if (toolAttempts > 0 && refusedAttempts == toolAttempts) {
+            return AgentRun(steps, null, AgentRun.HaltReason.NEEDS_PERMISSION)
+        }
         return AgentRun(steps, null, AgentRun.HaltReason.MAX_STEPS)
     }
 
@@ -165,9 +193,9 @@ class AgentLoop(
         is AgentDecision.Plan -> "plan[" + decision.calls.joinToString(", ") { "${it.name}(${it.input})" } + "]"
     }
 
-    private companion object {
+    companion object {
         /** The corrective nudge shown after a malformed reply — the exact JSON contract, once. */
-        const val PARSE_NUDGE = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+        private const val PARSE_NUDGE = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
 
         /**
          * True when a tool observation means the action did NOT execute for lack of the user's
@@ -178,10 +206,53 @@ class AgentLoop(
             observation.startsWith("Needs your permission first:") ||
                 observation.startsWith("You declined:") ||
                 observation.startsWith("This action changes files and needs your per-run approval")
+
+        /**
+         * The recovery hint for a mistyped tool name. Live-caught on the Mac twin: the model
+         * called "mail.draft" for "mac.mail.draft" and the bare "No such tool" left it NOTHING
+         * to recover with. The loop knows the tool list; a near-miss deserves "did you mean".
+         * Twin of Swift `AgentLoop.unknownToolMessage`.
+         */
+        fun unknownToolMessage(name: String, available: List<String>): String {
+            val suggestions = closestTools(name, available)
+            val hint = if (suggestions.isEmpty()) ""
+            else " Did you mean " + suggestions.joinToString(" or ") { "\"$it\"" } + "?"
+            return "No such tool: $name.$hint"
+        }
+
+        /** Containment ("mail.draft" in "mac.mail.draft") beats small edit distance; > 3 edits is noise. */
+        fun closestTools(name: String, available: List<String>, limit: Int = 2): List<String> {
+            val lowered = name.lowercase()
+            return available.mapNotNull { candidate ->
+                val c = candidate.lowercase()
+                when {
+                    c == lowered -> candidate to 0
+                    c.contains(lowered) || lowered.contains(c) -> candidate to 1
+                    else -> levenshtein(lowered, c).let { if (it <= 3) candidate to (1 + it) else null }
+                }
+            }.sortedBy { it.second }.take(limit).map { it.first }
+        }
+
+        /** Classic DP edit distance — tiny inputs (tool names), so O(n·m) is nothing. */
+        fun levenshtein(a: String, b: String): Int {
+            if (a.isEmpty()) return b.length
+            if (b.isEmpty()) return a.length
+            var prev = IntArray(b.length + 1) { it }
+            var cur = IntArray(b.length + 1)
+            for (i in 1..a.length) {
+                cur[0] = i
+                for (j in 1..b.length) {
+                    cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+                }
+                val t = prev; prev = cur; cur = t
+            }
+            return prev[b.length]
+        }
     }
 
     private fun execute(name: String, input: String): String {
-        val tool = tools.firstOrNull { it.name == name } ?: return "No such tool: $name."
+        val tool = tools.firstOrNull { it.name == name }
+            ?: return unknownToolMessage(name, tools.map { it.name })
         // Capabilities go through the runner (blocklist → consent → preview → run → ledger);
         // for T0 tools the observable behavior is identical, plus the ledger row.
         if (tool is Capability) return runner.execute(tool, input)
@@ -194,11 +265,17 @@ class AgentLoop(
 
     private fun preamble(goal: String): String {
         val toolList = tools.joinToString("\n") { "- ${it.name}: ${it.purpose}" }
+        // The "answer is ONLY the final result" line exists because grammar-constrained decoding
+        // (AgentDecisionGrammar) closed the accidental safety net: pre-grammar, a chatty model's
+        // "Okay, let's calculate…" preamble FAILED the JSON parse and drew a retry nudge; under
+        // the grammar that narration becomes a legal {"answer":…} and ends the mission with no
+        // work done (live-caught on the Mac twin). Same line in the Swift twin.
         return """
             Goal: $goal
             Available tools:
             $toolList
             Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, {"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user approves together, or {"answer":"<final answer>"} when done.
+            Use {"answer":…} ONLY for the completed final result — never for narration, plans in prose, or intentions. If any calculation or lookup is still needed, use a tool first.
         """.trimIndent()
     }
 }

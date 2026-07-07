@@ -184,6 +184,16 @@ public struct AgentView: View {
                 workspace.grant(url)
             }
         }
+        // The chat→agent handoff: chat's "Run it with the Agent" posted a goal; the shell already
+        // switched here. Consume it and RUN — the tap WAS the run gesture, and every mutation
+        // still previews + asks below. @Published re-emits its current value on subscribe, so a
+        // goal posted before this view existed still arrives the moment it appears.
+        .onReceive(AgentHandoff.shared.$pending) { pending in
+            guard let pending, !session.isRunning else { return }
+            AgentHandoff.shared.pending = nil
+            goal = pending
+            run()
+        }
         // Per-run approval for mutating actions — the runner is suspended on this answer.
         // Dismissing without choosing counts as NO (the safe reading of silence).
         .confirmationDialog(

@@ -25,6 +25,73 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(collector.count, 2)
     }
 
+    /// The near-miss suggester (live-caught): the model called "mail.draft" for "mac.mail.draft"
+    /// and the bare "No such tool" observation left it nothing to recover with. Fixtures kept in
+    /// lockstep with the Kotlin twin's CoreVerify check.
+    func testUnknownToolMessageSuggestsTheNamespacedTwin() {
+        let available = ["calc", "units", "datecalc", "mac.mail.draft", "mac.app.open", "fs.read"]
+        let msg = AgentLoop.unknownToolMessage("mail.draft", available: available)
+        XCTAssertTrue(msg.contains("No such tool: mail.draft."))
+        XCTAssertTrue(msg.contains("Did you mean \"mac.mail.draft\""), "got: \(msg)")
+        // A typo within edit distance also recovers.
+        XCTAssertTrue(AgentLoop.unknownToolMessage("clac", available: available).contains("\"calc\""))
+        // Garbage gets the plain message — no misleading suggestion.
+        XCTAssertEqual(AgentLoop.unknownToolMessage("weathersat", available: available),
+                       "No such tool: weathersat.")
+    }
+
+    /// Reason precedence (live-caught): the model repeated the consent-refused mac.mail.draft —
+    /// no other move existed — and the halt was mislabeled "stalled: try rephrasing". When every
+    /// attempt was permission-refused, the honest reason is needsPermission however the loop ends.
+    func testStallOverRefusedToolReportsNeedsPermissionNotStalled() async {
+        let consent = InMemoryConsentStore()   // nothing granted
+        let runner = CapabilityRunner(consent: consent, ledger: InMemoryAuditLedger())
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"tool":"fs.read","input":"plan.txt"}"#,   // refused (no consent)
+            #"{"tool":"fs.read","input":"plan.txt"}"#,   // same again → stall nudge
+            #"{"tool":"fs.read","input":"plan.txt"}"#,   // insists → halt
+        ])
+        let loop = AgentLoop(engine: engine,
+                             tools: AgentToolkit.standard(attachments: AttachedFilesStore()),
+                             runner: runner)
+        let run = await loop.run(goal: "read my plan file")
+        XCTAssertEqual(run.haltReason, .needsPermission,
+                       "a repeat caused BY a missing grant must say so, not 'try rephrasing'")
+    }
+
+    /// Zero-action guard (live-caught): the model answered a bare "Done" with an EMPTY run log
+    /// on an action goal. One nudge, then an honest halt — never "Done" over no work.
+    func testZeroActionAnswerOnAnActionGoalIsNudgedThenWithheld() async {
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"answer":"Done"}"#,          // no action taken — draws the nudge
+            #"{"answer":"Done"}"#,          // still no action — withheld
+        ])
+        let loop = AgentLoop(engine: engine, tools: [CalculatorTool()])
+        let run = await loop.run(goal: "open browser and write email to i@alink.ru")
+        XCTAssertEqual(run.haltReason, .planError)
+        XCTAssertNil(run.answer)
+        XCTAssertTrue(run.steps.contains { $0.observation?.contains("none were taken") ?? false })
+    }
+
+    func testZeroActionNudgeRecoversWhenTheModelThenActs() async {
+        let engine = ScriptedInferenceEngine(replies: [
+            #"{"answer":"Done"}"#,                       // nudged
+            #"{"tool":"calculator","input":"2 + 2"}"#,   // acts
+            #"{"answer":"It is 4."}"#,                   // real answer now stands
+        ])
+        let loop = AgentLoop(engine: engine, tools: [CalculatorTool()])
+        let run = await loop.run(goal: "open the calculator app and compute 2+2")
+        XCTAssertEqual(run.haltReason, .answered)
+        XCTAssertEqual(run.answer, "It is 4.")
+    }
+
+    func testDirectAnswerOnANonActionGoalIsUntouched() async {
+        let engine = ScriptedInferenceEngine(replies: [#"{"answer":"4"}"#])
+        let run = await AgentLoop(engine: engine, tools: [CalculatorTool()]).run(goal: "what is 2 plus 2")
+        XCTAssertEqual(run.haltReason, .answered)
+        XCTAssertEqual(run.answer, "4")
+    }
+
     /// Fabricated-success guard (live-caught on the Mac): every tool attempt was refused for
     /// missing consent — NOTHING executed — yet the model answered "I have drafted the email…".
     /// The loop must not present that lie as the outcome: it halts `.needsPermission`, drops the
