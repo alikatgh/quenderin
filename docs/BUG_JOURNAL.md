@@ -15,6 +15,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the plaintext in an ephemeral in-memory draft that is discarded on save; migrate any legacy plaintext
   once on load, with the reader accepting both formats so no one is locked out mid-migration. (Q-530)
 
+- **The biggest-looking fix is the one to adversarially VERIFY hardest.** A multi-agent Qwen3
+  diagnosis ranked "give the model a `<think>` budget before the JSON" as the #1 high-leverage fix —
+  and the adversarial verify pass rated it RISKY, not ship: the proposed `</think>` stop sequence is
+  DEFINED-BUT-NEVER-CONSUMED by the engine loop (`stopSequences` exists in GenerationOptions, the
+  decode loop only stops on cancel/EOG/maxTokens), so it would run to the cap and feed a TRUNCATED
+  chain-of-thought — worse than none — plus it's a product/latency + twin-parity decision, not a
+  bugfix. Ship the boring verified win (the sampling recipe); gate the exciting one behind a
+  benchmark. The dual-lens verify is what stops a plausible-but-regressive fix from landing. (Q-qwen3)
 - **A live screenshot can show STALE behavior — `swift test` rebuilds the library, not the app.**
   After changing QuenderinKit source, `swift test` recompiles the package + tests, but the running
   `.app` is whatever `xcodebuild` LAST produced. Verifying UI via a screenshot means rebuilding the
@@ -405,6 +413,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-08 (Qwen3 agent decode ran an OFF-RECIPE sampling hybrid) — the agent decision used the
+  chat defaults (temp 0.7 / top_p 0.95 / no top_k), a hybrid matching NEITHER of Qwen3's modes; its
+  card mandates top_k=20 everywhere, top_p 0.8 for non-thinking. Since the GBNF grammar only fixes
+  JSON *structure* (tool name + input are free strings), the loose tail added argument noise + the
+  odd wrong-tool pick. Fix: added `topK` to GenerationOptions + a top_k sampler (AFTER the grammar
+  mask, BEFORE top_p — so it only trims already-legal tokens, never starves the JSON) and set the
+  agent to temp 0.7 / top_p 0.8 / top_k 20, scoped to the agent (chat untouched). Adversarially
+  verified SHIP; full report docs/audits/2026-07-08-qwen3-runtime-optimality.md. Lesson: run a model
+  on the surface's OWN published sampling recipe; a grammar guarantees structure, not distribution.
+  NB: the Android JNI bakes a load-time sampler (llama_jni.cpp:350) — runtime-sampling parity there
+  is a separate, larger change (flagged), but the decision-LOGIC parity vectors stay green.
 
 - 2026-07-08 (a small model INVENTS URLs → hand it the canonical ones) — Qwen3 4B, asked to "create
   a Google Doc", guessed a fake `docs.google.com/document/d/<random>/edit` instead of a real blank

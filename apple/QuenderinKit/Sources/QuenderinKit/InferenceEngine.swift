@@ -6,6 +6,11 @@ public struct GenerationOptions: Sendable, Equatable {
     public var maxTokens: Int
     public var temperature: Double
     public var topP: Double
+    /// Top-k cutoff (0 = off). Qwen3's published recipe mandates `top_k=20` in every mode; the
+    /// agent decode sets it so the free-form tail (a tool's `input` string) is sampled from the
+    /// model's tuned distribution, not a looser one. Applied AFTER the grammar mask, so it only
+    /// ever trims already-legal tokens — it can never make the JSON contract unsatisfiable.
+    public var topK: Int
     /// Repetition penalty over the last `repeatLastN` tokens (1.0 = off). Without it the
     /// heavily-quantized small models loop the same paragraph verbatim — the failure mode
     /// is a wall of identical "Installing Python" sections, not subtle drift.
@@ -22,6 +27,7 @@ public struct GenerationOptions: Sendable, Equatable {
         maxTokens: Int = 512,
         temperature: Double = 0.7,
         topP: Double = 0.95,
+        topK: Int = 0,
         repeatPenalty: Double = 1.1,
         repeatLastN: Int = 256,
         stopSequences: [String] = [],
@@ -30,6 +36,7 @@ public struct GenerationOptions: Sendable, Equatable {
         self.maxTokens = maxTokens
         self.temperature = temperature
         self.topP = topP
+        self.topK = topK
         self.repeatPenalty = repeatPenalty
         self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences

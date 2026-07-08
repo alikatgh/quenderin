@@ -358,6 +358,12 @@ public actor LlamaEngine: InferenceEngine {
         }
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
             Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
+        // Top-k (opt-in, 0 = off) BEFORE top-p — the standard llama.cpp order, and the agent decode
+        // uses it to match Qwen3's `top_k=20` recipe. It runs AFTER the grammar mask, so it only
+        // trims already-legal tokens (the free `input` string's tail); it can never starve the JSON.
+        if options.topK > 0 {
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_k(Int32(options.topK)))
+        }
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(Float(options.topP), 1))
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(Float(options.temperature)))
         llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32(truncatingIfNeeded: LLAMA_DEFAULT_SEED)))

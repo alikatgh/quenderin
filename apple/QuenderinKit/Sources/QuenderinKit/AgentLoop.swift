@@ -226,11 +226,15 @@ public struct AgentLoop: Sendable {
     /// The corrective nudge shown after a malformed reply — the exact JSON contract, once.
     static let parseNudge = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
 
-    /// Decision decode options: default sampling knobs + the decision grammar.
-    static let decisionOptions = GenerationOptions(gbnfGrammar: AgentDecisionGrammar.gbnf)
+    /// Decision decode options: Qwen3's NON-THINKING sampling recipe (temp 0.7 / top_p 0.8 /
+    /// top_k 20) + the decision grammar. The stock chat defaults (top_p 0.95, no top_k) are a
+    /// hybrid that matches neither Qwen3 mode; tightening the tail to the model's tuned distribution
+    /// cuts off-recipe noise in the free `input` argument and the odd low-probability wrong-tool
+    /// pick. Scoped to the agent so chat is untouched. (Verified SHIP; docs/audits 2026-07-08.)
+    static let decisionOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnf)
     /// First-action-step options: the tool|plan-only grammar (no `answer`) so a weak model must
-    /// try a tool instead of bailing on step 1 of an action goal.
-    static let actionFirstOptions = GenerationOptions(gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
+    /// try a tool instead of bailing on step 1 of an action goal. Same Qwen3 recipe.
+    static let actionFirstOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
 
     /// The recovery hint for a mistyped tool name. Live-caught: the model called "mail.draft"
     /// for "mac.mail.draft", and the bare "No such tool" observation left it NOTHING to recover

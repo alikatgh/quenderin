@@ -332,4 +332,16 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertNil(session.answer)
         XCTAssertNil(session.haltReason)
     }
+
+    /// The agent decode must carry Qwen3's non-thinking sampling recipe (temp 0.7 / top_p 0.8 /
+    /// top_k 20) — a verified-SHIP tightening of the tail to the model's tuned distribution. Guards
+    /// against a refactor silently reverting to the chat-default top_p 0.95 / no top_k hybrid.
+    func testAgentDecodeUsesTheQwen3SamplingRecipe() {
+        for opts in [AgentLoop.decisionOptions, AgentLoop.actionFirstOptions] {
+            XCTAssertEqual(opts.topK, 20, "agent decode must set top_k=20")
+            XCTAssertEqual(opts.topP, 0.8, accuracy: 0.0001, "agent decode must set top_p=0.8")
+            XCTAssertEqual(opts.temperature, 0.7, accuracy: 0.0001, "agent decode keeps temp 0.7 (non-thinking)")
+            XCTAssertNotNil(opts.gbnfGrammar, "agent decode stays grammar-constrained")
+        }
+    }
 }
