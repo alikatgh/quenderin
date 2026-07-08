@@ -77,6 +77,12 @@ class AgentLoop(
             // Q-641: hard-stop (kill switch) — checked at each step boundary so AgentSession.cancel()
             // ends the mission with CANCELLED instead of grinding to maxSteps. Twin of iOS / desktop Q-523.
             if (isCancelled()) return AgentRun(steps, null, AgentRun.HaltReason.CANCELLED)
+            // CROWN JEWEL (twin of iOS AgentLoop): re-anchor the goal + progress at the transcript
+            // TAIL each step. A small model attends most to the tail, but the goal is written ONCE at
+            // the top and drowns under the growing observation log — the named root cause of multi-step
+            // drift. Zero extra decode. (Recipes are a macOS UX layer; the generic re-anchor is the
+            // shared cross-platform reliability spine — same text as Swift/TS.)
+            transcript += "\nGOAL (still): $goal. Actions taken so far: $toolAttempts. Decide the single best next action."
             val reply = try {
                 engine.complete(transcript)
             } catch (t: Throwable) {

@@ -65,6 +65,12 @@ export class CapabilityAgent {
             // The kill switch, honored at the top of every turn: stop the WHOLE run instantly,
             // before asking the model to think or act again. Local + cooperative = immediate.
             if (signal?.aborted) return { answer: null, steps, halt: 'cancelled' };
+            // CROWN JEWEL (twin of iOS/Android AgentLoop): re-anchor the goal + progress at the
+            // transcript TAIL every turn. A small local model attends most to the tail, but the goal
+            // is written ONCE at the top and drowns under the growing observation log — the named root
+            // cause of multi-step drift. Zero extra decode; the shared cross-platform reliability spine
+            // (same text as Swift/Kotlin; recipes stay a macOS UX layer).
+            transcript += `\nGOAL (still): ${goal}. Actions taken so far: ${usedTools.length}. Decide the single best next action.`;
             let reply: string;
             try {
                 reply = await this.planner(transcript);
