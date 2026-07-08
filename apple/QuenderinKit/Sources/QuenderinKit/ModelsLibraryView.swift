@@ -81,6 +81,11 @@ public struct ModelsLibraryView: View {
                    + "full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
+
+                // The open door: the curated set above is the vetted default; below it, search the whole
+                // Hub for anything this device can run (integrity-gated, honestly labelled).
+                ModelSearchView(onSelectModel: onSelectModel)
+                    .padding(.top, 4)
             }
             .padding(18)
             .frame(maxWidth: 1080)

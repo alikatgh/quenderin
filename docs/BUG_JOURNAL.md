@@ -9,6 +9,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   model actually did and fires confidently-wrong green checks (worse than no checklist). Make each
   step carry a `toolHint` and advance the cursor ONLY on an actually-executed tool-name match, and
   ADVANCE-ONLY (a miscount holds truthfully rather than telling the model to redo). (AgentRecipe cursor)
+- **A shared download dir keyed by a REMOTE filename collides — namespace the LOCAL name.** When you
+  let users pull arbitrary files into one models dir (e.g. any GGUF off Hugging Face), two different
+  repos ship the SAME filename ("model-Q4_K_M.gguf"), and an external name can collide with a curated
+  one — both overwrite each other on disk, and one model's bytes get verified against the other's
+  checksum. The remote URL is fine (it's the real path); the LOCAL destination must be namespaced by
+  its source (`repoSlug__filename`, keep the `.gguf` extension). Also: a runtime-discovered model isn't
+  in the compiled catalog, so its `ModelEntry` must be PERSISTED (a Codable side-store) or the boot
+  fast-path resolver forgets it and orphans the file. (HuggingFaceCatalog.safeLocalFilename, SideloadedModels)
 - **An "advisory" plan is NOT free when it's WRONG — a tail-anchored wrong hint mis-steers a 4B, and
   an advance-only cursor makes it repeat every turn.** "Purely advisory, can never make a run worse"
   is false for anything injected into the transcript TAIL (where a small model attends most). A recipe
@@ -434,6 +442,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-08 (open model catalog — search all of Hugging Face, hardware-filtered) — the curated set was
+  9 models; "why not put ALL possible models here + a search?". Built `ModelSearchView` at the foot of the
+  Models page: debounced `ModelSearchController` over the `ModelSearchProviding` seam → repo results →
+  expand to quants, each with a live Fits/Tight/Too-big badge (MemoryFitness on the candidate) and honest
+  "community upload, verified vs HF checksum" framing; gated repos link out to accept the license (we never
+  ask for a token). Download routes through the EXISTING `ModelLibraryController.download` so the HF LFS
+  sha256 threads the same integrity gate; `SideloadedModels` (Codable UserDefaults) remembers non-catalog
+  picks so `OnboardingModel.start` re-resolves them on relaunch. Collision-safe local filenames
+  (`repoSlug__file.gguf`). macOS+iOS; 13 new tests (438 total). Lesson: namespace the local name; persist
+  runtime-discovered entries. UI is compile-verified + logic-tested (no live app render on this box).
 
 - 2026-07-08 (dynamic planning — the model authors its own plan for the long tail, honestly) — "why
   isn't it using the model's intelligence?": recipes are a 3-entry lookup, so every OTHER goal got no

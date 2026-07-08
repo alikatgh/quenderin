@@ -109,7 +109,10 @@ public final class OnboardingModel: ObservableObject {
         // install() re-runs the integrity gate before trusting the file, so a corrupted leftover
         // still falls through to a fresh recommendation below.
         if case .probing = phase, let id = recallActiveModelID(),
-           let remembered = ModelCatalog.entry(id: id),
+           // A searched Hugging Face model isn't in the compiled-in catalog, so resolve it from the
+           // sideloaded registry too — otherwise "Use" on an open-catalog model is forgotten on relaunch
+           // and the app silently falls back to a curated recommendation (the file left orphaned on disk).
+           let remembered = ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
            FileManager.default.fileExists(atPath: modelsDir.appendingPathComponent(remembered.filename).path) {
             await install(remembered)
             if case .ready = phase { return }

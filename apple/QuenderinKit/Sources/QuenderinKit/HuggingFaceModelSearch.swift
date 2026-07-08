@@ -68,7 +68,11 @@ public enum HuggingFaceCatalog {
         return ModelEntry(
             id: "hf:\(q.id)",
             label: label,
-            filename: q.filename,
+            // NOT the raw HF filename: two different repos ship the SAME name ("model-Q4_K_M.gguf"),
+            // and an HF name can collide with a curated-catalog file — both would overwrite each other
+            // in the shared models dir. Namespace the LOCAL file by repo so every download is distinct.
+            // (The REMOTE download URL still uses the real HF path; only the on-disk name is namespaced.)
+            filename: safeLocalFilename(repo: q.repo, filename: q.filename),
             ramGB: ramGB,
             sizeLabel: String(format: "%.1f GB download", q.sizeGB),
             paramsBillions: params,
@@ -76,6 +80,16 @@ public enum HuggingFaceCatalog {
             urlString: q.downloadURL?.absoluteString ?? "",
             sha256: q.sha256
         )
+    }
+
+    /// A collision-safe, filesystem-legal local filename for an HF quant: the repo (sanitised) +
+    /// `__` + the original filename, so `owner/Repo-GGUF` + `m-Q4_K_M.gguf` → `owner_Repo-GGUF__m-Q4_K_M.gguf`.
+    /// Keeps the `.gguf` extension (magic/GGUF checks + Finder still see a model), and caps the repo part
+    /// so a pathological repo name can't overrun the 255-byte filename limit.
+    public static func safeLocalFilename(repo: String, filename: String) -> String {
+        let slug = repo.map { ($0.isLetter || $0.isNumber || $0 == "-" || $0 == ".") ? $0 : "_" }
+        let cappedSlug = String(String(slug).prefix(100))
+        return "\(cappedSlug)__\(filename)"
     }
 
     // MARK: - Pure JSON parsers (testable without a network call)
