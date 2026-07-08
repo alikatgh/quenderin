@@ -414,6 +414,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (TS/Electron build had NO repetition guard + Qwen thinking could starve the chat answer)
+  — the desktop/CLI build (src/) passed no repeatPenalty (node-llama-cpp defaults it DISABLED), so a
+  heavily-quantized small model could loop a paragraph verbatim; the Swift twin has shipped 1.1/256 +
+  DegenerationGuard for ages. And QwenChatWrapper's `thoughts="auto"` let hidden `<think>` tokens count
+  against a 128-384 `chatMaxTokens` cap → empty/truncated answers on tight hardware. Fix:
+  `repeatPenalty {1.1, 256}` on BOTH generateAction + generalChat; `budgets.thoughtTokens=0` on
+  generalChat (no-think chat, parity with the Swift no-think close). Non-Mac product; typecheck + lint
+  + 515 tests green. Lesson: node-llama-cpp ships repeat-penalty OFF and thoughts AUTO — the Swift/JNI
+  decode guards do NOT come for free on the TS twin; mirror them explicitly. (audit issue #5, SHIP)
+
 - 2026-07-08 (Qwen3 agent decode ran an OFF-RECIPE sampling hybrid) — the agent decision used the
   chat defaults (temp 0.7 / top_p 0.95 / no top_k), a hybrid matching NEITHER of Qwen3's modes; its
   card mandates top_k=20 everywhere, top_p 0.8 for non-thinking. Since the GBNF grammar only fixes

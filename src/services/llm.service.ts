@@ -67,6 +67,19 @@ interface TaggedError extends NodeJS.ErrnoException {
 // ─── Hardware-adaptive profile (detected once at startup) ───────────────────
 const HW = getHardwareProfile();
 
+// ─── Decode guards (mirror the Swift twin; node-llama-cpp ships these OFF) ───
+/** Repetition penalty over the last N tokens. Without it, heavily-quantized small models loop the
+ *  same paragraph verbatim — the Swift app (InferenceEngine.swift) ships 1.1/256 + a DegenerationGuard;
+ *  node-llama-cpp defaults repeat penalty to DISABLED, so the desktop/CLI build had no guard at all. */
+const REPEAT_PENALTY = 1.1;
+const REPEAT_LAST_N = 256;
+/** No-think CHAT: node-llama-cpp counts hidden <think> tokens against the maxTokens cap, so on tight
+ *  hardware (chatMaxTokens 128-384) a reasoning-heavy Qwen3 turn can spend its whole budget thinking
+ *  and return an empty/truncated answer. Setting the reasoning budget to 0 disables thinking on the
+ *  chat path — matching the Swift app's deliberate no-think chat close — so the visible answer always
+ *  gets the full budget. The grammar-forced JSON agent path never thinks and is untouched. */
+const CHAT_THOUGHT_TOKEN_BUDGET = 0;
+
 // ─── Performance: Model-aware context caps ──────────────────────────────────
 // Larger context = more KV cache memory = slower inference.
 // Small models (1B) can't effectively use huge contexts anyway.
@@ -384,6 +397,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             grammar?: any;
             /** Native chat functions (mutually exclusive with grammar per node-llama-cpp). */
             functions?: Record<string, unknown>;
+            /** Repetition penalty { penalty, lastTokens } — the anti-loop guard the Swift twin ships. */
+            repeatPenalty?: { penalty: number; lastTokens: number };
+            /** Reasoning-token budget; chat passes { thoughtTokens: 0 } so hidden thinking can't
+             *  consume the whole maxTokens cap and starve the visible answer. */
+            budgets?: { thoughtTokens?: number };
         },
         timeoutMs: number,
         label: string,
@@ -1165,6 +1183,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // ?? not ||: an explicit temperature 0 (greedy — the right choice for grammar-
                 // constrained action decoding) must stay 0, not silently become 0.1 (falsy-zero).
                 temperature: options.temperature ?? 0.1,
+                // Anti-loop guard, mirroring the Swift twin — a small model can otherwise repeat the
+                // same tool call / argument fragment verbatim. Composes with the grammar mask.
+                repeatPenalty: { penalty: REPEAT_PENALTY, lastTokens: REPEAT_LAST_N },
                 ...(grammar ? { grammar } : {})
             };
 
@@ -1338,6 +1359,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             const promptOptions = {
                 maxTokens: responseMaxTokens + functionCallAllowance,
                 temperature: this.activePreset.temperature,
+                // Anti-loop guard (Swift-twin parity) + no-think chat: bound reasoning to 0 tokens so
+                // hidden <think> can't eat the whole cap and return an empty answer on tight hardware.
+                repeatPenalty: { penalty: REPEAT_PENALTY, lastTokens: REPEAT_LAST_N },
+                budgets: { thoughtTokens: CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
                     const clean = stripControlTokensWithOptions(chunk, { trim: false });
