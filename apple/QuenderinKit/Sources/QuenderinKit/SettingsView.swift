@@ -188,6 +188,7 @@ public struct SettingsView: View {
 
     private struct CapabilityRow: Identifiable {
         let id: String
+        let displayName: String
         let purpose: String
         let tier: CapabilityTier
         let requiresConsent: Bool
@@ -195,7 +196,8 @@ public struct SettingsView: View {
 
     private var capabilityRows: [CapabilityRow] {
         AgentToolkit.capabilities().map {
-            CapabilityRow(id: $0.name, purpose: $0.purpose, tier: $0.tier, requiresConsent: $0.requiresConsent)
+            CapabilityRow(id: $0.name, displayName: CapabilityCatalog.displayName(for: $0.name),
+                          purpose: $0.purpose, tier: $0.tier, requiresConsent: $0.requiresConsent)
         }
     }
 
@@ -215,12 +217,15 @@ public struct SettingsView: View {
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text(row.id).font(.body.weight(.medium))
+                            Text(row.displayName).font(.body.weight(.medium))
                             Text(tierLabel(row.tier))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Text(row.purpose).font(.caption).foregroundStyle(.secondary)
+                        // The technical id stays visible but demoted — power users + the run-log/ledger
+                        // still speak it; a person no longer has to read "mac.ui.tap" as the name.
+                        Text(row.id).font(.caption2.monospaced()).foregroundStyle(.tertiary)
                     }
                     Spacer()
                     if row.requiresConsent {
@@ -230,7 +235,7 @@ public struct SettingsView: View {
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .accessibilityLabel("Allow \(row.id)")
+                        .accessibilityLabel("Allow \(row.displayName)")
                     } else {
                         Text("Always on").font(.caption).foregroundStyle(.secondary)
                     }
