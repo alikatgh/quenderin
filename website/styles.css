@@ -576,6 +576,11 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .legal ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
 .legal li { margin-bottom: 0.45rem; }
 .legal a { color: var(--brand); text-decoration: underline; }
+/* A .btn inside legal/article content is a button, not a body link — the teal-underline link rule
+   above must not repaint its label (it made the primary CTA teal-on-copper, illegible). */
+.legal a.btn { text-decoration: none; }
+.legal .btn-primary { color: var(--on-brand); }
+.legal .btn-ghost { color: var(--text); }
 .legal strong { color: var(--text); }
 .legal .ph { background: var(--accent-soft); border: 1px dashed var(--accent-border); border-radius: 5px; padding: 0.05rem 0.4rem; font-family: var(--font-mono); font-size: 0.85em; color: var(--brand); }
 .legal-note { background: var(--surface-tint); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.4rem; margin-bottom: 2rem; font-size: 0.92rem; }

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Research &amp; hiring — Quenderin</title>
+<meta name="description" content="The bet: AI belongs on your machine, and the moment a laptop-sized model is good enough, the cloud's advantage disappears. Getting there is a research problem — and we're hiring researchers to solve it." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/research.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <h1>Local models are the future. We're hiring the people who'll prove it.</h1>
+  <p class="legal-updated">The bet, the hard problems, and the open roles — the honest version.</p>
+
+  <div class="legal-note">
+    <p><strong>The thesis in one breath:</strong> today, frontier AI lives in a datacenter — you
+    rent it, and it reads everything you feed it. That's a <em>temporary</em> state. The moment a
+    model small enough to run on your own laptop is <em>good enough</em> at the work, the cloud's
+    advantage evaporates and privacy stops being a trade-off. Quenderin is a bet that that moment is
+    close — and that closing the gap is a research problem worth a career.</p>
+  </div>
+
+  <h2>Why local is where this goes</h2>
+  <p>Renting intelligence from someone else's computer is the current default, not the natural one.
+  When the model runs on <em>your</em> machine, three things that are impossible in the cloud become
+  free:</p>
+  <ul>
+    <li><strong>Privacy stops being a compromise.</strong> Your files, your screen, your intent
+    never leave the device. For anyone in law, medicine, or finance, that's the line between "can
+    use an agent" and "can't" — not a preference.</li>
+    <li><strong>You own it.</strong> No account, no per-token bill, no rate limit, no outage, no
+    quiet model swap under you. Run it ten thousand times; it costs what running it once did. It
+    works on a plane and in a basement.</li>
+    <li><strong>It can actually touch your computer.</strong> A local agent can stop dead mid-task,
+    show a plain-text record of everything it did <em>and refused</em>, and undo a whole task later —
+    <a href="why-local-agent.html">guarantees a cloud agent structurally can't offer</a> about your
+    own machine.</li>
+  </ul>
+  <p>The one thing standing between here and there is <strong>capability</strong> — and capability at
+  small scale is an engineering and research problem, not a law of nature. That's the whole job.</p>
+
+  <h2>The hard problems (what you'd actually work on)</h2>
+  <p>These aren't hypotheticals — they're the open frontier of the codebase today, with every
+  measured result <a href="reality.html">published</a> and every failure
+  <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">written down</a>.</p>
+  <ul>
+    <li><strong>Small-model agency.</strong> Make a 4–8B model a <em>reliable</em> agent: plan a
+    multi-step task, pick the right tool, notice when it's wrong, and recover — on hardware with 8&nbsp;GB
+    of RAM. This is the gap between "impressive demo" and "does my chores." The mechanism (constrained
+    decoding, forced first actions, self-verification) is largely solved; squeezing frontier-grade
+    <em>judgment</em> out of a small model is not.</li>
+    <li><strong>On-device inference systems.</strong> Wring cloud-adjacent quality from a consumer
+    laptop — quantization that keeps a model sharp, KV-cache reuse, speculative decoding, grammar-
+    constrained sampling, flash attention, thermal- and memory-aware scheduling. Milliseconds and
+    megabytes are the whole game.</li>
+    <li><strong>Trust without a server.</strong> Safety that lives in the <em>harness</em> — consent,
+    per-step undo, an append-only ledger, blocklists on resolved actions — not in hoping the model is
+    smart. How do you make an agent you can hand your computer to when you can't audit the weights in
+    a datacenter, because there is no datacenter?</li>
+    <li><strong>One brain, every device.</strong> The same logic on macOS, iPhone, Android, Windows,
+    and Linux, proven byte-identical by machine-enforced parity tests. Portability is a correctness
+    problem, not a packaging one.</li>
+    <li><strong>Honest evaluation.</strong> Measuring agentic reliability on-device, per model, per
+    task — so "which model should I run?" is answered by data, not vibes.</li>
+  </ul>
+
+  <h2>We're hiring Researchers</h2>
+  <p>We're looking for researchers and research-engineers who want to make small, local models
+  genuinely capable — and who'd rather ship something a person runs today than publish a number
+  nobody can reproduce. Areas we're hiring into:</p>
+  <ul>
+    <li><strong>Inference &amp; model efficiency</strong> — quantization, speculative decoding, KV-cache
+    and attention systems, getting more out of every gigabyte and every watt.</li>
+    <li><strong>Small-model agentic capability</strong> — planning, tool-use reliability, constrained
+    decoding, recovery behavior, and the fine-tuning / data work behind them.</li>
+    <li><strong>On-device evaluation</strong> — building the benchmarks that tell the truth about what
+    a 4B can and can't do as an agent.</li>
+  </ul>
+
+  <div class="legal-note">
+    <p><strong>What we value:</strong> honest measurement (we publish every failure mode we find),
+    shipping over posturing, and open-source by default. <strong>What we're not:</strong> we're not
+    training a 400-billion-parameter model in a datacenter — that's precisely the thing we're routing
+    around. If your dream is a bigger cluster, we're the wrong lab. If it's making the model in
+    someone's pocket punch three weight classes above itself, read on.</p>
+  </div>
+
+  <h2>How to apply</h2>
+  <p>Email <a href="mailto:quenderin@aulenor.com?subject=Research">quenderin@aulenor.com</a> with the
+  subject <strong>“Research.”</strong> Tell us what you've built (a link beats a résumé), and which of
+  the problems above you'd want to own. A human reads it — no portal, no tracker, no auto-reply.
+  Remote-first; the work is judged by what it ships.</p>
+
+  <p style="margin-top:1.5rem">
+    <a class="btn btn-primary" href="mailto:quenderin@aulenor.com?subject=Research">Apply — email a human</a>
+  </p>
+
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="roadmap.html">Roadmap</a> &middot; <a href="why-local-agent.html">Why local wins</a> &middot; <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a></p>
+</main>
+</body>
+</html>
