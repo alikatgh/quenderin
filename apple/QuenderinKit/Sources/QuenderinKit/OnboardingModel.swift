@@ -276,9 +276,12 @@ public final class OnboardingModel: ObservableObject {
             rememberActiveModelID(model.id)   // next cold launch restores this model directly
         } catch {
             // `load()` already freed the previously-loaded model before failing, so on a failed
-            // switch restore the prior model rather than leaving the engine empty (H1).
+            // switch restore the prior model rather than leaving the engine empty (H1). Resolve the
+            // previous entry from the sideloaded registry too, mirroring the boot fast-path — else a
+            // failed switch AWAY from a searched (hf:) model can't restore it (its id isn't in the
+            // compiled catalog) and H1 silently drops to a .failed screen with the engine unloaded.
             if let previousID, previousID != model.id,
-               let previous = ModelCatalog.entry(id: previousID),
+               let previous = ModelCatalog.entry(id: previousID) ?? SideloadedModels.shared.entry(id: previousID),
                await restore(previous) {
                 phase = .ready(previous)
                 rememberActiveModelID(previous.id)

@@ -39,6 +39,16 @@ final class HuggingFaceModelSearchTests: XCTestCase {
                        "https://huggingface.co/acme/Model-GGUF/resolve/main/Model-Q4_K_M.gguf?download=true")
     }
 
+    /// Review fix: a filename with a URL-invalid character (a space) must still yield a valid,
+    /// percent-encoded download URL — else it's nil on macOS 13/iOS 16 and the quant is undownloadable.
+    func testDownloadURLPercentEncodesTheFilename() {
+        let q = HFQuant(repo: "acme/Model-GGUF", filename: "model (v2)-Q4_K_M.gguf", sizeBytes: 1, sha256: nil)
+        let url = q.downloadURL
+        XCTAssertNotNil(url, "a filename with a space must still produce a valid URL")
+        XCTAssertTrue(url!.absoluteString.contains("%20"), "the space must be percent-encoded")
+        XCTAssertTrue(url!.absoluteString.hasSuffix("?download=true"))
+    }
+
     func testQuantLabelFallsBackWhenNoTagPresent() {
         XCTAssertEqual(HuggingFaceCatalog.quantLabel("foo.Q8_0.gguf"), "Q8_0")
         XCTAssertEqual(HuggingFaceCatalog.quantLabel("foo-iq4_nl.gguf"), "IQ4_NL")

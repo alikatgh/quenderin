@@ -29,7 +29,12 @@ public struct HFQuant: Sendable, Equatable, Identifiable {
     public var sizeGB: Double { Double(sizeBytes) / 1_073_741_824.0 }
     public var quant: String { HuggingFaceCatalog.quantLabel(filename) }
     public var downloadURL: URL? {
-        URL(string: "https://huggingface.co/\(repo)/resolve/main/\(filename)?download=true")
+        // Percent-encode the filename: the modern URL parser auto-encodes a space/`#`, but the legacy
+        // one on the package's floor targets (macOS 13 / iOS 16) returns nil for an un-encoded name, so
+        // a quant like "model (v2)-Q4_K_M.gguf" would be permanently undownloadable there. `repo` is
+        // HF-restricted to a URL-safe charset; a `filename` never contains a "/".
+        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
+        return URL(string: "https://huggingface.co/\(repo)/resolve/main/\(encoded)?download=true")
     }
 }
 
@@ -89,7 +94,18 @@ public enum HuggingFaceCatalog {
     public static func safeLocalFilename(repo: String, filename: String) -> String {
         let slug = repo.map { ($0.isLetter || $0.isNumber || $0 == "-" || $0 == ".") ? $0 : "_" }
         let cappedSlug = String(String(slug).prefix(100))
-        return "\(cappedSlug)__\(filename)"
+        let combined = "\(cappedSlug)__\(filename)"
+        // Bound the WHOLE component under the OS's 255-byte-per-name limit — capping only the repo slug
+        // left a long community filename able to overrun it (ENAMETOOLONG on the download write). Trim
+        // from the tail but KEEP the extension so it still reads as a GGUF. Distinct repos keep distinct
+        // slug prefixes, so collision-safety across repos survives the truncation.
+        let maxBytes = 200
+        guard combined.utf8.count > maxBytes else { return combined }
+        let ext = (filename as NSString).pathExtension
+        let suffix = ext.isEmpty ? "" : ".\(ext)"
+        var head = combined
+        while head.utf8.count + suffix.utf8.count > maxBytes && !head.isEmpty { head.removeLast() }
+        return head + suffix
     }
 
     // MARK: - Pure JSON parsers (testable without a network call)

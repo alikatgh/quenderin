@@ -9,6 +9,13 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   model actually did and fires confidently-wrong green checks (worse than no checklist). Make each
   step carry a `toolHint` and advance the cursor ONLY on an actually-executed tool-name match, and
   ADVANCE-ONLY (a miscount holds truthfully rather than telling the model to redo). (AgentRecipe cursor)
+- **When you change a resolver/lookup, grep for its SIBLINGS in the same flow.** Adding a fallback to
+  ONE resolution site (`ModelCatalog.entry(id:) ?? SideloadedModels.shared.entry(id:)` at boot) but not
+  its twin (the failed-switch restore, same file, same pattern) left the new model class half-supported —
+  it worked on cold launch but a failed hot-switch away from it dropped to a dead error screen. Any time a
+  new entity type (an `hf:` id here) must resolve, `grep` every `entry(id:` / `first { $0.id ==` / catalog
+  lookup and confirm each got the fallback. A partial rollout of a resolver is worse than none — it works
+  just enough to look done. (OnboardingModel boot vs failed-switch restore)
 - **A shared download dir keyed by a REMOTE filename collides — namespace the LOCAL name.** When you
   let users pull arbitrary files into one models dir (e.g. any GGUF off Hugging Face), two different
   repos ship the SAME filename ("model-Q4_K_M.gguf"), and an external name can collide with a curated
@@ -442,6 +449,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-08 (adversarial review of the two new features caught 2 real bugs pre-user) — I shipped ~1000
+  lines I couldn't render on this box, so a 5-dimension review workflow (opus skeptics, 5 false positives
+  refuted) found: (1) OnboardingModel.swift:281 — the failed-switch H1 restore used `ModelCatalog.entry`
+  only, so switching AWAY from an active HF model that then fails to load couldn't restore it (hf: id not
+  in the catalog) → dead .failed screen; fixed with `?? SideloadedModels.shared.entry(id:)` (mirror of
+  the boot resolver). (2) AgentLoop.swift stepCap — a dynamic plan of length==maxSteps ran all steps but
+  had NO turn left to answer → false .maxSteps; fixed with `isDynamic ? max(maxSteps, steps.count+1) : …`.
+  Also percent-encoded the HF download URL (macOS 13/iOS 16 nil'd on a space) + bounded the whole local
+  filename (not just the repo slug) under 255 bytes. 3 fix tests (443 total). Lesson: when you change a
+  resolver, grep for its SIBLINGS — the boot fast-path got the SideloadedModels fallback but the failed-
+  switch restore (same pattern, same file) didn't. Report: docs/audits/2026-07-08-new-features-review.md.
 
 - 2026-07-08 (open model catalog — search all of Hugging Face, hardware-filtered) — the curated set was
   9 models; "why not put ALL possible models here + a search?". Built `ModelSearchView` at the foot of the

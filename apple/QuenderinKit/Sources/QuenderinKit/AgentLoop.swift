@@ -110,7 +110,12 @@ public struct AgentLoop: Sendable {
         // A curated recipe earns +2 slack (its chain is human-vouched); a DYNAMIC plan does NOT — its
         // length is a model guess, so it runs on the plain cap, identical to today's nil-recipe path. This
         // removes the "burn MORE budget flailing on a wrong plan" half of the wrong-plan regression (H1).
-        let stepCap = recipe.map { $0.isDynamic ? maxSteps : max(maxSteps, $0.steps.count + 2) } ?? maxSteps
+        // A dynamic plan gets +1 (its final-answer turn) — strictly less flail-room than a curated
+        // recipe's +2, but enough that a plan which runs its FULL length (steps.count == maxSteps) still
+        // has a turn left to emit the answer instead of starving into a false .maxSteps. `max(maxSteps,…)`
+        // so a SHORT dynamic plan is never budgeted below the plain nil-recipe cap; a wrong plan still
+        // self-abandons via dynamicStalls within 2 turns, so the extra turn can't fund real flailing.
+        let stepCap = recipe.map { $0.isDynamic ? max(maxSteps, $0.steps.count + 1) : max(maxSteps, $0.steps.count + 2) } ?? maxSteps
         var recipeCursor = 0
         var nudgedForIncompleteRecipe = false
         // H2: consecutive turns a DYNAMIC plan's cursor failed to advance (the model diverged from the

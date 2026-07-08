@@ -591,6 +591,23 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertTrue(onPrompts[0].contains("Plan how to accomplish"))
     }
 
+    /// Review fix: a dynamic plan that runs its FULL length (steps.count == maxSteps) must still have a
+    /// turn left to emit the final answer, instead of starving into a false .maxSteps. Guards the +1
+    /// answer-turn slack (AgentLoop.swift stepCap).
+    func testMaximalLengthDynamicPlanStillReachesAnswer() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"plan":[{"tool":"fs.list","input":""},{"tool":"fs.move","input":""},{"tool":"other.a","input":""}]}"#,  // 3-step plan == maxSteps
+            #"{"tool":"fs.list","input":""}"#, #"{"tool":"fs.move","input":""}"#, #"{"tool":"other.a","input":""}"#,
+            #"{"answer":"all done"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "a"), FakeTool(name: "fs.move", reply: "b"),
+                                  FakeTool(name: "other.a", reply: "c")]
+        let run = await AgentLoop(engine: engine, tools: tools, maxSteps: 3).run(goal: Self.novelGoal)
+        XCTAssertEqual(run.haltReason, .answered, "a full-length dynamic plan needs a turn left to answer — not a false .maxSteps")
+        XCTAssertEqual(run.answer, "all done")
+    }
+
     /// A matched CURATED recipe short-circuits dynamic planning even with the flag on — the fast-path
     /// pays zero planning latency.
     func testStaticRecipeMatchSkipsDynamicPlanning() async {

@@ -59,6 +59,14 @@ final class SideloadedModelsTests: XCTestCase {
         XCTAssertFalse(name.contains("/"), "no path separators may leak into a filename")
     }
 
+    func testSafeLocalFilenameBoundsTotalLengthAndKeepsExtension() {
+        // Review fix: a pathologically long community filename must not overrun the 255-byte OS limit.
+        let longName = String(repeating: "a", count: 300) + "-Q4_K_M.gguf"
+        let name = HuggingFaceCatalog.safeLocalFilename(repo: "owner/Repo-GGUF", filename: longName)
+        XCTAssertLessThanOrEqual(name.utf8.count, 255, "the on-disk name must stay under the OS byte limit")
+        XCTAssertTrue(name.hasSuffix(".gguf"), "the extension survives truncation so it still reads as a GGUF")
+    }
+
     func testSameFilenameFromDifferentReposDoesNotCollide() {
         let a = HuggingFaceCatalog.safeLocalFilename(repo: "owner-a/Model-GGUF", filename: "model-Q4_K_M.gguf")
         let b = HuggingFaceCatalog.safeLocalFilename(repo: "owner-b/Model-GGUF", filename: "model-Q4_K_M.gguf")
