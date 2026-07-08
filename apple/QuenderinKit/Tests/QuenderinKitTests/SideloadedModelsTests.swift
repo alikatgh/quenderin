@@ -75,4 +75,25 @@ final class SideloadedModelsTests: XCTestCase {
         XCTAssertEqual(c1.downloadURL?.absoluteString,
                        "https://huggingface.co/teamA/Llama-GGUF/resolve/main/Llama-Q4_K_M.gguf?download=true")
     }
+
+    #if canImport(SwiftUI)
+    /// A downloaded sideloaded model shows as installed in the library and doesn't inflate the
+    /// catalog-only header count ("X of 9 installed" must never read "10 of 9").
+    @MainActor
+    func testLibraryRefreshSurfacesSideloadedOnDiskModelWithoutInflatingHeader() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let e = entry(id: "hf:owner/Repo-GGUF/m.gguf", filename: "owner_Repo-GGUF__m.gguf")
+        FileManager.default.createFile(atPath: dir.appendingPathComponent(e.filename).path, contents: Data("GGUF".utf8))
+        SideloadedModels.shared.record(e)
+        defer { SideloadedModels.shared.remove(id: e.id) }
+
+        let ctrl = ModelLibraryController(modelsDir: dir)
+        ctrl.refresh()
+        XCTAssertEqual(ctrl.state(of: e), .installed, "an on-disk sideloaded model reads as installed")
+        XCTAssertEqual(ctrl.installedCount, 0, "installedCount is catalog-only — a sideloaded install must not inflate it")
+    }
+    #endif
 }

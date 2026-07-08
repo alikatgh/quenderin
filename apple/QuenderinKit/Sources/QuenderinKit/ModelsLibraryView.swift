@@ -39,6 +39,12 @@ public struct ModelsLibraryView: View {
                 blocked.append(entry)
             }
         }
+        // Searched (sideloaded) models the user downloaded belong with "yours" too — otherwise a
+        // downloaded open-catalog model is invisible in the library until you search for it again.
+        for entry in SideloadedModels.shared.all
+        where library.state(of: entry) == .installed && !mine.contains(where: { $0.id == entry.id }) {
+            mine.append(entry)
+        }
         // Yours: the active model first, then the rest by size (largest = most capable first).
         mine.sort { a, b in
             if (a.id == activeModelID) != (b.id == activeModelID) { return a.id == activeModelID }
@@ -509,11 +515,20 @@ final class ModelLibraryController: ObservableObject {
         for entry in ModelCatalog.models where tasks[entry.id] == nil {
             states[entry.id] = installed.contains(entry.filename) ? .installed : .notInstalled
         }
+        // Searched (sideloaded) models aren't in the compiled catalog — reflect the ones whose file is
+        // on disk so a downloaded open-catalog model shows as installed (and "Use", not "Download")
+        // after a relaunch, instead of vanishing from the library.
+        for entry in SideloadedModels.shared.all where tasks[entry.id] == nil {
+            if installed.contains(entry.filename) { states[entry.id] = .installed }
+            else if states[entry.id] == nil { states[entry.id] = .notInstalled }
+        }
     }
 
     func state(of entry: ModelEntry) -> ModelState { states[entry.id] ?? .notInstalled }
 
-    var installedCount: Int { states.values.filter { $0 == .installed }.count }
+    /// Catalog installs only — the header reads "X of \(ModelCatalog.models.count) installed", so a
+    /// sideloaded model must not inflate X past N. (Sideloaded models are surfaced separately in "yours".)
+    var installedCount: Int { ModelCatalog.models.filter { state(of: $0) == .installed }.count }
 
     var missingModels: [ModelEntry] {
         ModelCatalog.models.filter {
@@ -621,6 +636,8 @@ final class ModelLibraryController: ObservableObject {
     func delete(_ entry: ModelEntry, activeModelID: String) {
         guard entry.id != activeModelID else { return }
         try? FileManager.default.removeItem(at: modelsDir.appendingPathComponent(entry.filename))
+        SideloadedModels.shared.remove(id: entry.id)   // forget a searched model too (no-op for catalog ids)
+        states[entry.id] = nil                          // drop its state row so it leaves "yours"
         refresh()
     }
 
