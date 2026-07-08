@@ -414,6 +414,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (opt-in "Deeper reasoning" — let Qwen3 think before it commits) — Qwen3 is reasoning-
+  tuned but the decision grammar forces `{` as the first token → zero deliberation (audit issue #1, the
+  agent's biggest quality gap). Shipped BEHIND A FLAG (default OFF, Settings → Agent → "Deeper
+  reasoning") because it trades speed for accuracy — the user's call, not a silent default. When on,
+  AgentLoop runs an unconstrained <think> pass (Qwen3 thinking recipe, capped 256 tok, stopped at
+  `</think>` via the revived StopSequenceScanner) and weaves the reasoning into the transcript before
+  the grammar decode. Read LIVE (injected closure) so the toggle applies to the next step. The naive
+  version the audit's fix proposed would have regressed (its `</think>` stop was unimplemented — see
+  the pattern bullet above); building the stop-scanner first is what made this safe. Tests prove the
+  pass fires when on and is inert when off. NOT benchmarked on-device (can't here) — opt-in is the
+  honest ship. Kotlin twin: Android AgentLoop needs the same flag+pass for parity (flagged).
+
 - 2026-07-08 (GenerationOptions.stopSequences was DEAD — defined, documented, never consumed) — the
   decode loop only halted on cancel/EOG/maxTokens; a caller that set stopSequences got them silently
   ignored (Qwen3 audit caught it). Revived with `StopSequenceScanner`: it holds back the last

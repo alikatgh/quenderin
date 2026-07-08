@@ -45,7 +45,8 @@ public final class AgentSession: ObservableObject {
         let broker = approvals
         let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) },
                                                   session: undoSession)
-        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved)
+        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved,
+                              deliberate: { AgentDeliberation.isEnabled })
     }
 
     /// Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the run's flag so
@@ -67,7 +68,8 @@ public final class AgentSession: ObservableObject {
         let runner = CapabilityRunner(consent: consent, ledger: ledger,
                                       approve: { preview in await broker.request(preview) },
                                       session: undoSession)
-        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner)
+        self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner,
+                              deliberate: { AgentDeliberation.isEnabled })
     }
 
     /// Run the agent to completion, publishing the result. (The loop also exposes a live

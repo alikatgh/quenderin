@@ -44,13 +44,19 @@ public struct AgentLoop: Sendable {
     /// The enforcement point for tools that are `Capability`s: gate → run → ledger, no way
     /// around it (AGENT_AUTONOMY_PLAN §6). Plain `AgentTool`s keep the legacy direct path.
     private let runner: CapabilityRunner
+    /// Opt-in "think, then decide". Read LIVE (a closure, not a stored Bool) so toggling the setting
+    /// takes effect on the very next step, not the next app launch. Default OFF — thinking makes the
+    /// agent slower, so it's the user's call (Settings → Agent → "Deeper reasoning").
+    private let deliberate: @Sendable () -> Bool
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
-                runner: CapabilityRunner = CapabilityRunner()) {
+                runner: CapabilityRunner = CapabilityRunner(),
+                deliberate: @escaping @Sendable () -> Bool = { false }) {
         self.engine = engine
         self.tools = tools
         self.maxSteps = max(1, maxSteps)
         self.runner = runner
+        self.deliberate = deliberate
     }
 
     public func run(
@@ -101,6 +107,17 @@ public struct AgentLoop: Sendable {
                 // the parse-nudge path below still covers them (mock, ported engines).
                 // On the FIRST step of an action goal, use the tool|plan-only grammar so a weak
                 // model can't bail with {"answer":"I can't…"} before even trying a tool.
+                // Opt-in deliberation: let the model reason BEFORE it commits (Qwen3 is tuned to
+                // think first, but the grammar forces `{` as the first decision token). The reasoning
+                // is woven into the transcript as a closed <think> block so the grammar-constrained
+                // decision that follows is informed by it. Best-effort — a failed/empty think pass
+                // never fails the step, it just falls through to the direct decode.
+                if deliberate(), let thought = try? await engine.complete(
+                    prompt: transcript + "<think>\n", options: Self.deliberationOptions) {
+                    let trimmed = thought.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { transcript += "<think>\n" + trimmed + "\n</think>\n" }
+                    if isCancelled() { return AgentRun(steps: steps, answer: nil, haltReason: .cancelled) }
+                }
                 let firstActionStep = goalNeedsAction && steps.isEmpty
                 reply = try await engine.complete(prompt: transcript,
                                                   options: firstActionStep ? Self.actionFirstOptions : Self.decisionOptions)
@@ -235,6 +252,14 @@ public struct AgentLoop: Sendable {
     /// First-action-step options: the tool|plan-only grammar (no `answer`) so a weak model must
     /// try a tool instead of bailing on step 1 of an action goal. Same Qwen3 recipe.
     static let actionFirstOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
+
+    /// The "think first" decode (opt-in). Qwen3's THINKING recipe (temp 0.6 / top_p 0.95 / top_k 20),
+    /// UNCONSTRAINED so the model can actually reason, but hard-capped at 256 tokens and stopped at
+    /// `</think>` (via StopSequenceScanner) so the reasoning can't run away and starve the decision.
+    /// The grammar-forced decode that follows sees the reasoning and commits. Qwen3-audit issue #1.
+    static let deliberationOptions = GenerationOptions(
+        maxTokens: 256, temperature: 0.6, topP: 0.95, topK: 20,
+        stopSequences: ["</think>"], gbnfGrammar: nil)
 
     /// The recovery hint for a mistyped tool name. Live-caught: the model called "mail.draft"
     /// for "mac.mail.draft", and the bare "No such tool" observation left it NOTHING to recover

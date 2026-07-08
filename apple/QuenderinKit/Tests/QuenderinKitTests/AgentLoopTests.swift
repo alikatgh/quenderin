@@ -344,4 +344,53 @@ final class AgentLoopTests: XCTestCase {
             XCTAssertNotNil(opts.gbnfGrammar, "agent decode stays grammar-constrained")
         }
     }
+
+    /// The deliberation (think) decode is the Qwen3 THINKING recipe, UNCONSTRAINED, hard-capped, and
+    /// stopped at </think> — the exact shape that lets the model reason without running away.
+    func testDeliberationOptionsAreBoundedThinkingRecipe() {
+        let o = AgentLoop.deliberationOptions
+        XCTAssertNil(o.gbnfGrammar, "the think pass must be unconstrained so the model can actually reason")
+        XCTAssertEqual(o.stopSequences, ["</think>"], "must stop at </think> so reasoning can't starve the decision")
+        XCTAssertEqual(o.maxTokens, 256, "hard cap keeps latency bounded")
+        XCTAssertEqual(o.temperature, 0.6, accuracy: 0.0001)
+        XCTAssertEqual(o.topK, 20)
+    }
+
+    /// An engine that records the prompts it's asked to complete, to prove the think pass fired.
+    private actor RecordingEngine: InferenceEngine {
+        private var replies: [String]
+        private(set) var prompts: [String] = []
+        private var loaded: String? = "rec"
+        init(replies: [String]) { self.replies = replies }
+        func loadedModelID() async -> String? { loaded }
+        func load(model: ModelEntry, at fileURL: URL) async throws { loaded = model.id }
+        func unload() async { loaded = nil }
+        func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+            prompts.append(prompt)
+            let next = replies.isEmpty ? #"{"answer":"done"}"# : replies.removeFirst()
+            return AsyncThrowingStream { c in c.yield(next); c.finish() }
+        }
+    }
+
+    func testDeliberationEnabledRunsAThinkPassAndFeedsItToTheDecision() async {
+        let engine = RecordingEngine(replies: ["I should just answer directly", #"{"answer":"42"}"#])
+        let loop = AgentLoop(engine: engine, tools: [], deliberate: { true })
+        let run = await loop.run(goal: "what is the answer")
+        let prompts = await engine.prompts
+        XCTAssertEqual(prompts.count, 2, "one think pass + one decision this step")
+        XCTAssertTrue(prompts[0].hasSuffix("<think>\n"), "first call is the think pass, seeded with <think>")
+        XCTAssertTrue(prompts[1].contains("<think>\nI should just answer directly\n</think>"),
+                      "the decision must see the reasoning woven into the transcript")
+        XCTAssertEqual(run.answer, "42")
+    }
+
+    func testDeliberationOffMakesExactlyOneDecodeWithNoThinkBlock() async {
+        let engine = RecordingEngine(replies: [#"{"answer":"42"}"#])
+        let loop = AgentLoop(engine: engine, tools: [], deliberate: { false })
+        let run = await loop.run(goal: "what is the answer")
+        let prompts = await engine.prompts
+        XCTAssertEqual(prompts.count, 1, "default off: a single decode, no think pass")
+        XCTAssertFalse(prompts[0].contains("<think>"))
+        XCTAssertEqual(run.answer, "42")
+    }
 }

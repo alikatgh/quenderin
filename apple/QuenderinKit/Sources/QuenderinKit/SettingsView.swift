@@ -119,6 +119,7 @@ public struct SettingsView: View {
                     appearancePreviewSection
                     appearanceSection
                 case .agent:
+                    reasoningSection
                     capabilitiesSection
                     agentActivitySection
                 case .storage:
@@ -143,6 +144,7 @@ public struct SettingsView: View {
             routingSection
             appearancePreviewSection
             appearanceSection
+            reasoningSection
             capabilitiesSection
             agentActivitySection
             storageSection
@@ -157,6 +159,19 @@ public struct SettingsView: View {
     // MARK: Sections (shared by the Mac panes and the phone list)
 
     @ObservedObject private var appSettings = AppSettings.shared
+    /// "Deeper reasoning" — the opt-in agent think-pass. UserDefaults-backed so AgentLoop reads it live.
+    @AppStorage(AgentDeliberation.defaultsKey) private var deliberationOn = false
+
+    private var reasoningSection: some View {
+        Section("Reasoning") {
+            Toggle("Deeper reasoning", isOn: $deliberationOn)
+            Text("Let the agent think through each step before it acts. It picks the right tool more "
+               + "often on tricky goals — but it's noticeably slower, because the model reasons "
+               + "on-device first. Off by default; changes apply to your next step.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
 
     private var routingSection: some View {
         Section("Routing") {
