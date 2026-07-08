@@ -452,9 +452,8 @@ public struct AgentView: View {
 }
 
 /// First-run guidance with an on-brand spark focal point (twin of Android's `AgentEmptyState`) so the
-/// screen reads as intentional, not blank. The examples are deliberately MULTI-STEP — each needs the
-/// agent to plan and chain more than one tool (convert → calculate, date → divide), showcasing agentic
-/// work instead of a single-shot calculation.
+/// screen reads as intentional, not blank. The examples are real "operate my computer" tasks — an
+/// agent's job is to DO the work on your machine (open apps, click, type, draft), not to calculate.
 private struct AgentEmptyState: View {
     let palette: QuenderinPalette
     let onPick: (String) -> Void
@@ -464,13 +463,23 @@ private struct AgentEmptyState: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 40))
                 .foregroundStyle(palette.primary)
-            Text("Give the agent a multi-step goal")
+            #if os(macOS)
+            Text("Tell the agent what to do on your Mac")
                 .font(.headline)
                 .multilineTextAlignment(.center)
-            Text("It plans, calls tools, and chains the results.")
+            Text("It opens apps, clicks, types, and works the tools for you — all on your machine.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            #else
+            Text("Give the agent a goal")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            Text("It uses on-device tools to plan and get it done — privately, on your iPhone.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            #endif
             AgentExampleList(palette: palette, header: nil, onPick: onPick)
                 .padding(.top, 8)
         }
@@ -565,11 +574,22 @@ private struct AgentExampleList: View {
     let header: String?
     let onPick: (String) -> Void
 
+    // Real tasks for the surface — an agent's job is to operate the device for you, not do
+    // arithmetic. macOS drives apps/browser/Mail (lead with the doc-open proven live this session);
+    // iOS can't drive other apps (sandbox), so it shows what it CAN do — read on-device context.
+    #if os(macOS)
     private static let examples = [
-        "Convert 5 miles to km, then take 20% of that",
-        "Days until 2027-01-01 — and how many weeks?",
-        "18% of 240, then convert that many km to miles",
+        "Open a new Google Doc in my browser",
+        "Add milk and eggs to my Reminders",
+        "Draft an email to alex@example.com about tomorrow's meeting",
     ]
+    #else
+    private static let examples = [
+        "What's on my clipboard right now?",
+        "What's on my calendar today?",
+        "How much battery and storage do I have left?",
+    ]
+    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
