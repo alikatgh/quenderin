@@ -161,6 +161,8 @@ public struct SettingsView: View {
     @ObservedObject private var appSettings = AppSettings.shared
     /// "Deeper reasoning" — the opt-in agent think-pass. UserDefaults-backed so AgentLoop reads it live.
     @AppStorage(AgentDeliberation.defaultsKey) private var deliberationOn = false
+    /// "Plan novel goals" — the opt-in dynamic-planning pass. UserDefaults-backed so AgentLoop reads it live.
+    @AppStorage(AgentDynamicPlanning.defaultsKey) private var dynamicPlanningOn = false
 
     private var reasoningSection: some View {
         Section("Reasoning") {
@@ -168,6 +170,13 @@ public struct SettingsView: View {
             Text("Let the agent think through each step before it acts. It picks the right tool more "
                + "often on tricky goals — but it's noticeably slower, because the model reasons "
                + "on-device first. Off by default; changes apply to your next step.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Toggle("Plan novel goals (experimental)", isOn: $dynamicPlanningOn)
+            Text("For a goal that doesn't match a built-in recipe, let the model draft its own "
+               + "step-by-step plan first — more capable on unusual multi-step tasks, but a small "
+               + "on-device model can plan imperfectly, so it's experimental and off by default. Your "
+               + "permissions and per-change approvals still apply to every step.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

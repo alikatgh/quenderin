@@ -9,6 +9,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   model actually did and fires confidently-wrong green checks (worse than no checklist). Make each
   step carry a `toolHint` and advance the cursor ONLY on an actually-executed tool-name match, and
   ADVANCE-ONLY (a miscount holds truthfully rather than telling the model to redo). (AgentRecipe cursor)
+- **An "advisory" plan is NOT free when it's WRONG — a tail-anchored wrong hint mis-steers a 4B, and
+  an advance-only cursor makes it repeat every turn.** "Purely advisory, can never make a run worse"
+  is false for anything injected into the transcript TAIL (where a small model attends most). A recipe
+  whose plan is human-vouched is safe; a MODEL-authored plan is often wrong, and then `nextStepLine`'s
+  "next use <wrong tool>" whisper hammers every iteration (the cursor holds when the model diverges),
+  while a raised `stepCap` funds MORE flailing. Fixes that make a wrong plan degrade to ≈no-plan: (1)
+  self-abandon — after N non-advancing turns, drop the plan hint and revert to the neutral goal
+  restatement; (2) never inflate the step cap for a model-guessed plan (plain `maxSteps`); (3) never
+  let a model-guessed denominator assert "done → answer" or nag guard #6; (4) ship it behind a flag,
+  OFF, and MEASURE plan quality on the real on-device model before any default-on. (dynamic planning)
 - **Assign-once published state isn't "live" — stream it.** `AgentSession.run` assigned `steps` only
   at the very END of the run, so the UI showed a blank spinner then a wall of steps — nothing ticked
   in real time. Pass the loop's `onStep`/`onProgress` closures (MainActor hop + run-token guard) to
@@ -424,6 +434,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-08 (dynamic planning — the model authors its own plan for the long tail, honestly) — "why
+  isn't it using the model's intelligence?": recipes are a 3-entry lookup, so every OTHER goal got no
+  plan. A design workflow red-teamed 3 approaches and found the naive fix REGRESSES a 4B: a wrong
+  model-plan's tool hint whispers into the transcript tail every turn (advance-only cursor holds) +
+  raised stepCap funds more flailing. Shipped the hardened hybrid (docs/audits/2026-07-08-dynamic-planning.md),
+  behind `AgentDynamicPlanning` (OFF): recipes stay the fast-path; a nil match on an action goal gets ONE
+  bounded plan decode (reuses the shipped gbnf, titles from tool.purpose so no label can lie) wrapped as
+  `AgentRecipe(isDynamic:true)`; plain stepCap, self-abandon to the neutral re-anchor after 2 stalls,
+  guard #6 skipped. macOS+iOS (shared QuenderinKit); zero twin-lock (parity green, 0 vector edits).
+  Lesson: an "advisory" plan injected at the tail is not free when it's wrong — measure on the real 4B.
 
 - 2026-07-08 (an Automation-permission block halted with the WRONG advice) — live-caught in the
   multi-step demo: a recipe stalled on an Automation-blocked Calendar (`mac.app.open` timed out on the

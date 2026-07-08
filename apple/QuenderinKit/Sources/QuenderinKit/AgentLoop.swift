@@ -95,11 +95,28 @@ public struct AgentLoop: Sendable {
         // nil recipe is EXACTLY today's behavior. The cap only ever RISES, so a longer chain isn't
         // starved by nudges. The cursor advances on a real executed tool-name match — a green check
         // can never fire on the wrong step.
-        let recipe = AgentRecipe.match(goal: goal, availableTools: tools.map(\.name))
+        var recipe = AgentRecipe.match(goal: goal, availableTools: tools.map(\.name))
+        // DYNAMIC PLANNING (opt-in, behind a flag): when NO curated recipe covers an action goal, let the
+        // model author its OWN tool-name chain for the long tail — a real use of its intelligence, drawn as
+        // the SAME honest checklist (a tick still can't fire on a step that didn't really run). One bounded
+        // decode, authored once, never re-planned under failure; a weak/garbled plan → nil → exactly today's
+        // reactive loop. Gated to action goals with ≥2 tools so factual/chat goals pay zero added latency.
+        if recipe == nil, goalNeedsAction, tools.count >= 2, AgentDynamicPlanning.isEnabled {
+            if isCancelled() { return AgentRun(steps: steps, answer: nil, haltReason: .cancelled) }
+            recipe = await planDynamically(goal: goal)
+            if isCancelled() { return AgentRun(steps: steps, answer: nil, haltReason: .cancelled) }
+        }
         if let recipe { transcript += "\n" + recipe.skeleton() }
-        let stepCap = recipe.map { max(maxSteps, $0.steps.count + 2) } ?? maxSteps
+        // A curated recipe earns +2 slack (its chain is human-vouched); a DYNAMIC plan does NOT — its
+        // length is a model guess, so it runs on the plain cap, identical to today's nil-recipe path. This
+        // removes the "burn MORE budget flailing on a wrong plan" half of the wrong-plan regression (H1).
+        let stepCap = recipe.map { $0.isDynamic ? maxSteps : max(maxSteps, $0.steps.count + 2) } ?? maxSteps
         var recipeCursor = 0
         var nudgedForIncompleteRecipe = false
+        // H2: consecutive turns a DYNAMIC plan's cursor failed to advance (the model diverged from the
+        // plan). At ≥2 the re-anchor self-demotes to the neutral goal restatement so a WRONG plan can't
+        // keep whispering its wrong tool into the tail the model attends to most.
+        var dynamicStalls = 0
         onProgress(recipe, recipeCursor)   // publish now so the checklist DRAWS before the first decode
 
         func record(_ step: AgentStep) {
@@ -125,7 +142,11 @@ public struct AgentLoop: Sendable {
             // attends most to the tail, but the goal was written once at the TOP and drowns under the
             // growing observation log (the named root cause of multi-step drift). Zero extra decode;
             // helps EVERY goal — recipe-guided (the next step) or generic (the goal + actions-so-far).
-            let reanchor = recipe?.nextStepLine(cursor: recipeCursor)
+            // A DYNAMIC plan the model has diverged from twice self-demotes to the neutral goal
+            // restatement (H2): a wrong plan must not hammer its wrong tool hint into the tail every turn —
+            // after 2 non-advancing turns it steers worse than no plan, so fall back to the nil-recipe line.
+            let dynamicAbandoned = recipe?.isDynamic == true && dynamicStalls >= 2
+            let reanchor = (dynamicAbandoned ? nil : recipe?.nextStepLine(cursor: recipeCursor))
                 ?? "GOAL (still): \(goal). Actions taken so far: \(toolAttempts). Decide the single best next action."
             transcript += "\n" + reanchor
             let reply: String
@@ -190,8 +211,10 @@ public struct AgentLoop: Sendable {
                 }
                 // Guard #6 (only possible with a recipe's honest denominator): don't accept "done"
                 // after only a PARTIAL subset of the steps ran. Nudge ONCE with the next step, then
-                // allow the answer on retry — nudges once then yields, never halts.
-                if let recipe, recipeCursor < recipe.steps.count, !nudgedForIncompleteRecipe {
+                // allow the answer on retry — nudges once then yields, never halts. Skipped for a DYNAMIC
+                // plan (H3): its length is a model guess, so "partial" is NOT evidence the goal is unmet —
+                // it must not nag the model into a spurious extra step on a run that already succeeded.
+                if let recipe, !recipe.isDynamic, recipeCursor < recipe.steps.count, !nudgedForIncompleteRecipe {
                     nudgedForIncompleteRecipe = true
                     transcript += "\nNot finished yet — \(recipe.nextStepLine(cursor: recipeCursor)) Do that before answering."
                     continue
@@ -221,6 +244,7 @@ public struct AgentLoop: Sendable {
             }
             stall = 0
 
+            let cursorBefore = recipeCursor   // H2: did this turn's execution advance a dynamic plan?
             let observation: String
             switch decision {
             case .finalAnswer:
@@ -269,6 +293,11 @@ public struct AgentLoop: Sendable {
                 transcript += "\nProposed plan [\(described)] → \(observation)"
             }
 
+            // H2: for a dynamic plan, count a turn whose execution did NOT move the cursor as a stall;
+            // any real advance resets it. Two stalls in a row abandons the plan's tool hints (above).
+            if recipe?.isDynamic == true {
+                dynamicStalls = recipeCursor > cursorBefore ? 0 : dynamicStalls + 1
+            }
             record(AgentStep(decision: decision, observation: observation))
             prevSig = sig
             lastObs = observation
@@ -296,6 +325,41 @@ public struct AgentLoop: Sendable {
     /// First-action-step options: the tool|plan-only grammar (no `answer`) so a weak model must
     /// try a tool instead of bailing on step 1 of an action goal. Same Qwen3 recipe.
     static let actionFirstOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
+
+    /// DYNAMIC PLANNING (opt-in): one bounded decode asks the model to author a tool-name chain for a
+    /// goal no curated recipe covers, wrapped into a dynamic `AgentRecipe` that reuses the honest cursor.
+    /// The generative burden is deliberately narrowed to the ONE thing a 4B is least-bad at — picking tool
+    /// NAMES from the registered list (it does exactly that reactively every turn). The plan is ADVISORY:
+    /// it becomes the checklist skeleton + re-anchor hint; the model still decides each real action, and a
+    /// tick fires only on a real executed-tool match. Best-effort — any decode/parse/validation failure
+    /// returns nil → the loop runs exactly as it does today. (docs/audits/2026-07-08-dynamic-planning.md)
+    private func planDynamically(goal: String) async -> AgentRecipe? {
+        let toolList = tools.map { "- \($0.name): \($0.purpose)" }.joined(separator: "\n")
+        let prompt = """
+        Plan how to accomplish this goal on the user's computer, as an ORDERED list of tool calls.
+        Goal: \(goal)
+        Available tools:
+        \(toolList)
+        Reply with ONE JSON object: {"plan":[{"tool":"<name>","input":"<text>"},…]} — 2 to \(maxSteps) steps, \
+        each using a tool from the list above, in the order they should run. Pick only tools that are \
+        actually needed for THIS goal; do not invent tools or add filler steps.
+        """
+        guard let reply = try? await engine.complete(prompt: prompt, options: Self.planningOptions),
+              let decision = AgentDecisionParser.parse(reply) else { return nil }
+        let calls: [ToolCall]
+        switch decision {
+        case .plan(let c):                calls = c
+        case .useTool(let name, let input): calls = [ToolCall(name: name, input: input)]  // a lone tool → 1-step plan (parsePlan then rejects <2)
+        case .finalAnswer:                return nil   // the model refused to plan — fall back to the reactive loop
+        }
+        return AgentRecipe.parsePlan(calls, tools: tools, maxSteps: maxSteps)
+    }
+
+    /// The planning decode: Qwen3's non-thinking recipe (top_p 0.8 / top_k 20) + the SHIPPED decision
+    /// grammar (its root already permits the `plan` production), hard-capped so a runaway plan can't stall
+    /// the run. Reusing `AgentDecisionGrammar.gbnf` means zero new grammar surface and zero twin-lock.
+    static let planningOptions = GenerationOptions(
+        maxTokens: 192, topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnf)
 
     /// The "think first" decode (opt-in). Qwen3's THINKING recipe (temp 0.6 / top_p 0.95 / top_k 20),
     /// UNCONSTRAINED so the model can actually reason, but hard-capped at 256 tokens and stopped at

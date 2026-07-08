@@ -13,6 +13,13 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
     public let title: String
     public let exampleGoal: String
     public let steps: [Step]
+    /// True when this recipe was AUTHORED BY THE MODEL for this goal (dynamic planning), not one of the
+    /// curated `.all`. A dynamic plan's step count is a model GUESS, so it earns weaker treatment than a
+    /// human-vouched recipe: plain step cap (no +2 slack), an abandonable re-anchor that self-demotes to
+    /// the neutral goal restatement when the model diverges, no "done → answer" assertion, and no guard-#6
+    /// nag on a legitimate answer. The honest cursor itself is IDENTICAL — a tick still fires only on a
+    /// real executed-tool match. (docs/audits/2026-07-08-dynamic-planning.md)
+    public let isDynamic: Bool
 
     public struct Step: Sendable, Equatable {
         public let title: String
@@ -25,8 +32,8 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
         }
     }
 
-    public init(title: String, exampleGoal: String, steps: [Step]) {
-        self.title = title; self.exampleGoal = exampleGoal; self.steps = steps
+    public init(title: String, exampleGoal: String, steps: [Step], isDynamic: Bool = false) {
+        self.title = title; self.exampleGoal = exampleGoal; self.steps = steps; self.isDynamic = isDynamic
     }
 
     /// The 3 shipped recipes — deliberately the toolkit's independently-hardened, reliable chains.
@@ -72,6 +79,40 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
         return nil
     }
 
+    /// Build a DYNAMIC recipe from a model-authored plan (dynamic planning). Keeps only calls to
+    /// REGISTERED tools — spelled exactly as `execute(name:)` looks them up, so the cursor's
+    /// `toolHint == executedName` match can actually fire — collapses consecutive duplicate tools
+    /// (1 step == 1 tool, the desync mitigation), clamps a runaway plan to `maxSteps`, and rejects a
+    /// plan of fewer than 2 real steps (nothing multi-step to draw → the caller falls back to today's
+    /// reactive loop). Every step's title/guidance is synthesized from the tool's OWN `purpose` — the
+    /// model supplies only tool NAMES (a `ToolCall` has no label field), so a green tick can never carry
+    /// a model-authored claim that desyncs from what ran. Pure + deterministic.
+    public static func parsePlan(_ calls: [ToolCall], tools: [AgentTool], maxSteps: Int) -> AgentRecipe? {
+        let byName = Dictionary(tools.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        var steps: [Step] = []
+        for call in calls {
+            guard let tool = byName[call.name] else { continue }        // drop hallucinated tool names
+            if steps.last?.toolHint == call.name { continue }           // collapse consecutive duplicates
+            steps.append(Step(title: titleFromPurpose(tool.purpose, name: tool.name),
+                              toolHint: tool.name, guidance: tool.purpose))
+            if steps.count >= max(1, maxSteps) { break }                // clamp a runaway plan
+        }
+        guard steps.count >= 2 else { return nil }
+        return AgentRecipe(title: "Plan", exampleGoal: "", steps: steps, isDynamic: true)
+    }
+
+    /// A short, human step title distilled from a tool's `purpose` (its first sentence/clause), capped so
+    /// the checklist row stays tidy. Deterministic — no model text enters the label. Falls back to the
+    /// tool name for an empty/odd purpose.
+    static func titleFromPurpose(_ purpose: String, name: String) -> String {
+        let firstClause = purpose.split(whereSeparator: { ".!?".contains($0) }).first.map(String.init) ?? purpose
+        let trimmed = firstClause.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmed.isEmpty ? name : trimmed
+        return title.count > 60
+            ? String(title.prefix(57)).trimmingCharacters(in: .whitespaces) + "…"
+            : title
+    }
+
     private static let patterns: [(AgentRecipe, String)] = [
         // "prep note for today", "morning brief", "note … today/calendar" — but not a bare "what's on my calendar"
         (all[0], #"(prep|morning|daily)\s*(note|brief)|(note|brief).{0,20}(for )?(today|this morning)|summar.{0,20}(today|calendar).{0,20}note"#),
@@ -97,10 +138,24 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
     /// cursor holds truthfully instead of telling the model to repeat a step it already did.
     public func nextStepLine(cursor: Int) -> String {
         guard cursor < steps.count else {
-            return "Recipe \"\(title)\": all \(steps.count) steps are done. Give the final answer now."
+            // H4: a curated recipe's chain is human-vouched, so "all done → answer" is safe. A DYNAMIC
+            // plan's length is a model GUESS, so a fully-green plan is NOT proof the goal is met — ask the
+            // model to confirm before answering, never push a premature "give the final answer now".
+            return isDynamic
+                ? "The planned steps have run. Confirm the goal is actually met before answering — if not, continue with the best next action."
+                : "Recipe \"\(title)\": all \(steps.count) steps are done. Give the final answer now."
         }
         let done = cursor == 0 ? "none yet" : (cursor == 1 ? "step 1" : "steps 1–\(cursor)")
         let next = steps[cursor]
+        if isDynamic {
+            // H2/H4: phrase a dynamic suggestion as ABANDONABLE — the plan may be wrong, so the model must
+            // stay free to pick a better tool. (After 2 non-advancing turns the loop drops this line
+            // entirely for the neutral goal restatement — see AgentLoop's `dynamicStalls`.) No firm
+            // "suggested tool" whisper, no purpose echo — just a soft hint plus the real decision ask.
+            return "Plan so far: \(done) of \(steps.count) done. Likely next — \(next.title) "
+                 + "(try \(next.toolHint); if a different tool clearly fits better, use that instead). "
+                 + "Decide the single best next action."
+        }
         var line = "Recipe \"\(title)\" (\(steps.count) steps). Done: \(done). "
         line += "Next is step \(cursor + 1) — \(next.title) (suggested tool: \(next.toolHint))."
         if let g = next.guidance { line += " \(g)" }

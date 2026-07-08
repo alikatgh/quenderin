@@ -472,10 +472,20 @@ private struct AgentRecipeChecklist: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "checklist").font(.caption).foregroundStyle(palette.primary)
-                Text(recipe.title).font(.subheadline.weight(.semibold)).foregroundStyle(palette.onSurface)
+                // A DYNAMIC plan is the agent's OWN proposal (its denominator is a model estimate), so it
+                // reads as "Plan · the agent's plan" with a completed count — never a vouched "Step N of M"
+                // track a fully-green run could mistake for a guaranteed goal-achieving chain.
+                Image(systemName: recipe.isDynamic ? "wand.and.stars" : "checklist")
+                    .font(.caption).foregroundStyle(palette.primary)
+                Text(recipe.isDynamic ? "Plan" : recipe.title)
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(palette.onSurface)
+                if recipe.isDynamic {
+                    Text("· the agent's plan").font(.caption2).foregroundStyle(palette.onSurfaceVariant)
+                }
                 Spacer()
-                Text("Step \(min(cursor + 1, recipe.steps.count)) of \(recipe.steps.count)")
+                Text(recipe.isDynamic
+                     ? "\(min(cursor, recipe.steps.count)) of \(recipe.steps.count) done"
+                     : "Step \(min(cursor + 1, recipe.steps.count)) of \(recipe.steps.count)")
                     .font(.caption2.monospacedDigit()).foregroundStyle(palette.onSurfaceVariant)
             }
             ForEach(Array(recipe.steps.enumerated()), id: \.offset) { i, step in

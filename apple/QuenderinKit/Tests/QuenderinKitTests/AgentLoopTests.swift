@@ -481,4 +481,130 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertEqual(run.haltReason, .needsPermission,
                        "an Automation-permission block must point the user at the permission, not 'try rephrasing'")
     }
+
+    // MARK: dynamic planning (opt-in) — the model authors its own plan for the long tail, honestly
+
+    /// A goal that reads as an action but matches NO curated recipe — the exact population dynamic
+    /// planning targets. `fs.list` + `fs.move` don't complete any curated recipe, so `match` returns nil.
+    private static let novelGoal = "organize the files in my downloads folder"
+
+    /// Happy path: with the flag ON and no recipe match, the model authors a plan (first decode), and the
+    /// live cursor then ticks ONLY on the real matching tools, in order, to completion.
+    func testDynamicPlanTicksCursorOnRealMatchesAndCompletes() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"plan":[{"tool":"fs.list","input":"downloads"},{"tool":"fs.move","input":"a to sub"}]}"#,  // plan decode
+            #"{"tool":"fs.list","input":"downloads"}"#,
+            #"{"tool":"fs.move","input":"a to sub"}"#,
+            #"{"answer":"Organized your downloads."}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "3 files"),
+                                  FakeTool(name: "fs.move", reply: "Moved.")]
+        let rec = CursorRec()
+        let run = await AgentLoop(engine: engine, tools: tools).run(
+            goal: Self.novelGoal, onProgress: { r, c in if r?.isDynamic == true { rec.add(c) } })
+        XCTAssertEqual(run.answer, "Organized your downloads.")
+        XCTAssertEqual(rec.v.last, 2, "both model-planned steps ticked off, one per real matching tool")
+        let prompts = await engine.prompts
+        XCTAssertTrue(prompts[0].contains("Plan how to accomplish"), "the first decode is the plan-authoring pass")
+    }
+
+    /// THE LOAD-BEARING REGRESSION TEST: when the authored plan is WRONG (the model reactively runs
+    /// other tools), the plan's tool hint must NOT keep whispering into the tail every turn. After two
+    /// non-advancing turns the re-anchor self-demotes to the neutral goal restatement, and the run still
+    /// reaches an answer — so a wrong plan degrades to ≈ today's nil-recipe behavior, never worse.
+    func testWrongDynamicPlanSelfAbandonsToNeutralReAnchor() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"plan":[{"tool":"fs.list","input":""},{"tool":"fs.move","input":""}]}"#,  // [0] plan
+            #"{"tool":"other.a","input":"1"}"#,   // [1] iter1: diverges, no advance → stalls=1
+            #"{"tool":"other.b","input":"2"}"#,   // [2] iter2: diverges, no advance → stalls=2
+            #"{"tool":"other.a","input":"3"}"#,   // [3] iter3: re-anchor must be NEUTRAL now
+            #"{"answer":"done"}"#,                 // [4] iter4
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "x"), FakeTool(name: "fs.move", reply: "y"),
+                                  FakeTool(name: "other.a", reply: "a"), FakeTool(name: "other.b", reply: "b")]
+        let run = await AgentLoop(engine: engine, tools: tools).run(goal: Self.novelGoal)
+        XCTAssertEqual(run.haltReason, .answered, "a wrong plan must still let the run finish, not trap it")
+        let prompts = await engine.prompts
+        // Early on (stalls < 2) the re-anchor is the abandonable dynamic hint, NOT the neutral line.
+        XCTAssertTrue(prompts[1].contains("Likely next"), "the dynamic hint guides while the plan still tracks")
+        XCTAssertFalse(prompts[1].contains("GOAL (still): \(Self.novelGoal)"),
+                       "the neutral fallback must not fire before the plan has demonstrably failed")
+        // After two non-advancing turns the tail reverts to the neutral goal restatement (self-abandon).
+        XCTAssertTrue(prompts[3].contains("GOAL (still): \(Self.novelGoal)"),
+                      "a twice-diverged dynamic plan must stop whispering its wrong tool and restate the goal")
+    }
+
+    /// A dynamic step whose observation is a real FAILURE does not tick the cursor (honest withholding),
+    /// exactly as a curated recipe.
+    func testDynamicPlanStepFailureDoesNotTickCursor() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"plan":[{"tool":"fs.list","input":""},{"tool":"fs.move","input":""}]}"#,
+            #"{"tool":"fs.list","input":""}"#,   // fails
+            #"{"answer":"giving up"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "Tool error: boom"),
+                                  FakeTool(name: "fs.move", reply: "y")]
+        let rec = CursorRec()
+        _ = await AgentLoop(engine: engine, tools: tools).run(
+            goal: Self.novelGoal, onProgress: { r, c in if r?.isDynamic == true { rec.add(c) } })
+        XCTAssertEqual(rec.v.max() ?? 0, 0, "a failed dynamic step must never tick its row off")
+    }
+
+    /// H1: a dynamic plan runs on the PLAIN step cap — no +2 slack. With maxSteps=3 and a model that
+    /// never answers, the loop makes exactly 1 plan decode + 3 step decodes, then halts .maxSteps.
+    func testDynamicPlanUsesPlainStepCapNoInflation() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"plan":[{"tool":"fs.list","input":""},{"tool":"fs.move","input":""}]}"#,
+            #"{"tool":"noop","input":"1"}"#, #"{"tool":"noop","input":"2"}"#, #"{"tool":"noop","input":"3"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "x"), FakeTool(name: "fs.move", reply: "y"),
+                                  FakeTool(name: "noop", reply: "ok")]
+        let run = await AgentLoop(engine: engine, tools: tools, maxSteps: 3).run(goal: Self.novelGoal)
+        XCTAssertEqual(run.haltReason, .maxSteps)
+        let prompts = await engine.prompts
+        XCTAssertEqual(prompts.count, 4, "1 plan decode + exactly maxSteps(3) step decodes — no +2 inflation")
+    }
+
+    /// The flag GATES the plan decode: OFF pays zero added latency (no plan-authoring pass), ON adds
+    /// exactly one. Same scenario both ways; the only difference is the plan decode.
+    func testFlagGatesTheDynamicPlanDecode() async {
+        let replies = [#"{"tool":"fs.list","input":"a"}"#, #"{"answer":"done"}"#]
+        let tools: [AgentTool] = [FakeTool(name: "fs.list", reply: "x"), FakeTool(name: "fs.move", reply: "y")]
+
+        // OFF (default): no plan decode.
+        let offEngine = RecordingEngine(replies: replies)
+        _ = await AgentLoop(engine: offEngine, tools: tools).run(goal: Self.novelGoal)
+        let offPrompts = await offEngine.prompts
+        XCTAssertEqual(offPrompts.count, 2, "flag off: exactly the reactive number of decodes")
+        XCTAssertFalse(offPrompts[0].contains("Plan how to accomplish"), "flag off must not author a plan")
+
+        // ON: one extra plan decode up front.
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let onEngine = RecordingEngine(replies: [#"{"plan":[{"tool":"fs.list","input":""},{"tool":"fs.move","input":""}]}"#] + replies)
+        _ = await AgentLoop(engine: onEngine, tools: tools).run(goal: Self.novelGoal)
+        let onPrompts = await onEngine.prompts
+        XCTAssertEqual(onPrompts.count, 3, "flag on: one plan decode + the reactive decodes")
+        XCTAssertTrue(onPrompts[0].contains("Plan how to accomplish"))
+    }
+
+    /// A matched CURATED recipe short-circuits dynamic planning even with the flag on — the fast-path
+    /// pays zero planning latency.
+    func testStaticRecipeMatchSkipsDynamicPlanning() async {
+        AgentDynamicPlanning.setEnabled(true); defer { AgentDynamicPlanning.setEnabled(false) }
+        let engine = RecordingEngine(replies: [
+            #"{"tool":"mac.calendar.today","input":""}"#,
+            #"{"tool":"mac.notes.create","input":"Prep"}"#,
+            #"{"answer":"done"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "mac.calendar.today", reply: "2 events"),
+                                  FakeTool(name: "mac.notes.create", reply: "Created.")]
+        _ = await AgentLoop(engine: engine, tools: tools).run(goal: "Make me a prep note for today")
+        let prompts = await engine.prompts
+        XCTAssertEqual(prompts.count, 3, "a curated match must not add a plan decode")
+        XCTAssertFalse(prompts[0].contains("Plan how to accomplish"), "the curated fast-path never authors a plan")
+    }
 }
