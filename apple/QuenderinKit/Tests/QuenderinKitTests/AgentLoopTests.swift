@@ -463,4 +463,22 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertFalse(AgentLoop.isFailureObservation("No events on your calendar today."), "a valid empty result is NOT a failure")
         XCTAssertFalse(AgentLoop.isFailureObservation("Created note \"Ideas\"."))
     }
+
+    func testIsSystemPermissionBlockDetectsAutomationAndAccessibility() {
+        XCTAssertTrue(AgentLoop.isSystemPermissionBlock("Timed out — enable it in System Settings \u{203A} Privacy & Security \u{203A} Automation, then try again."))
+        XCTAssertTrue(AgentLoop.isSystemPermissionBlock("macOS blocked reading the screen — grant Accessibility in System Settings \u{203A} Privacy & Security \u{203A} Accessibility."))
+        XCTAssertFalse(AgentLoop.isSystemPermissionBlock("No events today."))
+        XCTAssertFalse(AgentLoop.isSystemPermissionBlock("Needs your permission first: open a page"))
+    }
+
+    /// The demo's honesty gap: a run blocked by macOS Automation permission must halt .needsPermission
+    /// ("grant the permission"), NOT .stalled ("try rephrasing" — which can't fix a permission).
+    func testAutomationBlockHaltsAsNeedsPermissionNotStalled() async {
+        let autoMsg = "Timed out trying to open \"Calendar\". macOS may be waiting — enable it in System Settings \u{203A} Privacy & Security \u{203A} Automation, then try again."
+        let engine = RecordingEngine(replies: Array(repeating: #"{"tool":"mac.app.open","input":"Calendar"}"#, count: 3))
+        let tools: [AgentTool] = [FakeTool(name: "mac.app.open", reply: autoMsg)]
+        let run = await AgentLoop(engine: engine, tools: tools).run(goal: "open Calendar")
+        XCTAssertEqual(run.haltReason, .needsPermission,
+                       "an Automation-permission block must point the user at the permission, not 'try rephrasing'")
+    }
 }

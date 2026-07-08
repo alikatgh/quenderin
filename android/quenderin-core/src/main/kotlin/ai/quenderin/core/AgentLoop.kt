@@ -22,7 +22,7 @@ val AgentRun.HaltReason.userMessage: String?
         AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
         AgentRun.HaltReason.STALLED -> "The agent got stuck repeating the same step. Try rephrasing the goal."
         AgentRun.HaltReason.CANCELLED -> "Stopped — you halted the agent."
-        AgentRun.HaltReason.NEEDS_PERMISSION -> "The agent needs your permission for the tools it planned — nothing was done yet. Grant the capability named in the run log (Settings → Agent), then run the goal again."
+        AgentRun.HaltReason.NEEDS_PERMISSION -> "The agent needs a permission it doesn't have yet — nothing was completed. The run log above shows exactly which one and where to grant it (Quenderin Settings → Agent, or macOS System Settings › Privacy). Grant it, then run the goal again."
     }
 
 /**
@@ -135,7 +135,7 @@ class AgentLoop(
                     // the right advice, not "try rephrasing". Checking the STALLING observation
                     // (not an all-attempts count) means an unrelated earlier success (a stray
                     // scratchpad call) can't mask it (live-caught on the Mac twin).
-                    val reason = if (isPermissionRefusal(lastObs))
+                    val reason = if (isPermissionRefusal(lastObs) || isSystemPermissionBlock(lastObs))
                         AgentRun.HaltReason.NEEDS_PERMISSION else AgentRun.HaltReason.STALLED
                     return AgentRun(steps, null, reason)
                 }
@@ -188,7 +188,7 @@ class AgentLoop(
         }
         // Same precedence at the step cap: if the run ended on a permission refusal, or every
         // attempt was refused, the blocker is the missing grant — say that, not "too complex".
-        if (isPermissionRefusal(lastObs) || (toolAttempts > 0 && refusedAttempts == toolAttempts)) {
+        if (isPermissionRefusal(lastObs) || isSystemPermissionBlock(lastObs) || (toolAttempts > 0 && refusedAttempts == toolAttempts)) {
             return AgentRun(steps, null, AgentRun.HaltReason.NEEDS_PERMISSION)
         }
         return AgentRun(steps, null, AgentRun.HaltReason.MAX_STEPS)
@@ -214,6 +214,17 @@ class AgentLoop(
             observation.startsWith("Needs your permission first:") ||
                 observation.startsWith("You declined:") ||
                 observation.startsWith("This action changes files and needs your per-run approval")
+
+        /**
+         * True when an observation is a macOS SYSTEM-permission block (Automation / Accessibility).
+         * The fix is a one-time grant in System Settings › Privacy — not "rephrase" and not the app's
+         * own consent toggle — so the halt is NEEDS_PERMISSION, not STALLED. Kept in lockstep with the
+         * Swift twin. (No macOS tools exist on Android, so it never fires here, but the halt logic
+         * stays byte-identical across platforms.)
+         */
+        fun isSystemPermissionBlock(observation: String): Boolean =
+            observation.contains("Privacy & Security › Automation") ||
+                observation.contains("Privacy & Security › Accessibility")
 
         /**
          * The recovery hint for a mistyped tool name. Live-caught on the Mac twin: the model

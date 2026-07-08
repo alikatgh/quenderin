@@ -27,7 +27,7 @@ public extension AgentRun.HaltReason {
         case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
         case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
         case .cancelled: return "Stopped — you halted the agent."
-        case .needsPermission: return "The agent needs your permission for the tools it planned — nothing was done yet. Grant the capability named in the run log (Settings → Agent), then run the goal again."
+        case .needsPermission: return "The agent needs a permission it doesn't have yet — nothing was completed. The run log above shows exactly which one and where to grant it (Quenderin Settings → Agent, or macOS System Settings › Privacy). Grant it, then run the goal again."
         }
     }
 }
@@ -213,7 +213,7 @@ public struct AgentLoop: Sendable {
                     // success — e.g. a stray calculator scratchpad call — can't mask it
                     // (live-caught: openURL refused, but calculator(1) first → mislabeled .stalled).
                     let reason: AgentRun.HaltReason =
-                        Self.isPermissionRefusal(lastObs) ? .needsPermission : .stalled
+                        (Self.isPermissionRefusal(lastObs) || Self.isSystemPermissionBlock(lastObs)) ? .needsPermission : .stalled
                     return AgentRun(steps: steps, answer: nil, haltReason: reason)
                 }
                 transcript += "\nYou already ran \(sig) and got: \(lastObs) — do something different, or reply {\"answer\":\"…\"} if the task is done."
@@ -274,9 +274,11 @@ public struct AgentLoop: Sendable {
             lastObs = observation
         }
 
-        // Same precedence at the step cap: if the run ended on a permission refusal, or every
-        // attempt was refused, the blocker is the missing grant — say that, not "too complex".
-        if Self.isPermissionRefusal(lastObs) || (toolAttempts > 0 && refusedAttempts == toolAttempts) {
+        // Same precedence at the step cap: if the run ended on a permission refusal, a macOS
+        // system-permission block, or every attempt was refused, the blocker is a missing grant —
+        // say that, not "too complex".
+        if Self.isPermissionRefusal(lastObs) || Self.isSystemPermissionBlock(lastObs)
+            || (toolAttempts > 0 && refusedAttempts == toolAttempts) {
             return AgentRun(steps: steps, answer: nil, haltReason: .needsPermission)
         }
         return AgentRun(steps: steps, answer: nil, haltReason: .maxSteps)
@@ -365,6 +367,16 @@ public struct AgentLoop: Sendable {
             if observation.contains(marker) { return true }
         }
         return false
+    }
+
+    /// True when an observation is a macOS SYSTEM-permission block (Automation / Accessibility). The
+    /// fix is a one-time grant in System Settings › Privacy — NOT "try rephrasing", and NOT Quenderin's
+    /// own consent toggle — so the halt must be `.needsPermission`, not `.stalled`. Keyed on our own
+    /// stable `describeMacError` strings. (Live-caught: a recipe stalled on an Automation-blocked
+    /// Calendar and told the user to "rephrase the goal", which can't fix a permission.)
+    static func isSystemPermissionBlock(_ observation: String) -> Bool {
+        observation.contains("Privacy & Security › Automation") ||
+        observation.contains("Privacy & Security › Accessibility")
     }
 
     /// A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing.

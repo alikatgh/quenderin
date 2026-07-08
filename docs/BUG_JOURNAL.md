@@ -425,6 +425,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (an Automation-permission block halted with the WRONG advice) — live-caught in the
+  multi-step demo: a recipe stalled on an Automation-blocked Calendar (`mac.app.open` timed out on the
+  permission prompt), and the halt banner said "got stuck repeating the same step — try rephrasing the
+  goal". Rephrasing can't grant a permission. Fix: `isSystemPermissionBlock` detects the
+  Automation/Accessibility guidance in the observation and routes the stall/cap halt to
+  `.needsPermission`; that message now points to the run log (which names the exact fix — Quenderin
+  Settings OR System Settings › Privacy). Twinned to Kotlin (no-op on Android). Lesson: a halt reason
+  must name the ACTUAL blocker — "try rephrasing" on a permission wall sends the user in circles.
+
 - 2026-07-08 (world-class multi-step: honest live checklist + goal re-anchor) — the agent read like a
   calculator: no upfront plan, no "step N of M", a blank spinner then a JSON wall, and a 4B that drifts
   because the goal is written ONCE at the transcript top (a 4B attends to the tail). Shipped a
