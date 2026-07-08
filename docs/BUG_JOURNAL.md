@@ -15,6 +15,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   the plaintext in an ephemeral in-memory draft that is discarded on save; migrate any legacy plaintext
   once on load, with the reader accepting both formats so no one is locked out mid-migration. (Q-530)
 
+- **A live screenshot can show STALE behavior — `swift test` rebuilds the library, not the app.**
+  After changing QuenderinKit source, `swift test` recompiles the package + tests, but the running
+  `.app` is whatever `xcodebuild` LAST produced. Verifying UI via a screenshot means rebuilding the
+  app FIRST — else you "confirm" old code. Live-caught: the model-briefing card recommended a bigger
+  Gemma from a pre-fix binary while the tests already proved the fixed Qwen recommendation; only a
+  rebuild surfaced the correct card. Rebuild the app before trusting a post-change screenshot.
 - **A conservative safety blocklist refuses legitimate UI labels.** `mac.ui.*` re-checks the RESOLVED
   element/menu label against `SafetyBlocklist` (defense in depth) — so the ubiquitous **Format** menu
   trips `"format"`, a **Delete** button trips `"delete"`, a **Buy** button trips `"buy"`. The action is

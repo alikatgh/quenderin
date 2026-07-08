@@ -119,6 +119,11 @@ public struct AgentView: View {
                         }
                         runActions(palette: p, showShare: false)
                     } else if session.steps.isEmpty, !session.isRunning {
+                        // Educate first: our users aren't computer-native, so before "give me a goal"
+                        // we tell them — in plain words — how good THEIR model is at being an agent
+                        // and what their hardware can run. Knowing the model's limits up front is the
+                        // difference between "it's broken" and "ah, I should phrase this more simply".
+                        AgentModelBriefingCard(palette: p)
                         // First run: show what the agent can do instead of a blank screen.
                         // Tapping an example drops it into the field, ready to edit or run.
                         AgentEmptyState(palette: p) { example in goal = example }
@@ -471,6 +476,84 @@ private struct AgentEmptyState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
+    }
+}
+
+/// Educates the user, on open, about the model they're running: how good it is as an AGENT, what
+/// their hardware can run, and that it all stays on-device. Reads the live active model + RAM and
+/// renders `AgentModelGuide.briefing` — the judgment lives in that pure, tested function, not here.
+private struct AgentModelBriefingCard: View {
+    let palette: QuenderinPalette
+
+    private var briefing: AgentModelBriefing {
+        let id = UserDefaults.standard.string(forKey: OnboardingModel.activeModelDefaultsKey)
+        #if os(macOS)
+        let noun = "Mac"
+        #else
+        let noun = "iPhone"
+        #endif
+        return AgentModelGuide.briefing(activeModelID: id,
+                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        deviceNoun: noun)
+    }
+
+    var body: some View {
+        let b = briefing
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "cpu").font(.subheadline).foregroundStyle(palette.primary)
+                Text(b.modelLabel).font(.subheadline.weight(.semibold)).foregroundStyle(palette.onSurface)
+                Spacer()
+                AptitudeBadge(aptitude: b.aptitude, palette: palette)
+            }
+            Text(b.aptitudeDetail).font(.caption).foregroundStyle(palette.onSurfaceVariant)
+            Divider().overlay(palette.onSurfaceVariant.opacity(0.15))
+            Label { Text(b.hardwareLine).font(.caption).foregroundStyle(palette.onSurfaceVariant) }
+                icon: { Image(systemName: "memorychip").font(.caption).foregroundStyle(palette.onSurfaceVariant) }
+            if let up = b.upgrade {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "arrow.up.circle.fill").font(.caption).foregroundStyle(palette.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your device can run \(up.modelLabel) (\(up.aptitude.label))")
+                            .font(.caption.weight(.semibold)).foregroundStyle(palette.onSurface)
+                        Text(up.reason).font(.caption).foregroundStyle(palette.onSurfaceVariant)
+                    }
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(palette.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            }
+            Label { Text(b.privacyNote).font(.caption2).foregroundStyle(palette.onSurfaceVariant) }
+                icon: { Image(systemName: "lock.shield").font(.caption2).foregroundStyle(palette.onSurfaceVariant) }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.surfaceVariant.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(palette.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+    }
+}
+
+/// A small pill conveying the model's agent aptitude — brand-tinted for the capable-and-up ratings,
+/// neutral for the modest ones. Color reinforces the word; the word carries the meaning.
+private struct AptitudeBadge: View {
+    let aptitude: AgentAptitude
+    let palette: QuenderinPalette
+
+    private var tint: Color {
+        switch aptitude {
+        case .excellent, .strong: return palette.primary
+        case .capable, .basic: return palette.onSurfaceVariant
+        }
+    }
+
+    var body: some View {
+        Text(aptitude.label)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.15), in: Capsule())
+            .accessibilityLabel("\(aptitude.label) for agents")
     }
 }
 
