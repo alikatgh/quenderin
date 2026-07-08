@@ -73,6 +73,18 @@ final class ModelSearchControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testCuttingQueryBackToOneCharIsNotOverwrittenByStaleResults() async {
+        // Type "qw" (fires a search), then cut back to "q" (resets to idle). A provider that ignores
+        // cancellation still returns the "qw" hits — they must NOT overwrite .idle (token superseded).
+        let hits = [HFModelHit(id: "a/qwen-GGUF", downloads: 1, gated: false)]
+        let c = ModelSearchController(provider: FakeProvider(hits: hits), debounceNanos: 0)
+        c.search("qw")
+        c.search("q")
+        try? await Task.sleep(nanoseconds: 40_000_000)   // let the stale "qw" task drain
+        XCTAssertEqual(c.phase, .idle, "a stale in-flight search must not overwrite the idle state")
+    }
+
+    @MainActor
     func testClearResetsEverything() async {
         let hits = [HFModelHit(id: "a/b-GGUF", downloads: 1, gated: false)]
         let c = ModelSearchController(provider: FakeProvider(hits: hits), debounceNanos: 0)

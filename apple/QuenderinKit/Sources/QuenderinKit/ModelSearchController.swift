@@ -44,8 +44,12 @@ public final class ModelSearchController: ObservableObject {
         let q = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         query = q
         searchTask?.cancel()
-        guard q.count >= 2 else { phase = .idle; return }
+        // Bump the token on EVERY reset, including this early idle exit — otherwise a provider that
+        // ignores cancellation could finish an in-flight "qw" search and overwrite the .idle we set
+        // when the field was cut back to "q" (its token would still match). Superseding is by token,
+        // not just Task.cancel(), so every state reset must invalidate older tasks.
         searchToken += 1
+        guard q.count >= 2 else { phase = .idle; return }
         let token = searchToken
         phase = .searching
         searchTask = Task { [weak self] in
@@ -54,7 +58,7 @@ public final class ModelSearchController: ObservableObject {
             if Task.isCancelled { return }
             do {
                 let hits = try await self.provider.search(q)
-                guard self.searchToken == token else { return }      // a newer query superseded us
+                guard !Task.isCancelled, self.searchToken == token else { return }   // cancelled or superseded
                 self.phase = hits.isEmpty ? .empty : .results(hits)
             } catch {
                 if Task.isCancelled { return }
