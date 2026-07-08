@@ -62,6 +62,7 @@ public struct AgentLoop: Sendable {
     public func run(
         goal: String,
         onStep: @Sendable (AgentStep) -> Void = { _ in },
+        onProgress: @Sendable (AgentRecipe?, Int) -> Void = { _, _ in },
         isCancelled: @Sendable () -> Bool = { false }
     ) async -> AgentRun {
         var steps: [AgentStep] = []
@@ -89,16 +90,44 @@ public struct AgentLoop: Sendable {
         let goalNeedsAction = ActionIntent.looksLikeComputerTask(goal)
         var nudgedForNoAction = false
 
+        // World-class multi-step (docs/audits/2026-07-08-world-class-multistep.md): a matched RECIPE
+        // gives an honest denominator + a tool-hinted skeleton the weak 4B fills in. Purely advisory —
+        // nil recipe is EXACTLY today's behavior. The cap only ever RISES, so a longer chain isn't
+        // starved by nudges. The cursor advances on a real executed tool-name match — a green check
+        // can never fire on the wrong step.
+        let recipe = AgentRecipe.match(goal: goal, availableTools: tools.map(\.name))
+        if let recipe { transcript += "\n" + recipe.skeleton() }
+        let stepCap = recipe.map { max(maxSteps, $0.steps.count + 2) } ?? maxSteps
+        var recipeCursor = 0
+        var nudgedForIncompleteRecipe = false
+        onProgress(recipe, recipeCursor)   // publish now so the checklist DRAWS before the first decode
+
         func record(_ step: AgentStep) {
             steps.append(step)
             onStep(step)   // live update for the UI, as each step happens
         }
 
-        for _ in 0..<maxSteps {
+        // Advance the cursor iff the just-executed tool IS the next expected step (advance-only: a
+        // miscount holds truthfully rather than telling the model to redo a step it already did).
+        func advanceRecipe(executed toolName: String) {
+            guard let recipe, recipeCursor < recipe.steps.count,
+                  recipe.steps[recipeCursor].toolHint == toolName else { return }
+            recipeCursor += 1
+            onProgress(recipe, recipeCursor)
+        }
+
+        for _ in 0..<stepCap {
             // Q-641: the hard-stop (kill switch) — checked at each step boundary. `AgentSession.cancel()`
             // flips the flag (and interrupts the in-flight decode via the engine), so a running mission
             // ends here with `.cancelled` instead of grinding to maxSteps. Twin of the desktop Q-523.
             if isCancelled() { return AgentRun(steps: steps, answer: nil, haltReason: .cancelled) }
+            // CROWN JEWEL — re-anchor the goal + progress at the transcript TAIL each iteration. A 4B
+            // attends most to the tail, but the goal was written once at the TOP and drowns under the
+            // growing observation log (the named root cause of multi-step drift). Zero extra decode;
+            // helps EVERY goal — recipe-guided (the next step) or generic (the goal + actions-so-far).
+            let reanchor = recipe?.nextStepLine(cursor: recipeCursor)
+                ?? "GOAL (still): \(goal). Actions taken so far: \(toolAttempts). Decide the single best next action."
+            transcript += "\n" + reanchor
             let reply: String
             do {
                 // Decisions decode under the GBNF grammar on engines that support it — the model
@@ -159,6 +188,14 @@ public struct AgentLoop: Sendable {
                     record(AgentStep(decision: decision, observation: "The answer was withheld: the goal requires actions, but none were taken."))
                     return AgentRun(steps: steps, answer: nil, haltReason: .planError)
                 }
+                // Guard #6 (only possible with a recipe's honest denominator): don't accept "done"
+                // after only a PARTIAL subset of the steps ran. Nudge ONCE with the next step, then
+                // allow the answer on retry — nudges once then yields, never halts.
+                if let recipe, recipeCursor < recipe.steps.count, !nudgedForIncompleteRecipe {
+                    nudgedForIncompleteRecipe = true
+                    transcript += "\nNot finished yet — \(recipe.nextStepLine(cursor: recipeCursor)) Do that before answering."
+                    continue
+                }
                 record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
             }
@@ -198,6 +235,7 @@ public struct AgentLoop: Sendable {
                 observation = await execute(name: name, input: input)
                 toolAttempts += 1
                 if Self.isPermissionRefusal(observation) { refusedAttempts += 1 }
+                else if !Self.isFailureObservation(observation) { advanceRecipe(executed: name) }
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
 
             case .plan(let calls):
@@ -222,6 +260,10 @@ public struct AgentLoop: Sendable {
                     observation = Self.unknownToolMessage(unknown, available: tools.map(\.name)) + " Plan not executed."
                 } else {
                     observation = await runner.executePlan(resolved)
+                    // A plan that ran cleanly may satisfy several recipe steps in order.
+                    if !Self.isFailureObservation(observation) {
+                        for call in calls { advanceRecipe(executed: call.name) }
+                    }
                 }
                 let described = calls.map { "\($0.name)(\($0.input))" }.joined(separator: ", ")
                 transcript += "\nProposed plan [\(described)] → \(observation)"
@@ -311,6 +353,18 @@ public struct AgentLoop: Sendable {
         observation.hasPrefix("Needs your permission first:") ||
         observation.hasPrefix("You declined:") ||
         observation.hasPrefix("This action changes files and needs your per-run approval")
+    }
+
+    /// True when an observation means the tool RAN but FAILED — so the recipe cursor must NOT advance
+    /// on it. Keyed on OUR OWN stable capability/loop error strings, never model output. Deliberately
+    /// does NOT include "No events…" (a valid empty calendar) or a permission refusal (that's
+    /// `isPermissionRefusal`). Keeping the set conservative avoids ticking a step that truly failed.
+    static func isFailureObservation(_ observation: String) -> Bool {
+        for marker in ["No such tool", "must include a valid to:", "No shortcut named",
+                       "NO_ACCOUNT", "Tool error:", "not executed", "Couldn't ", "Timed out"] {
+            if observation.contains(marker) { return true }
+        }
+        return false
     }
 
     /// A stable fingerprint of an action, so the loop can spot the model re-proposing the same thing.

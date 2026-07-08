@@ -51,6 +51,13 @@ public struct AgentView: View {
             Divider()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
+                    // The WOW: when a recipe matches, a live checklist draws the plan up front and
+                    // ticks each row off as the agent actually completes it — honest N-of-M progress
+                    // instead of a blank spinner then a wall of JSON.
+                    if let recipe = session.activeRecipe {
+                        AgentRecipeChecklist(recipe: recipe, cursor: session.recipeCursor,
+                                             running: session.isRunning, palette: p)
+                    }
                     if !session.steps.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("RUN LOG")
@@ -451,6 +458,53 @@ public struct AgentView: View {
     }
 }
 
+/// The live plan checklist — the world-class multi-step WOW. It draws the recipe's steps the instant
+/// a recipe matches (before the model even finishes its first decode), then each row flips
+/// pending-circle → active-spinner → teal check as the cursor advances on a REAL executed-tool match
+/// (never a fabricated tick). Per UI_DESIGN_RULES, only the leading glyph's icon/color changes with
+/// state — the fixed 16×16 slot means geometry never shifts.
+private struct AgentRecipeChecklist: View {
+    let recipe: AgentRecipe
+    let cursor: Int
+    let running: Bool
+    let palette: QuenderinPalette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "checklist").font(.caption).foregroundStyle(palette.primary)
+                Text(recipe.title).font(.subheadline.weight(.semibold)).foregroundStyle(palette.onSurface)
+                Spacer()
+                Text("Step \(min(cursor + 1, recipe.steps.count)) of \(recipe.steps.count)")
+                    .font(.caption2.monospacedDigit()).foregroundStyle(palette.onSurfaceVariant)
+            }
+            ForEach(Array(recipe.steps.enumerated()), id: \.offset) { i, step in
+                HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    ZStack {
+                        if i < cursor {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(palette.primary)
+                        } else if i == cursor && running {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "circle").foregroundStyle(palette.onSurfaceVariant.opacity(0.45))
+                        }
+                    }
+                    .frame(width: 16, height: 16)
+                    .font(.caption)
+                    Text(step.title)
+                        .font(.caption)
+                        .foregroundStyle(i < cursor ? palette.onSurfaceVariant : palette.onSurface)
+                        .fontWeight(i == cursor && running ? .semibold : .regular)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(palette.primary.opacity(0.22), lineWidth: 1))
+    }
+}
+
 /// First-run guidance with an on-brand spark focal point (twin of Android's `AgentEmptyState`) so the
 /// screen reads as intentional, not blank. The examples are real "operate my computer" tasks — an
 /// agent's job is to DO the work on your machine (open apps, click, type, draft), not to calculate.
@@ -578,11 +632,9 @@ private struct AgentExampleList: View {
     // arithmetic. macOS drives apps/browser/Mail (lead with the doc-open proven live this session);
     // iOS can't drive other apps (sandbox), so it shows what it CAN do — read on-device context.
     #if os(macOS)
-    private static let examples = [
-        "Open a new Google Doc in my browser",
-        "Add milk and eggs to my Reminders",
-        "Draft an email to alex@example.com about tomorrow's meeting",
-    ]
+    // The recipe-triggering goals — tapping one fires the live checklist (the multi-step WOW), so the
+    // empty state teaches exactly what the agent reliably does, end to end. Single source of truth.
+    private static let examples = AgentRecipe.all.map(\.exampleGoal)
     #else
     private static let examples = [
         "What's on my clipboard right now?",

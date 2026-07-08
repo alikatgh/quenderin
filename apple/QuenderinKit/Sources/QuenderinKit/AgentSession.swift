@@ -20,6 +20,14 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var isRunning = false
     @Published public private(set) var answer: String?
     @Published public private(set) var haltReason: AgentRun.HaltReason?
+    /// The matched multi-step recipe for the current run (nil ⇒ the flat run log, exactly today's
+    /// behavior). Drives the live checklist header + rows.
+    @Published public private(set) var activeRecipe: AgentRecipe?
+    /// How many recipe steps have ACTUALLY completed — advanced only on a real executed-tool match,
+    /// never a fabricated tick. The checklist ticks against this.
+    @Published public private(set) var recipeCursor = 0
+    /// Bumped per run so a lagging cross-actor step append from a finished run can't land in the next.
+    private var runToken = 0
     /// The goal of the most recent run — kept so the run can be exported with its prompt as the
     /// heading, and so the permission-halt "Allow & run again" affordance can re-run it verbatim.
     public private(set) var lastGoal = ""
@@ -80,17 +88,37 @@ public final class AgentSession: ObservableObject {
         // below yields the MainActor) would reset `steps`/`answer` out from under the live loop and
         // run two loops at once. Mirror `clear()`'s guard: one run at a time.
         guard !isRunning else { return }
+        runToken += 1
+        let token = runToken
         lastGoal = goal
         steps = []
         answer = nil
         haltReason = nil
+        activeRecipe = nil
+        recipeCursor = 0
         isRunning = true
         cancelFlag = CancelFlag()   // Q-641: fresh stop flag for this run
         defer { isRunning = false }
 
         let flag = cancelFlag
-        let result = await loop.run(goal: goal, isCancelled: { flag.isCancelled })
-        steps = result.steps
+        // Stream live: the loop fires onStep as each step lands and onProgress as the recipe cursor
+        // advances. Both hop to the MainActor; the token gate drops a stale append from a prior run.
+        // steps come purely from these live appends (== result.steps), so the checklist ticks IN the
+        // run, not only after it.
+        let result = await loop.run(
+            goal: goal,
+            onStep: { step in Task { @MainActor [weak self] in
+                guard let self, self.runToken == token else { return }
+                self.steps.append(step)
+            } },
+            onProgress: { recipe, cursor in Task { @MainActor [weak self] in
+                guard let self, self.runToken == token else { return }
+                self.activeRecipe = recipe
+                self.recipeCursor = cursor
+            } },
+            isCancelled: { flag.isCancelled }
+        )
+        guard runToken == token else { return }   // a newer run started while we awaited
         answer = result.answer
         haltReason = result.haltReason
         undoableActions = undoSession.count   // surface the run's reversible tail to the UI

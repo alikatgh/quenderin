@@ -4,6 +4,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A live checklist that ticks on ADVISORY labels lies — bind ticks to a real executed-tool match.**
+  A multi-step "plan checklist" that advances on natural-language step labels desyncs from what the
+  model actually did and fires confidently-wrong green checks (worse than no checklist). Make each
+  step carry a `toolHint` and advance the cursor ONLY on an actually-executed tool-name match, and
+  ADVANCE-ONLY (a miscount holds truthfully rather than telling the model to redo). (AgentRecipe cursor)
+- **Assign-once published state isn't "live" — stream it.** `AgentSession.run` assigned `steps` only
+  at the very END of the run, so the UI showed a blank spinner then a wall of steps — nothing ticked
+  in real time. Pass the loop's `onStep`/`onProgress` closures (MainActor hop + run-token guard) to
+  APPEND as each step lands. If a view looks frozen mid-operation, check whether its state is set once
+  at the end vs. streamed. (AgentSession live steps)
+
 - **An unconditional "start fresh" side-effect on every connect/mount clobbers shared state.** A WS
   `on('connection')` (or a component mount) that ALWAYS `startSession()` / resets means a second tab, a
   page refresh, or a reconnect after a network blip silently destroys the in-progress session — the
@@ -413,6 +424,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-08 (world-class multi-step: honest live checklist + goal re-anchor) — the agent read like a
+  calculator: no upfront plan, no "step N of M", a blank spinner then a JSON wall, and a 4B that drifts
+  because the goal is written ONCE at the transcript top (a 4B attends to the tail). Shipped a
+  judge-vetted blend (docs/audits/2026-07-08-world-class-multistep.md): (1) CROWN JEWEL — re-anchor
+  the goal/progress at the transcript TAIL every step (zero extra decode, helps EVERY goal); (2) 3
+  curated `AgentRecipe`s (tool-granular skeletons) that draw a LIVE CHECKLIST which ticks only on a
+  real executed-tool match (honest, never a fake green check); (3) guard #6 (no "done" over a partial
+  subset). macOS-scoped, NO new decision/grammar case → parity stayed green with ZERO twin work; nil
+  recipe degrades to exactly today. 411 tests (incl. cursor-honesty + all 5 old guards regression) +
+  parity + app build green. Lessons above.
 
 - 2026-07-08 (opt-in "Deeper reasoning" — let Qwen3 think before it commits) — Qwen3 is reasoning-
   tuned but the decision grammar forces `{` as the first token → zero deliberation (audit issue #1, the

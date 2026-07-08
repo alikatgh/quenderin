@@ -393,4 +393,74 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertFalse(prompts[0].contains("<think>"))
         XCTAssertEqual(run.answer, "42")
     }
+
+    // MARK: world-class multi-step — recipes, re-anchor, honest cursor
+
+    private struct FakeTool: AgentTool {
+        let name: String
+        let purpose = "test tool"
+        let reply: String
+        func run(_ input: String) async throws -> String { reply }
+    }
+    private final class CursorRec: @unchecked Sendable { var v: [Int] = []; func add(_ c: Int) { v.append(c) } }
+
+    /// CROWN JEWEL: a generic (non-recipe) goal still gets the goal re-anchored at the transcript tail.
+    func testGenericGoalReAnchorsTheGoalAtTheTail() async {
+        let engine = RecordingEngine(replies: [#"{"answer":"4"}"#])
+        let loop = AgentLoop(engine: engine, tools: [])
+        _ = await loop.run(goal: "what is two plus two")
+        let prompts = await engine.prompts
+        XCTAssertTrue(prompts[0].contains("GOAL (still): what is two plus two"),
+                      "the goal must be re-stated at the prompt tail, not just once at the top")
+    }
+
+    /// A matched recipe injects its skeleton + names the next step's tool in the re-anchor.
+    func testRecipeGoalInjectsSkeletonAndNextStep() async {
+        let engine = RecordingEngine(replies: [#"{"answer":"done"}"#])
+        let tools: [AgentTool] = [FakeTool(name: "mac.calendar.today", reply: ""),
+                                  FakeTool(name: "mac.notes.create", reply: "")]
+        let loop = AgentLoop(engine: engine, tools: tools)
+        _ = await loop.run(goal: "Make me a prep note for today")
+        let prompts = await engine.prompts
+        XCTAssertTrue(prompts[0].contains("Morning brief"), "the recipe skeleton must be injected")
+        XCTAssertTrue(prompts[0].contains("mac.calendar.today"), "the next step's tool is suggested")
+    }
+
+    /// The end-to-end WOW proof: the cursor advances ONLY on real executed-tool matches, in order.
+    func testRecipeCursorAdvancesOnRealToolMatchesAndCompletes() async {
+        let engine = RecordingEngine(replies: [
+            #"{"tool":"mac.calendar.today","input":""}"#,
+            #"{"tool":"mac.notes.create","input":"Prep"}"#,
+            #"{"answer":"Prep note ready"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "mac.calendar.today", reply: "2 events today"),
+                                  FakeTool(name: "mac.notes.create", reply: "Created note.")]
+        let rec = CursorRec()
+        let loop = AgentLoop(engine: engine, tools: tools)
+        let run = await loop.run(goal: "Make me a prep note for today", onProgress: { _, c in rec.add(c) })
+        XCTAssertEqual(run.answer, "Prep note ready")
+        XCTAssertEqual(rec.v.last, 2, "both recipe steps ticked off, one per real matching tool")
+    }
+
+    /// The cursor does NOT advance on a FAILED execution — an honest tick can't fire on a real failure.
+    func testRecipeCursorHoldsWhenTheToolFails() async {
+        let engine = RecordingEngine(replies: [
+            #"{"tool":"mac.calendar.today","input":""}"#,   // fails
+            #"{"answer":"giving up"}"#,
+        ])
+        let tools: [AgentTool] = [FakeTool(name: "mac.calendar.today", reply: "Tool error: boom"),
+                                  FakeTool(name: "mac.notes.create", reply: "")]
+        let rec = CursorRec()
+        let loop = AgentLoop(engine: engine, tools: tools)
+        _ = await loop.run(goal: "Make me a prep note for today", onProgress: { _, c in rec.add(c) })
+        XCTAssertEqual(rec.v.max() ?? 0, 0, "a failed tool must never tick its step off")
+    }
+
+    func testIsFailureObservationIsConservative() {
+        XCTAssertTrue(AgentLoop.isFailureObservation("Tool error: whatever"))
+        XCTAssertTrue(AgentLoop.isFailureObservation("No such tool: mail.draft"))
+        XCTAssertTrue(AgentLoop.isFailureObservation("Mail has no account set up (NO_ACCOUNT)"))
+        XCTAssertFalse(AgentLoop.isFailureObservation("No events on your calendar today."), "a valid empty result is NOT a failure")
+        XCTAssertFalse(AgentLoop.isFailureObservation("Created note \"Ideas\"."))
+    }
 }
