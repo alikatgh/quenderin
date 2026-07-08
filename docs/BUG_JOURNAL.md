@@ -414,6 +414,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (GenerationOptions.stopSequences was DEAD — defined, documented, never consumed) — the
+  decode loop only halted on cancel/EOG/maxTokens; a caller that set stopSequences got them silently
+  ignored (Qwen3 audit caught it). Revived with `StopSequenceScanner`: it holds back the last
+  maxStopLen-1 chars so a stop split across tokens ("</thi"+"nk>") still halts cleanly, and is inert
+  when no stops are set → every existing caller is byte-for-byte unchanged. This is the foundation for
+  the opt-in "think, then decide" agent pass (stop at `</think>`). 7 scanner tests. Lesson: a
+  documented-but-unconsumed option field is worse than none — it lies to callers; wire it or delete it.
+
 - 2026-07-08 (TS/Electron build had NO repetition guard + Qwen thinking could starve the chat answer)
   — the desktop/CLI build (src/) passed no repeatPenalty (node-llama-cpp defaults it DISABLED), so a
   heavily-quantized small model could loop a paragraph verbatim; the Swift twin has shipped 1.1/256 +

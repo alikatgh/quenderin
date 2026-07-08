@@ -440,6 +440,9 @@ public actor LlamaEngine: InferenceEngine {
 
         var produced = 0
         var decoder = UTF8StreamDecoder()   // survives across tokens: split characters reassemble
+        // Watches for a stop sequence (e.g. "</think>") that may span tokens; inert when none set,
+        // so a plain generation is byte-for-byte unchanged. (Revives the dead stopSequences field.)
+        var stopScanner = StopSequenceScanner(stops: options.stopSequences)
         var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
                                       // piece has been yielded, INCLUDING the current token's (checked
                                       // below only after this token's own yield, same ordering as the
@@ -455,8 +458,14 @@ public actor LlamaEngine: InferenceEngine {
 
             let piece = decoder.feed(tokenToBytes(next))
             if !piece.isEmpty {
-                continuation.yield(piece)
-                yieldedAnyText = true
+                if stopScanner.isActive {
+                    let (emit, stop) = stopScanner.feed(piece)
+                    if !emit.isEmpty { continuation.yield(emit); yieldedAnyText = true }
+                    if stop { break }   // a stop sequence completed — halt here (skip the feedback decode)
+                } else {
+                    continuation.yield(piece)
+                    yieldedAnyText = true
+                }
             }
             produced += 1
 
@@ -482,7 +491,16 @@ public actor LlamaEngine: InferenceEngine {
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
         let tail = decoder.flush()                          // any held bytes (end-of-stream mid-character)
-        if !tail.isEmpty { continuation.yield(tail) }
+        if stopScanner.isActive {
+            if !tail.isEmpty {
+                let (emit, _) = stopScanner.feed(tail)      // a stop sequence may complete on the tail
+                if !emit.isEmpty { continuation.yield(emit) }
+            }
+            let held = stopScanner.flush()                  // no stop matched — release the held-back tail
+            if !held.isEmpty { continuation.yield(held) }
+        } else if !tail.isEmpty {
+            continuation.yield(tail)
+        }
         continuation.finish()
     }
 
