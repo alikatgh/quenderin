@@ -48,15 +48,25 @@ public struct AgentLoop: Sendable {
     /// takes effect on the very next step, not the next app launch. Default OFF — thinking makes the
     /// agent slower, so it's the user's call (Settings → Agent → "Deeper reasoning").
     private let deliberate: @Sendable () -> Bool
+    /// Skill memory (the reliability-compounding loop, twin of the desktop CapabilityAgent's `memory`):
+    /// `recallSkills` primes the preamble with proven tool sequences for similar past goals; `recordSkill`
+    /// remembers this run's sequence when it reaches an answer. Closures so the app owns the persistent
+    /// store (UserDefaults). Defaults are no-ops → behavior identical to today when unwired.
+    private let recallSkills: @Sendable (String) -> [SkillRecord]
+    private let recordSkill: @Sendable (String, [String]) -> Void
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
                 runner: CapabilityRunner = CapabilityRunner(),
-                deliberate: @escaping @Sendable () -> Bool = { false }) {
+                deliberate: @escaping @Sendable () -> Bool = { false },
+                recallSkills: @escaping @Sendable (String) -> [SkillRecord] = { _ in [] },
+                recordSkill: @escaping @Sendable (String, [String]) -> Void = { _, _ in }) {
         self.engine = engine
         self.tools = tools
         self.maxSteps = max(1, maxSteps)
         self.runner = runner
         self.deliberate = deliberate
+        self.recallSkills = recallSkills
+        self.recordSkill = recordSkill
     }
 
     public func run(
@@ -67,6 +77,15 @@ public struct AgentLoop: Sendable {
     ) async -> AgentRun {
         var steps: [AgentStep] = []
         var transcript = preamble(goal: goal)
+        // Retrieval-augmented planning (twin of the desktop preamble): prime the weak model with the tool
+        // sequences that worked on SIMILAR past goals. A HINT it still reasons over; every step still gates.
+        let recalled = recallSkills(goal)
+        if !recalled.isEmpty {
+            transcript += "\nYou completed similar tasks before — the tools that worked:"
+            for r in recalled { transcript += "\n- \"\(r.goal)\" → \(r.tools.joined(separator: " → "))" }
+        }
+        // The ordered tool names this run drove — recorded to skill memory if it reaches an answer.
+        var usedTools: [String] = []
         // Reliability guards for a weak on-device model (twins of the desktop CapabilityAgent):
         // `parseFailures` recovers from malformed JSON (nudge + retry, not instant death); `stall`
         // catches the model re-emitting the SAME action (nudge, then halt .stalled). Both nudge the
@@ -224,6 +243,9 @@ public struct AgentLoop: Sendable {
                     transcript += "\nNot finished yet — \(recipe.nextStepLine(cursor: recipeCursor)) Do that before answering."
                     continue
                 }
+                // A completed task teaches the harness — record the proven tool sequence so the next
+                // similar goal is primed with it (retrieval-augmented planning; no-op if unwired).
+                if !usedTools.isEmpty { recordSkill(goal, usedTools) }
                 record(AgentStep(decision: decision, observation: nil))
                 return AgentRun(steps: steps, answer: answer, haltReason: .answered)
             }
@@ -263,6 +285,7 @@ public struct AgentLoop: Sendable {
                 }
                 observation = await execute(name: name, input: input)
                 toolAttempts += 1
+                usedTools.append(name)   // the run's tool sequence, recorded to skill memory on success
                 if Self.isPermissionRefusal(observation) { refusedAttempts += 1 }
                 else if !Self.isFailureObservation(observation) { advanceRecipe(executed: name) }
                 transcript += "\nUsed \(name)(\(input)) → \(observation)"
@@ -289,6 +312,7 @@ public struct AgentLoop: Sendable {
                     observation = Self.unknownToolMessage(unknown, available: tools.map(\.name)) + " Plan not executed."
                 } else {
                     observation = await runner.executePlan(resolved)
+                    usedTools.append(contentsOf: calls.map(\.name))   // the plan's tools, for skill memory
                     // A plan that ran cleanly may satisfy several recipe steps in order.
                     if !Self.isFailureObservation(observation) {
                         for call in calls { advanceRecipe(executed: call.name) }

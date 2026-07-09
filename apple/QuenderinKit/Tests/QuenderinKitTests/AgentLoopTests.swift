@@ -403,6 +403,40 @@ final class AgentLoopTests: XCTestCase {
         func run(_ input: String) async throws -> String { reply }
     }
     private final class CursorRec: @unchecked Sendable { var v: [Int] = []; func add(_ c: Int) { v.append(c) } }
+    private final class SkillCapture: @unchecked Sendable {
+        var goal = ""; var tools: [String] = []
+        func set(_ g: String, _ t: [String]) { goal = g; tools = t }
+    }
+
+    /// Skill memory: a recalled proven sequence primes the preamble, and the run's tool sequence is
+    /// recorded when it reaches an answer (twin of the desktop CapabilityAgent's memory loop).
+    func testSkillMemoryRecallPrimesPreambleAndRecordsOnAnswer() async {
+        let engine = RecordingEngine(replies: [
+            #"{"tool":"calculator","input":"2+2"}"#,
+            #"{"answer":"4"}"#,
+        ])
+        let cap = SkillCapture()
+        let loop = AgentLoop(
+            engine: engine, tools: [CalculatorTool()],
+            recallSkills: { _ in [SkillRecord(goal: "add two numbers", tools: ["calculator"])] },
+            recordSkill: { g, t in cap.set(g, t) })
+        let run = await loop.run(goal: "what is 2 plus 2")
+        let prompts = await engine.prompts
+        XCTAssertTrue(prompts[0].contains("completed similar tasks before"), "recall primes the preamble")
+        XCTAssertTrue(prompts[0].contains("add two numbers") && prompts[0].contains("calculator"),
+                      "the proven sequence is injected as a hint")
+        XCTAssertEqual(run.answer, "4")
+        XCTAssertEqual(cap.tools, ["calculator"], "the run's tool sequence is recorded on answer")
+        XCTAssertEqual(cap.goal, "what is 2 plus 2")
+    }
+
+    /// Unwired (default no-op closures) → no recall injection, behavior identical to before.
+    func testSkillMemoryUnwiredLeavesThePreambleUntouched() async {
+        let engine = RecordingEngine(replies: [#"{"answer":"4"}"#])
+        _ = await AgentLoop(engine: engine, tools: [CalculatorTool()]).run(goal: "what is 2 plus 2")
+        let prompts = await engine.prompts
+        XCTAssertFalse(prompts[0].contains("completed similar tasks before"))
+    }
 
     /// CROWN JEWEL: a generic (non-recipe) goal still gets the goal re-anchored at the transcript tail.
     func testGenericGoalReAnchorsTheGoalAtTheTail() async {

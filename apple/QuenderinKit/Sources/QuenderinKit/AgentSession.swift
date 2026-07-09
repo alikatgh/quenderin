@@ -48,13 +48,19 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var undoableActions = 0
 
     public init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
-                runner: CapabilityRunner? = nil) {
+                runner: CapabilityRunner? = nil,
+                skills: SkillMemoryStore = .shared) {
         self.engine = engine
         let broker = approvals
         let resolved = runner ?? CapabilityRunner(approve: { preview in await broker.request(preview) },
                                                   session: undoSession)
+        // Skill memory is the reliability-compounding loop: prime the planner with proven tool
+        // sequences for similar past goals, and remember this run when it answers. Closures hop
+        // through the store (Sendable) so the loop stays pure.
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: resolved,
-                              deliberate: { AgentDeliberation.isEnabled })
+                              deliberate: { AgentDeliberation.isEnabled },
+                              recallSkills: { skills.recall($0) },
+                              recordSkill: { skills.record(goal: $0, tools: $1) })
     }
 
     /// Q-641: hard-stop the running mission — interrupt the in-flight decode and flip the run's flag so
@@ -66,18 +72,22 @@ public final class AgentSession: ObservableObject {
         engine.requestCancel()
     }
 
-    /// The app's full wiring: persistent consent (Settings toggles), the on-disk ledger, and
-    /// this session's approval dialog. Kept here so QuenderinApp stays one line.
+    /// The app's full wiring: persistent consent (Settings toggles), the on-disk ledger, skill
+    /// memory, and this session's approval dialog. Kept here so QuenderinApp stays one line.
     public convenience init(engine: InferenceEngine, tools: [AgentTool], maxSteps: Int = 6,
-                            consent: ConsentStore, ledger: AuditLedger) {
-        self.init(engine: engine, tools: tools, maxSteps: maxSteps, runner: nil)
-        // Rebuild the loop with a runner that has BOTH the stores and this session's approvals.
+                            consent: ConsentStore, ledger: AuditLedger,
+                            skills: SkillMemoryStore = .shared) {
+        self.init(engine: engine, tools: tools, maxSteps: maxSteps, runner: nil, skills: skills)
+        // Rebuild the loop with a runner that has BOTH the stores and this session's approvals,
+        // and the same skill-memory closures (re-init above already wired skills; rebuild keeps them).
         let broker = approvals
         let runner = CapabilityRunner(consent: consent, ledger: ledger,
                                       approve: { preview in await broker.request(preview) },
                                       session: undoSession)
         self.loop = AgentLoop(engine: engine, tools: tools, maxSteps: maxSteps, runner: runner,
-                              deliberate: { AgentDeliberation.isEnabled })
+                              deliberate: { AgentDeliberation.isEnabled },
+                              recallSkills: { skills.recall($0) },
+                              recordSkill: { skills.record(goal: $0, tools: $1) })
     }
 
     /// Run the agent to completion, publishing the result. (The loop also exposes a live
