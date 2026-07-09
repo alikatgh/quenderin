@@ -20,6 +20,14 @@ Platforms: **Apple** = macOS/iOS Swift (`apple/QuenderinKit`) · **TS** = Window
 | `.plan` per-step safety gating | ✅ | ✅ | ✅ | |
 | Grammar-forced decode + action-first grammar on step 1 | ✅ | ✅ | ✅ | Android gained it 2026-07-09 (grammar-in-JNI) |
 | Deliberation ("think, then decide"), off by default | ✅ | ✅ | ✅ | TS + Android both gained it this session |
+| Skill memory (record proven tool sequences → prime similar goals) | ✅ | ✅ | 🔄 | TS was the original; Apple gained it 2026-07-09 (`45f4c45`); Android port in flight (converging on the same `recallSkills`/`recordSkill` seam) |
+
+Skill-memory notes: pure `SkillMemory` policy is a byte-faithful twin (ASCII `[a-z0-9]` tokenization,
+overlap-coefficient similarity, 300-char goal / 40-tool caps); each platform keeps its own persistence edge
+(desktop `agent-skills.json`, Apple UserDefaults, Android SharedPreferences). It's a HINT the model still
+reasons over — every recalled step still passes the full gate — so it's safe on by default (not an
+experimental flag). The `AgentLoop` seam is two injected closures (`recallSkills`/`recordSkill`, default
+no-ops) so the loop stays pure and the app owns the store.
 
 ## Intentional divergences — NOT drift, do not "fix"
 
