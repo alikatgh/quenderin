@@ -28,13 +28,20 @@ import { platformCapabilities } from './platformCapabilities.js';
 
 /** The minimal shape the local model must provide — `LlmService.generalChat` satisfies it. */
 export interface ChatCompleter {
-    generalChat(prompt: string, onToken?: (t: string) => void, opts?: { plainChat?: boolean }): Promise<{ text: string }>;
+    generalChat(prompt: string, onToken?: (t: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string }>;
 }
 
 /** Adapt a local model into the agent's `Planner` seam. `plainChat` drops the tool preamble so
  *  the model sees only the agent prompt (the capability list + the JSON contract). */
 export function llmPlanner(llm: ChatCompleter): Planner {
     return async (prompt: string) => (await llm.generalChat(prompt, undefined, { plainChat: true })).text;
+}
+
+/** The DELIBERATION planner: the same model, but WITH a reasoning budget, so the opt-in think-pass can
+ *  actually reason before the decision decode (the no-think `llmPlanner` handles the decision itself).
+ *  Twin of the native AgentLoop's `deliberationOptions` (a separate, unconstrained reasoning decode). */
+export function llmThinkPlanner(llm: ChatCompleter, thoughtTokens = 256): Planner {
+    return async (prompt: string) => (await llm.generalChat(prompt, undefined, { plainChat: true, thoughtTokens })).text;
 }
 
 export interface GovernedAgentDeps {
@@ -70,6 +77,9 @@ export interface GovernedAgentDeps {
     /** Skill memory — primes the model with proven sequences for similar past goals, and learns
      *  from each success. Pass a shared instance to make the agent improve across runs. */
     memory?: SkillMemory;
+    /** Opt-in "think, then decide" — the model reasons before each decision (better tool choice on
+     *  tricky goals, but slower). Off by default; twin of the native "Deeper reasoning" toggle. */
+    deliberate?: boolean;
 }
 
 export interface GovernedAgent {
@@ -106,7 +116,11 @@ export function createGovernedAgent(deps: GovernedAgentDeps): GovernedAgent {
         deps.bulkThreshold,
         deps.dryRun ?? false,
     );
-    const agent = new CapabilityAgent(llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory);
+    const agent = new CapabilityAgent(
+        llmPlanner(deps.llm), capabilities, runner, deps.maxSteps ?? 8, deps.memory,
+        // Opt-in deliberation: a separate reasoning planner + the live gate (off unless deps.deliberate).
+        llmThinkPlanner(deps.llm), () => deps.deliberate === true,
+    );
     return {
         run: (goal: string, onStep?: (line: string) => void) => {
             runner.setRunGoal(goal);   // stamp every ledger entry with the task, for per-task `history`

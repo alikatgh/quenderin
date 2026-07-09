@@ -450,6 +450,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (deliberation "think, then decide" ported to the TS/desktop agent — Android deferred, on purpose) —
+  the native "Deeper reasoning" think-pass (reason before committing to a decision) was macOS/iOS-only.
+  Ported to TS: a separate `think` planner + `deliberate` gate on CapabilityAgent (weaves a closed <think>
+  block into the transcript before the decision decode), wired via `llmThinkPlanner` + a new `deliberate`
+  dep + a `--think` CLI flag, with a default-preserving `generalChat({thoughtTokens})` override (chat stays
+  no-think). Off by default; 3 tests (523 total), typecheck+lint clean. **Android NOT ported, by design:** its
+  JNI doesn't apply the GBNF grammar yet (AgentDecisionGrammar.kt: "consumed once the JNI grows a grammar
+  parameter"), so the model already reasons inline — deliberation solves a grammar-forced-JSON problem
+  Android doesn't have yet. Correct ordering: add grammar-in-JNI to Android FIRST, then deliberation. Lesson:
+  a feature that works AROUND another feature (grammar) can't be ported ahead of it — check the dependency.
+
 - 2026-07-08 (cross-platform agent-loop parity — TS/Electron was behind the native twins) — a twin-drift
   audit (3 behavior maps → diff) found the desktop CapabilityAgent (Windows/Linux) missing two reliability
   guards iOS+Android both have: the ZERO-ACTION guard (answer a computer-task goal with 0 tool calls →

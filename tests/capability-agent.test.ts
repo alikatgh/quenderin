@@ -5,7 +5,7 @@ import { UiParserService } from '../src/services/uiParser.service.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
 import { AppTapCapability, AppTypeCapability, AppKeyCapability, AppObserveCapability } from '../src/services/capability/appCapabilities.js';
-import { CapabilityAgent, parseDecision } from '../src/services/capability/capabilityAgent.js';
+import { CapabilityAgent, parseDecision, type Planner } from '../src/services/capability/capabilityAgent.js';
 
 class FakeDevice extends EventEmitter implements IDeviceProvider {
     taps: Array<[number, number]> = []; typed: string[] = []; keys: string[] = [];
@@ -146,6 +146,39 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         const result = await agent.run('what is 2 plus 2');   // not a computer task
         expect(result.halt).toBe('answered');
         expect(result.answer).toBe('4');
+    });
+
+    // Opt-in deliberation (twin of the native AgentLoop think-pass) — reason before deciding.
+    it('weaves a think pass into the transcript the decision decode sees, when enabled', async () => {
+        const think: Planner = async () => 'Reasoning: I can answer directly.';
+        let decidePrompt = '';
+        const decide: Planner = async (p) => { decidePrompt = p; return JSON.stringify({ answer: 'done' }); };
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        const agent = new CapabilityAgent(decide, [], runner, 8, undefined, think, () => true);
+        const result = await agent.run('a question');
+        expect(result.answer).toBe('done');
+        expect(decidePrompt).toContain('<think>\nReasoning: I can answer directly.\n</think>');
+    });
+
+    it('runs NO think pass when deliberation is off (default) — the decode is untouched', async () => {
+        let thinkCalls = 0;
+        const think: Planner = async () => { thinkCalls++; return 'x'; };
+        let decidePrompt = '';
+        const decide: Planner = async (p) => { decidePrompt = p; return JSON.stringify({ answer: 'ok' }); };
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        const agent = new CapabilityAgent(decide, [], runner, 8, undefined, think, () => false);
+        await agent.run('what is 2 plus 2');
+        expect(thinkCalls).toBe(0);
+        expect(decidePrompt).not.toContain('<think>');
+    });
+
+    it('a failing think pass is best-effort — the run still proceeds to a decision', async () => {
+        const think: Planner = async () => { throw new Error('boom'); };
+        const decide: Planner = async () => JSON.stringify({ answer: 'survived' });
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        const agent = new CapabilityAgent(decide, [], runner, 8, undefined, think, () => true);
+        const result = await agent.run('a question');
+        expect(result.answer).toBe('survived');
     });
 
     // The loop guard — a weak local model's #1 failure mode is getting stuck repeating one action.

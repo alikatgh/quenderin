@@ -254,7 +254,8 @@ program
   .option('-g, --gui', 'allow clicking/typing in any macOS app via accessibility (needs the Accessibility permission)')
   .option('-n, --dry-run', 'show exactly what it would do — read for real, but change nothing')
   .option('-y, --yes', 'auto-approve reversible changes (still asks for app control / GUI)')
-  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; dryRun?: boolean; yes?: boolean }) => {
+  .option('-t, --think', 'reason before each step (better tool choice on tricky goals, but slower)')
+  .action(async (goal: string, options: { model?: string; workspace?: string; maxSteps?: string; gui?: boolean; dryRun?: boolean; yes?: boolean; think?: boolean }) => {
     setLogLevel('error');
     const mac = new OsascriptAutomation();
     // Config file supplies defaults; a CLI flag always overrides it (flag > config > built-in).
@@ -334,6 +335,7 @@ program
         workspace: workspaceDir ? () => workspaceDir : undefined,
         consent, approve, signal: ac.signal, ledger: new FileAuditLedger(), memory, maxSteps,
         dryRun: options.dryRun ?? false,
+        deliberate: options.think ?? false,
       });
       if (options.dryRun) console.log(dim('  dry run — reading for real, changing nothing.'));
       console.log(`\n${bold('Quenderin')} ${dim('— on-device · nothing leaves this machine')}\n`);

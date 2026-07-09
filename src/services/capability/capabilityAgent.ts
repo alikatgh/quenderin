@@ -37,6 +37,14 @@ export class CapabilityAgent {
         /** Optional skill memory: primes the model with proven sequences for similar past goals,
          *  and records this run's sequence if it succeeds. The reliability compounding loop. */
         private readonly memory?: SkillMemory,
+        /** Opt-in "think, then decide" (twin of the native AgentLoop deliberation pass): when
+         *  `deliberate()` is true AND a `think` planner is provided, the model reasons — UNCONSTRAINED,
+         *  with a thinking budget — before the decision decode, and the reasoning is woven into the
+         *  transcript as a closed <think> block the decision then sees. Off unless both are wired.
+         *  A separate planner (not `planner`) because the decision decode is grammar/no-think while the
+         *  think pass must be free to reason. */
+        private readonly think?: Planner,
+        private readonly deliberate: () => boolean = () => false,
     ) {
         this.byName = new Map(capabilities.map(c => [c.name, c]));
     }
@@ -80,6 +88,17 @@ export class CapabilityAgent {
             // cause of multi-step drift. Zero extra decode; the shared cross-platform reliability spine
             // (same text as Swift/Kotlin; recipes stay a macOS UX layer).
             transcript += `\nGOAL (still): ${goal}. Actions taken so far: ${usedTools.length}. Decide the single best next action.`;
+            // Opt-in deliberation (twin of the native AgentLoop): reason BEFORE committing to a decision.
+            // The think planner runs unconstrained (a thinking budget, no JSON grammar) so the model can
+            // actually reason; its output is woven in as a closed <think> block the decision decode sees.
+            // Best-effort — a failed/empty think pass never fails the step; it falls through to the decode.
+            if (this.think && this.deliberate()) {
+                try {
+                    const thought = (await this.think(transcript + '\n<think>\n')).trim();
+                    if (thought) { transcript += `\n<think>\n${thought}\n</think>`; }
+                } catch { /* deliberation is best-effort */ }
+                if (signal?.aborted) return { answer: null, steps, halt: 'cancelled' };
+            }
             let reply: string;
             try {
                 reply = await this.planner(transcript);

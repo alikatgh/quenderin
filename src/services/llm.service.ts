@@ -1259,7 +1259,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
     }
 
-    public async generalChat(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean }): Promise<{ text: string; meta: GenerationMeta }> {
+    public async generalChat(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string; meta: GenerationMeta }> {
         // Claim the busy flag BEFORE loading: the memory-pressure monitor skips unload only
         // while isInferenceBusy(), and setting it after setup left a window where pressure
         // unloaded the model between "context ready" and the first token — generalChat then
@@ -1362,7 +1362,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // Anti-loop guard (Swift-twin parity) + no-think chat: bound reasoning to 0 tokens so
                 // hidden <think> can't eat the whole cap and return an empty answer on tight hardware.
                 repeatPenalty: { penalty: REPEAT_PENALTY, lastTokens: REPEAT_LAST_N },
-                budgets: { thoughtTokens: CHAT_THOUGHT_TOKEN_BUDGET },
+                // Default 0 (no-think chat); the agent's opt-in deliberation think-pass passes a >0 budget
+                // so the model can actually reason before it commits to a decision (Swift-twin parity).
+                budgets: { thoughtTokens: opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
                     const clean = stripControlTokensWithOptions(chunk, { trim: false });
