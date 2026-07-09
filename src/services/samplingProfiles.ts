@@ -167,3 +167,12 @@ export function agentDecisionTemperature(): number {
 export function agentDecisionMaxTokens(): number {
     return getSamplingProfiles().agent_decision.max_tokens;
 }
+
+/**
+ * Default agent-decision maxTokens for LlmService.generateAction: profile recipe
+ * clamped to a hardware budget so a 64-token phone never requests 192.
+ * Callers that pass options.maxTokens skip this.
+ */
+export function agentDecisionMaxTokensCapped(hwActionMaxTokens: number): number {
+    return Math.min(agentDecisionMaxTokens(), hwActionMaxTokens);
+}

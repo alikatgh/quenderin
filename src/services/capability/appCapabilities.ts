@@ -108,14 +108,21 @@ export class AppTapCapability implements Capability {
     }
 }
 
-/** Type into the currently-focused field. T2 → per-run approval. */
+/** Type into the currently-focused field. T2 → per-run approval. verify() prefers positive
+ *  evidence (typed text visible) then falls back to a screen-change check. */
 export class AppTypeCapability implements Capability {
     readonly name = 'app.type';
     readonly purpose = 'Type text into the focused field of the connected app. Input: the text to type.';
     readonly tier = CapabilityTier.AppAction;
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the connected app' };
 
-    constructor(private readonly device: IDeviceProvider) { }
+    private preSignature = '';
+    private lastTyped = '';
+
+    constructor(
+        private readonly device: IDeviceProvider,
+        private readonly parser: UiParserService,
+    ) { }
 
     async plan(input: string): Promise<ActionPreview> {
         const text = input.trim();
@@ -127,6 +134,9 @@ export class AppTypeCapability implements Capability {
     async run(input: string): Promise<string> {
         const text = input.trim();
         if (!text) return 'Nothing to type.';
+        const before = await readScreen(this.device, this.parser);
+        this.preSignature = before ? screenSignature(before) : '';
+        this.lastTyped = text;
         try {
             await this.device.type(text);
         } catch (e) {
@@ -135,9 +145,26 @@ export class AppTypeCapability implements Capability {
         const shown = text.length > 80 ? text.slice(0, 80) + '…' : text;
         return `Typed "${shown}".`;
     }
+
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        const after = await readScreen(this.device, this.parser);
+        if (after === null) return { ok: true, detail: 'device went away' };
+        const needle = this.lastTyped.slice(0, Math.min(40, this.lastTyped.length));
+        if (needle && after.some(e => {
+            const hay = `${e.text || ''} ${e.contentDesc || ''}`;
+            return hay.includes(needle);
+        })) {
+            return { ok: true, detail: 'typed text is visible on screen' };
+        }
+        if (this.preSignature && screenSignature(after) === this.preSignature) {
+            return { ok: false, detail: 'the screen did not change and typed text is not visible — type may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
+    }
 }
 
-/** Press a hardware/navigation key. T2 → per-run approval (a key can submit or dismiss). */
+/** Press a hardware/navigation key. T2 → per-run approval (a key can submit or dismiss).
+ *  verify() checks the screen changed for back/enter/home (all of these typically navigate). */
 export class AppKeyCapability implements Capability {
     readonly name = 'app.key';
     readonly purpose = 'Press a navigation key on the connected app. Input: one of back, enter, home.';
@@ -146,7 +173,12 @@ export class AppKeyCapability implements Capability {
 
     private static readonly ALLOWED = new Set(['back', 'enter', 'home']);
 
-    constructor(private readonly device: IDeviceProvider) { }
+    private preSignature = '';
+
+    constructor(
+        private readonly device: IDeviceProvider,
+        private readonly parser: UiParserService,
+    ) { }
 
     async plan(input: string): Promise<ActionPreview> {
         const key = input.trim().toLowerCase();
@@ -157,12 +189,23 @@ export class AppKeyCapability implements Capability {
     async run(input: string): Promise<string> {
         const key = input.trim().toLowerCase();
         if (!AppKeyCapability.ALLOWED.has(key)) return 'Input must be one of: back, enter, home.';
+        const before = await readScreen(this.device, this.parser);
+        this.preSignature = before ? screenSignature(before) : '';
         try {
             await this.device.pressKey(key);
         } catch (e) {
             return isNoDevice(e) ? NO_DEVICE : `Couldn't press ${key}: ${String(e)}`;
         }
         return `Pressed "${key}".`;
+    }
+
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        const after = await readScreen(this.device, this.parser);
+        if (after === null) return { ok: true, detail: 'device went away' };
+        if (this.preSignature && screenSignature(after) === this.preSignature) {
+            return { ok: false, detail: 'the screen did not change — the key may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
     }
 }
 
@@ -205,7 +248,7 @@ export function appCapabilities(device: IDeviceProvider, parser: UiParserService
     return [
         new AppObserveCapability(device, parser),
         new AppTapCapability(device, parser),
-        new AppTypeCapability(device),
-        new AppKeyCapability(device),
+        new AppTypeCapability(device, parser),
+        new AppKeyCapability(device, parser),
     ];
 }

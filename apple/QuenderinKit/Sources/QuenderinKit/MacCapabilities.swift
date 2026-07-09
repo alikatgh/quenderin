@@ -468,7 +468,7 @@ public struct NoteCreateCapability: UndoableCapability {
 /// "<title> | <YYYY-MM-DD HH:MM> | <duration minutes>" (duration optional, default 60).
 public struct CalendarAddCapability: UndoableCapability {
     public let name = "mac.calendar.add"
-    public let purpose = "Add an event to macOS Calendar. Input: \"<title> | <YYYY-MM-DD HH:MM> | <minutes>\" (minutes optional, default 60)."
+    public let purpose = "Add an event to macOS Calendar. Input: \"Title | today HH:MM | minutes\" or \"Title | YYYY-MM-DD HH:MM | minutes\" (minutes optional, default 60)."
     public let tier = CapabilityTier.reversibleWrite
     public let blastRadius = BlastRadius.write(resource: "macOS Calendar")
     private let mac: any MacAutomation
@@ -489,25 +489,48 @@ public struct CalendarAddCapability: UndoableCapability {
         let parts = input.split(separator: "|", omittingEmptySubsequences: false)
             .map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count >= 2, !parts[0].isEmpty else { return nil }
-        let pattern = #"^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$"#
-        guard let match = parts[1].range(of: pattern, options: .regularExpression) else { return nil }
-        let digits = parts[1][match].split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
-        guard digits.count == 5 else { return nil }
-        let (y, mo, d, h, mi) = (digits[0], digits[1], digits[2], digits[3], digits[4])
-        guard (1...12).contains(mo), (1...31).contains(d), h <= 23, mi <= 59 else { return nil }
-        // Reject rolled-over dates (Feb 30 must fail, not become Mar 2) — components must round-trip.
-        var comps = DateComponents()
-        comps.year = y; comps.month = mo; comps.day = d; comps.hour = h; comps.minute = mi
-        let cal = Calendar(identifier: .gregorian)
-        guard let target = cal.date(from: comps) else { return nil }
-        let back = cal.dateComponents([.year, .month, .day], from: target)
-        guard back.year == y, back.month == mo, back.day == d else { return nil }
+        guard let target = Self.resolveWhen(parts[1], now: now()) else { return nil }
         var durationMinutes = 60
         if parts.count >= 3, !parts[2].isEmpty {
             guard let n = Int(parts[2]), n > 0 else { return nil }
             durationMinutes = min(n, 24 * 60)
         }
         return Parsed(title: parts[0], target: target, durationMinutes: durationMinutes)
+    }
+
+    /// Accepts strict `YYYY-MM-DD HH:MM` plus weak-model-friendly forms:
+    /// `today`, `today 09:00`, `today 9:00`, `tomorrow 14:30`.
+    static func resolveWhen(_ raw: String, now: Date) -> Date? {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cal = Calendar(identifier: .gregorian)
+        // Bare "today" / "tomorrow" → 09:00 local (all-day-ish default for birthday-style goals).
+        if s == "today" || s == "tomorrow" {
+            let day = s == "today" ? now : cal.date(byAdding: .day, value: 1, to: now) ?? now
+            return cal.date(bySettingHour: 9, minute: 0, second: 0, of: day)
+        }
+        // "today HH:MM" / "tomorrow H:MM"
+        let relative = #"^(today|tomorrow)\s+(\d{1,2}):(\d{2})$"#
+        if let m = s.range(of: relative, options: .regularExpression) {
+            let tokens = s[m].split(whereSeparator: { $0 == " " || $0 == ":" }).map(String.init)
+            // tokens: today|tomorrow, hour, minute
+            guard tokens.count >= 3, let h = Int(tokens[1]), let mi = Int(tokens[2]),
+                  (0...23).contains(h), (0...59).contains(mi) else { return nil }
+            let base = tokens[0] == "today" ? now : (cal.date(byAdding: .day, value: 1, to: now) ?? now)
+            return cal.date(bySettingHour: h, minute: mi, second: 0, of: base)
+        }
+        // Strict ISO-ish: YYYY-MM-DD HH:MM or YYYY-MM-DDTHH:MM
+        let pattern = #"^(\d{4})-(\d{2})-(\d{2})[ t](\d{2}):(\d{2})$"#
+        guard let match = s.range(of: pattern, options: .regularExpression) else { return nil }
+        let digits = s[match].split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        guard digits.count == 5 else { return nil }
+        let (y, mo, d, h, mi) = (digits[0], digits[1], digits[2], digits[3], digits[4])
+        guard (1...12).contains(mo), (1...31).contains(d), h <= 23, mi <= 59 else { return nil }
+        var comps = DateComponents()
+        comps.year = y; comps.month = mo; comps.day = d; comps.hour = h; comps.minute = mi
+        guard let target = cal.date(from: comps) else { return nil }
+        let back = cal.dateComponents([.year, .month, .day], from: target)
+        guard back.year == y, back.month == mo, back.day == d else { return nil }
+        return target
     }
 
     /// Seconds from now to `date` — so AppleScript builds the date as `(current date) + offset`.
@@ -524,7 +547,9 @@ public struct CalendarAddCapability: UndoableCapability {
 
     public func plan(_ input: String) async throws -> ActionPreview {
         guard let p = parse(input) else {
-            return ActionPreview(summary: "Input must be \"<title> | <YYYY-MM-DD HH:MM> | <minutes>\".", mutates: false)
+            return ActionPreview(
+                summary: "Input: \"Title | today HH:MM | minutes\" (or YYYY-MM-DD HH:MM). Example: \"Birthday | today 09:00 | 60\".",
+                mutates: false)
         }
         return ActionPreview(
             summary: "Add \"\(p.title)\" to Calendar on \(human(p.target)) for \(p.durationMinutes) min (delete it in Calendar to undo).",
@@ -534,7 +559,9 @@ public struct CalendarAddCapability: UndoableCapability {
 
     public func run(_ input: String) async throws -> String {
         guard mac.available else { return notMacMessage }
-        guard let p = parse(input) else { return "Input must be \"<title> | <YYYY-MM-DD HH:MM> | <minutes>\"." }
+        guard let p = parse(input) else {
+            return "Input: \"Title | today HH:MM | minutes\" (or YYYY-MM-DD HH:MM). Example: \"Birthday | today 09:00 | 60\"."
+        }
         let script = [
             "tell application \"Calendar\"",
             "  tell (first calendar whose writable is true)",

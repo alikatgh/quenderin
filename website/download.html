@@ -29,32 +29,36 @@
   <p class="legal-updated">Direct files, straight from the open-source build — every installer below is produced in public by <a href="https://github.com/alikatgh/quenderin/actions/workflows/desktop-release.yml" rel="noopener">a CI run you can inspect</a>. No account, no email, no bundled extras.</p>
 
   <h2>Windows</h2>
+  <p><strong>Two channels (same product version):</strong> Microsoft Store (when live — no SmartScreen, store updates) <em>and</em> direct GitHub installers below for portable use and users who prefer no Store account.</p>
   <ul>
-    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe"><strong>Quenderin-Setup-x64.exe</strong></a> — the installer (recommended).</li>
+    <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe"><strong>Quenderin-Setup-x64.exe</strong></a> — the installer (recommended from GitHub).</li>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Portable-x64.exe">Quenderin-Portable-x64.exe</a> — no installation; runs from any folder or USB stick.</li>
   </ul>
-  <p><strong>About the SmartScreen warning:</strong> the preview builds aren't yet code-signed, so Windows shows "unrecognized app" — click <em>More info → Run anyway</em>. You don't have to trust that sentence: the file is built in public from the source you can read, and a store-signed Microsoft Store listing is in progress, which removes the warning entirely.</p>
+  <p><strong>About the SmartScreen warning on GitHub builds:</strong> preview <code>.exe</code> files may be unsigned, so Windows can show “unrecognized app” — click <em>More info → Run anyway</em>. The file is built in public CI from this open source. The <strong>Microsoft Store</strong> listing is signed by Microsoft and removes that warning — owner playbook: <a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener">docs/MICROSOFT_STORE.md</a>.</p>
 
   <h2>Linux</h2>
   <ul>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-x86_64.AppImage"><strong>Quenderin-x86_64.AppImage</strong></a> — download, <code>chmod +x</code>, run. Works on any distro.</li>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-amd64.deb">Quenderin-amd64.deb</a> — for Debian and Ubuntu (<code>sudo apt install ./Quenderin-amd64.deb</code>).</li>
   </ul>
-  <p>A Flathub listing is planned so <code>flatpak install quenderin</code> works too.</p>
+  <p>A Flathub listing is planned so <code>flatpak install quenderin</code> works too. Current preview: <strong>v0.2.x</strong>.</p>
 
   <h2>The terminal</h2>
   <p>For programmers there's a CLI — the same models, in your shell. <code>git diff | quenderin chat -p "review this change"</code> is code review that never leaves your machine.</p>
   <p>And on a Mac, <code>quenderin do "&lt;anything&gt;"</code> is a local computer-use agent — a private alternative to cloud agents like Cowork. It can organise a folder (<code>--workspace ~/Downloads</code>), click and type in <strong>any</strong> app via accessibility (<code>--gui</code>), and run any of your <strong>Apple Shortcuts</strong> — but every change is <strong>previewed and approved by you</strong>, logged to a local audit trail (<code>quenderin history</code>, grouped by task), and reversible — even in a new session, an hour later (<code>quenderin undo</code>). Want to look before you leap? <code>--dry-run</code> shows exactly what it would do, touching nothing. See the whole toolkit with <code>quenderin capabilities</code>. Nothing — not your files, not your screen, not your intent — ever leaves the machine.</p>
   <p>It ships with the source today (<code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code> from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a>); an npm package is planned. <a href="blog-cli.html">Read the announcement →</a> · <a href="why-local-agent.html">Why a local agent →</a></p>
 
-  <h2>macOS, iOS &amp; Android</h2>
-  <p>These are <strong>native apps</strong> (SwiftUI and Kotlin — not the Electron build above), heading to the App&nbsp;Store and Google&nbsp;Play. Until the store listings are live, they build from source in a few minutes: see the <a href="https://github.com/alikatgh/quenderin#getting-started" rel="noopener">quickstart on GitHub</a>.</p>
+  <h2>macOS</h2>
+  <p><strong>Mac App Store only</strong> — the public Mac product is the <em>native</em> Swift app (not the Windows/Linux Electron build). Free listing for branding and legitimacy. Submission playbook: <a href="https://github.com/alikatgh/quenderin/blob/main/docs/MAC_APP_STORE.md" rel="noopener">docs/MAC_APP_STORE.md</a>. Until the listing is live, build from source via the <a href="https://github.com/alikatgh/quenderin#getting-started" rel="noopener">GitHub quickstart</a>.</p>
+
+  <h2>iOS &amp; Android</h2>
+  <p>Native apps (SwiftUI / Kotlin), App&nbsp;Store and Google&nbsp;Play. Same offline chat product. Until listings are live, build from source: <a href="https://github.com/alikatgh/quenderin#getting-started" rel="noopener">quickstart on GitHub</a>.</p>
 
   <h2>Before you download — use with judgement</h2>
   <p>Quenderin runs open AI models on your own machine, and on-device models are small: they can be <strong>confidently wrong, outdated, or occasionally inappropriate</strong>, and nothing filters them. Nothing Quenderin produces is medical, legal, financial, or safety advice — verify anything that matters with a qualified source. <strong>By downloading or using Quenderin you agree</strong> that the software is provided &ldquo;as is&rdquo; and that, to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce. The app asks for the same agreement on first launch. Full detail: <a href="terms.html">Terms of Use</a>.</p>
 
   <h2>What you're downloading</h2>
-  <p>The desktop preview (v0.1.x): chat with streaming replies, the full model library (Llama, Qwen, DeepSeek-R1, Mistral, Gemma&nbsp;3 &amp; 4, Phi) with RAM-fit recommendations and SHA-256-verified downloads, and the task router. Everything runs on your machine — <a href="how-it-works.html">how it works</a>, <a href="reality.html">the measured numbers</a>. Model downloads happen inside the app after install; expect 0.4–9&nbsp;GB per model, your pick.</p>
+  <p>The desktop preview (<strong>v0.2.x</strong>): chat with streaming replies, the full model library (Llama, Qwen, DeepSeek-R1, Mistral, Gemma&nbsp;3 &amp; 4, Phi) with RAM-fit recommendations and SHA-256-verified downloads, and the governed task tools. Everything runs on your machine — <a href="how-it-works.html">how it works</a>, <a href="reality.html">the measured numbers</a>. Model downloads happen inside the app after install; expect 0.4–9&nbsp;GB per model, your pick.</p>
 
   <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help.html">Get help</a> &middot; <a href="changelog.html">What's new</a> &middot; <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">All releases</a></p>
 </main>

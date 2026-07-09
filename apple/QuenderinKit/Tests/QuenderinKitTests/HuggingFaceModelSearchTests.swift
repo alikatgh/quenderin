@@ -8,7 +8,7 @@ final class HuggingFaceModelSearchTests: XCTestCase {
     func testParseSearchExtractsIdDownloadsAndGating() throws {
         let json = """
         [
-          {"id":"bartowski/Meta-Llama-3.1-8B-Instruct-GGUF","downloads":271546,"gated":false},
+          {"id":"bartowski/Meta-Llama-3.1-8B-Instruct-GGUF","downloads":271546,"gated":false,"likes":12,"tags":["gguf","text-generation"],"pipeline_tag":"text-generation"},
           {"id":"meta-llama/Llama-3.1-8B-Instruct","downloads":9000000,"gated":"manual"}
         ]
         """.data(using: .utf8)!
@@ -18,6 +18,22 @@ final class HuggingFaceModelSearchTests: XCTestCase {
         XCTAssertEqual(hits[0].downloads, 271546)
         XCTAssertFalse(hits[0].gated, "a community re-quant is ungated → downloadable without a token")
         XCTAssertTrue(hits[1].gated, "an official gated repo needs HF license acceptance")
+        XCTAssertEqual(hits[0].likes, 12)
+        XCTAssertEqual(hits[0].pipelineTag, "text-generation")
+        XCTAssertTrue(hits[0].detailBlurb.contains("community GGUF"))
+        XCTAssertEqual(hits[0].hubURL?.absoluteString, "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF")
+    }
+
+    func testSearchFiltersExcludeGatedAndCapParams() {
+        let hits = [
+            HFModelHit(id: "a/Llama-3-8B-GGUF", downloads: 100, gated: false),
+            HFModelHit(id: "b/Llama-70B-GGUF", downloads: 50, gated: false),
+            HFModelHit(id: "c/Meta-8B", downloads: 200, gated: true),
+        ]
+        let open = ModelSearchFilters(excludeGated: true).apply(to: hits, totalRAMGB: 16)
+        XCTAssertEqual(open.map(\.id), ["a/Llama-3-8B-GGUF", "b/Llama-70B-GGUF"])
+        let small = ModelSearchFilters(maxParamsB: 8).apply(to: hits, totalRAMGB: 16)
+        XCTAssertFalse(small.contains(where: { $0.id.contains("70B") }))
     }
 
     func testParseQuantsKeepsOnlyGgufWithSizeAndSha() throws {

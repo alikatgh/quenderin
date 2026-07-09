@@ -64,6 +64,17 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
                 .init(title: "Reveal it in Finder", toolHint: "mac.finder.reveal"),
                 .init(title: "Open it", toolHint: "mac.app.open"),
             ]),
+        // Live-caught: free-form "put birthday on calendar today" failed when a 1B copied prompt
+        // placeholders instead of mac.calendar.add. Skeleton teaches the exact input shape.
+        AgentRecipe(
+            title: "Add calendar event",
+            exampleGoal: "Put my daughter's birthday on the calendar today",
+            steps: [
+                .init(title: "Add the event", toolHint: "mac.calendar.add",
+                      guidance: "Input format: \"Title | today HH:MM | minutes\" "
+                          + "(or YYYY-MM-DD HH:MM). Example: "
+                          + "\"Daughter birthday | today 09:00 | 60\"."),
+            ]),
     ]
 
     /// Conservative match: a per-recipe intent regex AND a requiredTools gate (every toolHint must be
@@ -120,6 +131,8 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
         (all[1], #"(draft|write|compose|make).{0,25}(e?mail|message).{0,40}(clipboard|copied|i copied|just copied)|(clipboard|copied).{0,40}(e?mail|draft|message)"#),
         // find … then open/reveal a file/report/doc
         (all[2], #"(find|locate|search for).{0,40}(open|reveal|show)|open\s+(my|the)\s+.{0,20}(file|report|document|doc|pdf)"#),
+        // add / put / schedule an event or birthday on the calendar (not bare "what's on calendar")
+        (all[3], #"(add|put|create|schedule|set).{0,40}(calendar|event|appointment|birthday|reminder).{0,30}(today|tomorrow|calendar)?|(birthday|anniversary).{0,40}(calendar|today)|(calendar).{0,40}(add|put|create|birthday|event)"#),
     ]
 
     /// The numbered skeleton injected into the preamble when a recipe matches.

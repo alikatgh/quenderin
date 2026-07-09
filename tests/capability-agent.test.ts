@@ -59,8 +59,8 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         const caps = [
             new AppObserveCapability(device, parser),
             new AppTapCapability(device, parser),
-            new AppTypeCapability(device),
-            new AppKeyCapability(device),
+            new AppTypeCapability(device, parser),
+            new AppKeyCapability(device, parser),
         ];
         const agent = new CapabilityAgent(planner, caps, runner);
         const result = await agent.run('add the user on imo and greet them');

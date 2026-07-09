@@ -18,6 +18,21 @@ sealed interface AgentDecision {
  * Dependency-free (no JSON library in the core) — extracts the known string keys directly.
  */
 object AgentDecisionParser {
+    /**
+     * Model copied a prompt template (`{"tool":"<name>","input":"<text>"}`) instead of a real id.
+     * Twin of Swift `AgentDecisionParser.isPlaceholderToolName` — treat as parse failure.
+     */
+    fun isPlaceholderToolName(name: String): Boolean {
+        val t = name.trim().lowercase()
+        if (t.isEmpty()) return true
+        if (t.startsWith("<") && t.endsWith(">")) return true
+        if (t.contains('<') || t.contains('>')) return true
+        return t in setOf(
+            "name", "tool", "text", "input", "tool_name", "toolname",
+            "<name>", "<tool>", "<text>", "<input>",
+        )
+    }
+
     fun parse(raw: String): AgentDecision? {
         val json = firstJsonObject(raw) ?: return null
         // Precedence when several keys appear: answer > plan > tool — identical on iOS.
@@ -32,13 +47,14 @@ object AgentDecisionParser {
             val objects = splitObjects(arrayBody) ?: return null
             val calls = objects.map { obj ->
                 val tool = extractString(obj, "tool")
-                if (tool.isNullOrEmpty()) return null
+                if (tool.isNullOrEmpty() || isPlaceholderToolName(tool)) return null
                 ToolCall(tool, extractString(obj, "input") ?: "")
             }
             return if (calls.isNotEmpty()) AgentDecision.Plan(calls) else null
         }
         val tool = extractString(json, "tool")
         if (!tool.isNullOrEmpty()) {
+            if (isPlaceholderToolName(tool)) return null
             return AgentDecision.UseTool(tool, extractString(json, "input") ?: "")
         }
         return null

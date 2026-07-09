@@ -3,8 +3,13 @@
 # download links point at releases/latest/download/<stable-name> — cutting a new release
 # updates every link automatically.
 #
-# macOS is deliberately absent here: the Mac app is the native SwiftUI one, distributed
-# separately (owner call, 2026-07-04).
+# Channels:
+#   - GitHub Releases: NSIS + portable .exe (Windows), AppImage + .deb (Linux) — this workflow.
+#   - Microsoft Store: AppX built locally / on a Windows machine with Partner Center identity
+#     (`npm run electron:build:win:store`) — see docs/MICROSOFT_STORE.md. Not uploaded here
+#     (publisher CN + identity must match Partner Center; store re-signs).
+#   - macOS public product: native Swift App Store app only — docs/MAC_APP_STORE.md.
+#     Electron mac is lab-only and never shipped from this workflow.
 name: Desktop release (Windows + Linux)
 
 on:

@@ -21,6 +21,24 @@ public enum AgentDecision: Sendable, Equatable {
 }
 
 public enum AgentDecisionParser {
+    /// Tool names that mean the model copied a prompt TEMPLATE instead of a real tool id
+    /// (live-caught: Llama 1B emitted `{"tool":"<name>","input":"<text>"}` and stalled).
+    /// Treat as parse failure so the loop nudges with the real catalog, not "No such tool: <name>".
+    public static func isPlaceholderToolName(_ name: String) -> Bool {
+        let t = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if t.isEmpty { return true }
+        // Angle-bracket slots and bare template tokens from our own preamble examples.
+        if t.hasPrefix("<") && t.hasSuffix(">") { return true }
+        if t.contains("<") || t.contains(">") { return true }
+        switch t {
+        case "name", "tool", "text", "input", "tool_name", "toolname",
+             "<name>", "<tool>", "<text>", "<input>":
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Parse the planner's JSON. Accepts any of the shapes, even wrapped in prose
     /// (local models love to add commentary around their JSON):
     ///   `{"tool":"calculator","input":"2+2"}`
@@ -45,13 +63,15 @@ public enum AgentDecisionParser {
             // executions from one model output (twin-drift audit, agent-loop P1/P2).
             let calls = planItems.compactMap { item -> ToolCall? in
                 guard let dict = item as? [String: Any],
-                      let tool = dict["tool"] as? String, !tool.isEmpty else { return nil }
+                      let tool = dict["tool"] as? String, !tool.isEmpty,
+                      !isPlaceholderToolName(tool) else { return nil }
                 return ToolCall(name: tool, input: dict["input"] as? String ?? "")
             }
             guard !calls.isEmpty, calls.count == planItems.count else { return nil }
             return .plan(calls)
         }
         if let tool = object["tool"] as? String, !tool.isEmpty {
+            if isPlaceholderToolName(tool) { return nil }
             return .useTool(name: tool, input: object["input"] as? String ?? "")
         }
         return nil

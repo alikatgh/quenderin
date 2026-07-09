@@ -6,12 +6,15 @@ import XCTest
 /// tell the model to "redo".
 final class AgentRecipeTests: XCTestCase {
     private let allTools = ["mac.calendar.today", "mac.notes.create", "mac.clipboard.read",
-                            "mac.mail.draft", "fs.list", "mac.finder.reveal", "mac.app.open", "calculator"]
+                            "mac.mail.draft", "fs.list", "mac.finder.reveal", "mac.app.open",
+                            "mac.calendar.add", "calculator"]
 
     func testMatchesTheThreeIntendedGoals() {
         XCTAssertEqual(AgentRecipe.match(goal: "Make me a prep note for today", availableTools: allTools)?.title, "Morning brief")
         XCTAssertEqual(AgentRecipe.match(goal: "Draft an email from what I just copied", availableTools: allTools)?.title, "Copy to draft")
         XCTAssertEqual(AgentRecipe.match(goal: "Find my report and open it", availableTools: allTools)?.title, "Find and open")
+        XCTAssertEqual(AgentRecipe.match(goal: "open calendar and put there today is my daughter birthday", availableTools: allTools)?.title, "Add calendar event")
+        XCTAssertEqual(AgentRecipe.match(goal: "Add birthday to calendar today", availableTools: allTools)?.title, "Add calendar event")
     }
 
     func testDoesNotFalseTriggerOnAdjacentGoals() {

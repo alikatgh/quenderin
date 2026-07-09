@@ -14,52 +14,78 @@ public struct ModelSearchView: View {
     @StateObject private var controller: ModelSearchController
     @ObservedObject private var library = ModelLibraryController.shared
     private let onSelectModel: (ModelEntry) -> Void
+    /// When non-nil, the parent owns the search field (e.g. Universal Search rail) — we hide chrome + field.
+    private var externalQuery: Binding<String>?
+    private let showChrome: Bool
+    private let filters: ModelSearchFilters
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var openURL
-    @State private var text = ""
+    @State private var localText = ""
     @State private var expanded: String?
 
     public init(onSelectModel: @escaping (ModelEntry) -> Void,
-                provider: ModelSearchProviding = HuggingFaceAPI()) {
+                provider: ModelSearchProviding = HuggingFaceAPI(),
+                query: Binding<String>? = nil,
+                showChrome: Bool = true,
+                filters: ModelSearchFilters = .default) {
         self.onSelectModel = onSelectModel
+        self.externalQuery = query
+        self.showChrome = showChrome
+        self.filters = filters
         _controller = StateObject(wrappedValue: ModelSearchController(provider: provider))
     }
 
+    private var totalRAM: Double { HardwareProbe.current().totalRAMGB }
+
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Search the open catalog")
-                    .font(.headline).foregroundStyle(p.onSurface)
-                Text("Any GGUF on Hugging Face your \(deviceNoun) can run. Community uploads — not vetted by "
-                   + "Quenderin, but every download is verified against Hugging Face's own checksum before it runs.")
-                    .font(.caption).foregroundStyle(p.onSurfaceVariant)
-                    .fixedSize(horizontal: false, vertical: true)
+        Group {
+            if showChrome {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Search the open catalog")
+                            .font(.headline).foregroundStyle(p.onSurface)
+                        Text("Any GGUF on Hugging Face your \(deviceNoun) can run. Community uploads — not vetted by "
+                           + "Quenderin, but every download is verified against Hugging Face's own checksum before it runs.")
+                            .font(.caption).foregroundStyle(p.onSurfaceVariant)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    searchField(p)
+                    content(p)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(p.surfaceVariant.opacity(0.4), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+            } else {
+                content(p)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            searchField(p)
-            content(p)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(p.surfaceVariant.opacity(0.4), in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+        .onChange(of: textBinding.wrappedValue) { newValue in
+            controller.search(newValue)
+        }
     }
 
     @ViewBuilder
     private func searchField(_ p: QuenderinPalette) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.callout).foregroundStyle(p.onSurfaceVariant)
-            TextField("Search models — e.g. Qwen, Llama, Phi, Gemma…", text: $text)
+            TextField("Search models — e.g. Qwen, Llama, Phi, Gemma…", text: textBinding)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .autocorrectionDisabled()
                 #if os(iOS)
                 .textInputAutocapitalization(.never)
                 #endif
-                .onChange(of: text) { newValue in controller.search(newValue) }   // single-param form: macOS 13 / iOS 16 safe
-                .onSubmit { controller.search(text) }
-            if !text.isEmpty {
-                Button { text = ""; controller.clear(); expanded = nil } label: {
+                .onChange(of: textBinding.wrappedValue) { newValue in controller.search(newValue) }
+                .onSubmit { controller.search(textBinding.wrappedValue) }
+            if !textBinding.wrappedValue.isEmpty {
+                Button {
+                    textBinding.wrappedValue = ""
+                    controller.clear()
+                    expanded = nil
+                } label: {
                     Image(systemName: "xmark.circle.fill").font(.callout).foregroundStyle(p.onSurfaceVariant)
                 }
                 .buttonStyle(.plain)
@@ -69,6 +95,11 @@ public struct ModelSearchView: View {
         .padding(.horizontal, 12).padding(.vertical, 9)
         .background(p.surface, in: Capsule())
         .overlay(Capsule().strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
+    }
+
+    private var textBinding: Binding<String> {
+        if let externalQuery { return externalQuery }
+        return $localText
     }
 
     @ViewBuilder
@@ -90,41 +121,53 @@ public struct ModelSearchView: View {
                 Image(systemName: "wifi.exclamationmark").foregroundStyle(.orange)
                 Text(message).font(.callout).foregroundStyle(p.onSurfaceVariant)
                 Spacer()
-                Button("Retry") { controller.search(text) }.buttonStyle(.bordered).controlSize(.small)
+                Button("Retry") { controller.search(textBinding.wrappedValue) }.buttonStyle(.bordered).controlSize(.small)
             }
         case .results(let hits):
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(hits, id: \.id) { hit in
-                    RepoRow(hit: hit,
-                            isExpanded: expanded == hit.id,
-                            quantPhase: controller.quants[hit.id],
-                            library: library,
-                            palette: p,
-                            onToggle: {
-                                expanded = (expanded == hit.id) ? nil : hit.id
-                                if expanded == hit.id { controller.loadQuants(for: hit.id) }
-                            },
-                            onGet: { candidate in
-                                SideloadedModels.shared.record(candidate)
-                                library.download(candidate)
-                            },
-                            onUse: { candidate in
-                                SideloadedModels.shared.record(candidate)
-                                onSelectModel(candidate)
-                            },
-                            onCancel: { candidate in library.cancel(candidate) },
-                            onOpenRepo: { if let url = URL(string: "https://huggingface.co/\(hit.id)") { openURL(url) } })
+            let shown = filters.apply(to: hits, totalRAMGB: totalRAM)
+            if shown.isEmpty {
+                Text("No models match your filters. Clear filters or broaden the search.")
+                    .font(.callout).foregroundStyle(p.onSurfaceVariant)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("\(shown.count) model\(shown.count == 1 ? "" : "s") · tap a row for details & files")
+                        .font(.caption).foregroundStyle(p.onSurfaceVariant)
+                    ForEach(shown, id: \.id) { hit in
+                        RepoRow(hit: hit,
+                                isExpanded: expanded == hit.id,
+                                quantPhase: controller.quants[hit.id],
+                                filters: filters,
+                                totalRAMGB: totalRAM,
+                                library: library,
+                                palette: p,
+                                onToggle: {
+                                    expanded = (expanded == hit.id) ? nil : hit.id
+                                    if expanded == hit.id { controller.loadQuants(for: hit.id) }
+                                },
+                                onGet: { candidate in
+                                    SideloadedModels.shared.record(candidate)
+                                    library.download(candidate)
+                                },
+                                onUse: { candidate in
+                                    SideloadedModels.shared.record(candidate)
+                                    onSelectModel(candidate)
+                                },
+                                onCancel: { candidate in library.cancel(candidate) },
+                                onOpenRepo: { if let url = hit.hubURL { openURL(url) } })
+                    }
                 }
             }
         }
     }
 }
 
-/// One repo in the results: identity + download count + a gated badge, expanding to its quants.
+/// One repo: tap header to expand **inline** (no popup) — blurb, HF link, quant table.
 private struct RepoRow: View {
     let hit: HFModelHit
     let isExpanded: Bool
     let quantPhase: ModelSearchController.QuantPhase?
+    let filters: ModelSearchFilters
+    let totalRAMGB: Double
     let library: ModelLibraryController
     let palette: QuenderinPalette
     let onToggle: () -> Void
@@ -133,78 +176,158 @@ private struct RepoRow: View {
     let onCancel: (ModelEntry) -> Void
     let onOpenRepo: () -> Void
 
-    private var owner: String { hit.id.split(separator: "/").first.map(String.init) ?? "" }
-    private var name: String { hit.id.split(separator: "/").last.map(String.init) ?? hit.id }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Full-width header — whole row is tappable for expand/collapse.
             Button(action: onToggle) {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2).foregroundStyle(palette.onSurfaceVariant).frame(width: 12)
-                    VStack(alignment: .leading, spacing: 1) {
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .frame(width: 14, height: 18)
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(name).font(.callout.weight(.medium)).foregroundStyle(palette.onSurface).lineLimit(1)
+                            Text(hit.shortName)
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(palette.onSurface)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(2)
                             if hit.gated {
-                                Label("Gated", systemImage: "lock").font(.caption2)
+                                Label("Gated", systemImage: "lock")
+                                    .font(.caption2)
                                     .foregroundStyle(Color(hex: 0xE8963A))
                                     .labelStyle(.titleAndIcon)
                             }
                         }
-                        Text("\(owner) · \(Self.downloads(hit.downloads)) downloads")
-                            .font(.caption2.monospacedDigit()).foregroundStyle(palette.onSurfaceVariant).lineLimit(1)
+                        Text("\(hit.owner) · \(Self.downloads(hit.downloads)) downloads"
+                           + (hit.likes > 0 ? " · \(Self.downloads(hit.likes)) likes" : "")
+                           + " · ~\(Self.paramsLabel(hit.estimatedParamsB))")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(palette.onSurfaceVariant)
+                            .lineLimit(2)
+                        if !isExpanded {
+                            Text("Tap for details, files, and Hugging Face link")
+                                .font(.caption2)
+                                .foregroundStyle(palette.onSurfaceVariant.opacity(0.85))
+                        }
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
             }
             .buttonStyle(.plain)
-            .padding(.vertical, 8).padding(.horizontal, 10)
+            .accessibilityLabel("\(hit.shortName), \(isExpanded ? "collapse" : "expand") details")
 
             if isExpanded {
                 Divider().overlay(palette.onSurfaceVariant.opacity(0.12))
-                quantList
-                    .padding(.horizontal, 10).padding(.vertical, 8)
+                detailPanel
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
             }
         }
-        .background(palette.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(palette.onSurfaceVariant.opacity(0.12), lineWidth: 1))
+        .background(palette.surface.opacity(0.75), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(
+                    isExpanded ? palette.primary.opacity(0.35) : palette.onSurfaceVariant.opacity(0.12),
+                    lineWidth: 1
+                )
+        )
+    }
+
+    @ViewBuilder
+    private var detailPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(hit.detailBlurb)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Always-visible external links (no popup — browser / HF site).
+            HStack(spacing: 10) {
+                Button(action: onOpenRepo) {
+                    Label("Open on Hugging Face", systemImage: "arrow.up.right.square")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Model card, license, discussions on huggingface.co")
+
+                if let url = hit.hubURL {
+                    // Shareable path for experts who want the exact repo id.
+                    Text(url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .lineLimit(1)
+                        .textSelection(.enabled)
+                }
+            }
+
+            quantList
+        }
     }
 
     @ViewBuilder
     private var quantList: some View {
         switch quantPhase {
         case .loading, .none:
-            HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Loading files…").font(.caption).foregroundStyle(palette.onSurfaceVariant) }
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading downloadable files…").font(.caption).foregroundStyle(palette.onSurfaceVariant)
+            }
         case .error(let message):
             Text(message).font(.caption).foregroundStyle(palette.onSurfaceVariant)
-        case .loaded(let quants):
-            if quants.isEmpty {
-                Text("No ready-to-run GGUF files in this repo.").font(.caption).foregroundStyle(palette.onSurfaceVariant)
+        case .loaded(let raw):
+            let quants = filters.apply(to: raw, totalRAMGB: totalRAMGB)
+            if raw.isEmpty {
+                Text("No ready-to-run GGUF files in this repo.")
+                    .font(.caption).foregroundStyle(palette.onSurfaceVariant)
+            } else if quants.isEmpty {
+                Text("No files match your filters for this model. Clear quant/size filters or turn off “Fits only”.")
+                    .font(.caption).foregroundStyle(palette.onSurfaceVariant)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     if hit.gated {
-                        Text("This is a gated model — accept its license on Hugging Face first, then download it there. Quenderin never asks for your Hugging Face token.")
+                        Text("Gated model — accept its license on Hugging Face first. Quenderin never asks for your HF token.")
                             .font(.caption2).foregroundStyle(Color(hex: 0xE8963A))
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if let pick = ModelSearchFilters.recommendedPick(from: raw, totalRAMGB: totalRAMGB) {
+                        let entry = HuggingFaceCatalog.candidate(from: pick, label: pick.quant)
+                        let fit = MemoryFitness.check(for: entry)
+                        if fit.canLoad {
+                            Text("Suggested on this \(deviceNoun): \(pick.quant) · \(entry.sizeLabel) · \(fit.severity == .safe ? "Fits" : "Tight")")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(palette.primary)
+                        }
+                    }
+                    Text("Files")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(palette.onSurfaceVariant)
                     ForEach(quants) { q in
-                        QuantRow(candidate: HuggingFaceCatalog.candidate(from: q, label: "\(name) · \(q.quant)"),
-                                 gated: hit.gated, library: library, palette: palette,
-                                 onGet: onGet, onUse: onUse, onCancel: onCancel, onOpenRepo: onOpenRepo)
+                        QuantRow(
+                            candidate: HuggingFaceCatalog.candidate(from: q, label: "\(hit.shortName) · \(q.quant)"),
+                            gated: hit.gated, library: library, palette: palette,
+                            onGet: onGet, onUse: onUse, onCancel: onCancel, onOpenRepo: onOpenRepo
+                        )
                     }
                 }
             }
         }
     }
 
-    /// "271,546" → "272K", 9_000_000 → "9.0M" — compact, honest, tabular.
     static func downloads(_ n: Int) -> String {
         switch n {
         case 1_000_000...: return String(format: "%.1fM", Double(n) / 1_000_000)
         case 1_000...:     return "\(Int((Double(n) / 1_000).rounded()))K"
         default:           return "\(n)"
         }
+    }
+
+    static func paramsLabel(_ p: Double) -> String {
+        p == floor(p) ? "\(Int(p))B" : String(format: "%.1fB", p)
     }
 }
 

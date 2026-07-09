@@ -27,10 +27,14 @@ targets:
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: 2
     info:
       path: Info.plist
       properties:
         CFBundleDisplayName: Quenderin
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -63,10 +67,14 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ai.quenderin.Quenderin
         PRODUCT_NAME: Quenderin
         ENABLE_HARDENED_RUNTIME: YES
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: 2
     info:
       path: Info-macOS.plist
       properties:
         CFBundleDisplayName: Quenderin
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false

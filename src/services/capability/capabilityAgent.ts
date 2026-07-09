@@ -54,7 +54,8 @@ export class CapabilityAgent {
         // Record a step and stream it live — the CLI prints each as it happens (a 30-step task
         // shouldn't run in silence; watching it work is how you Ctrl+C the moment you see a wrong turn).
         const emit = (line: string) => { steps.push(line); onStep?.(line); };
-        const usedTools: string[] = [];   // the capabilities this run drove — recorded on success
+        const usedTools: string[] = [];   // capability names this run drove (progress + zero-action guard)
+        const usedSteps: Array<{ tool: string; input: string }> = []; // full sequence for skill memory
         let transcript = this.preamble(goal);
         // Loop guard: a weak local model's #1 failure is getting stuck re-emitting the SAME action.
         // We nudge once (feeding back the prior result), then halt 'stalled' rather than burn every
@@ -128,9 +129,10 @@ export class CapabilityAgent {
                     }
                     return { answer: null, steps, halt: 'planError' };
                 }
-                // A completed task teaches the harness — record the proven capability sequence so
-                // the next similar goal is primed with it (retrieval-augmented planning).
-                if (usedTools.length > 0) this.memory?.record(goal, usedTools);
+                // A completed task teaches the harness — record the proven capability sequence
+                // (tool + input) so the next similar goal is primed with concrete plan shape.
+                if (usedSteps.length > 0) this.memory?.recordSteps(goal, usedSteps);
+                else if (usedTools.length > 0) this.memory?.record(goal, usedTools);
                 return { answer: decision.text, steps, halt: 'answered' };
             }
 
@@ -152,7 +154,10 @@ export class CapabilityAgent {
                 observation = cap
                     ? await this.runner.execute(cap, decision.input, signal)
                     : `No such capability: ${decision.name}.`;
-                if (cap) usedTools.push(decision.name);
+                if (cap) {
+                    usedTools.push(decision.name);
+                    usedSteps.push({ tool: decision.name, input: decision.input });
+                }
                 transcript += `\nUsed ${decision.name}(${decision.input}) → ${observation}`;
             } else {
                 const resolved = decision.calls.map(c => ({ capability: this.byName.get(c.name), input: c.input }));
@@ -160,7 +165,10 @@ export class CapabilityAgent {
                 observation = unknown
                     ? `No such capability in the plan: ${decision.calls.find(c => !this.byName.has(c.name))?.name}. Plan not executed.`
                     : await this.runner.executePlan(resolved as Array<{ capability: Capability; input: string }>, signal);
-                if (!unknown) usedTools.push(...decision.calls.map(c => c.name));
+                if (!unknown) {
+                    usedTools.push(...decision.calls.map(c => c.name));
+                    usedSteps.push(...decision.calls.map(c => ({ tool: c.name, input: c.input })));
+                }
                 const described = decision.calls.map(c => `${c.name}(${c.input})`).join(', ');
                 transcript += `\nProposed plan [${described}] → ${observation}`;
             }
@@ -178,8 +186,8 @@ export class CapabilityAgent {
         // that succeeded on similar past goals. A hint, not a command — it still reasons + gates.
         const recalled = this.memory?.recall(goal) ?? [];
         if (recalled.length > 0) {
-            lines.push('You completed similar tasks before — the capabilities that worked:');
-            for (const r of recalled) lines.push(`- "${r.goal}" → ${r.tools.join(' → ')}`);
+            lines.push('You completed similar tasks before — proven sequences (reuse the shape; re-resolve inputs from the live workspace):');
+            for (const r of recalled) lines.push(`- ${SkillMemory.formatHint(r)}`);
         }
         lines.push(
             'Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use one capability, ' +

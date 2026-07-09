@@ -26,4 +26,17 @@ final class AgentDecisionTests: XCTestCase {
     func testReturnsNilOnNonJSON() {
         XCTAssertNil(AgentDecisionParser.parse("no json here"))
     }
+
+    /// Live-caught: Llama 1B copied the prompt template `{"tool":"<name>","input":"<text>"}`
+    /// and stalled on "No such tool: <name>". Placeholders must fail parse so the loop nudges.
+    func testRejectsPlaceholderToolNames() {
+        XCTAssertTrue(AgentDecisionParser.isPlaceholderToolName("<name>"))
+        XCTAssertTrue(AgentDecisionParser.isPlaceholderToolName("name"))
+        XCTAssertTrue(AgentDecisionParser.isPlaceholderToolName("<text>"))
+        XCTAssertFalse(AgentDecisionParser.isPlaceholderToolName("mac.calendar.add"))
+        XCTAssertNil(AgentDecisionParser.parse(#"{"tool":"<name>","input":"<text>"}"#))
+        XCTAssertNil(AgentDecisionParser.parse(#"{"tool":"name","input":"x"}"#))
+        XCTAssertNil(AgentDecisionParser.parse(
+            #"{"plan":[{"tool":"<name>","input":"x"},{"tool":"calculator","input":"1"}]}"#))
+    }
 }

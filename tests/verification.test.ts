@@ -4,7 +4,7 @@ import type { IDeviceProvider } from '../src/types/index.js';
 import { UiParserService } from '../src/services/uiParser.service.js';
 import { CapabilityRunner } from '../src/services/capability/runner.js';
 import { InMemoryConsentStore, InMemoryAuditLedger, Capability, CapabilityTier } from '../src/services/capability/capability.js';
-import { AppTapCapability } from '../src/services/capability/appCapabilities.js';
+import { AppTapCapability, AppTypeCapability, AppKeyCapability } from '../src/services/capability/appCapabilities.js';
 
 /**
  * The agent checks its own work — the reliability lever against our honest weakness (a weak local
@@ -12,15 +12,18 @@ import { AppTapCapability } from '../src/services/capability/appCapabilities.js'
  * says so, where a naive cloud agent assumes success.
  */
 
-/** A fake device that can change (or NOT change) its screen after a tap. */
+/** A fake device that can change (or NOT change) its screen after an action. */
 class SwitchingDevice extends EventEmitter implements IDeviceProvider {
     taps: Array<[number, number]> = [];
-    constructor(private screens: string[]) { super(); }   // screens[0] before tap, screens[1] after
+    typed: string[] = [];
+    keys: string[] = [];
+    constructor(private screens: string[]) { super(); }   // screens[0] before, screens[1+] after each advance
     private i = 0;
-    async click(x: number, y: number) { this.taps.push([x, y]); if (this.i < this.screens.length - 1) this.i++; }
-    async type() {}
+    private advance() { if (this.i < this.screens.length - 1) this.i++; }
+    async click(x: number, y: number) { this.taps.push([x, y]); this.advance(); }
+    async type(t = '') { this.typed.push(t); this.advance(); }
     async scroll() {}
-    async pressKey() {}
+    async pressKey(k = '') { this.keys.push(k); this.advance(); }
     async getScreenContext() { return { xml: this.screens[this.i], screenshotPath: '' }; }
 }
 
@@ -34,7 +37,11 @@ const AFTER = `<hierarchy>
 </hierarchy>`;
 
 const parser = new UiParserService();
-const grant = () => { const c = new InMemoryConsentStore(); c.setGranted('app.tap', true); return c; };
+const grant = (...ids: string[]) => {
+    const c = new InMemoryConsentStore();
+    (ids.length ? ids : ['app.tap']).forEach(id => c.setGranted(id, true));
+    return c;
+};
 
 describe('app.tap self-verification', () => {
     it('confirms silently when the screen changed after the tap', async () => {
@@ -52,6 +59,45 @@ describe('app.tap self-verification', () => {
         expect(out).toContain('Tapped "Menu".');
         expect(out).toContain("Couldn't confirm it worked: the screen did not change");
         expect(ledger.entries().some(e => e.decision === 'unverified')).toBe(true);
+    });
+});
+
+describe('app.type + app.key self-verification', () => {
+    it('app.type confirms when typed text appears on the after-screen', async () => {
+        const afterType = `<hierarchy>
+  <node text="hello agent" class="a.Edit" clickable="true" bounds="[0,0][100,50]" />
+</hierarchy>`;
+        const device = new SwitchingDevice([BEFORE, afterType]);
+        const runner = new CapabilityRunner(grant('app.type'), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new AppTypeCapability(device, parser), 'hello agent');
+        expect(out).toBe('Typed "hello agent".');
+    });
+
+    it('app.type WARNS when neither typed text nor a screen change is visible', async () => {
+        const device = new SwitchingDevice([BEFORE]); // never advances
+        const ledger = new InMemoryAuditLedger();
+        const runner = new CapabilityRunner(grant('app.type'), ledger, async () => true);
+        const out = await runner.execute(new AppTypeCapability(device, parser), 'ghost text');
+        expect(out).toContain('Typed "ghost text"');
+        expect(out).toContain("Couldn't confirm it worked");
+        expect(ledger.entries().some(e => e.decision === 'unverified')).toBe(true);
+    });
+
+    it('app.key WARNS when the screen is unchanged after enter', async () => {
+        const device = new SwitchingDevice([BEFORE]);
+        const ledger = new InMemoryAuditLedger();
+        const runner = new CapabilityRunner(grant('app.key'), ledger, async () => true);
+        const out = await runner.execute(new AppKeyCapability(device, parser), 'enter');
+        expect(out).toContain('Pressed "enter"');
+        expect(out).toContain("Couldn't confirm it worked");
+        expect(ledger.entries().some(e => e.decision === 'unverified')).toBe(true);
+    });
+
+    it('app.key confirms when the screen changes after enter', async () => {
+        const device = new SwitchingDevice([BEFORE, AFTER]);
+        const runner = new CapabilityRunner(grant('app.key'), new InMemoryAuditLedger(), async () => true);
+        const out = await runner.execute(new AppKeyCapability(device, parser), 'enter');
+        expect(out).toBe('Pressed "enter".');
     });
 });
 

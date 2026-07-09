@@ -11,9 +11,8 @@ import Foundation
 /// payment" is refused even after the input string passed. All tap/type/menu/key are T3 → per-run
 /// approval.
 ///
-/// Honest gap: the TS `mac.ui.tap` carries a `verify()` ("did the screen change?") — the Swift
-/// `Capability` protocol has no verify hook wired into the runner yet, so it's a named follow-up here
-/// (same posture as the file-move undo note in MacCapabilities), not silently dropped.
+/// Post-action `verify()` is on tap + type + menu + key (VerifiableCapability → runner annotation).
+/// Focus-only keys (tab/arrows) soft-pass; return/escape hard-fail on an unchanged tree.
 
 private let uiNoMac = "This runs on macOS only."
 private let uiNoPermission = "macOS blocked reading the screen — grant Quenderin Accessibility access in System Settings › Privacy & Security › Accessibility, then try again."
@@ -95,13 +94,16 @@ public struct MacUiTapCapability: VerifiableCapability {
     }
 }
 
-/// T3: type into the focused field. Per-run approval.
-public struct MacUiTypeCapability: Capability {
+/// T3: type into the focused field. Per-run approval. verify() prefers visible typed text, else a
+/// screen-tree change (silent type failures are the other half of the GUI weak spot).
+public struct MacUiTypeCapability: VerifiableCapability {
     public let name = "mac.ui.type"
     public let purpose = "Type text into the focused field of the frontmost macOS app. Input: the text to type."
     public let tier = CapabilityTier.appAction
     public let blastRadius = BlastRadius.write(resource: "the frontmost app")
     private let ui: any MacUi
+    private let preType = ScreenSignatureBox()
+    private let lastTyped = ScreenSignatureBox()   // reuses the box for the typed string
     public init(ui: any MacUi) { self.ui = ui }
 
     public func plan(_ input: String) async throws -> ActionPreview {
@@ -115,21 +117,38 @@ public struct MacUiTypeCapability: Capability {
         guard ui.available else { return uiNoMac }
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty { return "Nothing to type." }
+        if let els = try? await ui.observe() { preType.set(signature(els)) } else { preType.set("") }
+        lastTyped.set(text)
         do { try await ui.typeText(text) } catch { return describeUiError(error) }
         let shown = text.count > 80 ? String(text.prefix(80)) + "…" : text
         return "Typed \"\(shown)\"."
+    }
+
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        let after: [MacUiElement]
+        do { after = try await ui.observe() } catch { return (true, "could not re-read the screen") }
+        let typed = lastTyped.get()
+        let needle = String(typed.prefix(min(40, typed.count)))
+        if !needle.isEmpty, after.contains(where: { $0.label.contains(needle) }) {
+            return (true, "typed text is visible on screen")
+        }
+        if !preType.get().isEmpty, signature(after) == preType.get() {
+            return (false, "the screen did not change and typed text is not visible — type may not have registered")
+        }
+        return (true, "the screen changed as expected")
     }
 }
 
 /// T3: click a menu-bar item, e.g. "File > Save As" — the menu bar reaches actions no window button
 /// exposes (Export, Select All, Preferences…). Per-run approval; the resolved item is blocklist-
 /// re-checked. Supports nested submenus of any depth: "Format > Font > Bold".
-public struct MacUiMenuCapability: Capability {
+public struct MacUiMenuCapability: VerifiableCapability {
     public let name = "mac.ui.menu"
     public let purpose = "Click a menu-bar item in the frontmost app. Input: \"<Menu> > <Item>\" (nesting OK, e.g. \"Format > Font > Bold\")."
     public let tier = CapabilityTier.appAction
     public let blastRadius = BlastRadius.write(resource: "the frontmost app")
     private let ui: any MacUi
+    private let preMenu = ScreenSignatureBox()
     public init(ui: any MacUi) { self.ui = ui }
 
     /// Split a "A > B > C" path; require at least a menu and an item, every segment non-empty.
@@ -153,20 +172,33 @@ public struct MacUiMenuCapability: Capability {
         if let hit = SafetyBlocklist.matches(in: p.joined(separator: " ")).first {
             return "Refused: that menu item looks like a blocked action ('\(hit)')."
         }
+        if let els = try? await ui.observe() { preMenu.set(signature(els)) } else { preMenu.set("") }
         do { try await ui.clickMenu(p) } catch { return describeUiError(error) }
         return "Clicked menu \"\(p.joined(separator: " > "))\"."
+    }
+
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        let after: [MacUiElement]
+        do { after = try await ui.observe() } catch { return (true, "could not re-read the screen") }
+        if !preMenu.get().isEmpty, signature(after) == preMenu.get() {
+            return (false, "the screen did not change — the menu action may not have registered")
+        }
+        return (true, "the screen changed as expected")
     }
 }
 
 /// T3: press a navigation key (return, tab, escape, arrows, page up/down). Per-run approval — a key
-/// can submit or dismiss.
-public struct MacUiKeyCapability: Capability {
+/// can submit or dismiss. verify() hard-fails return/escape on an unchanged tree; focus-only keys soft-pass.
+public struct MacUiKeyCapability: VerifiableCapability {
     public let name = "mac.ui.key"
     public let purpose = "Press a key in the frontmost macOS app. Input: return, tab, escape, up, down, left, right, pageup, or pagedown."
     public let tier = CapabilityTier.appAction
     public let blastRadius = BlastRadius.write(resource: "the frontmost app")
     private static let allowed: Set<String> = ["return", "tab", "escape", "up", "down", "left", "right", "pageup", "pagedown"]
+    private static let focusOnly: Set<String> = ["tab", "up", "down", "left", "right", "pageup", "pagedown"]
     private let ui: any MacUi
+    private let preKey = ScreenSignatureBox()
+    private let lastKey = ScreenSignatureBox()
     public init(ui: any MacUi) { self.ui = ui }
 
     public func plan(_ input: String) async throws -> ActionPreview {
@@ -183,8 +215,22 @@ public struct MacUiKeyCapability: Capability {
         guard Self.allowed.contains(key) else {
             return "Input must be a navigation key: return, tab, escape, up, down, left, right, pageup, pagedown."
         }
+        if let els = try? await ui.observe() { preKey.set(signature(els)) } else { preKey.set("") }
+        lastKey.set(key)
         do { try await ui.pressKey(key) } catch { return describeUiError(error) }
         return "Pressed \"\(key)\"."
+    }
+
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        let after: [MacUiElement]
+        do { after = try await ui.observe() } catch { return (true, "could not re-read the screen") }
+        if !preKey.get().isEmpty, signature(after) == preKey.get() {
+            if Self.focusOnly.contains(lastKey.get()) {
+                return (true, "focus-only key — no screen-tree change expected")
+            }
+            return (false, "the screen did not change — the key may not have registered")
+        }
+        return (true, "the screen changed as expected")
     }
 }
 

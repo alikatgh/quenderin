@@ -85,12 +85,16 @@ export class MacUiTapCapability implements Capability {
     }
 }
 
-/** T2: type into the focused field. Per-run approval. */
+/** T2: type into the focused field. Per-run approval. verify() prefers visible typed text,
+ *  else a screen-tree change — silent type failures are the other half of the GUI weak spot. */
 export class MacUiTypeCapability implements Capability {
     readonly name = 'mac.ui.type';
     readonly purpose = 'Type text into the focused field of the frontmost macOS app. Input: the text to type.';
     readonly tier = CapabilityTier.AppAction;
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the frontmost app' };
+
+    private preSignature = '';
+    private lastTyped = '';
 
     constructor(private readonly ui: MacUi) { }
 
@@ -105,9 +109,29 @@ export class MacUiTypeCapability implements Capability {
         if (!this.ui.available()) return NO_MAC;
         const text = input.trim();
         if (!text) return 'Nothing to type.';
+        try {
+            const els = await this.ui.observe();
+            this.preSignature = signature(els);
+        } catch {
+            this.preSignature = '';
+        }
+        this.lastTyped = text;
         try { await this.ui.typeText(text); } catch (e) { return describe(e); }
         const shown = text.length > 80 ? text.slice(0, 80) + '…' : text;
         return `Typed "${shown}".`;
+    }
+
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        let after: MacUiElement[];
+        try { after = await this.ui.observe(); } catch { return { ok: true, detail: 'could not re-read the screen' }; }
+        const needle = this.lastTyped.slice(0, Math.min(40, this.lastTyped.length));
+        if (needle && after.some(e => e.label.includes(needle))) {
+            return { ok: true, detail: 'typed text is visible on screen' };
+        }
+        if (this.preSignature && signature(after) === this.preSignature) {
+            return { ok: false, detail: 'the screen did not change and typed text is not visible — type may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
     }
 }
 
@@ -120,6 +144,8 @@ export class MacUiMenuCapability implements Capability {
     readonly purpose = 'Click a menu-bar item in the frontmost app. Input: "<Menu> > <Item>" (nesting OK, e.g. "Format > Font > Bold").';
     readonly tier = CapabilityTier.AppAction;
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the frontmost app' };
+
+    private preSignature = '';
 
     constructor(private readonly ui: MacUi) { }
 
@@ -143,12 +169,29 @@ export class MacUiMenuCapability implements Capability {
         // Defense in depth: re-check the WHOLE resolved menu path (the runner scanned the raw input too).
         const hit = matchedBlockedKeyword(p.join(' '));
         if (hit) return `Refused: that menu item looks like a blocked action ('${hit}').`;
+        try {
+            const els = await this.ui.observe();
+            this.preSignature = signature(els);
+        } catch {
+            this.preSignature = '';
+        }
         try { await this.ui.clickMenu(p); } catch (e) { return describe(e); }
         return `Clicked menu "${p.join(' > ')}".`;
     }
+
+    /** Menu actions usually open a sheet/dialog or change state — unchanged tree is suspicious. */
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        let after: MacUiElement[];
+        try { after = await this.ui.observe(); } catch { return { ok: true, detail: 'could not re-read the screen' }; }
+        if (this.preSignature && signature(after) === this.preSignature) {
+            return { ok: false, detail: 'the screen did not change — the menu action may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
+    }
 }
 
-/** T2: press a navigation key (return, tab, escape). Per-run approval — a key can submit or dismiss. */
+/** T2: press a navigation key (return, tab, escape). Per-run approval — a key can submit or dismiss.
+ *  verify() requires a screen change for return/escape; focus-only keys (tab/arrows) are soft. */
 export class MacUiKeyCapability implements Capability {
     readonly name = 'mac.ui.key';
     readonly purpose = 'Press a key in the frontmost macOS app. Input: return, tab, escape, up, down, left, right, pageup, or pagedown.';
@@ -156,6 +199,11 @@ export class MacUiKeyCapability implements Capability {
     readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the frontmost app' };
 
     private static readonly ALLOWED = new Set(['return', 'tab', 'escape', 'up', 'down', 'left', 'right', 'pageup', 'pagedown']);
+    /** Keys that usually only move focus — an unchanged accessibility tree is not a failure. */
+    private static readonly FOCUS_ONLY = new Set(['tab', 'up', 'down', 'left', 'right', 'pageup', 'pagedown']);
+
+    private preSignature = '';
+    private lastKey = '';
 
     constructor(private readonly ui: MacUi) { }
 
@@ -169,8 +217,27 @@ export class MacUiKeyCapability implements Capability {
         if (!this.ui.available()) return NO_MAC;
         const key = input.trim().toLowerCase();
         if (!MacUiKeyCapability.ALLOWED.has(key)) return 'Input must be a navigation key: return, tab, escape, up, down, left, right, pageup, pagedown.';
+        try {
+            const els = await this.ui.observe();
+            this.preSignature = signature(els);
+        } catch {
+            this.preSignature = '';
+        }
+        this.lastKey = key;
         try { await this.ui.pressKey(key); } catch (e) { return describe(e); }
         return `Pressed "${key}".`;
+    }
+
+    async verify(): Promise<{ ok: boolean; detail: string }> {
+        let after: MacUiElement[];
+        try { after = await this.ui.observe(); } catch { return { ok: true, detail: 'could not re-read the screen' }; }
+        if (this.preSignature && signature(after) === this.preSignature) {
+            if (MacUiKeyCapability.FOCUS_ONLY.has(this.lastKey)) {
+                return { ok: true, detail: 'focus-only key — no screen-tree change expected' };
+            }
+            return { ok: false, detail: 'the screen did not change — the key may not have registered' };
+        }
+        return { ok: true, detail: 'the screen changed as expected' };
     }
 }
 

@@ -56,6 +56,8 @@ public struct MacRootView: View {
                     Text("The agent needs a loaded model.").foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            case .search:
+                UniversalSearchView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
             case .models:
                 ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
             case .about:
@@ -101,7 +103,7 @@ public struct MacRootView: View {
         }
         // A real Mac app never collapses into a sliver (same lesson as the Settings window).
         .frame(minWidth: 860, minHeight: 520)
-        // ⌘1/⌘2/⌘3 walk the rail — the keyboard is a first-class citizen on the Mac.
+        // ⌘1–⌘4 walk the rail; ⌘F / ⌘K open universal Search.
         .background {
             Group {
                 Button("") { rail = .chats }.keyboardShortcut("1", modifiers: .command)
@@ -110,7 +112,10 @@ public struct MacRootView: View {
                 // The `.agent` destination already renders an honest "The agent needs a loaded model."
                 // placeholder in that case, so this shows the reason instead of swallowing the keystroke.
                 Button("") { rail = .agent }.keyboardShortcut("2", modifiers: .command)
-                Button("") { rail = .models }.keyboardShortcut("3", modifiers: .command)
+                Button("") { rail = .search }.keyboardShortcut("3", modifiers: .command)
+                Button("") { rail = .models }.keyboardShortcut("4", modifiers: .command)
+                Button("") { rail = .search }.keyboardShortcut("f", modifiers: .command)
+                Button("") { rail = .search }.keyboardShortcut("k", modifiers: .command)
             }
             .opacity(0)
             .accessibilityHidden(true)
@@ -323,7 +328,7 @@ private struct SidebarChatRow: View {
 /// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
 /// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
 enum RailSection: Hashable {
-    case chats, agent, models, about
+    case chats, agent, search, models, about
 }
 
 extension MacRootView {
@@ -337,7 +342,8 @@ extension MacRootView {
             if agent != nil {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
-            railButton(.models, icon: "books.vertical", label: "Model library (⌘3)", palette: p)
+            railButton(.search, icon: "magnifyingglass", label: "Search (⌘F)", palette: p)
+            railButton(.models, icon: "books.vertical", label: "Model library (⌘4)", palette: p)
                 .overlay(alignment: .topTrailing) {
                     // Live download activity: a thin progress ring + count, visible from any
                     // section — the library keeps working when you go back to chatting.

@@ -74,7 +74,8 @@ final class MacCapabilitiesTests: XCTestCase {
         // An unparseable input previews as a correction, NOT as a mutation (nothing to approve).
         let bad = try await CalendarAddCapability(mac: mac).plan("no pipe here")
         XCTAssertFalse(bad.mutates)
-        XCTAssertTrue(bad.summary.contains("<title> | <YYYY-MM-DD HH:MM>"))
+        XCTAssertTrue(bad.summary.contains("today") || bad.summary.contains("YYYY-MM-DD"),
+                      "parse failure must teach the input shape; got: \(bad.summary)")
     }
 
     // MARK: capability behavior over the fake seam
@@ -121,6 +122,15 @@ final class MacCapabilitiesTests: XCTestCase {
         XCTAssertNil(cap.parse("| 2026-01-02 10:00"), "an empty title is not an event")
         // A zero/negative duration is a parse failure, not a zero-length event.
         XCTAssertNil(cap.parse("X | 2026-01-02 10:00 | 0"))
+
+        // Weak-model-friendly relative dates (birthday-style goals).
+        let today = cap.parse("Daughter birthday | today | 60")
+        XCTAssertNotNil(today)
+        XCTAssertEqual(cal.component(.hour, from: today!.target), 9)
+        let todayHM = cap.parse("Meet | today 14:30")
+        XCTAssertNotNil(todayHM)
+        XCTAssertEqual(cal.component(.hour, from: todayHM!.target), 14)
+        XCTAssertEqual(cal.component(.minute, from: todayHM!.target), 30)
     }
 
     func testMailDraftRequiresAPlausibleAddressAndNeverSends() async throws {

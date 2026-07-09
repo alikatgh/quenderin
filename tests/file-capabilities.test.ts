@@ -4,6 +4,7 @@ import path from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
     FsListCapability, FsReadCapability, FsMoveCapability, FsRenameCapability, FsTrashCapability, FsWriteCapability,
+    FsOrganizeCapability, FsCollectCapability,
     fileCapabilities,
 } from '../src/services/capability/fileCapabilities.js';
 import { RunSession, InMemoryConsentStore, InMemoryAuditLedger } from '../src/services/capability/capability.js';
@@ -175,10 +176,11 @@ describe('fs.write', () => {
 });
 
 describe('fileCapabilities() + session rollback', () => {
-    it('registers the six fs.* tools', () => {
-        expect(fileCapabilities(workspace).map(c => c.name)).toEqual(
-            ['fs.list', 'fs.read', 'fs.move', 'fs.rename', 'fs.write', 'fs.trash'],
-        );
+    it('registers the fs.* toolkit (list/read/collect + move/organize/rename/write/trash)', () => {
+        expect(fileCapabilities(workspace).map(c => c.name)).toEqual([
+            'fs.list', 'fs.read', 'fs.collect',
+            'fs.move', 'fs.organize', 'fs.rename', 'fs.write', 'fs.trash',
+        ]);
     });
 
     it('a move + a rename in one run both reverse newest-first via undoAll', async () => {
@@ -200,5 +202,62 @@ describe('fileCapabilities() + session rollback', () => {
         expect(exists('docs/a.txt')).toBe(false);
         expect(exists('c.txt')).toBe(false);
         expect(session.undoableCount).toBe(0);
+    });
+});
+
+describe('fs.organize (batch by type)', () => {
+    it('moves top-level files into type folders and undoes via durable journal', async () => {
+        touch('report.pdf', '%PDF');
+        touch('photo.jpg', 'JPEG');
+        touch('notes.txt', 'hi');
+        touch('weird.xyz', 'x'); // unknown ext → left alone
+        const cap = new FsOrganizeCapability(workspace);
+        const dry = await cap.run('dry');
+        expect(dry).toMatch(/report\.pdf/);
+        expect(exists('report.pdf')).toBe(true); // dry does not move
+
+        const out = await cap.run('');
+        expect(out).toContain('Organized');
+        expect(exists('Documents/report.pdf')).toBe(true);
+        expect(exists('Images/photo.jpg')).toBe(true);
+        expect(exists('Documents/notes.txt')).toBe(true);
+        expect(exists('weird.xyz')).toBe(true); // untouched
+        expect((await cap.verify()).ok).toBe(true);
+
+        // Fresh capability instance (simulates cross-session undo) still reverses via journal.
+        const other = new FsOrganizeCapability(workspace);
+        const und = await other.undo();
+        expect(und).toMatch(/Restored/);
+        expect(exists('report.pdf')).toBe(true);
+        expect(exists('Documents/report.pdf')).toBe(false);
+    });
+
+    it('is listed in fileCapabilities()', () => {
+        const names = fileCapabilities(workspace).map(c => c.name);
+        expect(names).toContain('fs.organize');
+        expect(names).toContain('fs.collect');
+    });
+});
+
+describe('fs.collect (multi-file read for summarize → write pipelines)', () => {
+    it('returns labeled sections for several text files', async () => {
+        touch('a.txt', 'alpha content');
+        touch('b.md', '# beta');
+        const cap = new FsCollectCapability(workspace);
+        const out = await cap.run('a.txt, b.md');
+        expect(out).toContain('## a.txt');
+        expect(out).toContain('alpha content');
+        expect(out).toContain('## b.md');
+        expect(out).toContain('# beta');
+        expect(out).toMatch(/Summarize/i);
+    });
+
+    it('rejects paths and reports missing files', async () => {
+        const cap = new FsCollectCapability(workspace);
+        expect(await cap.run('../etc/passwd, a.txt')).toContain('plain file names');
+        touch('only.txt', 'x');
+        const out = await cap.run('only.txt, ghost.txt');
+        expect(out).toContain('## only.txt');
+        expect(out).toMatch(/ghost\.txt|missing/i);
     });
 });

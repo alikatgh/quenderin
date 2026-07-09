@@ -17,6 +17,7 @@ import os from 'os';
 import path from 'path';
 import {
     FsListCapability, FsMoveCapability, FsRenameCapability, FsWriteCapability, FsTrashCapability,
+    FsOrganizeCapability, FsCollectCapability,
 } from '../src/services/capability/fileCapabilities.js';
 
 function mkWorkspace(): string {
@@ -106,7 +107,39 @@ async function main(): Promise<void> {
         if (v.ok) throw new Error('expected verify to fail for missing move');
     });
 
+    // Fresh workspace for batch organize + collect→write pipeline (post single-file chore state).
+    const ws2 = mkWorkspace();
+    const workspace2 = () => ws2;
+
+    await check('organize: batch by type into Documents/ + Images/', async () => {
+        const cap = new FsOrganizeCapability(workspace2);
+        const out = await cap.run('');
+        if (!out.includes('Organized')) throw new Error(out);
+        if (!fs.existsSync(path.join(ws2, 'Documents', 'report.pdf'))) throw new Error('pdf not in Documents/');
+        if (!fs.existsSync(path.join(ws2, 'Images', 'photo.jpg'))) throw new Error('jpg not in Images/');
+        const v = await cap.verify();
+        if (!v.ok) throw new Error(v.detail);
+        const und = await cap.undo();
+        if (!/Restored/i.test(und)) throw new Error(und);
+        if (!fs.existsSync(path.join(ws2, 'report.pdf'))) throw new Error('undo did not restore pdf');
+    });
+
+    await check('collect → write: multi-file read then report artifact', async () => {
+        // notes.txt + todo.md at workspace root after organize undo
+        const collected = await new FsCollectCapability(workspace2).run('notes.txt, todo.md');
+        if (!collected.includes('## notes.txt')) throw new Error(collected);
+        if (!collected.includes('hello world')) throw new Error('notes body missing');
+        const report = '# Report\n\n' + collected.split('\n').slice(0, 8).join('\n');
+        const write = new FsWriteCapability(workspace2);
+        const out = await write.run(`pipeline-report.md | ${report}`);
+        if (!out.includes('Created')) throw new Error(out);
+        if (!fs.readFileSync(path.join(ws2, 'pipeline-report.md'), 'utf8').includes('notes.txt')) {
+            throw new Error('report missing collected labels');
+        }
+    });
+
     fs.rmSync(ws, { recursive: true, force: true });
+    fs.rmSync(ws2, { recursive: true, force: true });
 
     console.log();
     if (failed === 0) {

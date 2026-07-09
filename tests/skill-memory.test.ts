@@ -39,7 +39,32 @@ describe('SkillMemory', () => {
         m.record('nothing happened', []);
         expect(m.size).toBe(0);
     });
+
+    it('recordSteps stores tool+input and formatHint surfaces concrete plan shape', () => {
+        const m = new SkillMemory(0.5);
+        m.recordSteps('organize my downloads', [
+            { tool: 'fs.list', input: '' },
+            { tool: 'fs.organize', input: '' },
+            { tool: 'fs.move', input: 'invoice.pdf to Finance' },
+        ]);
+        const hit = m.recall('please organize downloads')[0];
+        expect(hit.tools).toEqual(['fs.list', 'fs.organize', 'fs.move']);
+        expect(hit.steps?.[2]).toEqual({ tool: 'fs.move', input: 'invoice.pdf to Finance' });
+        const hint = SkillMemory.formatHint(hit);
+        expect(hint).toContain('fs.list');
+        expect(hint).toContain('fs.move');
+        expect(hint).toContain('invoice.pdf to Finance');
+    });
+
+    it('snapshot/restore round-trips steps', () => {
+        const m = new SkillMemory();
+        m.recordSteps('tidy desktop', [{ tool: 'fs.organize', input: '' }]);
+        const m2 = new SkillMemory();
+        m2.restore(m.snapshot());
+        expect(m2.recall('tidy desktop')[0].steps?.[0].tool).toBe('fs.organize');
+    });
 });
+
 
 class NoopCap implements Capability {
     readonly tier = CapabilityTier.ReadOnly;
@@ -62,8 +87,11 @@ describe('CapabilityAgent + SkillMemory — learn on success, prime next time', 
         let turn = 0;
         const agent = new CapabilityAgent(async () => replies[Math.min(turn++, 1)], [new NoopCap('read.a')], runner, 8, memory);
         await agent.run('check the thing');
-        expect(memory.recall('check the thing')[0].tools).toEqual(['read.a']);
+        const rec = memory.recall('check the thing')[0];
+        expect(rec.tools).toEqual(['read.a']);
+        expect(rec.steps).toEqual([{ tool: 'read.a', input: 'x' }]);
     });
+
 
     it('the reliability payoff: a model that only picks the right tool WHEN PRIMED succeeds the 2nd time', async () => {
         const memory = new SkillMemory(0.4);

@@ -14,17 +14,17 @@ import {
  */
 class FakeMacUi implements MacUi {
     clicks: string[] = []; typed: string[] = []; keys: string[] = []; menus: string[][] = [];
-    private clicked = false;
+    private advanced = false;
     constructor(private readonly els: MacUiElement[], private readonly opts: { avail?: boolean; failObserve?: string; elsAfter?: MacUiElement[] } = {}) { }
     available(): boolean { return this.opts.avail ?? true; }
     async observe(): Promise<MacUiElement[]> {
         if (this.opts.failObserve) throw new Error(this.opts.failObserve);
-        return this.clicked && this.opts.elsAfter ? this.opts.elsAfter : this.els;
+        return this.advanced && this.opts.elsAfter ? this.opts.elsAfter : this.els;
     }
-    async click(label: string): Promise<void> { this.clicks.push(label); this.clicked = true; }
-    async typeText(t: string): Promise<void> { this.typed.push(t); }
-    async pressKey(k: string): Promise<void> { this.keys.push(k); }
-    async clickMenu(path: string[]): Promise<void> { this.menus.push(path); }
+    async click(label: string): Promise<void> { this.clicks.push(label); this.advanced = true; }
+    async typeText(t: string): Promise<void> { this.typed.push(t); this.advanced = true; }
+    async pressKey(k: string): Promise<void> { this.keys.push(k); this.advanced = true; }
+    async clickMenu(path: string[]): Promise<void> { this.menus.push(path); this.advanced = true; }
 }
 
 const el = (label: string, role = 'button'): MacUiElement => ({ label, role });
@@ -103,19 +103,47 @@ describe('mac.ui.tap (T2 — click by visible label, approved & injection-safe)'
 
 describe('mac.ui.type + mac.ui.key (T2)', () => {
     it('types into the focused field after approval', async () => {
-        const ui = new FakeMacUi([]);
+        // After type, field label includes the typed text → verify sees positive evidence.
+        const ui = new FakeMacUi([el('Subject', 'text field')], {
+            elsAfter: [el('hello world', 'text field')],
+        });
         const runner = new CapabilityRunner(grant('mac.ui.type'), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new MacUiTypeCapability(ui), 'hello world')).toContain('Typed "hello world"');
         expect(ui.typed).toEqual(['hello world']);
     });
 
+    it('verify() flags a type that left the screen unchanged with no visible text', async () => {
+        const stuck = new FakeMacUi([el('Subject', 'text field')]); // no elsAfter → same tree
+        const cap = new MacUiTypeCapability(stuck);
+        await cap.run('secret note');
+        const v = await cap.verify();
+        expect(v.ok).toBe(false);
+        expect(v.detail).toMatch(/type may not have registered/);
+    });
+
     it('presses only whitelisted navigation keys (return + arrows + page keys), rejects others', async () => {
-        const ui = new FakeMacUi([]);
+        const ui = new FakeMacUi([el('OK')], { elsAfter: [el('Done')] });
         const runner = new CapabilityRunner(grant('mac.ui.key'), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new MacUiKeyCapability(ui), 'return')).toContain('Pressed "return"');
-        expect(await runner.execute(new MacUiKeyCapability(ui), 'pagedown')).toContain('Pressed "pagedown"');
-        expect(ui.keys).toEqual(['return', 'pagedown']);   // navigation/scroll works
+        // Focus-only key: soft verify even without tree change.
+        const ui2 = new FakeMacUi([el('OK')]);
+        expect(await runner.execute(new MacUiKeyCapability(ui2), 'pagedown')).toContain('Pressed "pagedown"');
+        expect(ui.keys).toEqual(['return']);
+        expect(ui2.keys).toEqual(['pagedown']);
         expect(await new MacUiKeyCapability(ui).run('cmd+q')).toContain('navigation key');   // arbitrary keys refused
+    });
+
+    it('verify() soft-passes focus-only keys; hard-fails stuck return', async () => {
+        const stuck = new FakeMacUi([el('Dialog')]);
+        const ret = new MacUiKeyCapability(stuck);
+        await ret.run('return');
+        expect((await ret.verify()).ok).toBe(false);
+
+        const tab = new MacUiKeyCapability(stuck);
+        await tab.run('tab');
+        const tv = await tab.verify();
+        expect(tv.ok).toBe(true);
+        expect(tv.detail).toMatch(/focus-only/);
     });
 
     it('every mac.ui.* action is macOS-only off darwin', async () => {
@@ -127,11 +155,27 @@ describe('mac.ui.type + mac.ui.key (T2)', () => {
 
 describe('mac.ui.menu (T2 — reach the menu bar, approved & blocklist-guarded)', () => {
     it('clicks a "<Menu> > <Item>" path after approval, and accepts nested submenus (Q-279)', async () => {
-        const ui = new FakeMacUi([]);
+        // Menu verify needs a tree change when elsAfter is set; two sequential menus each advance once.
+        const ui = new FakeMacUi([el('Doc')], { elsAfter: [el('Save sheet')] });
         const runner = new CapabilityRunner(grant('mac.ui.menu'), new InMemoryAuditLedger(), async () => true);
         expect(await runner.execute(new MacUiMenuCapability(ui), 'File > Save As')).toContain('Clicked menu "File > Save As"');
-        expect(await runner.execute(new MacUiMenuCapability(ui), 'Edit > Find > Find Next')).toContain('Clicked menu "Edit > Find > Find Next"');
-        expect(ui.menus).toEqual([['File', 'Save As'], ['Edit', 'Find', 'Find Next']]);   // deeper path passes through
+        // Second menu on a fresh UI (already-advanced fake always returns elsAfter after first action).
+        const ui2 = new FakeMacUi([el('Doc')], { elsAfter: [el('Find bar')] });
+        expect(await runner.execute(new MacUiMenuCapability(ui2), 'Edit > Find > Find Next')).toContain('Clicked menu "Edit > Find > Find Next"');
+        expect(ui.menus).toEqual([['File', 'Save As']]);
+        expect(ui2.menus).toEqual([['Edit', 'Find', 'Find Next']]);
+    });
+
+    it('verify() flags a menu click that did not change the screen', async () => {
+        const stuck = new FakeMacUi([el('Window')]);
+        const menu = new MacUiMenuCapability(stuck);
+        await menu.run('File > New');
+        expect((await menu.verify()).ok).toBe(false);
+
+        const worked = new FakeMacUi([el('Window')], { elsAfter: [el('Untitled')] });
+        const menuOk = new MacUiMenuCapability(worked);
+        await menuOk.run('File > New');
+        expect((await menuOk.verify()).ok).toBe(true);
     });
 
     it('rejects a malformed path and refuses a blocked menu item', async () => {

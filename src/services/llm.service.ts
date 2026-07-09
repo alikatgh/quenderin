@@ -1,4 +1,8 @@
-import { agentDecisionTemperature, chatRepeatPenalty } from './samplingProfiles.js';
+import {
+    agentDecisionMaxTokensCapped,
+    agentDecisionTemperature,
+    chatRepeatPenalty,
+} from './samplingProfiles.js';
 
 // node-llama-cpp is a native module that may not compile on exotic architectures.
 // We import it dynamically and provide a clear error if unavailable.
@@ -1181,7 +1185,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             const grammar = options.jsonSchema ? await this.grammarForSchema(options.jsonSchema) : null;
 
             const promptOptions = {
-                maxTokens: options.maxTokens || HW.actionMaxTokens,
+                // Default maxTokens: agent_decision recipe, never above the HW action budget
+                // (tiny phones keep a tighter cap). Explicit options.maxTokens always wins.
+                maxTokens: options.maxTokens ?? agentDecisionMaxTokensCapped(HW.actionMaxTokens),
                 // ?? not ||: an explicit temperature 0 (greedy) must stay 0, not silently become
                 // the profile default. Default temperature is agent_decision from sampling-profiles.json
                 // (was a hard-coded 0.1 that drifted from the mobile/agent recipes).

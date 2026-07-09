@@ -34,24 +34,24 @@ footprint measurably hurts adoption.
 
 | Channel | Status | Trust/friction | Action |
 |---|---|---|---|
-| **GitHub Releases** | ✅ live via `desktop-release.yml` | Devs trust it; SmartScreen warns | Free public-repo runners build win+linux on every `v*` tag |
+| **GitHub Releases** | ✅ live via `desktop-release.yml` | Devs trust it; SmartScreen may warn | Free public-repo runners build win+linux on every `v*` tag — **keep forever** alongside Store |
 | **Website direct links** | ✅ `website/download.html` | Same files, friendlier storefront | `releases/latest/download/<stable-name>` — links never go stale |
-| **Microsoft Store** | next — owner step required | **Best Windows trust**: store-signed, no SmartScreen, auto-updates | One-time $19 individual Partner Center account; then `electron-builder --win appx` in CI. Free listing. |
+| **Microsoft Store** | 🔧 ready to submit | **Best Windows trust**: store-signed, no SmartScreen, auto-updates | Free listing. Owner playbook: **[MICROSOFT_STORE.md](MICROSOFT_STORE.md)**. Build: `npm run electron:build:win:store` → AppX |
 | **winget** | cheap follow-up | `winget install quenderin` | One PR to microsoft/winget-pkgs pointing at the GitHub release |
 | **Flathub** | next for Linux | The de-facto Linux app store; free | Submit a flatpak manifest wrapping the release; AppImage/deb remain for direct users |
 | **Snap** | optional | Ubuntu default store | Only if users ask; Flathub covers most distros |
 
-**Code signing (the only money in this plan):** unsigned Windows builds trip
-SmartScreen ("unrecognized app"). Three tiers: live with the warning (v0.1 preview) →
-Microsoft Store (store signs for you — this is why the Store matters beyond
-discovery) → Azure Trusted Signing (~$10/mo) for the direct .exe when downloads grow.
-Linux needs no signing.
+**macOS is not on this ladder.** Public Mac = **native App Store only** ([MAC_APP_STORE.md](MAC_APP_STORE.md)). Electron mac is lab-only.
+
+**Code signing:** unsigned GitHub `.exe` may trip SmartScreen. Tiers: live with the warning
+(v0.2 preview) → **Microsoft Store** (Microsoft signs — keep GitHub exe anyway) → optional
+Azure Trusted Signing for the direct `.exe` when volume justifies it. Linux needs no signing.
 
 ## What ships free vs. what we hold back
 
 The desktop testbed contains the **autonomous device-driver agent** — per the
 monetization direction (2026-07-04), autonomy is the paid tier and must not become
-the free default. The Windows/Linux **v0.1.x releases are labeled "preview"**; before
+the free default. The Windows/Linux **v0.2.x releases are labeled "preview"**; before
 a 1.0 marketing push, split the build: chat + model library + task router free,
 autonomous computer use behind a Pro flag. (Tracked as a release-blocking product
 decision, not a nice-to-have.)
@@ -77,11 +77,12 @@ governed Tasks service — same spine, per-run approval, ledger. Next capabiliti
 front-window perception, a notifications twin on Windows, and app-launch on Linux
 (gtk-launch/.desktop resolution — needs care across distros).
 
-1. **Done (2026-07-04):** CI builds Quenderin-Setup-x64.exe, Quenderin-Portable-x64.exe,
-   Quenderin-x64.AppImage, Quenderin-x64.deb on free runners; GitHub Release v0.1.0;
-   website download page with direct links (macOS deliberately excluded — native app).
-2. **This month:** Microsoft Store (owner opens Partner Center, $19; add `appx` target),
-   winget manifest, Flathub submission. Auto-update via electron-updater for direct
+1. **Done (2026-07-04 → 0.2.0):** CI builds Quenderin-Setup-x64.exe, Quenderin-Portable-x64.exe,
+   AppImage, `.deb` on free runners; website download page; macOS excluded from Electron
+   releases (native App Store). AppX packaging + Partner Center guide shipped
+   ([MICROSOFT_STORE.md](MICROSOFT_STORE.md)); `npm run electron:build:win:store`.
+2. **Owner next:** complete Microsoft Store submission (identity in `electron-builder.yaml`
+   `appx.*`), winget manifest, Flathub. Optional electron-updater for direct
    installs.
 3. **Before 1.0:** free/Pro split of the agent; Windows arm64 + Linux arm64 builds
    (node-llama-cpp prebuilds exist); signing decision by download volume.

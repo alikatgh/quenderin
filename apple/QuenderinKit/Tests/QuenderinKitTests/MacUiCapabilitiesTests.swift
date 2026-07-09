@@ -164,6 +164,55 @@ final class MacUiCapabilitiesTests: XCTestCase {
         XCTAssertEqual(ui.typed.count, 1, "an empty type must not reach the seam")
     }
 
+    func testTypeVerifyFlagsUnchangedScreenWithoutVisibleText() async throws {
+        let ui = FakeMacUi(elements: els([("Subject", "text field")]))
+        let cap = MacUiTypeCapability(ui: ui)
+        _ = try await cap.run("secret note")
+        let v = await cap.verify("secret note")
+        XCTAssertFalse(v.ok)
+        XCTAssertTrue(v.detail.contains("type may not have registered"))
+    }
+
+    func testTypeVerifyPassesWhenTypedTextVisible() async throws {
+        let ui = FakeMacUi(elements: els([("Subject", "text field")]))
+        let cap = MacUiTypeCapability(ui: ui)
+        _ = try await cap.run("hello agent")
+        ui.elements = els([("hello agent", "text field")])
+        let v = await cap.verify("hello agent")
+        XCTAssertTrue(v.ok)
+        XCTAssertTrue(v.detail.contains("typed text is visible"))
+    }
+
+    func testKeyVerifySoftPassesFocusOnlyHardFailsReturn() async throws {
+        let ui = FakeMacUi(elements: els([("Dialog", "window")]))
+        let ret = MacUiKeyCapability(ui: ui)
+        _ = try await ret.run("return")
+        let rv = await ret.verify("return")
+        XCTAssertFalse(rv.ok)
+
+        let tab = MacUiKeyCapability(ui: ui)
+        _ = try await tab.run("tab")
+        let tv = await tab.verify("tab")
+        XCTAssertTrue(tv.ok)
+        XCTAssertTrue(tv.detail.contains("focus-only"))
+    }
+
+    func testMenuVerifyFlagsUnchangedScreen() async throws {
+        let ui = FakeMacUi(elements: els([("Window", "window")]))
+        let menu = MacUiMenuCapability(ui: ui)
+        _ = try await menu.run("Insert > Table")
+        let stuck = await menu.verify("Insert > Table")
+        XCTAssertFalse(stuck.ok)
+
+        ui.elements = els([("Sheet", "sheet")])
+        let menuOk = MacUiMenuCapability(ui: ui)
+        // re-run to capture pre of current (Sheet) then change after
+        _ = try await menuOk.run("Insert > Table")
+        ui.elements = els([("New doc", "window")])
+        let ok = await menuOk.verify("Insert > Table")
+        XCTAssertTrue(ok.ok)
+    }
+
     // MARK: menu (nested paths + blocklist re-check)
 
     func testMenuParsesNestedPathAndClicksIt() async throws {

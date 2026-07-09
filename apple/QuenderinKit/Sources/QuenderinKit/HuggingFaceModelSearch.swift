@@ -11,8 +11,34 @@ public struct HFModelHit: Sendable, Equatable {
     public let id: String        // "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
     public let downloads: Int
     public let gated: Bool       // an official gated repo (Meta/Google) needs HF license acceptance
-    public init(id: String, downloads: Int, gated: Bool) {
+    public let likes: Int
+    /// Hub tags (e.g. "text-generation", "gguf", "conversational") — used for filters + inline blurb.
+    public let tags: [String]
+    public let pipelineTag: String?
+    public init(id: String, downloads: Int, gated: Bool, likes: Int = 0,
+                tags: [String] = [], pipelineTag: String? = nil) {
         self.id = id; self.downloads = downloads; self.gated = gated
+        self.likes = likes; self.tags = tags; self.pipelineTag = pipelineTag
+    }
+
+    public var owner: String { id.split(separator: "/").first.map(String.init) ?? "" }
+    public var shortName: String { id.split(separator: "/").last.map(String.init) ?? id }
+    public var hubURL: URL? { URL(string: "https://huggingface.co/\(id)") }
+    public var estimatedParamsB: Double { HuggingFaceCatalog.estimatedParams(id) }
+
+    /// One-line, honest description for the inline detail panel (no network card fetch).
+    public var detailBlurb: String {
+        var parts: [String] = []
+        let p = estimatedParamsB
+        if p > 0 { parts.append("~\(p == floor(p) ? String(Int(p)) : String(format: "%.1f", p))B-class") }
+        if let pipe = pipelineTag, !pipe.isEmpty {
+            parts.append(pipe.replacingOccurrences(of: "-", with: " "))
+        } else if tags.contains(where: { $0.lowercased().contains("instruct") || $0.lowercased().contains("chat") }) {
+            parts.append("instruct / chat")
+        }
+        parts.append("community GGUF (not Quenderin-vetted)")
+        if gated { parts.append("license gate on Hugging Face") }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -114,7 +140,17 @@ public enum HuggingFaceCatalog {
         guard let arr = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
         return arr.compactMap { m in
             guard let id = m["id"] as? String else { return nil }
-            return HFModelHit(id: id, downloads: (m["downloads"] as? Int) ?? 0, gated: isGated(m["gated"]))
+            let tags = (m["tags"] as? [String]) ?? []
+            let pipeline = m["pipeline_tag"] as? String
+            let likes = (m["likes"] as? Int) ?? 0
+            return HFModelHit(
+                id: id,
+                downloads: (m["downloads"] as? Int) ?? 0,
+                gated: isGated(m["gated"]),
+                likes: likes,
+                tags: tags,
+                pipelineTag: pipeline
+            )
         }
     }
 

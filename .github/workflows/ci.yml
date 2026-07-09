@@ -50,6 +50,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Golden chore suite (governed fs.* capabilities, no LLM)
+        run: npm run test:golden-chores
+
       - name: Build
         run: npm run build
 

@@ -249,7 +249,7 @@ program
   .description('Tell Quenderin to do something on your Mac — it asks before every change.')
   .argument('<goal>', 'what you want done, e.g. "remind me to call the dentist"')
   .option('-m, --model <id>', 'model to plan with (see `quenderin models`)')
-  .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/move/rename/trash/read)')
+  .option('-w, --workspace <dir>', 'a folder the agent may organize (enables fs.list/collect/move/organize/rename/trash/read/write)')
   .option('-s, --max-steps <n>', 'how many steps the agent may take (default 8; raise for multi-item tasks)')
   .option('-g, --gui', 'allow clicking/typing in any macOS app via accessibility (needs the Accessibility permission)')
   .option('-n, --dry-run', 'show exactly what it would do — read for real, but change nothing')

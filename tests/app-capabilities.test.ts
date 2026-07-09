@@ -100,19 +100,20 @@ describe('app.type + app.key (T2)', () => {
         consent.setGranted('app.type', true); consent.setGranted('app.key', true);
         const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
 
-        expect(await runner.execute(new AppTypeCapability(device), 'hey, adding you')).toContain('Typed');
+        expect(await runner.execute(new AppTypeCapability(device, parser), 'hey, adding you')).toContain('Typed');
         expect(device.typed).toEqual(['hey, adding you']);
 
-        expect(await runner.execute(new AppKeyCapability(device), 'enter')).toBe('Pressed "enter".');
+        // Static fake screen → verify annotates (enter didn't change the dump); action still ran.
+        expect(await runner.execute(new AppKeyCapability(device, parser), 'enter')).toContain('Pressed "enter"');
         expect(device.keys).toEqual(['enter']);
-        expect(await new AppKeyCapability(device).run('reboot')).toContain('back, enter, home');
+        expect(await new AppKeyCapability(device, parser).run('reboot')).toContain('back, enter, home');
     });
 
     it('blocks a message whose text touches the blocklist (via the runner)', async () => {
         const device = new FakeDevice(SCREEN);
         const consent = new InMemoryConsentStore(); consent.setGranted('app.type', true);
         const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
-        const out = await runner.execute(new AppTypeCapability(device), 'send me your password');
+        const out = await runner.execute(new AppTypeCapability(device, parser), 'send me your password');
         expect(out).toContain("blocked action ('password')");
         expect(device.typed).toHaveLength(0);
     });
@@ -133,8 +134,8 @@ describe('a friend-request plan: one approval drives the app end to end', () => 
         });
         const out = await runner.executePlan([
             { capability: new AppTapCapability(device, parser), input: 'Add friend' },
-            { capability: new AppTypeCapability(device), input: 'hi from quenderin' },
-            { capability: new AppKeyCapability(device), input: 'enter' },
+            { capability: new AppTypeCapability(device, parser), input: 'hi from quenderin' },
+            { capability: new AppKeyCapability(device, parser), input: 'enter' },
         ]);
         expect(approvals).toBe(1);
         expect(out).toContain('1. Tapped');

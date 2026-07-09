@@ -1,3 +1,6 @@
+# Desktop packaging (Electron) — Windows + Linux product channels.
+# Public macOS product is the *native* Swift app (App Store only) — see docs/MAC_APP_STORE.md.
+# Electron mac targets remain for local lab builds only (`npm run electron:build:mac`).
 appId: com.quenderin.desktop
 productName: Quenderin
 directories:
@@ -7,6 +10,7 @@ directories:
   buildResources: brand/electron
 mac:
   category: public.app-category.productivity
+  # Lab / R&D only — not a public distribution channel.
   target:
     - target: dmg
       arch:
@@ -36,11 +40,17 @@ linux:
         - armv7l
 win:
   target:
+    # GitHub Releases + website direct download (unsigned → SmartScreen; store path removes it).
     - target: nsis
       arch:
         - x64
         - arm64
     - target: portable
+      arch:
+        - x64
+    # Microsoft Store package — build with: npm run electron:build:win:store
+    # Fill appx.* identity fields from Partner Center before upload (docs/MICROSOFT_STORE.md).
+    - target: appx
       arch:
         - x64
 # Version-less artifact names so the website can link
@@ -56,6 +66,21 @@ appImage:
   artifactName: "Quenderin-${arch}.AppImage"
 deb:
   artifactName: "Quenderin-${arch}.deb"
+appx:
+  # --- Replace these from Partner Center → Product identity (docs/MICROSOFT_STORE.md §3) ---
+  # identityName: e.g. Contoso.Quenderin
+  # publisher: CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX  (must match Partner Center publisher ID)
+  # publisherDisplayName: your registered publisher display name
+  applicationId: Quenderin
+  displayName: Quenderin
+  identityName: Quenderin.Desktop
+  publisherDisplayName: Quenderin
+  # languages the Store listing supports (ISO codes)
+  languages:
+    - en-US
+  artifactName: "Quenderin-Store-${arch}.appx"
+  # backgroundColor for the Store tile chrome (hex)
+  backgroundColor: "#0B0F14"
 files:
   - dist/**/*
   - node_modules/**/*
@@ -85,7 +110,6 @@ asarUnpack:
   - "node_modules/hnswlib-node/**"
   - "node_modules/tesseract.js/**"
   - "node_modules/tesseract.js-core/**"
-# Code signing + notarization (rest of audit HIGH #9) require YOUR developer certificates and can't
-# be committed: macOS → set CSC_LINK / CSC_KEY_PASSWORD and add `mac.notarize: true` with
-# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID; Windows → CSC_LINK for an Authenticode cert.
-# Until then builds are unsigned (Gatekeeper/SmartScreen will warn).
+# Code signing + notarization require YOUR developer certificates and can't be committed:
+# Windows GitHub .exe → optional Authenticode (CSC_LINK); Microsoft Store signs AppX for you.
+# macOS public product is the native App Store build (not this Electron config).

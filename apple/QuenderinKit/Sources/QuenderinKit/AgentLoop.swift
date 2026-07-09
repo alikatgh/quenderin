@@ -342,8 +342,14 @@ public struct AgentLoop: Sendable {
         return AgentRun(steps: steps, answer: nil, haltReason: .maxSteps)
     }
 
-    /// The corrective nudge shown after a malformed reply — the exact JSON contract, once.
-    static let parseNudge = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+    /// The corrective nudge shown after a malformed reply — real tool names only (never angle-bracket
+    /// slots; weak models copy those and stall on "No such tool: <name>").
+    static let parseNudge = """
+        Your last reply was not valid JSON or used a fake tool name. Reply with EXACTLY ONE JSON object \
+        using a REAL tool from the Available tools list — never the words name, text, or angle brackets. \
+        Examples: {"tool":"mac.calendar.add","input":"Daughter birthday | today 09:00 | 60"}, \
+        {"tool":"calculator","input":"2+2"}, or {"answer":"done"}.
+        """
 
     /// Decision decode options: Qwen3's NON-THINKING sampling recipe (temp 0.7 / top_p 0.8 /
     /// top_k 20) + the decision grammar. The stock chat defaults (top_p 0.95, no top_k) are a
@@ -510,15 +516,20 @@ public struct AgentLoop: Sendable {
         // "Okay, let's calculate…" preamble FAILED the JSON parse and drew a retry nudge; under
         // the grammar that narration becomes a legal {"answer":…} and ends the mission with no
         // work done (live-caught). Same line in the Kotlin twin.
+        // Examples use REAL tool ids — angle-bracket slots teach 1B models to emit tool:"<name>".
         return """
         Goal: \(goal)
         Available tools:
         \(toolList)
-        Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, \
-        {"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user \
-        approves together, or {"answer":"<final answer>"} when done.
-        Use {"answer":…} ONLY for the completed final result — never for narration, plans in \
-        prose, or intentions. If any calculation or lookup is still needed, use a tool first.
+        Respond with ONE JSON object only. Use a tool name EXACTLY from the list above.
+        Examples of valid shapes:
+        {"tool":"mac.calendar.add","input":"Daughter birthday | today 09:00 | 60"}
+        {"tool":"calculator","input":"2+2"}
+        {"plan":[{"tool":"mac.calendar.today","input":""},{"tool":"mac.notes.create","input":"Prep"}]}
+        {"answer":"the final result after tools ran"}
+        Never invent tools. Never write <name>, <text>, or placeholders.
+        Use {"answer":…} ONLY for the completed final result — never for narration or intentions. \
+        If any action is still needed, call a tool first.
         """
     }
 }

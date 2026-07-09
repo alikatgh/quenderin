@@ -293,12 +293,266 @@ export class FsTrashCapability extends WorkspaceCapability implements Capability
     }
 }
 
+/**
+ * Extension → destination folder for batch organize. Conservative, demo-friendly defaults.
+ * Unknown extensions are skipped (never dumped into a catch-all that surprises the user).
+ */
+const ORGANIZE_MAP: Record<string, string> = {
+    pdf: 'Documents', doc: 'Documents', docx: 'Documents', txt: 'Documents', md: 'Documents', rtf: 'Documents',
+    png: 'Images', jpg: 'Images', jpeg: 'Images', gif: 'Images', webp: 'Images', heic: 'Images',
+    mp3: 'Audio', wav: 'Audio', m4a: 'Audio', aac: 'Audio',
+    mp4: 'Videos', mov: 'Videos', mkv: 'Videos',
+    zip: 'Archives', tar: 'Archives', gz: 'Archives', '7z': 'Archives',
+    csv: 'Data', json: 'Data', xlsx: 'Data',
+};
+
+/** Hidden journal so fs.organize can undo across a process restart (RunSession only has name+input). */
+const ORGANIZE_UNDO_JOURNAL = '.quenderin-organize-undo.json';
+
+/**
+ * T2: batch-organize top-level files in the workspace by extension into type folders
+ * (Documents/, Images/, …). One approval covers the whole batch — the #1 chore class without
+ * N separate fs.move plans. Never overwrites; skips unknowns and anything already in a subfolder.
+ * Undo reverses the last batch (LIFO), durable via a hidden workspace journal.
+ */
+export class FsOrganizeCapability extends WorkspaceCapability implements Capability {
+    readonly name = 'fs.organize';
+    readonly purpose =
+        'Organize top-level workspace files into type folders (Documents/, Images/, …) by extension. Input: empty or "dry" to preview only.';
+    readonly tier = CapabilityTier.ReversibleWrite;
+    readonly blastRadius: BlastRadius = { kind: 'write', resource: 'the workspace folder' };
+
+    private planMoves(d: string): Array<{ file: string; dest: string }> {
+        let names: string[];
+        try { names = fs.readdirSync(d).filter(n => !n.startsWith('.')); }
+        catch { return []; }
+        const out: Array<{ file: string; dest: string }> = [];
+        for (const name of names) {
+            if (!safeName(name)) continue;
+            const full = path.join(d, name);
+            let st: fs.Stats;
+            try { st = fs.statSync(full); } catch { continue; }
+            if (!st.isFile()) continue; // only top-level files; leave folders alone
+            const ext = path.extname(name).slice(1).toLowerCase();
+            const dest = ORGANIZE_MAP[ext];
+            if (!dest) continue;
+            const target = path.join(d, dest, name);
+            if (fs.existsSync(target)) continue; // never overwrite
+            out.push({ file: name, dest });
+        }
+        return out;
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const d = this.dir();
+        if (!d) return { summary: NO_WS, mutates: false };
+        const moves = this.planMoves(d);
+        if (moves.length === 0) {
+            return { summary: 'No top-level files with known types to organize (or all destinations already exist).', mutates: false };
+        }
+        const preview = moves.slice(0, 12).map(m => `${m.file} → ${m.dest}/`).join('; ');
+        const more = moves.length > 12 ? ` (+${moves.length - 12} more)` : '';
+        const dry = input.trim().toLowerCase() === 'dry';
+        return {
+            summary: dry
+                ? `Would organize ${moves.length} file(s) (dry): ${preview}${more}.`
+                : `Organize ${moves.length} file(s) by type: ${preview}${more} (undoable).`,
+            mutates: !dry,
+        };
+    }
+
+    async run(input: string): Promise<string> {
+        const d = this.dir(); if (!d) return NO_WS;
+        if (input.trim().toLowerCase() === 'dry') {
+            const moves = this.planMoves(d);
+            if (moves.length === 0) return 'Nothing to organize.';
+            return `Dry run — would move:\n${moves.map(m => `- ${m.file} → ${m.dest}/`).join('\n')}`;
+        }
+        const moves = this.planMoves(d);
+        if (moves.length === 0) return 'Nothing to organize — no matching top-level files.';
+        const done: string[] = [];
+        const skipped: string[] = [];
+        const landed: Array<{ file: string; dest: string }> = [];
+        for (const m of moves) {
+            const src = path.join(d, m.file);
+            const destDir = path.join(d, m.dest);
+            const target = path.join(destDir, m.file);
+            try {
+                if (!fs.existsSync(src) || fs.existsSync(target)) {
+                    skipped.push(m.file);
+                    continue;
+                }
+                if (!fs.existsSync(destDir)) fs.mkdirSync(destDir);
+                fs.renameSync(src, target);
+                done.push(`${m.file} → ${m.dest}/`);
+                landed.push(m);
+            } catch {
+                skipped.push(m.file);
+            }
+        }
+        if (landed.length > 0) {
+            try {
+                fs.writeFileSync(path.join(d, ORGANIZE_UNDO_JOURNAL), JSON.stringify(landed));
+            } catch { /* undo may be incomplete without journal; moves still happened */ }
+        }
+        if (done.length === 0) return `Couldn't organize any files.${skipped.length ? ` Skipped: ${skipped.join(', ')}.` : ''}`;
+        const skipNote = skipped.length ? ` Skipped ${skipped.length}: ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}.` : '';
+        return `Organized ${done.length} file(s):\n${done.map(x => `- ${x}`).join('\n')}.${skipNote} (Undo available.)`;
+    }
+
+    private loadUndoJournal(d: string): Array<{ file: string; dest: string }> {
+        try {
+            const raw = fs.readFileSync(path.join(d, ORGANIZE_UNDO_JOURNAL), 'utf8');
+            const parsed = JSON.parse(raw) as unknown;
+            if (!Array.isArray(parsed)) return [];
+            return parsed.filter((m): m is { file: string; dest: string } =>
+                typeof (m as { file?: string })?.file === 'string'
+                && typeof (m as { dest?: string })?.dest === 'string'
+                && safeName((m as { file: string }).file)
+                && safeName((m as { dest: string }).dest),
+            );
+        } catch {
+            return [];
+        }
+    }
+
+    async undo(_input = ''): Promise<string> {
+        const d = this.dir(); if (!d) return NO_WS;
+        const moves = this.loadUndoJournal(d);
+        if (moves.length === 0) return 'Nothing to undo for fs.organize (no prior batch journal).';
+        const restored: string[] = [];
+        for (const m of [...moves].reverse()) {
+            const from = path.join(d, m.dest, m.file);
+            const to = path.join(d, m.file);
+            try {
+                if (fs.existsSync(from) && !fs.existsSync(to)) {
+                    fs.renameSync(from, to);
+                    restored.push(m.file);
+                }
+            } catch { /* keep going */ }
+        }
+        try { fs.unlinkSync(path.join(d, ORGANIZE_UNDO_JOURNAL)); } catch { /* ok */ }
+        return restored.length
+            ? `Restored ${restored.length} file(s) from organize: ${restored.join(', ')}.`
+            : 'Could not restore organized files (moved or missing).';
+    }
+
+    async verify(_input = ''): Promise<{ ok: boolean; detail: string }> {
+        const d = this.dir(); if (!d) return { ok: false, detail: NO_WS };
+        const moves = this.loadUndoJournal(d);
+        if (moves.length === 0) return { ok: true, detail: 'no organize journal (nothing to check)' };
+        const bad = moves.filter(m => {
+            const target = path.join(d, m.dest, m.file);
+            const src = path.join(d, m.file);
+            return !(fs.existsSync(target) && !fs.existsSync(src));
+        });
+        if (bad.length === 0) return { ok: true, detail: `${moves.length} file(s) in type folders.` };
+        return { ok: false, detail: `${bad.length} organized file(s) not at destination.` };
+    }
+}
+
+/**
+ * T1: collect text from several workspace files into one observation — the perception half of
+ * "read these notes and write a report". Input: comma-separated plain filenames (from fs.list).
+ * Cap total bytes so a weak model isn't flooded. No mutation; model summarizes, then fs.write.
+ */
+export class FsCollectCapability extends WorkspaceCapability implements Capability {
+    readonly name = 'fs.collect';
+    readonly purpose =
+        'Read several text files and return them labeled for summarization. Input: "file1.txt, file2.md" (comma-separated plain names).';
+    readonly tier = CapabilityTier.ReadOnly;
+    readonly blastRadius: BlastRadius = { kind: 'read', resource: 'workspace text files' };
+
+    constructor(
+        workspace: () => string | null,
+        private readonly maxFiles = 20,
+        private readonly maxBytesPerFile = 24 * 1024,
+        private readonly maxTotalBytes = 64 * 1024,
+    ) { super(workspace); }
+
+    private parseNames(input: string): string[] | null {
+        const parts = input.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length === 0) return null;
+        if (!parts.every(safeName)) return null;
+        return parts;
+    }
+
+    async plan(input: string): Promise<ActionPreview> {
+        const d = this.dir();
+        if (!d) return { summary: NO_WS, mutates: false };
+        const names = this.parseNames(input);
+        if (!names) return { summary: 'Input: comma-separated plain file names from fs.list.', mutates: false };
+        return {
+            summary: `Would read ${Math.min(names.length, this.maxFiles)} text file(s) for a combined summary (read-only).`,
+            mutates: false,
+        };
+    }
+
+    async run(input: string): Promise<string> {
+        const d = this.dir(); if (!d) return NO_WS;
+        const names = this.parseNames(input);
+        if (!names) return 'Input must be comma-separated plain file names, e.g. "notes.txt, todo.md".';
+        const pick = names.slice(0, this.maxFiles);
+        let total = 0;
+        const sections: string[] = [];
+        const missing: string[] = [];
+        let realWs: string;
+        try { realWs = fs.realpathSync(d); } catch { return `Couldn't open workspace.`; }
+
+        for (const name of pick) {
+            if (total >= this.maxTotalBytes) {
+                sections.push(`[…stopped at ${this.maxTotalBytes / 1024} KB total cap; ${pick.length - sections.length} file(s) not read]`);
+                break;
+            }
+            const file = path.join(d, name);
+            let realFile: string;
+            try {
+                realFile = fs.realpathSync(file);
+                if (realFile !== realWs && !realFile.startsWith(realWs + path.sep)) {
+                    missing.push(name);
+                    continue;
+                }
+            } catch {
+                missing.push(name);
+                continue;
+            }
+            try {
+                const buf = fs.readFileSync(realFile);
+                const room = Math.min(this.maxBytesPerFile, this.maxTotalBytes - total);
+                const slice = buf.length > room ? buf.subarray(0, room) : buf;
+                const text = slice.toString('utf8');
+                if (text.includes('�')) {
+                    sections.push(`## ${name}\n(not UTF-8 text — skipped)`);
+                    continue;
+                }
+                total += slice.length;
+                const trunc = buf.length > room ? `\n[…truncated at ${room} bytes]` : '';
+                sections.push(`## ${name}\n${text}${trunc}`);
+            } catch {
+                missing.push(name);
+            }
+        }
+
+        if (sections.length === 0) {
+            return missing.length
+                ? `Could not read any of: ${missing.join(', ')}.`
+                : 'No files to collect.';
+        }
+        const header = `Collected ${sections.filter(s => s.startsWith('##')).length} file(s)` +
+            (missing.length ? ` (${missing.length} missing/unreadable: ${missing.slice(0, 5).join(', ')})` : '') +
+            '.\nSummarize the content below, then use fs.write to save a report if asked.\n';
+        return header + sections.join('\n\n');
+    }
+}
+
 /** The file toolkit for a granted workspace folder. */
 export function fileCapabilities(workspace: () => string | null): Capability[] {
     return [
         new FsListCapability(workspace),
         new FsReadCapability(workspace),
+        new FsCollectCapability(workspace),
         new FsMoveCapability(workspace),
+        new FsOrganizeCapability(workspace),
         new FsRenameCapability(workspace),
         new FsWriteCapability(workspace),
         new FsTrashCapability(workspace),

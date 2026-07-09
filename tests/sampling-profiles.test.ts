@@ -8,6 +8,7 @@ import {
     chatRepeatPenalty,
     agentDecisionTemperature,
     agentDecisionMaxTokens,
+    agentDecisionMaxTokensCapped,
     EMBEDDED_SAMPLING_PROFILES,
     resetSamplingProfilesCache,
     candidatePaths,
@@ -94,6 +95,16 @@ describe('samplingProfiles helper (shipped LlmService path)', () => {
         });
         expect(agentDecisionTemperature()).toBe(disk.agent_decision.temperature);
         expect(agentDecisionMaxTokens()).toBe(disk.agent_decision.max_tokens);
+    });
+
+    it('agentDecisionMaxTokensCapped is the generateAction default (profile ∩ HW budget)', () => {
+        const profile = agentDecisionMaxTokens();
+        expect(profile).toBe(192);
+        // Roomier HW: profile wins (not the old unbounded HW.actionMaxTokens alone).
+        expect(agentDecisionMaxTokensCapped(256)).toBe(192);
+        // Tight HW: never request more than the phone can afford.
+        expect(agentDecisionMaxTokensCapped(64)).toBe(64);
+        expect(agentDecisionMaxTokensCapped(100)).toBe(100);
     });
 
     it('EMBEDDED_SAMPLING_PROFILES stays lockstep with shared/sampling-profiles.json', () => {

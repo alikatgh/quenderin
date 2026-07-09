@@ -67,17 +67,22 @@ public struct RootView: View {
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                             .tag(1)
                     }
+                    UniversalSearchView(activeModelID: model.id, onSelectModel: { picked in
+                        onboarding.beginInstall(picked)
+                    })
+                        .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                        .tag(2)
                     ModelsLibraryView(activeModelID: model.id, onSelectModel: { picked in
                         onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Models", systemImage: "books.vertical") }
-                        .tag(2)
+                        .tag(3)
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Reuse the onboarding install flow: download (if needed) → load → swap.
                         onboarding.beginInstall(picked)
                     })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
-                        .tag(3)
+                        .tag(4)
                 }
                 // Chat posted a goal via the handoff bar — jump to the Agent tab, which consumes it.
                 .onReceive(AgentHandoff.shared.$pending) { pending in

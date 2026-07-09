@@ -88,9 +88,11 @@ public struct ModelsLibraryView: View {
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
 
-                // The open door: the curated set above is the vetted default; below it, search the whole
-                // Hub for anything this device can run (integrity-gated, honestly labelled).
-                ModelSearchView(onSelectModel: onSelectModel)
+                // Open Hub + local filter live on the Search rail/tab — not buried under this grid.
+                Text("Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, "
+                   + "catalog, and open Hugging Face GGUFs in one place.")
+                    .font(.footnote)
+                    .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 4)
             }
             .padding(18)

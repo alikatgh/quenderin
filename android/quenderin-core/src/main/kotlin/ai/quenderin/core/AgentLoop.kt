@@ -264,7 +264,10 @@ class AgentLoop(
 
     companion object {
         /** The corrective nudge shown after a malformed reply — the exact JSON contract, once. */
-        private const val PARSE_NUDGE = "Your last reply was not valid JSON. Reply with EXACTLY ONE JSON object and nothing else: {\"tool\":\"<name>\",\"input\":\"<text>\"}, {\"plan\":[{\"tool\":\"<name>\",\"input\":\"<text>\"},…]}, or {\"answer\":\"<text>\"}."
+        private const val PARSE_NUDGE =
+            "Your last reply was not valid JSON or used a fake tool name. Reply with EXACTLY ONE JSON object " +
+                "using a REAL tool from the Available tools list — never name/text placeholders. " +
+                "Examples: {\"tool\":\"calculator\",\"input\":\"2+2\"}, or {\"answer\":\"done\"}."
 
         /**
          * True when a tool observation means the action did NOT execute for lack of the user's
@@ -354,8 +357,10 @@ class AgentLoop(
             Goal: $goal
             Available tools:
             $toolList
-            Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use a tool, {"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user approves together, or {"answer":"<final answer>"} when done.
-            Use {"answer":…} ONLY for the completed final result — never for narration, plans in prose, or intentions. If any calculation or lookup is still needed, use a tool first.
+            Respond with ONE JSON object only. Use a tool name EXACTLY from the list above.
+            Examples: {"tool":"calculator","input":"2+2"} or {"answer":"the final result after tools ran"}
+            Never invent tools. Never write <name>, <text>, or placeholders.
+            Use {"answer":…} ONLY for the completed final result — never for narration or intentions. If any action is still needed, call a tool first.
         """.trimIndent()
     }
 }

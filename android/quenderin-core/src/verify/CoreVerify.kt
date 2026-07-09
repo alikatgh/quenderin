@@ -1868,7 +1868,53 @@ fun main() {
         val tjCase = DocumentTextExtractor.extract("tj.pdf", tj)
         val tjOk = tjCase is DocumentTextExtractor.Extraction.Document &&
             tjCase.document.text.contains("Hello") && tjCase.document.text.contains("World")
-        textOk && blankOk && magicOk && capOk && tjOk
+        // FlateDecode content stream (most real PDFs) — pure-Kotlin Inflater path.
+        fun flatePdf(plainContent: String): ByteArray {
+            val def = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, /* nowrap= */ false)
+            val plain = plainContent.toByteArray(Charsets.ISO_8859_1)
+            def.setInput(plain)
+            def.finish()
+            val buf = ByteArray(plain.size + 64)
+            val n = def.deflate(buf)
+            def.end()
+            val compressed = buf.copyOf(n)
+            fun ascii(s: String) = s.toByteArray(Charsets.ISO_8859_1)
+            val header = ascii("%PDF-1.1\n")
+            val obj1 = ascii("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+            val obj2 = ascii("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+            val obj3 = ascii(
+                "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] " +
+                    "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n",
+            )
+            val obj4 = ascii("4 0 obj\n<< /Length ${compressed.size} /Filter /FlateDecode >>\nstream\n") +
+                compressed + ascii("\nendstream\nendobj\n")
+            val obj5 = ascii("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+            val objs = listOf(obj1, obj2, obj3, obj4, obj5)
+            var pos = header.size
+            val offsets = mutableListOf(0)
+            for (o in objs) {
+                offsets += pos
+                pos += o.size
+            }
+            val xrefStart = pos
+            val xref = buildString {
+                append("xref\n0 ${offsets.size}\n")
+                append(String.format("%010d 65535 f \n", 0))
+                for (o in offsets.drop(1)) append(String.format("%010d 00000 n \n", o))
+                append("trailer\n<< /Size ${offsets.size} /Root 1 0 R >>\n")
+                append("startxref\n$xrefStart\n%%EOF\n")
+            }
+            val bout = java.io.ByteArrayOutputStream()
+            bout.write(header)
+            for (o in objs) bout.write(o)
+            bout.write(ascii(xref))
+            return bout.toByteArray()
+        }
+        val flateBytes = flatePdf("BT /F1 12 Tf 50 100 Td (flate text survives) Tj ET")
+        val flateCase = DocumentTextExtractor.extract("flate.pdf", flateBytes)
+        val flateOk = flateCase is DocumentTextExtractor.Extraction.Document &&
+            flateCase.document.text.contains("flate text survives")
+        textOk && blankOk && magicOk && capOk && tjOk && flateOk
     })
 
     // --- The workspace: fs.list + fs.move + undo + per-run approval (Milestone 2) ---

@@ -8,6 +8,16 @@ gitignored files.
 > Before you submit, capture real on-device numbers (`docs/DEVICE_VERIFICATION.md`) — the store
 > listing and the default-model copy should reflect measured tok/s, not estimates.
 
+**Current marketing version: 0.2.0** (Android `versionCode` 2 · Apple build 2 · `package.json` 0.2.0).
+
+| Product | Public channel | Owner guide |
+|---|---|---|
+| **macOS** (native Swift) | **Mac App Store only** (free) | [MAC_APP_STORE.md](MAC_APP_STORE.md) |
+| **iOS** | App Store | § iOS below + [STORE_SUBMISSION.md](STORE_SUBMISSION.md) |
+| **Android** | Google Play | § Android below |
+| **Windows** | Microsoft Store **+** GitHub `.exe` | [MICROSOFT_STORE.md](MICROSOFT_STORE.md) |
+| **Linux** | GitHub AppImage/deb (+ Flathub later) | [WINDOWS_LINUX_STRATEGY.md](WINDOWS_LINUX_STRATEGY.md) |
+
 ---
 
 ## Android (Google Play)

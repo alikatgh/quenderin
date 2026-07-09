@@ -26,6 +26,7 @@ Sources consolidated here: [PRODUCT.md](PRODUCT.md) · [AGENT_AUTONOMY_PLAN.md](
 | **Safety/governance spine** | Shipped on all three platforms: tiers T0–T4, blocklist (one canonical list, parity-enforced), consent, preview, per-run approval, append-only ledger, kill switch, dry-run, durable undo |
 | **Cross-platform parity** | Machine-enforced (agent/safety/router/catalog parity scripts in CI); twin-drift audit batches 1–3 shipped — all P0/P1 drifts resolved |
 | **Website / funnel** | quenderin.org live (privacy, roadmap, dev-log); in-app links all funnel there |
+| **Distribution (0.2.0)** | **macOS:** native App Store only (free). **Windows:** Microsoft Store (AppX) + GitHub `.exe`. **Linux:** GitHub AppImage/deb. Guides: `docs/MAC_APP_STORE.md`, `docs/MICROSOFT_STORE.md` |
 | **Honest weak spot** | GUI/action **grounding** — reliable action-selection by a small local model. The harness (guards, verification, undo) is how we compensate; this is the long-term technical frontier |
 
 ---
@@ -53,15 +54,13 @@ Every week unshipped is zero users compounding.
 Make the already-working governed agent a product someone else can use. Deep-dive:
 [AGENT_AUTONOMY_PLAN.md](AGENT_AUTONOMY_PLAN.md) §7 (M0–M4 shipped; this is what remains).
 
-**Platform decision (owner, 2026-07-07):** the macOS *product* is the native Swift app —
-all Quenderin functionality on macOS ships there. The Electron/TS side keeps exactly three
-jobs: (a) the R&D lab where capability classes are proven cheaply (headless tests, fast
-iteration), (b) the `quenderin do` CLI (works today, dev-audience), (c) the future
-Windows/Linux vehicle. Its GUI stays lab-grade — no further product polish. Distribution
-consequence: full automation (Apple Events + Accessibility) is largely incompatible with
-App Store sandboxing, so the autonomy tier ships as a **notarized direct-download Swift
-app** (which also fits H2 — sell Pro direct from quenderin.org, no store cut); a MAS build
-can stay the bounded free chat product.
+**Platform decision (owner, 2026-07-07 + 2026-07-09):** the macOS *product* is the native
+Swift app. **Public free distribution = Mac App Store only** (branding + legitimacy; free
+listing — no 30% concern). Playbook: [MAC_APP_STORE.md](MAC_APP_STORE.md). Electron/TS keeps
+(a) R&D lab, (b) `quenderin do` CLI (dev), (c) Windows/Linux vehicle — GUI lab-grade. Note:
+full automation (AX / Apple Events) is largely incompatible with App Store sandboxing; if/when
+a **Pro autonomy** tier needs those APIs, that build may be a **separate notarized
+direct-download** (H2), not a replacement for the free MAS app.
 
 1. **macOS-native agent surface in the Swift app** — the governance spine (tiers, gate →
    approve → run → ledger, workspace fs.\*, plan preview, undo) already exists natively in
@@ -74,12 +73,15 @@ can stay the bounded free chat product.
    ([audits/2026-07-06-Q549-agent-governance-analysis.md](audits/2026-07-06-Q549-agent-governance-analysis.md));
    one agent, one governance path.
 3. **Chore-class breadth** — grow the capability library where demos convert: files/organize
-   (done), calendar/reminders/notes (done), Shortcuts (done), GUI-drive (done) → next:
-   browser-adjacent chores via Shortcuts/AppleScript, batch file transforms, "collect →
-   summarize → write report" pipelines.
+   (done), calendar/reminders/notes (done), Shortcuts (done), GUI-drive (done).
+   **2026-07-09:** `fs.organize` (batch by extension, one approval, durable undo) +
+   `fs.collect` (multi-file text for summarize→`fs.write` report pipelines). Next:
+   browser-adjacent chores via Shortcuts/AppleScript.
 4. **Reliability harness over weak models** — the loop guard + parse-recovery shipped;
-   next: post-action verification everywhere (`verify()` beyond `mac.ui.tap`), retrieval of
-   known-good action sequences, rate limits on bulk actions.
+   **post-action `verify()` (2026-07-09):** beyond `mac.ui.tap` / `app.tap` — type, key, and
+   menu now self-check. **Skill-sequence retrieval:** record/recall tool+input steps
+   (`SkillMemory.recordSteps` / `formatHint`) so the next similar goal is primed with concrete
+   plan shape, not bare tool names. Bulk rate limits already shipped.
 5. **Durable watch-and-resume** (the §4b "wait for replies" execution model) — design doc
    first; this is new architecture, not a capability.
 6. **Android/mobile catch-up (parity debt):** Compose agent UI (attach/workspace/approval/
