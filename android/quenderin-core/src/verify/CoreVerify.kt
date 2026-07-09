@@ -888,6 +888,28 @@ fun main() {
         val engine = ScriptedInferenceEngine(listOf("""{"tool":"echo","input":"delete my files and pay"}"""))
         AgentLoop(engine, listOf(EchoTool())).run("do it").haltReason == AgentRun.HaltReason.BLOCKED
     })
+    check("agent decision decodes UNDER the GBNF grammar — action-first on step 1, full grammar after (iOS parity)", run {
+        val grammars = mutableListOf<String>()
+        val engine = object : InferenceEngine {
+            override val loadedModelId: String? = "cap"
+            private val replies = ArrayDeque(listOf(
+                """{"tool":"calculator","input":"2+2"}""",
+                """{"answer":"4"}""",
+            ))
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = replies.removeFirstOrNull() ?: """{"answer":"done"}"""
+            override fun completeWithGrammar(
+                prompt: String, grammar: String, maxTokens: Int,
+                topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+            ): String { grammars += grammar; return complete(prompt) }
+        }
+        // "open the calculator app …" reads as an ActionIntent goal → step 1 gets the action-first grammar.
+        AgentLoop(engine, listOf(CalculatorTool())).run("open the calculator app and compute 2+2")
+        grammars.size >= 2 &&
+            grammars[0] == AgentDecisionGrammar.GBNF_ACTION_FIRST &&
+            grammars[1] == AgentDecisionGrammar.GBNF
+    })
     check("agent loop halts planError after CONSECUTIVE non-JSON replies (one nudge first)",
         AgentLoop(ScriptedInferenceEngine(listOf("not json", "still not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
     check("a stall over PERMISSION-refused attempts reports NEEDS_PERMISSION, not 'try rephrasing'", run {

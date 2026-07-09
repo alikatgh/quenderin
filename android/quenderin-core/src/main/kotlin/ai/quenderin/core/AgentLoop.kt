@@ -83,8 +83,15 @@ class AgentLoop(
             // drift. Zero extra decode. (Recipes are a macOS UX layer; the generic re-anchor is the
             // shared cross-platform reliability spine — same text as Swift/TS.)
             transcript += "\nGOAL (still): $goal. Actions taken so far: $toolAttempts. Decide the single best next action."
+            // Grammar-constrained decision decode (parity with iOS): the model CANNOT emit prose instead
+            // of the JSON contract. Step 1 of an action goal uses the action-first grammar (no `answer`)
+            // so a weak model must try a tool instead of bailing; step 2+ use the full grammar. Engines
+            // without native grammar support (mock/scripted) fall back to plain complete(), so the
+            // parse-nudge path below still covers them.
+            val firstActionStep = goalNeedsAction && steps.isEmpty()
+            val grammar = if (firstActionStep) AgentDecisionGrammar.GBNF_ACTION_FIRST else AgentDecisionGrammar.GBNF
             val reply = try {
-                engine.complete(transcript)
+                engine.completeWithGrammar(transcript, grammar)
             } catch (t: Throwable) {
                 return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
             }

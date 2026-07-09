@@ -91,8 +91,12 @@ jstring make_jstring(JNIEnv* env, const std::string& s) {
 // The decode loop itself (KV-reuse + strict mirror lockstep) lives in the shared `generateWithKVReuse`
 // (llama_generate.h) so the on-device smoke test runs the EXACT same code. This function is the thin
 // JNI adapter: tokenize, resolve the Java callbacks, and supply emit/cancel lambdas.
+// `override_sampler` (default null) lets a single call decode with a PER-CALL sampler instead of the
+// load-time `h->sampler` — used by nativeCompleteWithGrammar so a grammar-constrained agent decode can
+// mask illegal tokens. The caller owns the override sampler's lifetime (builds + frees it).
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
-                     JNIEnv* env, jobject sink, jobject thiz, bool& failed) {
+                     JNIEnv* env, jobject sink, jobject thiz, bool& failed,
+                     llama_sampler* override_sampler = nullptr) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
 
     std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
@@ -159,7 +163,8 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         return n;
     };
 
-    std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, h->sampler, newTokens, max_tokens,
+    llama_sampler* active_sampler = override_sampler ? override_sampler : h->sampler;
+    std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, active_sampler, newTokens, max_tokens,
                                                          h->cached, emit, cancelled, &failed, thermalPoll);
     LOGI("generate: done failed=%d out_bytes=%zu", (int) failed, result.size());
     return result;
@@ -375,6 +380,44 @@ Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject thiz,
     // indistinguishable from a legitimate empty reply.
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);   // audit M2: real UTF-8, not modified-UTF-8
+}
+
+// GRAMMAR-CONSTRAINED completion (the agent decision decode): build a PER-CALL sampler whose first
+// stage is a GBNF grammar mask, so the decode CANNOT be prose — parity with the iOS LlamaEngine chain
+// (grammar → penalties → top_k → top_p → temp → dist; top_k/top_p run AFTER the grammar so they only
+// trim already-legal tokens). A grammar that fails to parse returns null → we skip it and decode with
+// the remaining (unconstrained) chain, mirroring iOS's null-grammar fallback rather than crashing.
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobject thiz,
+                                                             jlong handle, jstring prompt, jint max_tokens,
+                                                             jstring grammar, jfloat top_p, jint top_k,
+                                                             jfloat temperature, jfloat repeat_penalty,
+                                                             jint repeat_last_n) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h) { LOGE("nativeCompleteWithGrammar: null handle (no model loaded)"); return make_jstring(env, ""); }
+    const char* p = env->GetStringUTFChars(prompt, nullptr);
+    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
+    const char* g = grammar ? env->GetStringUTFChars(grammar, nullptr) : nullptr;
+
+    const llama_vocab* vocab = llama_model_get_vocab(h->model);
+    llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    if (g && g[0] != '\0') {
+        llama_sampler* gs = llama_sampler_init_grammar(vocab, g, "root");   // null if the GBNF won't parse
+        if (gs) llama_sampler_chain_add(smpl, gs);
+    }
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(repeat_last_n, repeat_penalty, 0.0f, 0.0f));
+    if (top_k > 0) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(top_k));
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(top_p, 1));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+    bool failed = false;
+    std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed, smpl);
+    llama_sampler_free(smpl);                          // per-call: freed here, never touches h->sampler
+    env->ReleaseStringUTFChars(prompt, p);
+    if (g) env->ReleaseStringUTFChars(grammar, g);
+    if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
+    return make_jstring(env, out);
 }
 
 JNIEXPORT jstring JNICALL

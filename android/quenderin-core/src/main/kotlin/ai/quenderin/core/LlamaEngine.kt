@@ -146,6 +146,17 @@ class LlamaEngine(
         nativeComplete(handle, prompt, maxTokens)
     }
 
+    /** Grammar-constrained decode (the agent decision) — a per-call GBNF-masked sampler in the JNI, so
+     *  the decision can't be prose. Parity with the iOS engine's grammar-constrained agent decode. */
+    override fun completeWithGrammar(
+        prompt: String, grammar: String, maxTokens: Int,
+        topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+    ): String = synchronized(lock) {
+        ensureReady()
+        cancelRequested = false   // fresh generation (M3)
+        nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
+    }
+
     /**
      * Streaming completion: the native side invokes [onToken] per decoded piece and
      * also returns the full text. Lets the Compose layer render tokens as they arrive.
@@ -186,6 +197,7 @@ class LlamaEngine(
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
     private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
+    private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeFree(handle: Long)

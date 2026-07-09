@@ -450,6 +450,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-09 (Android grammar-in-JNI — the agent decision now decodes UNDER the GBNF grammar, iOS parity) —
+  Android had the AgentDecisionGrammar constant (SHA-pinned twin of Swift) but the JNI never applied it, so
+  the decision decoded unconstrained (prose could slip past → parse-nudge). Added `nativeCompleteWithGrammar`:
+  a PER-CALL sampler (grammar FIRST, then penalties → top_k → top_p → temp → dist — the exact iOS chain),
+  freed per call, never touching the load-time `h->sampler`. `generate()` gained an `override_sampler` param.
+  Kotlin: `InferenceEngine.completeWithGrammar` (default falls back to complete → mock/scripted + JVM tests
+  unchanged) + `LlamaEngine` override + `AgentLoop.kt` uses GBNF_ACTION_FIRST on step 1, GBNF after. Kotlin
+  core compiles clean locally (kotlinc); the JNI is CI-syntax-checked against real llama.cpp headers +
+  assembleDebug (can't build llama.cpp on this box). Runtime parity: llama_sampler_sample accepts the token
+  so the grammar advances, same as iOS. This UNBLOCKS Android deliberation (which works around grammar).
+  Lesson: a "contract-only" constant with a "consumed once the JNI grows a param" comment is a TODO — do it.
+
 - 2026-07-08 (deliberation "think, then decide" ported to the TS/desktop agent — Android deferred, on purpose) —
   the native "Deeper reasoning" think-pass (reason before committing to a decision) was macOS/iOS-only.
   Ported to TS: a separate `think` planner + `deliberate` gate on CapabilityAgent (weaves a closed <think>

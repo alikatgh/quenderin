@@ -36,6 +36,21 @@ interface InferenceEngine {
     fun complete(prompt: String, onToken: (String) -> Unit): String = complete(prompt)
 
     /**
+     * Grammar-constrained completion — the agent DECISION decode. Masks every token that can't continue
+     * [grammar] (a GBNF string), so an agent decision CANNOT be prose. Parity with the iOS engine, which
+     * applies the SAME grammar via `llama_sampler_init_grammar`; until now Android decoded the decision
+     * unconstrained (AgentDecisionGrammar's constant was "the contract until the JNI grows a grammar
+     * parameter" — this IS that parameter). Default IGNORES the grammar and falls back to plain [complete]
+     * so mock/scripted engines (and the JVM tests) are unchanged; only [LlamaEngine] applies it natively.
+     * Sampling defaults are Qwen3's non-thinking recipe (top_p 0.8 / top_k 20 / temp 0.7), matching iOS.
+     */
+    fun completeWithGrammar(
+        prompt: String, grammar: String, maxTokens: Int = 512,
+        topP: Float = 0.8f, topK: Int = 20, temperature: Float = 0.7f,
+        repeatPenalty: Float = 1.1f, repeatLastN: Int = 256,
+    ): String = complete(prompt)
+
+    /**
      * Streaming chat completion from the STRUCTURED conversation (system prompt + turns). A real engine
      * ([LlamaEngine]) formats this with the model's OWN chat template so the model answers as an assistant
      * and stops at its end-of-turn token — the difference between a snappy short reply and one that grinds
