@@ -51,6 +51,16 @@ interface InferenceEngine {
     ): String = complete(prompt)
 
     /**
+     * A short, UNCONSTRAINED reasoning decode — the "think, then decide" pass (twin of the iOS
+     * deliberation decode). No grammar (the model must be free to reason), hard-capped so the reasoning
+     * can't run away and starve the decision that follows. Default falls back to plain [complete] so
+     * mock/scripted engines are unchanged; [LlamaEngine] caps it at [maxTokens]. Only meaningful once the
+     * decision decode is grammar-forced (which is why it lands AFTER grammar-in-JNI): otherwise the model
+     * could already reason inline.
+     */
+    fun completeThinking(prompt: String, maxTokens: Int = 256): String = complete(prompt)
+
+    /**
      * Streaming chat completion from the STRUCTURED conversation (system prompt + turns). A real engine
      * ([LlamaEngine]) formats this with the model's OWN chat template so the model answers as an assistant
      * and stops at its end-of-turn token — the difference between a snappy short reply and one that grinds

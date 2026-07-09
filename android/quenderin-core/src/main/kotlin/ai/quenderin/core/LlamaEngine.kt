@@ -157,6 +157,15 @@ class LlamaEngine(
         nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
     }
 
+    /** The deliberation reasoning decode — unconstrained (the load-time sampler), hard-capped so the
+     *  reasoning can't starve the grammar-forced decision that follows. Reuses [nativeComplete] with a
+     *  per-call token cap; the grammar decode is a separate call. */
+    override fun completeThinking(prompt: String, maxTokens: Int): String = synchronized(lock) {
+        ensureReady()
+        cancelRequested = false   // fresh generation (M3)
+        nativeComplete(handle, prompt, maxTokens)
+    }
+
     /**
      * Streaming completion: the native side invokes [onToken] per decoded piece and
      * also returns the full text. Lets the Compose layer render tokens as they arrive.

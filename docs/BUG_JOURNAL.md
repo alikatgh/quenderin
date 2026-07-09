@@ -450,6 +450,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-09 (deliberation ported to Android — "think, then decide" now on ALL 3 platforms) — with grammar-
+  in-JNI landed (the prerequisite), the reasoning-first problem now exists on Android too, so the think-pass
+  is meaningful. Added `InferenceEngine.completeThinking` (unconstrained, capped; LlamaEngine reuses
+  nativeComplete with a per-call token cap — NO new native code) + a `deliberate` closure on AgentLoop.kt
+  (reasons before the grammar decode, weaves a closed <think> block, extracting up to </think> since the
+  Android decode has no stop-sequence) + threaded through AgentSession + wired to a "Deeper reasoning"
+  Settings toggle (SharedPreferences "agent.deliberation", read live at run time). Off by default. Kotlin
+  core compiles clean (kotlinc) + a CoreVerify check asserts the think block is woven in / off-by-default;
+  the app toggle is CI-assembleDebug-verified. Deliberation now: Apple + TS + Android. Lesson: order
+  matters — grammar had to land first (deliberation works around it); once it did, this was pure Kotlin.
+
 - 2026-07-09 (Android grammar-in-JNI — the agent decision now decodes UNDER the GBNF grammar, iOS parity) —
   Android had the AgentDecisionGrammar constant (SHA-pinned twin of Swift) but the JNI never applied it, so
   the decision decoded unconstrained (prose could slip past → parse-nudge). Added `nativeCompleteWithGrammar`:

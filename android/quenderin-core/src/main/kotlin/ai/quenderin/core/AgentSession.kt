@@ -15,11 +15,15 @@ class AgentSession(
      *  AgentSession runner injection. NB: `onChange` stays LAST so existing trailing-lambda
      *  callers (`AgentSession(engine, tools) { … }`) still bind to it — the AgentLoop lesson. */
     runner: CapabilityRunner? = null,
+    /** Opt-in "think, then decide" — read LIVE (the Settings toggle) so it takes effect on the next run.
+     *  Off by default. Twin of iOS AgentSession reading `AgentDeliberation.isEnabled`. Placed before
+     *  `onChange` so the trailing-lambda callers still bind onChange (same rule as `runner`). */
+    deliberate: () -> Boolean = { false },
     var onChange: () -> Unit = {},
 ) {
     private val loop =
-        if (runner != null) AgentLoop(engine, tools, maxSteps, runner)
-        else AgentLoop(engine, tools, maxSteps)
+        if (runner != null) AgentLoop(engine, tools, maxSteps, runner, deliberate)
+        else AgentLoop(engine, tools, maxSteps, deliberate = deliberate)
 
     /** Q-641: the current run's stop flag. cancel() flips it (and interrupts the in-flight decode); the
      *  loop checks it each step boundary and halts with CANCELLED. @Volatile — cancel() may run on the

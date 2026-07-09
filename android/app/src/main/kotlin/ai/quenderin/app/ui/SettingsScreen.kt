@@ -164,6 +164,28 @@ fun SettingsScreen(
                     ai.quenderin.app.devicePerceptionCapabilities(context)
             }
             Caption("Calculator, unit and date tools are always on — pure compute, no side effects.")
+            // Opt-in "Deeper reasoning" for the AGENT (distinct from chat's Deep thinking) — the twin of
+            // the iOS Settings → Agent "Deeper reasoning" toggle. Writes the SAME "agent.deliberation"
+            // key the Agent screen reads live at run time. Self-contained (local state + direct prefs
+            // write) like the consent switches below.
+            run {
+                val agentPrefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
+                var deliberation by remember { mutableStateOf(agentPrefs.getBoolean("agent.deliberation", false)) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Deeper reasoning", color = MaterialTheme.colorScheme.onSurface)
+                        Caption("Let the agent think through each step before it acts — better tool choice on " +
+                            "tricky goals, but slower. Off by default; applies to your next run.")
+                    }
+                    Switch(
+                        checked = deliberation,
+                        onCheckedChange = { on ->
+                            deliberation = on
+                            agentPrefs.edit().putBoolean("agent.deliberation", on).apply()
+                        },
+                    )
+                }
+            }
             gated.forEach { cap ->
                 var granted by remember { mutableStateOf(consent.isGranted(cap.name)) }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -39,6 +39,12 @@ class AgentLoop(
     /** The enforcement point for tools that are [Capability]s: gate → run → ledger, no way
      *  around it (AGENT_AUTONOMY_PLAN §6). Plain [AgentTool]s keep the legacy direct path. */
     private val runner: CapabilityRunner = CapabilityRunner(),
+    /** Opt-in "think, then decide" (twin of the iOS AgentLoop deliberation pass): when true, the model
+     *  reasons — unconstrained, hard-capped — before each grammar-forced decision decode, and the
+     *  reasoning is woven into the transcript as a closed <think> block. A closure so the Settings
+     *  toggle is read LIVE. Off by default; only meaningful now that the decision decode is
+     *  grammar-forced (grammar-in-JNI), which is why it lands after it. */
+    private val deliberate: () -> Boolean = { false },
 ) {
     private val maxSteps = maxOf(1, maxSteps)
 
@@ -83,6 +89,19 @@ class AgentLoop(
             // drift. Zero extra decode. (Recipes are a macOS UX layer; the generic re-anchor is the
             // shared cross-platform reliability spine — same text as Swift/TS.)
             transcript += "\nGOAL (still): $goal. Actions taken so far: $toolAttempts. Decide the single best next action."
+            // Opt-in deliberation (twin of iOS): reason BEFORE the decision decode. Unconstrained + hard-
+            // capped, then woven in as a closed <think> block the grammar decision decode sees. We extract
+            // up to </think> (where the model closes the reasoning) since the Android decode has no stop-
+            // sequence; best-effort — a failed/empty think never fails the step. Only useful because the
+            // decision below is grammar-forced (the model can't reason inline), so this is the reasoning slot.
+            if (deliberate()) {
+                try {
+                    val raw = engine.completeThinking(transcript + "\n<think>\n")
+                    val thought = raw.substringBefore("</think>").trim()
+                    if (thought.isNotEmpty()) transcript += "\n<think>\n$thought\n</think>"
+                } catch (t: Throwable) { /* deliberation is best-effort */ }
+                if (isCancelled()) return AgentRun(steps, null, AgentRun.HaltReason.CANCELLED)
+            }
             // Grammar-constrained decision decode (parity with iOS): the model CANNOT emit prose instead
             // of the JSON contract. Step 1 of an action goal uses the action-first grammar (no `answer`)
             // so a weak model must try a tool instead of bailing; step 2+ use the full grammar. Engines

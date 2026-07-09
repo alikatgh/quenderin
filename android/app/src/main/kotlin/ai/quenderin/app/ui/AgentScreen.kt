@@ -148,7 +148,15 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             // T1 device perception (owner sign-off 2026-07-07) — read-only senses, consent-gated
             // like everything else; the Settings pane lists them from the same classes.
             ai.quenderin.app.devicePerceptionCapabilities(context)
-        AgentSession(engine, allTools, runner = runner).apply {
+        AgentSession(
+            engine, allTools, runner = runner,
+            // Opt-in "Deeper reasoning" — read LIVE from prefs each step so the Settings toggle takes
+            // effect on the next run (twin of iOS AgentSession reading AgentDeliberation.isEnabled).
+            deliberate = {
+                context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+                    .getBoolean("agent.deliberation", false)
+            },
+        ).apply {
             onChange = {
                 // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background
                 // thread — writing Compose snapshot state directly off the main thread is a threading

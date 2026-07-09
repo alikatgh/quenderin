@@ -910,6 +910,34 @@ fun main() {
             grammars[0] == AgentDecisionGrammar.GBNF_ACTION_FIRST &&
             grammars[1] == AgentDecisionGrammar.GBNF
     })
+    check("opt-in deliberation weaves a think pass into the decision prompt; off by default (iOS parity)", run {
+        var decisionPrompt = ""
+        val onEngine = object : InferenceEngine {
+            override val loadedModelId: String? = "cap"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = """{"answer":"4"}"""
+            override fun completeThinking(prompt: String, maxTokens: Int): String = "The answer is four.</think> ignored tail"
+            override fun completeWithGrammar(
+                prompt: String, grammar: String, maxTokens: Int,
+                topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
+            ): String { decisionPrompt = prompt; return """{"answer":"4"}""" }
+        }
+        val on = AgentLoop(onEngine, listOf(CalculatorTool()), deliberate = { true }).run("what is 2 plus 2")
+        // Reasoning is woven in as a closed block; the tail after </think> is dropped.
+        val wovenIn = decisionPrompt.contains("<think>\nThe answer is four.\n</think>")
+        // Off by default: no think pass fires.
+        var thinkCalls = 0
+        val offEngine = object : InferenceEngine {
+            override val loadedModelId: String? = "cap"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = """{"answer":"4"}"""
+            override fun completeThinking(prompt: String, maxTokens: Int): String { thinkCalls++; return "x" }
+        }
+        AgentLoop(offEngine, listOf(CalculatorTool())).run("what is 2 plus 2")
+        on.haltReason == AgentRun.HaltReason.ANSWERED && wovenIn && thinkCalls == 0
+    })
     check("agent loop halts planError after CONSECUTIVE non-JSON replies (one nudge first)",
         AgentLoop(ScriptedInferenceEngine(listOf("not json", "still not json")), emptyList()).run("x").haltReason == AgentRun.HaltReason.PLAN_ERROR)
     check("a stall over PERMISSION-refused attempts reports NEEDS_PERMISSION, not 'try rephrasing'", run {
