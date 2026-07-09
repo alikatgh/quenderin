@@ -43,11 +43,17 @@ New: `src/services/capability/actionIntent.ts` (twin of Swift/Kotlin `ActionInte
   `docs/audits/2026-07-08-dynamic-planning.md` and `memory:dynamic-planning-scope`). The shared spine is
   the re-anchor, which IS twinned.
 - **`needsPermission` halt + the "all attempts refused ⇒ withhold" fabricated-success guard** — present on
-  iOS/Android, deliberately NOT on TS (the TS halt union has no `needsPermission`; this was a prior scope
-  call). **Known residual gap:** on TS, a *made-but-all-refused* run (a known capability proposed, then
-  refused by consent, then the model answers "I did it") is still accepted as `answered` — because TS
-  pushes a known-but-refused capability into `usedTools`, so the zero-action guard doesn't catch it. Closing
-  it faithfully means adding refused-attempt tracking + a withhold halt to TS; deferred, documented here.
+  iOS/Android, deliberately NOT on TS. **ATTEMPTED 2026-07-08 and REVERTED — this is a genuine intentional
+  difference, not drift. Do NOT re-attempt without a product decision.** The faithful native port (add a
+  `needsPermission` halt + refused-attempt tracking, withhold any answer when every attempt was refused)
+  was implemented and immediately broke **3 existing tests across 2 surfaces** — `dashboard-tasks.test.ts`
+  (fail-closed: no renderer / disconnect mid-approval) and `platform-capabilities.test.ts` (a user *declines*
+  on Windows). Those tests encode a DELIBERATE TS behavior: on an all-refused run the loop returns the
+  model's own **honest** answer (e.g. "Okay, I did not open it.") as `answered`, rather than a structured
+  `needsPermission` banner. The native guard can't distinguish an honest "I couldn't" from a fabricated
+  "done" — it fires on all-refused regardless — so porting it would override honest decline answers on those
+  surfaces. The test ripple was the signal; reverted. If this is ever revisited it's a cross-surface product
+  decision (what should a *user decline* show?), not a parity bugfix.
 - **Sampling / GBNF grammar** — the Swift loop carries Qwen3 sampling recipes + grammar-constrained decoding;
   Android/TS decode through their own engine seam. Platform-constraint, not drift (the anti-narration line
   matters *more* where the grammar makes narration a legal `{"answer"}` — i.e. Swift — but is good guidance
