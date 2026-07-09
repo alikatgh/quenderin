@@ -450,6 +450,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-08 (cross-platform agent-loop parity — TS/Electron was behind the native twins) — a twin-drift
+  audit (3 behavior maps → diff) found the desktop CapabilityAgent (Windows/Linux) missing two reliability
+  guards iOS+Android both have: the ZERO-ACTION guard (answer a computer-task goal with 0 tool calls →
+  nudge once, then halt) and the anti-narration preamble line. Both were later-added to native and never
+  back-ported to the original desktop path. Fixed: ported ActionIntent (src/services/capability/actionIntent.ts,
+  identical patterns to Swift/Kotlin) + the guard (halts 'planError', which TS already has) + the preamble
+  line. 8 new TS tests (520 total), typecheck clean. Shared spine (re-anchor, stall/parse guards, precedence,
+  plan-gating) verified consistent. Documented residual: TS made-but-all-refused fabricated-success is a
+  deliberate scope gap (no needsPermission halt on TS). Report: docs/audits/2026-07-08-agent-loop-parity.md.
+  Lesson: when a guard is added "live-caught" to one twin, back-port it to ALL — grep the sibling loops.
+
 - 2026-07-08 (adversarial review of the two new features caught 2 real bugs pre-user) — I shipped ~1000
   lines I couldn't render on this box, so a 5-dimension review workflow (opus skeptics, 5 false positives
   refuted) found: (1) OnboardingModel.swift:281 — the failed-switch H1 restore used `ModelCatalog.entry`

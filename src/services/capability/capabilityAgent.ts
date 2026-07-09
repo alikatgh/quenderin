@@ -1,6 +1,7 @@
 import { Capability } from './capability.js';
 import { CapabilityRunner } from './runner.js';
 import { SkillMemory } from './skillMemory.js';
+import { looksLikeComputerTask } from './actionIntent.js';
 
 /**
  * The GOVERNED agent loop (desktop) — the TypeScript twin of the native `AgentLoop`, but
@@ -60,6 +61,14 @@ export class CapabilityAgent {
         // slip (a big cloud model rarely slips; a small local one does), feed the contract back and
         // let it retry, halting only if it can't produce valid JSON across consecutive tries.
         let parseFailures = 0;
+        // Zero-action guard (twin of the native AgentLoop, previously only on iOS/Android): the model
+        // answers a bare "Done" with an EMPTY run log. For a goal that reads as a computer task
+        // (ActionIntent), an answer with zero capability calls gets ONE corrective nudge; if it still
+        // answers without acting, the run halts honestly ('planError') instead of presenting "Done" over
+        // work that never happened. The named "fluent lie" a weak local model tells; the desktop path
+        // (Windows/Linux) was missing this backstop the native twins have.
+        const goalNeedsAction = looksLikeComputerTask(goal);
+        let nudgedForNoAction = false;
 
         for (let i = 0; i < this.maxSteps; i++) {
             // The kill switch, honored at the top of every turn: stop the WHOLE run instantly,
@@ -89,6 +98,17 @@ export class CapabilityAgent {
             parseFailures = 0;
 
             if (decision.kind === 'answer') {
+                // Zero attempts on an action goal: "Done" over no work is a lie. One nudge, then halt.
+                if (usedTools.length === 0 && goalNeedsAction) {
+                    if (!nudgedForNoAction) {
+                        nudgedForNoAction = true;
+                        const nudge = 'You have not taken any action yet, so an answer now would be false. This goal requires acting through a capability — pick the right one from the list and use it.';
+                        transcript += `\n${nudge}`;
+                        emit(nudge);
+                        continue;
+                    }
+                    return { answer: null, steps, halt: 'planError' };
+                }
                 // A completed task teaches the harness — record the proven capability sequence so
                 // the next similar goal is primed with it (retrieval-augmented planning).
                 if (usedTools.length > 0) this.memory?.record(goal, usedTools);
@@ -146,6 +166,10 @@ export class CapabilityAgent {
             'Respond with ONE JSON object: {"tool":"<name>","input":"<text>"} to use one capability, ' +
             '{"plan":[{"tool":"<name>","input":"<text>"},…]} to propose several steps the user approves ' +
             'together, or {"answer":"<final answer>"} when done.',
+            // Twin of the native preamble's anti-narration line: keep a chatty model from ending the
+            // mission with a prose {"answer":…} before any real work — narration is not a result.
+            'Use {"answer":…} ONLY for the completed final result — never for narration, plans in prose, ' +
+            'or intentions. If any calculation or lookup is still needed, use a capability first.',
         );
         return lines.join('\n');
     }

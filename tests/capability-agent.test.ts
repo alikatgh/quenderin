@@ -112,6 +112,42 @@ describe('CapabilityAgent — the governed loop drives a real app screen end to 
         expect(result.halt).toBe('answered');
     });
 
+    // Zero-action guard (twin of the native AgentLoop) — a weak model's other lie is answering "Done"
+    // on an action goal without doing anything.
+    it('nudges then halts planError when the model answers an ACTION goal with zero capability calls', async () => {
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        const agent = new CapabilityAgent(async () => JSON.stringify({ answer: 'Done — I organized your files.' }), [], runner);
+        const result = await agent.run('organize the files in my downloads folder');   // ActionIntent match
+        expect(result.halt).toBe('planError');                                   // honest, not a fabricated "answered"
+        expect(result.answer).toBeNull();
+        expect(result.steps.some(s => s.includes('not taken any action'))).toBe(true);   // the corrective nudge fired
+    });
+
+    it('recovers when the model ACTS after the zero-action nudge instead of re-answering', async () => {
+        const device = new FakeDevice(SCREEN);
+        const consent = new InMemoryConsentStore(); consent.setGranted('app.tap', true);
+        const runner = new CapabilityRunner(consent, new InMemoryAuditLedger(), async () => true);
+        const replies = [
+            JSON.stringify({ answer: 'all set' }),                 // premature — nudged
+            JSON.stringify({ tool: 'app.tap', input: 'Add friend' }),  // then actually acts
+            JSON.stringify({ answer: 'tapped it' }),
+        ];
+        let turn = 0;
+        const agent = new CapabilityAgent(async () => replies[Math.min(turn++, replies.length - 1)], [new AppTapCapability(device, parser)], runner);
+        const result = await agent.run('open finder and tap add');   // ActionIntent match
+        expect(result.halt).toBe('answered');
+        expect(result.answer).toBe('tapped it');
+        expect(device.taps).toHaveLength(1);
+    });
+
+    it('leaves a NON-action goal answered directly (no false nudge)', async () => {
+        const runner = new CapabilityRunner(new InMemoryConsentStore(), new InMemoryAuditLedger(), async () => true);
+        const agent = new CapabilityAgent(async () => JSON.stringify({ answer: '4' }), [], runner);
+        const result = await agent.run('what is 2 plus 2');   // not a computer task
+        expect(result.halt).toBe('answered');
+        expect(result.answer).toBe('4');
+    });
+
     // The loop guard — a weak local model's #1 failure mode is getting stuck repeating one action.
     function tapAgent(replies: string[]) {
         const device = new FakeDevice(SCREEN);
