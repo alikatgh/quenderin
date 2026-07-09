@@ -83,7 +83,8 @@ can stay the bounded free chat product.
 5. **Durable watch-and-resume** (the §4b "wait for replies" execution model) — design doc
    first; this is new architecture, not a capability.
 6. **Android/mobile catch-up (parity debt):** Compose agent UI (attach/workspace/approval/
-   ledger surfaces), Android PDF text extraction.
+   ledger surfaces). **PDF text extraction: done** (pure-Kotlin content-stream twin of
+   Apple PDFKit — 2026-07-09).
 
 **Exit criterion:** a non-developer can install the desktop app, say "organize my Downloads
 into folders by type and month", read the plan, click approve once, watch it happen, and

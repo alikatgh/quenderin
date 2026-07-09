@@ -56,6 +56,10 @@ public extension ChatMessage {
 public final class ChatModel: ObservableObject {
     @Published public private(set) var messages: [ChatMessage] = []
     @Published public private(set) var isGenerating = false
+    /// True when the last settled reply stopped because it hit `options.maxTokens` (not Stop, not
+    /// EOG). The chat UI surfaces a "Continue" chip so a mid-sentence cut is recoverable
+    /// (KNOWN_FAILURE_MODES). Cleared on the next send / reset / restore.
+    @Published public private(set) var lastHitTokenCap = false
 
     /// Set by `stopGenerating()`; checked per token so a stop lands within one token.
     private var stopRequested = false
@@ -68,6 +72,13 @@ public final class ChatModel: ObservableObject {
         // (before the first token) — so also tell the engine to interrupt its native decode now,
         // ending generation in <500ms even mid-prefill (Q-005/Q-217).
         engine.requestCancel()
+    }
+
+    /// Extend the previous reply after a token-cap stop. Sends a short continue cue so the model
+    /// picks up mid-thought. No-op when `lastHitTokenCap` is false.
+    public func continueLast(options: GenerationOptions = .init()) async {
+        guard lastHitTokenCap, !isGenerating else { return }
+        await send("Continue from where you left off. Do not repeat what you already wrote.", options: options)
     }
 
     private let engine: InferenceEngine
@@ -87,6 +98,7 @@ public final class ChatModel: ObservableObject {
 
         isGenerating = true
         stopRequested = false
+        lastHitTokenCap = false
         defer { isGenerating = false }
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
@@ -113,9 +125,10 @@ public final class ChatModel: ObservableObject {
         messages.append(assistant)
         let assistantID = assistant.id   // track by id, NOT a captured index — `messages` can be mutated
 
+        var tokenCount = 0
+        var hitDegeneration = false
         do {
             let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)
-            var tokenCount = 0
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
                 // onTermination stops decoding), so Stop also stops the compute.
@@ -123,7 +136,10 @@ public final class ChatModel: ObservableObject {
                 // Degeneration guard: if the tail is verbatim-looping despite the sampler's
                 // repetition penalty, stop paying for tokens — the collapse below cleans up.
                 tokenCount += 1
-                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) { break }
+                if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) {
+                    hitDegeneration = true
+                    break
+                }
                 assistant.text += token
                 // `send` is @MainActor, but every `await` above yields the actor — so `reset()`
                 // (clear) or `restore()` (open history) can mutate `messages` mid-stream. Look the
@@ -144,6 +160,11 @@ public final class ChatModel: ObservableObject {
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
             assistant.text = "The model returned an empty reply. Try rephrasing, or pick a larger model in the Model library."
         }
+        // Token-cap mid-sentence → Continue. Count is per streamed piece from the UTF-8 decoder
+        // (≈ per token on iOS). Not Stop, not degeneration, and we hit the budget.
+        if !stopRequested, !hitDegeneration, tokenCount >= options.maxTokens {
+            lastHitTokenCap = true
+        }
         if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
     }
 
@@ -152,6 +173,7 @@ public final class ChatModel: ObservableObject {
         // Q-322: cancel any in-flight decode BEFORE wiping its target array — otherwise the streaming
         // loop keeps appending tokens into a transcript that's just been replaced (cross-chat bleed).
         engine.requestCancel()
+        lastHitTokenCap = false
         messages.removeAll()
     }
 
@@ -159,6 +181,7 @@ public final class ChatModel: ObservableObject {
     /// so a chat picks up exactly where it left off after a relaunch.
     public func restore(_ saved: [ChatMessage]) {
         engine.requestCancel()   // Q-323: same — stop the decode before swapping the transcript out
+        lastHitTokenCap = false
         messages = saved
     }
 }

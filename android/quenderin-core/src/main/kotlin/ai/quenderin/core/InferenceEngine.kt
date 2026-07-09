@@ -42,10 +42,10 @@ interface InferenceEngine {
      * unconstrained (AgentDecisionGrammar's constant was "the contract until the JNI grows a grammar
      * parameter" — this IS that parameter). Default IGNORES the grammar and falls back to plain [complete]
      * so mock/scripted engines (and the JVM tests) are unchanged; only [LlamaEngine] applies it natively.
-     * Sampling defaults are Qwen3's non-thinking recipe (top_p 0.8 / top_k 20 / temp 0.7), matching iOS.
+     * Sampling defaults match `shared/sampling-profiles.json` → `agent_decision` (CI: check:sampling-parity).
      */
     fun completeWithGrammar(
-        prompt: String, grammar: String, maxTokens: Int = 512,
+        prompt: String, grammar: String, maxTokens: Int = 192,
         topP: Float = 0.8f, topK: Int = 20, temperature: Float = 0.7f,
         repeatPenalty: Float = 1.1f, repeatLastN: Int = 256,
     ): String = complete(prompt)
@@ -57,6 +57,7 @@ interface InferenceEngine {
      * mock/scripted engines are unchanged; [LlamaEngine] caps it at [maxTokens]. Only meaningful once the
      * decision decode is grammar-forced (which is why it lands AFTER grammar-in-JNI): otherwise the model
      * could already reason inline.
+     * Default maxTokens matches `shared/sampling-profiles.json` → `agent_deliberation`.
      */
     fun completeThinking(prompt: String, maxTokens: Int = 256): String = complete(prompt)
 
@@ -82,6 +83,13 @@ interface InferenceEngine {
      *  take the engine's generation lock — it has to signal a generation that already holds it.
      *  Default no-op for engines without interruption (mock, scripted, tests). Audit M3. */
     fun requestCancel() {}
+
+    /**
+     * True when the most recent generation stopped at the token budget (not EOG / cancel).
+     * Default false — mocks and pure-compute tools never hit a real cap. LlamaEngine overrides
+     * via the native hitTokenCap flag so ChatModel can show "Continue".
+     */
+    fun lastHitTokenCap(): Boolean = false
 }
 
 class EngineNotLoadedException : IllegalStateException("No model is loaded")

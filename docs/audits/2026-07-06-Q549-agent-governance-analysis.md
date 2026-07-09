@@ -54,12 +54,16 @@ Instead, port the governance features that fit, smallest-blast-radius first, eac
   decision (allowed / failed / blocked / error) + the goal, secret-redacted. Read-only (adds no gate) and
   surfaced at token-gated `GET /api/agent/ledger`. No behavior change. Tests: recording (allowed +
   safety-blocked) and the route (401 / entries).
-- **Step 2 — Bulk brake (additive, one gate).** After N device actions in a mission, emit a
-  `bulk_confirm` event and pause until the user approves continuing (reuse the WS pause/intervene
-  channel that already exists). Mirrors `passesBulkGuard`.
-- **Step 3 — Per-run approval mode (opt-in).** A settings flag that requires the user to approve a
-  mission's goal (and, later, a soft-confirm list of higher-consequence actions) before the loop drives
-  the device. Fail-closed when enabled.
+- **Step 2 — Bulk brake (additive, one gate).** ✅ **DONE.** After N executed device actions
+  (default 20, `QUENDERIN_BULK_BRAKE_ACTIONS`), the loop self-pauses, emits `bulk_confirm`, and waits
+  on the existing pause/intervene channel. Tests in `tests/agentLoop.test.ts`. Do **not** replace
+  `AgentService` with `createGovernedAgent` — different execution models (see table above).
+- **Step 3 — Per-run approval mode (opt-in).** ✅ **DONE (2026-07-09).** `AgentService.setMissionApproval`
+  / env `QUENDERIN_MISSION_APPROVAL=1` (default OFF). Before any device observation/tap on ACTION
+  missions, `gateMissionApproval` runs: no approver ⇒ fail-closed; approver false ⇒ decline + done;
+  approver true ⇒ proceed. Emits `mission_approval`. Live channel: `installWaitingMissionApprover` +
+  WS `mission_approval_required` / `mission_approve` + dashboard Allow dialog. Pure helper + loop +
+  waiting-approver tests in `tests/agentLoop.test.ts`.
 - **Step 4 (optional, larger) — unify the ledger/consent types** so the dashboard agent and the
   capability spine share ONE governance vocabulary (the real "consolidation"), without merging their
   execution loops.

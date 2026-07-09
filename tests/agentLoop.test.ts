@@ -332,6 +332,165 @@ describe('AgentService.runAgentLoop — integration', () => {
         expect((metrics.appendMetrics as any).mock.calls[0][0]).toMatchObject({ success: false });
     });
 
+    it('Q-549 Step 3: mission approval OFF (default) drives the device without an approver', async () => {
+        // Prior behavior: no gate. A normal ACTION mission must still call the device executor.
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')
+            .mockResolvedValueOnce('{"action":"click","id":1}')
+            .mockResolvedValueOnce('{"action":"done"}');
+        const llm = createLlmStub({ generateAction });
+        // Distinct post-click hash so the self-heal path does not emit an unhandled 'error'.
+        const { agent, execute } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        agent.setMissionApproval(false);
+        const emitter = new AgentEventEmitter();
+        emitter.on('error', () => {});
+        await agent.runAgentLoop('tap the button', emitter, [], 5);
+        expect(execute).toHaveBeenCalled();   // device was driven
+        expect(agent.requireMissionApproval).toBe(false);
+    });
+
+    it('Q-549 Step 3: mission approval ON + decline refuses BEFORE any device action', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION');   // intent only — must never ask for a device step
+        const llm = createLlmStub({ generateAction });
+        const { agent, execute, device } = buildAgent({ llm });
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+        const approvals: string[] = [];
+        emitter.on('mission_approval' as any, (p: { goal: string }) => approvals.push(p.goal));
+
+        agent.setMissionApproval(true, async () => false);   // user declines
+        await agent.runAgentLoop('tap through settings', emitter, [], 5);
+
+        expect(approvals).toEqual(['tap through settings']);
+        expect(execute).not.toHaveBeenCalled();
+        expect(device.getScreenContext).not.toHaveBeenCalled();   // no device observation either
+        expect(events.done.length).toBe(1);
+        expect(events.error.some((e) => String(e).toLowerCase().includes('declined'))).toBe(true);
+        // Intent may have run; no further action decisions after a decline.
+        expect(generateAction.mock.calls.length).toBe(1);
+    });
+
+    it('Q-549 Step 3: mission approval ON + approve allows device actions', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')
+            .mockResolvedValueOnce('{"action":"click","id":1}')
+            .mockResolvedValueOnce('{"action":"done"}');
+        const llm = createLlmStub({ generateAction });
+        const { agent, execute } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        const emitter = new AgentEventEmitter();
+        emitter.on('error', () => {});
+        let approvedGoal = '';
+        agent.setMissionApproval(true, async (goal) => { approvedGoal = goal; return true; });
+
+        await agent.runAgentLoop('open wifi settings', emitter, [], 5);
+
+        expect(approvedGoal).toBe('open wifi settings');
+        expect(execute).toHaveBeenCalled();   // device driven only after approve
+    });
+
+    it('Q-549 Step 3: mission approval ON + no approver fails closed (no device drive)', async () => {
+        const generateAction = vi.fn().mockResolvedValueOnce('ACTION');
+        const llm = createLlmStub({ generateAction });
+        const { agent, execute, device } = buildAgent({ llm });
+        const emitter = new AgentEventEmitter();
+        const events = captureEvents(emitter);
+
+        agent.setMissionApproval(true);   // enabled, no approver
+        await agent.runAgentLoop('do something on the phone', emitter, [], 5);
+
+        expect(execute).not.toHaveBeenCalled();
+        expect(device.getScreenContext).not.toHaveBeenCalled();
+        expect(events.done.length).toBe(1);
+        expect(events.error.some((e) => String(e).toLowerCase().includes('no approver'))).toBe(true);
+    });
+
+    it('Q-549 Step 3 durable toggle: OFF leaves no gate; ON + no approver fails closed', async () => {
+        // Simulates Settings → missionApprovalEnabled persisted and applied via setMissionApproval.
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')
+            .mockResolvedValueOnce('{"action":"click","id":1}')
+            .mockResolvedValueOnce('{"action":"done"}')
+            .mockResolvedValueOnce('ACTION');
+        const llm = createLlmStub({ generateAction });
+        const { agent, execute, device } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        const emitter = new AgentEventEmitter();
+        emitter.on('error', () => {});
+
+        // OFF (default / settings toggle off) — device is driven.
+        agent.setMissionApproval(false);
+        await agent.runAgentLoop('tap once', emitter, [], 5);
+        expect(agent.requireMissionApproval).toBe(false);
+        expect(execute).toHaveBeenCalled();
+
+        // ON without wiring an approver (fail-closed until WS installs waiting approver).
+        execute.mockClear();
+        (device.getScreenContext as any).mockClear?.();
+        agent.setMissionApproval(true);
+        expect(agent.requireMissionApproval).toBe(true);
+        await agent.runAgentLoop('tap twice', emitter, [], 5);
+        expect(execute).not.toHaveBeenCalled();
+    });
+
+    it('Q-549 Step 3 pure gate: gateMissionApproval decisions', async () => {
+        // Drive the shipped pure helper — not a reimplementation.
+        const { AgentService } = await import('../src/services/agent.service.js');
+        expect(await AgentService.gateMissionApproval('g', false, undefined))
+            .toEqual({ allowed: true, reason: 'approval-disabled' });
+        expect(await AgentService.gateMissionApproval('g', true, undefined))
+            .toEqual({ allowed: false, reason: 'mission-approval-required-but-no-approver' });
+        expect(await AgentService.gateMissionApproval('g', true, async () => false))
+            .toEqual({ allowed: false, reason: 'mission-declined' });
+        expect(await AgentService.gateMissionApproval('g', true, async () => true))
+            .toEqual({ allowed: true, reason: 'mission-approved' });
+    });
+
+    it('Q-549 Step 3: installWaitingMissionApprover parks until answerMissionApproval', async () => {
+        const generateAction = vi.fn()
+            .mockResolvedValueOnce('ACTION')
+            .mockResolvedValueOnce('{"action":"click","id":1}')
+            .mockResolvedValueOnce('{"action":"done"}');
+        const llm = createLlmStub({ generateAction });
+        const { agent, execute } = buildAgent({
+            llm,
+            verifierStates: [
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h1', screenshotPath: '' },
+                { elements: [makeUiElement(1)], textRepresentation: '<node/>', hash: 'h2', screenshotPath: '' },
+            ],
+        });
+        const emitter = new AgentEventEmitter();
+        emitter.on('error', () => {});
+        let requestedGoal = '';
+        agent.installWaitingMissionApprover((g) => { requestedGoal = g; });
+
+        const run = agent.runAgentLoop('drive the phone carefully', emitter, [], 5);
+        // Allow intent classification + gate to reach the waiting approver.
+        await new Promise((r) => setTimeout(r, 30));
+        expect(requestedGoal).toBe('drive the phone carefully');
+        expect(execute).not.toHaveBeenCalled();   // still waiting
+        agent.answerMissionApproval(true);
+        await run;
+        expect(execute).toHaveBeenCalled();
+    });
+
     it('Q-549 Step 2: the bulk brake self-pauses after N executed actions; Resume continues', async () => {
         // maxSteps/wall-clock bound RUNTIME; the brake bounds CHANGE VOLUME. With the threshold at 2,
         // the second executed click must emit bulk_confirm with the loop SELF-paused; resume() then

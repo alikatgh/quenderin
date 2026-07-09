@@ -5,10 +5,12 @@
 
 package ai.quenderin.app.ui
 
+import ai.quenderin.core.AttachedDocument
 import ai.quenderin.core.ChatMessage
 import ai.quenderin.core.ConversationExporter
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
+import ai.quenderin.core.DocumentTextExtractor
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Role
@@ -16,7 +18,10 @@ import ai.quenderin.core.SupportContact
 import ai.quenderin.core.isFlagged
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -26,6 +31,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +48,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.DropdownMenu
@@ -50,6 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,6 +121,40 @@ fun ChatScreen(
     // A failed generation must be VISIBLE, not silently swallowed: a swallowed throw (engine not
     // loaded, native decode error) looks identical to "the app is ignoring me". Surface + log it.
     var sendError by remember { mutableStateOf<String?>(null) }
+    // Queued attachments for the next send — extracted at pick time (twin of iOS ChatView).
+    var pendingDocuments by remember { mutableStateOf<List<AttachedDocument>>(emptyList()) }
+    var attachmentNotice by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val pickDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch(Dispatchers.IO) {
+            val name = runCatching {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                    ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+            }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/') ?: "attachment.txt"
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }.getOrNull()
+            val result = if (bytes == null) {
+                DocumentTextExtractor.Extraction.Rejected("Couldn't open \"$name\".")
+            } else {
+                DocumentTextExtractor.extract(name, bytes)
+            }
+            withContext(Dispatchers.Main.immediate) {
+                when (result) {
+                    is DocumentTextExtractor.Extraction.Document -> {
+                        pendingDocuments = pendingDocuments + result.document
+                        attachmentNotice = null
+                    }
+                    is DocumentTextExtractor.Extraction.Rejected -> {
+                        attachmentNotice = result.reason
+                    }
+                }
+            }
+        }
+    }
     LaunchedEffect(coordinator) {
         messages = chat.messages
         // chat.send() runs on Dispatchers.IO (below), so its onChange fires from a background thread —
@@ -123,7 +165,6 @@ fun ChatScreen(
             scope.launch(Dispatchers.Main.immediate) { messages = next }
         }
     }
-    val context = LocalContext.current
     val listState = rememberLazyListState()
     // Keep the newest message in view as the transcript grows AND as a reply streams in. Key on the last
     // message's LENGTH too: a streaming reply replaces the last message token-by-token, so messages.size
@@ -196,14 +237,92 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
 
+        // Token-cap mid-sentence → Continue chip (KNOWN_FAILURE_MODES). Mirrors iOS ChatView.
+        if (chat.lastHitTokenCap && !busy) {
+            TextButton(
+                onClick = {
+                    busy = true
+                    sendError = null
+                    sendJob = scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) { chat.continueLast() }
+                        } catch (t: Throwable) {
+                            if (t is kotlinx.coroutines.CancellationException) throw t
+                            Log.e("Quenderin", "chat.continueLast failed", t)
+                            sendError = t.message?.takeIf { it.isNotBlank() }
+                                ?: "${t.javaClass.simpleName}: continue failed"
+                        } finally {
+                            withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
+                            busy = false
+                            sendJob = null
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                    .semantics { contentDescription = "Continue generating from where the reply stopped" },
+            ) {
+                Text("Continue", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+
+        // Pending attach chips + rejection notice (before send) — twin of iOS ChatView.
+        if (pendingDocuments.isNotEmpty() || attachmentNotice != null) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                pendingDocuments.forEach { doc ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = QuenderinShapes.pill,
+                    ) {
+                        Row(
+                            Modifier.padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                doc.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                            TextButton(
+                                onClick = {
+                                    pendingDocuments = pendingDocuments.filter { it.name != doc.name }
+                                },
+                                modifier = Modifier.semantics { contentDescription = "Remove ${doc.name}" },
+                            ) {
+                                Text("Remove", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+                attachmentNotice?.let { notice ->
+                    Text(notice, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
         Composer(
             input = input,
             busy = busy,
+            canSendWithAttachments = pendingDocuments.isNotEmpty(),
             onInput = { input = it },
+            onAttach = { pickDocument.launch(arrayOf("text/*", "application/json", "application/*")) },
             onSend = {
                 val text = input.trim()
-                if (text.isEmpty()) return@Composer
+                // Documents alone are a legitimate send ("summarize this") — twin of ChatModel.
+                if (text.isEmpty() && pendingDocuments.isEmpty()) return@Composer
+                val docs = pendingDocuments
                 input = ""
+                pendingDocuments = emptyList()
+                attachmentNotice = null
                 // Flip busy synchronously on the main thread so a rapid double-tap can't enqueue a
                 // second send before the flag is set.
                 busy = true
@@ -213,7 +332,7 @@ fun ChatScreen(
                 // engine's onChange fires from IO, but the state assignments here don't.
                 sendJob = scope.launch {
                     try {
-                        withContext(Dispatchers.IO) { chat.send(text) }
+                        withContext(Dispatchers.IO) { chat.send(text, docs) }
                     } catch (t: Throwable) {
                         // Do NOT swallow: surface + log the reason. A silent catch makes a real
                         // failure indistinguishable from the app ignoring the message. Cancellation from
@@ -386,21 +505,44 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                         else Modifier,
                     ),
             ) {
-                if (mine) {
-                    // The user's own message is shown literally (what they typed), not re-interpreted.
-                    Text(
-                        text = msg.text,
-                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
-                        color = colors.onUserBubble,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                } else {
-                    // Assistant replies are Markdown — render bold/headings/lists/code instead of raw markers.
-                    MarkdownText(
-                        text = msg.text,
-                        color = colors.onAssistantBubble,
-                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
-                    )
+                Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp)) {
+                    // Attached-document chips — what was attached (not the extracted body).
+                    // Twin of iOS ChatBubble document labels. Geometry-stable capsules.
+                    if (msg.documents.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            msg.documents.forEach { doc ->
+                                Text(
+                                    doc.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (mine) colors.userTimestamp else colors.assistantTimestamp,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                        if (msg.text.isNotBlank()) Spacer(Modifier.height(6.dp))
+                    }
+                    if (mine) {
+                        // User text shown literally (empty when documents-only "summarize this").
+                        if (msg.text.isNotBlank()) {
+                            Text(
+                                text = msg.text,
+                                color = colors.onUserBubble,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        } else if (msg.documents.isEmpty()) {
+                            Text(
+                                text = " ",
+                                color = colors.onUserBubble,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    } else {
+                        // Assistant replies are Markdown — bold/headings/lists/code, not raw markers.
+                        MarkdownText(
+                            text = msg.text,
+                            color = colors.onAssistantBubble,
+                        )
+                    }
                 }
             }
         }
@@ -482,12 +624,14 @@ private fun EmptyState(model: ModelEntry, modifier: Modifier) {
     }
 }
 
-// ── Composer: pill text field + circular send button (a Stop button while generating) ──
+// ── Composer: attach + pill text field + circular send (Stop while generating) ──
 @Composable
 private fun Composer(
     input: String,
     busy: Boolean,
+    canSendWithAttachments: Boolean = false,
     onInput: (String) -> Unit,
+    onAttach: () -> Unit = {},
     onSend: () -> Unit,
     onStop: () -> Unit,
 ) {
@@ -499,6 +643,23 @@ private fun Composer(
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Attach (paperclip) — geometry-stable 34dp circle, twin of iOS ChatView attach control.
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .semantics { contentDescription = "Attach a file" }
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = onAttach,
+                    onLongClick = {},
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("＋", style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(8.dp))
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = QuenderinShapes.pill,
@@ -525,8 +686,8 @@ private fun Composer(
         Spacer(Modifier.width(8.dp))
         // While generating, the same circular button becomes Stop (cancels the reply). Geometry is
         // identical in both states (48dp, CircleShape) — only the icon, colour, and action change, so the
-        // button never resizes. When idle it's Send, dimmed until there's text to send.
-        val canSend = enabled && input.isNotBlank()
+        // button never resizes. When idle it's Send, dimmed until there's text or attachments.
+        val canSend = enabled && (input.isNotBlank() || canSendWithAttachments)
         val active = busy || canSend
         Box(
             Modifier

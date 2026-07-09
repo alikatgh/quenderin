@@ -113,7 +113,8 @@ public final class OnboardingModel: ObservableObject {
            // sideloaded registry too — otherwise "Use" on an open-catalog model is forgotten on relaunch
            // and the app silently falls back to a curated recommendation (the file left orphaned on disk).
            let remembered = ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
-           FileManager.default.fileExists(atPath: modelsDir.appendingPathComponent(remembered.filename).path) {
+           // Unified dir OR a pre-unification App Support install (legacyModelsDirs).
+           Self.resolveModelFile(filename: remembered.filename, primary: modelsDir) != nil {
             await install(remembered)
             if case .ready = phase { return }
         }
@@ -183,7 +184,11 @@ public final class OnboardingModel: ObservableObject {
 
         // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
         let previousID = await engine.loadedModelID()
-        let destination = modelsDir.appendingPathComponent(model.filename)
+        // Prefer a pre-existing file in the unified dir OR a legacy App Support install so we
+        // don't re-download multi-GB models after the path unification (KNOWN_FAILURE_MODES).
+        // New downloads always write to modelsDir (the shared ~/.quenderin/models).
+        var destination = Self.resolveModelFile(filename: model.filename, primary: modelsDir)
+            ?? modelsDir.appendingPathComponent(model.filename)
 
         // A file already at `destination` might be a fully-verified completed download — or it might
         // be one that was moved into place but never made it through ModelIntegrity.verify because the
@@ -193,6 +198,7 @@ public final class OnboardingModel: ObservableObject {
         if FileManager.default.fileExists(atPath: destination.path) {
             if (try? ModelIntegrity.verify(fileURL: destination, expectedSHA256: model.sha256)) == nil {
                 try? FileManager.default.removeItem(at: destination)
+                destination = modelsDir.appendingPathComponent(model.filename)  // re-download into unified dir
             }
         }
 
@@ -209,7 +215,13 @@ public final class OnboardingModel: ObservableObject {
             }
         }
 
+        // After waiting on another writer, re-resolve (they may have finished into either dir).
+        if let existing = Self.resolveModelFile(filename: model.filename, primary: modelsDir) {
+            destination = existing
+        }
+
         if !FileManager.default.fileExists(atPath: destination.path) {
+            destination = modelsDir.appendingPathComponent(model.filename)  // downloads land in the unified dir
             guard let url = model.downloadURL else {
                 phase = .failed("\(model.label) has no valid download URL.")
                 return
@@ -294,17 +306,58 @@ public final class OnboardingModel: ObservableObject {
     /// Best-effort reload of a previously-working model after a failed switch (its file is still on
     /// disk). Returns true on success.
     private func restore(_ model: ModelEntry) async -> Bool {
-        let destination = modelsDir.appendingPathComponent(model.filename)
+        guard let destination = Self.resolveModelFile(filename: model.filename, primary: modelsDir) else {
+            return false
+        }
         do { try await engine.load(model: model, at: destination); return true }
         catch { return false }
     }
 
     // MARK: - Helpers
 
+    /// Canonical on-disk model store shared with the CLI / Electron desktop
+    /// (`~/.quenderin/models`). Previously the Mac app used Application Support and the CLI used
+    /// `~/.quenderin/models`, so the same GGUF was downloaded twice (KNOWN_FAILURE_MODES). One
+    /// directory, download once, use everywhere. Creates the directory if missing.
+    ///
+    /// Fallback: if `$HOME` is unusable (sandbox edge cases), fall back to Application Support so
+    /// the app still has a writable path. Existing Application Support installs are still *read*
+    /// via ``legacyModelsDirs()`` so a one-time migration is not required to keep listing them.
     static func defaultModelsDir() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return base.appendingPathComponent("Quenderin/models", isDirectory: true)
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        let shared = home.appendingPathComponent(".quenderin/models", isDirectory: true)
+        do {
+            try fm.createDirectory(at: shared, withIntermediateDirectories: true)
+            return shared
+        } catch {
+            let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            return base.appendingPathComponent("Quenderin/models", isDirectory: true)
+        }
+    }
+
+    /// Older install locations still scanned so models already on disk keep working after the
+    /// path unification (read-only discovery; new downloads go to ``defaultModelsDir()``).
+    static func legacyModelsDirs() -> [URL] {
+        let fm = FileManager.default
+        var dirs: [URL] = []
+        if let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            dirs.append(base.appendingPathComponent("Quenderin/models", isDirectory: true))
+        }
+        return dirs
+    }
+
+    /// FileManager storage that lists the unified dir + any legacy App Support installs.
+    static func defaultModelStorage() -> FileManagerModelStorage {
+        FileManagerModelStorage(directory: defaultModelsDir(), extraSearchDirs: legacyModelsDirs())
+    }
+
+    /// First existing file URL for `filename` across primary + legacy dirs (load path).
+    static func resolveModelFile(filename: String, primary: URL? = nil) -> URL? {
+        let primaryDir = primary ?? defaultModelsDir()
+        let storage = FileManagerModelStorage(directory: primaryDir, extraSearchDirs: legacyModelsDirs())
+        return storage.url(for: filename)
     }
 
     /// Turn a thrown error into a user-facing message.

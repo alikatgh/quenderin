@@ -16,7 +16,11 @@
 #include <algorithm>
 #include "llama.h"
 #include "ggml-backend.h"     // ggml_backend_load_all_from_path — runtime CPU-variant pick (DOTPROD/I8MM)
+#include "ggml.h"             // ggml_threadpool_params (cpumask + strict_cpu)
+#include "ggml-cpu.h"         // ggml_threadpool_new / free
 #include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
+#include <cstdio>
+#include <cstring>
 
 #define LOG_TAG "QuenderinLlama"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -40,11 +44,68 @@ struct LlamaHandle {
     llama_model*   model   = nullptr;
     llama_context* ctx     = nullptr;
     llama_sampler* sampler = nullptr;
+    // Pinned ggml threadpool (big-core affinity). Freed in nativeFree; null when affinity setup
+    // was skipped (sysfs missing, threadpool API failed, or n_threads <= 0).
+    ggml_threadpool_t threadpool = nullptr;
     // The exact tokens resident in the KV cache (prior prompt + reply) — lets the next chat turn
     // decode only the new suffix instead of re-prefilling the whole history (mirrors KVCacheReuse).
     // Empty on a fresh handle (each load); reset implicitly because nativeFree deletes the handle.
     std::vector<llama_token> cached;
+    // Set true by the last generate() when it stopped at maxTokens (not EOG/cancel). Chat "Continue".
+    bool hitTokenCap = false;
 };
+
+// Pin decode workers to the N fastest cores (by cpuinfo_max_freq) so the scheduler can't park a
+// matmul thread on a LITTLE core mid-generation — the #4 lever from the PocketPal/llama.rn OSS
+// audit. Builds a ggml_threadpool with strict_cpu + a filled cpumask and attaches it to the
+// context. Returns the pool (caller owns + frees) or null on any soft failure (affinity is an
+// optimization — never block model load over it). Twin of Kotlin ThreadPlanner.bestCoreIndices.
+ggml_threadpool_t pin_threads(llama_context* ctx, int n_threads) {
+    if (!ctx || n_threads <= 0) return nullptr;
+
+    struct Core { int id; long freq; };
+    std::vector<Core> cores;
+    cores.reserve(16);
+    for (int i = 0; i < GGML_MAX_N_THREADS; ++i) {
+        char path[96];
+        std::snprintf(path, sizeof(path),
+                      "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i);
+        FILE* f = std::fopen(path, "r");
+        if (!f) continue;
+        long freq = 0;
+        if (std::fscanf(f, "%ld", &freq) == 1 && freq > 0) cores.push_back({i, freq});
+        std::fclose(f);
+    }
+
+    ggml_threadpool_params tpp = ggml_threadpool_params_default(n_threads);
+    if (!cores.empty()) {
+        std::sort(cores.begin(), cores.end(),
+                  [](const Core& a, const Core& b) {
+                      return a.freq != b.freq ? a.freq > b.freq : a.id < b.id;
+                  });
+        std::memset(tpp.cpumask, 0, sizeof(tpp.cpumask));
+        const int n = std::min(n_threads, (int) cores.size());
+        for (int i = 0; i < n; ++i) {
+            if (cores[i].id >= 0 && cores[i].id < GGML_MAX_N_THREADS) {
+                tpp.cpumask[cores[i].id] = true;
+            }
+        }
+        tpp.strict_cpu = true;
+        tpp.n_threads  = n_threads;
+        LOGI("affinity: pinned %d threads to top-%d cores (fastest first)", n_threads, n);
+    } else {
+        LOGI("affinity: no cpufreq sysfs — using default (unpinned) threadpool of %d", n_threads);
+    }
+
+    ggml_threadpool_t tp = ggml_threadpool_new(&tpp);
+    if (!tp) {
+        LOGE("affinity: ggml_threadpool_new failed — decode will use the auto pool");
+        return nullptr;
+    }
+    // Same pool for generate + batch (prefill); a second pool would double residency for little gain.
+    llama_attach_threadpool(ctx, tp, tp);
+    return tp;
+}
 
 std::once_flag g_backend_once;  // llama_backend_init exactly once per process, race-free (H6)
 
@@ -94,10 +155,14 @@ jstring make_jstring(JNIEnv* env, const std::string& s) {
 // `override_sampler` (default null) lets a single call decode with a PER-CALL sampler instead of the
 // load-time `h->sampler` — used by nativeCompleteWithGrammar so a grammar-constrained agent decode can
 // mask illegal tokens. The caller owns the override sampler's lifetime (builds + frees it).
+// Per-generation "did we hit max_tokens?" flag read by Kotlin after completeChat (Continue UI).
+// Stored on the handle so we don't need a new JNI out-param on every native method.
+// Reset at the start of each generate(); observed after it returns.
 std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
                      JNIEnv* env, jobject sink, jobject thiz, bool& failed,
                      llama_sampler* override_sampler = nullptr) {
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
+    h->hitTokenCap = false;
 
     std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
     LOGI("generate: prompt_bytes=%zu tokens=%zu max_tokens=%d cached=%zu", prompt.size(), newTokens.size(), max_tokens, h->cached.size());
@@ -164,9 +229,11 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     };
 
     llama_sampler* active_sampler = override_sampler ? override_sampler : h->sampler;
+    bool hitCap = false;
     std::string result = quenderin::generateWithKVReuse(h->ctx, vocab, active_sampler, newTokens, max_tokens,
-                                                         h->cached, emit, cancelled, &failed, thermalPoll);
-    LOGI("generate: done failed=%d out_bytes=%zu", (int) failed, result.size());
+                                                         h->cached, emit, cancelled, &failed, thermalPoll, &hitCap);
+    h->hitTokenCap = hitCap;
+    LOGI("generate: done failed=%d hitCap=%d out_bytes=%zu", (int) failed, (int) hitCap, result.size());
     return result;
 }
 
@@ -350,10 +417,17 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     }
     if (!ctx) { LOGE("context init failed"); llama_model_free(model); return 0; }
 
-    // Sampler chain matching iOS (top-p → temperature → dist) so output isn't the repetitive,
-    // loop-prone text greedy decoding produces. temperature <= 0 → deterministic greedy (honored).
+    // Sampler chain matching shared/sampling-profiles.json → chat + iOS GenerationOptions:
+    //   penalties (rep 1.1 / last-n 256) → top_k 40 → top-p → temperature → dist
+    // The repetition penalty is what keeps Q2-class small models from looping the same paragraph.
+    // temperature <= 0 → deterministic greedy (honored), still with the penalty stage first.
     llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    constexpr float kRepeatPenalty = 1.1f;
+    constexpr int   kRepeatLastN   = 256;
+    constexpr int   kChatTopK      = 40;   // sampling-profiles.json chat.top_k
+    llama_sampler_chain_add(sampler, llama_sampler_init_penalties(kRepeatLastN, kRepeatPenalty, 0.0f, 0.0f));
     if (temperature > 0.0f) {
+        if (kChatTopK > 0) llama_sampler_chain_add(sampler, llama_sampler_init_top_k(kChatTopK));
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
         llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
         llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
@@ -361,8 +435,12 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
     }
 
-    auto* h = new LlamaHandle{model, ctx, sampler};
-    LOGI("nativeLoad: OK, handle=%p n_ctx=%u", (void*) h, cp.n_ctx);
+    // Pin workers to big cores (strict_cpu + cpumask). Soft-fail: null pool is fine.
+    const int pin_n = threads > 0 ? (int) threads : (int) cp.n_threads;
+    ggml_threadpool_t tp = pin_threads(ctx, pin_n > 0 ? pin_n : 1);
+
+    auto* h = new LlamaHandle{model, ctx, sampler, tp};
+    LOGI("nativeLoad: OK, handle=%p n_ctx=%u affinity=%s", (void*) h, cp.n_ctx, tp ? "on" : "off");
     return reinterpret_cast<jlong>(h);
 }
 
@@ -467,9 +545,21 @@ Java_ai_quenderin_core_LlamaEngine_nativeFree(JNIEnv* /*env*/, jobject /*thiz*/,
     LlamaHandle* h = as_handle(handle);
     if (!h) return;
     if (h->sampler) llama_sampler_free(h->sampler);
-    if (h->ctx)     llama_free(h->ctx);
+    // Detach + free the pinned pool BEFORE freeing the context (pool must outlive attach use).
+    if (h->ctx) {
+        if (h->threadpool) llama_detach_threadpool(h->ctx);
+        llama_free(h->ctx);
+    }
+    if (h->threadpool) ggml_threadpool_free(h->threadpool);
     if (h->model)   llama_model_free(h->model);
     delete h;
+}
+
+// Did the most recent generate() stop because it hit maxTokens? ChatModel reads this for "Continue".
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeLastHitTokenCap(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
+    LlamaHandle* h = as_handle(handle);
+    return (h && h->hitTokenCap) ? JNI_TRUE : JNI_FALSE;
 }
 
 } // extern "C"

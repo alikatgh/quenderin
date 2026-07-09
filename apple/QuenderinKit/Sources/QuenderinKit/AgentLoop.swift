@@ -350,10 +350,13 @@ public struct AgentLoop: Sendable {
     /// hybrid that matches neither Qwen3 mode; tightening the tail to the model's tuned distribution
     /// cuts off-recipe noise in the free `input` argument and the odd low-probability wrong-tool
     /// pick. Scoped to the agent so chat is untouched. (Verified SHIP; docs/audits 2026-07-08.)
-    static let decisionOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnf)
+    /// `shared/sampling-profiles.json` → `agent_decision` (CI: `check:sampling-parity`).
+    static let decisionOptions = GenerationOptions(
+        maxTokens: 192, temperature: 0.7, topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnf)
     /// First-action-step options: the tool|plan-only grammar (no `answer`) so a weak model must
     /// try a tool instead of bailing on step 1 of an action goal. Same Qwen3 recipe.
-    static let actionFirstOptions = GenerationOptions(topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
+    static let actionFirstOptions = GenerationOptions(
+        maxTokens: 192, temperature: 0.7, topP: 0.8, topK: 20, gbnfGrammar: AgentDecisionGrammar.gbnfActionFirst)
 
     /// DYNAMIC PLANNING (opt-in): one bounded decode asks the model to author a tool-name chain for a
     /// goal no curated recipe covers, wrapped into a dynamic `AgentRecipe` that reuses the honest cursor.

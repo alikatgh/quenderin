@@ -107,6 +107,13 @@ type ParsedAgentAction = {
     key?: string;
 };
 
+/**
+ * Q-549 Step 3: opt-in per-run mission approval. Shown the goal (never auto-approved from model
+ * output); resolves true = drive the device, false = refuse the mission. Fail-closed when the
+ * flag is on and no approver is wired.
+ */
+export type MissionApprover = (goal: string) => Promise<boolean>;
+
 export class AgentService {
     private promptBuilder: PromptBuilder;
     private actionExecutor: ActionExecutor;
@@ -128,8 +135,59 @@ export class AgentService {
      *  Surfaced via GET /api/agent/ledger (token-gated). */
     public readonly actionLedger: AuditLedger = new InMemoryAuditLedger(500);
 
+    /**
+     * Q-549 Step 3: when true, ACTION missions must pass [missionApprover] before any device
+     * observation/tap. Default false (prior behavior). Enable via [setMissionApproval] or env
+     * `QUENDERIN_MISSION_APPROVAL=1`. Fail-closed: enabled + no approver ⇒ refuse to drive.
+     */
+    private _requireMissionApproval: boolean = AgentService.resolveMissionApprovalDefault();
+    private _missionApprover: MissionApprover | undefined;
+
     public get isPaused(): boolean { return this._isPaused; }
     public get isRunning(): boolean { return this._isRunning; }
+    /** Whether opt-in per-run mission approval is required (Q-549 Step 3). */
+    public get requireMissionApproval(): boolean { return this._requireMissionApproval; }
+
+    /**
+     * Q-549 Step 3: configure per-run mission approval. `enabled=false` restores prior behavior
+     * (no gate). When enabled, [approver] must be set or every ACTION mission fails closed.
+     */
+    public setMissionApproval(enabled: boolean, approver?: MissionApprover): void {
+        this._requireMissionApproval = enabled;
+        this._missionApprover = approver;
+    }
+
+    /**
+     * Q-549 Step 3: install a waiting approver for the live channel (dashboard / WS).
+     * [onRequest] is called with the goal so the UI can show Allow / Don't-allow; the mission
+     * parks until [answerMissionApproval] resolves it. Fail-closed if the client disconnects
+     * without answering (stop() rejects pending as false).
+     */
+    public installWaitingMissionApprover(onRequest: (goal: string) => void): void {
+        this.setMissionApproval(true, (goal) => new Promise<boolean>((resolve) => {
+            // A prior pending wait is fail-closed so a stuck dialog can't double-resolve.
+            if (this._pendingMissionResolve) {
+                this._pendingMissionResolve(false);
+                this._pendingMissionResolve = null;
+            }
+            this._pendingMissionResolve = resolve;
+            try {
+                onRequest(goal);
+            } catch {
+                this._pendingMissionResolve = null;
+                resolve(false);
+            }
+        }));
+    }
+
+    /** Resolve a waiting mission-approval dialog (Q-549 Step 3). No-op if nothing is waiting. */
+    public answerMissionApproval(approved: boolean): void {
+        const resolve = this._pendingMissionResolve;
+        this._pendingMissionResolve = null;
+        resolve?.(approved === true);
+    }
+
+    private _pendingMissionResolve: ((ok: boolean) => void) | null = null;
 
     public pause(): void {
         this._isPaused = true;
@@ -152,6 +210,8 @@ export class AgentService {
             this._abortController.abort();
         }
         this._isPaused = false;   // a stop during a pause must break the pause-wait, not stay parked
+        // Q-549 Step 3: a stop while waiting on mission approval must not hang forever.
+        this.answerMissionApproval(false);
     }
 
     /** Q-549: compact, human-readable descriptor of a device action for the audit ledger (a `text` field
@@ -223,6 +283,32 @@ export class AgentService {
         const env = Number(process.env.QUENDERIN_BULK_BRAKE_ACTIONS);
         if (Number.isFinite(env) && env >= 0) return env;
         return 20;
+    }
+
+    /** Q-549 Step 3 default: OFF unless `QUENDERIN_MISSION_APPROVAL=1|true|yes`. Prior behavior preserved. */
+    private static resolveMissionApprovalDefault(): boolean {
+        const v = (process.env.QUENDERIN_MISSION_APPROVAL ?? '').trim().toLowerCase();
+        return v === '1' || v === 'true' || v === 'yes';
+    }
+
+    /**
+     * Q-549 Step 3 pure gate — exported for unit tests. When [requireApproval] is false, always allow
+     * (prior behavior). When true: no approver ⇒ refuse (fail-closed); approver false ⇒ refuse;
+     * approver true ⇒ allow. Never auto-approves from model output.
+     */
+    static async gateMissionApproval(
+        goal: string,
+        requireApproval: boolean,
+        approver: MissionApprover | undefined,
+    ): Promise<{ allowed: boolean; reason: string }> {
+        if (!requireApproval) return { allowed: true, reason: 'approval-disabled' };
+        if (!approver) {
+            return { allowed: false, reason: 'mission-approval-required-but-no-approver' };
+        }
+        const ok = await approver(goal);
+        return ok
+            ? { allowed: true, reason: 'mission-approved' }
+            : { allowed: false, reason: 'mission-declined' };
     }
 
     public async runAgentLoop(goal: string, emitter: AgentEventEmitter = new AgentEventEmitter(), attachments: { name: string, content: string }[] = [], maxSteps: number = AgentService.resolveDefaultMaxSteps(), maxWallClockMs: number = AgentService.resolveDefaultMaxWallClockMs()): Promise<void> {
@@ -334,6 +420,30 @@ export class AgentService {
             }
         } catch (e: unknown) {
             logger.error("[AgentService] Intent classification failed, defaulting to ACTION mode.", e);
+        }
+
+        // Q-549 Step 3: opt-in per-run mission approval — BEFORE any device observation/tap.
+        // Knowledge/chat mode already returned above. Fail-closed when enabled without an approver.
+        {
+            const gate = await AgentService.gateMissionApproval(
+                goal, this._requireMissionApproval, this._missionApprover);
+            if (!gate.allowed) {
+                emitter.emit('mission_approval', { goal });
+                emitter.emit('status',
+                    gate.reason === 'mission-declined'
+                        ? ' Mission declined — device was not driven.'
+                        : ' Mission approval required but no approver is configured — refusing to drive the device (fail-closed).');
+                emitter.emit('error',
+                    gate.reason === 'mission-declined'
+                        ? 'You declined this mission. No device actions were taken.'
+                        : 'Mission approval is enabled but no approver is wired. Configure setMissionApproval(true, approver).');
+                emitter.emit('done');
+                return;
+            }
+            if (gate.reason === 'mission-approved') {
+                emitter.emit('mission_approval', { goal });
+                emitter.emit('status', ' Mission approved — proceeding to drive the device.');
+            }
         }
 
         let timedOut = false;

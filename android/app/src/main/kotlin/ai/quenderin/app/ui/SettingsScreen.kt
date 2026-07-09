@@ -216,6 +216,22 @@ fun SettingsScreen(
                     )
                 }
             }
+            // Privacy affordance: clear skill memory (what the agent learned from past runs).
+            run {
+                val skillStore = remember { ai.quenderin.app.PrefsSkillMemoryStore(context) }
+                var skillCount by remember { mutableStateOf(skillStore.memory().size) }
+                if (skillCount > 0) {
+                    Caption("Remembered skills from past agent runs: $skillCount (local only).")
+                    TextButton(onClick = {
+                        skillStore.clear()
+                        skillCount = 0
+                    }) {
+                        Text("Clear learned skills")
+                    }
+                } else {
+                    Caption("No learned agent skills stored yet.")
+                }
+            }
         }
 
             SettingsGroup("Storage") {

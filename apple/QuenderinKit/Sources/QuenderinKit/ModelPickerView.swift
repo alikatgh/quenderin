@@ -28,7 +28,7 @@ public struct ModelPickerView: View {
         self.currentModelID = currentModelID
         self.onSelect = onSelect
         self.installedFilenames = Set(
-            FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()).installedFilenames())
+            OnboardingModel.defaultModelStorage().installedFilenames())
     }
 
     public var body: some View {

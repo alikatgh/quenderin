@@ -4,6 +4,30 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Opt-in mission approval must be fail-closed when enabled without an approver.**
+  A flag that says "require approval" but proceeds when no callback is wired is a silent
+  safety hole. Gate: disabled → allow; enabled + no approver → refuse; enabled + decline →
+  refuse; enabled + approve → allow. Never auto-approve from model output. (Q-549 Step 3,
+  AgentService.gateMissionApproval)
+- **Big-core *count* ≠ big-core *placement* — set a cpumask, not just n_threads.**
+  ThreadPlanner can pick "5 P-cores" and still have the OS park workers on LITTLE. Modern
+  llama.cpp uses `ggml_threadpool_params.cpumask` + `strict_cpu` + `llama_attach_threadpool`,
+  not the old `llama_context_params.cpumask`. Rank cores by `cpuinfo_max_freq`, pin top-N.
+  (llama_jni.cpp `pin_threads`, ThreadPlanner.bestCoreIndices)
+- **`verify()` after a move must NOT re-run a resolve that requires the source to still exist.**
+  resolve() for plan/run correctly 404s a missing source; post-run verify sees the source gone
+  *because the move worked*. Parse shape only, then check dest present + source absent. Otherwise
+  every successful move ledgers `unverified`. (FileMoveCapability / FileRenameCapability)
+- **Streaming sinks must reassemble UTF-8 across BPE pieces — never `String(piece)` per token.**
+  Tokenizers cut mid-character (Cyrillic 2 bytes, emoji 4). Decoding each piece independently
+  injects U+FFFD "�". Hold incomplete tails (≤3 bytes) until complete; accumulate raw bytes for
+  the full reply. (UTF8StreamDecoder Swift/Kotlin/C++ twins; llama_generate.h emit path)
+- **Chat sampler without repetition penalty = small-model paragraph loops.** Agent grammar path
+  had penalties; chat load-time chain did not on Android. Mirror iOS GenerationOptions defaults
+  (1.1 / last-n 256) on every decode path, not only agent. (nativeLoad sampler chain)
+- **Token-cap mid-sentence needs an engine signal, not a piece count after UTF-8 merge.**
+  Piece callbacks undercount after reassembly. Count native tokens (`perfDecodeTok >= maxTokens`)
+  or stream-loop iterations before decode. Surface `lastHitTokenCap` + Continue affordance.
 - **A live checklist that ticks on ADVISORY labels lies — bind ticks to a real executed-tool match.**
   A multi-step "plan checklist" that advances on natural-language step labels desyncs from what the
   model actually did and fires confidently-wrong green checks (worse than no checklist). Make each

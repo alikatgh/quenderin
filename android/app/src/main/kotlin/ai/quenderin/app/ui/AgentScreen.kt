@@ -148,6 +148,9 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             // T1 device perception (owner sign-off 2026-07-07) — read-only senses, consent-gated
             // like everything else; the Settings pane lists them from the same classes.
             ai.quenderin.app.devicePerceptionCapabilities(context)
+        // Durable skill memory (SharedPreferences) — survives process restart so the agent
+        // compounds reliability across sessions (twin of iOS SkillMemoryStore).
+        val skillStore = ai.quenderin.app.PrefsSkillMemoryStore(context)
         AgentSession(
             engine, allTools, runner = runner,
             // Opt-in "Deeper reasoning" — read LIVE from prefs each step so the Settings toggle takes
@@ -156,17 +159,18 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
                     .getBoolean("agent.deliberation", false)
             },
+            skills = skillStore.memory(),
         ).apply {
             onChange = {
                 // Q-228 twin: run() executes on Dispatchers.IO (below), so onChange fires from a background
                 // thread — writing Compose snapshot state directly off the main thread is a threading
-                // violation (missed/torn recompositions; a crash in strict/debug builds). Snapshot the
-                // session's values here, then marshal the Compose writes onto the main dispatcher, exactly
-                // like the ChatScreen fix. Main.immediate keeps a same-thread emit synchronous.
+                // violation. Snapshot here, marshal Compose writes onto the main dispatcher.
                 val s = this.steps
                 val a = this.answer
                 val r = this.isRunning
                 val h = this.haltReason
+                // Persist skill memory when a run finishes (AgentLoop already mutated the shared instance).
+                if (!r) skillStore.save()
                 scope.launch(Dispatchers.Main.immediate) {
                     steps = s
                     answer = a

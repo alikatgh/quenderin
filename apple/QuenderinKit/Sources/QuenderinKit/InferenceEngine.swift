@@ -23,11 +23,12 @@ public struct GenerationOptions: Sendable, Equatable {
     /// instead of the JSON contract". Engines without grammar support ignore the field.
     public var gbnfGrammar: String?
 
+    /// Defaults match `shared/sampling-profiles.json` → `chat` (CI: `check:sampling-parity`).
     public init(
         maxTokens: Int = 512,
         temperature: Double = 0.7,
         topP: Double = 0.95,
-        topK: Int = 0,
+        topK: Int = 40,
         repeatPenalty: Double = 1.1,
         repeatLastN: Int = 256,
         stopSequences: [String] = [],

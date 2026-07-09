@@ -110,6 +110,15 @@ class LlamaEngine(
     /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
     override fun requestCancel() { cancelRequested = true }
 
+    /**
+     * True when the most recent native generation stopped because it hit [maxTokens] (not EOG /
+     * cancel / context-full). ChatModel uses this for the "Continue" affordance. False when no
+     * model is loaded or the native lib is absent.
+     */
+    override fun lastHitTokenCap(): Boolean = synchronized(lock) {
+        if (!NATIVE_AVAILABLE || handle == 0L) false else nativeLastHitTokenCap(handle)
+    }
+
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
@@ -209,6 +218,7 @@ class LlamaEngine(
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
+    private external fun nativeLastHitTokenCap(handle: Long): Boolean
     private external fun nativeFree(handle: Long)
 
     /** JNI-friendly callback (a single known method signature `(Ljava/lang/String;)V`). */

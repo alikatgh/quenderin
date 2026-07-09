@@ -33,31 +33,60 @@ public final class InMemoryModelStorage: ModelStorage {
 /// `OnboardingModel` loads from). This is the impl the app uses to drive `ModelManager` — without it
 /// the manager could only run against the in-memory test double. Pure FileManager calls, so it's
 /// unit-testable against a temp directory. Twin of Android `FileModelStorage`.
+///
+/// `extraSearchDirs` lists older install locations (Application Support) so models downloaded
+/// before the `~/.quenderin/models` unification still show as installed without a migration.
 public final class FileManagerModelStorage: ModelStorage {
     private let directory: URL
+    private let extraSearchDirs: [URL]
     private let fileManager: FileManager
 
-    public init(directory: URL, fileManager: FileManager = .default) {
+    public init(directory: URL, extraSearchDirs: [URL] = [], fileManager: FileManager = .default) {
         self.directory = directory
+        self.extraSearchDirs = extraSearchDirs
         self.fileManager = fileManager
     }
 
+    /// Primary + legacy dirs (primary first). Used by installs that still live in App Support.
+    private var allDirs: [URL] {
+        [directory] + extraSearchDirs.filter { $0.path != directory.path }
+    }
+
     public func installedFilenames() -> [String] {
-        let urls = (try? fileManager.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])) ?? []
-        return urls
-            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false }
-            .map { $0.lastPathComponent }
+        var names = Set<String>()
+        for dir in allDirs {
+            let urls = (try? fileManager.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])) ?? []
+            for url in urls where (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false {
+                names.insert(url.lastPathComponent)
+            }
+        }
+        return Array(names)
     }
 
     public func sizeBytes(of filename: String) -> Int64 {
-        let url = directory.appendingPathComponent(filename)
-        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        return Int64(size)
+        for dir in allDirs {
+            let url = dir.appendingPathComponent(filename)
+            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > 0 {
+                return Int64(size)
+            }
+        }
+        return 0
     }
 
     public func delete(_ filename: String) {
-        try? fileManager.removeItem(at: directory.appendingPathComponent(filename))
+        for dir in allDirs {
+            try? fileManager.removeItem(at: dir.appendingPathComponent(filename))
+        }
+    }
+
+    /// Resolve a filename to the first existing URL across primary + legacy dirs (load path).
+    public func url(for filename: String) -> URL? {
+        for dir in allDirs {
+            let url = dir.appendingPathComponent(filename)
+            if fileManager.fileExists(atPath: url.path) { return url }
+        }
+        return nil
     }
 }
 

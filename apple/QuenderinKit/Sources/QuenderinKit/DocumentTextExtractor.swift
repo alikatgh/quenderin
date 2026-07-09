@@ -7,7 +7,7 @@ import PDFKit
 /// Stage 2 "documents in chat", the no-engine-work milestone). Plain text (strict UTF-8 — a
 /// binary file is refused with a reason, never silently mangled) and, on Apple platforms,
 /// **PDF text** via PDFKit (no new dependencies). Both capped so one attachment can't blow
-/// the model's context. Android's twin is text-only until a dependency decision — recorded gap.
+/// the model's context. Android twin: pure-Kotlin content-stream parser (same cap + scan refuse).
 public enum DocumentTextExtractor {
     public enum Extraction: Equatable {
         case document(AttachedDocument)

@@ -19,11 +19,25 @@ class AgentSession(
      *  Off by default. Twin of iOS AgentSession reading `AgentDeliberation.isEnabled`. Placed before
      *  `onChange` so the trailing-lambda callers still bind onChange (same rule as `runner`). */
     deliberate: () -> Boolean = { false },
+    /**
+     * Skill memory for retrieval-augmented planning (twin of iOS). Defaults to an empty in-memory
+     * store so unit tests and callers that don't care still get a real compounding loop when they
+     * share one instance across runs. App can pass a SharedPreferences-backed store later.
+     */
+    private val skills: SkillMemory = SkillMemory(),
     var onChange: () -> Unit = {},
 ) {
     private val loop =
-        if (runner != null) AgentLoop(engine, tools, maxSteps, runner, deliberate)
-        else AgentLoop(engine, tools, maxSteps, deliberate = deliberate)
+        if (runner != null) AgentLoop(
+            engine, tools, maxSteps, runner, deliberate,
+            recallSkills = { skills.recall(it) },
+            recordSkill = { g, t -> skills.record(g, t) },
+        )
+        else AgentLoop(
+            engine, tools, maxSteps, deliberate = deliberate,
+            recallSkills = { skills.recall(it) },
+            recordSkill = { g, t -> skills.record(g, t) },
+        )
 
     /** Q-641: the current run's stop flag. cancel() flips it (and interrupts the in-flight decode); the
      *  loop checks it each step boundary and halts with CANCELLED. @Volatile — cancel() may run on the

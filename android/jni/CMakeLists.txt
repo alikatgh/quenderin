@@ -28,15 +28,17 @@ set(BUILD_SHARED_LIBS     ON CACHE BOOL "" FORCE)
 set(GGML_BACKEND_DL       ON CACHE BOOL "" FORCE)
 set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "" FORCE)
 
-# GPU offload (Vulkan) — opt-in: configure with -DQUENDERIN_VULKAN=ON. Default OFF keeps a stable
-# CPU build. When ON, the .so carries the Vulkan backend; the Kotlin GpuOffloadPlanner still decides
-# PER-SoC whether to actually offload (Adreno → yes; Mali/Xclipse → only with the forceGpu benchmark
-# override), so a Vulkan build is safe on every device. The Android NDK ships libvulkan.so (API 24+),
-# so llama.cpp's own find_package(Vulkan) resolves without extra linkage here.
-option(QUENDERIN_VULKAN "Build llama.cpp with the Vulkan GPU backend" OFF)
+# GPU offload (Vulkan) — ON by default (2026-07-09). The Kotlin GpuOffloadPlanner still decides
+# PER-SoC whether to actually offload (Adreno → all layers; Mali/Xclipse/unknown → CPU until
+# forceGpu). A Vulkan build is safe on every device: non-Adreno simply never sets n_gpu_layers.
+# Opt out with -DQUENDERIN_VULKAN=OFF (or Gradle -Pquenderin.vulkan=false) for CPU-only .so.
+# The Android NDK ships libvulkan.so (API 24+), so llama.cpp's find_package(Vulkan) resolves.
+option(QUENDERIN_VULKAN "Build llama.cpp with the Vulkan GPU backend" ON)
 if(QUENDERIN_VULKAN)
     set(GGML_VULKAN ON CACHE BOOL "" FORCE)
     message(STATUS "quenderin: Vulkan GPU backend ENABLED (GpuOffloadPlanner gates offload per SoC)")
+else()
+    message(STATUS "quenderin: Vulkan GPU backend DISABLED (CPU-only build)")
 endif()
 
 # Force an optimized (RelWithDebInfo) build even when the app's Gradle variant is Debug: native
@@ -60,6 +62,11 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 
 add_library(quenderin_llama SHARED llama_jni.cpp)
-# ggml/include for ggml-backend.h (ggml_backend_load_all_from_path — the runtime CPU-variant pick).
+# ggml/include for ggml-backend.h (runtime CPU-variant pick) + ggml-cpu.h (pinned threadpool).
 target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)
+# ggml-cpu carries ggml_threadpool_new (big-core affinity). llama/ggml already pull most of it;
+# link explicitly so the affinity symbols always resolve.
 target_link_libraries(quenderin_llama llama ggml android log)
+if(TARGET ggml-cpu)
+    target_link_libraries(quenderin_llama ggml-cpu)
+endif()

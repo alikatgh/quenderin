@@ -1,0 +1,29 @@
+{
+  "_comment": "Canonical sampling profiles for chat + agent decision decodes. Hand-ported into Swift GenerationOptions / Android LlamaEngine / TS node-llama-cpp. CI can grow a parity check later; this file is the source of truth for defaults so Android cannot regress top_k / rep-penalty / no-think again.",
+  "chat": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 40,
+    "repeat_penalty": 1.1,
+    "repeat_last_n": 256,
+    "max_tokens": 512
+  },
+  "agent_decision": {
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "repeat_penalty": 1.1,
+    "repeat_last_n": 256,
+    "max_tokens": 192,
+    "_note": "Qwen3 non-thinking recipe; grammar-constrained on all three platforms"
+  },
+  "agent_deliberation": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "repeat_penalty": 1.1,
+    "repeat_last_n": 256,
+    "max_tokens": 256,
+    "_note": "Unconstrained think-then-decide pass; hard-capped so it cannot starve the decision"
+  }
+}

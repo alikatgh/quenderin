@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     themePreference: 'system',
     privacyLockEnabled: false,
     privacyPassphrase: '',
+    /** Q-549 Step 3: require Allow before the device agent drives anything. Default off. */
+    missionApprovalEnabled: false,
 };
 
 export interface AppSettings {
@@ -19,6 +21,8 @@ export interface AppSettings {
     themePreference: 'light' | 'dark' | 'system';
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
+    /** Q-549 Step 3: durable toggle for per-run mission approval (persisted in localStorage). */
+    missionApprovalEnabled: boolean;
 }
 
 /** Shape of a single file attachment sent with a goal or chat message. Named so
@@ -53,6 +57,8 @@ type AgentMessage =
     | { type: 'agent_paused'; isPaused: boolean; isRunning: boolean }     // Q-281: trust-loop pause ack
     | { type: 'agent_resumed'; manualAction: string | null; isPaused: boolean; isRunning: boolean }
     | { type: 'preset_changed'; presetId: string }
+    /** Q-549 Step 3: device agent wants Allow / Don't-allow before any device drive. */
+    | { type: 'mission_approval_required'; goal: string }
     // The governed task channel (the dashboard twin of `quenderin do`):
     | { type: 'task_step'; line: string }
     | { type: 'task_approval_request'; id: string; summary: string; mutates: boolean; tier?: number }
@@ -92,6 +98,8 @@ export function useAgentSocket() {
     const [taskLog, setTaskLog] = useState<TaskLogItem[]>([]);
     const [taskApproval, setTaskApproval] = useState<TaskApproval | null>(null);
     const [taskUndoable, setTaskUndoable] = useState(0);
+    /** Q-549 Step 3: non-null while the device agent waits for per-run mission approval. */
+    const [missionApproval, setMissionApproval] = useState<{ goal: string } | null>(null);
     const [settings, setSettings] = useState<AppSettings>(() => {
         try {
             const saved = localStorage.getItem('quenderin_settings');
@@ -105,6 +113,7 @@ export function useAgentSocket() {
                 ...parsed,
                 contextSize: num(parsed.contextSize, DEFAULT_SETTINGS.contextSize),
                 chatLogDedupeMs: num(parsed.chatLogDedupeMs, DEFAULT_SETTINGS.chatLogDedupeMs),
+                missionApprovalEnabled: parsed.missionApprovalEnabled === true,
             };
         } catch { return { ...DEFAULT_SETTINGS }; }
     });
@@ -134,6 +143,11 @@ export function useAgentSocket() {
         ws.onopen = () => {
             setWsReady(true);
             reconnectAttempts = 0; // Reset on successful connection
+            // Push durable client settings immediately (mission approval, context, memory safety)
+            // so a reconnect doesn't leave the server on defaults until the first "Connected" log.
+            try {
+                ws.send(settingsUpdateFrame(settingsRef.current));
+            } catch { /* socket may still be racing; Connected handler retries */ }
         };
 
         ws.onmessage = (event) => {
@@ -201,9 +215,11 @@ export function useAgentSocket() {
                 } else if (data.type === 'error') {
                     entry.message = data.message;
                     setStatus('done');
+                    setMissionApproval(null);   // Q-549 Step 3: dismiss mission dialog on failure
                 } else if (data.type === 'done') {
                     entry.message = 'Goal reached successfully.';
                     setStatus('done');
+                    setMissionApproval(null);   // Q-549 Step 3: dismiss mission dialog on finish
                 } else if (data.type === 'action_required') {
                     if (data.data?.code === 'OOM_PREVENTION') {
                         setLogs((prev) => prev.filter((log) => {
@@ -230,6 +246,10 @@ export function useAgentSocket() {
                     return;
                 } else if (data.type === 'agent_resumed') {
                     setAgentPaused(data.isPaused);
+                    return;
+                } else if (data.type === 'mission_approval_required') {
+                    // Q-549 Step 3: park the UI on an Allow / Don't-allow for this mission's goal.
+                    setMissionApproval({ goal: typeof data.goal === 'string' ? data.goal : '' });
                     return;
                 } else if (data.type === 'task_step') {
                     setTaskLog((prev) => [...prev, { id: `ts-${crypto.randomUUID()}`, kind: 'step', text: data.line }]);
@@ -497,6 +517,14 @@ export function useAgentSocket() {
         }
     };
 
+    /** Q-549 Step 3: answer the device-agent mission approval. Fail-closed: only true allows. */
+    const answerMissionApproval = (approved: boolean) => {
+        setMissionApproval(null);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'mission_approve', approved: approved === true }));
+        }
+    };
+
     const stopTask = () => {
         setTaskApproval(null);
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -544,6 +572,7 @@ export function useAgentSocket() {
         logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused,
         sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset,
         manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, stopAgent, loadSession,
-        taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask
+        taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask,
+        missionApproval, answerMissionApproval,
     };
 }

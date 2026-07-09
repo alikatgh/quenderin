@@ -30,7 +30,7 @@ public struct SettingsView: View {
     /// truth, so a new instance always reflects the current state (the active model is pinned + protected).
     private var modelManager: ModelManager {
         ModelManager(
-            storage: FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()),
+            storage: OnboardingModel.defaultModelStorage(),
             activeModelID: model.id)
     }
 
@@ -348,7 +348,7 @@ public struct SettingsView: View {
                 // control that changes how fast replies FEEL.
                 let choice = SpeedPresets.forDevice(totalRAMGB: HardwareProbe.current().totalRAMGB)
                 let current = choice.preset(for: model.id)
-                let installed = Set(FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()).installedFilenames())
+                let installed = Set(OnboardingModel.defaultModelStorage().installedFilenames())
                 // Optional selection: a non-preset model must show NO selected segment (highlighting
                 // "Quality" while the caption says otherwise contradicts itself).
                 Picker("Speed", selection: Binding<SpeedPreset?>(

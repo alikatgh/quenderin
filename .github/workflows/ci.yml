@@ -177,3 +177,5 @@ jobs:
         run: python3 scripts/check_router_parity.py
       - name: Safety blocklist is one list across iOS + Android + Desktop
         run: python3 scripts/check_safety_parity.py
+      - name: Sampling recipes match shared/sampling-profiles.json (Swift/Kotlin/JNI)
+        run: python3 scripts/check_sampling_parity.py

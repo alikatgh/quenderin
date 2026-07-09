@@ -372,9 +372,9 @@ declined-plan-changes-nothing, blocked-step-never-reaches-approval, scripted end
 twins (trash = the workspace's VISIBLE Trash/ folder, not the system trash — identical
 semantics everywhere, undo moves it back, nothing is ever deleted). PDF text extraction
 shipped on Apple via PDFKit (page-by-page, cap-aware, textless scans refused honestly);
-**Android's extractor remains text-only** — a dependency-free PDF parser doesn't exist, so
-that gap is recorded here and rides the Android backlog. The public roadmap/dev-log now
-tell the Stage-3 story. Remaining: the Android Compose UI catch-up (standing chip).
+**Android (2026-07-09):** pure-Kotlin twin in `DocumentTextExtractor` — content-stream
+harvest (Tj/TJ/'/" + FlateDecode via `Inflater`), same cap + honest scan refusal; CoreVerify
+pins text / blank / TJ / truncate. OCR still out of scope. Remaining: vision/mtmd.
 
 ## Milestone 4 — operate an APP, not just files (2026-07-05)
 

@@ -130,6 +130,17 @@ export class FsMoveCapability extends WorkspaceCapability implements Capability 
         try { fs.renameSync(from, to); return `Moved "${p.file}" back.`; }
         catch (e) { return `Couldn't undo the move of "${p.file}": ${String(e)}`; }
     }
+    /** Post-action check: target exists, source is gone. Annotates the observation if not. */
+    async verify(input: string): Promise<{ ok: boolean; detail: string }> {
+        const d = this.dir(); if (!d) return { ok: false, detail: NO_WS };
+        const p = this.parse(input); if (!p) return { ok: false, detail: 'Bad input for verify.' };
+        const target = path.join(d, p.dest, p.file);
+        const src = path.join(d, p.file);
+        if (fs.existsSync(target) && !fs.existsSync(src)) {
+            return { ok: true, detail: `"${p.dest}/${p.file}" is in place.` };
+        }
+        return { ok: false, detail: `Move of "${p.file}" into "${p.dest}/" did not land (source still present or target missing).` };
+    }
 }
 
 /** T2: rename a file. Never overwrites; undo reverses the name. */
@@ -165,6 +176,15 @@ export class FsRenameCapability extends WorkspaceCapability implements Capabilit
         const p = this.parse(input); if (!p) return 'Nothing to undo.';
         try { fs.renameSync(path.join(d, p.to), path.join(d, p.from)); return `Renamed "${p.to}" back to "${p.from}".`; }
         catch (e) { return `Couldn't undo the rename: ${String(e)}`; }
+    }
+    async verify(input: string): Promise<{ ok: boolean; detail: string }> {
+        const d = this.dir(); if (!d) return { ok: false, detail: NO_WS };
+        const p = this.parse(input); if (!p) return { ok: false, detail: 'Bad input for verify.' };
+        const to = path.join(d, p.to), from = path.join(d, p.from);
+        if (fs.existsSync(to) && !fs.existsSync(from)) {
+            return { ok: true, detail: `"${p.to}" is in place.` };
+        }
+        return { ok: false, detail: `Rename to "${p.to}" did not land.` };
     }
 }
 
@@ -217,6 +237,15 @@ export class FsWriteCapability extends WorkspaceCapability implements Capability
             return `Moved the file "${p.name}" I created into Trash/.`;
         } catch (e) { return `Couldn't undo "${p.name}": ${String(e)}`; }
     }
+    async verify(input: string): Promise<{ ok: boolean; detail: string }> {
+        const d = this.dir(); if (!d) return { ok: false, detail: NO_WS };
+        const p = this.parse(input); if (!p) return { ok: false, detail: 'Bad input for verify.' };
+        const target = path.join(d, p.name);
+        if (fs.existsSync(target) && fs.statSync(target).isFile()) {
+            return { ok: true, detail: `"${p.name}" exists on disk.` };
+        }
+        return { ok: false, detail: `"${p.name}" was not created.` };
+    }
 }
 
 /** T2: move a file to a visible Trash/ subfolder — never a real delete. Undo restores it. */
@@ -250,6 +279,17 @@ export class FsTrashCapability extends WorkspaceCapability implements Capability
         const name = input.trim();
         try { fs.renameSync(path.join(d, 'Trash', name), path.join(d, name)); return `Restored "${name}" from Trash/.`; }
         catch (e) { return `Couldn't restore "${name}": ${String(e)}`; }
+    }
+    async verify(input: string): Promise<{ ok: boolean; detail: string }> {
+        const d = this.dir(); if (!d) return { ok: false, detail: NO_WS };
+        if (!safeName(input)) return { ok: false, detail: 'Bad input for verify.' };
+        const name = input.trim();
+        const target = path.join(d, 'Trash', name);
+        const src = path.join(d, name);
+        if (fs.existsSync(target) && !fs.existsSync(src)) {
+            return { ok: true, detail: `"${name}" is in Trash/.` };
+        }
+        return { ok: false, detail: `"${name}" did not land in Trash/.` };
     }
 }
 

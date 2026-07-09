@@ -129,7 +129,7 @@ public final class UndoJournal: @unchecked Sendable {
 
 /// T2: rename a file inside the workspace — same spine as fs.move (plain names, no overwrite,
 /// journal-recorded so Undo restores the old name).
-public struct FileRenameCapability: Capability {
+public struct FileRenameCapability: VerifiableCapability {
     public let name = "fs.rename"
     public let purpose = "Rename a file in the workspace. Input: \"<current name> to <new name>\"."
     public let tier: CapabilityTier = .reversibleWrite
@@ -180,6 +180,25 @@ public struct FileRenameCapability: Capability {
         }
         journal.record(from: r.from, to: r.to)
         return "Renamed \"\(r.fromName)\" to \"\(r.toName)\". (Undo is available.)"
+    }
+
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        // Parse shape only — after a rename the old name is gone by design.
+        guard let folder = workspace() else { return (false, "No workspace.") }
+        let parts = input.components(separatedBy: " to ")
+        guard parts.count == 2 else { return (false, "Bad input for verify.") }
+        let fromName = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+        let toName = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+        for name in [fromName, toName] where name.isEmpty || name.contains("/") || name.contains("..") {
+            return (false, "Bad input for verify.")
+        }
+        let from = folder.appendingPathComponent(fromName)
+        let to = folder.appendingPathComponent(toName)
+        let fm = FileManager.default
+        if fm.fileExists(atPath: to.path), !fm.fileExists(atPath: from.path) {
+            return (true, "\"\(toName)\" is in place.")
+        }
+        return (false, "Rename to \"\(toName)\" did not land.")
     }
 }
 
@@ -246,7 +265,7 @@ public struct FileTrashCapability: Capability {
 ///   approval— blastRadius.mutates ⇒ the runner demands per-RUN approval (fail-closed)
 ///   no loss — never overwrites; destination collisions are refused
 ///   undo    — every executed move is recorded in the UndoJournal
-public struct FileMoveCapability: Capability {
+public struct FileMoveCapability: VerifiableCapability {
     public let name = "fs.move"
     public let purpose = "Move a file into a subfolder of the workspace. Input: \"<file name> to <subfolder name>\"."
     public let tier: CapabilityTier = .reversibleWrite
@@ -268,24 +287,29 @@ public struct FileMoveCapability: Capability {
         case fail(String)
     }
 
-    private func resolve(_ input: String) -> Resolution {
-        guard let folder = workspace() else {
-            return .fail("No workspace folder granted. Ask the user to grant one first.")
-        }
+    /// Shape-only parse (no existence check). Used by verify() AFTER a move — the source is
+    /// gone by design, so resolve()'s existence guard would false-fail every successful move.
+    private func parse(_ input: String) -> (folder: URL, file: URL, destDir: URL, fileName: String, destName: String)? {
+        guard let folder = workspace() else { return nil }
         let parts = input.components(separatedBy: " to ")
-        guard parts.count == 2 else {
-            return .fail("Input must be \"<file name> to <subfolder name>\", e.g. \"report.pdf to Archive\".")
-        }
+        guard parts.count == 2 else { return nil }
         let fileName = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
         let destName = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-        for name in [fileName, destName] where name.isEmpty || name.contains("/") || name.contains("..") {
-            return .fail("File and folder are plain names inside the workspace — paths aren't allowed.")
+        for name in [fileName, destName] where name.isEmpty || name.contains("/") || name.contains("..") { return nil }
+        return (folder, folder.appendingPathComponent(fileName), folder.appendingPathComponent(destName), fileName, destName)
+    }
+
+    private func resolve(_ input: String) -> Resolution {
+        guard let p = parse(input) else {
+            if workspace() == nil {
+                return .fail("No workspace folder granted. Ask the user to grant one first.")
+            }
+            return .fail("Input must be \"<file name> to <subfolder name>\", e.g. \"report.pdf to Archive\".")
         }
-        let file = folder.appendingPathComponent(fileName)
-        guard FileManager.default.fileExists(atPath: file.path) else {
-            return .fail("No file named \"\(fileName)\" in the workspace. Use fs.list to see what's there.")
+        guard FileManager.default.fileExists(atPath: p.file.path) else {
+            return .fail("No file named \"\(p.fileName)\" in the workspace. Use fs.list to see what's there.")
         }
-        return .ok(file: file, destDir: folder.appendingPathComponent(destName), fileName: fileName, destName: destName)
+        return .ok(file: p.file, destDir: p.destDir, fileName: p.fileName, destName: p.destName)
     }
 
     public func plan(_ input: String) async throws -> ActionPreview {
@@ -326,5 +350,19 @@ public struct FileMoveCapability: Capability {
             journal.record(from: file, to: target)
             return "Moved \"\(fileName)\" into \"\(destName)/\". (Undo is available.)"
         }
+    }
+
+    public func verify(_ input: String) async -> (ok: Bool, detail: String) {
+        // parse (not resolve): source is gone after a successful move — existence of source
+        // would make every good move look unverified.
+        guard let p = parse(input) else {
+            return (false, "Bad input for verify.")
+        }
+        let target = p.destDir.appendingPathComponent(p.fileName)
+        let fm = FileManager.default
+        if fm.fileExists(atPath: target.path), !fm.fileExists(atPath: p.file.path) {
+            return (true, "\"\(p.destName)/\(p.fileName)\" is in place.")
+        }
+        return (false, "Move of \"\(p.fileName)\" into \"\(p.destName)/\" did not land.")
     }
 }

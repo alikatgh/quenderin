@@ -3,6 +3,9 @@ package ai.quenderin.app
 import ai.quenderin.core.AgentGoalEntry
 import ai.quenderin.core.AgentGoalHistory
 import ai.quenderin.core.ConsentStore
+import ai.quenderin.core.SkillMemory
+import ai.quenderin.core.SkillMemoryCodec
+import ai.quenderin.core.SkillRecord
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
@@ -65,6 +68,46 @@ class AgentGoalHistoryStore(context: Context) {
 
     private companion object {
         const val KEY = "agent.goalHistory"
+    }
+}
+
+/**
+ * SharedPreferences-backed skill memory — the app edge of core [SkillMemory] /
+ * [SkillMemoryCodec]. Policy (similarity, caps, encode shape) stays in core and is
+ * CoreVerify-pinned; this class only loads/saves the codec string so a process restart
+ * keeps "the agent gets better at chores you repeat". Twin of iOS `SkillMemoryStore`.
+ */
+class PrefsSkillMemoryStore(context: Context) {
+    private val prefs = context.getSharedPreferences("quenderin", Context.MODE_PRIVATE)
+    private val memory = SkillMemory()
+
+    init {
+        memory.restore(SkillMemoryCodec.decode(prefs.getString(KEY, "") ?: ""))
+    }
+
+    fun memory(): SkillMemory = memory
+
+    fun record(goal: String, tools: List<String>) {
+        memory.record(goal, tools)
+        persist()
+    }
+
+    fun recall(goal: String, k: Int = 2): List<SkillRecord> = memory.recall(goal, k)
+
+    fun clear() {
+        memory.restore(emptyList())
+        persist()
+    }
+
+    /** Re-encode the live [memory] instance to prefs (call after AgentLoop records a skill). */
+    fun save() = persist()
+
+    private fun persist() {
+        prefs.edit().putString(KEY, SkillMemoryCodec.encode(memory.snapshot())).apply()
+    }
+
+    private companion object {
+        const val KEY = "agent.skillMemory"
     }
 }
 

@@ -45,6 +45,14 @@ class AgentLoop(
      *  toggle is read LIVE. Off by default; only meaningful now that the decision decode is
      *  grammar-forced (grammar-in-JNI), which is why it lands after it. */
     private val deliberate: () -> Boolean = { false },
+    /**
+     * Skill memory (twin of iOS AgentLoop / desktop CapabilityAgent): [recallSkills] primes the
+     * preamble with proven tool sequences for similar past goals; [recordSkill] remembers this
+     * run's sequence when it reaches an answer. Closures so the app owns the store. Defaults are
+     * no-ops → behavior identical to today when unwired.
+     */
+    private val recallSkills: (String) -> List<SkillRecord> = { emptyList() },
+    private val recordSkill: (String, List<String>) -> Unit = { _, _ -> },
 ) {
     private val maxSteps = maxOf(1, maxSteps)
 
@@ -53,6 +61,17 @@ class AgentLoop(
     fun run(goal: String, isCancelled: () -> Boolean = { false }, onStep: (AgentStep) -> Unit = {}): AgentRun {
         val steps = mutableListOf<AgentStep>()
         var transcript = preamble(goal)
+        // Retrieval-augmented planning (twin of iOS/desktop): prime the weak model with tool
+        // sequences that worked on SIMILAR past goals. A HINT it still reasons over; every step gates.
+        val recalled = recallSkills(goal)
+        if (recalled.isNotEmpty()) {
+            transcript += "\nYou completed similar tasks before — the tools that worked:"
+            for (r in recalled) {
+                transcript += "\n- \"${r.goal}\" → ${r.tools.joinToString(" → ")}"
+            }
+        }
+        // Ordered tool names this run drove — recorded to skill memory if it reaches an answer.
+        val usedTools = mutableListOf<String>()
         // Reliability guards for a weak on-device model (twins of the desktop CapabilityAgent):
         // `parseFailures` recovers from malformed JSON (nudge + retry, not instant death); `stall`
         // catches the model re-emitting the SAME action (nudge, then halt STALLED). Both nudge the
@@ -96,7 +115,8 @@ class AgentLoop(
             // decision below is grammar-forced (the model can't reason inline), so this is the reasoning slot.
             if (deliberate()) {
                 try {
-                    val raw = engine.completeThinking(transcript + "\n<think>\n")
+                    // sampling-profiles.json → agent_deliberation (max_tokens 256)
+                    val raw = engine.completeThinking(transcript + "\n<think>\n", maxTokens = 256)
                     val thought = raw.substringBefore("</think>").trim()
                     if (thought.isNotEmpty()) transcript += "\n<think>\n$thought\n</think>"
                 } catch (t: Throwable) { /* deliberation is best-effort */ }
@@ -107,10 +127,15 @@ class AgentLoop(
             // so a weak model must try a tool instead of bailing; step 2+ use the full grammar. Engines
             // without native grammar support (mock/scripted) fall back to plain complete(), so the
             // parse-nudge path below still covers them.
+            // sampling-profiles.json → agent_decision (max_tokens 192, top_p 0.8, top_k 20, temp 0.7)
             val firstActionStep = goalNeedsAction && steps.isEmpty()
             val grammar = if (firstActionStep) AgentDecisionGrammar.GBNF_ACTION_FIRST else AgentDecisionGrammar.GBNF
             val reply = try {
-                engine.completeWithGrammar(transcript, grammar)
+                engine.completeWithGrammar(
+                    transcript, grammar,
+                    maxTokens = 192, topP = 0.8f, topK = 20, temperature = 0.7f,
+                    repeatPenalty = 1.1f, repeatLastN = 256,
+                )
             } catch (t: Throwable) {
                 return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
             }
@@ -146,6 +171,9 @@ class AgentLoop(
                     record(AgentStep(decision, "The answer was withheld: the goal requires actions, but none were taken."))
                     return AgentRun(steps, null, AgentRun.HaltReason.PLAN_ERROR)
                 }
+                // A completed task teaches the harness — record the proven tool sequence so the next
+                // similar goal is primed with it (no-op if skill memory is unwired).
+                if (usedTools.isNotEmpty()) recordSkill(goal, usedTools.toList())
                 record(AgentStep(decision, null))
                 return AgentRun(steps, decision.answer, AgentRun.HaltReason.ANSWERED)
             }
@@ -181,6 +209,10 @@ class AgentLoop(
                     val obs = execute(decision.name, decision.input)
                     toolAttempts++
                     if (isPermissionRefusal(obs)) refusedAttempts++
+                    else if (!isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
+                        // Only count tools that actually ran (not refused) into skill memory.
+                        usedTools.add(decision.name)
+                    }
                     transcript += "\nUsed ${decision.name}(${decision.input}) → $obs"
                     obs
                 }
@@ -202,6 +234,9 @@ class AgentLoop(
                     }
                     val obs = if (unknown != null) unknownToolMessage(unknown, tools.map { it.name }) + " Plan not executed."
                     else runner.executePlan(resolved)
+                    if (unknown == null && !isPermissionRefusal(obs) && !isSystemPermissionBlock(obs)) {
+                        for (call in decision.calls) usedTools.add(call.name)
+                    }
                     val described = decision.calls.joinToString(", ") { "${it.name}(${it.input})" }
                     transcript += "\nProposed plan [$described] → $obs"
                     obs

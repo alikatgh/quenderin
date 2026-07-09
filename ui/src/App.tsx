@@ -351,7 +351,7 @@ function AppContent() {
     };
   }, []);
 
-  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask } = useAgentSocket();
+  const { wsReady, logs, status, currentUI, requiredAction, downloadProgress, settings, activePresetId, agentPaused, sendGoal, sendChatMessage, resetSession, clearRequiredAction, updateSettings, resetSettings, switchPreset, manualVoiceStart, manualVoiceStop, pauseAgent, resumeAgent, stopChat, loadSession, taskStatus, taskLog, taskApproval, taskUndoable, startTask, answerTaskApproval, stopTask, undoTask, missionApproval, answerMissionApproval } = useAgentSocket();
 
   const { setDarkMode } = useTheme();
 
@@ -517,7 +517,54 @@ function AppContent() {
         />
       }
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      {/* Q-549 Step 3: per-run mission approval before the device agent drives anything. */}
+      {missionApproval && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mission-approval-title"
+          aria-describedby="mission-approval-desc"
+          className="fixed inset-0 z-[997] flex items-center justify-center bg-black/50 p-4"
+          onKeyDown={(e) => {
+            // Escape = Don't allow (fail-closed). Geometry-stable: no layout shift on key.
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              answerMissionApproval(false);
+            }
+          }}
+        >
+          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 id="mission-approval-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              Allow this mission?
+            </h2>
+            <p id="mission-approval-desc" className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              The local agent wants to drive your device for:
+            </p>
+            <p className="mt-2 rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 break-words">
+              {missionApproval.goal || '(no goal text)'}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                autoFocus
+                className="rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+                onClick={() => answerMissionApproval(false)}
+              >
+                Don&apos;t allow
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+                onClick={() => answerMissionApproval(true)}
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (

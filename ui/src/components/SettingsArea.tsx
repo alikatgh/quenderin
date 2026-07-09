@@ -10,6 +10,7 @@ interface Settings {
     themePreference: 'light' | 'dark' | 'system';
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
+    missionApprovalEnabled: boolean;
 }
 
 interface ModelCatalogEntry {
@@ -494,6 +495,27 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                     </div>
                                 </div>
                                 <ToggleSwitch label="Memory Safety Warnings" checked={settings.memorySafetyEnabled} onChange={() => setSettings({ ...settings, memorySafetyEnabled: !settings.memorySafetyEnabled })} />
+                            </div>
+
+                            <div className="flex items-center justify-between py-4 border-t border-zinc-100 dark:border-zinc-800/50">
+                                <div className="flex items-center gap-3">
+                                    <Shield className="w-4 h-4 text-zinc-400" />
+                                    <div>
+                                        <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Mission approval before device drive</div>
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-500">Ask Allow / Don&apos;t allow before the agent taps or scrolls. Off by default.</div>
+                                    </div>
+                                </div>
+                                <ToggleSwitch
+                                    label="Mission approval before device drive"
+                                    checked={settings.missionApprovalEnabled === true}
+                                    onChange={() => {
+                                        // Apply immediately (like theme): forgetting "Apply Changes"
+                                        // would leave the agent ungated while the switch looked ON.
+                                        const next = { ...settings, missionApprovalEnabled: !settings.missionApprovalEnabled };
+                                        setSettings(next);
+                                        onSave({ ...next, privacyPassphrase: settings.privacyPassphrase || '' });
+                                    }}
+                                />
                             </div>
 
                             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50">

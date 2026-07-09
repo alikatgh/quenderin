@@ -27,6 +27,55 @@
 
 namespace quenderin {
 
+// Holds incomplete UTF-8 tails across BPE piece boundaries so streaming never emits "�".
+// Twin of apple/.../UTF8StreamDecoder.swift and Kotlin UTF8StreamDecoder. Tokenizers freely cut
+// mid-character (Cyrillic = 2 bytes, emoji = 4); decoding each piece independently turns the
+// halves into U+FFFD. We accumulate raw bytes, emit only COMPLETE characters, and flush at EOG.
+class UTF8StreamDecoder {
+    std::string pending;   // at most 3 bytes of an incomplete sequence
+
+    // How many trailing bytes form the start of a not-yet-complete UTF-8 character (0..3).
+    static size_t incompleteTailLength(const std::string& bytes) {
+        size_t back = 0;
+        const size_t n = bytes.size();
+        while (back < 3 && back < n) {
+            unsigned char byte = static_cast<unsigned char>(bytes[n - 1 - back]);
+            if ((byte & 0xC0) == 0x80) {   // continuation — keep looking for its lead
+                back += 1;
+                continue;
+            }
+            size_t expected;
+            if      ((byte & 0x80) == 0x00) expected = 1;
+            else if ((byte & 0xE0) == 0xC0) expected = 2;
+            else if ((byte & 0xF0) == 0xE0) expected = 3;
+            else if ((byte & 0xF8) == 0xF0) expected = 4;
+            else return 0;   // invalid lead — let the consumer render lossily now
+            size_t have = back + 1;
+            return have < expected ? have : 0;
+        }
+        return 0;   // 3+ continuation bytes with no lead — malformed; flush lossily
+    }
+
+public:
+    // Feed one token's raw UTF-8 bytes; returns complete characters only (may be empty).
+    std::string feed(const char* data, size_t len) {
+        pending.append(data, len);
+        size_t keep = incompleteTailLength(pending);
+        size_t ready = pending.size() - keep;
+        if (ready == 0) return {};
+        std::string out = pending.substr(0, ready);
+        pending.erase(0, ready);
+        return out;
+    }
+
+    // End of stream: decode whatever is left (lossy for a genuinely truncated sequence).
+    std::string flush() {
+        std::string out = std::move(pending);
+        pending.clear();
+        return out;
+    }
+};
+
 // The KV-reuse decision for a new prompt, given `cached` is the exact token sequence the cache holds.
 // Mirrors the tested KVCacheReuse spec (Swift/Kotlin twins — see KVCacheReuse.kt for the full rationale).
 // Four outcomes, all via the same fields:
@@ -108,6 +157,9 @@ inline KVReusePlan kvReusePlan(const std::vector<llama_token>& cached,
 //                  (never on a graceful context-limit stop), so the caller can surface a real error
 //                  instead of silently showing an empty reply. Defaults to nullptr for existing callers
 //                  (e.g. the smoke test) that don't need the distinction.
+//   hitTokenCap  → optional out-param; true when the decode stopped because it produced exactly
+//                  `maxTokens` tokens (not EOG / cancel / context-full). The chat UI uses this for a
+//                  "Continue" affordance (KNOWN_FAILURE_MODES mid-sentence token-cap).
 //
 // Returns the concatenated output. `cached` is updated in place to match the KV on return.
 template <typename Emit, typename Cancelled, typename ThermalPoll = int(*)()>
@@ -115,9 +167,11 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
                                 const std::vector<llama_token>& newTokens, int maxTokens,
                                 std::vector<llama_token>& cached, Emit emit, Cancelled cancelled,
                                 bool* failed = nullptr,
-                                ThermalPoll thermalPoll = []() -> int { return 0; }) {
+                                ThermalPoll thermalPoll = []() -> int { return 0; },
+                                bool* hitTokenCap = nullptr) {
     std::string out;
     if (failed) *failed = false;
+    if (hitTokenCap) *hitTokenCap = false;
     if (newTokens.empty()) return out;
 
     const auto perfT0 = std::chrono::steady_clock::now();   // prefill start (perf instrumentation)
@@ -174,6 +228,8 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     int perfDecodeTok = 0;
 
     constexpr int kThermalSampleInterval = 32;   // heat moves slowly; matches iOS's sample cadence
+    UTF8StreamDecoder utf8;   // reassemble characters split across BPE pieces (iOS twin)
+    bool stream_ok = true;    // false once emit() asks us to stop (pending JNI exception, etc.)
     for (int i = 0; i < maxTokens; ++i) {
         if (cancelled()) break;
         if (i % kThermalSampleInterval == 0) {
@@ -192,14 +248,15 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
             std::vector<char> big(-c);
             c = llama_token_to_piece(vocab, next, big.data(), (int32_t) big.size(), 0, true);
             if (c > 0) {
-                std::string piece(big.data(), (size_t) c);
-                out += piece;
-                if (!emit(piece)) break;
+                // Raw-byte accumulate (always correct UTF-8 once complete); stream only COMPLETE chars.
+                out.append(big.data(), (size_t) c);
+                std::string piece = utf8.feed(big.data(), (size_t) c);
+                if (!piece.empty() && !emit(piece)) { stream_ok = false; break; }
             }
         } else if (c > 0) {
-            std::string piece(buf, (size_t) c);
-            out += piece;
-            if (!emit(piece)) break;
+            out.append(buf, (size_t) c);
+            std::string piece = utf8.feed(buf, (size_t) c);
+            if (!piece.empty() && !emit(piece)) { stream_ok = false; break; }
         }
 
         // Feed the token back to extend the KV. Decode BEFORE recording it in the mirror, and push only
@@ -215,6 +272,15 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         }
         cached.push_back(next);
     }
+    // Flush any held incomplete-sequence bytes so streaming sinks match the full `out` string.
+    // Skip if emit already failed (a pending JNI exception makes another CallVoidMethod UB).
+    if (stream_ok) {
+        std::string tail = utf8.flush();
+        if (!tail.empty()) (void) emit(tail);
+    }
+
+    // Token-cap hit: produced the full budget without EOG/cancel (Continue affordance).
+    if (hitTokenCap && perfDecodeTok >= maxTokens && maxTokens > 0) *hitTokenCap = true;
 
     // Perf: prefill vs steady decode tok/s — the number that turns "feels slow" into data. Decode is the
     // one the user watches (token-by-token); prefill is the one-shot time-to-first-token.

@@ -34,7 +34,10 @@ android {
     namespace = "ai.quenderin.app"
     compileSdk = 35
 
-    val enableVulkan = project.hasProperty("quenderin.vulkan") && project.property("quenderin.vulkan") == "true"
+    // Vulkan is ON by default (2026-07-09): Adreno devices get full GPU offload via
+    // GpuOffloadPlanner; Mali/Xclipse/unknown stay on CPU until forceGpu. Opt OUT with
+    // -Pquenderin.vulkan=false for a CPU-only .so (smaller / more portable for emulators).
+    val enableVulkan = project.findProperty("quenderin.vulkan")?.toString() != "false"
 
     defaultConfig {
         applicationId = "ai.quenderin.app"

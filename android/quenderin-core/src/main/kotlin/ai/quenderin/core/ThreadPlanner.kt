@@ -39,4 +39,25 @@ object ThreadPlanner {
         // Homogeneous SoC (all cores identical) → no LITTLE cluster to exclude → every core is "big".
         if (big > 0) big else freqs.size
     }.getOrNull()
+
+    /**
+     * The [n] fastest CPU ids (by `cpuinfo_max_freq`), descending — the cores an affinity mask
+     * should pin decode threads onto so the scheduler can't park a matmul worker on a LITTLE core.
+     * Twin of the JNI `pin_threads` sysfs scan (llama_jni.cpp). Pure + testable.
+     *
+     * Empty when sysfs is unreadable (emulator without cpufreq, tests without a fixture).
+     * Never returns more ids than exist; never invents cores.
+     */
+    fun bestCoreIndices(n: Int, cpuDir: File = File("/sys/devices/system/cpu")): List<Int> = runCatching {
+        if (n <= 0) return emptyList()
+        val cpus = cpuDir.listFiles { f -> f.isDirectory && f.name.matches(Regex("cpu[0-9]+")) }
+            ?: return emptyList()
+        val ranked = cpus.mapNotNull { core ->
+            val id = core.name.removePrefix("cpu").toIntOrNull() ?: return@mapNotNull null
+            val freq = File(core, "cpufreq/cpuinfo_max_freq")
+                .takeIf { it.exists() }?.readText()?.trim()?.toLongOrNull() ?: return@mapNotNull null
+            id to freq
+        }.sortedWith(compareByDescending<Pair<Int, Long>> { it.second }.thenBy { it.first })
+        ranked.take(n).map { it.first }
+    }.getOrDefault(emptyList())
 }

@@ -54,6 +54,9 @@ export interface AgentEvents {
     /** Q-549 Step 2: the bulk brake fired — the loop SELF-paused after `executed` device actions
      *  and is waiting for the user's Resume (or Stop). */
     bulk_confirm: (payload: { executed: number; threshold: number }) => void;
+    /** Q-549 Step 3: opt-in per-run mission approval is waiting for the user. The mission has not
+     *  driven the device yet. Resolve via the configured MissionApprover (dashboard / WS). */
+    mission_approval: (payload: { goal: string }) => void;
 }
 
 export interface IDeviceProvider extends EventEmitter {

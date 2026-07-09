@@ -72,6 +72,16 @@ class ChatModel(
     var isGenerating: Boolean = false
         private set
 
+    /**
+     * True when the last settled reply stopped because it hit the engine's token cap mid-stream
+     * (not Stop, not EOG). The UI surfaces a "Continue" affordance so the user can extend the
+     * answer instead of staring at a mid-sentence cut. Twin of iOS `ChatModel.lastHitTokenCap`.
+     * Cleared on the next [send] / [reset] / [restore].
+     */
+    @Volatile
+    var lastHitTokenCap: Boolean = false
+        private set
+
     private fun emit() = onChange(messages)
 
     /**
@@ -123,6 +133,7 @@ class ChatModel(
         onChange(afterUser)
         onChange(afterPlaceholder)
         try {
+            lastHitTokenCap = false
             val sb = StringBuilder()
             var tokenCount = 0
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
@@ -155,6 +166,10 @@ class ChatModel(
             } else {
                 settled
             }
+            // Token-cap hit mid-sentence → "Continue" affordance (KNOWN_FAILURE_MODES). Real signal from
+            // the native loop (perfDecodeTok >= maxTokens), not a piece count (UTF-8 reassembly merges
+            // pieces so a piece-count would undercount). User Stop supersedes → stillActive false.
+            if (stillActive) lastHitTokenCap = engine.lastHitTokenCap()
             writeAssistant(myGen, placeholderIndex, finalText)
             return finalText
         } finally {
@@ -164,6 +179,15 @@ class ChatModel(
                 if (activeGeneration == myGen) isGenerating = false
             }
         }
+    }
+
+    /**
+     * Extend the previous reply after a token-cap stop. Sends a short "continue" user turn so the
+     * model picks up mid-thought. No-op when [lastHitTokenCap] is false (nothing was truncated).
+     */
+    fun continueLast(): String {
+        if (!lastHitTokenCap || isGenerating) return ""
+        return send("Continue from where you left off. Do not repeat what you already wrote.")
     }
 
     /** Write the assistant placeholder iff this generation is still the active one and the slot is still
@@ -197,6 +221,7 @@ class ChatModel(
      *  now-empty transcript (out of bounds) or resurrect a stale reply. */
     fun reset() {
         stopGenerating()
+        lastHitTokenCap = false
         synchronized(lock) { _messages.clear() }
         emit()
     }
@@ -207,6 +232,7 @@ class ChatModel(
      *  (the conversation-switch corruption — Q-004/Q-168). */
     fun restore(saved: List<ChatMessage>) {
         stopGenerating()
+        lastHitTokenCap = false
         synchronized(lock) {
             _messages.clear()
             _messages.addAll(saved)

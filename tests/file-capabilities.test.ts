@@ -72,6 +72,16 @@ describe('fs.read', () => {
     });
 });
 
+describe('fs.move verify', () => {
+    it('verify() is ok after a real move and fails when nothing moved', async () => {
+        touch('report.pdf');
+        const cap = new FsMoveCapability(workspace);
+        await cap.run('report.pdf to docs');
+        expect((await cap.verify('report.pdf to docs')).ok).toBe(true);
+        expect((await cap.verify('ghost.pdf to docs')).ok).toBe(false);
+    });
+});
+
 describe('fs.move', () => {
     it('moves a file into a subfolder and undoes it', async () => {
         touch('report.pdf');

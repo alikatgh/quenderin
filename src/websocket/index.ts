@@ -293,6 +293,23 @@ export class WebSocketManager {
                             }
                         });
 
+                        // Q-549 Step 3: when mission approval is enabled, push the request to THIS
+                        // client so the dashboard can show Allow / Don't-allow. The agent parks until
+                        // mission_approve arrives (or stop_agent fails closed).
+                        if (this.agentService.requireMissionApproval) {
+                            this.agentService.installWaitingMissionApprover((missionGoal) => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send(JSON.stringify({
+                                        type: 'mission_approval_required',
+                                        goal: missionGoal,
+                                    }));
+                                } else {
+                                    // No live client to approve → fail closed immediately.
+                                    this.agentService.answerMissionApproval(false);
+                                }
+                            });
+                        }
+
                         try {
                             // SECURITY: Never use client-supplied emitter — always use server-side one
                             const attachments = sanitizeAttachments(data.attachments);
@@ -418,7 +435,13 @@ export class WebSocketManager {
                         const contextSize = ALLOWED_CONTEXT_SIZES.includes(data.contextSize) ? data.contextSize : 2048;
                         const memorySafetyEnabled = data.memorySafetyEnabled === true;
                         this.llmService.updateSettings({ contextSize, memorySafetyEnabled });
-                        logger.log(`[System] settings updated: contextSize=${contextSize}, memorySafety=${memorySafetyEnabled}`);
+                        // Q-549 Step 3: durable mission-approval toggle (dashboard Settings /
+                        // localStorage). When enabled, the next ACTION mission start installs a
+                        // waiting approver over this channel; when disabled, prior no-gate behavior.
+                        if (typeof data.missionApprovalEnabled === 'boolean') {
+                            this.agentService.setMissionApproval(data.missionApprovalEnabled);
+                        }
+                        logger.log(`[System] settings updated: contextSize=${contextSize}, memorySafety=${memorySafetyEnabled}, missionApproval=${this.agentService.requireMissionApproval}`);
                     } else if (data.type === 'preset_switch') {
                         // Switch active preset (persona)
                         const presetId = typeof data.presetId === 'string' ? data.presetId.slice(0, 50).trim() : '';
@@ -490,6 +513,10 @@ export class WebSocketManager {
                         // parks and can resume) — this hard-stops the running mission: it aborts the
                         // in-flight decode and breaks the loop, which then emits its own 'done'.
                         this.agentService.stop();
+                    } else if (data.type === 'mission_approve') {
+                        // Q-549 Step 3: answer the per-run mission-approval dialog. FAIL-CLOSED:
+                        // anything but approved === true is a NO (same shape as task_approve).
+                        this.agentService.answerMissionApproval(data.approved === true);
                     } else if (data.type === 'task_start') {
                         // The governed task path — the dashboard twin of `quenderin do`. Distinct
                         // from the legacy 'start' (the continuous device loop): here a local model

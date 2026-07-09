@@ -61,6 +61,10 @@ files:
   - node_modules/**/*
   - public/**/*
   - package.json
+  # Runtime data next to dist/ inside the asar (sampling-profiles, model catalog, safety list).
+  # samplingProfiles.ts resolves ../../../shared from dist/src/services — without this glob the
+  # packaged local-inference path falls back to EMBEDDED recipes (or used to hard-throw).
+  - shared/**/*
   # Q-643: trim non-runtime bloat from the bundled node_modules. These globs exclude ONLY files that
   # never execute in the packaged app — test/example fixtures, sourcemaps, and TypeScript type
   # declarations — so no production dependency is dropped (unlike removing the node_modules glob

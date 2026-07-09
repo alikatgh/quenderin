@@ -5,7 +5,7 @@ import PDFKit
 @testable import QuenderinKit
 
 /// fs.rename + fs.trash on the write spine, and PDF extraction. Twin of the Kotlin CoreVerify
-/// rename/trash checks (PDF is Apple-only — PDFKit; the Android gap is recorded in the plan).
+/// rename/trash + DocumentTextExtractor PDF checks (Android pure-Kotlin parser; Apple PDFKit).
 final class RenameTrashPDFTests: XCTestCase {
 
     private var root: URL!

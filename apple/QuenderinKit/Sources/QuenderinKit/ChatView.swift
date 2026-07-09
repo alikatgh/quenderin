@@ -64,7 +64,7 @@ public struct ChatView: View {
               let active = activeModel, onSwitchModel != nil,
               model.messages.isEmpty, draft.trimmingCharacters(in: .whitespaces).count >= 12 else { return nil }
         let installed = ModelManager(
-            storage: FileManagerModelStorage(directory: OnboardingModel.defaultModelsDir()),
+            storage: OnboardingModel.defaultModelStorage(),
             activeModelID: active.id
         ).installed().map(\.model)
         guard installed.count > 1,
@@ -306,6 +306,24 @@ public struct ChatView: View {
                     }
                     .padding(.horizontal, 6)
                 }
+            }
+            // Token-cap mid-sentence → one-tap Continue (KNOWN_FAILURE_MODES). Geometry-stable:
+            // only appears when lastHitTokenCap is set; no layout shift on other replies.
+            if model.lastHitTokenCap && !model.isGenerating {
+                Button {
+                    Task { await model.continueLast() }
+                } label: {
+                    Label("Continue", systemImage: "arrow.forward.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(p.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(p.primary.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Continue generating from where the reply stopped")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 6)
             }
             composerRow(palette: p)
         }

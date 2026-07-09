@@ -1334,6 +1334,22 @@ fun main() {
         ThreadPlanner.recommend(4, 8) == 4 && ThreadPlanner.recommend(null, 8) == 7 &&
             ThreadPlanner.recommend(0, 8) == 7 && ThreadPlanner.recommend(99, 8) == 7 &&
             ThreadPlanner.recommend(4, 0) == 1)
+    check("ThreadPlanner.bestCoreIndices returns fastest cores first", run {
+        val dir = java.io.File.createTempFile("cpu", "aff").also { it.delete(); it.mkdirs() }
+        try {
+            // cpu0 LITTLE @1GHz, cpu1 big @3GHz, cpu2 big @2.5GHz
+            fun core(id: Int, freq: Long) {
+                val c = java.io.File(dir, "cpu$id/cpufreq"); c.mkdirs()
+                java.io.File(c, "cpuinfo_max_freq").writeText(freq.toString())
+            }
+            core(0, 1_000_000); core(1, 3_000_000); core(2, 2_500_000)
+            val top2 = ThreadPlanner.bestCoreIndices(2, dir)
+            top2 == listOf(1, 2) && ThreadPlanner.bestCoreIndices(0, dir).isEmpty()
+                && ThreadPlanner.bestCoreIndices(10, dir) == listOf(1, 2, 0)
+        } finally {
+            dir.deleteRecursively()
+        }
+    })
     check("ThreadPlanner.performanceCoreCount counts big cores from cpufreq (incl. tri-cluster)", run {
         fun countFor(freqs: List<Long>): Int? {
             val dir = java.nio.file.Files.createTempDirectory("cpus").toFile()
@@ -1784,11 +1800,75 @@ fun main() {
         val blob = java.io.File(dir, "blob.bin").apply { writeBytes(byteArrayOf(-1, -2, 0, -40)) }
         val truncated = DocumentTextExtractor.extract("big.txt", big, maxBytes = 1024)
         val rejected = DocumentTextExtractor.extract("blob.bin", blob)
+        // Byte-array overload (chat SAF attach path) — same policy, no File required.
+        val fromBytes = DocumentTextExtractor.extract("note.txt", "hello attach".toByteArray(Charsets.UTF_8))
+        val rejectBytes = DocumentTextExtractor.extract("x.bin", byteArrayOf(-1, -2, 0, -40))
         dir.deleteRecursively()
         truncated is DocumentTextExtractor.Extraction.Document &&
             truncated.document.text.endsWith("[…file truncated at 1 KB]") &&
             rejected is DocumentTextExtractor.Extraction.Rejected &&
-            rejected.reason.contains("isn't a text file")
+            rejected.reason.contains("isn't a text file") &&
+            fromBytes is DocumentTextExtractor.Extraction.Document &&
+            fromBytes.document.text == "hello attach" &&
+            rejectBytes is DocumentTextExtractor.Extraction.Rejected
+    })
+    // Minimal PDF with uncompressed content stream (no PDFKit on Android — pure-Kotlin path).
+    // Twin of Apple RenameTrashPDFTests.testPDFExtractionReadsTextAndRefusesTextlessScans.
+    check("DocumentTextExtractor reads PDF text and refuses textless scans", run {
+        fun minimalPdf(contentStream: String): ByteArray {
+            // Build a 1-page PDF; content stream length must match the stream body exactly.
+            val streamBody = contentStream
+            val objs = mutableListOf<String>()
+            objs += "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+            objs += "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+            objs += "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] " +
+                "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+            objs += "4 0 obj\n<< /Length ${streamBody.toByteArray(Charsets.ISO_8859_1).size} >>\n" +
+                "stream\n$streamBody\nendstream\nendobj\n"
+            objs += "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+            val header = "%PDF-1.1\n"
+            val body = objs.joinToString("")
+            // Byte offsets for xref (from start of file).
+            val offsets = mutableListOf(0) // free object 0
+            var pos = header.toByteArray(Charsets.ISO_8859_1).size
+            for (obj in objs) {
+                offsets += pos
+                pos += obj.toByteArray(Charsets.ISO_8859_1).size
+            }
+            val xrefStart = pos
+            val xref = buildString {
+                append("xref\n0 ${offsets.size}\n")
+                append(String.format("%010d 65535 f \n", 0))
+                for (o in offsets.drop(1)) append(String.format("%010d 00000 n \n", o))
+                append("trailer\n<< /Size ${offsets.size} /Root 1 0 R >>\n")
+                append("startxref\n$xrefStart\n%%EOF\n")
+            }
+            return (header + body + xref).toByteArray(Charsets.ISO_8859_1)
+        }
+        val withText = minimalPdf("BT /F1 12 Tf 50 100 Td (the elf reads PDFs locally) Tj ET")
+        val textCase = DocumentTextExtractor.extract("doc.pdf", withText)
+        val textOk = textCase is DocumentTextExtractor.Extraction.Document &&
+            textCase.document.text.contains("the elf reads PDFs locally")
+        // Empty content stream → no extractable text (scanned-PDF stand-in).
+        val blank = minimalPdf("BT ET")
+        val blankCase = DocumentTextExtractor.extract("scan.pdf", blank)
+        val blankOk = blankCase is DocumentTextExtractor.Extraction.Rejected &&
+            blankCase.reason.contains("no extractable text")
+        // Magic without .pdf suffix (SAF may omit extension) still routes to PDF path.
+        val byMagic = DocumentTextExtractor.extract("attachment", withText)
+        val magicOk = byMagic is DocumentTextExtractor.Extraction.Document &&
+            byMagic.document.text.contains("the elf reads PDFs locally")
+        // Cap: long PDF text truncated at maxBytes with the PDF-specific notice.
+        val longStream = "BT /F1 12 Tf 50 100 Td (" + "Z".repeat(2000) + ") Tj ET"
+        val longCase = DocumentTextExtractor.extract("long.pdf", minimalPdf(longStream), maxBytes = 256)
+        val capOk = longCase is DocumentTextExtractor.Extraction.Document &&
+            longCase.document.text.contains("[…PDF truncated at")
+        // TJ array operator
+        val tj = minimalPdf("BT /F1 12 Tf 50 100 Td [(Hello) -20 (World)] TJ ET")
+        val tjCase = DocumentTextExtractor.extract("tj.pdf", tj)
+        val tjOk = tjCase is DocumentTextExtractor.Extraction.Document &&
+            tjCase.document.text.contains("Hello") && tjCase.document.text.contains("World")
+        textOk && blankOk && magicOk && capOk && tjOk
     })
 
     // --- The workspace: fs.list + fs.move + undo + per-run approval (Milestone 2) ---
@@ -1965,6 +2045,151 @@ fun main() {
             .map { it.goal } == listOf("ok goal", "also ok")
         roundtrip && empty && tornRowDropped
     })
+
+    // --- SkillMemory (twin of Swift/TS — pure policy, no Android framework) ---
+    check("SkillMemory records and recalls a similar goal", run {
+        val m = SkillMemory()
+        m.record("organize my downloads", listOf("fs.list", "fs.move"))
+        m.record("draft an email to bob", listOf("mac.mail.draft"))
+        val hits = m.recall("organize downloads folder", k = 2)
+        hits.size == 1 && hits[0].tools == listOf("fs.list", "fs.move")
+    })
+    check("SkillMemory does not recall a dissimilar goal", run {
+        val m = SkillMemory()
+        m.record("organize my downloads", listOf("fs.move"))
+        m.recall("draft calendar event tomorrow", k = 2).isEmpty()
+    })
+    check("SkillMemory ignores empty runs and empty goals", run {
+        val m = SkillMemory()
+        m.record("", listOf("fs.list"))
+        m.record("real goal", emptyList())
+        m.size == 0
+    })
+    check("SkillMemory dedupes a goal keeping the most recent tool sequence", run {
+        val m = SkillMemory()
+        m.record("organize downloads", listOf("fs.move"))
+        m.record("organize downloads", listOf("fs.list", "fs.move", "fs.move"))
+        m.size == 1 && m.recall("organize downloads", 1).first().tools == listOf("fs.list", "fs.move", "fs.move")
+    })
+    check("SkillMemory capacity drops oldest first", run {
+        val m = SkillMemory(threshold = 0.0, capacity = 2)
+        m.record("goal one alpha", listOf("a"))
+        m.record("goal two beta", listOf("b"))
+        m.record("goal three gamma", listOf("c"))
+        m.size == 2 && m.snapshot().map { it.goal } == listOf("goal two beta", "goal three gamma")
+    })
+    check("SkillMemory tokens are ASCII word chars longer than two", run {
+        SkillMemory.tokens("Organize my downloads!!") == setOf("organize", "downloads")
+            && SkillMemory.tokens("a to be") == emptySet<String>()   // all length ≤ 2
+    })
+    check("SkillMemory similarity is overlap coefficient", run {
+        val a = setOf("organize", "downloads", "folder")
+        val b = setOf("organize", "downloads")
+        // |∩|=2, min(|A|,|B|)=2 → 1.0
+        SkillMemory.similarity(a, b) == 1.0
+            && SkillMemory.similarity(emptySet(), b) == 0.0
+    })
+    check("SkillMemory snapshot/restore round-trips and re-caps", run {
+        val m = SkillMemory()
+        m.record("organize my downloads", listOf("fs.move"))
+        val snap = m.snapshot()
+        val m2 = SkillMemory()
+        m2.restore(snap)
+        m2.size == 1 && m2.recall("organize downloads", 1).first().tools == listOf("fs.move")
+            && run {
+                // poisoned long goal is capped
+                val m3 = SkillMemory()
+                m3.restore(listOf(SkillRecord("x".repeat(500), (1..100).map { "t$it" })))
+                val r = m3.snapshot().first()
+                r.goal.length == SkillMemory.MAX_GOAL_LEN && r.tools.size == SkillMemory.MAX_TOOLS
+            }
+    })
+    check("SkillMemoryCodec encode/decode round-trips and ignores torn rows", run {
+        val original = listOf(
+            SkillRecord("organize downloads", listOf("fs.list", "fs.move")),
+            SkillRecord("goal with\ttab and\nnewline", listOf("fs.rename")),
+        )
+        val wire = SkillMemoryCodec.encode(original)
+        val back = SkillMemoryCodec.decode(wire)
+        val tornDropped = SkillMemoryCodec.decode("good\tfs.list\tbad-row-no-tab\nfs.list\treal goal")
+        back == original
+            && SkillMemoryCodec.decode("").isEmpty()
+            && tornDropped.any { it.goal == "real goal" }
+    })
+    check("SkillMemoryCodec persists through record → encode → restore → recall", run {
+        val m = SkillMemory()
+        m.record("organize my downloads by type", listOf("fs.list", "fs.move"))
+        m.record("draft email to alice", listOf("mac.mail.draft"))
+        val encoded = SkillMemoryCodec.encode(m.snapshot())
+        val restored = SkillMemory()
+        restored.restore(SkillMemoryCodec.decode(encoded))
+        val hit = restored.recall("organize downloads folder", 1)
+        val miss = restored.recall("completely unrelated weather forecast", 1)
+        hit.size == 1 && hit[0].tools == listOf("fs.list", "fs.move") && miss.isEmpty()
+    })
+    check("AgentLoop records skill memory on answer and primes a similar goal", run {
+        // Scripted: first run uses calculator then answers; second similar goal must see the
+        // skill-memory preamble (engine receives the transcript). Twin of iOS skill priming.
+        val skills = SkillMemory()
+        val engine1 = ScriptedInferenceEngine(listOf(
+            """{"tool":"calculator","input":"2+2"}""",
+            """{"answer":"4"}""",
+        ))
+        val tools = listOf(CalculatorTool())
+        val loop1 = AgentLoop(
+            engine1, tools, maxSteps = 4,
+            recallSkills = { skills.recall(it) },
+            recordSkill = { g, t -> skills.record(g, t) },
+        )
+        val run1 = loop1.run("compute 2 plus 2 please")
+        val recorded = skills.size == 1 && skills.recall("compute 2 plus 2", 1).isNotEmpty()
+            && run1.haltReason == AgentRun.HaltReason.ANSWERED
+        // Second run: only an answer is scripted — but the transcript passed to complete must include
+        // the skill-memory priming line if recall worked. Use a capturing engine.
+        var lastPrompt = ""
+        val engine2 = object : InferenceEngine {
+            override var loadedModelId: String? = "x"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String {
+                lastPrompt = prompt
+                return """{"answer":"done"}"""
+            }
+        }
+        val loop2 = AgentLoop(
+            engine2, tools, maxSteps = 2,
+            recallSkills = { skills.recall(it) },
+            recordSkill = { g, t -> skills.record(g, t) },
+        )
+        // Goal that is NOT an action intent alone would still prime if similar — use compute wording.
+        loop2.run("compute 2 plus 2 again")
+        val primed = lastPrompt.contains("You completed similar tasks before")
+            && lastPrompt.contains("calculator")
+        recorded && primed
+    })
+
+    // --- UTF8StreamDecoder (twin of Swift UTF8StreamDecoder / C++ jni decoder) ---
+    // Cyrillic "я" = D1 8F; emoji 😀 = F0 9F 98 80. Tokenizers split mid-character.
+    check("UTF8 decoder reassembles Cyrillic split across two pieces", run {
+        val d = UTF8StreamDecoder()
+        val a = d.feed(byteArrayOf(0xD1.toByte()))   // lead of "я"
+        val b = d.feed(byteArrayOf(0x8F.toByte()))   // continuation
+        a.isEmpty() && b == "я" && d.flush().isEmpty()
+    })
+    check("UTF8 decoder reassembles 4-byte emoji across pieces", run {
+        val d = UTF8StreamDecoder()
+        val p1 = d.feed(byteArrayOf(0xF0.toByte(), 0x9F.toByte()))
+        val p2 = d.feed(byteArrayOf(0x98.toByte(), 0x80.toByte()))
+        p1.isEmpty() && p2 == "😀" && d.flush().isEmpty()
+    })
+    check("UTF8 decoder flush releases a genuinely truncated tail lossily", run {
+        val d = UTF8StreamDecoder()
+        d.feed(byteArrayOf(0xF0.toByte()))  // incomplete
+        d.flush().isNotEmpty() && d.flush().isEmpty()
+    })
+    check("UTF8 incompleteTailLength: complete ASCII is 0", UTF8StreamDecoder.incompleteTailLength(listOf(0x41)) == 0)
+    check("UTF8 incompleteTailLength: lone lead of 2-byte is 1",
+        UTF8StreamDecoder.incompleteTailLength(listOf(0xD1.toByte())) == 1)
 
     println()
     if (failures == 0) {
