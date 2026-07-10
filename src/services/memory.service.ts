@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { pipeline, env } from '@xenova/transformers';
 import logger from '../utils/logger.js';
+import { atomicWriteFile } from '../utils/atomicWrite.js';
 import { sanitizeNoteFilename, sanitizeNoteTitle } from '../utils/notes.js';
 import { redactSecrets } from './capability/redaction.js';
 
@@ -179,7 +180,7 @@ export class MemoryService {
                     timestamp: new Date().toISOString()
                 });
 
-                await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
+                await atomicWriteFile(this.memoryPath, JSON.stringify(records, null, 2));
             } catch (error) {
                 logger.error('Failed to write memory data:', error);
             }
@@ -206,7 +207,7 @@ export class MemoryService {
                     timestamp: new Date().toISOString()
                 });
 
-                await fs.writeFile(this.memoryPath, JSON.stringify(records, null, 2), 'utf-8');
+                await atomicWriteFile(this.memoryPath, JSON.stringify(records, null, 2));
                 // Q-644: redact any secret in the goal before logging (a credential typed into a goal
                 // must not persist in the log — same rule as Q-357).
                 logger.info(`Memory forcefully updated with Manual Override for goal: ${redactSecrets(goal)}`);
@@ -235,7 +236,7 @@ export class MemoryService {
     public async clearTrajectories(): Promise<void> {
         await this.initPromise;
         await this.withWriteLock(async () => {
-            await fs.writeFile(this.memoryPath, '[]', 'utf-8');
+            await atomicWriteFile(this.memoryPath, '[]');
         });
     }
 
@@ -387,7 +388,7 @@ export class MemoryService {
                     timestamp: new Date().toISOString()
                 });
 
-                await fs.writeFile(this.correctionsPath, JSON.stringify(records, null, 2), 'utf-8');
+                await atomicWriteFile(this.correctionsPath, JSON.stringify(records, null, 2));
                 logger.info('[Memory RAG] Correction persistently saved to Vector Store');
             } catch (error: unknown) {
                 const message = error instanceof Error ? error.message : String(error);

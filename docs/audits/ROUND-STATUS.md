@@ -14,9 +14,10 @@
 | r7–r9 | 3 | 0 | Grok Wave 1 — docs, research, api-contract (2026-07-06); all top items fixed 2026-07-11 |
 | r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
 | r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
-| r16–r50 | 0 | 35 | Per master plan lens schedule |
+| r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
+| r19–r50 | 0 | 32 | Per master plan lens schedule |
 
-**Next recommended round:** r16 (data-integrity) — waves running 2026-07-11.
+**Next recommended round:** r19 (deployment) — waves running 2026-07-11.
 
 ---
 
@@ -39,7 +40,10 @@
 | 13 | i18n | ✅ Done (2026-07-11, rationale stub) | [2026-07-11-r13-quenderin-i18n.md](./2026-07-11-r13-quenderin-i18n.md) | N/A by design; 2 locale notes |
 | 14 | error-handling | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r14-quenderin-error-handling.md](./2026-07-11-r14-quenderin-error-handling.md) | 0 (1 High + 1 Low fixed) |
 | 15 | auth-session | ✅ Done (2026-07-11) | [2026-07-11-r15-quenderin-auth-session.md](./2026-07-11-r15-quenderin-auth-session.md) | 0 — verdict clean |
-| 16–50 | … | ⏳ Pending | — | See master plan |
+| 16 | data-integrity | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r16-quenderin-data-integrity.md](./2026-07-11-r16-quenderin-data-integrity.md) | 0 (1 High fixed — atomic writes) |
+| 17 | concurrency | ✅ Done (2026-07-11) | [2026-07-11-r17-quenderin-concurrency.md](./2026-07-11-r17-quenderin-concurrency.md) | 0 — verdict clean |
+| 18 | observability | ✅ Done (2026-07-11) | [2026-07-11-r18-quenderin-observability.md](./2026-07-11-r18-quenderin-observability.md) | 1 Low (crash.log, → r39) |
+| 19–50 | … | ⏳ Pending | — | See master plan |
 
 ---
 

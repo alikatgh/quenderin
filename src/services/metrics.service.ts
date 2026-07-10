@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import logger from '../utils/logger.js';
+import { atomicWriteFile } from '../utils/atomicWrite.js';
 
 export interface AgentMetrics {
     id: string;
@@ -60,7 +61,7 @@ export class MetricsService {
                     records = records.slice(-999);
                 }
                 records.push(metrics);
-                await fs.writeFile(this.telemetryPath, JSON.stringify(records, null, 2), 'utf-8');
+                await atomicWriteFile(this.telemetryPath, JSON.stringify(records, null, 2));
             } catch (error) {
                 logger.error('Failed to write telemetry data:', error);
             }
@@ -102,7 +103,7 @@ export class MetricsService {
             // Compact the file when it exceeds 2000 entries — rewrite with last 1000
             if (lines.length > 2000) {
                 const kept = records.slice(-1000);
-                fs.writeFile(this.habitsNdjsonPath, kept.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf-8')
+                atomicWriteFile(this.habitsNdjsonPath, kept.map(r => JSON.stringify(r)).join('\n') + '\n')
                     .catch(() => { /* best-effort compaction */ });
                 return kept;
             }

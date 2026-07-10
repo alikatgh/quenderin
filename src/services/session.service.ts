@@ -13,6 +13,7 @@ import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger.js';
+import { atomicWriteFileSync } from '../utils/atomicWrite.js';
 import { MAX_SESSIONS, MAX_MESSAGES_PER_SESSION, SESSION_FLUSH_INTERVAL_MS } from '../constants.js';
 
 export interface SessionMessage {
@@ -132,7 +133,7 @@ export class SessionService {
             session.messages = session.messages.slice(-MAX_MESSAGES_PER_SESSION);
         }
         ensureDir();
-        try { fs.writeFileSync(sessionPath(id), JSON.stringify(session, null, 2), 'utf8'); }
+        try { atomicWriteFileSync(sessionPath(id), JSON.stringify(session, null, 2)); }
         catch (err) { logger.error('[Session] addMessageTo persist failed:', err); }
     }
 
@@ -254,7 +255,7 @@ export class SessionService {
         if (!this.dirty || !this.currentSession) return;
         ensureDir();
         try {
-            fs.writeFileSync(sessionPath(this.currentSession.id), JSON.stringify(this.currentSession, null, 2), 'utf8');
+            atomicWriteFileSync(sessionPath(this.currentSession.id), JSON.stringify(this.currentSession, null, 2));
             this.dirty = false;
             // Q-598: do NOT prune here. flushNow runs on every debounced write (≈ every few seconds while
             // chatting), and pruneOldSessions → listSessions reads + JSON.parses EVERY session file — an
