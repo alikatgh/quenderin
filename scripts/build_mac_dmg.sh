@@ -34,11 +34,34 @@ xcodebuild -project Quenderin.xcodeproj -scheme QuenderinMac -configuration "$CO
 APP="$BUILD/DerivedData/Build/Products/$CONFIG/Quenderin.app"
 [ -d "$APP" ] || { echo "FATAL: $APP not found"; exit 1; }
 
-echo "── staging + hdiutil"
+echo "── staging"
 rm -rf "$BUILD/dmg-staging" "$DMG"
 mkdir -p "$BUILD/dmg-staging"
 cp -R "$APP" "$BUILD/dmg-staging/"
 ln -s /Applications "$BUILD/dmg-staging/Applications"
+
+# ── re-sign CONSISTENTLY, or dyld kills the app at launch ─────────────────────
+# The Release build signs with HARDENED RUNTIME (flags 0x10002 adhoc,runtime).
+# Hardened runtime enforces library validation: the embedded llama.framework must
+# carry the SAME Team ID as the process — adhoc has none, so launch dies with
+# "Library not loaded … different Team IDs" (bug journal 2026-07-10). Sign the
+# framework FIRST, then the app (outside-in order invalidates the nested seal),
+# with a real dev identity when the keychain has one, else adhoc WITHOUT the
+# hardened-runtime flag (no runtime ⇒ no library validation ⇒ adhoc+adhoc loads).
+STAGED="$BUILD/dmg-staging/Quenderin.app"
+IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development/ {print $2; exit}')"
+if [ -n "$IDENTITY" ]; then
+    echo "── codesign (identity: $IDENTITY)"
+    codesign --force --sign "$IDENTITY" --timestamp=none "$STAGED/Contents/Frameworks/llama.framework/Versions/A"
+    codesign --force --sign "$IDENTITY" --timestamp=none --preserve-metadata=entitlements "$STAGED"
+else
+    echo "── codesign (adhoc, hardened runtime stripped)"
+    codesign --force --sign - "$STAGED/Contents/Frameworks/llama.framework/Versions/A"
+    codesign --force --sign - --preserve-metadata=entitlements "$STAGED"
+fi
+codesign --verify --deep --strict "$STAGED"
+
+echo "── hdiutil"
 hdiutil create -volname "Quenderin" -srcfolder "$BUILD/dmg-staging" -ov -format UDZO "$DMG" >/dev/null
 
 echo "DONE: $DMG"

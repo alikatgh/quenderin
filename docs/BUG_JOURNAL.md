@@ -482,6 +482,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-10 (native mac DMG dead at launch — dyld SIGABRT) — Release xcodebuild signs with
+  HARDENED RUNTIME even under adhoc (`flags=0x10002(adhoc,runtime)`); library validation then
+  demands the embedded llama.framework carry the SAME Team ID as the process → "Library not
+  loaded … different Team IDs". Fix (scripts/build_mac_dmg.sh): after staging, sign framework
+  FIRST then app, dev identity if the keychain has one, else adhoc with runtime stripped.
+  Lesson: "BUILD SUCCEEDED" + codesign VERIFY both pass on a launch-dead app — always launch
+  and `pgrep` the packaged app before handing over a DMG.
+
 - 2026-07-10 (stale test after refusal-copy rework) — `CapabilityRunner` reworded its per-run-approval
   refusal ("…needs your per-run approval" → "This would change something on your Mac…") and updated
   `AgentLoop.isPermissionRefusal` to match, but `WorkspaceCapabilityTests:89` still `contains`-pinned the
