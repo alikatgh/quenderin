@@ -32,7 +32,7 @@ jobs:
           # Self-enable Pages on first run — the manual Settings→Pages step was never
           # done, so every deploy since the redesign died here with "Not Found".
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: website
       - id: deployment
