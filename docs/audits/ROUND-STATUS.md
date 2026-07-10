@@ -16,9 +16,10 @@
 | r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
 | r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
 | r19–r36, r40 | 19 | 0 | Claude inline Waves C–F (2026-07-11) |
-| r37–r39, r41–r50 | 0 | 13 | Per master plan lens schedule |
+| r37–r39 | 3 | 0 | Claude inline Wave G (2026-07-11) |
+| r41–r50 | 0 | 10 | Per master plan lens schedule |
 
-**Next recommended round:** r37–r39 (Wave G) — waves running 2026-07-11.
+**Next recommended round:** r41–r47 (Wave H) — waves running 2026-07-11.
 
 ---
 
@@ -62,7 +63,9 @@
 | 34 | rn-parity | ✅ N/A (2026-07-11) | [r34](./2026-07-11-r34-quenderin-rn-parity.md) | N/A — no RN app in repo |
 | 35 | extension-chrome | ✅ N/A (2026-07-11) | [r35](./2026-07-11-r35-quenderin-extension-chrome.md) | N/A — no extension |
 | 36 | game-design | ✅ N/A (2026-07-11) | [r36](./2026-07-11-r36-quenderin-game-design.md) | N/A — not a game |
-| 37–39 | … | ⏳ Pending | — | See master plan |
+| 37 | test-coverage-gap | ✅ Done (2026-07-11, +9 tests) | [r37](./2026-07-11-r37-quenderin-test-coverage-gap.md) | 5 triaged-open (table in report) |
+| 38 | refactor-opportunities | ✅ Done (2026-07-11) | [r38](./2026-07-11-r38-quenderin-refactor-opportunities.md) | 4 opportunistic (documented) |
+| 39 | ops-scripts | ✅ Done (2026-07-11, crash.log added) | [r39](./2026-07-11-r39-quenderin-ops-scripts.md) | 0 |
 | 40 | config-security | ✅ Done (2026-07-11, pulled into Wave C) | [2026-07-11-r40-quenderin-config-security.md](./2026-07-11-r40-quenderin-config-security.md) | 0 (1 Low fixed) |
 | 41–50 | … | ⏳ Pending | — | See master plan |
 

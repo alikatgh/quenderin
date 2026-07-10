@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import net from 'net';
 import open from 'open';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import { createApp } from './app.js';
@@ -47,6 +48,12 @@ process.on('unhandledRejection', (reason) => {
 });
 process.on('uncaughtException', (err) => {
     logger.critical('[Process] Uncaught exception — shutting down:', err.message);
+    // r39 (from r18): leave a durable artifact — the terminal is gone after an Electron relaunch,
+    // so the critical log line alone vanishes with the process. Sync append, best-effort.
+    try {
+        const crashLine = `${new Date().toISOString()} uncaughtException: ${err.stack ?? err.message}\n`;
+        fsSync.appendFileSync(path.join(os.homedir(), '.quenderin', 'crash.log'), crashLine);
+    } catch { /* the crash path must never throw */ }
     process.exit(1);
 });
 
