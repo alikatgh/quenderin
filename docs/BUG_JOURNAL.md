@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A parity suite covering N−1 of N twins is a false guarantee — extend the bijection to EVERY implementation.**
+  The agent-parity vectors ran on iOS+Android while the TS desktop hand-port sat unchecked; the day desktop joined
+  (tests/agent-parity.test.ts), 3 of 19 vectors failed on real divergences (JS `Math.round` is half-toward-+∞,
+  `[^a-z0-9]` splits on accents exactly like Java's non-Unicode `\b`, `String(number)` is a 17-digit shortest-repr).
+  When logic is hand-ported to K platforms, the conformance suite must enumerate all K. (agent-parity Desktop leg)
 - **A `swift test` exit code of 0 can mask an XCTest failure — grep the output for "failure", never trust `$?`.**
   With both an XCTest suite and a swift-testing run in one invocation, the process can exit 0 while an XCTest
   suite reports `1 failure`. Always check `Executed N tests, with M failures` / `Test Suite 'All tests' passed`.
@@ -481,6 +486,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (desktop joined the agent-parity bijection — 3 real TS divergences surfaced immediately) —
+  `tests/agent-parity.test.ts` now runs all 19 shared vectors; check_agent_parity.py enforces iOS+Android+Desktop.
+  Caught: `formatUnitValue` Math.round half-toward-+∞ (unitConvert.ts:145), safety tokenizer ASCII `[^a-z0-9]`
+  splitting ON accents so "piné" tripped 'pin' (safety.ts:33), calculator `String(result)` 17-digit obs vs the
+  twins' canonical 12-sig NumberRender (calculator.ts renderCalcResult port). Lesson → new pattern bullet above.
+
+- 2026-07-11 (r9 H1: dual model-switch paths, UI wired to neither) — REST `POST /api/models/switch` validated
+  catalog+disk; the WS `switch_model` twin validated NEITHER (drift had already begun) and no client used either.
+  Fix: removed the WS handler + `model_switched` frame, catalog endpoint now returns `activeModelId`, SettingsArea
+  got Use/Active (badge gated on `isDownloaded` — the server pins a default id even with nothing on disk).
+  Lesson: an unused duplicate path isn't dormant, it's already drifting — kill it the day the audit finds it.
 
 - 2026-07-10 (native mac DMG dead at launch — dyld SIGABRT) — Release xcodebuild signs with
   HARDENED RUNTIME even under adhoc (`flags=0x10002(adhoc,runtime)`); library validation then

@@ -53,7 +53,6 @@ type AgentMessage =
     | { type: 'done' }
     | { type: 'action_required'; data: RequiredAction }
     | { type: 'model_download_progress'; data?: { progress?: number } }
-    | { type: 'model_switched'; modelId: string; activeModel?: string }   // Q-291: server emits on switch
     | { type: 'agent_paused'; isPaused: boolean; isRunning: boolean }     // Q-281: trust-loop pause ack
     | { type: 'agent_resumed'; manualAction: string | null; isPaused: boolean; isRunning: boolean }
     | { type: 'preset_changed'; presetId: string }

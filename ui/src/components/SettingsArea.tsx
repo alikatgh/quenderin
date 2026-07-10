@@ -97,8 +97,11 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [passphraseDraft, setPassphraseDraft] = useState('');
     const [isSaved, setIsSaved] = useState(false);
     const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
-    const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted
-    const [modelActionType, setModelActionType] = useState<'download' | 'delete' | null>(null);
+    // r9 H1: the pinned/auto-selected model, from the catalog endpoint — drives the Active badge
+    // and the Use button so a downloaded model can actually be made active from the UI.
+    const [activeModelId, setActiveModelId] = useState<string | null>(null);
+    const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted/activated
+    const [modelActionType, setModelActionType] = useState<'download' | 'delete' | 'switch' | null>(null);
     // Q-528: the last failed model action, so a rejected download/delete (bad id, missing/expired token)
     // shows the user WHY instead of just clearing the spinner as if it had succeeded.
     const [modelActionError, setModelActionError] = useState<{ id: string; message: string } | null>(null);
@@ -167,7 +170,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         // and guard on r.ok so a 5xx doesn't get JSON.parse'd as an error page and blank the catalog.
         apiFetch('/api/models/catalog')
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d) setModelCatalog(d.catalog ?? []); })
+            .then(d => {
+                if (d) {
+                    setModelCatalog(d.catalog ?? []);
+                    setActiveModelId(d.activeModelId ?? null);
+                }
+            })
             .catch(() => {});
     };
 
@@ -197,6 +205,33 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         } finally {
             // Poll catalog after a short delay to pick up download status
             setTimeout(refreshCatalog, 2000);
+            setModelActionId(null);
+            setModelActionType(null);
+        }
+    };
+
+    const handleSwitchModel = async (modelId: string) => {
+        setModelActionId(modelId);
+        setModelActionType('switch');
+        setModelActionError(null);
+        try {
+            // One canonical switch path: REST, like every other model action here (the WS
+            // switch_model twin was removed — dual unused paths had already drifted, r9 H1).
+            const res = await apiFetch('/api/models/switch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modelId }),
+            });
+            if (!res.ok) {
+                const detail = await res.json().catch(() => null);
+                setModelActionError({ id: modelId, message: detail?.error || `Switch failed (${res.status})` });
+            } else {
+                setActiveModelId(modelId);
+            }
+        } catch {
+            setModelActionError({ id: modelId, message: 'Switch failed — is the backend reachable?' });
+        } finally {
+            refreshCatalog();
             setModelActionId(null);
             setModelActionType(null);
         }
@@ -632,7 +667,13 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
-                                                {m.isDownloaded && (
+                                                {m.isDownloaded && m.id === activeModelId ? (
+                                                    // Active only makes sense for a model that exists on disk — the server pins
+                                                    // a default id at boot even when nothing is downloaded yet.
+                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
+                                                        <CheckCircle2 className="w-2.5 h-2.5" /> Active
+                                                    </span>
+                                                ) : m.isDownloaded && (
                                                     <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                                                         <CheckCircle2 className="w-2.5 h-2.5" /> Ready
                                                     </span>
@@ -651,16 +692,28 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex-shrink-0">
+                                        <div className="flex-shrink-0 flex items-center gap-2">
                                             {m.isDownloaded ? (
-                                                <button
-                                                    onClick={() => handleDeleteModel(m.id)}
-                                                    disabled={isActing}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                                >
-                                                    {isActing && modelActionType === 'delete' ? <span className="animate-spin">⟳</span> : <Trash2 className="w-3 h-3" />}
-                                                    {isActing && modelActionType === 'delete' ? 'Deleting...' : 'Delete'}
-                                                </button>
+                                                <>
+                                                    {m.id !== activeModelId && (
+                                                        <button
+                                                            onClick={() => handleSwitchModel(m.id)}
+                                                            disabled={isActing}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {isActing && modelActionType === 'switch' ? <span className="animate-spin">⟳</span> : <Zap className="w-3 h-3" />}
+                                                            {isActing && modelActionType === 'switch' ? 'Switching...' : 'Use'}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDeleteModel(m.id)}
+                                                        disabled={isActing}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                                    >
+                                                        {isActing && modelActionType === 'delete' ? <span className="animate-spin">⟳</span> : <Trash2 className="w-3 h-3" />}
+                                                        {isActing && modelActionType === 'delete' ? 'Deleting...' : 'Delete'}
+                                                    </button>
+                                                </>
                                             ) : (
                                                 <button
                                                     onClick={() => handleDownloadModel(m.id)}

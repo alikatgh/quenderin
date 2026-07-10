@@ -23,9 +23,9 @@ Base: `http://localhost:3000` (the dashboard server).
 ### Models
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/models/catalog` | All catalog models + `isDownloaded` status |
+| GET | `/api/models/catalog` | All catalog models + `isDownloaded` status, plus `activeModelId` |
 | POST | `/api/models/download` | Download a model. Body `{ modelId? }`; defaults to the hardware recommendation (kept in sync with `/health`) |
-| POST | `/api/models/switch` | Switch the active model at runtime. Body `{ modelId }` |
+| POST | `/api/models/switch` | Switch the active model at runtime (the ONE switch path — the unused WS `switch_model` twin was removed after it drifted). Body `{ modelId }` |
 | DELETE | `/api/models/:modelId` | Remove a downloaded model |
 
 ### Agent
@@ -69,11 +69,10 @@ Input is validated server-side (length caps, attachment count/size limits).
 
 | `type` | Purpose | Key fields |
 |--------|---------|-----------|
-| `start` | Start an agent objective | `goal`, optional `history`, `maxSteps` |
+| `start` | Start an agent objective | `goal`, optional `attachments`, `maxSteps` |
 | `chat` | Send a chat message | `message`, optional `attachments` |
 | `settings_update` | Change runtime settings | e.g. `contextSize` (one of `ALLOWED_CONTEXT_SIZES`) |
 | `preset_switch` | Switch assistant persona | `presetId` |
-| `switch_model` | Switch the loaded GGUF model at runtime | `modelId` |
 | `manual_voice_start` | Begin push-to-talk voice capture | — |
 | `manual_voice_stop` | End voice capture | — |
 
@@ -93,7 +92,6 @@ Input is validated server-side (length caps, attachment count/size limits).
 | `done` | Agent loop finished successfully |
 | `model_download_progress` | Download progress `{ progress, modelId }` |
 | `preset_changed` | Confirms a persona switch |
-| `model_switched` | Confirms a runtime model switch (payload `{ modelId, activeModel }`) |
 | `error` | An error to surface to the user (never silently swallowed) |
 
 ### The agent event sequence

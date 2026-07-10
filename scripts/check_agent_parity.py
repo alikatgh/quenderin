@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Verify the cross-platform agent-logic parity SUITE covers the same vectors on every platform.
 
-The shared agent logic (decision parser, safety blocklist) is hand-ported across:
+The shared agent logic (decision parser, safety blocklist, tool observation formats) is
+hand-ported across:
   - iOS     : apple/QuenderinKit/Tests/QuenderinKitTests/AgentParityTests.swift
   - Android : android/quenderin-core/src/verify/CoreVerify.kt  (the "parity:" checks)
+  - Desktop : tests/agent-parity.test.ts  (the TypeScript twin — vitest)
 
 8 of the 11 bugs in docs/audits/2026-06-26-cross-platform-correctness-audit.md were silent
 Swift<->Kotlin divergences on identical input (regex \\b, JSON \\uXXXX, date roll-over, ...).
@@ -14,13 +16,13 @@ guardrail as check_catalog_parity.py, applied to the parity SUITE instead of the
 
 The contract: every vector in shared/agent-parity-vectors.json has a stable `id`; each platform's
 suite tags the matching assertion with a `parity:<id>` marker comment. This script asserts a
-BIJECTION — every canonical id is covered on BOTH platforms, and neither platform has an orphan
+BIJECTION — every canonical id is covered on EVERY platform, and no platform has an orphan
 marker that isn't in the canonical set. A drift (case added to one platform only, or a typo'd id)
 fails CI.
 
 What it does NOT check: that each assertion's EXPECTED value is correct — that's each platform's own
 test asserting against the real parser/blocklist. This script guarantees COVERAGE parity; the suites
-guarantee CORRECTNESS. Together: both platforms test the same inputs, and each verifies the right output.
+guarantee CORRECTNESS. Together: all platforms test the same inputs, and each verifies the right output.
 
 Usage:  python3 scripts/check_agent_parity.py     # exit 0 = in sync, 1 = drift
 """
@@ -37,6 +39,7 @@ CANONICAL = ROOT / "shared" / "agent-parity-vectors.json"
 SUITES = {
     "iOS": ROOT / "apple" / "QuenderinKit" / "Tests" / "QuenderinKitTests" / "AgentParityTests.swift",
     "Android": ROOT / "android" / "quenderin-core" / "src" / "verify" / "CoreVerify.kt",
+    "Desktop": ROOT / "tests" / "agent-parity.test.ts",
 }
 
 MARKER = re.compile(r"parity:([a-z0-9][a-z0-9-]*)")
@@ -93,9 +96,9 @@ def main() -> int:
             print(f"{platform}: all {len(canonical_set)} vectors covered ✓")
 
     if ok:
-        print("\nAgent parity suites are in sync across iOS + Android.")
+        print("\nAgent parity suites are in sync across iOS + Android + Desktop.")
         return 0
-    print("\nAgent parity DRIFT — add the missing case (or fix the id) so both platforms cover every vector.")
+    print("\nAgent parity DRIFT — add the missing case (or fix the id) so every platform covers every vector.")
     return 1
 
 

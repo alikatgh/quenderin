@@ -276,6 +276,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         return MODEL_CATALOG.find(m => m.id === this.activeModelId)?.label ?? this.activeModelId;
     }
 
+    /** The pinned/auto-selected model id — lets the catalog endpoint mark the active row (r9 H1). */
+    public getActiveModelId(): string {
+        return this.activeModelId;
+    }
+
     /** Create a LlamaChatSession using the dynamically imported class */
     private createChatSession(opts: { contextSequence: any; systemPrompt?: string; autoDisposeSequence?: boolean }): any {
         if (!_llamaBindings) throw new Error('LLM bindings not available');
@@ -562,9 +567,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw err;
         }
         if (this.isInferenceBusy()) {
-            // Q-283: THROW, don't silently return — a bare return let WS emit `model_switched` and
-            // REST return "Model switched." while nothing changed. Both callers already catch
-            // switchModel throws (they must — unknown/missing model throw), so this reports failure.
+            // Q-283: THROW, don't silently return — a bare return let the switch route report
+            // "Model switched." while nothing changed. The REST caller (the one switch path since
+            // the WS twin was removed) already catches switchModel throws, so this reports failure.
             logger.warn('[Lifecycle] Cannot switch model during active generation');
             const err = new Error('INFERENCE_BUSY');
             (err as NodeJS.ErrnoException).code = 'INFERENCE_BUSY';

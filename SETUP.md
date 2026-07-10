@@ -143,17 +143,19 @@ This directory is created automatically on first run. You can also set `modelPat
 
 ### Downloading models
 
-Use the **Models** tab in the dashboard, or trigger a download via the WebSocket API:
+Use **Settings → AI Model Manager** in the dashboard, or trigger a download via REST:
 
-```json
-{ "type": "download_model", "modelId": "llama-3.2-3b" }
+```bash
+curl -X POST http://localhost:3000/api/models/download \
+  -H "X-Auth-Token: <per-launch token>" -H "Content-Type: application/json" \
+  -d '{ "modelId": "llama32-3b" }'
 ```
 
-Download progress is streamed back as `download_progress` WebSocket events. If interrupted, the download resumes automatically using HTTP range requests — partial files are preserved.
+Download progress is streamed back as `model_download_progress` WebSocket events. If interrupted, the download resumes automatically using HTTP range requests — partial files are preserved.
 
 ### RAM-aware auto-selection
 
-At startup, `LlmService` iterates the model catalog (8B → 3B → 1B) and picks the first model that:
+At startup, `LlmService` iterates the model catalog from largest to smallest (see the generated table in `FEATURES.md`) and picks the first model that:
 1. Exists on disk
 2. Fits within safe memory limits (when memory safety is enabled)
 
@@ -166,7 +168,7 @@ You can disable memory safety in Settings if you want to force-load a larger mod
 | First chat message | Model loaded from disk into memory |
 | Concurrent requests during load | Deduplicated — only one load occurs |
 | 30 min idle | Model automatically unloaded to free RAM |
-| `switch_model` WebSocket message | Previous model unloaded; new model loads on next request |
+| `POST /api/models/switch` (the **Use** button) | Previous model unloaded; new model loads on next request |
 | Active generation | Idle timer paused; model never unloaded mid-generation |
 
 ---

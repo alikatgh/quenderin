@@ -5,7 +5,7 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { availableMemBytes } from '../../utils/memory.js';
-import { safeCalculate, CalculatorError } from './calculator.js';
+import { safeCalculate, renderCalcResult, CalculatorError } from './calculator.js';
 import { runUnitConversion } from './unitConvert.js';
 import { ToolCall, ToolResult, AVAILABLE_TOOLS, maxToolCallsPerResponse } from './registry.js';
 import { getSharedMemoryService } from '../memory.service.js';
@@ -77,7 +77,9 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
                     return { tool: 'calculator', success: false, result: '', error: 'Missing expression parameter' };
                 }
                 const result = safeCalculate(expression);
-                return { tool: 'calculator', success: true, result: String(result) };
+                // Canonical cross-platform rendering (parity: calc-canonical-render) — String(result)
+                // gave the desktop agent a 17-digit observation the mobile twins never see.
+                return { tool: 'calculator', success: true, result: renderCalcResult(result) };
             }
 
             case 'unit_convert': {

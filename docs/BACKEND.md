@@ -25,7 +25,7 @@ downloads (resumable, with progress events), and **memory-fitness** checks
 idle models are released after a timeout to reclaim RAM.
 
 ### Agent (`agent.service.ts` + `agent/`)
-The OS agent loop — `runAgentLoop(goal, emitter, history, maxSteps)`. Composed of:
+The OS agent loop — `runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs)`. Composed of:
 - `agent/promptBuilder.ts` — assembles perception + history into the planner prompt.
 - `agent/actionExecutor.ts` — maps the LLM's symbolic action (`{action,id}`) to
   real input, with the **safety blocklist** gate.

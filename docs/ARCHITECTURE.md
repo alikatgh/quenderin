@@ -125,7 +125,7 @@ acts through tools, not by driving the OS.
 ## Data flow (an agent objective)
 
 1. UI sends a `start` message with a goal.
-2. `agent.service.runAgentLoop(goal, emitter, history, maxSteps)` begins.
+2. `agent.service.runAgentLoop(goal, emitter, attachments, maxSteps, maxWallClockMs)` begins.
 3. Each turn emits `observe` → `decide` → `action`; the Inspector panel renders
    them. `action_required` pauses for human confirmation when needed.
 4. `done` (or `error`) ends the run.

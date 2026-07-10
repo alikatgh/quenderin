@@ -30,7 +30,10 @@ export const AGENT_BLOCKLIST = [
 export function matchedBlockedKeyword(raw: string): string | undefined {
     const spaced = raw.replace(/([a-z0-9])([A-Z])/g, '$1 $2'); // camelCase → spaced before lowercasing
     const lower = spaced.toLowerCase();
-    const tokens = new Set(lower.split(/[^a-z0-9]+/).filter(Boolean));
+    // Unicode-aware tokenizer (parity: blocklist-unicode-boundary): an accented letter adjacent to a
+    // keyword makes a DIFFERENT word — "piné"/"épin" must NOT trip 'pin'. The old ASCII class
+    // [^a-z0-9] split ON the accent, the exact \b-isn't-Unicode trap the Java twin fell into.
+    const tokens = new Set(lower.split(/[^\p{L}\p{N}]+/u).filter(Boolean));
     for (const kw of AGENT_BLOCKLIST) {
         if (kw.includes(' ')) {
             if (lower.includes(kw)) return kw;

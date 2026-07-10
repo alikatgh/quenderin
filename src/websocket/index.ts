@@ -451,25 +451,6 @@ export class WebSocketManager {
                                 ws.send(JSON.stringify({ type: 'preset_changed', presetId }));
                             }
                         }
-                    } else if (data.type === 'switch_model') {
-                        const modelId = typeof data.modelId === 'string' ? data.modelId.trim() : '';
-                        if (!modelId) {
-                            ws.send(JSON.stringify({ type: 'error', message: 'modelId is required.' }));
-                            return;
-                        }
-                        try {
-                            await this.llmService.switchModel(modelId);
-                            if (ws.readyState === WebSocket.OPEN) {
-                                ws.send(JSON.stringify({
-                                    type: 'model_switched',
-                                    modelId,
-                                    activeModel: this.llmService.getActiveModelLabel(),
-                                }));
-                            }
-                        } catch (e: unknown) {
-                            const msg = e instanceof Error ? e.message : 'Failed to switch model.';
-                            ws.send(JSON.stringify({ type: 'error', message: msg }));
-                        }
                     } else if (data.type === 'manual_voice_start') {
                         this.voiceService.manualCaptureStart();
                     } else if (data.type === 'manual_voice_stop') {

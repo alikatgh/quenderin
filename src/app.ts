@@ -218,7 +218,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 }
                 return { ...m, isDownloaded, fileSizeBytes };
             }));
-            res.json({ catalog });
+            // activeModelId lets the Model Manager render the Active badge + Use buttons (r9 H1).
+            res.json({ catalog, activeModelId: llmService.getActiveModelId() });
         });
 
         app.post('/api/models/download', (req, res) => {

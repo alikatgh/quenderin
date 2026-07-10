@@ -246,3 +246,62 @@ export function safeCalculate(expression: string): number {
     }
     return result;
 }
+
+/**
+ * ONE number→string rendering for tool observations, byte-identical across the twins
+ * (Swift NumberRender in apple/.../AgentTool.swift, Kotlin NumberRender in
+ * android/.../AgentTool.kt) — platform-native shortest-repr strings diverge in digits AND
+ * presentation ("1.1805916207174113e+21" here vs "1.18…E21" on Android), feeding the agent
+ * loop different observations for the same value (twin-drift audit, agent-session P2).
+ * Contract: 12 significant digits with HALF-EVEN ties on the EXACT decimal expansion of the
+ * double (BigDecimal on Android, C's correctly-rounded %.11e on iOS — JS toExponential breaks
+ * decimal ties by picking the LARGER digit, so it cannot be used here), plain decimal for
+ * exponents -5…14, canonical scientific ("1.18059162072e+21") outside.
+ */
+export function renderCalcResult(v: number): string {
+    // Render integers without a trailing .0 — same shortcut as the twins' CalculatorTool.run.
+    if (Math.round(v) === v && Math.abs(v) < 1e15) return String(v);
+    return canonicalNumber(v);
+}
+
+function canonicalNumber(v: number): string {
+    if (!Number.isFinite(v)) return String(v);
+    if (v === 0) return '0';
+
+    // Exact decimal expansion of the double: v = ±m × 2^e with m, e from the IEEE-754 bits.
+    const view = new DataView(new ArrayBuffer(8));
+    view.setFloat64(0, v);
+    const bits = view.getBigUint64(0);
+    const sign = bits >> 63n ? '-' : '';
+    const expBits = Number((bits >> 52n) & 0x7ffn);
+    const fracBits = bits & 0xfffffffffffffn;
+    const m = expBits === 0 ? fracBits : fracBits | (1n << 52n);
+    const e = expBits === 0 ? -1074 : expBits - 1075;
+
+    // m × 2^e as unscaled × 10^-scale (exact): e ≥ 0 shifts into the integer; e < 0 uses 2^-k = 5^k/10^k.
+    let unscaled = e >= 0 ? m << BigInt(e) : m * 5n ** BigInt(-e);
+    let scale = e >= 0 ? 0 : -e;
+
+    // Round to 12 significant digits, HALF-EVEN — the BigDecimal MathContext(12, HALF_EVEN) twin.
+    let digits = unscaled.toString();
+    if (digits.length > 12) {
+        const rest = digits.slice(12);
+        scale -= rest.length;
+        let kept = BigInt(digits.slice(0, 12));
+        const restNum = BigInt(rest);
+        const half = 5n * 10n ** BigInt(rest.length - 1);
+        if (restNum > half || (restNum === half && kept % 2n === 1n)) kept += 1n;
+        digits = kept.toString(); // a 999…→1000… rollover just adds a trailing zero; assemble handles it
+    }
+
+    // The shared presentation half — same tokens as the Swift/Kotlin assemble().
+    const exponent = digits.length - 1 - scale;
+    digits = digits.replace(/0+$/, '') || '0';
+    if (exponent >= -5 && exponent <= 14) {
+        if (exponent >= digits.length - 1) return sign + digits + '0'.repeat(exponent - (digits.length - 1));
+        if (exponent >= 0) return sign + digits.slice(0, exponent + 1) + '.' + digits.slice(exponent + 1);
+        return sign + '0.' + '0'.repeat(-exponent - 1) + digits;
+    }
+    const mantissa = digits.length === 1 ? digits : digits[0] + '.' + digits.slice(1);
+    return `${sign}${mantissa}e${exponent >= 0 ? '+' : '-'}${Math.abs(exponent)}`;
+}

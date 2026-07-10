@@ -1,61 +1,51 @@
-# Quenderin Web UI
+# Quenderin Dashboard UI
 
-Super simple drag-and-drop interface for LLM connection setup.
+The React front-end for the Quenderin dashboard — chat, governed tasks, the device
+agent, metrics, and settings (including the AI Model Manager). Served in production
+by the local Node backend; run standalone against it during development.
 
-## Features
+## Stack
 
-- **Drag & Drop**: Drop your `quenderin.json` config file directly
-- **Auto-detection**: Automatically detects local Ollama installation
-- **Multiple Providers**: Support for Ollama, OpenAI, and OpenAI-compatible APIs
-- **Live Testing**: Test your connection before saving
-- **Beautiful UI**: Modern, gradient design with smooth animations
+- **React 18 + TypeScript**, built with **Vite**
+- **Tailwind CSS** for styling
+- State over a single **WebSocket** (`src/hooks/useAgentSocket.ts`) plus REST
+  helpers (`src/lib/api.ts` — every state-changing call goes through `apiFetch`,
+  which attaches the per-launch `X-Auth-Token`)
 
-## Usage
+## Development
 
-Start the UI server:
-
-```bash
-quenderin ui
-```
-
-Then open your browser to: `http://localhost:3777`
-
-You can specify a custom port:
+Start the backend first (from the repo root):
 
 ```bash
-quenderin ui --port 8080
+npx tsx src/index.ts dashboard --no-open
+# prints: Open this URL to connect: http://localhost:3000/?token=<per-launch token>
 ```
 
-## Setup Methods
+Then the UI dev server:
 
-### 1. Drag & Drop Config File
-Simply drag and drop your `quenderin.json` file into the drop zone.
+```bash
+cd ui && npm run dev
+```
 
-### 2. Quick Setup Form
-Choose your provider and fill in the details:
+Open `http://localhost:5173/?token=<token from the backend log>`. Vite proxies
+`/api` and the WebSocket to `localhost:3000` (see `vite.config.ts`), and the
+renderer reads the token from `?token=` once, then strips it from the URL.
 
-- **Auto-detect**: Automatically finds and uses Ollama if available
-- **Ollama**: Local LLM server (requires Ollama running)
-- **OpenAI**: Official OpenAI API
-- **OpenAI-Compatible**: Works with OpenRouter, Groq, LocalAI, etc.
+## Build
 
-### 3. Test Connection
-Click "Test Connection" to verify your setup before saving.
+```bash
+npm run build      # from ui/, or `npm run build:ui` from the repo root
+```
 
-## API Endpoints
+Output lands in `ui/dist` and is what Electron / the packaged dashboard serves.
 
-The UI server exposes these endpoints:
+## Conventions
 
-- `GET /api/config` - Get current configuration
-- `POST /api/config` - Save configuration
-- `POST /api/upload-config` - Upload config file (multipart/form-data)
-- `POST /api/test-connection` - Test LLM connection
-- `GET /api/detect-ollama` - Auto-detect Ollama
-
-## Technology
-
-- Express.js server
-- Vanilla JavaScript (no frameworks needed)
-- Modern CSS with gradients and animations
-- Drag & Drop API
-- Fetch API for backend communication
+- New WebSocket message types must be added to the interfaces on **both** sides
+  (client `src/hooks/useAgentSocket.ts` server-message union, server `src/types/`)
+  and to the tables in `docs/API.md`.
+- Model management (catalog, download, delete, switch) is **REST-only** — the
+  WS `switch_model` twin was removed after it drifted unused (r9 H1).
+- All inference is 100% local (`node-llama-cpp`); there is no external-provider
+  configuration. (An earlier version of this README described a long-dead Ollama
+  drag-and-drop setup page on port 3777 — that UI no longer exists; r7 C1.)

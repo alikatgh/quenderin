@@ -6,15 +6,29 @@ Comprehensive reference for every major capability in Quenderin.
 
 ## 1. Multi-model catalog with RAM-aware auto-selection
 
-Quenderin ships with a built-in catalog of three Llama model tiers. At startup, it scans which models are present on disk and automatically picks the largest one that safely fits within available system RAM.
+Quenderin ships with a built-in multi-model catalog spanning coding, reasoning, multilingual, and general-purpose tiers. At startup, it scans which models are present on disk and automatically picks the largest one that safely fits within available system RAM.
 
 **Available models:**
 
-| ID | Label | RAM Footprint | Quality |
-|----|-------|---------------|---------|
-| `llama-3-8b` | Llama 3 8B | ~8–10 GB | Best — strong reasoning, coding, instruction following |
-| `llama-3.2-3b` | Llama 3.2 3B | ~4 GB | Balanced — good everyday quality at moderate speed |
-| `llama-3.2-1b` | Llama 3.2 1B | ~2 GB | Fastest — OK for simple questions on constrained hardware |
+<!-- BEGIN GENERATED: model-catalog (scripts/generate_features_models.py) -->
+_13 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
+
+| ID | Label | Params | RAM footprint | Download | Quantization |
+|----|-------|--------|---------------|----------|--------------|
+| `qwen36-35b-a3b` | Qwen3.6 35B MoE (Best Agent, Big Download) | 35B | ~5.5 GB | 13.2 GB download | `UD-IQ3_XXS` |
+| `qwen3-14b` | Qwen3 14B (Best Quality) | 14B | ~11 GB | 9.0 GB download | `Q4_K_M` |
+| `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.4 GB download | `Q4_K_M` |
+| `qwen25-coder-7b` | Qwen2.5 Coder 7B (Coding) | 7B | ~6.5 GB | 4.7 GB download | `Q4_K_M` |
+| `deepseek-r1-7b` | DeepSeek-R1 7B (Reasoning) | 7B | ~6.5 GB | 4.7 GB download | `Q4_K_M` |
+| `llama3-8b` | Llama 3 8B (Best Quality) | 8B | ~6.75 GB | 4.7 GB download | `Q4_K_M` |
+| `mistral-7b` | Mistral 7B (All-Rounder) | 7B | ~6 GB | 4.1 GB download | `Q4_K_M` |
+| `gemma3-4b` | Gemma 3 4B (Multilingual) | 4B | ~3.8 GB | 2.5 GB download | `Q4_K_M` |
+| `qwen3-4b` | Qwen3 4B (Everyday) | 4B | ~3.6 GB | 2.4 GB download | `Q4_K_M` |
+| `phi4-mini` | Phi-4 Mini 3.8B (Efficient) | 3.8B | ~3.4 GB | 2.3 GB download | `Q4_K_M` |
+| `llama32-3b` | Llama 3.2 3B (Balanced) | 3B | ~3 GB | 2.0 GB download | `Q4_K_M` |
+| `llama32-1b` | Llama 3.2 1B (Light) | 1B | ~1.5 GB | 0.8 GB download | `Q4_K_M` |
+| `llama32-1b-q2` | Llama 3.2 1B Ultra-Light (Low RAM) | 1B | ~0.7 GB | 0.4 GB download | `Q2_K` |
+<!-- END GENERATED: model-catalog -->
 
 **Selection logic:**
 1. Iterate catalog from largest to smallest model
@@ -22,7 +36,7 @@ Quenderin ships with a built-in catalog of three Llama model tiers. At startup, 
 3. If memory safety is enabled, verify free RAM against the model's footprint
 4. Use the first model that passes both checks
 
-If you want to force a specific model, manage it through the Models tab or send a `switch_model` WebSocket message with the model ID.
+If you want to force a specific model, use the **Use** button in Settings → AI Model Manager (or `POST /api/models/switch` with the model ID).
 
 ---
 
@@ -177,7 +191,7 @@ Quenderin enforces safe boundaries on all configurable values and provides a one
 
 Settings outside the allowlist are rejected by the backend validator before being applied.
 
-**Reset Defaults:** Available in the Settings tab. Sends a `reset_settings` WebSocket message; all values revert to defaults without requiring a restart.
+**Reset Defaults:** Available in the Settings tab. Restores the defaults locally and pushes them to the backend as a normal `settings_update` message; all values revert without requiring a restart.
 
 ---
 

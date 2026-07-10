@@ -144,7 +144,10 @@ export function convertUnits(value: number, from: string, to: string): number | 
 /** Format a numeric result: integers stay integers, otherwise up to 4 decimals. */
 export function formatUnitValue(v: number): string {
     if (Math.round(v) === v && Math.abs(v) < 1e12) return String(v);
-    return String(Math.round(v * 10000) / 10000); // up to 4 decimal places
+    // Round half AWAY FROM ZERO (parity: unit-format-half-away-from-zero) — bare Math.round is
+    // floor(x+0.5), half toward +∞, so -0.00025 rendered "-0.0002" here while the twins say "-0.0003".
+    const scaled = v * 10000;
+    return String((Math.sign(scaled) * Math.round(Math.abs(scaled))) / 10000); // up to 4 decimal places
 }
 
 /**
