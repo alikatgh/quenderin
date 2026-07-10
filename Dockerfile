@@ -3,9 +3,11 @@
 # Suitable for x86_64 and ARM64 hosts (Raspberry Pi 4+, cloud VMs, etc.)
 #
 # Build:   docker build -t quenderin .
-# Run:     docker run -p 3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
+# Run:     docker run -p 127.0.0.1:3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
 #          then `docker logs <container>` and open the printed ?token= URL (auth is per-launch).
-# With GPU: docker run --gpus all -p 3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
+#          (Bind the publish to 127.0.0.1 — a bare `-p 3000:3000` publishes on ALL host
+#           interfaces, exposing the dashboard to the LAN; drop the prefix only deliberately.)
+# With GPU: docker run --gpus all -p 127.0.0.1:3000:3000 -v quenderin-models:/home/app/.quenderin quenderin
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────────────
 FROM node:20-slim AS builder

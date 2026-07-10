@@ -17,9 +17,10 @@
 | r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
 | r19–r36, r40 | 19 | 0 | Claude inline Waves C–F (2026-07-11) |
 | r37–r39 | 3 | 0 | Claude inline Wave G (2026-07-11) |
-| r41–r50 | 0 | 10 | Per master plan lens schedule |
+| r41–r47 | 7 | 0 | Claude inline Wave H (2026-07-11) |
+| r48–r50 | 0 | 3 | Per master plan lens schedule |
 
-**Next recommended round:** r41–r47 (Wave H) — waves running 2026-07-11.
+**Next recommended round:** r48–r50 (Wave I) — final wave, running 2026-07-11.
 
 ---
 
@@ -67,7 +68,14 @@
 | 38 | refactor-opportunities | ✅ Done (2026-07-11) | [r38](./2026-07-11-r38-quenderin-refactor-opportunities.md) | 4 opportunistic (documented) |
 | 39 | ops-scripts | ✅ Done (2026-07-11, crash.log added) | [r39](./2026-07-11-r39-quenderin-ops-scripts.md) | 0 |
 | 40 | config-security | ✅ Done (2026-07-11, pulled into Wave C) | [2026-07-11-r40-quenderin-config-security.md](./2026-07-11-r40-quenderin-config-security.md) | 0 (1 Low fixed) |
-| 41–50 | … | ⏳ Pending | — | See master plan |
+| 41 | security-3 | ✅ Done (2026-07-11, 1 fixed) | [r41](./2026-07-11-r41-quenderin-security-3.md) | 0 (docker -p host-bind fixed) |
+| 42 | correctness-3 | ✅ Done (2026-07-11) | [r42](./2026-07-11-r42-quenderin-correctness-3.md) | 0 |
+| 43 | performance-3 | ✅ Done (2026-07-11) | [r43](./2026-07-11-r43-quenderin-performance-3.md) | 1 open (KV shift, unchanged) |
+| 44 | arch-2 | ✅ Done (2026-07-11) | [r44](./2026-07-11-r44-quenderin-arch-2.md) | 2 pressure points documented |
+| 45 | deadcode-2 | ✅ Done (2026-07-11) | [r45](./2026-07-11-r45-quenderin-deadcode-2.md) | 0 |
+| 46 | docs-2 | ✅ Done (2026-07-11) | [r46](./2026-07-11-r46-quenderin-docs-2.md) | 0 |
+| 47 | research-2 | ✅ Done (2026-07-11) | [r47](./2026-07-11-r47-quenderin-research-2.md) | 1 standing (KV shift) |
+| 48–50 | … | ⏳ Pending | — | See master plan |
 
 ---
 
