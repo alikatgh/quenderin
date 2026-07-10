@@ -29,7 +29,7 @@ class CoreTest {
     }
 
     @Test fun catalogIntegrity() {
-        assertEquals(12, ModelCatalog.models.size)
+        assertEquals(13, ModelCatalog.models.size)
         assertEquals("llama32-1b-q2", ModelCatalog.smallest.id)
         ModelCatalog.models.forEach { assertNotNull(Quantization.info(it.quantization)) }
     }
@@ -37,6 +37,11 @@ class CoreTest {
     @Test fun memoryFitness() {
         assertFalse(MemoryFitness.check(ModelCatalog.entry("llama3-8b")!!, 8.0, 4.0).canLoad)
         assertEquals(MemorySeverity.SAFE, MemoryFitness.check(ModelCatalog.entry("llama32-1b")!!, 16.0, 12.0).severity)
+        // Paged MoE budgets its RESIDENT set (5.5 GB spine+hot experts), not the 13.2 GB file:
+        // safe on 16 GB, blocked on 8 GB — twin of the Swift MoEShapeTests assertions.
+        val moe = ModelCatalog.entry("qwen36-35b-a3b")!!
+        assertEquals(MemorySeverity.SAFE, MemoryFitness.check(moe, 16.0, 16.0).severity)
+        assertFalse(MemoryFitness.check(moe, 8.0, 8.0).canLoad)
     }
 
     @Test fun safetyBlocklist() {

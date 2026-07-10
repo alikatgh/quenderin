@@ -49,7 +49,7 @@ final class ModelRecommenderTests: XCTestCase {
     }
 
     func testCatalogIntegrity() {
-        XCTAssertEqual(ModelCatalog.models.count, 12)
+        XCTAssertEqual(ModelCatalog.models.count, 13)
         for model in ModelCatalog.models {
             XCTAssertNotNil(model.downloadURL, "\(model.id) has a malformed URL")
             XCTAssertNotNil(Quantization.info(id: model.quantization), "\(model.id) uses unknown quant \(model.quantization)")

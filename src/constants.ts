@@ -47,6 +47,21 @@ export const MODEL_RECOMMENDATIONS = [
  * ramGb = estimated peak RAM footprint including context overhead.
  */
 export const MODEL_CATALOG = [
+    // Paged MoE: only ~3B of 35B params run per token, so with mmap the OS page cache
+    // streams the experts from disk — ramGb is the RESIDENT set (dense spine + hot
+    // experts), NOT the 13.2 GB file. Needs a fast SSD; when the file exceeds what the
+    // GPU can safely wire, the engine loads it CPU-only (gpuOffloadFits below).
+    {
+        id: 'qwen36-35b-a3b',
+        label: 'Qwen3.6 35B MoE (Best Agent, Big Download)',
+        filename: 'qwen3.6-35b-a3b.UD-IQ3_XXS.gguf',
+        ramGb: 5.5,
+        sizeLabel: '13.2 GB download',
+        paramsBillions: 35,
+        quantization: 'UD-IQ3_XXS',
+        url: 'https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true',
+        sha256: '9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe',
+    },
     {
         id: 'qwen3-14b',
         label: 'Qwen3 14B (Best Quality)',
@@ -209,6 +224,20 @@ export function getBestInstallableModel(totalRamGb: number): ModelEntry['id'] {
         if ((!fitting || m.ramGb > fitting.ramGb) && checkMemoryForModel(m).canLoad) fitting = m;
     }
     return (fitting ?? MODEL_CATALOG[MODEL_CATALOG.length - 1]).id;
+}
+
+/**
+ * Should the engine even TRY GPU offload for this file? Offload wires the weights into
+ * GPU-visible memory, so a file bigger than the machine can spare doesn't gracefully
+ * page — it thrashes or hard-fails the load. CPU-only + mmap hands paging to the OS
+ * page cache instead (read-only pages, no swap writes) — the verified configuration for
+ * a paged MoE like the 13 GB 35B-A3B on 16 GB machines. Twin of the Swift
+ * GpuOffloadPolicy / Android GpuOffloadPlanner decision, desktop-flavored: the budget is
+ * ~70% of total RAM (the OS + app need the rest; unified-memory Macs cap the GPU
+ * working set around there anyway).
+ */
+export function gpuOffloadFits(fileSizeGb: number, totalRamGb: number): boolean {
+    return fileSizeGb <= totalRamGb * 0.7;
 }
 
 /** Resolves the full path for a model by its catalog id */

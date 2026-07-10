@@ -18,6 +18,7 @@ data class QuantizationInfo(
 object Quantization {
     val all: List<QuantizationInfo> = listOf(
         QuantizationInfo("Q2_K", 2.625, "Low", false),
+        QuantizationInfo("UD-IQ3_XXS", 3.02, "Fair", false),
         QuantizationInfo("Q3_K_M", 3.5, "Fair", false),
         QuantizationInfo("Q4_K_M", 4.5, "Good", true),
         QuantizationInfo("Q5_K_M", 5.5, "High", false),
@@ -46,6 +47,10 @@ data class ModelEntry(
 /** Multi-family catalog, sorted best → smallest. Mirrors MODEL_CATALOG. */
 object ModelCatalog {
     val models: List<ModelEntry> = listOf(
+        // Paged MoE: ~3B of 35B params run per token; ramGB is the RESIDENT set (dense spine +
+        // hot experts, mmap streams the rest) — not the 13.2 GB file. MemoryFitness hides it on
+        // ordinary phones; it exists for the 16 GB+ tablets/laptops the catalog also serves.
+        ModelEntry("qwen36-35b-a3b", "Qwen3.6 35B MoE (Best Agent, Big Download)", "qwen3.6-35b-a3b.UD-IQ3_XXS.gguf", 5.5, "13.2 GB download", 35.0, "UD-IQ3_XXS", "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true", "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe"),
         ModelEntry("qwen3-14b", "Qwen3 14B (Best Quality)", "qwen3-14b.Q4_K_M.gguf", 11.0, "9.0 GB download", 14.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true", "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0"),
         ModelEntry("gemma4-12b", "Gemma 4 12B (Multilingual)", "gemma-4-12b-it.Q4_K_M.gguf", 9.0, "7.4 GB download", 12.0, "Q4_K_M", "https://huggingface.co/ggml-org/gemma-4-12B-it-GGUF/resolve/main/gemma-4-12B-it-Q4_K_M.gguf?download=true", "1278394b693672ac2799eadc9a83fd98259a6a88a40acfb1dcaa6c6fc895a606"),
         ModelEntry("qwen25-coder-7b", "Qwen2.5 Coder 7B (Coding)", "qwen2.5-coder-7b-instruct.Q4_K_M.gguf", 6.5, "4.7 GB download", 7.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true", "509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c"),

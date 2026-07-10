@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     getRecommendedModelIdForTotalRam,
+    gpuOffloadFits,
     MODEL_CATALOG,
     modelPath,
     ALLOWED_CONTEXT_SIZES,
@@ -31,8 +32,36 @@ describe('MODEL_CATALOG', () => {
 
     it('all models have valid quantization labels', () => {
         for (const m of MODEL_CATALOG) {
-            expect(m.quantization).toMatch(/^Q\d/);
+            // Q4_K_M / Q2_K …, plus i-quants and Unsloth dynamic ("UD-IQ3_XXS").
+            expect(m.quantization).toMatch(/^(UD-)?I?Q\d/);
         }
+    });
+
+    it('paged-MoE entry budgets the RESIDENT set, not the file', () => {
+        // qwen36-35b-a3b streams experts from disk via mmap: ramGb must reflect the
+        // dense-spine + hot-experts working set (~5.5), NOT the 13.2 GB download —
+        // the whole point is that a 16 GB machine can run it.
+        const moe = MODEL_CATALOG.find(m => m.id === 'qwen36-35b-a3b')!;
+        expect(moe).toBeDefined();
+        expect(moe.ramGb).toBeLessThan(6);
+        expect(moe.sizeLabel).toContain('13.2');
+    });
+});
+
+describe('gpuOffloadFits', () => {
+    it('offloads when the file fits the GPU budget', () => {
+        expect(gpuOffloadFits(9.0, 16)).toBe(true);    // dense 14B on 16 GB
+        expect(gpuOffloadFits(13.2, 32)).toBe(true);   // paged MoE on a big machine
+    });
+
+    it('refuses offload when weights exceed the budget (paged MoE path)', () => {
+        expect(gpuOffloadFits(13.2, 16)).toBe(false);  // 13.2 GB 35B-A3B on 16 GB → CPU + mmap
+        expect(gpuOffloadFits(19.0, 24)).toBe(false);
+    });
+
+    it('boundary sits at 70% of total RAM', () => {
+        expect(gpuOffloadFits(11.2, 16)).toBe(true);
+        expect(gpuOffloadFits(11.3, 16)).toBe(false);
     });
 });
 

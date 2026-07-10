@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Paged MoE — frontier-class agent quality on 16 GB machines
+- **New catalog flagship: Qwen3.6 35B MoE** (`qwen36-35b-a3b`, UD-IQ3_XXS, 13.2 GB, sha256-pinned,
+  all platforms + shared manifest). Only ~3B of 35B params run per token, so with mmap the OS page
+  cache streams the experts from disk — measured 17.3 tok/s on a 16 GB M4 (CPU-only, 4–6 GB
+  resident, zero swap). Directly attacks the "agent quality is model-bound" ceiling.
+- **`MoEShape` (Swift):** detects the `…-35B-A3B` naming convention and estimates the paged
+  RESIDENT set — open-catalog search & fitness no longer tell a 16 GB Mac that a runnable
+  13 GB MoE "needs 20 GB". Filters gate MoE by ACTIVE params (size class per token) while
+  download caps stay honest on total size.
+- **GPU offload is now a policy, not a constant:** Swift `GpuOffloadPolicy` (twin of Android's
+  `GpuOffloadPlanner`) keeps Metal offload when weights fit the app budget and goes CPU-only
+  + mmap when they don't (wiring an over-budget file thrashes the Metal working set); desktop
+  `gpuOffloadFits` does the same before trying GPU.
+- Agent-screen upgrade copy is MoE-honest (13 GB download, SSD-streamed) — never the generic
+  "slightly slower replies". `check_catalog_parity.py` fixed to parse hyphenated quant ids.
+
 ## 0.2.0 — 2026-07-09
 
 ### Distribution

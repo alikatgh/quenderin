@@ -61,7 +61,11 @@ public enum AgentModelGuide {
     /// while same-size `gemma3-4b` is only **capable** — exactly the gap the shipped experience turns on.
     public static func aptitude(for id: String) -> AgentAptitude {
         switch id {
-        case "qwen3-14b":
+        // The paged 35B MoE is the strongest tool-caller in the catalog. agentRank's params
+        // nudge still prefers the 14B when BOTH fit (32 GB+); on 16 GB — where the 85% budget
+        // blocks the 14B — the MoE is the honest best and briefing() offers it with dedicated
+        // paged-MoE copy (13 GB download, SSD-streamed), never the generic "slightly slower".
+        case "qwen36-35b-a3b", "qwen3-14b":
             return .excellent
         case "gemma4-12b", "qwen25-coder-7b", "deepseek-r1-7b", "llama3-8b", "mistral-7b", "qwen3-4b":
             return .strong
@@ -96,10 +100,19 @@ public enum AgentModelGuide {
         var hardwareLine: String
         if let active, let best, best.id != active.id, bestAptitude > activeAptitude {
             hardwareLine = "Your \(deviceNoun) has \(gb) GB of memory — enough to run a more capable agent, fully on-device."
+            // The paged MoE earns different honesty: it's the strongest agent this class of
+            // hardware can run, but "more memory, slightly slower" would misdescribe a 13 GB
+            // download whose experts stream from the SSD. Never oversell the flagship.
+            let reason: String
+            if best.id == "qwen36-35b-a3b" {
+                reason = "The strongest agent your \(deviceNoun) can run: a 35B mixture-of-experts model that keeps only its active parts in memory and streams the rest from your SSD. It's a 13 GB download and replies stream a bit slower — but it plans and recovers like nothing smaller. Switch anytime in Settings › Model."
+            } else {
+                reason = "Bigger models pick the right tool more often and recover from mistakes on their own — at the cost of more memory and slightly slower replies. Switch anytime in Settings › Model."
+            }
             upgrade = .init(
                 modelLabel: best.label,
                 aptitude: bestAptitude,
-                reason: "Bigger models pick the right tool more often and recover from mistakes on their own — at the cost of more memory and slightly slower replies. Switch anytime in Settings › Model."
+                reason: reason
             )
         } else {
             hardwareLine = "Your \(deviceNoun) has \(gb) GB of memory — comfortably enough to run this model, fully on-device."

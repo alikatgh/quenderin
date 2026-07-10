@@ -60,7 +60,8 @@ def parse_named(text: str) -> Catalog:
         block = text[starts[i]:starts[i + 1]]
         idm = re.search(r"""id:\s*['"]([\w.-]+)['"]""", block)
         pm = re.search(r"""paramsBillions:\s*([\d.]+)""", block)
-        qm = re.search(r"""quantization:\s*['"]([\w_]+)['"]""", block)
+        # Hyphen is legal in quant ids ("UD-IQ3_XXS" — Unsloth dynamic quants).
+        qm = re.search(r"""quantization:\s*['"]([\w_-]+)['"]""", block)
         if not (idm and pm and qm):
             continue  # a stray `id:` that isn't a model entry
         # Hex is case-insensitive; accept mixed/upper-case and normalize, so a hand-pasted
@@ -74,7 +75,7 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?\s*\)""",
         text,
     ):
         mid, params, quant = m.group(1), float(m.group(2)), m.group(3)

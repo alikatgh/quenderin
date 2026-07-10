@@ -18,8 +18,9 @@ package ai.quenderin.core
  * stay on CPU (correct + stable) until that device is actually benchmarked on real hardware. A
  * [forceGpu] override exists precisely so you can A/B an untrusted GPU on a physical device.
  *
- * Pure + testable. Twin note: iOS `LlamaEngine` offloads all layers unconditionally because Metal is a
- * single, uniform, Apple-controlled driver — the heterogeneity that forces this decision is Android-only.
+ * Pure + testable. Twin note: Apple's Metal driver is uniform (no per-vendor safety problem), so its
+ * `GpuOffloadPolicy` decides on a different axis — CPU-only when the weights exceed the app budget
+ * (paged MoE), all layers otherwise. The vendor heterogeneity handled here is Android-only.
  */
 object GpuOffloadPlanner {
     /** llama.cpp sentinel for "offload every layer". Mobile GPUs share system RAM (unified memory),

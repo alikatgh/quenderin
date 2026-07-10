@@ -235,11 +235,19 @@ public actor LlamaEngine: InferenceEngine {
         if !backendInitialized { llama_backend_init(); backendInitialized = true }  // once per process (L1)
 
         var modelParams = llama_model_default_params()
-        modelParams.n_gpu_layers = 999   // offload every layer to the GPU (Metal on Apple)
+        // Metal offload only when the weights actually fit the app budget. A paged MoE
+        // (file > budget, e.g. a 13 GB 35B-A3B on 16 GB) runs CPU-only so the OS page cache
+        // streams the routed experts — Metal would wire the whole file into the GPU working
+        // set and thrash. Real file size, not the catalog estimate (GpuOffloadPolicy docs).
+        let fileSizeBytes = ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.int64Value ?? 0
+        let fileSizeGB = Double(fileSizeBytes) / 1_000_000_000.0
+        modelParams.n_gpu_layers = GpuOffloadPolicy.nGpuLayers(
+            fileSizeGB: fileSizeGB, deviceBudgetGB: deviceBudgetGB)
         // Jetsam guard for this project's target class (memory-tight phones under background
         // pressure): mmap keeps the weights pageable (fast cold start, reclaimable by the OS), and
         // mlock is explicitly OFF — wiring multi-GB of weights resident is exactly what gets the app
         // jetsam-killed when the user switches to music/maps. Pin the safe default so it can't regress.
+        // (For the paged-MoE path above, mmap isn't just a guard — it IS the streaming mechanism.)
         modelParams.use_mmap = true
         modelParams.use_mlock = false
 

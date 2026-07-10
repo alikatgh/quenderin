@@ -2,6 +2,17 @@
   "version": 1,
   "models": [
     {
+      "id": "qwen36-35b-a3b",
+      "label": "Qwen3.6 35B MoE (Best Agent, Big Download)",
+      "filename": "qwen3.6-35b-a3b.UD-IQ3_XXS.gguf",
+      "ramGb": 5.5,
+      "sizeLabel": "13.2 GB download",
+      "paramsBillions": 35.0,
+      "quantization": "UD-IQ3_XXS",
+      "url": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true",
+      "sha256": "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe"
+    },
+    {
       "id": "qwen3-14b",
       "label": "Qwen3 14B (Best Quality)",
       "filename": "qwen3-14b.Q4_K_M.gguf",

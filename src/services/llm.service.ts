@@ -49,7 +49,7 @@ import fs from "fs";
 import { availableMemBytes } from "../utils/memory.js";
 import { EventEmitter } from "events";
 import { ILlmProvider, GenerationMeta, GenerationOptions } from "../types/index.js";
-import { MODEL_CATALOG, modelPath, checkMemoryForModel, type ModelEntry } from "../constants.js";
+import { MODEL_CATALOG, modelPath, checkMemoryForModel, gpuOffloadFits, type ModelEntry } from "../constants.js";
 import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
 import { buildToolPrompt, maxToolCallsPerResponse } from "./tools/registry.js";
@@ -738,7 +738,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     }).finally(() => clearTimeout(timer));
                 };
 
-                if (HW.tryGpuOffload) {
+                // A file bigger than the GPU can safely wire (paged MoE, e.g. the 13 GB
+                // 35B-A3B) must go straight to CPU + mmap so the OS page cache streams the
+                // experts — trying GPU first would thrash/fail slowly and then fall back anyway.
+                const fileSizeGb = (() => {
+                    try { return fs.statSync(selected.path).size / 1e9; } catch { return 0; }
+                })();
+                const fitsGpu = gpuOffloadFits(fileSizeGb, os.totalmem() / (1024 ** 3));
+                if (HW.tryGpuOffload && fitsGpu) {
                     try {
                         model = await loadWithGpu("max");
                         logger.log('[LLM] Model loaded with GPU offload (max layers)');
@@ -747,6 +754,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         model = await loadWithGpu(0);
                         logger.log('[LLM] Model loaded in CPU-only mode');
                     }
+                } else if (HW.tryGpuOffload) {
+                    // GPU exists, but the weights exceed the safe offload budget.
+                    model = await loadWithGpu(0);
+                    logger.log(`[LLM] Model loaded in CPU-only mode (${fileSizeGb.toFixed(1)} GB weights exceed GPU offload budget — OS page cache streams them)`);
                 } else {
                     // Embedded / headless ARM — skip GPU entirely
                     model = await loadWithGpu(0);

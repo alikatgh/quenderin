@@ -86,6 +86,9 @@ public enum HuggingFaceCatalog {
     /// Without (2), every untagged GGUF looked like 7B and size filters felt broken.
     public static func estimatedParams(_ name: String) -> Double {
         let lower = name.lowercased()
+        // MoE first: in "35b-a3b" the last-token rule would read the ACTIVE count ("a3b" → 3)
+        // as the size class. Params means TOTAL everywhere (display, sort, download estimates).
+        if let moe = MoEShape.detect(lower) { return moe.totalParamsB }
         if let fromToken = paramsFromExplicitBToken(lower) { return fromToken }
         if let fromAlias = paramsFromKnownAlias(lower) { return fromAlias }
         return 7
@@ -149,7 +152,14 @@ public enum HuggingFaceCatalog {
     /// understands. Peak-RAM is estimated (weights + KV/runtime headroom) since HF only gives file size.
     public static func candidate(from q: HFQuant, label: String) -> ModelEntry {
         let params = estimatedParams(q.repo + " " + q.filename)
-        let ramGB = q.sizeGB * 1.5 + 0.3
+        // A paged MoE resides at its dense spine + hot experts, not its file size — the
+        // dense estimate would tell a 16 GB Mac that a runnable 13 GB 35B-A3B "needs 20 GB".
+        let ramGB: Double
+        if let moe = MoEShape.detect(q.repo + " " + q.filename) {
+            ramGB = MoEShape.pagedResidentRamGB(fileSizeGB: q.sizeGB, shape: moe)
+        } else {
+            ramGB = q.sizeGB * 1.5 + 0.3
+        }
         return ModelEntry(
             id: "hf:\(q.id)",
             label: label,

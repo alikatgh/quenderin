@@ -17,6 +17,7 @@ public struct QuantizationInfo: Sendable, Hashable, Codable {
 public enum Quantization {
     public static let all: [QuantizationInfo] = [
         .init(id: "Q2_K",   bitsPerWeight: 2.625, quality: "Low",       summary: "Extreme compression, noticeable quality loss", recommended: false),
+        .init(id: "UD-IQ3_XXS", bitsPerWeight: 3.02, quality: "Fair",   summary: "Unsloth dynamic 3-bit — keeps critical layers higher-precision", recommended: false),
         .init(id: "Q3_K_M", bitsPerWeight: 3.5,   quality: "Fair",      summary: "Moderate compression",                         recommended: false),
         .init(id: "Q4_K_M", bitsPerWeight: 4.5,   quality: "Good",      summary: "Best balance of quality and size",             recommended: true),
         .init(id: "Q5_K_M", bitsPerWeight: 5.5,   quality: "High",      summary: "Near original quality",                        recommended: false),
@@ -60,6 +61,21 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
 /// Multi-model catalog, sorted best → smallest. Mirrors `MODEL_CATALOG`.
 public enum ModelCatalog {
     public static let models: [ModelEntry] = [
+        // Paged MoE: only ~3B of 35B params run per token, so with mmap the OS page cache
+        // streams the experts from disk — ramGB is the RESIDENT set (dense spine + hot
+        // experts, MoEShape formula), NOT the 13.2 GB file. Needs a fast SSD; on machines
+        // where the file exceeds the app budget the engine runs it CPU-only (GpuOffloadPolicy).
+        ModelEntry(
+            id: "qwen36-35b-a3b",
+            label: "Qwen3.6 35B MoE (Best Agent, Big Download)",
+            filename: "qwen3.6-35b-a3b.UD-IQ3_XXS.gguf",
+            ramGB: 5.5,
+            sizeLabel: "13.2 GB download",
+            paramsBillions: 35,
+            quantization: "UD-IQ3_XXS",
+            urlString: "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true",
+            sha256: "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe"
+        ),
         ModelEntry(
             id: "qwen3-14b",
             label: "Qwen3 14B (Best Quality)",

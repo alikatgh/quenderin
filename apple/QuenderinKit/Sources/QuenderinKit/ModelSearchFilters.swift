@@ -51,8 +51,10 @@ public struct ModelSearchFilters: Equatable, Sendable {
         fitsOnly: true, excludeGated: true, maxParamsB: 4, maxDownloadGB: 4, quantFamily: "Q4", sort: .paramsAsc
     )
     /// Stronger models that still fit (no hard param floor — user picks quality).
+    /// 14 GB cap admits the 13.2 GB paged-MoE IQ3 (35B-A3B) — exactly the "best I can
+    /// run" answer on a 16 GB machine — while still excluding 20 GB+ pulls.
     public static let bestICanRun = ModelSearchFilters(
-        fitsOnly: true, excludeGated: false, maxDownloadGB: 12, sort: .paramsDesc
+        fitsOnly: true, excludeGated: false, maxDownloadGB: 14, sort: .paramsDesc
     )
 
     public var isDefault: Bool {
@@ -65,10 +67,21 @@ public struct ModelSearchFilters: Equatable, Sendable {
         var out = hits.filter { hit in
             if excludeGated && hit.gated { return false }
             let params = hit.estimatedParamsB
-            if let maxP = maxParamsB, params > maxP + 0.05 { return false }
+            // MoE: size-class and fit are about what a token actually RUNS (active params —
+            // a 35B-A3B is a 3B-class load with paged experts), while download gates below
+            // stay on TOTAL params (the file really is 35B big).
+            let moe = MoEShape.detect(hit.id)
+            let sizeClassParams = moe?.activeParamsB ?? params
+            if let maxP = maxParamsB, sizeClassParams > maxP + 0.05 { return false }
             if fitsOnly {
                 // Before quants load: rough RAM gate from params (same order as MemoryFitness spirit).
-                let roughRAM = params * 0.7 + 0.5
+                // For MoE, estimate the paged resident set off an assumed-Q4 file (params × 0.55).
+                let roughRAM: Double
+                if let moe {
+                    roughRAM = MoEShape.pagedResidentRamGB(fileSizeGB: params * 0.55, shape: moe)
+                } else {
+                    roughRAM = params * 0.7 + 0.5
+                }
                 if roughRAM > totalRAMGB * 0.85 { return false }
             }
             // Soft download-size gate at the REPO list (quants aren't loaded yet).
