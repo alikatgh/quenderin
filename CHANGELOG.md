@@ -18,6 +18,15 @@
 - Agent-screen upgrade copy is MoE-honest (13 GB download, SSD-streamed) — never the generic
   "slightly slower replies". `check_catalog_parity.py` fixed to parse hyphenated quant ids.
 
+### Autopilot — run a goal without babysitting it (macOS)
+- **"Allow all steps for this goal"** on the per-step approval dialog: one grant covers the
+  rest of the run; the broker resets at the next goal, so it never leaks.
+- **Settings → Agent → Autopilot**: goals start pre-approved from step 1 (for runs you can't
+  sit in front of). What it never skips: the SafetyBlocklist (refuses before approval is even
+  consulted), standing consent tiers, the audit ledger, and undo. Off by default.
+- New `scripts/build_mac_dmg.sh` — local-test DMG in one command (build → sign consistently →
+  package); fixes the hardened-runtime/adhoc Team-ID launch crash.
+
 ## 0.2.0 — 2026-07-09
 
 ### Distribution

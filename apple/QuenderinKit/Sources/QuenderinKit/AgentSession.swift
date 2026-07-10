@@ -100,6 +100,10 @@ public final class AgentSession: ObservableObject {
         guard !isRunning else { return }
         runToken += 1
         let token = runToken
+        // Autopilot is a PER-RUN grant: read the setting live at each start, so "allow all
+        // for this goal" from a previous run can never leak into this one, and flipping the
+        // Settings toggle applies to the next goal without a relaunch.
+        approvals.beginRun(autopilot: AgentAutopilot.isEnabled)
         lastGoal = goal
         steps = []
         answer = nil

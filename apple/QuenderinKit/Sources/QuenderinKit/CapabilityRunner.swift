@@ -50,17 +50,49 @@ public final class ApprovalBroker: ObservableObject, @unchecked Sendable {
     @MainActor @Published public private(set) var pending: ActionPreview?
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Bool, Never>?
+    /// Autopilot state for the CURRENT run: when set, `request` answers yes without a dialog.
+    /// Scoped per run — `beginRun` resets it, so one goal's grant can never leak into the next.
+    private var autoApprove = false
 
     public init() {}
 
-    /// Called by the runner (any context). Suspends until the user answers.
+    /// Start-of-run reset (AgentSession.run): autopilot ON pre-approves the whole run, OFF
+    /// restores the ask-per-action cadence. See `AgentAutopilot` for what autopilot does and
+    /// does not skip — the blocklist/consent/ledger gates are upstream and unaffected.
+    public func beginRun(autopilot: Bool) {
+        lock.lock()
+        autoApprove = autopilot
+        lock.unlock()
+    }
+
+    /// Whether the current run is auto-approving (the view can show an autopilot hint).
+    public var isAutoApproving: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return autoApprove
+    }
+
+    /// Called by the runner (any context). Suspends until the user answers — unless this run
+    /// is in autopilot, in which case it answers yes immediately (no dialog published).
+    /// (`isAutoApproving` is a synchronous accessor — NSLock must not be taken directly in an
+    /// async context, and the critical section holds no suspension point.)
     public func request(_ preview: ActionPreview) async -> Bool {
-        await withCheckedContinuation { cont in
+        if isAutoApproving { return true }
+        return await withCheckedContinuation { cont in
             lock.lock()
             continuation = cont
             lock.unlock()
             Task { @MainActor in self.pending = preview }
         }
+    }
+
+    /// "Allow all steps for this goal" — approve the pending action AND every later one in
+    /// this run. The mid-run upgrade for a user who trusts the goal and wants to walk away.
+    @MainActor
+    public func resolveAllForRun() {
+        lock.lock()
+        autoApprove = true
+        lock.unlock()
+        resolve(true)
     }
 
     /// Called by the UI on the user's answer (or on dialog dismissal, with `false`).

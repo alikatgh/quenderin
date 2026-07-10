@@ -263,6 +263,9 @@ public struct AgentView: View {
             titleVisibility: .visible
         ) {
             Button("Allow this action") { approvals.resolve(true) }
+            // The walk-away option: one grant covers every later step of THIS goal only
+            // (broker resets at the next run). Blocked actions still refuse regardless.
+            Button("Allow all steps for this goal") { approvals.resolveAllForRun() }
             Button("Don't allow", role: .cancel) { approvals.resolve(false) }
         }
     }

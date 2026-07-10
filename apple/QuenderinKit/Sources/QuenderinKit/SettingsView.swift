@@ -181,9 +181,19 @@ public struct SettingsView: View {
     @AppStorage(AgentDeliberation.defaultsKey) private var deliberationOn = false
     /// "Plan novel goals" — the opt-in dynamic-planning pass. UserDefaults-backed so AgentLoop reads it live.
     @AppStorage(AgentDynamicPlanning.defaultsKey) private var dynamicPlanningOn = false
+    /// "Autopilot" — run goals without per-step Allow prompts. Read live at each run's start.
+    @AppStorage(AgentAutopilot.defaultsKey) private var autopilotOn = false
 
     private var reasoningSection: some View {
         Section("Reasoning") {
+            Toggle("Autopilot", isOn: $autopilotOn)
+            Text("Run goals start to finish without asking Allow for every step — for when you "
+               + "can't sit in front of the Mac. Blocked actions (like payments) still refuse, tools "
+               + "you haven't granted in Settings still won't run, every step lands in the audit "
+               + "log, and you can undo a task's changes afterwards. Off by default; applies from "
+               + "your next goal.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Toggle("Deeper reasoning", isOn: $deliberationOn)
             Text("Let the agent think through each step before it acts. It picks the right tool more "
                + "often on tricky goals — but it's noticeably slower, because the model reasons "
