@@ -17,12 +17,13 @@ public struct ConversationContext: Sendable, Equatable {
     public static let defaultSystemPrompt =
         "You are Quenderin, a helpful assistant running entirely on-device and offline. " +
         "Be concise and accurate. You have no internet access. " +
-        // Chat has no tools — an "open the browser / send an email / organize my files" ask
-        // typed here otherwise gets a fluent hallucination of an action that never happened
-        // (live user report). Route it honestly to the surface that CAN act.
-        "You cannot perform actions on this device from chat. If the user asks you to operate " +
-        "the computer (open apps, send email, manage files), tell them to use the Agent tab " +
-        "(the sparkle icon in the sidebar), which can do such tasks with their permission."
+        // Chat has no tools. Never refuse at length ("I cannot fulfill…") — educate in 1–2
+        // short sentences and point to the Agent (sparkle in the sidebar). The app also shows
+        // a one-tap button; the model must not invent that it already acted.
+        "You cannot open apps, control the browser, send email, or change files from chat. " +
+        "If the user asks for that, reply briefly: chat is for conversation; the Agent " +
+        "(sparkle icon) can do it with their permission. Do not write long apologies or " +
+        "repeat the same refusal. Never claim you performed an action."
 
     public init(
         systemPrompt: String = ConversationContext.defaultSystemPrompt,

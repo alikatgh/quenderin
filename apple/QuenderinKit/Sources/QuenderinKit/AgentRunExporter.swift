@@ -26,13 +26,18 @@ public enum AgentRunExporter {
         case .cancelled: status = "stopped (you halted it)"
         case .needsPermission: status = "stopped (permission not granted - nothing was done)"
         }
+        // People-facing labels (CapabilityCatalog); tool ids stay on the model/ledger path only.
         var toolsUsed: [String] = []
         for step in run.steps {
-            if case let .useTool(name, _) = step.decision, !toolsUsed.contains(name) {
-                toolsUsed.append(name)
+            if case let .useTool(name, _) = step.decision {
+                let label = CapabilityCatalog.displayName(for: name)
+                if !toolsUsed.contains(label) { toolsUsed.append(label) }
             }
             if case let .plan(calls) = step.decision {
-                for call in calls where !toolsUsed.contains(call.name) { toolsUsed.append(call.name) }
+                for call in calls {
+                    let label = CapabilityCatalog.displayName(for: call.name)
+                    if !toolsUsed.contains(label) { toolsUsed.append(label) }
+                }
             }
         }
         let toolsLine = toolsUsed.isEmpty ? "No tools used." : "Tools used: \(toolsUsed.joined(separator: ", "))."
@@ -42,9 +47,17 @@ public enum AgentRunExporter {
             let num = i + 1
             switch step.decision {
             case let .useTool(name, input):
-                out += "**\(num). Used `\(name)`(\(input))**"
+                let label = CapabilityCatalog.displayName(for: name)
+                if input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    out += "**\(num). \(label)**"
+                } else {
+                    out += "**\(num). \(label)** — \(input)"
+                }
             case let .plan(calls):
-                let described = calls.map { "`\($0.name)`(\($0.input))" }.joined(separator: ", ")
+                let described = calls.map { call -> String in
+                    let label = CapabilityCatalog.displayName(for: call.name)
+                    return call.input.isEmpty ? label : "\(label) — \(call.input)"
+                }.joined(separator: "; ")
                 out += "**\(num). Proposed a plan:** \(described)"
             case .finalAnswer:
                 out += "**\(num). Final answer**"

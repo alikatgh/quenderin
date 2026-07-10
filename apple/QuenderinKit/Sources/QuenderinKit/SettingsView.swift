@@ -40,6 +40,10 @@ public struct SettingsView: View {
         totalModelBytes = mgr.totalBytesUsed
     }
 
+    private func reloadAgentActivity() {
+        recentAgentActivity = Array(FileAuditLedger().entries().suffix(10).reversed())
+    }
+
     private func deleteModel(_ installed: InstalledModel) {
         guard !installed.isActive else { return }   // never delete the loaded model
         _ = modelManager.delete(installed.model.id)
@@ -73,6 +77,9 @@ public struct SettingsView: View {
         }
     }
     @State private var pane: Pane? = .model
+    /// Cached agent ledger tail — FileAuditLedger.entries() reads+decodes the whole file; never
+    /// call that from `body` (Form scroll re-evaluates body constantly and felt like lag).
+    @State private var recentAgentActivity: [AuditEntry] = []
 
     public var body: some View {
         content
@@ -80,7 +87,18 @@ public struct SettingsView: View {
             // reach it, so picking "Light" used to change the app but not this window
             // (owner screenshot: Light selected, Settings still dark).
             .preferredColorScheme(appSettings.theme.colorScheme)
-            .onAppear { reloadModelStorage() }
+            .onAppear {
+                reloadModelStorage()
+                // iOS shows all sections in one List; Mac only needs the ledger on the Agent pane.
+                #if os(macOS)
+                if pane == .agent { reloadAgentActivity() }
+                #else
+                reloadAgentActivity()
+                #endif
+            }
+            .onChange(of: pane) { newPane in
+                if newPane == .agent { reloadAgentActivity() }
+            }
             .sheet(isPresented: $showPicker) {
                 NavigationStack {
                     // Reuses the fitness-aware picker (disables models that won't fit, explains why).
@@ -273,14 +291,13 @@ public struct SettingsView: View {
     }
 
     private var agentActivitySection: some View {
-        let entries = Array(FileAuditLedger().entries().suffix(10).reversed())
-        return Section("Agent activity") {
-            if entries.isEmpty {
+        Section("Agent activity") {
+            if recentAgentActivity.isEmpty {
                 Text("Nothing yet. Every capability the agent uses — including the refused ones — "
                    + "is recorded here and in a plain file you can read.")
                     .font(.footnote).foregroundStyle(.secondary)
             } else {
-                ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                ForEach(Array(recentAgentActivity.enumerated()), id: \.offset) { _, entry in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("\(entry.capability)(\(entry.input))")

@@ -79,16 +79,70 @@ public enum HuggingFaceCatalog {
         return "GGUF"
     }
 
-    /// Rough params-in-billions from a repo/file name (e.g. "…-8B-…" → 8, "Llama-3.2-1B" → 1). The
-    /// LAST `<n>B` token wins, since the leading numbers are usually a version (3.2), not the size.
+    /// Rough params-in-billions from a repo/file name. Order:
+    /// 1) explicit `<n>B` tokens (last wins — version numbers like 3.2 come first),
+    /// 2) well-known family codenames (Mistral-Large has no “123B” in the slug),
+    /// 3) fallback 7 so fitness stays conservative rather than “unknown = free”.
+    /// Without (2), every untagged GGUF looked like 7B and size filters felt broken.
     public static func estimatedParams(_ name: String) -> Double {
         let lower = name.lowercased()
-        guard let rx = try? NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*b\b"#) else { return 7 }
-        let matches = rx.matches(in: lower, range: NSRange(lower.startIndex..., in: lower))
-        if let last = matches.last, let r = Range(last.range(at: 1), in: lower) {
-            return Double(lower[r]) ?? 7
-        }
+        if let fromToken = paramsFromExplicitBToken(lower) { return fromToken }
+        if let fromAlias = paramsFromKnownAlias(lower) { return fromAlias }
         return 7
+    }
+
+    /// Last `(\d+(\.\d+)?)b` token — "Llama-3.2-1B" → 1, not 3.2.
+    private static func paramsFromExplicitBToken(_ lower: String) -> Double? {
+        guard let rx = try? NSRegularExpression(pattern: #"(\d+(?:\.\d+)?)\s*b\b"#) else { return nil }
+        let matches = rx.matches(in: lower, range: NSRange(lower.startIndex..., in: lower))
+        guard let last = matches.last, let r = Range(last.range(at: 1), in: lower) else { return nil }
+        return Double(lower[r])
+    }
+
+    /// HF GGUF re-uploads often omit the param count (e.g. `Mistral-Large-Instruct-2411-GGUF`).
+    /// Most-specific alias first.
+    private static func paramsFromKnownAlias(_ lower: String) -> Double? {
+        let aliases: [(needle: String, params: Double)] = [
+            // Mistral
+            ("mistral-large", 123),
+            ("mistral-small", 22),
+            ("mistral-nemo", 12),
+            ("mistral-7b", 7),
+            ("mixtral-8x22b", 141),
+            ("mixtral-8x7b", 47),
+            ("mixtral", 47),
+            // Phi
+            ("phi-4", 14),
+            ("phi-3.5-mini", 3.8),
+            ("phi-3-mini", 3.8),
+            ("phi-3-medium", 14),
+            ("phi-3-small", 7),
+            ("phi-2", 2.7),
+            // Gemma
+            ("gemma-2-27b", 27),
+            ("gemma-2-9b", 9),
+            ("gemma-2-2b", 2),
+            ("gemma-7b", 7),
+            ("gemma-2b", 2),
+            // Qwen codenames without N B
+            ("qwen2.5-72b", 72),
+            ("qwen2.5-32b", 32),
+            ("qwen2.5-14b", 14),
+            ("qwen2.5-7b", 7),
+            ("qwen2.5-3b", 3),
+            ("qwen2.5-1.5b", 1.5),
+            ("qwen2.5-0.5b", 0.5),
+            // DeepSeek
+            ("deepseek-r1-distill-qwen-32b", 32),
+            ("deepseek-r1-distill-qwen-14b", 14),
+            ("deepseek-r1-distill-qwen-7b", 7),
+            ("deepseek-r1-distill-llama-70b", 70),
+            ("deepseek-r1-distill-llama-8b", 8),
+        ]
+        for (needle, params) in aliases where lower.contains(needle) {
+            return params
+        }
+        return nil
     }
 
     /// Turn a resolved HF quant into a candidate `ModelEntry` the existing download/fitness plumbing

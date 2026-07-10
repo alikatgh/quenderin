@@ -86,7 +86,10 @@ final class WorkspaceCapabilityTests: XCTestCase {
         let runner = CapabilityRunner(consent: consent, ledger: ledger)   // no approver wired
 
         let out = await runner.execute(move, input: "report.pdf to Archive")
-        XCTAssertTrue(out.contains("needs your per-run approval"))
+        // Assert the exact prefix AgentLoop.isPermissionRefusal keys on, so this test guards the
+        // runtime halt contract — not just arbitrary copy (the reason it broke when the copy moved).
+        XCTAssertTrue(out.hasPrefix("This would change something on your Mac"),
+                      "fail-closed must return the recognizable per-run-approval refusal, got: \(out)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("report.pdf").path),
                       "fail-closed means the file did NOT move")
         XCTAssertEqual(ledger.entries().last?.decision, "needsApproval")

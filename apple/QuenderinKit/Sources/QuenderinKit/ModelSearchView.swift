@@ -62,6 +62,14 @@ public struct ModelSearchView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .onAppear {
+            // Parent (Universal Search) often mounts us with a query already typed — onChange
+            // does not fire for the initial value, so without this HF stays stuck on the idle tip.
+            let q = textBinding.wrappedValue
+            if q.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 {
+                controller.search(q)
+            }
+        }
         .onChange(of: textBinding.wrappedValue) { newValue in
             controller.search(newValue)
         }
@@ -102,36 +110,86 @@ public struct ModelSearchView: View {
         return $localText
     }
 
+    private func filterCountLine(shown: Int, total: Int) -> String {
+        if shown == total {
+            return "\(shown) model\(shown == 1 ? "" : "s") · tap a row → Show files → Get"
+        }
+        return "\(shown) of \(total) match filters · tap a row → Show files → Get"
+    }
+
     @ViewBuilder
     private func content(_ p: QuenderinPalette) -> some View {
         switch controller.phase {
         case .idle:
-            Text("Search 500,000+ open models. Tip: look for a **GGUF** re-upload (e.g. by TheBloke or "
-               + "bartowski) — those are the ready-to-run files, and the smaller quants (Q4) run on more hardware.")
-                .font(.caption).foregroundStyle(p.onSurfaceVariant)
-                .fixedSize(horizontal: false, vertical: true)
+            if showChrome {
+                Text("Type at least 2 characters. Tip: look for a GGUF re-upload (e.g. TheBloke or bartowski) — those are ready-to-run files; smaller quants (Q4) fit more hardware.")
+                    .font(.caption).foregroundStyle(p.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                // Embedded under Universal Search — never leave a dead tip with no control.
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up")
+                        .font(.caption)
+                        .foregroundStyle(p.onSurfaceVariant)
+                    Text(textBinding.wrappedValue.count < 2
+                         ? "Type at least 2 characters above to search open models on Hugging Face."
+                         : "Starting Hugging Face search…")
+                        .font(.callout)
+                        .foregroundStyle(p.onSurfaceVariant)
+                }
+                .padding(.vertical, 6)
+            }
         case .searching:
-            HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Searching Hugging Face…").font(.callout).foregroundStyle(p.onSurfaceVariant) }
-                .padding(.vertical, 4)
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Searching Hugging Face…")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(p.onSurface)
+            }
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel("Searching Hugging Face")
         case .empty:
-            Text("No GGUF models match “\(controller.query)”. Try a family name like Qwen, Llama, Phi, or Mistral.")
-                .font(.callout).foregroundStyle(p.onSurfaceVariant)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("No open GGUF models match “\(controller.query)”.")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(p.onSurface)
+                Text("Try a family name like Qwen, Llama, Phi, or Mistral — or clear filters above.")
+                    .font(.caption)
+                    .foregroundStyle(p.onSurfaceVariant)
+            }
         case .error(let message):
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "wifi.exclamationmark").foregroundStyle(.orange)
                 Text(message).font(.callout).foregroundStyle(p.onSurfaceVariant)
                 Spacer()
-                Button("Retry") { controller.search(textBinding.wrappedValue) }.buttonStyle(.bordered).controlSize(.small)
+                Button("Retry") { controller.search(textBinding.wrappedValue) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(p.primary)
+                    .controlSize(.small)
             }
         case .results(let hits):
             let shown = filters.apply(to: hits, totalRAMGB: totalRAM)
             if shown.isEmpty {
-                Text("No models match your filters. Clear filters or broaden the search.")
-                    .font(.callout).foregroundStyle(p.onSurfaceVariant)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(hits.count) model\(hits.count == 1 ? "" : "s") found — none match your filters.")
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(p.onSurface)
+                    Text("Tap “All results”, turn off “fits RAM”, or raise max size / download.")
+                        .font(.caption)
+                        .foregroundStyle(p.onSurfaceVariant)
+                }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("\(shown.count) model\(shown.count == 1 ? "" : "s") · tap a row for details & files")
-                        .font(.caption).foregroundStyle(p.onSurfaceVariant)
+                    // Make filter effect obvious: "3 of 17 match filters" vs silent no-op.
+                    Text(filterCountLine(shown: shown.count, total: hits.count))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(p.onSurfaceVariant)
+                    if filters.quantFamily != nil || filters.maxDownloadGB != nil {
+                        Text("Quant & exact file size also refine files after you tap Show files.")
+                            .font(.caption2)
+                            .foregroundStyle(p.onSurfaceVariant)
+                    }
                     ForEach(shown, id: \.id) { hit in
                         RepoRow(hit: hit,
                                 isExpanded: expanded == hit.id,
@@ -206,12 +264,18 @@ private struct RepoRow: View {
                             .foregroundStyle(palette.onSurfaceVariant)
                             .lineLimit(2)
                         if !isExpanded {
-                            Text("Tap for details, files, and Hugging Face link")
-                                .font(.caption2)
-                                .foregroundStyle(palette.onSurfaceVariant.opacity(0.85))
+                            Text("Tap to expand → pick a file → Get")
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(palette.primary)
                         }
                     }
                     Spacer(minLength: 0)
+                    Text(isExpanded ? "Hide" : "Show files")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(palette.primary.opacity(0.12), in: Capsule())
                 }
                 .contentShape(Rectangle())
                 .padding(.vertical, 10)
@@ -219,6 +283,7 @@ private struct RepoRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(hit.shortName), \(isExpanded ? "collapse" : "expand") details")
+            .accessibilityHint(isExpanded ? "Hides downloadable files" : "Shows downloadable files and Get buttons")
 
             if isExpanded {
                 Divider().overlay(palette.onSurfaceVariant.opacity(0.12))
@@ -379,10 +444,15 @@ private struct QuantRow: View {
         } else {
             switch state {
             case .notInstalled:
-                Button { onGet(candidate) } label: { Label("Get", systemImage: "arrow.down.circle") }
-                    .buttonStyle(.bordered).controlSize(.small)
-                    .disabled(!fitness.canLoad)
-                    .help(fitness.canLoad ? "Download and verify this model" : "Too big to load on this \(deviceNoun) — it would run out of memory")
+                Button { onGet(candidate) } label: {
+                    Label("Get", systemImage: "arrow.down.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.primary)
+                .controlSize(.small)
+                .disabled(!fitness.canLoad)
+                .help(fitness.canLoad ? "Download and verify this model" : "Too big to load on this \(deviceNoun) — it would run out of memory")
+                .accessibilityLabel("Get \(candidate.quantization)")
             case .downloading(let fraction):
                 HStack(spacing: 6) {
                     ProgressView(value: fraction).frame(width: 70)
@@ -390,9 +460,14 @@ private struct QuantRow: View {
                         .buttonStyle(.plain).accessibilityLabel("Cancel download")
                 }
             case .installed:
-                Button { onUse(candidate) } label: { Label("Use", systemImage: "checkmark.circle") }
-                    .buttonStyle(.borderedProminent).controlSize(.small).tint(palette.primary)
-                    .disabled(!fitness.canLoad)
+                Button { onUse(candidate) } label: {
+                    Label("Use", systemImage: "checkmark.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(palette.primary)
+                .disabled(!fitness.canLoad)
+                .accessibilityLabel("Use \(candidate.quantization)")
             case .failed(let reason):
                 VStack(alignment: .trailing, spacing: 2) {
                     Button { onGet(candidate) } label: { Label("Retry", systemImage: "arrow.clockwise") }

@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A `swift test` exit code of 0 can mask an XCTest failure — grep the output for "failure", never trust `$?`.**
+  With both an XCTest suite and a swift-testing run in one invocation, the process can exit 0 while an XCTest
+  suite reports `1 failure`. Always check `Executed N tests, with M failures` / `Test Suite 'All tests' passed`.
+  Corollary: a reworded user-facing string is often pinned in BOTH a runtime matcher (`AgentLoop.isPermissionRefusal`)
+  AND a test assertion — when you rename copy, grep tests for the old string. (WorkspaceCapabilityTests, 2026-07-10)
 - **Opt-in mission approval must be fail-closed when enabled without an approver.**
   A flag that says "require approval" but proceeds when no callback is wired is a silent
   safety hole. Gate: disabled → allow; enabled + no approver → refuse; enabled + decline →
@@ -143,6 +148,9 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   tool: mail.draft" dead-end (→ "Did you mean mac.mail.draft?"), "grant it in Settings" homework (→
   contextual "Allow & run again"). If a deterministic check knows the blocker/next-step, surface a
   tap that does it — asking the user (or the model) to read, interpret, and re-navigate is the bug.
+  **Computer tasks in chat: short-circuit the model entirely** (`ActionIntent` + fixed education +
+  `Go to Agent and run this` button). Leaving the model to refuse produces "I cannot fulfill…" walls
+  with no control — the detection already knows; don't pay tokens for a dead end.
 - **A loop's halt reason must consult ground truth, not a lossy counter.** A run "stalled" that was
   really stuck on a permission refusal (an unrelated scratchpad success broke the all-refused count)
   → "try rephrasing" instead of "grant the capability". Read the STALLING/last observation, which the
@@ -474,6 +482,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-10 (stale test after refusal-copy rework) — `CapabilityRunner` reworded its per-run-approval
+  refusal ("…needs your per-run approval" → "This would change something on your Mac…") and updated
+  `AgentLoop.isPermissionRefusal` to match, but `WorkspaceCapabilityTests:89` still `contains`-pinned the
+  OLD string → 1 red test (fail-closed BEHAVIOR was intact: file didn't move, ledger logged needsApproval).
+  Fix: assert the exact prefix `isPermissionRefusal` keys on, so the test guards the runtime halt contract,
+  not arbitrary copy. Lesson: when rewording a refusal string matched by BOTH a runtime matcher and a test,
+  grep tests for the old copy — a green `swift test` exit code can be 0 while an XCTest suite still has a failure.
+
 - 2026-07-09 (deliberation ported to Android — "think, then decide" now on ALL 3 platforms) — with grammar-
   in-JNI landed (the prerequisite), the reasoning-first problem now exists on Android too, so the think-pass
   is meaningful. Added `InferenceEngine.completeThinking` (unconstrained, capped; LlamaEngine reuses
@@ -689,6 +705,26 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   mac.mail.draft?") — the loop knows the list; (c) stall-over-refusal mislabeled "try rephrasing":
   reason precedence — all-attempts-refused wins as NEEDS_PERMISSION however the loop ends. All
   twinned + fixture-pinned. Lesson: the loop holds ground truth; every exit path must consult it.
+
+- 2026-07-09 (chat scroll still buggy after CGFloat fix) — remaining jank: (1) **GeometryReader
+  wrapping ScrollView** fights content size (rubber-band / jump); (2) **scrollTo every stream
+  token** fights the wheel; (3) flip-flop nearBottom at the edge. Fix: kill outer GeometryReader;
+  MacNearBottomObserver reports Bool with hysteresis only; stream-follow throttled ~180ms; probe
+  lives *inside* scroll content so enclosingScrollView is found. Lesson: GeometryReader around
+  ScrollView is poison on macOS; never scrollTo per token.
+
+- 2026-07-09 (chat/settings scroll crawl) — Mac chat wheel rewrote `sentinelY: CGFloat` on every
+  NSScrollView bounds tick → full ChatView body + all Markdown bubbles every frame. Settings
+  Agent pane called `FileAuditLedger.entries()` (read whole file) from `body`. Fix: store only
+  `nearBottom: Bool` (flip at threshold); cache ledger in `@State` on pane appear. Agent scroll
+  uses eager VStack on Mac (same LazyVStack jank). Lesson: never put continuous scroll metrics
+  or disk I/O into SwiftUI `@State`/`body` during scroll.
+
+- 2026-07-09 (chat still walls "I cannot fulfill" with no button) — ActionIntent bar existed but
+  model still ran and printed long refusals (screenshot: same open-browser/email goal 3×). Fix:
+  short-circuit model on computer task → fixed education (`ActionIntent.guidedAssistantReply`) +
+  inline + composer **Go to Agent and run this** card (AgentHandoff). Lesson: detection without
+  skipping the model is half a fix — educate with a control, never a refusal essay.
 
 - 2026-07-07 (redirect prose is not a feature) — chat detecting an action ask and REPLYING with
   instructions ("use the Agent tab") still failed the user ("not working at all"): reading,

@@ -44,14 +44,26 @@ public struct UniversalSearchView: View {
         guard trimmed.count >= 1 else { return [] }
         let q = trimmed.lowercased()
         let localIDs = Set(localHits.map(\.id))
-        return ModelCatalog.models.filter { entry in
+        var hits = ModelCatalog.models.filter { entry in
             if localIDs.contains(entry.id) { return false }
             if filters.fitsOnly && !MemoryFitness.check(for: entry).canLoad { return false }
             if let maxP = filters.maxParamsB, entry.paramsBillions > maxP + 0.05 { return false }
+            // Soft download gate for curated sizes (sizeLabel is like "4.7 GB").
+            if let maxGB = filters.maxDownloadGB {
+                let rough = entry.paramsBillions * 0.55
+                if rough > maxGB + 0.25 { return false }
+            }
             return entry.label.lowercased().contains(q)
                 || entry.id.lowercased().contains(q)
                 || entry.filename.lowercased().contains(q)
         }
+        switch filters.sort {
+        case .downloads: break // curated has no download counts — keep catalog order
+        case .paramsAsc: hits.sort { $0.paramsBillions < $1.paramsBillions }
+        case .paramsDesc: hits.sort { $0.paramsBillions > $1.paramsBillions }
+        case .name: hits.sort { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+        }
+        return hits
     }
 
     public var body: some View {
@@ -65,15 +77,21 @@ public struct UniversalSearchView: View {
                         idleHelp(p)
                     } else {
                         if !localHits.isEmpty {
-                            section("On this \(deviceNoun)", color: p.statusText)
+                            section("Already on this \(deviceNoun)", color: p.statusText)
+                            Text("Installed — tap Use to switch to that model.")
+                                .font(.caption)
+                                .foregroundStyle(p.onSurfaceVariant)
                             modelRows(localHits, p: p, showActive: true)
                         }
                         if !catalogHits.isEmpty {
-                            section("Catalog", color: p.primary)
+                            section("Quenderin catalog", color: p.primary)
+                            Text("Curated models — tap Install to download, or Use if it’s already on disk.")
+                                .font(.caption)
+                                .foregroundStyle(p.onSurfaceVariant)
                             modelRows(Array(catalogHits.prefix(12)), p: p, showActive: false)
                         }
                         section("Hugging Face (open catalog)", color: p.onSurfaceVariant)
-                        Text("Tap a result for details, files, and a link to the model page — no separate window.")
+                        Text("Community GGUFs — expand a row, pick a file size, then Get.")
                             .font(.caption)
                             .foregroundStyle(p.onSurfaceVariant)
                         ModelSearchView(
@@ -137,29 +155,29 @@ public struct UniversalSearchView: View {
     @ViewBuilder
     private func filterBar(_ p: QuenderinPalette) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Newbie presets
+            // Newbie presets + expert disclosure — all hybrid chips (no system bordered style).
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    presetChip("All results", active: filters.isDefault, p: p) {
+                    QFilterChip(title: "All results", active: filters.isDefault, palette: p) {
                         filters = .default
                     }
-                    presetChip("Runs on this \(deviceNoun)", active: filters == .runsOnThisMac, p: p) {
+                    QFilterChip(title: "Runs on this \(deviceNoun)", active: filters == .runsOnThisMac, palette: p) {
                         filters = .runsOnThisMac
                     }
-                    presetChip("Small & fast", active: filters == .smallAndFast, p: p) {
+                    QFilterChip(title: "Small & fast", active: filters == .smallAndFast, palette: p) {
                         filters = .smallAndFast
                     }
-                    presetChip("Best I can run", active: filters == .bestICanRun, p: p) {
+                    QFilterChip(title: "Best I can run", active: filters == .bestICanRun, palette: p) {
                         filters = .bestICanRun
                     }
-                    Button {
+                    QFilterChip(
+                        title: showExpert ? "Hide filters" : "More filters",
+                        systemImage: "slider.horizontal.3",
+                        active: showExpert,
+                        palette: p
+                    ) {
                         showExpert.toggle()
-                    } label: {
-                        Label(showExpert ? "Hide filters" : "More filters", systemImage: "slider.horizontal.3")
-                            .font(.caption.weight(.medium))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
                 .padding(.horizontal, 18)
             }
@@ -188,67 +206,80 @@ public struct UniversalSearchView: View {
         if let p = filters.maxParamsB { bits.append("≤ \(Int(p))B") }
         if let g = filters.maxDownloadGB { bits.append("≤ \(Int(g)) GB file") }
         if let q = filters.quantFamily { bits.append(q) }
-        bits.append("sort: \(filters.sort.rawValue)")
+        bits.append(sortSummary(filters.sort))
         return "Active: " + bits.joined(separator: " · ")
+    }
+
+    private func sortSummary(_ s: ModelSearchFilters.Sort) -> String {
+        switch s {
+        case .downloads: return "sort: downloads"
+        case .paramsAsc: return "sort: smallest"
+        case .paramsDesc: return "sort: largest"
+        case .name: return "sort: name"
+        }
     }
 
     @ViewBuilder
     private func expertFilters(_ p: QuenderinPalette) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Toggle(isOn: $filters.fitsOnly) {
-                Text("Only models that fit this \(deviceNoun)’s RAM")
-                    .font(.caption)
-            }
-            .toggleStyle(.switch)
-            .controlSize(.small)
+        QFilterPanel(palette: p) {
+            VStack(alignment: .leading, spacing: 12) {
+                QFilterToggle(
+                    title: "Only models that fit this \(deviceNoun)’s RAM",
+                    isOn: $filters.fitsOnly,
+                    palette: p
+                )
+                QFilterToggle(
+                    title: "Hide gated models (need HF license click)",
+                    isOn: $filters.excludeGated,
+                    palette: p
+                )
 
-            Toggle(isOn: $filters.excludeGated) {
-                Text("Hide gated models (need HF license click)")
-                    .font(.caption)
-            }
-            .toggleStyle(.switch)
-            .controlSize(.small)
-
-            HStack(spacing: 12) {
-                filterMenu("Max size", selection: maxParamsBinding, options: [
-                    (nil, "Any"),
-                    (3, "≤ 3B"),
-                    (4, "≤ 4B"),
-                    (8, "≤ 8B"),
-                    (14, "≤ 14B"),
-                ], p: p)
-
-                filterMenu("Max download", selection: maxGBBinding, options: [
-                    (nil, "Any"),
-                    (2, "≤ 2 GB"),
-                    (4, "≤ 4 GB"),
-                    (6, "≤ 6 GB"),
-                    (10, "≤ 10 GB"),
-                ], p: p)
-
-                filterMenu("Quant", selection: quantBinding, options: [
-                    (nil, "Any"),
-                    ("Q4", "Q4"),
-                    ("Q5", "Q5"),
-                    ("Q6", "Q6"),
-                    ("Q8", "Q8"),
-                    ("IQ", "IQ"),
-                ], p: p)
-
-                Menu {
-                    ForEach(ModelSearchFilters.Sort.allCases, id: \.self) { s in
-                        Button(s.rawValue) { filters.sort = s }
+                // Same chip height as presets — native Menu, brand chrome.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        QFilterMenuChip(
+                            title: "Max size",
+                            selection: maxParamsBinding,
+                            options: [
+                                (nil, "Any size"),
+                                (3.0, "≤ 3B"),
+                                (4.0, "≤ 4B"),
+                                (8.0, "≤ 8B"),
+                                (14.0, "≤ 14B"),
+                                (32.0, "≤ 32B"),
+                            ],
+                            palette: p
+                        )
+                        QFilterMenuChip(
+                            title: "Max download",
+                            selection: maxGBBinding,
+                            options: [
+                                (nil, "Any download"),
+                                (2.0, "≤ 2 GB"),
+                                (4.0, "≤ 4 GB"),
+                                (6.0, "≤ 6 GB"),
+                                (10.0, "≤ 10 GB"),
+                            ],
+                            palette: p
+                        )
+                        QFilterMenuChip(
+                            title: "Quant",
+                            selection: quantBinding,
+                            options: [
+                                (nil, "Any quant"),
+                                ("Q4", "Q4"),
+                                ("Q5", "Q5"),
+                                ("Q6", "Q6"),
+                                ("Q8", "Q8"),
+                                ("IQ", "IQ"),
+                            ],
+                            palette: p
+                        )
+                        QFilterSortChip(sort: $filters.sort, palette: p)
                     }
-                } label: {
-                    Label("Sort", systemImage: "arrow.up.arrow.down")
-                        .font(.caption)
                 }
-                .menuStyle(.borderlessButton)
             }
         }
-        .padding(12)
-        .background(p.surfaceVariant.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(p.onSurfaceVariant.opacity(0.12), lineWidth: 1))
     }
 
     private var maxParamsBinding: Binding<Double?> {
@@ -259,41 +290,6 @@ public struct UniversalSearchView: View {
     }
     private var quantBinding: Binding<String?> {
         Binding(get: { filters.quantFamily }, set: { filters.quantFamily = $0 })
-    }
-
-    private func filterMenu<T: Hashable>(
-        _ title: String,
-        selection: Binding<T?>,
-        options: [(T?, String)],
-        p: QuenderinPalette
-    ) -> some View {
-        Menu {
-            ForEach(Array(options.enumerated()), id: \.offset) { _, opt in
-                Button(opt.1) { selection.wrappedValue = opt.0 }
-            }
-        } label: {
-            Text(title)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(p.surface, in: Capsule())
-        }
-    }
-
-    private func presetChip(_ title: String, active: Bool, p: QuenderinPalette, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(active ? p.primary.opacity(0.18) : p.surface, in: Capsule())
-                .overlay(
-                    Capsule().strokeBorder(active ? p.primary.opacity(0.5) : p.onSurfaceVariant.opacity(0.15), lineWidth: 1)
-                )
-                .foregroundStyle(active ? p.primary : p.onSurface)
-        }
-        .buttonStyle(.plain)
-        // Geometry-stable active state (no size change) — UI design rules.
     }
 
     @ViewBuilder
@@ -339,33 +335,132 @@ public struct UniversalSearchView: View {
         let isActive = showActive && entry.id == activeModelID
         let border = isActive ? p.primary.opacity(0.5) : p.onSurfaceVariant.opacity(0.12)
         let fit = MemoryFitness.check(for: entry)
-        return Button { onSelectModel(entry) } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(entry.label)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(p.onSurface)
-                        .multilineTextAlignment(.leading)
-                    if isActive {
-                        Text("Active")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(p.primary)
+        let state = library.state(of: entry)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(entry.label)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(p.onSurface)
+                            .multilineTextAlignment(.leading)
+                        if isActive {
+                            Text("Active")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(p.primary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(p.primary.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    Text(entry.id)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(p.onSurfaceVariant)
+                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        Text(entry.sizeLabel)
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(p.onSurfaceVariant)
+                        Text("·")
+                            .font(.caption2)
+                            .foregroundStyle(p.onSurfaceVariant.opacity(0.5))
+                        Text(fit.canLoad ? (fit.severity == .safe ? "Fits this \(deviceNoun)" : "Tight on RAM") : "Too big for this \(deviceNoun)")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(fit.canLoad ? p.onSurfaceVariant : .red)
                     }
                 }
-                Text(entry.id)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(p.onSurfaceVariant)
-                    .lineLimit(1)
-                Text(fit.canLoad ? (fit.severity == .safe ? "Fits" : "Tight") : "Too big")
-                    .font(.caption2)
-                    .foregroundStyle(fit.canLoad ? p.onSurfaceVariant : .red)
+                Spacer(minLength: 4)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(p.surface, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(border, lineWidth: 1))
+
+            // Always a real control — never “tap the card and hope”.
+            catalogAction(entry: entry, state: state, fit: fit, isActive: isActive, p: p)
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(p.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(border, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func catalogAction(entry: ModelEntry,
+                               state: ModelLibraryController.ModelState,
+                               fit: MemoryCheckResult,
+                               isActive: Bool,
+                               p: QuenderinPalette) -> some View {
+        switch state {
+        case .notInstalled:
+            Button {
+                onSelectModel(entry)   // beginInstall → download + load
+            } label: {
+                Label("Install", systemImage: "arrow.down.circle.fill")
+                    .font(.callout.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(p.primary)
+            .disabled(!fit.canLoad)
+            .help(fit.canLoad
+                  ? "Download \(entry.label) and make it ready to use"
+                  : "Too big for this \(deviceNoun)’s memory")
+            .accessibilityLabel("Install \(entry.label)")
+
+        case .downloading(let fraction):
+            HStack(spacing: 10) {
+                ProgressView(value: fraction)
+                    .frame(maxWidth: .infinity)
+                Text("\(Int((fraction * 100).rounded()))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(p.onSurfaceVariant)
+                Button {
+                    library.cancel(entry)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(p.onSurfaceVariant)
+                .accessibilityLabel("Cancel download")
+            }
+
+        case .installed:
+            if isActive {
+                Text("This is the model you’re using now.")
+                    .font(.caption)
+                    .foregroundStyle(p.onSurfaceVariant)
+            } else {
+                Button {
+                    onSelectModel(entry)
+                } label: {
+                    Label("Use this model", systemImage: "checkmark.circle.fill")
+                        .font(.callout.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(p.primary)
+                .disabled(!fit.canLoad)
+                .accessibilityLabel("Use \(entry.label)")
+            }
+
+        case .failed(let reason):
+            VStack(alignment: .leading, spacing: 6) {
+                if let reason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(p.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    onSelectModel(entry)
+                } label: {
+                    Label("Retry install", systemImage: "arrow.clockwise")
+                        .font(.callout.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .accessibilityLabel("Retry install \(entry.label)")
+            }
+        }
     }
 }
 #endif

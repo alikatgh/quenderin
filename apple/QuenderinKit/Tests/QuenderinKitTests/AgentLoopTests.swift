@@ -31,13 +31,21 @@ final class AgentLoopTests: XCTestCase {
     func testUnknownToolMessageSuggestsTheNamespacedTwin() {
         let available = ["calc", "units", "datecalc", "mac.mail.draft", "mac.app.open", "fs.read"]
         let msg = AgentLoop.unknownToolMessage("mail.draft", available: available)
-        XCTAssertTrue(msg.contains("No such tool: mail.draft."))
-        XCTAssertTrue(msg.contains("Did you mean \"mac.mail.draft\""), "got: \(msg)")
-        // A typo within edit distance also recovers.
-        XCTAssertTrue(AgentLoop.unknownToolMessage("clac", available: available).contains("\"calc\""))
+        // Human copy: keep the failure marker, show people-facing names for suggestions.
+        XCTAssertTrue(msg.contains("No such tool:"), "got: \(msg)")
+        XCTAssertTrue(msg.contains("mail.draft"), "got: \(msg)")
+        XCTAssertTrue(msg.contains("Did you mean"), "got: \(msg)")
+        XCTAssertTrue(msg.contains(CapabilityCatalog.displayName(for: "mac.mail.draft")),
+                      "suggestion should be the friendly name, got: \(msg)")
+        // A typo within edit distance also recovers (friendly label for "calc").
+        let typo = AgentLoop.unknownToolMessage("clac", available: available)
+        XCTAssertTrue(typo.contains("Did you mean"), "got: \(typo)")
+        XCTAssertTrue(typo.contains(CapabilityCatalog.displayName(for: "calc")), "got: \(typo)")
         // Garbage gets the plain message — no misleading suggestion.
-        XCTAssertEqual(AgentLoop.unknownToolMessage("weathersat", available: available),
-                       "No such tool: weathersat.")
+        let garbage = AgentLoop.unknownToolMessage("weathersat", available: available)
+        XCTAssertTrue(garbage.contains("No such tool:"), "got: \(garbage)")
+        XCTAssertTrue(garbage.contains("weathersat"), "got: \(garbage)")
+        XCTAssertFalse(garbage.contains("Did you mean"), "got: \(garbage)")
     }
 
     /// Reason precedence (live-caught): the model repeated the consent-refused mac.mail.draft —
@@ -210,8 +218,10 @@ final class AgentLoopTests: XCTestCase {
         let md = session.exportMarkdown
         XCTAssertNotNil(md)
         XCTAssertTrue(md!.contains("# Agent walkthrough: What is 2+2?"))   // lastGoal stored + used
-        XCTAssertTrue(md!.contains("`calculator`(2 + 2)"))                // the real tool step
+        XCTAssertTrue(md!.contains("Calculator"))                          // people-facing tool label
+        XCTAssertTrue(md!.contains("2 + 2"))                               // the real input
         XCTAssertTrue(md!.contains("**Answer:** 4"))                      // the real answer
+        XCTAssertFalse(md!.contains("`calculator`"), "raw tool id should not appear in export")
     }
 
     func testRunsToolThenAnswers() async {
@@ -326,11 +336,13 @@ final class AgentLoopTests: XCTestCase {
         await session.run(goal: "x")
         XCTAssertFalse(session.steps.isEmpty)
         XCTAssertEqual(session.answer, "done")
+        XCTAssertEqual(session.lastGoal, "x")
 
         session.clear()
         XCTAssertTrue(session.steps.isEmpty)
         XCTAssertNil(session.answer)
         XCTAssertNil(session.haltReason)
+        XCTAssertEqual(session.lastGoal, "", "clear must drop the goal so the goal card leaves")
     }
 
     /// The agent decode must carry Qwen3's non-thinking sampling recipe (temp 0.7 / top_p 0.8 /
@@ -496,6 +508,17 @@ final class AgentLoopTests: XCTestCase {
         XCTAssertTrue(AgentLoop.isFailureObservation("Mail has no account set up (NO_ACCOUNT)"))
         XCTAssertFalse(AgentLoop.isFailureObservation("No events on your calendar today."), "a valid empty result is NOT a failure")
         XCTAssertFalse(AgentLoop.isFailureObservation("Created note \"Ideas\"."))
+    }
+
+    func testIsPermissionRefusalMatchesHumanizedCopy() {
+        XCTAssertTrue(AgentLoop.isPermissionRefusal(
+            "Needs your permission first: turn on “Add a calendar event” in Settings → Agent, then try again."))
+        XCTAssertTrue(AgentLoop.isPermissionRefusal(
+            "This would change something on your Mac, but this screen can’t ask you to confirm. Nothing was done."))
+        XCTAssertTrue(AgentLoop.isPermissionRefusal(
+            "This plan would change something on your Mac, but this screen can’t ask you to confirm. Nothing was done."))
+        XCTAssertTrue(AgentLoop.isPermissionRefusal("You declined: Add event. Nothing was changed."))
+        XCTAssertFalse(AgentLoop.isPermissionRefusal("Created note \"Ideas\"."))
     }
 
     func testIsSystemPermissionBlockDetectsAutomationAndAccessibility() {

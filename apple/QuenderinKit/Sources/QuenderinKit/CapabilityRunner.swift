@@ -118,16 +118,19 @@ public struct CapabilityRunner: Sendable {
                                                        isConsented: consent.isGranted(capability.name))
         } catch {
             log("error", outcome: "preview failed: \(error)")
-            return "Couldn't preview \(capability.name): \(error)"
+            let label = CapabilityCatalog.displayName(for: capability.name)
+            return "Couldn't prepare “\(label)”: \(error)"
         }
 
         switch decision {
         case .blocked(let keyword):
             log("blocked(\(keyword))", outcome: nil)
-            return "Refused: touches a blocked action ('\(keyword)')."
-        case .needsConsent(let preview):
+            return "Refused: that step touches a blocked action (‘\(keyword)’)."
+        case .needsConsent:
+            // Prefix is stable for AgentLoop.isPermissionRefusal — body is human (display name, not tool id).
             log("needsConsent", outcome: nil)
-            return "Needs your permission first: \(preview.summary) Grant \"\(capability.name)\" in Settings to allow this."
+            let label = CapabilityCatalog.displayName(for: capability.name)
+            return "Needs your permission first: turn on “\(label)” in Settings → Agent, then try again."
         case .allowed(let preview):
             // The write gate: a mutating action needs the user's yes for THIS run, not just a
             // standing grant. No approver wired ⇒ refuse (fail closed), never silently write.
@@ -135,7 +138,7 @@ public struct CapabilityRunner: Sendable {
                 // (single-action path — plans batch their approval in executePlan)
                 guard let approve else {
                     log("needsApproval", outcome: nil)
-                    return "This action changes files and needs your per-run approval, which this surface can't ask for. Not done."
+                    return "This would change something on your Mac, but this screen can’t ask you to confirm. Nothing was done."
                 }
                 guard await approve(preview) else {
                     log("declined", outcome: nil)
@@ -194,10 +197,12 @@ public struct CapabilityRunner: Sendable {
             }
             if item.capability.requiresConsent && !consent.isGranted(item.capability.name) {
                 log(item, "needsConsent", outcome: nil)
-                return "Needs your permission first: \"\(item.capability.name)\" isn't granted in Settings. Nothing was done."
+                let label = CapabilityCatalog.displayName(for: item.capability.name)
+                return "Needs your permission first: turn on “\(label)” in Settings → Agent, then try again. Nothing was done."
             }
             guard let preview = try? await item.capability.plan(item.input) else {
-                return "Couldn't preview step \(previews.count + 1) (\(item.capability.name)). Nothing was done."
+                let label = CapabilityCatalog.displayName(for: item.capability.name)
+                return "Couldn't prepare step \(previews.count + 1) (“\(label)”). Nothing was done."
             }
             previews.append(preview)
         }
@@ -210,7 +215,7 @@ public struct CapabilityRunner: Sendable {
             let combined = ActionPreview(summary: "The agent proposes this plan:\n\(numbered)", mutates: true)
             guard let approve else {
                 for item in items { log(item, "needsApproval", outcome: nil) }
-                return "This plan changes files and needs your approval, which this surface can't ask for. Nothing was done."
+                return "This plan would change something on your Mac, but this screen can’t ask you to confirm. Nothing was done."
             }
             guard await approve(combined) else {
                 for item in items { log(item, "declined", outcome: nil) }

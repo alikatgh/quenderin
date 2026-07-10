@@ -28,9 +28,9 @@ public final class AgentSession: ObservableObject {
     @Published public private(set) var recipeCursor = 0
     /// Bumped per run so a lagging cross-actor step append from a finished run can't land in the next.
     private var runToken = 0
-    /// The goal of the most recent run — kept so the run can be exported with its prompt as the
-    /// heading, and so the permission-halt "Allow & run again" affordance can re-run it verbatim.
-    public private(set) var lastGoal = ""
+    /// The goal of the most recent run — published so the live UI can show it while planning
+    /// (the composer field is cleared on submit; the screen still needs the goal visible).
+    @Published public private(set) var lastGoal = ""
 
     private var loop: AgentLoop
     /// Kept so `cancel()` can interrupt an in-flight decode (Q-641), the way ChatModel holds its engine.
@@ -158,5 +158,8 @@ public final class AgentSession: ObservableObject {
         steps = []
         answer = nil
         haltReason = nil
+        activeRecipe = nil
+        recipeCursor = 0
+        lastGoal = ""
     }
 }

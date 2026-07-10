@@ -27,7 +27,7 @@ public extension AgentRun.HaltReason {
         case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
         case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
         case .cancelled: return "Stopped — you halted the agent."
-        case .needsPermission: return "The agent needs a permission it doesn't have yet — nothing was completed. The run log above shows exactly which one and where to grant it (Quenderin Settings → Agent, or macOS System Settings › Privacy). Grant it, then run the goal again."
+        case .needsPermission: return "Something needs your permission before it can continue — nothing was completed. Use the button below, or turn it on in Settings → Agent (and macOS System Settings › Privacy if the system asks)."
         }
     }
 }
@@ -413,9 +413,13 @@ public struct AgentLoop: Sendable {
     /// near-miss deserves "did you mean". Pure + deterministic; twin of the Kotlin helper.
     static func unknownToolMessage(_ name: String, available: [String]) -> String {
         let suggestions = closestTools(to: name, in: available)
-        let hint = suggestions.isEmpty
-            ? "" : " Did you mean \(suggestions.map { "\"\($0)\"" }.joined(separator: " or "))?"
-        return "No such tool: \(name).\(hint)"
+        // Human labels for people; raw id only if we have no catalog entry (fallback prettify).
+        let friendly = suggestions.map { CapabilityCatalog.displayName(for: $0) }
+        let hint = friendly.isEmpty
+            ? ""
+            : " Did you mean \(friendly.map { "“\($0)”" }.joined(separator: " or "))?"
+        // Keep "No such tool" marker for isFailureObservation / tests; body is human-oriented.
+        return "No such tool: I don’t recognise “\(name)”.\(hint)"
     }
 
     /// Closest real tool names: a namespaced twin or containment ("mail.draft" ⊂
@@ -454,8 +458,12 @@ public struct AgentLoop: Sendable {
     /// (consent gate, per-run decline, missing approver) — not model output. Kept in lockstep
     /// with the Kotlin twin.
     static func isPermissionRefusal(_ observation: String) -> Bool {
+        // Stable prefixes from CapabilityRunner — keep in lockstep when humanizing copy.
         observation.hasPrefix("Needs your permission first:") ||
         observation.hasPrefix("You declined:") ||
+        observation.hasPrefix("This would change something on your Mac") ||
+        observation.hasPrefix("This plan would change something on your Mac") ||
+        // Legacy (pre-humanize) prefix — still recognise any old observations.
         observation.hasPrefix("This action changes files and needs your per-run approval")
     }
 

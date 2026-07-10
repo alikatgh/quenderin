@@ -89,6 +89,17 @@ public final class ChatModel: ObservableObject {
         self.context = context
     }
 
+    /// Record a user turn + a fixed assistant reply without calling the model. Used when chat
+    /// detects a computer task (`ActionIntent`) so the user gets education + a handoff button
+    /// instead of a generated "I cannot fulfill that request" wall.
+    public func recordGuidedTurn(userText: String, documents: [AttachedDocument] = [],
+                                 assistantText: String) {
+        let trimmed = userText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
+        messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
+        messages.append(ChatMessage(role: .assistant, text: assistantText))
+    }
+
     /// Send a prompt and stream the reply. No-ops on empty input (unless documents are
     /// attached — "summarize this file" with no extra words is a legitimate send) or while a
     /// previous generation is still running.

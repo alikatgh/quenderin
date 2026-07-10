@@ -36,6 +36,20 @@ final class ChatModelTests: XCTestCase {
         XCTAssertTrue(chat.messages.isEmpty)
     }
 
+    /// Computer-task short-circuit: user + fixed education, no model call.
+    func testRecordGuidedTurnAppendsWithoutGenerating() async {
+        let engine = await loadedMock("SHOULD_NOT_APPEAR")
+        let chat = ChatModel(engine: engine)
+        chat.recordGuidedTurn(userText: "open browser and write email to i@alink.ru",
+                              assistantText: ActionIntent.guidedAssistantReply)
+        XCTAssertEqual(chat.messages.count, 2)
+        XCTAssertEqual(chat.messages[0].role, .user)
+        XCTAssertEqual(chat.messages[1].role, .assistant)
+        XCTAssertEqual(chat.messages[1].text, ActionIntent.guidedAssistantReply)
+        XCTAssertFalse(chat.messages[1].text.contains("SHOULD_NOT_APPEAR"))
+        XCTAssertFalse(chat.isGenerating)
+    }
+
     func testSendSurfacesErrorWhenNoModelLoaded() async {
         let chat = ChatModel(engine: MockInferenceEngine())  // never loaded
         await chat.send("hello")

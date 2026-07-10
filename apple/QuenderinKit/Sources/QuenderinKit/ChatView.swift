@@ -18,16 +18,11 @@ public struct ChatView: View {
     @State private var pendingDocuments: [AttachedDocument] = []
     @State private var attachmentNotice: String?
     @State private var showAttachPicker = false
-    /// Where the transcript's bottom edge sits in viewport coordinates, and the viewport's
-    /// height — nearBottom is DERIVED from the pair in body, so it can never go stale when
-    /// one arrives before the other (the ↓ button haunted empty chats when a preference
-    /// fired before onAppear had measured the viewport).
-    @State private var sentinelY: CGFloat = 0
-    @State private var viewportHeight: CGFloat = 0
-
-    /// Streaming auto-follows ONLY while this is true — the moment you scroll up to re-read,
-    /// the app stops fighting you and a floating ↓ offers the way back.
-    private var nearBottom: Bool { sentinelY < viewportHeight + 140 }
+    /// Streaming auto-follows ONLY while true. Bool + hysteresis only — never continuous
+    /// CGFloat scroll metrics (those force a full body rebuild every wheel tick).
+    @State private var nearBottom = true
+    /// Throttle stream-follow scrollTo so token-by-token follow doesn't fight the wheel.
+    @State private var lastStreamFollowAt = Date.distantPast
     @Environment(\.colorScheme) private var scheme
     @FocusState private var composerFocused: Bool
 
@@ -80,40 +75,68 @@ public struct ChatView: View {
         let prompt = draft.trimmingCharacters(in: .whitespaces)
         // Documents alone are a legitimate send ("summarize this file" with no extra words).
         guard !prompt.isEmpty || !pendingDocuments.isEmpty, !model.isGenerating else { return }
-        // Chat can't act — but when the message IS an action ("open browser and write email…"),
-        // redirect PROSE from the model isn't help, it's homework (live report: "not working at
-        // all"). Detect it in code and offer the real thing: one tap runs it on the Agent surface.
-        agentSuggestion = ActionIntent.looksLikeComputerTask(prompt) ? prompt : nil
         let documents = pendingDocuments
         pendingDocuments = []
         attachmentNotice = nil
         draft = ""
         composerFocused = true   // Return-to-send must not drop keyboard focus mid-conversation
+
+        // Computer task → educate + handoff button. Do NOT call the model (it only produces
+        // "I cannot fulfill…" walls). Code owns the path so the user always gets a real CTA.
+        if ActionIntent.looksLikeComputerTask(prompt) {
+            agentSuggestion = prompt
+            model.recordGuidedTurn(userText: prompt, documents: documents,
+                                   assistantText: ActionIntent.guidedAssistantReply)
+            return
+        }
+        agentSuggestion = nil
         Task { await model.send(prompt, documents: documents) }
+    }
+
+    /// Latest computer-task handoff target — O(n) once per body, not O(n²) per bubble.
+    private var latestHandoff: (assistantID: UUID, goal: String)? {
+        let msgs = model.messages
+        guard msgs.count >= 2 else { return nil }
+        for i in stride(from: msgs.count - 1, through: 1, by: -1) {
+            guard msgs[i].role == .assistant, msgs[i - 1].role == .user else { continue }
+            let goal = msgs[i - 1].text
+            if ActionIntent.looksLikeComputerTask(goal) {
+                return (msgs[i].id, goal)
+            }
+        }
+        return nil
+    }
+
+    private func runWithAgent(_ goal: String) {
+        agentSuggestion = nil
+        AgentHandoff.shared.send(goal)
     }
 
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 0) {
+            // NO GeometryReader around ScrollView — that fights content size and makes wheel
+            // scroll rubber-band, jump, and lag. nearBottom comes from AppKit (macOS) or a
+            // cheap bottom sentinel (iOS) with hysteresis only.
             ScrollViewReader { proxy in
-              GeometryReader { viewport in
                 ScrollView {
                     if model.messages.isEmpty, !model.isGenerating {
                         EmptyChatState(palette: p, activeModel: activeModel)
                             .frame(maxWidth: .infinity, minHeight: 360)
                     } else {
-                        // macOS gets a PLAIN VStack: LazyVStack destroys/recreates rows while you
-                        // scroll and estimates-then-corrects their heights, which made wheel
-                        // scrolling stutter and jump on long Markdown replies. A transcript's row
-                        // count is modest and each row is cheap once the Markdown parse is cached
-                        // (see MarkdownText), so laziness bought nothing here. iOS keeps the lazy
-                        // stack for memory on phones.
+                        // macOS: plain VStack (LazyVStack remeasure jank). iOS: lazy for memory.
                         transcriptStack(spacing: settings.messageDensity.spacing) {
                             DayDivider(text: "Today", palette: p)
                             ForEach(model.messages) { message in
                                 ChatBubble(message: message, palette: p,
                                            accent: settings.bubbleAccent.colors(dark: scheme == .dark))
                                     .id(message.id)
+                                if let handoff = latestHandoff, handoff.assistantID == message.id {
+                                    AgentHandoffCard(goal: handoff.goal, palette: p, compact: true) {
+                                        runWithAgent(handoff.goal)
+                                    }
+                                    .id("handoff-\(message.id)")
+                                }
                             }
                             if model.isGenerating {
                                 TypingBubble(palette: p)
@@ -123,58 +146,67 @@ public struct ChatView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
-                        .environment(\.font, effectiveChatFont)   // per-chat override ?? Settings default
-                        // On a wide Mac detail pane the transcript reads as a centered column
-                        // (like Messages), not a strip hugging the left edge.
+                        .environment(\.font, effectiveChatFont)
                         .frame(maxWidth: 760)
                         .frame(maxWidth: .infinity)
                     }
-                    // Bottom sentinel: its position in the scroll coordinate space tells us
-                    // whether the transcript's tail is on screen (drives follow + the ↓ button).
+                    // Bottom anchor + (macOS) AppKit near-bottom probe MUST live inside the
+                    // scroll content so enclosingScrollView is non-nil.
+                    Color.clear
+                        .frame(height: 1)
+                        .id("bottom")
+                        #if os(macOS)
+                        .background(MacNearBottomObserver { isNear in
+                            if isNear != nearBottom { nearBottom = isNear }
+                        })
+                        #endif
+                    #if !os(macOS)
+                    // iOS: layout-driven sentinel (no AppKit clip view).
                     GeometryReader { geo in
-                        Color.clear.preference(key: BottomEdgeKey.self,
-                                               value: geo.frame(in: .named("chatScroll")).minY)
+                        Color.clear.preference(
+                            key: BottomEdgeKey.self,
+                            value: geo.frame(in: .named("chatScroll")).minY
+                        )
                     }
                     .frame(height: 1)
-                    .id("bottom")
-                    #if os(macOS)
-                    // AppKit gotcha: user scrolling moves the document view WITHOUT a SwiftUI
-                    // layout pass, so the preference above goes stale mid-scroll. Watch the
-                    // enclosing NSScrollView's bounds directly for that path.
-                    .background(MacScrollObserver { distanceFromBottom in
-                        sentinelY = viewportHeight + distanceFromBottom
-                    })
                     #endif
                 }
+                #if !os(macOS)
                 .coordinateSpace(name: "chatScroll")
                 .onPreferenceChange(BottomEdgeKey.self) { minY in
-                    // Updates on LAYOUT changes (streaming growth). On macOS, user scrolling
-                    // doesn't relayout — MacScrollObserver covers that path.
-                    sentinelY = minY
+                    // Hysteresis: enter near < 80, leave far > 220 (avoids flip-flop at edge).
+                    let isNear = nearBottom ? (minY < 220) : (minY < 80)
+                    if isNear != nearBottom { nearBottom = isNear }
                 }
+                #endif
                 .onAppear {
-                    viewportHeight = viewport.size.height
-                    // A restored conversation opens at its LATEST messages, not the top.
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                    nearBottom = true
+                }
+                .onChange(of: model.messages.count) { _ in
+                    // New message only — never animate (fights the wheel).
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                    nearBottom = true
+                }
+                // Stream follow: throttled + only while near bottom (user scrolled up = leave them).
+                .onChange(of: model.messages.last?.text) { _ in
+                    guard nearBottom, model.isGenerating else { return }
+                    let now = Date()
+                    guard now.timeIntervalSince(lastStreamFollowAt) >= 0.18 else { return }
+                    lastStreamFollowAt = now
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
-                .onChange(of: viewport.size.height) { viewportHeight = $0 }
-                .onChange(of: model.messages.count) { _ in
-                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
-                }
-                // Follow the STREAM token by token — but only while you're already at the tail.
-                .onChange(of: model.messages.last?.text) { _ in
-                    if nearBottom, model.isGenerating {
+                .onChange(of: model.isGenerating) { generating in
+                    if generating {
                         proxy.scrollTo("bottom", anchor: .bottom)
+                        nearBottom = true
                     }
                 }
-                .onChange(of: model.isGenerating) { generating in
-                    if generating { withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
-                }
-                // The way back down while reading history (always available, not just streaming).
                 .overlay(alignment: .bottomTrailing) {
                     if !nearBottom {
                         Button {
-                            withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                            proxy.scrollTo("bottom", anchor: .bottom)
+                            nearBottom = true
                         } label: {
                             Image(systemName: "arrow.down")
                                 .font(.system(size: 14, weight: .semibold))
@@ -182,14 +214,14 @@ public struct ChatView: View {
                                 .frame(width: 34, height: 34)
                         }
                         .buttonStyle(.plain)
-                        .glassChrome(in: Circle())
+                        .background(p.surface.opacity(0.92), in: Circle())
+                        .overlay(Circle().strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
                         .padding(.trailing, 16)
                         .padding(.bottom, 10)
                         .help("Jump to the latest message")
                         .accessibilityLabel("Jump to latest")
                     }
                 }
-              }
             }
 
             if let suggestion = routeSuggestion {
@@ -210,40 +242,15 @@ public struct ChatView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal)
 
-            // The chat→agent handoff bar: the user's last message was an operate-the-computer
-            // ask, so offer to actually DO it — one tap switches to the Agent and runs the goal
-            // (which then previews + asks before any change, as always).
+            // Sticky handoff above the composer (mirrors the in-transcript card) so the CTA
+            // stays visible while scrolling history.
             if let suggestion = agentSuggestion {
-                HStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.caption)
-                        .foregroundStyle(p.primary)
-                    Text("This looks like a task for the Agent.")
-                        .font(.callout)
-                        .foregroundStyle(p.onSurfaceVariant)
-                    Button("Run it with the Agent") {
-                        agentSuggestion = nil
-                        AgentHandoff.shared.send(suggestion)
-                    }
-                    .buttonStyle(.plain)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(p.primary)
-                    .accessibilityLabel("Run this request with the Agent")
-                    Spacer()
-                    Button {
-                        agentSuggestion = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(p.onSurfaceVariant)
-                    .accessibilityLabel("Dismiss agent suggestion")
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(p.primary.opacity(0.08))
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
+                AgentHandoffCard(goal: suggestion, palette: p, compact: false,
+                                 onRun: { runWithAgent(suggestion) },
+                                 onDismiss: { agentSuggestion = nil })
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
             }
 
             composer(palette: p)
@@ -252,7 +259,6 @@ public struct ChatView: View {
         }
         .background(p.background)
         .toolbar {
-            // Export the transcript as Markdown the user can share/save — on THEIR terms, never silently.
             if !model.messages.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
                     ShareLink(item: ConversationExporter.markdown(model.messages),
@@ -437,8 +443,10 @@ private struct ChatBubble: View {
             } else if message.text.isEmpty {
                 Text("…").foregroundStyle(palette.onAssistantBubble)
             } else {
-                // Assistant replies are Markdown — render bold/headings/lists/code instead of raw markers.
-                MarkdownText(text: message.text, color: palette.onAssistantBubble)
+                // Rewrite old "I cannot fulfill… use the Agent tab" walls to the guided education
+                // (storage stays as-is; people see the correct path + handoff chip).
+                let shown = ActionIntent.displayAssistantText(message.text)
+                MarkdownText(text: shown, color: palette.onAssistantBubble)
                     .textSelection(.enabled)
             }
             if message.isFlagged {
@@ -520,38 +528,104 @@ private struct RouteSuggestionChip: View {
     }
 }
 
+/// Chat→Agent handoff — quiet inline chip, not a billboard CTA. Still a real control that
+/// switches to Agent and runs the goal; just modest so the transcript stays readable.
+private struct AgentHandoffCard: View {
+    let goal: String
+    let palette: QuenderinPalette
+    var compact: Bool = false
+    let onRun: () -> Void
+    var onDismiss: (() -> Void)? = nil
+
+    var body: some View {
+        // Hug content — never stretch full row width (looked like a broken progress bar).
+        HStack(alignment: .center, spacing: 6) {
+            Image(systemName: "sparkles")
+                .font(.caption2)
+                .foregroundStyle(palette.primary)
+            if !compact {
+                Text("Chat can’t run this —")
+                    .font(.caption)
+                    .foregroundStyle(palette.onSurfaceVariant)
+            }
+            Button(action: onRun) {
+                Text(compact ? ActionIntent.handoffButtonTitle : "open in Agent")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(palette.primary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(ActionIntent.handoffButtonTitle)
+            .accessibilityHint("Switches to the Agent and runs this request")
+            .help(goal)
+            if let onDismiss {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(palette.onSurfaceVariant.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss")
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule(style: .continuous)
+                .fill(palette.surfaceVariant.opacity(0.55))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(palette.onSurfaceVariant.opacity(0.12), lineWidth: 1)
+                )
+        )
+        .fixedSize(horizontal: true, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+}
+
 #if os(macOS)
-/// Reports how far the user is from the transcript's bottom, straight from the enclosing
-/// NSScrollView — the only signal that survives AppKit's layout-free scrolling.
-private struct MacScrollObserver: NSViewRepresentable {
-    let onChange: (_ distanceFromBottom: CGFloat) -> Void
+/// nearBottom from AppKit clip bounds — reports a **Bool** with hysteresis, never a CGFloat.
+/// Calling SwiftUI on every wheel pixel was the scroll-jank root cause.
+private struct MacNearBottomObserver: NSViewRepresentable {
+    let onNearBottomChange: (Bool) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(onNearBottomChange: onNearBottomChange) }
 
-    /// Selector-based observer ON PURPOSE: the block API's `using:` closure is `@Sendable` in
-    /// newer SDKs, so touching the main-actor `contentView`/`onChange` inside it is a hard error
-    /// on Swift 6.1 (CI) while 6.2 accepts it — a toolchain-dependent build. A `@MainActor`
-    /// coordinator with an `@objc` selector has no Sendable boundary at all: the bounds-change
-    /// notification posts on the main thread, which is exactly this class's isolation.
     @MainActor
     final class Coordinator: NSObject {
-        var onChange: ((CGFloat) -> Void)?
+        var onNearBottomChange: (Bool) -> Void
         weak var clipView: NSClipView?
         var observing = false
+        var isNear = true
+
+        init(onNearBottomChange: @escaping (Bool) -> Void) {
+            self.onNearBottomChange = onNearBottomChange
+        }
 
         @objc func boundsDidChange(_ note: Notification) {
             guard let clip = clipView else { return }
-            onChange?(clip.documentRect.height - clip.bounds.maxY)
+            // document bottom relative to visible rect.
+            let distance = clip.documentRect.height - clip.bounds.maxY
+            // Hysteresis: must go past far band to leave near, past near band to re-enter.
+            let next: Bool
+            if isNear {
+                next = distance < 180   // leave near only after scrolling well up
+            } else {
+                next = distance < 48    // re-enter only when really at the tail
+            }
+            guard next != isNear else { return }
+            isNear = next
+            onNearBottomChange(next)
         }
 
         deinit {
-            NotificationCenter.default.removeObserver(self)   // thread-safe, isolation-free API
+            NotificationCenter.default.removeObserver(self)
         }
     }
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        context.coordinator.onChange = onChange
+        context.coordinator.onNearBottomChange = onNearBottomChange
         DispatchQueue.main.async { [weak view] in
             guard let view, !context.coordinator.observing,
                   let scroll = view.enclosingScrollView else { return }
@@ -570,16 +644,18 @@ private struct MacScrollObserver: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.onChange = onChange   // keep the latest closure (view updates rebuild it)
+        context.coordinator.onNearBottomChange = onNearBottomChange
     }
 }
 #endif
 
-/// Where the transcript's bottom edge sits in the scroll viewport (drives follow-scroll).
+#if !os(macOS)
+/// iOS only — bottom sentinel preference (macOS uses MacNearBottomObserver).
 private struct BottomEdgeKey: PreferenceKey {
     static let defaultValue: CGFloat = .infinity
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
+#endif
 
 /// Assistant-side "…" while a reply is being generated — three dots pulsing in sequence.
 private struct TypingBubble: View {

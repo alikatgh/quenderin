@@ -36,4 +36,26 @@ final class ActionIntentTests: XCTestCase {
             XCTAssertFalse(ActionIntent.looksLikeComputerTask(text), "should NOT detect: \(text)")
         }
     }
+
+    /// The educational short-circuit must teach the path, not refuse at length.
+    func testGuidedReplyEducatesWithoutWallOfRefusal() {
+        let reply = ActionIntent.guidedAssistantReply
+        XCTAssertTrue(reply.localizedCaseInsensitiveContains("Agent"), "must name the Agent")
+        XCTAssertTrue(reply.localizedCaseInsensitiveContains("sparkle")
+                      || reply.localizedCaseInsensitiveContains("sidebar"),
+                      "must point at the rail control")
+        XCTAssertFalse(reply.localizedCaseInsensitiveContains("I cannot fulfill"),
+                       "no dead-end refusal prose")
+        XCTAssertEqual(ActionIntent.handoffButtonTitle, "Open in Agent")
+    }
+
+    func testOldAgentRedirectProseIsRewrittenForDisplay() {
+        let wall = "I cannot fulfill that request. I am running entirely offline and do not have "
+            + "the ability to operate your computer. Please use the Agent tab (the sparkle icon)."
+        XCTAssertTrue(ActionIntent.looksLikeAgentRedirectProse(wall))
+        XCTAssertEqual(ActionIntent.displayAssistantText(wall), ActionIntent.guidedAssistantReply)
+        XCTAssertFalse(ActionIntent.looksLikeAgentRedirectProse("Село Хочо находится в префектуре Нагано."))
+        XCTAssertEqual(ActionIntent.displayAssistantText("Paris is the capital."),
+                       "Paris is the capital.")
+    }
 }

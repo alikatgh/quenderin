@@ -7,7 +7,7 @@ import Combine
 /// a failure the model cannot be trusted to handle: a user types "open browser and write email
 /// to …" into CHAT, and the best a system prompt can produce is redirect PROSE the user must
 /// read, interpret, and act on ("this shit is not working at all" — live report). Detection in
-/// code means the UI can offer a one-tap "Run with the Agent" instead.
+/// code means the UI can offer a one-tap "Go to Agent and run this" instead of a dead-end refusal.
 ///
 /// Conservative by design (precision over recall): a missed detection costs nothing — the chat
 /// reply still explains — while a false positive nags. Pattern list kept in lockstep with the
@@ -27,6 +27,35 @@ public enum ActionIntent {
     public static func looksLikeComputerTask(_ text: String) -> Bool {
         let lowered = text.lowercased()
         return patterns.contains { lowered.range(of: $0, options: .regularExpression) != nil }
+    }
+
+    /// Fixed educational reply when chat short-circuits a computer task — no model call, no
+    /// "I cannot fulfill that request" wall. The UI always pairs this with a real button.
+    public static let guidedAssistantReply =
+        "Chat is for questions and writing help — it can’t open apps, control the browser, or send mail on your Mac.\n\n" +
+        "**The Agent can.** Tap the sparkle icon in the sidebar, or use the button below. " +
+        "It will take your request and ask before changing anything."
+
+    /// In-transcript / composer link label — modest, not a billboard.
+    public static let handoffButtonTitle = "Open in Agent"
+
+    /// True when an assistant bubble is the old model-generated "use the Agent tab" wall — so the
+    /// UI can show `guidedAssistantReply` instead of replaying "I cannot fulfill that request".
+    public static func looksLikeAgentRedirectProse(_ text: String) -> Bool {
+        let t = text.lowercased()
+        if t.contains("i cannot fulfill") { return true }
+        if t.contains("cannot open a browser") || t.contains("can't open a browser") { return true }
+        if t.contains("agent tab") && (t.contains("cannot") || t.contains("can't")
+            || t.contains("do not have the ability") || t.contains("don't have the ability")
+            || t.contains("designed to operate offline")) { return true }
+        if t.contains("sparkle") && (t.contains("cannot") || t.contains("can't")
+            || t.contains("please use the agent")) { return true }
+        return false
+    }
+
+    /// Text to show for an assistant bubble: rewrite dead-end agent redirects to the guided copy.
+    public static func displayAssistantText(_ text: String) -> String {
+        looksLikeAgentRedirectProse(text) ? guidedAssistantReply : text
     }
 }
 

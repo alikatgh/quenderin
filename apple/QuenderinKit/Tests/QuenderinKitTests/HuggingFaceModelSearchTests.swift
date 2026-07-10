@@ -78,6 +78,43 @@ final class HuggingFaceModelSearchTests: XCTestCase {
         XCTAssertEqual(HuggingFaceCatalog.estimatedParams("some-mystery-model"), 7, accuracy: 0.001, "sane fallback")
     }
 
+    /// HF GGUF re-uploads often omit "7B"/"22B" — codenames must not all collapse to the 7B fallback
+    /// (that made max-size filters look dead: every Mistral row was ~7B).
+    func testEstimatedParamsKnowsFamilyCodenames() {
+        XCTAssertEqual(HuggingFaceCatalog.estimatedParams("MaziyarPanahi/Mistral-Large-Instruct-2411-GGUF"), 123, accuracy: 0.1)
+        XCTAssertEqual(HuggingFaceCatalog.estimatedParams("MaziyarPanahi/Mistral-Small-Instruct-2409-GGUF"), 22, accuracy: 0.1)
+        XCTAssertEqual(HuggingFaceCatalog.estimatedParams("MaziyarPanahi/Mistral-Nemo-Instruct-2407-GGUF"), 12, accuracy: 0.1)
+        XCTAssertEqual(HuggingFaceCatalog.estimatedParams("TheBloke/Mistral-7B-Instruct-v0.2-GGUF"), 7, accuracy: 0.1)
+        XCTAssertEqual(HuggingFaceCatalog.estimatedParams("someone/Phi-3-mini-4k-instruct-GGUF"), 3.8, accuracy: 0.1)
+    }
+
+    func testMaxParamsFilterUsesCodenameEstimates() {
+        let hits = [
+            HFModelHit(id: "a/Mistral-Large-Instruct-2411-GGUF", downloads: 100, gated: false),
+            HFModelHit(id: "b/Mistral-7B-Instruct-v0.3-GGUF", downloads: 200, gated: false),
+            HFModelHit(id: "c/Mistral-Nemo-Instruct-2407-GGUF", downloads: 150, gated: false),
+        ]
+        let le14 = ModelSearchFilters(maxParamsB: 14).apply(to: hits, totalRAMGB: 32)
+        XCTAssertEqual(Set(le14.map(\.id)), Set(["b/Mistral-7B-Instruct-v0.3-GGUF", "c/Mistral-Nemo-Instruct-2407-GGUF"]),
+                       "Large (~123B) must drop under ≤14B; 7B and Nemo (~12B) stay")
+        let le8 = ModelSearchFilters(maxParamsB: 8).apply(to: hits, totalRAMGB: 32)
+        XCTAssertEqual(le8.map(\.id), ["b/Mistral-7B-Instruct-v0.3-GGUF"])
+    }
+
+    func testSortByParamsDescOrdersCodenames() {
+        let hits = [
+            HFModelHit(id: "a/Mistral-7B-GGUF", downloads: 1, gated: false),
+            HFModelHit(id: "b/Mistral-Large-GGUF", downloads: 1, gated: false),
+            HFModelHit(id: "c/Mistral-Nemo-GGUF", downloads: 1, gated: false),
+        ]
+        let sorted = ModelSearchFilters(sort: .paramsDesc).apply(to: hits, totalRAMGB: 64)
+        XCTAssertEqual(sorted.map(\.id), [
+            "b/Mistral-Large-GGUF",
+            "c/Mistral-Nemo-GGUF",
+            "a/Mistral-7B-GGUF",
+        ])
+    }
+
     /// A resolved quant becomes a ModelEntry the existing fitness check understands.
     func testCandidateMapsToAHardwareCheckableEntry() {
         let quant = HFQuant(repo: "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",

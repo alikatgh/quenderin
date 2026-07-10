@@ -13,6 +13,8 @@ public struct AgentView: View {
     @State private var showFilePicker = false
     @State private var showFolderPicker = false
     @State private var undoNotice: String?
+    /// Header disclosure: what the agent is, model fit, tools, safety — always one tap away.
+    @State private var showAgentInfo = false
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var scheme
     /// The SAME UserDefaults-backed consent the Settings pane and the session's runner use —
@@ -34,23 +36,54 @@ public struct AgentView: View {
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         VStack(spacing: 0) {
-            // Identity header, twin of the chat header's anatomy: name + status line.
-            VStack(spacing: 1) {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles").font(.subheadline).foregroundStyle(p.primary)
-                    Text("Agent").font(.headline).foregroundStyle(p.onSurface)
+            // Clickable identity header — expand for model, tools, safety (always available).
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) { showAgentInfo.toggle() }
+            } label: {
+                VStack(spacing: 1) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles").font(.subheadline).foregroundStyle(p.primary)
+                        Text("Agent").font(.headline).foregroundStyle(p.onSurface)
+                        Image(systemName: showAgentInfo ? "chevron.up" : "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(p.onSurfaceVariant)
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(session.isRunning ? p.primary : p.status).frame(width: 6, height: 6)
+                        Text(session.isRunning
+                             ? "working on your goal…"
+                             : "on-device tools · safety-gated · tap for details")
+                            .font(.caption2)
+                            .foregroundStyle(session.isRunning ? p.primary : p.statusText)
+                    }
                 }
-                HStack(spacing: 4) {
-                    Circle().fill(p.status).frame(width: 6, height: 6)
-                    Text("on-device tools · safety-gated").font(.caption2).foregroundStyle(p.statusText)
-                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Agent")
+            .accessibilityHint(showAgentInfo ? "Hide agent details" : "Show agent details")
             .background(p.surface)
+
+            if showAgentInfo {
+                AgentInfoPanel(palette: p, consentStore: consentStore)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .background(p.surface)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
             Divider()
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                // Eager VStack on macOS (same reason as chat: LazyVStack remeasure jank on wheel).
+                agentStack(spacing: 12) {
+                    // Goal card — always visible for the active/last run so the blank planning
+                    // state never hides what was asked.
+                    if !session.lastGoal.isEmpty, session.isRunning || !session.steps.isEmpty
+                        || session.answer != nil || session.haltReason != nil {
+                        AgentGoalCard(goal: session.lastGoal, running: session.isRunning, palette: p)
+                    }
+
                     // The WOW: when a recipe matches, a live checklist draws the plan up front and
                     // ticks each row off as the agent actually completes it — honest N-of-M progress
                     // instead of a blank spinner then a wall of JSON.
@@ -80,14 +113,16 @@ public struct AgentView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
                     }
-                    // While a run is live, SOMETHING must always be visibly happening. Before this
-                    // row existed, the screen was BLANK from Run until the first step landed — and
-                    // the first decision is the slowest decode of the mission (full prompt prefill
-                    // + plan generation on-device), so real goals read as "it just stuck" and users
-                    // quit the app (live user report). The composer spinner alone is not feedback.
+                    // Live run status: goal phase, what happens next, Stop — never a bare spinner.
                     if session.isRunning {
-                        AgentWorkingRow(stepNumber: session.steps.count + 1,
-                                        firstStep: session.steps.isEmpty, palette: p)
+                        AgentWorkingCard(
+                            goal: session.lastGoal,
+                            stepNumber: session.steps.count + 1,
+                            firstStep: session.steps.isEmpty,
+                            hasRecipe: session.activeRecipe != nil,
+                            palette: p,
+                            onStop: { session.cancel() }
+                        )
                     }
                     if let answer = session.answer {
                         MarkdownText(text: answer, color: .primary)
@@ -326,20 +361,32 @@ public struct AgentView: View {
         let tierByName = Dictionary(AgentToolkit.capabilities().map { ($0.name, $0.tier) },
                                     uniquingKeysWith: { first, _ in first })
         let anyMutating = capabilities.contains { (tierByName[$0] ?? .readOnly) > .readOnly }
-        let names = capabilities.map { "“\($0)”" }.joined(separator: ", ")
+        let friendly = capabilities.map { CapabilityCatalog.displayName(for: $0) }
+        let buttonTitle: String = {
+            if friendly.count == 1 {
+                return "Allow “\(friendly[0])” and try again"
+            }
+            return "Allow these and try again"
+        }()
         VStack(alignment: .leading, spacing: 6) {
             Button {
+                // Grant still keys on stable tool ids — only the label is human.
                 for name in capabilities { consentStore.setGranted(name, true) }
                 let g = session.lastGoal
                 Task { await session.run(goal: g) }
             } label: {
-                Label("Allow \(names) and run again", systemImage: "checkmark.shield")
+                Label(buttonTitle, systemImage: "checkmark.shield")
             }
             .buttonStyle(.borderedProminent)
             .tint(p.primary)
-            .accessibilityLabel("Allow \(capabilities.joined(separator: ", ")) and run the goal again")
+            .accessibilityLabel(buttonTitle)
+            if friendly.count > 1 {
+                Text(friendly.map { "“\($0)”" }.joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(p.onSurfaceVariant)
+            }
             if anyMutating {
-                Text("You'll still confirm before it makes any change — this only grants the standing permission.")
+                Text("You’ll still confirm before it changes anything — this only turns the capability on.")
                     .font(.caption)
                     .foregroundStyle(p.onSurfaceVariant)
             }
@@ -360,13 +407,20 @@ public struct AgentView: View {
         }
     }
 
-    /// The pill-and-circle composer — the exact twin of chat's, so the two surfaces read as one app.
-    /// The circle shows a spinner while a run is in flight (runs are short; no separate stop control).
+    /// Eager stack on macOS (smooth wheel), lazy on iOS (memory) — twin of ChatView.transcriptStack.
+    @ViewBuilder
+    private func agentStack<Content: View>(spacing: CGFloat, @ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        VStack(alignment: .leading, spacing: spacing) { content() }
+        #else
+        LazyVStack(alignment: .leading, spacing: spacing) { content() }
+        #endif
+    }
+
+    /// Composer twin of chat — while a run is live the circle is **Stop** (not a dead spinner).
     @ViewBuilder
     private func composer(palette p: QuenderinPalette) -> some View {
         HStack(spacing: 8) {
-            // Attach a file for fs.read — the + that only appears attached to a real capability
-            // (the advertised-but-unimplemented rule, honored in the affirmative).
             Button {
                 showFilePicker = true
             } label: {
@@ -374,14 +428,13 @@ public struct AgentView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(p.onSurfaceVariant)
                     .frame(width: 34, height: 34)
-                    .glassChrome(in: Circle())
+                    .background(p.surfaceVariant.opacity(0.6), in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(session.isRunning)
             .help("Attach a file the agent may read (with your permission)")
             .accessibilityLabel("Attach a file")
 
-            // Grant the workspace folder fs.list/fs.move work in — one folder at a time.
             Button {
                 showFolderPicker = true
             } label: {
@@ -389,14 +442,15 @@ public struct AgentView: View {
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(p.onSurfaceVariant)
                     .frame(width: 34, height: 34)
-                    .glassChrome(in: Circle())
+                    .background(p.surfaceVariant.opacity(0.6), in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(session.isRunning)
             .help("Grant a workspace folder the agent may organize (with your approval per change)")
             .accessibilityLabel("Grant a workspace folder")
 
-            TextField("Give the agent a goal…", text: $goal)
+            TextField(session.isRunning ? "Agent is working on your goal…" : "Give the agent a goal…",
+                      text: $goal)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.go)
@@ -404,14 +458,22 @@ public struct AgentView: View {
                 .disabled(session.isRunning)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                // Same Liquid Glass chrome as chat's composer — the two surfaces read as one app.
-                .glassChrome(in: Capsule())
+                .background(p.surfaceVariant.opacity(0.55), in: Capsule())
+                .overlay(Capsule().strokeBorder(p.onSurfaceVariant.opacity(0.12), lineWidth: 1))
 
             let canRun = !goal.trimmingCharacters(in: .whitespaces).isEmpty && !session.isRunning
-            Button(action: run) {
+            Button {
+                if session.isRunning {
+                    session.cancel()
+                } else {
+                    run()
+                }
+            } label: {
                 Group {
                     if session.isRunning {
-                        ProgressView().controlSize(.small).tint(.white)
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
                     } else {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 18, weight: .semibold))
@@ -419,11 +481,16 @@ public struct AgentView: View {
                     }
                 }
                 .frame(width: 44, height: 44)
-                .background(p.primary.opacity(canRun || session.isRunning ? 1 : 0.4), in: Circle())
+                .background(
+                    (session.isRunning ? Color.orange : p.primary)
+                        .opacity(canRun || session.isRunning ? 1 : 0.4),
+                    in: Circle()
+                )
             }
             .buttonStyle(.plain)
-            .disabled(!canRun)
-            .accessibilityLabel(session.isRunning ? "Running" : "Run goal")
+            .disabled(!canRun && !session.isRunning)
+            .help(session.isRunning ? "Stop the agent" : "Run goal")
+            .accessibilityLabel(session.isRunning ? "Stop agent" : "Run goal")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
@@ -721,32 +788,213 @@ private struct AgentRecentGoals: View {
     }
 }
 
-/// The live "the agent is working" row — a spinner, which step it's on, and (on the first
-/// step) an honest expectation that on-device planning takes a moment. Present whenever a
-/// run is in flight so the screen can never read as frozen.
-private struct AgentWorkingRow: View {
-    let stepNumber: Int
-    let firstStep: Bool
+/// Goal banner for the active/last run — the field is cleared on submit, so this is where
+/// the user always sees what was asked.
+private struct AgentGoalCard: View {
+    let goal: String
+    let running: Bool
     let palette: QuenderinPalette
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            ProgressView().controlSize(.small)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(firstStep ? "Planning the task…" : "Working on step \(stepNumber)…")
-                    .font(.callout.weight(.medium))
-                if firstStep {
-                    Text("The model is thinking on-device — the first step takes the longest.")
-                        .font(.caption)
-                        .foregroundStyle(palette.onSurfaceVariant)
-                }
-            }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(running ? "YOUR GOAL" : "GOAL")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.onSurfaceVariant)
+            Text(goal)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(palette.onSurface)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surfaceVariant.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(palette.onSurfaceVariant.opacity(0.14), lineWidth: 1)
+        )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(firstStep ? "Planning the task" : "Working on step \(stepNumber)")
+        .accessibilityLabel("Goal: \(goal)")
+    }
+}
+
+/// Live run status — phase, what happens next, Stop. Replaces the bare "Planning…" spinner.
+private struct AgentWorkingCard: View {
+    let goal: String
+    let stepNumber: Int
+    let firstStep: Bool
+    let hasRecipe: Bool
+    let palette: QuenderinPalette
+    let onStop: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                ProgressView().controlSize(.small)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(firstStep ? "Planning the first step…" : "Working on step \(stepNumber)…")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(palette.onSurface)
+                    Text(phaseDetail)
+                        .font(.caption)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Button(action: onStop) {
+                    Text("Stop")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.orange.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Stop agent")
+            }
+
+            Divider().overlay(palette.onSurfaceVariant.opacity(0.12))
+
+            VStack(alignment: .leading, spacing: 6) {
+                infoLine(icon: "lock.shield",
+                         text: "Nothing leaves this Mac. Tools only run with your grants.")
+                infoLine(icon: "hand.raised",
+                         text: "If a step would change something, you’ll get an Allow / Don’t allow prompt first.")
+                infoLine(icon: "checkmark.shield",
+                         text: "Turn tools on in Settings → Agent if a step says it needs permission.")
+                if firstStep {
+                    infoLine(icon: "clock",
+                             text: "The first plan is the slowest — the model loads your goal on-device.")
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(palette.primary.opacity(0.2), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(firstStep ? "Planning the first step" : "Working on step \(stepNumber)")
+    }
+
+    private var phaseDetail: String {
+        if firstStep {
+            return hasRecipe
+                ? "Matched a built-in plan — drafting the first tool call."
+                : "Reading your goal and choosing the first tool. This can take a moment."
+        }
+        return "Running the next tool, then checking the result before continuing."
+    }
+
+    private func infoLine(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption2)
+                .foregroundStyle(palette.primary)
+                .frame(width: 14, alignment: .center)
+                .padding(.top, 1)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// Expandable "what is the Agent" panel — model fit, tools, how consent works. Opened from the header.
+private struct AgentInfoPanel: View {
+    let palette: QuenderinPalette
+    let consentStore: ConsentStore
+
+    private var briefing: AgentModelBriefing {
+        let id = UserDefaults.standard.string(forKey: OnboardingModel.activeModelDefaultsKey)
+        #if os(macOS)
+        let noun = "Mac"
+        #else
+        let noun = "iPhone"
+        #endif
+        return AgentModelGuide.briefing(activeModelID: id,
+                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        deviceNoun: noun)
+    }
+
+    private var grantedTools: [String] {
+        AgentToolkit.capabilities()
+            .filter { !$0.requiresConsent || consentStore.isGranted($0.name) }
+            .map { CapabilityCatalog.displayName(for: $0.name) }
+    }
+
+    private var lockedTools: [String] {
+        AgentToolkit.capabilities()
+            .filter { $0.requiresConsent && !consentStore.isGranted($0.name) }
+            .map { CapabilityCatalog.displayName(for: $0.name) }
+    }
+
+    var body: some View {
+        let b = briefing
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "cpu").foregroundStyle(palette.primary)
+                Text(b.modelLabel)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.onSurface)
+                Spacer()
+                AptitudeBadge(aptitude: b.aptitude, palette: palette)
+            }
+            Text(b.aptitudeDetail)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+            Text(b.hardwareLine)
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+
+            Divider().overlay(palette.onSurfaceVariant.opacity(0.12))
+
+            Text("HOW IT WORKS")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.onSurfaceVariant)
+            Text("You give a goal. The agent plans steps, uses tools on this device, and shows each step in the run log. Mutating actions always ask you first.")
+                .font(.caption)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !grantedTools.isEmpty {
+                Text("READY TO USE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .padding(.top, 2)
+                Text(grantedTools.prefix(12).joined(separator: " · ")
+                     + (grantedTools.count > 12 ? " · …" : ""))
+                    .font(.caption)
+                    .foregroundStyle(palette.onSurface)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !lockedTools.isEmpty {
+                Text("NEEDS YOUR OK IN SETTINGS → AGENT")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .padding(.top, 2)
+                Text(lockedTools.prefix(10).joined(separator: " · ")
+                     + (lockedTools.count > 10 ? " · …" : ""))
+                    .font(.caption)
+                    .foregroundStyle(palette.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text(b.privacyNote)
+                .font(.caption2)
+                .foregroundStyle(palette.onSurfaceVariant)
+                .padding(.top, 2)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.surfaceVariant.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(palette.onSurfaceVariant.opacity(0.12), lineWidth: 1)
+        )
     }
 }
 
@@ -786,14 +1034,23 @@ private struct AgentStepRow: View {
                 .background(Circle().fill(palette.surfaceVariant))
             VStack(alignment: .leading, spacing: 3) {
                 if case let .plan(calls) = step.decision {
-                    Text("Plan: " + calls.map { "\($0.name)(\($0.input))" }.joined(separator: " · "))
+                    Text("Plan: " + calls.map {
+                        let label = CapabilityCatalog.displayName(for: $0.name)
+                        return $0.input.isEmpty ? label : "\(label) — \($0.input)"
+                    }.joined(separator: " · "))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(palette.onSurface)
                 } else if case let .useTool(name, input) = step.decision {
-                    Text("\(name)(\(input))")
-                        .font(.caption.monospaced())
+                    // People see "Add a calendar event"; model/ledger still use the tool id.
+                    Text(CapabilityCatalog.displayName(for: name))
+                        .font(.callout.weight(.medium))
                         .foregroundStyle(palette.primary)
-                        .textSelection(.enabled)
+                    if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(input)
+                            .font(.caption)
+                            .foregroundStyle(palette.onSurfaceVariant)
+                            .textSelection(.enabled)
+                    }
                 }
                 if let observation = step.observation {
                     Text(observation)

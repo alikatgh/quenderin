@@ -64,11 +64,32 @@ public struct ModelSearchFilters: Equatable, Sendable {
     public func apply(to hits: [HFModelHit], totalRAMGB: Double) -> [HFModelHit] {
         var out = hits.filter { hit in
             if excludeGated && hit.gated { return false }
-            if let maxP = maxParamsB, hit.estimatedParamsB > maxP + 0.05 { return false }
+            let params = hit.estimatedParamsB
+            if let maxP = maxParamsB, params > maxP + 0.05 { return false }
             if fitsOnly {
                 // Before quants load: rough RAM gate from params (same order as MemoryFitness spirit).
-                let roughRAM = hit.estimatedParamsB * 0.7 + 0.5
+                let roughRAM = params * 0.7 + 0.5
                 if roughRAM > totalRAMGB * 0.85 { return false }
+            }
+            // Soft download-size gate at the REPO list (quants aren't loaded yet).
+            // Q4 weights ≈ 0.55 GB per billion params — if even that exceeds max, hide the row.
+            if let maxGB = maxDownloadGB {
+                let roughQ4GB = params * 0.55
+                if roughQ4GB > maxGB + 0.25 { return false }
+            }
+            // Soft quant hint: if the slug already names a quant family and user picked another, drop it.
+            // (Most rows expand to many quants — those are filtered in apply(to: quants:).)
+            if let fam = quantFamily?.uppercased(), !fam.isEmpty {
+                let slug = hit.id.uppercased()
+                let namedOther = ["Q2", "Q3", "Q4", "Q5", "Q6", "Q8", "IQ"].contains { tag in
+                    tag != fam && (slug.contains("-\(tag)") || slug.contains("_\(tag)") || slug.contains(tag + "_"))
+                }
+                let namedSelf = slug.contains(fam)
+                // Only drop when the repo is clearly a single-quant upload of a different family.
+                if namedOther && !namedSelf && (slug.contains("Q4") || slug.contains("Q5")
+                    || slug.contains("Q6") || slug.contains("Q8") || slug.contains("IQ")) {
+                    return false
+                }
             }
             return true
         }
