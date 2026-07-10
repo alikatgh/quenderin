@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A build-config "optimization" can silently defeat code-splitting — verify chunking with the
+  modulepreload list, not the config.** A manualChunks pin merges everything from that package —
+  including ASYNC-imported payloads — into one chunk; if any part is statically needed, the whole
+  chunk preloads at startup. After changing chunking, `grep modulepreload dist/index.html` and
+  confirm the heavy bundle is absent. (r23: 619 kB pinned onto first paint by the pin meant to help.)
 - **An empty state is a CLAIM ("there is nothing") — a failed fetch cannot back it.** Any list that
   renders "no items yet" (or an eternal "Loading…") from `[]` must distinguish loading / error /
   genuinely-empty, or a 401/backend-down silently lies to the user. Tri-state + Retry; the error
@@ -490,6 +495,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (r23/r24: the "optimized" chunk pin was the pessimization) — manualChunks pinning
+  react-syntax-highlighter merged its ASYNC grammar payload into a statically-preloaded chunk:
+  619 kB on first paint, invisible in code review, visible only in dist/index.html's modulepreload
+  list. PrismAsync + dropping the pin made it truly lazy (~434 kB startup JS). Lesson → pattern
+  bullet above. (vite 8 upgrade forced the same removal — rolldown rejects object pins.)
+
+- 2026-07-11 (r19/r41: Docker "works on paper" twice over) — the image never set the bind host, so
+  the documented -p mapping hit eth0 while the app listened on container-loopback (connect refused,
+  always); the fix's own run example then published on ALL host interfaces (-p 3000:3000). Both in
+  Dockerfile now: ENV QUENDERIN_HOST=0.0.0.0 + `-p 127.0.0.1:3000:3000` docs. Lesson: a deployment
+  doc is a claim — execute it once before shipping it; and every fix gets its own adversarial pass.
 
 - 2026-07-11 (r14 E1: one flaky WS client could kill the whole server) — sockets had no `'error'`
   listener; an ECONNRESET mid-write emits `'error'` on the ws, unlistened EventEmitter rethrows →
