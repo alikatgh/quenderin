@@ -97,6 +97,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [passphraseDraft, setPassphraseDraft] = useState('');
     const [isSaved, setIsSaved] = useState(false);
     const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
+    // r10: an empty catalog is ambiguous — still loading, or the fetch failed (backend down,
+    // expired token)? Without this the section said "Loading models..." FOREVER on failure.
+    const [catalogState, setCatalogState] = useState<'loading' | 'error' | 'ready'>('loading');
     // r9 H1: the pinned/auto-selected model, from the catalog endpoint — drives the Active badge
     // and the Use button so a downloaded model can actually be made active from the UI.
     const [activeModelId, setActiveModelId] = useState<string | null>(null);
@@ -174,9 +177,12 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                 if (d) {
                     setModelCatalog(d.catalog ?? []);
                     setActiveModelId(d.activeModelId ?? null);
+                    setCatalogState('ready');
+                } else {
+                    setCatalogState('error');
                 }
             })
-            .catch(() => {});
+            .catch(() => setCatalogState('error'));
     };
 
     useEffect(() => {
@@ -380,14 +386,14 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => { onReset(); setIsSaved(false); }}
-                            className="flex items-center gap-2 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-sm font-semibold rounded-xl transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95"
+                            className="flex items-center gap-2 px-4 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-sm font-semibold rounded-xl transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         >
                             <RotateCcw className="w-4 h-4" />
                             Reset Defaults
                         </button>
                         <button
                             onClick={handleSave}
-                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/10 active:scale-95"
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all"
                         >
                             {isSaved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                             {isSaved ? 'Settings Applied' : 'Apply Changes'}
@@ -657,7 +663,17 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         </div>
 
                         <div className="space-y-3">
-                            {modelCatalog.length === 0 ? (
+                            {catalogState === 'error' ? (
+                                <div className="text-center py-6">
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Couldn't load the model catalog — is the backend running?</p>
+                                    <button
+                                        onClick={() => { setCatalogState('loading'); refreshCatalog(); }}
+                                        className="px-3 py-1.5 text-[12px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : modelCatalog.length === 0 ? (
                                 <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-4">Loading models...</div>
                             ) : modelCatalog.map(m => {
                                 const fileSizeGb = m.fileSizeBytes > 0 ? (m.fileSizeBytes / (1024 ** 3)).toFixed(2) : null;

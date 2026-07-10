@@ -1,0 +1,33 @@
+# r8 R5: bleeding-edge majors (Express 5, Electron 40) with no update automation — CI has the
+# `npm audit --audit-level=high` gate; this adds the other half. Weekly, minor+patch grouped so
+# the noise stays one PR per ecosystem; majors surface individually and get a human look.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/ui"
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: gradle
+    directory: "/android"
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]

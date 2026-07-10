@@ -27,18 +27,30 @@ function LazyFallback() {
 
 function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void, downloadProgress: number }) {
   const [step, setStep] = useState(1);
+  // r11: move focus INTO the modal on open — without this a keyboard/screen-reader user is left
+  // focused behind the aria-modal backdrop with no way to discover the wizard.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { panelRef.current?.focus(); }, []);
   const [isFinishing, setIsFinishing] = useState(false);
   const [isModelDownloading, setIsModelDownloading] = useState(false);
+  // r10: a failed kickoff used to just reset the spinner — the user clicked, nothing visibly
+  // happened, and there was no hint why. Keep the reason on screen next to the retry.
+  const [modelDlError, setModelDlError] = useState<string | null>(null);
   const [isVoiceDownloading, setIsVoiceDownloading] = useState(false);
   const [voiceDownloadProgress, setVoiceDownloadProgress] = useState(0);
 
   const handleDownloadModel = async () => {
     setIsModelDownloading(true);
+    setModelDlError(null);
     try {
       const res = await apiFetch('/api/models/download', { method: 'POST' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.error || `The server rejected the download (${res.status}).`);
+      }
+    } catch (e) {
       setIsModelDownloading(false);
+      setModelDlError(e instanceof Error && e.message ? e.message : 'Download failed — is the backend running?');
     }
   };
 
@@ -81,7 +93,7 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Welcome Setup Wizard">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div ref={panelRef} tabIndex={-1} className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 focus:outline-none">
 
         {/* Header Progress Bar */}
         <div role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label="Setup step" className="w-full h-1 bg-zinc-100 dark:bg-zinc-800">
@@ -154,8 +166,11 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
               ) : (
                 <div className="animate-in fade-in duration-300 mb-6">
                   <button onClick={handleDownloadModel} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
-                    <Download className="w-5 h-5" /> Get Knowledge Automatically
+                    <Download className="w-5 h-5" /> {modelDlError ? 'Retry Download' : 'Get Knowledge Automatically'}
                   </button>
+                  {modelDlError && (
+                    <p className="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">{modelDlError}</p>
+                  )}
                 </div>
               )}
 
@@ -637,7 +652,7 @@ function AppContent() {
                 type="button"
                 onClick={() => setSidebarOpen(!isSidebarOpen)}
                 aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-                className="p-1.5 -ml-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all active:scale-95"
+                className="p-1.5 -ml-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
               >
                 <Menu className="w-[18px] h-[18px]" />
               </button>

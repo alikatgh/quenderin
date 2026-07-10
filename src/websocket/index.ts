@@ -168,6 +168,11 @@ export class WebSocketManager {
             // Mark alive for heartbeat
             (ws as WebSocket & { isAlive?: boolean }).isAlive = true;
             ws.on('pong', () => { (ws as WebSocket & { isAlive?: boolean }).isAlive = true; });
+            // r14: a per-SOCKET error (client ECONNRESET mid-write, malformed frame) emits 'error' on
+            // the ws — unlistened, EventEmitter rethrows it, and the process-level uncaughtException
+            // handler EXITS. One flaky tab could kill the whole local server. Log it; 'close' follows
+            // and does the real cleanup.
+            ws.on('error', (err) => logger.warn('[WS] socket error (client dropped?):', err.message));
 
             ws.send(JSON.stringify({ type: 'log', message: 'Connected to Agent Core.' }));
 
@@ -567,7 +572,8 @@ export class WebSocketManager {
                         }
                     }
                 } catch (err) {
-                    logger.error("Failed to parse ws message", err);
+                    // Not only parse failures land here — this guards the whole message handler.
+                    logger.error("WS message handling failed", err);
                 }
             });
 

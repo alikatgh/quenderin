@@ -20,7 +20,7 @@ export function CodeBlock({ children, language, ...props }: CodeBlockProps) {
     };
 
     return (
-        <div className="relative group/code my-4 overflow-hidden rounded-xl border border-zinc-200/50 dark:border-white/5 shadow-lg">
+        <div className="relative group/code my-4 overflow-hidden rounded-xl border border-zinc-200/50 dark:border-white/5">
             <div className="flex items-center justify-between px-4 py-2 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200/50 dark:border-white/5">
                 <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                     {language || 'code'}

@@ -110,6 +110,13 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 See `android/INTEGRATION.md` for the JNI details. The native build is CPU (GGML_OPENMP off);
 GPU/NNAPI deltas mainly affect prefill (decode is memory-bandwidth bound — see `apple/REALITY.md`).
 
+**Why `useLegacyPackaging = true` stays set** (r8 R3): AGP's default keeps `.so` files compressed
+in the APK and dlopens them via mmap-from-APK — but ggml's backend enumeration scans a real
+directory for its backends, which the mmap path doesn't provide, so backend discovery silently
+fails (BUG_JOURNAL, 2026-06). Legacy packaging extracts the libs to disk where the scan works.
+**Re-audit this whenever AGP is upgraded** — if a future ggml loads backends without the
+directory scan, the ~30–60 MB install-size cost can be reclaimed.
+
 ---
 
 ## After it runs on a real phone

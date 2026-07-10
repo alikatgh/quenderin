@@ -122,18 +122,27 @@ function exportMetricsCsv(metrics: MetricRecord[]) {
 export function Metrics({ onBack }: { onBack: () => void }) {
     const [metrics, setMetrics] = useState<MetricRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    // r10: a failed fetch (401 expired token, backend down) used to render as "No telemetry
+    // recorded yet" — an empty state asserting something the UI doesn't know. Track failure
+    // separately so the user sees the truth and gets a retry.
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
+        setIsLoading(true);
+        setLoadFailed(false);
         apiFetch('/api/metrics')
-            .then(res => res.json())
+            .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
             .then(data => {
                 if (Array.isArray(data)) {
                     setMetrics(data.reverse());
+                } else {
+                    setLoadFailed(true);
                 }
             })
-            .catch(err => console.error('Failed to load metrics', err))
+            .catch(err => { console.error('Failed to load metrics', err); setLoadFailed(true); })
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [reloadKey]);
 
     const totalRuns = metrics.length;
     const successRuns = metrics.filter(m => m.success).length;
@@ -244,6 +253,18 @@ export function Metrics({ onBack }: { onBack: () => void }) {
 
                 {isLoading ? (
                     <div className="text-zinc-500 text-sm">Loading telemetry...</div>
+                ) : loadFailed ? (
+                    <div className="text-center py-16 bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl">
+                        <Activity className="w-8 h-8 mx-auto text-zinc-400 mb-3" />
+                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Couldn't load telemetry</p>
+                        <p className="text-sm text-zinc-500 mt-1 mb-4">Is the backend running? Your recorded runs are safe on disk.</p>
+                        <button
+                            onClick={() => setReloadKey(k => k + 1)}
+                            className="px-3 py-1.5 text-[12px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
                 ) : metrics.length === 0 ? (
                     <div className="text-center py-16 bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl">
                         <Activity className="w-8 h-8 mx-auto text-zinc-400 mb-3" />

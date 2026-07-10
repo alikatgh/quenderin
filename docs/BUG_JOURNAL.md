@@ -4,6 +4,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **An empty state is a CLAIM ("there is nothing") — a failed fetch cannot back it.** Any list that
+  renders "no items yet" (or an eternal "Loading…") from `[]` must distinguish loading / error /
+  genuinely-empty, or a 401/backend-down silently lies to the user. Tri-state + Retry; the error
+  copy names the likely cause ("is the backend running?"). (r10 U1 model catalog, U2 telemetry)
 - **A parity suite covering N−1 of N twins is a false guarantee — extend the bijection to EVERY implementation.**
   The agent-parity vectors ran on iOS+Android while the TS desktop hand-port sat unchecked; the day desktop joined
   (tests/agent-parity.test.ts), 3 of 19 vectors failed on real divergences (JS `Math.round` is half-toward-+∞,
@@ -486,6 +490,18 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (r14 E1: one flaky WS client could kill the whole server) — sockets had no `'error'`
+  listener; an ECONNRESET mid-write emits `'error'` on the ws, unlistened EventEmitter rethrows →
+  `uncaughtException` → `process.exit(1)` (server.ts:48). Fix: per-socket `ws.on('error', log)`;
+  'close' does cleanup (websocket/index.ts). Lesson: `wss.on('error')` does NOT cover member
+  sockets — every EventEmitter that can error needs its own listener when the process exits on throw.
+
+- 2026-07-11 (r10 U1/U2: "loading" and "empty" states asserting things the UI doesn't know) — a
+  swallowed catalog fetch rendered "Loading models..." FOREVER (SettingsArea), and an unguarded
+  metrics fetch rendered "No telemetry recorded yet" on a 401/500 (Metrics) — an empty state is a
+  CLAIM ("there is nothing"), which a failed fetch cannot back. Fix: tri-state loading/error/ready
+  + Retry on both. Lesson → pattern bullet above.
 
 - 2026-07-11 (desktop joined the agent-parity bijection — 3 real TS divergences surfaced immediately) —
   `tests/agent-parity.test.ts` now runs all 19 shared vectors; check_agent_parity.py enforces iOS+Android+Desktop.

@@ -2,6 +2,7 @@ import { Capability } from './capability.js';
 import { CapabilityRunner } from './runner.js';
 import { SkillMemory } from './skillMemory.js';
 import { looksLikeComputerTask } from './actionIntent.js';
+import { firstJsonObject } from '../../utils/json.js';
 
 /**
  * The GOVERNED agent loop (desktop) — the TypeScript twin of the native `AgentLoop`, but
@@ -250,20 +251,3 @@ export function parseDecision(raw: string): Decision | null {
     return null;
 }
 
-/** The first complete, balanced `{ … }` object (strings skipped) — twin of the native parser. */
-function firstJsonObject(text: string): string | null {
-    const start = text.indexOf('{');
-    if (start < 0) return null;
-    let depth = 0, inString = false, escaped = false;
-    for (let i = start; i < text.length; i++) {
-        const c = text[i];
-        if (inString) {
-            if (escaped) escaped = false;
-            else if (c === '\\') escaped = true;
-            else if (c === '"') inString = false;
-        } else if (c === '"') inString = true;
-        else if (c === '{') depth++;
-        else if (c === '}') { depth--; if (depth === 0) return text.slice(start, i + 1); }
-    }
-    return null;
-}

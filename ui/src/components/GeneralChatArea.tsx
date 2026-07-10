@@ -194,7 +194,9 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
         >
-            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
+            {/* r11: role="log" so streamed replies are announced to screen readers (additions are
+                implicitly polite); without it the entire conversation was silent to AT. */}
+            <div ref={scrollContainerRef} role="log" aria-label="Conversation" className="flex-1 min-h-0 overflow-y-auto px-4 w-full">
                 <div className="max-w-[760px] mx-auto pb-44 pt-6">
 
                     {requiredAction?.code === 'OOM_PREVENTION' && (
@@ -437,7 +439,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                     type="button"
                                     aria-label="Stop generating"
                                     onClick={onStop}
-                                    className="p-2 rounded-lg transition-all bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white active:scale-95 shadow-sm"
+                                    className="p-2 rounded-lg transition-all bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white shadow-sm"
                                 >
                                     <Square className="w-4 h-4" fill="currentColor" />
                                 </button>
@@ -447,7 +449,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                     aria-label={isQueuing ? 'Queuing message' : 'Send message'}
                                     onClick={handleStart}
                                     disabled={isQueuing || (!chatInput.trim() && attachments.length === 0)}
-                                    className={`p-2 rounded-lg transition-all ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-300 dark:text-zinc-600' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white active:scale-95 shadow-sm'}`}
+                                    className={`p-2 rounded-lg transition-all ${(isQueuing || (!chatInput.trim() && attachments.length === 0)) ? 'text-zinc-300 dark:text-zinc-600' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white shadow-sm'}`}
                                 >
                                     {isQueuing ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ArrowUpRight className="w-4.5 h-4.5" />}
                                 </button>

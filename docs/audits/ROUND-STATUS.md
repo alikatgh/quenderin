@@ -11,10 +11,12 @@
 | Range | Done | Pending | Notes |
 |-------|------|---------|-------|
 | r1–r6 | 6 | 0 | June 2026 wave (`2026-06-14-r*.md`) |
-| r7–r9 | 3 | 0 | Grok Wave 1 — docs, research, api-contract (2026-07-06) |
-| r10–r50 | 0 | 41 | Per master plan lens schedule |
+| r7–r9 | 3 | 0 | Grok Wave 1 — docs, research, api-contract (2026-07-06); all top items fixed 2026-07-11 |
+| r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
+| r12, r13, r16–r50 | 0 | 37 | Per master plan lens schedule |
 
-**Next recommended round:** r10 (ui-ux). (The prior blocker is resolved: the Model Manager now has Use/Active wired to `POST /api/models/switch`; the WS `switch_model` twin was removed — 2026-07-11.)
+**Next recommended round:** r12 (mobile) or r16 (data-integrity). r13 (i18n) is expected to be
+mostly N/A (English-only product for now) — stub it when reached.
 
 ---
 
@@ -31,12 +33,12 @@
 | 7 | docs | ✅ Done | [2026-07-06-r7-quenderin-docs.md](./2026-07-06-r7-quenderin-docs.md) | 7 (1 Critical, 3 High, 2 Medium, 1 Low) |
 | 8 | research | ✅ Done | [2026-07-06-r8-quenderin-research.md](./2026-07-06-r8-quenderin-research.md) | 6 (0 Critical, 2 High, 3 Medium, 1 Low) |
 | 9 | api-contract | ✅ Done | [2026-07-06-r9-quenderin-api-contract.md](./2026-07-06-r9-quenderin-api-contract.md) | 7 (1 Critical, 3 High, 2 Medium, 1 Low) |
-| 10 | ui-ux | ⏳ Pending | — | — |
-| 11 | a11y | ⏳ Pending | — | — |
+| 10 | ui-ux | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r10-quenderin-ui-ux.md](./2026-07-11-r10-quenderin-ui-ux.md) | 0 (4 fixed, 2 accepted-Low) |
+| 11 | a11y | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r11-quenderin-a11y.md](./2026-07-11-r11-quenderin-a11y.md) | 2 Low (focus trap, axe-in-CI) |
 | 12 | mobile | ⏳ Pending | — | — |
-| 13 | i18n | ⏳ Pending | — | — |
-| 14 | error-handling | ⏳ Pending | — | — |
-| 15 | auth-session | ⏳ Pending | — | Partially addressed (per-launch token); Electron hotkey gap in r9 |
+| 13 | i18n | ⏳ Pending | — | Expect mostly N/A (English-only) |
+| 14 | error-handling | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r14-quenderin-error-handling.md](./2026-07-11-r14-quenderin-error-handling.md) | 0 (1 High + 1 Low fixed) |
+| 15 | auth-session | ✅ Done (2026-07-11) | [2026-07-11-r15-quenderin-auth-session.md](./2026-07-11-r15-quenderin-auth-session.md) | 0 — verdict clean |
 | 16–50 | … | ⏳ Pending | — | See master plan |
 
 ---

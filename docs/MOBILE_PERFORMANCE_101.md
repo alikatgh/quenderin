@@ -131,6 +131,20 @@ modelParams.use_mlock = false      // do NOT wire multi-GB resident — that's w
 explicitly **off** — pinning gigabytes of weights resident is exactly what gets the app killed when the
 user switches to music/maps. The safe default is pinned so it can't regress.
 
+**Android is NOT the same story** (r8 R4): `n_gpu_layers = 999` is safe on Apple silicon (Metal,
+unified memory) but must be **SoC-gated on Android** — llama.cpp's Vulkan backend quality is
+heterogeneous. Per-SoC reality as measured/researched (`GpuOffloadPlanner` encodes this):
+
+| GPU family | Vendor examples | Verdict |
+|------------|-----------------|---------|
+| Adreno (Snapdragon 8xx) | Samsung S23/S24 US, Pixel-on-QC | Proven — offload helps prefill |
+| Mali (Dimensity, Tensor) | Pixel 6–9, many mid-range | Can be **slower than CPU** or crash on compute shaders |
+| Xclipse (Exynos) | Samsung S22–S24 EU | Unproven — default CPU |
+
+Default is **CPU**; offload is enabled per-SoC only after a measured tok/s win, and decode barely
+benefits either way (bandwidth-bound) — the win is prefill. Update this table only with on-device
+measurements, never by extrapolation.
+
 ---
 
 ## How they compose (load-time → in-flight)
