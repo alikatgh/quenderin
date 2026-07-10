@@ -15,10 +15,10 @@
 | r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
 | r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
 | r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
-| r19–r27, r40 | 10 | 0 | Claude inline Waves C+D+E (2026-07-11) |
-| r28–r39, r41–r50 | 0 | 22 | Per master plan lens schedule |
+| r19–r36, r40 | 19 | 0 | Claude inline Waves C–F (2026-07-11) |
+| r37–r39, r41–r50 | 0 | 13 | Per master plan lens schedule |
 
-**Next recommended round:** r28–r36 (Wave F) — waves running 2026-07-11.
+**Next recommended round:** r37–r39 (Wave G) — waves running 2026-07-11.
 
 ---
 
@@ -53,7 +53,16 @@
 | 25 | secrets | ✅ Done (2026-07-11) | [2026-07-11-r25-quenderin-secrets.md](./2026-07-11-r25-quenderin-secrets.md) | 0 — verdict clean |
 | 26 | rate-limiting | ✅ Done (2026-07-11) | [2026-07-11-r26-quenderin-rate-limiting.md](./2026-07-11-r26-quenderin-rate-limiting.md) | Accepted posture (LAN-mode trigger recorded) |
 | 27 | caching | ✅ Done (2026-07-11) | [2026-07-11-r27-quenderin-caching.md](./2026-07-11-r27-quenderin-caching.md) | 0 — verdict clean |
-| 28–39 | … | ⏳ Pending | — | See master plan |
+| 28 | email-notifications | ✅ N/A (2026-07-11) | [r28](./2026-07-11-r28-quenderin-email-notifications.md) | N/A — no email surface |
+| 29 | payments | ✅ N/A (2026-07-11) | [r29](./2026-07-11-r29-quenderin-payments.md) | N/A — no payments; blocklist covers device-side |
+| 30 | search-indexing | ✅ Done (2026-07-11) | [r30](./2026-07-11-r30-quenderin-search-indexing.md) | 0 — minimal surface, encoding verified |
+| 31 | file-io | ✅ Done (2026-07-11) | [r31](./2026-07-11-r31-quenderin-file-io.md) | 0 — verdict clean |
+| 32 | parser-safety | ✅ Done (2026-07-11) | [r32](./2026-07-11-r32-quenderin-parser-safety.md) | 0 — verdict clean |
+| 33 | websocket-realtime | ✅ Done (2026-07-11) | [r33](./2026-07-11-r33-quenderin-websocket-realtime.md) | 0 — verdict clean |
+| 34 | rn-parity | ✅ N/A (2026-07-11) | [r34](./2026-07-11-r34-quenderin-rn-parity.md) | N/A — no RN app in repo |
+| 35 | extension-chrome | ✅ N/A (2026-07-11) | [r35](./2026-07-11-r35-quenderin-extension-chrome.md) | N/A — no extension |
+| 36 | game-design | ✅ N/A (2026-07-11) | [r36](./2026-07-11-r36-quenderin-game-design.md) | N/A — not a game |
+| 37–39 | … | ⏳ Pending | — | See master plan |
 | 40 | config-security | ✅ Done (2026-07-11, pulled into Wave C) | [2026-07-11-r40-quenderin-config-security.md](./2026-07-11-r40-quenderin-config-security.md) | 0 (1 Low fixed) |
 | 41–50 | … | ⏳ Pending | — | See master plan |
 
