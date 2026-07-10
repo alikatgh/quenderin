@@ -84,7 +84,7 @@
     "@types/pngjs": "^6.0.5",
     "@types/unzipper": "^0.10.11",
     "@types/ws": "^8.18.1",
-    "electron": "^40.6.0",
+    "electron": "^43.1.0",
     "electron-builder": "^26.8.1",
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
