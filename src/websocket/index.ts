@@ -99,7 +99,10 @@ export class WebSocketManager {
         private taskService?: DashboardTaskService
     ) {
         // Restrict the upgrade to /ws — without `path`, ws upgrades ANY HTTP path (H19).
-        this.wss = new WebSocketServer({ server, path: '/ws' });
+        // r20: cap the raw frame size — without maxPayload the ws default accepts ~100 MiB frames,
+        // which JSON.parse buffers whole BEFORE any field-level cap applies. Legit ceiling is
+        // MAX_ATTACHMENTS × MAX_ATTACHMENT_SIZE (10 MB) + envelope; 16 MiB leaves headroom.
+        this.wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 * 1024 });
         this.wss.on('error', (err) => {
             logger.error('[WebSocket] Server error:', err);
         });

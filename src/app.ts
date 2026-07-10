@@ -72,6 +72,9 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
         // The CLI delivers the per-launch auth token in the opened URL (`?token=`). Suppress the
         // Referer so that token can't leak to any cross-origin resource the page might request.
         res.setHeader('Referrer-Policy', 'no-referrer');
+        // r40: never MIME-sniff — the docs route serves user-adjacent markdown as text/plain and
+        // sniffing could upgrade a crafted payload to something executable in older engines.
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         next();
     });
     // Restrict CORS to same-machine origins only — this is a local-only server
