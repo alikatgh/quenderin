@@ -9,10 +9,14 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    // Split heavy deps into separate cacheable chunks
+                    // Split heavy deps into separate cacheable chunks.
+                    // NOTE deliberately NO 'syntax' entry (r23): pinning react-syntax-highlighter
+                    // to a named chunk merged its ASYNC-imported grammar bundle into a chunk the
+                    // entry statically needs → 619 kB on the startup modulepreload path. Without
+                    // the pin, Rollup keeps the PrismAsync payload in its own lazy chunk that only
+                    // loads when the first code block renders.
                     'react-vendor': ['react', 'react-dom'],
                     'markdown': ['react-markdown', 'remark-gfm'],
-                    'syntax': ['react-syntax-highlighter'],
                     'icons': ['lucide-react'],
                 },
             },

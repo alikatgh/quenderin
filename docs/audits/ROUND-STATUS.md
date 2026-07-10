@@ -15,10 +15,10 @@
 | r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
 | r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
 | r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
-| r19, r20, r40 | 3 | 0 | Claude inline Wave C (2026-07-11) |
-| r21–r39, r41–r50 | 0 | 29 | Per master plan lens schedule |
+| r19–r23, r40 | 6 | 0 | Claude inline Waves C+D (2026-07-11) |
+| r24–r39, r41–r50 | 0 | 26 | Per master plan lens schedule |
 
-**Next recommended round:** r21–r23 re-passes (Wave D) — waves running 2026-07-11.
+**Next recommended round:** r24–r27 (Wave E) — waves running 2026-07-11.
 
 ---
 
@@ -46,7 +46,10 @@
 | 18 | observability | ✅ Done (2026-07-11) | [2026-07-11-r18-quenderin-observability.md](./2026-07-11-r18-quenderin-observability.md) | 1 Low (crash.log, → r39) |
 | 19 | deployment | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r19-quenderin-deployment.md](./2026-07-11-r19-quenderin-deployment.md) | 0 (1 High + 1 Medium fixed) |
 | 20 | input-validation | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r20-quenderin-input-validation.md](./2026-07-11-r20-quenderin-input-validation.md) | 0 (1 Medium fixed) |
-| 21–39 | … | ⏳ Pending | — | See master plan |
+| 21 | security-2 | ✅ Done (2026-07-11) | [2026-07-11-r21-quenderin-security-2.md](./2026-07-11-r21-quenderin-security-2.md) | 0 — all June items fixed |
+| 22 | correctness-2 | ✅ Done (2026-07-11) | [2026-07-11-r22-quenderin-correctness-2.md](./2026-07-11-r22-quenderin-correctness-2.md) | 1 accepted (H20 headroom) |
+| 23 | performance-2 | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r23-quenderin-performance-2.md](./2026-07-11-r23-quenderin-performance-2.md) | 1 open (KV shift — engine project) |
+| 24–39 | … | ⏳ Pending | — | See master plan |
 | 40 | config-security | ✅ Done (2026-07-11, pulled into Wave C) | [2026-07-11-r40-quenderin-config-security.md](./2026-07-11-r40-quenderin-config-security.md) | 0 (1 Low fixed) |
 | 41–50 | … | ⏳ Pending | — | See master plan |
 

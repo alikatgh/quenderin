@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Check, Copy } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+// r23 (C7 re-pass): PrismAsync, not Prism — the sync build put the full 619 kB grammar bundle on
+// the STARTUP modulepreload path (it was split into its own chunk, but still eagerly imported).
+// The async variant dynamic-imports the highlighter when the first code block actually renders;
+// until then the <pre> shows plain text, which is the right trade for first-paint.
+import { PrismAsync as SyntaxHighlighter } from 'react-syntax-highlighter';
+// Deep-import the one style — the styles barrel would statically anchor the whole package.
+import vscDarkPlus from 'react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus';
 
 interface CodeBlockProps {
     children?: ReactNode;
