@@ -5,5 +5,5 @@
   the first rendered code block.
 - **No hot-path regressions introduced:** atomicWrite adds one rename per persist (μs); WS
   error listener is passive; nosniff/maxPayload are header/limit checks.
-- **Open (unchanged):** KV strict-prefix reuse cliff — engine project
-  (`2026-07-01-kv-cache-reuse-cliff.md`), the one standing perf item on the books.
+- **Corrected 2026-07-11:** the KV context-shift is ALREADY MERGED (`0350f55`) — the "open"
+  status was doc drift from the 2026-07-01 report. Residual: S23 throughput A/B (measurement).

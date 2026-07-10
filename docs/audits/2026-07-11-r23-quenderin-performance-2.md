@@ -19,7 +19,7 @@
 | C4 RAG embed + 500-vector scan per step | ✅ Fixed — corrections cached per-UI-state (`promptBuilder.relevantCorrectionsCached`, tested) |
 | C6 blocking `execSync` on hot paths | ✅ Fixed — 1 s TTL memo (Q-505), probe ≤1/s |
 | C7 1.1 MB eager chunk | ✅ Fixed properly this round (above) |
-| KV strict-prefix reuse cliff (r8 R2) | ⏳ OPEN — engine-level context-shift project, tracked in `2026-07-01-kv-cache-reuse-cliff.md`; not a patch |
+| KV strict-prefix reuse cliff (r8 R2) | ✅ MERGED on main (`0350f55`) — discovered post-report; S23 A/B remains as post-merge measurement |
 
 No new hot-path regressions found in the post-June code (paged-MoE and skill-memory paths carry
 their own caching; sampling profiles parity-pinned).

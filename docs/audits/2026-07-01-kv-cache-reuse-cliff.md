@@ -1,8 +1,10 @@
 # KV-cache reuse cliff → context-shifting — 2026-07-01
 
-**Status:** built + unit-tested + **correctness validated on real llama.cpp (Metal)**. NOT yet merged to
-`main`. Gated on the on-device throughput/quality A/B on the Galaxy S23 (steps at the bottom).
-**Branch:** `perf/kv-context-shift`.
+**Status (updated 2026-07-11):** **MERGED to `main`** (commit `0350f55` — both twins + JNI/Metal
+executors + tests landed; the local branch is pruned). The on-device S23 throughput A/B (steps
+at the bottom) remains OPEN as a post-merge measurement — the merge proceeded on the Metal
+byte-identical correctness result; if the phone A/B ever shows a quality regression, the
+SWA/`seq_rm`-false fallback (or a per-model flag) is the recorded escape hatch.
 
 ---
 

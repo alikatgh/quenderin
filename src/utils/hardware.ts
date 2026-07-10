@@ -81,18 +81,7 @@ function detectHardwareProfile(): HardwareProfile {
     // Detect containerized environments (Docker, LXC, Kubernetes, etc.)
     const isContainerized = detectContainer();
 
-    let tier: HardwareTier;
-    if (isAppleSilicon && totalRamGb >= 8) {
-        tier = 'powerful';
-    } else if (isLowPowerArch && totalRamGb <= 2) {
-        tier = 'embedded';
-    } else if (totalRamGb <= 4 || (isLowPowerArch && totalRamGb <= 8)) {
-        tier = 'constrained';
-    } else if (totalRamGb >= 16) {
-        tier = 'powerful';
-    } else {
-        tier = 'standard';
-    }
+    const tier = classifyTier({ isAppleSilicon, isLowPowerArch, totalRamGb });
 
     const profile = buildProfile(tier, arch, platform, isArm, isLowPowerArch, nativeAddonsLikely, isContainerized, cpuCores, totalRamGb);
 
@@ -115,6 +104,20 @@ function detectHardwareProfile(): HardwareProfile {
     }
 
     return profile;
+}
+
+/**
+ * Pure tier classification — extracted from the detector so the band edges are unit-testable
+ * (r37/r50 backlog #2). The band-edge bugs this guards: Apple Silicon is ARM but powerful;
+ * a low-power arch stays constrained up to 8 GB where x86 crosses at 4 GB.
+ */
+export function classifyTier(input: { isAppleSilicon: boolean; isLowPowerArch: boolean; totalRamGb: number }): HardwareTier {
+    const { isAppleSilicon, isLowPowerArch, totalRamGb } = input;
+    if (isAppleSilicon && totalRamGb >= 8) return 'powerful';
+    if (isLowPowerArch && totalRamGb <= 2) return 'embedded';
+    if (totalRamGb <= 4 || (isLowPowerArch && totalRamGb <= 8)) return 'constrained';
+    if (totalRamGb >= 16) return 'powerful';
+    return 'standard';
 }
 
 /**
@@ -146,7 +149,8 @@ function detectContainer(): boolean {
     return false;
 }
 
-function buildProfile(
+/** Exported for the r37 knob-invariant tests — the tuning tables are pure data. */
+export function buildProfile(
     tier: HardwareTier,
     arch: string,
     platform: NodeJS.Platform,

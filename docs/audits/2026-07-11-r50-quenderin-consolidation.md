@@ -16,12 +16,12 @@ all + false-green builds (r19/r41) · 3. Non-atomic persistence truncating user 
 ## The open backlog, in recommended fix order
 | # | Item | Source | Trigger/shape |
 |---|------|--------|---------------|
-| 1 | KV context-shift (llama_memory_seq_rm) with greedy-parity validation | r8-R2 / r23 / r47 | The one standing perf item; plan in `2026-07-01-kv-cache-reuse-cliff.md` |
-| 2 | `utils/hardware.ts` unit tests (pure logic, cheapest coverage win) | r37 | Next test-writing session |
+| 1 | ~~KV context-shift~~ **DONE — already merged** (`0350f55`, discovered 2026-07-11; cross-machine re-baseline). Residual: S23 throughput A/B as post-merge measurement | r8-R2 / r23 / r47 | Device-gated measurement only |
+| 2 | ~~`utils/hardware.ts` unit tests~~ **DONE 2026-07-11** — `classifyTier` extracted pure; 19 tests (band edges, knob invariants, env overrides) | r37 | — |
 | 3 | SettingsArea 4-way split + `<RetryState>` extraction | r38 / r44 | When the next feature touches Settings |
 | 4 | llm.service download-manager extraction | r44 | When the next download feature lands |
 | 5 | Focus-trap util + axe-core in CI | r11 | When a new dialog ships |
-| 6 | backgroundDaemon test suite | r37 | Once its redesigned shape settles |
+| 6 | ~~backgroundDaemon test suite~~ **DONE 2026-07-11** — 5 tests on the visual-diff core (first-frame, static, half-change, rotation reset, unreadable-path degrade) | r37 | — |
 | 7 | Per-IP throttles + WS connection caps | r26 | ONLY if LAN mode becomes supported |
 | 8 | i18n extraction (all three twins together) | r13 | Only with a real second-locale plan |
 
