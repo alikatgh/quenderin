@@ -678,8 +678,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                             ) : modelCatalog.map(m => {
                                 const fileSizeGb = m.fileSizeBytes > 0 ? (m.fileSizeBytes / (1024 ** 3)).toFixed(2) : null;
                                 const isActing = modelActionId === m.id;
+                                // r12: flex-col on phones — the fixed side-by-side layout made the
+                                // metadata line overflow INTO the action buttons at 375px.
                                 return (
-                                    <div key={m.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${m.isDownloaded ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800'}`}>
+                                    <div key={m.id} className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-xl border transition-all ${m.isDownloaded ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800'}`}>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
@@ -695,7 +697,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                                                 <span className="flex items-center gap-1 tabular-nums"><Zap className="w-3 h-3" />{m.paramsBillions}B params</span>
                                                 <span className="flex items-center gap-1 tabular-nums"><HardDrive className="w-3 h-3" />~{m.ramGb}GB RAM</span>
                                                 {fileSizeGb && <span className="tabular-nums">{fileSizeGb}GB on disk</span>}

@@ -13,10 +13,10 @@
 | r1–r6 | 6 | 0 | June 2026 wave (`2026-06-14-r*.md`) |
 | r7–r9 | 3 | 0 | Grok Wave 1 — docs, research, api-contract (2026-07-06); all top items fixed 2026-07-11 |
 | r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
-| r12, r13, r16–r50 | 0 | 37 | Per master plan lens schedule |
+| r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
+| r16–r50 | 0 | 35 | Per master plan lens schedule |
 
-**Next recommended round:** r12 (mobile) or r16 (data-integrity). r13 (i18n) is expected to be
-mostly N/A (English-only product for now) — stub it when reached.
+**Next recommended round:** r16 (data-integrity) — waves running 2026-07-11.
 
 ---
 
@@ -35,8 +35,8 @@ mostly N/A (English-only product for now) — stub it when reached.
 | 9 | api-contract | ✅ Done | [2026-07-06-r9-quenderin-api-contract.md](./2026-07-06-r9-quenderin-api-contract.md) | 7 (1 Critical, 3 High, 2 Medium, 1 Low) |
 | 10 | ui-ux | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r10-quenderin-ui-ux.md](./2026-07-11-r10-quenderin-ui-ux.md) | 0 (4 fixed, 2 accepted-Low) |
 | 11 | a11y | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r11-quenderin-a11y.md](./2026-07-11-r11-quenderin-a11y.md) | 2 Low (focus trap, axe-in-CI) |
-| 12 | mobile | ⏳ Pending | — | — |
-| 13 | i18n | ⏳ Pending | — | Expect mostly N/A (English-only) |
+| 12 | mobile | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r12-quenderin-mobile.md](./2026-07-11-r12-quenderin-mobile.md) | 0 (1 Medium fixed) |
+| 13 | i18n | ✅ Done (2026-07-11, rationale stub) | [2026-07-11-r13-quenderin-i18n.md](./2026-07-11-r13-quenderin-i18n.md) | N/A by design; 2 locale notes |
 | 14 | error-handling | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r14-quenderin-error-handling.md](./2026-07-11-r14-quenderin-error-handling.md) | 0 (1 High + 1 Low fixed) |
 | 15 | auth-session | ✅ Done (2026-07-11) | [2026-07-11-r15-quenderin-auth-session.md](./2026-07-11-r15-quenderin-auth-session.md) | 0 — verdict clean |
 | 16–50 | … | ⏳ Pending | — | See master plan |
