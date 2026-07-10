@@ -15,10 +15,10 @@
 | r10, r11, r14, r15 | 4 | 0 | Claude inline wave (2026-07-11) — audit + fix same session |
 | r12, r13 | 2 | 0 | Claude inline Wave A (2026-07-11) |
 | r16–r18 | 3 | 0 | Claude inline Wave B (2026-07-11) |
-| r19–r23, r40 | 6 | 0 | Claude inline Waves C+D (2026-07-11) |
-| r24–r39, r41–r50 | 0 | 26 | Per master plan lens schedule |
+| r19–r27, r40 | 10 | 0 | Claude inline Waves C+D+E (2026-07-11) |
+| r28–r39, r41–r50 | 0 | 22 | Per master plan lens schedule |
 
-**Next recommended round:** r24–r27 (Wave E) — waves running 2026-07-11.
+**Next recommended round:** r28–r36 (Wave F) — waves running 2026-07-11.
 
 ---
 
@@ -49,7 +49,11 @@
 | 21 | security-2 | ✅ Done (2026-07-11) | [2026-07-11-r21-quenderin-security-2.md](./2026-07-11-r21-quenderin-security-2.md) | 0 — all June items fixed |
 | 22 | correctness-2 | ✅ Done (2026-07-11) | [2026-07-11-r22-quenderin-correctness-2.md](./2026-07-11-r22-quenderin-correctness-2.md) | 1 accepted (H20 headroom) |
 | 23 | performance-2 | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r23-quenderin-performance-2.md](./2026-07-11-r23-quenderin-performance-2.md) | 1 open (KV shift — engine project) |
-| 24–39 | … | ⏳ Pending | — | See master plan |
+| 24 | dependencies | ✅ Done (2026-07-11, fixed same session) | [2026-07-11-r24-quenderin-dependencies.md](./2026-07-11-r24-quenderin-dependencies.md) | 0 vulns (vite 6→8 upgraded) |
+| 25 | secrets | ✅ Done (2026-07-11) | [2026-07-11-r25-quenderin-secrets.md](./2026-07-11-r25-quenderin-secrets.md) | 0 — verdict clean |
+| 26 | rate-limiting | ✅ Done (2026-07-11) | [2026-07-11-r26-quenderin-rate-limiting.md](./2026-07-11-r26-quenderin-rate-limiting.md) | Accepted posture (LAN-mode trigger recorded) |
+| 27 | caching | ✅ Done (2026-07-11) | [2026-07-11-r27-quenderin-caching.md](./2026-07-11-r27-quenderin-caching.md) | 0 — verdict clean |
+| 28–39 | … | ⏳ Pending | — | See master plan |
 | 40 | config-security | ✅ Done (2026-07-11, pulled into Wave C) | [2026-07-11-r40-quenderin-config-security.md](./2026-07-11-r40-quenderin-config-security.md) | 0 (1 Low fixed) |
 | 41–50 | … | ⏳ Pending | — | See master plan |
 

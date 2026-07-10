@@ -5,22 +5,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
     plugins: [react()],
     build: {
-        // Optimize chunk splitting for low-bandwidth / slow-CPU devices
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    // Split heavy deps into separate cacheable chunks.
-                    // NOTE deliberately NO 'syntax' entry (r23): pinning react-syntax-highlighter
-                    // to a named chunk merged its ASYNC-imported grammar bundle into a chunk the
-                    // entry statically needs → 619 kB on the startup modulepreload path. Without
-                    // the pin, Rollup keeps the PrismAsync payload in its own lazy chunk that only
-                    // loads when the first code block renders.
-                    'react-vendor': ['react', 'react-dom'],
-                    'markdown': ['react-markdown', 'remark-gfm'],
-                    'icons': ['lucide-react'],
-                },
-            },
-        },
+        // No manualChunks (r23 + vite 8): the old object-form pins are unsupported by rolldown,
+        // and pinning react-syntax-highlighter had silently merged its ASYNC grammar payload into
+        // a statically-preloaded chunk (619 kB on the startup path). Default splitting keeps the
+        // PrismAsync bundle lazy (loads at the first rendered code block) — verify with
+        // `grep modulepreload dist/index.html` after changing chunking.
         // Target older browsers for Chromebook / old laptop compatibility
         target: 'es2020',
         // Reduce chunk size warnings threshold
