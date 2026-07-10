@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useFocusTrap } from '../lib/useFocusTrap.js';
 import { Smartphone, Settings, CheckCircle2, AlertTriangle, BrainCircuit, Download, RefreshCw, X, AlertCircle, Monitor, Cpu } from 'lucide-react';
 import type { ModelOption } from '../types/index.js';
 
@@ -22,11 +23,11 @@ interface TroubleshooterGuideProps {
 
 export function TroubleshooterGuide({ action, onResolved, onTriggerDownload, downloadProgress = 0, recommendedModelId }: TroubleshooterGuideProps) {
     const [downloadingModelId, setDownloadingModelId] = useState<string | null>(null);
-    const dialogRef = useRef<HTMLDivElement>(null);
+    // r11 backlog #5: full trap (Tab wrap + focus restore on close), engaged only while shown.
+    const dialogRef = useFocusTrap<HTMLDivElement>(!!action);
 
     useEffect(() => {
         if (!action) return;
-        dialogRef.current?.focus();
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onResolved(); };
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);

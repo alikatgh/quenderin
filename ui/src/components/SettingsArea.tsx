@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, BrainCircuit, Download, Trash2, HardDrive, Zap, Cpu, FileText, Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { hashPassphrase } from '../lib/passphrase.js';
+import { RetryState } from './RetryState.js';
 
 interface Settings {
     contextSize: number;
@@ -664,15 +665,10 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
 
                         <div className="space-y-3">
                             {catalogState === 'error' ? (
-                                <div className="text-center py-6">
-                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">Couldn't load the model catalog — is the backend running?</p>
-                                    <button
-                                        onClick={() => { setCatalogState('loading'); refreshCatalog(); }}
-                                        className="px-3 py-1.5 text-[12px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
-                                    >
-                                        Retry
-                                    </button>
-                                </div>
+                                <RetryState
+                                    message="Couldn't load the model catalog — is the backend running?"
+                                    onRetry={() => { setCatalogState('loading'); refreshCatalog(); }}
+                                />
                             ) : modelCatalog.length === 0 ? (
                                 <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-4">Loading models...</div>
                             ) : modelCatalog.map(m => {

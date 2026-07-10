@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, ArrowLeft, Target, Trophy, Clock, Zap, Download } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
+import { RetryState } from './RetryState.js';
 
 interface MetricRecord {
     id: string;
@@ -254,16 +255,13 @@ export function Metrics({ onBack }: { onBack: () => void }) {
                 {isLoading ? (
                     <div className="text-zinc-500 text-sm">Loading telemetry...</div>
                 ) : loadFailed ? (
-                    <div className="text-center py-16 bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl">
-                        <Activity className="w-8 h-8 mx-auto text-zinc-400 mb-3" />
-                        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Couldn't load telemetry</p>
-                        <p className="text-sm text-zinc-500 mt-1 mb-4">Is the backend running? Your recorded runs are safe on disk.</p>
-                        <button
-                            onClick={() => setReloadKey(k => k + 1)}
-                            className="px-3 py-1.5 text-[12px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
-                        >
-                            Retry
-                        </button>
+                    <div className="py-10 bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl">
+                        <Activity className="w-8 h-8 mx-auto text-zinc-400 mb-2" />
+                        <RetryState
+                            message="Couldn't load telemetry"
+                            hint="Is the backend running? Your recorded runs are safe on disk."
+                            onRetry={() => setReloadKey(k => k + 1)}
+                        />
                     </div>
                 ) : metrics.length === 0 ? (
                     <div className="text-center py-16 bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/50 dark:border-zinc-800 rounded-xl">

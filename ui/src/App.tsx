@@ -12,6 +12,7 @@ import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { hashPassphrase, isPassphraseHash } from './lib/passphrase.js';
+import { useFocusTrap } from './lib/useFocusTrap.js';
 
 // Lazy-load heavy components — they import syntax highlighter, markdown,
 // and data-fetching code that isn't needed on initial render.
@@ -27,10 +28,9 @@ function LazyFallback() {
 
 function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void, downloadProgress: number }) {
   const [step, setStep] = useState(1);
-  // r11: move focus INTO the modal on open — without this a keyboard/screen-reader user is left
-  // focused behind the aria-modal backdrop with no way to discover the wizard.
-  const panelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { panelRef.current?.focus(); }, []);
+  // r11 backlog #5: full modal focus management — into the dialog on open, Tab wrapped inside,
+  // restored to the opener on close (initial-focus alone left Tab escaping behind the backdrop).
+  const panelRef = useFocusTrap<HTMLDivElement>();
   const [isFinishing, setIsFinishing] = useState(false);
   const [isModelDownloading, setIsModelDownloading] = useState(false);
   // r10: a failed kickoff used to just reset the spinner — the user clicked, nothing visibly
