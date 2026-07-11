@@ -63,12 +63,15 @@ export function planDownloadWrite(input: {
                 discardReason: `Download resume offset mismatch (server '${contentRange ?? 'none'}' vs local ${partialBytes}); discarded partial — please retry.`,
             };
         }
-        // Genuine resume: the server is continuing exactly where our partial ended.
+        // Genuine resume: the server is continuing exactly where our partial ended. If the 206
+        // omits Content-Length we genuinely don't know the total — report 0 (unknown) so the caller's
+        // `totalBytes > 0` progress guard skips, rather than dividing by partialBytes and emitting
+        // >100% (bug hunt r-uc #19).
         return {
             action: 'resume',
             writeOffset: partialBytes,
             append: true,
-            totalBytes: partialBytes + contentLength,
+            totalBytes: contentLength > 0 ? partialBytes + contentLength : 0,
         };
     }
 

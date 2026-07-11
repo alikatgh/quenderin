@@ -82,4 +82,11 @@ describe('planDownloadWrite', () => {
         const p = planDownloadWrite({ partialBytes: 0, status: 200, contentRange: null, contentLength: 0 });
         expect(p.totalBytes).toBe(0); // progress math downstream guards on totalBytes > 0
     });
+
+    it('r-uc #19: a 206 resume with NO content-length reports total 0, not partialBytes (no >100%)', () => {
+        const p = planDownloadWrite({ partialBytes: 900, status: 206, contentRange: 'bytes 900-/1000', contentLength: 0 });
+        expect(p.action).toBe('resume');
+        expect(p.writeOffset).toBe(900);
+        expect(p.totalBytes).toBe(0); // unknown → progress guard skips instead of received/900 > 100%
+    });
 });

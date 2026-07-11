@@ -969,6 +969,13 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         const dest = modelPath(entry.id);
         const dir = path.dirname(dest);
         const metaPath = dest + '.download.json';
+        // bug hunt r-uc #1/#5: stream to a `.part` staging file and rename to `dest` ONLY after
+        // integrity verification passes. The model LOAD path (selectBestModel) picks a model purely
+        // by `fs.existsSync(dest)` with NO integrity check, so if the download wrote straight to
+        // `dest`, a concurrent chat — or the next launch's fast path — could hand a torn/partial GGUF
+        // to node-llama-cpp's native parser (crash / memory-corruption→RCE surface). With staging,
+        // `dest` is never present until the bytes are complete AND verified.
+        const staging = dest + '.part';
 
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
@@ -1036,10 +1043,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             let receivedBytes = 0;
             const headers: Record<string, string> = {};
 
-            if (fs.existsSync(dest) && fs.existsSync(metaPath)) {
+            if (fs.existsSync(staging) && fs.existsSync(metaPath)) {
                 try {
                     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-                    const partialStats = fs.statSync(dest);
+                    const partialStats = fs.statSync(staging);
                     // Only resume if metadata matches and partial file is substantial
                     if (meta.modelId === entry.id && partialStats.size > 0 && meta.totalBytes > 0) {
                         receivedBytes = partialStats.size;
@@ -1090,7 +1097,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 contentLength,
             });
             if (writePlan.action === 'discard') {
-                try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                try { fs.unlinkSync(staging); } catch { /* ignore */ }
                 try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
                 throw new Error(writePlan.discardReason);
             }
@@ -1101,7 +1108,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             fs.writeFileSync(metaPath, JSON.stringify({ modelId: entry.id, totalBytes, startedAt: new Date().toISOString() }));
 
             let lastEmittedProgress = -1;
-            const fileStream = fs.createWriteStream(dest, writePlan.append ? { flags: 'a' } : undefined);
+            const fileStream = fs.createWriteStream(staging, writePlan.append ? { flags: 'a' } : undefined);
             // A write error (e.g. ENOSPC — realistic mid-download for a multi-GB model on a tight disk)
             // emits 'error' on fileStream. Capture it so it surfaces as a thrown error the catch below
             // handles, instead of an unhandled 'error' event → uncaught exception → process exit. The
@@ -1151,19 +1158,24 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             }
 
             // ─── Integrity verification (C3) ────────────────────────────────
-            // The bytes are on disk but unverified: a TLS-MITM, poisoned mirror, or
-            // truncated transfer could have substituted/corrupted them before they reach
-            // node-llama-cpp's GGUF parser (which has memory-corruption→RCE CVEs). Check
-            // the GGUF magic header and, when the catalog pins one, the full-file SHA-256.
-            // On failure delete the file — a tampered/corrupt result must NOT be kept for
-            // resume (the resume path would append to a poisoned partial) — then surface it.
+            // The bytes are in `staging` but unverified: a TLS-MITM, poisoned mirror, or truncated
+            // transfer could have substituted/corrupted them before they reach node-llama-cpp's GGUF
+            // parser (memory-corruption→RCE CVEs). Check the GGUF magic header, the exact byte size
+            // (catches a header-valid truncation even with no pinned sha — r-uc #5), and, when the
+            // catalog pins one, the full-file SHA-256. On failure delete the STAGING file — a
+            // tampered/corrupt result must NOT be kept for resume (resume would append to a poisoned
+            // partial). `dest` is never written until this passes.
             try {
-                await verifyModelIntegrity(dest, entry.sha256);
+                await verifyModelIntegrity(staging, entry.sha256, totalBytes);
             } catch (verifyError) {
-                try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                try { fs.unlinkSync(staging); } catch { /* ignore */ }
                 try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
                 throw verifyError;
             }
+
+            // Verified & complete → atomically publish to the real path (rename within one dir is
+            // atomic), so the load path only ever sees a whole, checked file.
+            fs.renameSync(staging, dest);
 
             // Clean up download metadata on success
             if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);

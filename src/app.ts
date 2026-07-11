@@ -116,7 +116,11 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     const PROTECTED_READ_PREFIXES = ['/api/sessions', '/api/notes', '/api/memory', '/diagnostics', '/api/metrics', '/api/agent', '/api/tasks'];
     const requiresAuth = (req: express.Request): boolean => {
         if (req.path.startsWith('/api/') && MUTATING_METHODS.has(req.method)) return true;
-        if (req.method === 'GET' && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
+        // HEAD must gate exactly like GET: Express 5 falls an unmatched-HEAD back to the GET handler
+        // (router: `if (method==='head' && !methods.head) method='get'`), so an un-tokened HEAD to a
+        // protected read route would run the handler and leak existence/size via Content-Length
+        // (and any GET side effects) with the body merely suppressed (bug hunt r-uc #3).
+        if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(p => req.path === p || req.path.startsWith(p + '/'))) return true;
         return false;
     };
     app.use((req, res, next) => {

@@ -53,16 +53,29 @@ export function sha256File(filePath: string): Promise<string> {
 /**
  * Verify a freshly-downloaded model file before it is handed to the GGUF parser.
  * Throws {@link ModelIntegrityError} on any mismatch; the caller should delete the file
- * so a retry re-downloads cleanly. When `expectedSha256` is absent only the magic header
- * is checked (still rejects HTML error pages / truncated files).
+ * so a retry re-downloads cleanly.
+ *
+ * Layers: (1) GGUF magic header; (2) exact byte size, when `expectedBytes` is known; (3) full
+ * SHA-256, when the catalog pins one. WITHOUT a sha AND without a size, a truncation that keeps
+ * the 4-byte header is UNDETECTABLE here (bug hunt r-uc #5 — the old "rejects truncated files"
+ * claim was false for exactly that case), so a caller that knows the expected total MUST pass it.
  */
-export async function verifyModelIntegrity(filePath: string, expectedSha256?: string | null): Promise<void> {
+export async function verifyModelIntegrity(filePath: string, expectedSha256?: string | null, expectedBytes?: number): Promise<void> {
     const head = await readHead(filePath, 4);
     if (!hasGGUFMagic(head)) {
         throw new ModelIntegrityError(
             `Downloaded file is not a valid GGUF model (bad magic: 0x${head.toString('hex') || '<empty>'}). ` +
             `The download was likely corrupted, truncated, or intercepted.`,
         );
+    }
+    if (expectedBytes !== undefined && expectedBytes > 0) {
+        const { size } = await fs.promises.stat(filePath);
+        if (size !== expectedBytes) {
+            throw new ModelIntegrityError(
+                `Model size mismatch — expected ${expectedBytes} bytes, got ${size}. ` +
+                `The download is incomplete or truncated; refusing to load it.`,
+            );
+        }
     }
     if (expectedSha256) {
         const actual = await sha256File(filePath);

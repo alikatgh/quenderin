@@ -309,7 +309,9 @@ export class MemoryService {
 
         await this.withWriteLock(async () => {
             await fs.mkdir(this.notesDir, { recursive: true });
-            await fs.writeFile(notePath, header + trimmedContent, 'utf-8');
+            // Atomic write-temp-rename like every other store (r16) — a bare writeFile truncates the
+            // note the instant it opens, so a crash mid-write leaves a half-note (bug hunt r-uc #6).
+            await atomicWriteFile(notePath, header + trimmedContent);
         });
 
         return { path: notePath };

@@ -61,4 +61,14 @@ describe('modelIntegrity', () => {
     it('rejects a GGUF whose checksum does not match (tamper / corruption)', async () => {
         await expect(verifyModelIntegrity(ggufPath, 'f'.repeat(64))).rejects.toBeInstanceOf(ModelIntegrityError);
     });
+
+    it('r-uc #5: rejects a header-valid but size-mismatched (truncated) file when no sha is pinned', async () => {
+        const actualSize = fs.statSync(ggufPath).size;
+        // A truncation that keeps the GGUF magic passes magic+no-sha; the size gate is the only thing
+        // that catches it. Expected total larger than what's on disk → reject.
+        await expect(verifyModelIntegrity(ggufPath, undefined, actualSize + 5_000_000)).rejects.toBeInstanceOf(ModelIntegrityError);
+        // Exact size (or unknown/0) passes.
+        await expect(verifyModelIntegrity(ggufPath, undefined, actualSize)).resolves.toBeUndefined();
+        await expect(verifyModelIntegrity(ggufPath, undefined, 0)).resolves.toBeUndefined();
+    });
 });

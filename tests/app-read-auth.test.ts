@@ -33,6 +33,17 @@ describe('read-route auth (Q-007)', () => {
         });
     });
 
+    it('rejects unauthenticated HEAD to user-data routes too (Express falls HEAD→GET handler)', async () => {
+        // bug hunt r-uc #3: HEAD was not gated, so `HEAD /api/notes` ran the GET handler
+        // unauthenticated and leaked existence/size via the computed Content-Length.
+        await withApp(async (base) => {
+            for (const path of ['/api/sessions', '/api/notes', '/api/metrics']) {
+                const res = await localRequest(`${base}${path}`, { method: 'HEAD' });
+                expect(res.status, `HEAD ${path} should require auth`).toBe(401);
+            }
+        });
+    });
+
     it('accepts the same GETs when the token is supplied', async () => {
         await withApp(async (base) => {
             // The route handlers themselves may 200/404/500 depending on injected services (we pass

@@ -4,6 +4,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A file the LOAD path selects by mere existence must never exist until it's complete AND verified.**
+  Downloading straight to the final path means any consumer that picks by `fs.existsSync` (no integrity
+  check) can read a torn/in-flight/partial file — for a GGUF that's the native-parser RCE surface. Stream
+  to a `.part` staging file and `rename` to the real path only after verify (magic + exact SIZE + sha).
+  Corollary: a magic-header-only check does NOT catch a truncation that keeps the header — gate on the
+  expected byte size or a hash. (r-uc #1/#5: llm.service staging + modelIntegrity size gate)
+- **HEAD is not a free pass — gate it exactly like GET.** Express 5 falls an unmatched HEAD back to the
+  GET handler, so a route protected only for `method==='GET'` runs its handler (and leaks Content-Length /
+  fires side effects) on an un-tokened HEAD. Auth predicates must treat HEAD as GET. (r-uc #3)
 - **`fetch` to ephemeral `listen(0)` servers flakes under parallel test load — use `agent:false`.**
   Node's global fetch (undici) pools keep-alive connections per origin; the OS recycles ephemeral port
   numbers across suites, so a pooled connection to a since-closed server on a reused port is handed a dead
@@ -501,6 +510,21 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (r-uc #1/#5: a partial GGUF download was loadable by the native parser) — the download
+  streamed straight to the FINAL `modelPath(id)`, and the load path (`selectBestModel`) picks by bare
+  `fs.existsSync` with NO integrity check — so a concurrent chat, or the next launch's fast path,
+  could hand torn/partial bytes to node-llama-cpp (crash / memory-corruption→RCE surface). Fix: stream
+  to `dest + '.part'`, rename to `dest` ONLY after verify; added a byte-SIZE gate to verifyModelIntegrity
+  (magic-only passed a header-valid truncation when no sha was pinned — the "rejects truncated" comment
+  was false). Lesson → pattern. (llm.service downloadModel, modelIntegrity)
+
+- 2026-07-11 (r-uc #3/#8/#6: three quieter leaks) — (#3) `requiresAuth` gated GET but not HEAD, and
+  Express 5 falls HEAD→GET handler, so an un-tokened `HEAD /api/notes` ran the handler and leaked
+  existence/size via Content-Length; gate HEAD like GET. (#8) the audit ledger redacted input/outcome
+  but spread `goal` through raw — a secret typed into a goal persisted in every row; redact goal
+  symmetrically. (#6) `saveNote` used a bare writeFile (not the r16 atomic writer) → a crash mid-write
+  truncates the note; use atomicWriteFile. All three pinned by tests.
 
 - 2026-07-11 (flaky security-header tests under full-suite parallel load) — `app-headers` intermittently
   read `referrer-policy`/CSP as `null`; the failing subtest MOVED between runs (non-deterministic). Cause:

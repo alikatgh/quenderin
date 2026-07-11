@@ -37,4 +37,12 @@ describe('the ledger redacts on write', () => {
         expect(row.input).toContain('…redacted');
         expect(row.outcome).not.toContain('sk-ABCDEFGHIJKLMNOP1234');   // outcome is masked too
     });
+
+    it('a secret in the GOAL is redacted symmetrically with input/outcome (r-uc #8)', () => {
+        const ledger = new InMemoryAuditLedger();
+        ledger.append({ timestampMs: 1, capability: 'mac.ui.type', tier: 3, input: 'x', decision: 'allowed', goal: 'log in with sk-ABCDEFGHIJKLMNOP1234' });
+        const row = ledger.entries()[0];
+        expect(row.goal).not.toContain('sk-ABCDEFGHIJKLMNOP1234');
+        expect(row.goal).toContain('…redacted');
+    });
 });

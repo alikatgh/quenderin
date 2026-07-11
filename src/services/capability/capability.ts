@@ -114,8 +114,15 @@ export class InMemoryAuditLedger implements AuditLedger {
      *  bound; the oldest entries are evicted first. */
     constructor(private readonly maxEntries = 0) { }
     append(entry: AuditEntry): void {
-        // Redact-then-truncate: the ledger is a record, never a place a leaked secret lives.
-        this.stored.push({ ...entry, input: redactSecrets(entry.input).slice(0, 200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0, 200) : entry.outcome });
+        // Redact-then-truncate: the ledger is a record, never a place a leaked secret lives. The GOAL
+        // is user-authored task text too (e.g. "log into X with password …") — redact it symmetrically
+        // with input/outcome, or a secret in the goal persists in every row (bug hunt r-uc #8).
+        this.stored.push({
+            ...entry,
+            goal: entry.goal ? redactSecrets(entry.goal).slice(0, 200) : entry.goal,
+            input: redactSecrets(entry.input).slice(0, 200),
+            outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0, 200) : entry.outcome,
+        });
         if (this.maxEntries > 0 && this.stored.length > this.maxEntries) this.stored.shift();
     }
     entries(): AuditEntry[] { return [...this.stored]; }
