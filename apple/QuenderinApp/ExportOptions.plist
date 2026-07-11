@@ -3,7 +3,7 @@
 <plist version="1.0">
 <!--
   Template for `xcodebuild -exportArchive` (CLI / CI release builds). See docs/RELEASE.md.
-  Replace YOUR_TEAM_ID with your 10-char Apple Developer Team ID (Membership tab; not a secret).
+  Replace 9M2B2P4KSA with your 10-char Apple Developer Team ID (Membership tab; not a secret).
   `method` is `app-store-connect` on Xcode 15.3+; older Xcode uses `app-store`.
   Distribution certs/profiles stay in your keychain — nothing secret is committed here.
 -->
@@ -11,7 +11,7 @@
     <key>method</key>
     <string>app-store-connect</string>
     <key>teamID</key>
-    <string>YOUR_TEAM_ID</string>
+    <string>9M2B2P4KSA</string>
     <key>signingStyle</key>
     <string>automatic</string>
     <key>uploadSymbols</key>
