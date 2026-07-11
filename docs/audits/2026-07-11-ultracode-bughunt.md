@@ -129,3 +129,36 @@ loop before any fix; per-finding disposition (fixed / downgraded / rejected) liv
 - **Location:** `src/services/modelDownloadPlan.ts:71` (model-download)
 - **Failure scenario:** llm.service.ts:1085 defaults contentLength to 0 when the header is absent; modelDownloadPlan.ts:71's resume branch then sets totalBytes = partialBytes + 0. In the download loop receivedBytes starts at partialBytes and grows per chunk while totalBytes stays fixed, so progress = round(receivedBytes/totalBytes*100) exceeds 100% almost immediately and climbs all session. Reproducible whenever a CDN/proxy answers a Range request with 206 and chunked encoding (no Content-Length). Purely cosmetic — write/append offset logic is unaffected.
 - **Proposed fix:** In planDownloadWrite's resume branch use `totalBytes: contentLength > 0 ? partialBytes + contentLength : 0` so the loop's existing `if (totalBytes > 0)` guard suppresses percentage display instead of computing a value that can exceed 100%.
+
+---
+
+## Disposition (2026-07-11) — all 19 triaged
+
+**Fixed + tested (17):**
+- #1 partial-GGUF load → staging `.part` + rename-after-verify (`llm.service`); #5 size-gate in
+  `verifyModelIntegrity`; #19 206-resume-no-CL progress. #3 HEAD auth gate (`app.ts`). #8 ledger
+  redacts `goal`. #6 `saveNote` atomic. #4 action-history fenced as untrusted (`promptBuilder`) +
+  label cap (`uiVerifier`). #13 graceful observation-error termination. #16 screenshot cleanup on
+  override/stop paths. #2 literal-`%s` split (`splitLiteralPercentS`). #9 `pressKey` rejects unknown
+  keys. #10 dims TTL + cache-on-success-only. #7 `lastAgent` guarded on undoable. #12 `runner.lastExecuted`
+  gates progress/skill-memory credit. #14 habits write-chain + re-read compaction. #17 plan-preview
+  failure ledgered. #18 device-rm `.finally` + local-temp cleanup on read failure.
+
+**Downgraded during independent re-verification:**
+- #13 HIGH→medium: the synth claimed an "unhandled rejection", but all three `runAgentLoop` callers
+  already catch (WS/CLI/voice). The real (smaller) gap — bypassed terminal events + a scary generic
+  message on a transient device error — is what was fixed.
+
+**Deferred, with rationale (2):**
+- #11 (blocklist multi-word phrase bypassed by zero-separator concatenation, e.g. "sendmoney" evading
+  'send money'): REAL but the blocklist matching is parity-pinned across three platforms
+  (`safety.ts` + Swift + Kotlin, `check_safety_parity.py`). A correct fix must land in all three twins
+  together (and add a shared parity vector), which needs the Swift/Kotlin build+test loop — not
+  safely doable from this machine. Tracked for a 3-platform pass. Mitigation today: it is
+  defense-in-depth UNDER consent + per-run approval + ledger, and single-word dangerous tokens
+  ('pay','buy','delete','transfer','withdraw'…) still match.
+- #15 (hard-stop can't interrupt in-flight device I/O — only the LLM decode is abortable): REAL and
+  architectural. `spawnAdb`/native input calls run to completion; the kill switch is honored BETWEEN
+  steps (the loop checks `signal.aborted` each iteration), so at most one in-flight action completes
+  after Stop. Making a single adb/native call itself cancellable is a provider-level design change
+  (process-kill semantics per platform) — scoped as its own task, not a hotfix.

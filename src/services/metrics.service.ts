@@ -79,14 +79,21 @@ export class MetricsService {
         }
     }
 
+    /** Serializes habit appends AND the getHabits() compaction (r-uc #14). Without it, a compaction's
+     *  atomicWriteFile rename could clobber a line appended concurrently by the ~3s daemon loop. */
+    private habitsChain: Promise<void> = Promise.resolve();
+
     /** Append a single habit log entry. Uses NDJSON (one JSON per line) so this is a
      *  pure append — no read-parse-write-all cycle that would thrash the heap every 3s. */
     public async appendHabitLog(log: HabitLog): Promise<void> {
-        try {
-            await fs.appendFile(this.habitsNdjsonPath, JSON.stringify(log) + '\n', 'utf-8');
-        } catch (error) {
-            logger.error('Failed to write habit log data:', error);
-        }
+        this.habitsChain = this.habitsChain.then(async () => {
+            try {
+                await fs.appendFile(this.habitsNdjsonPath, JSON.stringify(log) + '\n', 'utf-8');
+            } catch (error) {
+                logger.error('Failed to write habit log data:', error);
+            }
+        });
+        return this.habitsChain;
     }
 
     public async getHabits(): Promise<HabitLog[]> {
@@ -100,12 +107,23 @@ export class MetricsService {
                 })
                 .filter((r): r is HabitLog => r !== null);
 
-            // Compact the file when it exceeds 2000 entries — rewrite with last 1000
+            // Compact the file when it exceeds 2000 entries — rewrite with last 1000. r-uc #14: run
+            // the compaction THROUGH the habits chain, and RE-READ inside it, so it (a) can't interleave
+            // with a concurrent append and (b) never writes a stale snapshot that drops a line appended
+            // after this read. The response still returns this read's records (compaction is a side effect).
             if (lines.length > 2000) {
-                const kept = records.slice(-1000);
-                atomicWriteFile(this.habitsNdjsonPath, kept.map(r => JSON.stringify(r)).join('\n') + '\n')
-                    .catch(() => { /* best-effort compaction */ });
-                return kept;
+                this.habitsChain = this.habitsChain.then(async () => {
+                    try {
+                        const fresh = await fs.readFile(this.habitsNdjsonPath, 'utf-8');
+                        const recs = fresh.split('\n').filter(l => l.trim().length > 0)
+                            .map(l => { try { return JSON.parse(l) as HabitLog; } catch { return null; } })
+                            .filter((r): r is HabitLog => r !== null);
+                        if (recs.length > 2000) {
+                            await atomicWriteFile(this.habitsNdjsonPath, recs.slice(-1000).map(r => JSON.stringify(r)).join('\n') + '\n');
+                        }
+                    } catch { /* best-effort compaction */ }
+                });
+                return records.slice(-1000);
             }
 
             return records.slice(-1000);

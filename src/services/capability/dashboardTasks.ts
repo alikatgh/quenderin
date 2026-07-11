@@ -128,7 +128,11 @@ export class DashboardTaskService extends EventEmitter {
                     a.capability.startsWith('fs.') && workspace ? { ...a, workspace } : a);
                 this.journal.save(actions);
             }
-            this.lastAgent = agent;
+            // r-uc #7: only make THIS run the undo target if it actually produced something undoable.
+            // The old unconditional assignment let a later read-only run clobber lastAgent, so undoLast()
+            // then found the no-op agent (nothing to undo) and the prior mutating run's in-memory inverses
+            // were orphaned (the persisted journal still has them, but the one-click undoLast lost them).
+            if (undoable.length > 0) this.lastAgent = agent;
             return { answer: result.answer, halt: result.halt, undoable: undoable.length };
         } finally {
             this.running = false;

@@ -36,6 +36,12 @@ export class CapabilityRunner {
     /** Successful mutating actions since the last bulk re-confirmation this run. */
     private mutationsThisRun = 0;
 
+    /** r-uc #12: did the LAST execute()/executePlan() actually RUN a capability (vs refuse/block/
+     *  decline/error/dry-run)? The agent loop reads this so it only credits SUCCESSFUL actions toward
+     *  its progress/zero-action guard and its skill memory — a refused call is not "progress". Valid
+     *  only immediately after the awaited call (the loop is sequential per run). */
+    lastExecuted = false;
+
     /** The goal of the current run — stamped onto every ledger entry so `history` can group a task's
      *  actions together (a structured local audit, vs a cloud agent's flat chat log). */
     private runGoal?: string;
@@ -90,6 +96,7 @@ export class CapabilityRunner {
      * your own machine, instantly, no round-trip).
      */
     async execute(capability: Capability, input: string, signal?: AbortSignal): Promise<string> {
+        this.lastExecuted = false;   // r-uc #12: assume not-run until a capability actually runs below
         if (signal?.aborted) {
             this.log(capability, input, 'cancelled');
             return 'Stopped — you halted the agent.';
@@ -137,6 +144,7 @@ export class CapabilityRunner {
         // 5. Execute.
         try {
             const result = await capability.run(input);
+            this.lastExecuted = true;   // r-uc #12: a capability actually ran → real progress
             this.log(capability, input, 'allowed', result);
             if (preview.mutates) {
                 this.session?.record(capability, input);
@@ -157,6 +165,7 @@ export class CapabilityRunner {
      * step stops the remainder honestly.
      */
     async executePlan(items: Array<{ capability: Capability; input: string }>, signal?: AbortSignal): Promise<string> {
+        this.lastExecuted = false;   // r-uc #12: flips true only once a step actually runs below
         if (signal?.aborted) return 'Stopped — you halted the agent before the plan ran.';
         const previews: ActionPreview[] = [];
         // ── Pre-flight.
@@ -173,6 +182,9 @@ export class CapabilityRunner {
             try {
                 previews.push(await item.capability.plan(item.input));
             } catch (e) {
+                // r-uc #17: ledger the preview failure like execute() does — a step that couldn't even
+                // be previewed is an audit event, not a silent return (the whole plan aborts here).
+                this.log(item.capability, item.input, 'error', `preview failed: ${String(e)}`);
                 return `Couldn't preview step ${previews.length + 1} (${item.capability.name}): ${String(e)}. Nothing was done.`;
             }
         }
@@ -225,6 +237,7 @@ export class CapabilityRunner {
             // mutationsThisRun, so the run's brake fires on the NEXT single action if the run keeps going.
             try {
                 const result = await item.capability.run(item.input);
+                this.lastExecuted = true;   // r-uc #12: at least one plan step actually ran
                 this.log(item.capability, item.input, 'allowed', result);
                 if (previews[i].mutates) {
                     this.session?.record(item.capability, item.input);

@@ -516,6 +516,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (r-uc #12: refused actions counted as "progress" and poisoned skill memory) — the
+  capability agent pushed a tool to usedTools/usedSteps whenever the capability EXISTED (`if (cap)`),
+  even when the runner blocked/declined/needs-consent/errored it. So the zero-action guard thought work
+  happened (no nudge → false "done"), and SkillMemory recorded a failed sequence as "proven". Fix: the
+  runner now sets `lastExecuted` true ONLY on a real run; the agent credits progress only when true.
+  (Batch 3 also: #7 undo target guarded, #14 habits write-chain, #17 plan-preview ledgered, #18 device
+  temp `.finally` cleanup, #9 pressKey rejects unknown keys, #10 dims TTL, #2 literal-%s split.)
+
 - 2026-07-11 (r-uc #4: prompt-injection via the "trusted" action history) — every external source in
   the agent prompt (UI_STATE, VISION, ATTACHMENTS, USER_GOAL, corrections, trajectory) was fenced with
   wrapUntrustedData EXCEPT actionHistory, which was labeled "Recent Actions (trusted agent history)".

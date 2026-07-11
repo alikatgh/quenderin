@@ -9,6 +9,26 @@ import { getHardwareProfile } from '../../utils/hardware.js';
 
 const HW = getHardwareProfile();
 
+/**
+ * Split text so a LITERAL "%s" never lands inside a single `adb shell input text` argument (r-uc #2).
+ * Android's `input text` substitutes "%s" → a space and is escape-UNAWARE, so `\%s` still becomes a
+ * space on the device. Breaking between the '%' and the 's' — sending them via separate `input text`
+ * calls — is the only way to type a literal "%s"; each returned segment is encoded/escaped separately.
+ * A string with no literal "%s" returns as a single segment (unchanged one-call behavior).
+ */
+export function splitLiteralPercentS(text: string): string[] {
+    const segments: string[] = [];
+    let start = 0;
+    for (let i = 0; i + 1 < text.length; i++) {
+        if (text[i] === '%' && text[i + 1] === 's') {
+            segments.push(text.slice(start, i + 1)); // segment ends WITH the '%'
+            start = i + 1;                            // next segment starts AT the 's'
+        }
+    }
+    segments.push(text.slice(start));
+    return segments.filter(s => s.length > 0);
+}
+
 export class AndroidProvider extends EventEmitter implements IDeviceProvider {
     /** ADB command timeout scales with hardware — slow devices need more time */
     private readonly adbTimeoutMs = Math.round(15_000 * HW.timeoutMultiplier);
@@ -17,7 +37,9 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
     /** Cached device screen dimensions — queried once from the device */
     private screenWidth: number = 0;
     private screenHeight: number = 0;
-    private screenDimsQueried = false;
+    /** When the cached dims were last SUCCESSFULLY queried (ms). 0 = never. r-uc #10. */
+    private screenDimsAtMs = 0;
+    private static readonly SCREEN_DIMS_TTL_MS = 15_000;
 
     constructor() {
         super();
@@ -91,10 +113,14 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
 
     /** Query actual device screen resolution via ADB instead of hardcoding */
     private async getScreenDimensions(): Promise<{ width: number; height: number }> {
-        if (this.screenDimsQueried && this.screenWidth > 0) {
+        // r-uc #10: cache with a TTL (a rotation/fold changes w×h, and the old cache-forever swiped
+        // to the wrong place after it) AND only pin the cache on a SUCCESSFUL query — the old code set
+        // the "queried" flag before the query, so ONE transient failure permanently pinned the
+        // 1080×2400 fallback even once the device became queryable again.
+        const now = Date.now();
+        if (this.screenWidth > 0 && now - this.screenDimsAtMs < AndroidProvider.SCREEN_DIMS_TTL_MS) {
             return { width: this.screenWidth, height: this.screenHeight };
         }
-        this.screenDimsQueried = true;
         try {
             const output = await this.spawnAdb(['shell', 'wm', 'size']);
             // Output format: "Physical size: 1080x2400" or "Override size: 1080x2400"
@@ -102,15 +128,16 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
             if (match) {
                 this.screenWidth = parseInt(match[1], 10);
                 this.screenHeight = parseInt(match[2], 10);
+                this.screenDimsAtMs = now;   // cache ONLY on success
                 return { width: this.screenWidth, height: this.screenHeight };
             }
         } catch {
-            // Fall back to reasonable defaults
+            // Query failed — fall through. Do NOT pin: leave screenDimsAtMs stale so the next call retries.
         }
-        // Default fallback
-        this.screenWidth = 1080;
-        this.screenHeight = 2400;
-        return { width: this.screenWidth, height: this.screenHeight };
+        // Failure/unparseable: reuse the last GOOD dims if we ever had them; otherwise a one-shot
+        // default that is NOT cached (screenDimsAtMs stays 0), so a later successful query can replace it.
+        if (this.screenWidth > 0) return { width: this.screenWidth, height: this.screenHeight };
+        return { width: 1080, height: 2400 };
     }
 
     // Helper to get just the UI XML quickly without screenshot overhead
@@ -182,8 +209,15 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         // token on some shells — corrupting typed text from pasted/multiline content. `input text`
         // can't type real newlines anyway (M4).
         const normalized = text.replace(/[\t\n\r\f\v]+/g, ' ');
-        const escaped = normalized.replace(/[\s\\"'`$()<>|;&*?~[\]{}#!%]/g, (c) => (c === ' ' ? '%s' : '\\' + c));
-        await this.spawnAdb(['shell', 'input', 'text', escaped]);
+        // r-uc #2: a LITERAL "%s" in the text collides with `input text`'s %s→space substitution, which
+        // is escape-UNAWARE (an escaped `\%` still leaves the `%` adjacent to the `s`, and the device
+        // shell strips the backslash) — so "increase%special" rendered "increase pecial". Split the text
+        // so the `%` and the following `s` land in SEPARATE `input text` calls; then they can never form
+        // the substitution. Each segment still encodes its own spaces as %s and escapes shell metachars.
+        const escapeSegment = (s: string) => s.replace(/[\s\\"'`$()<>|;&*?~[\]{}#!%]/g, (c) => (c === ' ' ? '%s' : '\\' + c));
+        for (const segment of splitLiteralPercentS(normalized)) {
+            await this.spawnAdb(['shell', 'input', 'text', escapeSegment(segment)]);
+        }
         await this.waitForUiIdle();
     }
 
@@ -205,12 +239,17 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
     }
 
     public async pressKey(key: string): Promise<void> {
-        // Convert generic key strings to ADB Keycodes if needed, rudimentary map for now
-        let code = '66'; // ENTER generic fallback
-        if (key.toLowerCase() === 'enter') code = '66';
-        if (key.toLowerCase() === 'back') code = '4';
-        if (key.toLowerCase() === 'home') code = '3';
-
+        // r-uc #9: an UNKNOWN key must NOT silently become ENTER — the old `let code = '66'` default
+        // meant a typo or an unmapped key (`tab`, `esc`, `search`…) pressed ENTER, which can submit a
+        // form / send a message the agent never intended. Map explicitly; reject the unknown.
+        const KEYCODES: Record<string, string> = {
+            enter: '66', back: '4', home: '3', tab: '61', space: '62',
+            delete: '67', backspace: '67', escape: '111', esc: '111',
+        };
+        const code = KEYCODES[key.toLowerCase().trim()];
+        if (!code) {
+            throw new Error(`Unsupported key "${key}" — no keyevent sent (refusing to fall back to ENTER).`);
+        }
         await this.spawnAdb(['shell', 'input', 'keyevent', code]);
         await this.waitForUiIdle();
     }
@@ -231,16 +270,27 @@ export class AndroidProvider extends EventEmitter implements IDeviceProvider {
         // stale or mid-write dump. Suffix the device path and rm it after pull.
         const devXml = `/sdcard/${xmlFileName}`;
         const devPng = `/sdcard/${pngFileName}`;
+        // r-uc #18: `.finally` the device-side rm so the /sdcard dump is removed even when the pull
+        // FAILS after a successful dump (the old `.then(rm)` only ran on the happy path → device leak).
+        // `rm -f` is harmless if the dump itself never created the file.
         await Promise.all([
             this.spawnAdb(['shell', 'uiautomator', 'dump', devXml])
                 .then(() => this.spawnAdb(['pull', devXml, xmlTempFile]))
-                .then(() => this.spawnAdb(['shell', 'rm', '-f', devXml]).catch(() => { })),
+                .finally(() => this.spawnAdb(['shell', 'rm', '-f', devXml]).catch(() => { })),
             this.spawnAdb(['shell', 'screencap', '-p', devPng])
                 .then(() => this.spawnAdb(['pull', devPng, pngTempFile]))
-                .then(() => this.spawnAdb(['shell', 'rm', '-f', devPng]).catch(() => { }))
+                .finally(() => this.spawnAdb(['shell', 'rm', '-f', devPng]).catch(() => { }))
         ]);
 
-        const xml = await fs.readFile(xmlTempFile, 'utf-8');
+        let xml: string;
+        try {
+            xml = await fs.readFile(xmlTempFile, 'utf-8');
+        } catch (e) {
+            // The read failed — clean up BOTH local temps so a bad pull doesn't leak into /tmp either.
+            await fs.unlink(xmlTempFile).catch(() => { });
+            await fs.unlink(pngTempFile).catch(() => { });
+            throw e;
+        }
         await fs.unlink(xmlTempFile).catch(() => { });
 
         return { xml, screenshotPath: pngTempFile };

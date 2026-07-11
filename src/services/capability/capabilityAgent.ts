@@ -155,7 +155,11 @@ export class CapabilityAgent {
                 observation = cap
                     ? await this.runner.execute(cap, decision.input, signal)
                     : `No such capability: ${decision.name}.`;
-                if (cap) {
+                // r-uc #12: credit the tool toward progress + skill memory ONLY if it actually RAN.
+                // The old `if (cap)` counted a blocked/declined/needs-consent/errored call as progress,
+                // so the zero-action guard thought work happened and SkillMemory recorded a "proven"
+                // sequence that in fact failed. runner.lastExecuted flips true only on a real run.
+                if (cap && this.runner.lastExecuted) {
                     usedTools.push(decision.name);
                     usedSteps.push({ tool: decision.name, input: decision.input });
                 }
@@ -166,7 +170,9 @@ export class CapabilityAgent {
                 observation = unknown
                     ? `No such capability in the plan: ${decision.calls.find(c => !this.byName.has(c.name))?.name}. Plan not executed.`
                     : await this.runner.executePlan(resolved as Array<{ capability: Capability; input: string }>, signal);
-                if (!unknown) {
+                // r-uc #12: same as the single-tool path — only credit a plan that actually executed
+                // (a blocked/declined/preview-failed plan runs nothing, so it isn't progress).
+                if (!unknown && this.runner.lastExecuted) {
                     usedTools.push(...decision.calls.map(c => c.name));
                     usedSteps.push(...decision.calls.map(c => ({ tool: c.name, input: c.input })));
                 }

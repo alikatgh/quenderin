@@ -42,3 +42,36 @@ describe('AndroidProvider.spawnAdb — spawn-failure handling (no hang/crash whe
         await expect(provider.click(1, 2)).rejects.toMatchObject({ code: 'ADB_MISSING' });
     });
 });
+
+describe('splitLiteralPercentS — a literal "%s" is never typed as a space (r-uc #2)', () => {
+    it('splits between the % and the s so they cannot form the substitution', async () => {
+        const { splitLiteralPercentS } = await import('../src/services/providers/android.provider.js');
+        expect(splitLiteralPercentS('increase%special')).toEqual(['increase%', 'special']);
+        expect(splitLiteralPercentS('%s')).toEqual(['%', 's']);
+        expect(splitLiteralPercentS('a%sb%sc')).toEqual(['a%', 'sb%', 'sc']);
+    });
+
+    it('leaves ordinary text (no literal %s) as a single segment', async () => {
+        const { splitLiteralPercentS } = await import('../src/services/providers/android.provider.js');
+        expect(splitLiteralPercentS('hello world')).toEqual(['hello world']);
+        expect(splitLiteralPercentS('50% off')).toEqual(['50% off']); // % not followed by s
+        expect(splitLiteralPercentS('')).toEqual([]);
+    });
+
+    it('concatenating the segments reconstructs the original exactly', async () => {
+        const { splitLiteralPercentS } = await import('../src/services/providers/android.provider.js');
+        for (const s of ['%s', 'a%sb', 'x%s%sy', 'no percent', '%', 's%', 'trailing%']) {
+            expect(splitLiteralPercentS(s).join('')).toBe(s);
+        }
+    });
+});
+
+describe('AndroidProvider.pressKey — unknown keys never fall back to ENTER (r-uc #9)', () => {
+    it('refuses an unknown key instead of pressing ENTER, and sends no keyevent', async () => {
+        const { AndroidProvider } = await import('../src/services/providers/android.provider.js');
+        const provider = new AndroidProvider();
+        spawnMock.mockClear();
+        await expect(provider.pressKey('definitely-not-a-key')).rejects.toThrow(/Unsupported key/);
+        expect(spawnMock).not.toHaveBeenCalled();
+    });
+});
