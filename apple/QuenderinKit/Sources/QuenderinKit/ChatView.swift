@@ -24,6 +24,7 @@ public struct ChatView: View {
     /// Throttle stream-follow scrollTo so token-by-token follow doesn't fight the wheel.
     @State private var lastStreamFollowAt = Date.distantPast
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var composerFocused: Bool
 
     /// The loaded model + a switch action — when provided, the router can suggest a better
@@ -131,6 +132,12 @@ public struct ChatView: View {
                                 ChatBubble(message: message, palette: p,
                                            accent: settings.bubbleAccent.colors(dark: scheme == .dark))
                                     .id(message.id)
+                                    // New bubbles spring up from the composer edge; streaming
+                                    // (which mutates the last message's text, not the count) never
+                                    // re-triggers this. Honors Reduce Motion.
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                                        removal: .opacity))
                                 if let handoff = latestHandoff, handoff.assistantID == message.id {
                                     AgentHandoffCard(goal: handoff.goal, palette: p, compact: true) {
                                         runWithAgent(handoff.goal)
@@ -149,6 +156,10 @@ public struct ChatView: View {
                         .environment(\.font, effectiveChatFont)
                         .frame(maxWidth: 760)
                         .frame(maxWidth: .infinity)
+                        // Drives the bubble insertion transition; keyed on count so token
+                        // streaming (text mutation) doesn't animate. Nil under Reduce Motion.
+                        .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.82),
+                                   value: model.messages.count)
                     }
                     // Bottom anchor + (macOS) AppKit near-bottom probe MUST live inside the
                     // scroll content so enclosingScrollView is non-nil.
@@ -393,6 +404,11 @@ public struct ChatView: View {
                     .background(p.primary.opacity(canSend || model.isGenerating ? 1 : 0.4), in: Circle())
             }
             .buttonStyle(.plain)
+            // Springy pop the moment a message becomes sendable — the button
+            // "wakes up" instead of just changing opacity. Nil under Reduce Motion.
+            .scaleEffect(reduceMotion ? 1 : (canSend || model.isGenerating ? 1 : 0.82))
+            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6),
+                       value: canSend || model.isGenerating)
             .disabled(!canSend && !model.isGenerating)
             .help(model.isGenerating ? "Stop generating" : "Send message")
             .accessibilityLabel(model.isGenerating ? "Stop generating" : "Send message")
