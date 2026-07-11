@@ -325,6 +325,10 @@ public final class OnboardingModel: ObservableObject {
     /// via ``legacyModelsDirs()`` so a one-time migration is not required to keep listing them.
     static func defaultModelsDir() -> URL {
         let fm = FileManager.default
+        #if os(macOS)
+        // macOS: `~/.quenderin/models`, shared with the CLI / Electron desktop. In the
+        // sandboxed Mac App Store build "home" is the app container, which is still a
+        // stable writable store (the CLI-sharing benefit applies to unsandboxed dev builds).
         let home = fm.homeDirectoryForCurrentUser
         let shared = home.appendingPathComponent(".quenderin/models", isDirectory: true)
         do {
@@ -335,6 +339,15 @@ public final class OnboardingModel: ObservableObject {
                 ?? URL(fileURLWithPath: NSTemporaryDirectory())
             return base.appendingPathComponent("Quenderin/models", isDirectory: true)
         }
+        #else
+        // iOS: `homeDirectoryForCurrentUser` doesn't exist — the app container's
+        // Application Support is the canonical model store on the phone.
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let dir = base.appendingPathComponent("Quenderin/models", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+        #endif
     }
 
     /// Older install locations still scanned so models already on disk keep working after the

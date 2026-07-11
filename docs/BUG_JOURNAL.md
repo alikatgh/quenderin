@@ -516,6 +516,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (iOS build broken by the mac session's model-dir unification) — `defaultModelsDir()`
+  in SHARED QuenderinKit used `fm.homeDirectoryForCurrentUser` (macOS-only) → iOS target failed to
+  compile while macOS stayed green. Fix: `#if os(macOS)` keeps `~/.quenderin/models`; iOS gets
+  app-container Application Support. OnboardingModel.swift:326.
+  Lesson: any edit to shared Kit code must rebuild BOTH platforms before commit — one green target proves nothing.
+
 - 2026-07-11 (r-uc #12: refused actions counted as "progress" and poisoned skill memory) — the
   capability agent pushed a tool to usedTools/usedSteps whenever the capability EXISTED (`if (cap)`),
   even when the runner blocked/declined/needs-consent/errored it. So the zero-action guard thought work
