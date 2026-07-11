@@ -52,9 +52,9 @@ android {
             ndk { abiFilters += listOf("arm64-v8a") }   // add "x86_64" for x86 emulators
             externalNativeBuild {
                 cmake {
-                    if (enableVulkan) {
-                        arguments += "-DQUENDERIN_VULKAN=ON"
-                    }
+                    // Always pass the flag: jni/CMakeLists defaults the option to ON, so
+                    // omitting it on -Pquenderin.vulkan=false silently built Vulkan anyway.
+                    arguments += "-DQUENDERIN_VULKAN=${if (enableVulkan) "ON" else "OFF"}"
                 }
             }
         }

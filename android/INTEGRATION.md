@@ -44,9 +44,14 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
 
 1. Add llama.cpp pinned to a known commit:
    ```sh
-   git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
-   cd android/jni/llama.cpp && git checkout <PINNED_COMMIT>
+   # v0.2.0 release pin (2026-07-11): tag b9190 — the LAST tag before ggml-vulkan
+   # started requiring the SPIRV-Headers host package (2026-05-17, #22009).
+   git clone --depth 1 --branch b9190 https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
    ```
+   The checkout is **gitignored** — do NOT park it in /tmp and symlink (a reboot wiped
+   exactly that on 2026-07-11 and cost a re-derivation of the whole pin).
+   Release builds also need `ninja` on PATH for the Vulkan shader-gen host tool:
+   `export PATH=$HOME/Library/Android/sdk/cmake/3.22.1/bin:$PATH` (harmless when Vulkan is off).
 2. In `app/build.gradle.kts`, **uncomment** the `ndk { abiFilters … }` and the
    `externalNativeBuild { cmake { … } }` blocks. (`jni/CMakeLists.txt` does
    `add_subdirectory` on the checkout and links `quenderin_llama` → `llama`.)

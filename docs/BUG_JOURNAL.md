@@ -516,6 +516,24 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (Android release: `-Pquenderin.vulkan=false` still built Vulkan → vulkan.hpp fatal) —
+  gradle only appended `-DQUENDERIN_VULKAN=ON` when enabled, passed NOTHING when disabled; CMake's
+  `option(... ON)` default won. Fix: app/build.gradle.kts:56 always passes ON|OFF explicitly.
+  Lesson: a gradle→CMake toggle that only forwards the ON case can never turn the feature off —
+  forward BOTH states, and grep the CMake `option()` defaults when a -P flag "does nothing".
+
+- 2026-07-11 (JNI link: `undefined symbol ggml_threadpool_new/free` with GGML_BACKEND_DL) —
+  jni/CMakeLists ALL_VARIANTS+BACKEND_DL makes ggml-cpu a dlopen plugin, so its GGML_BACKEND_API
+  symbols aren't link-time visible to llama_jni.cpp's direct calls. v0.2.0: variants OFF (single
+  baseline CPU backend). 0.2.1: resolve threadpool fns via backend registry, re-enable variants.
+  Lesson: BACKEND_DL moves ggml-cpu.h symbols behind dlopen — direct-linking code must dlsym them.
+
+- 2026-07-11 (android/jni/llama.cpp vanished: symlink → /tmp/quenderin-llama-android, wiped on reboot) —
+  release build silently degraded toward the MOCK engine (nativeLlama=false path). Re-cloned pinned
+  b9190 (last pre-SPIRV-Headers tag, 2026-05-16) INTO the gitignored jni/ dir; INTEGRATION.md documents
+  the pin + the ninja-on-PATH requirement for Vulkan shader-gen.
+  Lesson: /tmp is not a vendor dir — a checkout the BUILD selects by existence must live inside the repo.
+
 - 2026-07-11 (stale JUnit twin: `CoreTest.chatAccumulatesTranscript` expected `send("   ")` to THROW) —
   send() was changed to RETURN "" on blank (the old `require(...)` crashed the Android send coroutine),
   and CoreVerify (the canonical 253-check harness) pins `send("   ") == ""` — but the JUnit duplicate at

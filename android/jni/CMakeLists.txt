@@ -25,8 +25,13 @@ set(GGML_OPENMP          OFF CACHE BOOL "" FORCE)
 # the device is picked at RUNTIME — fast kernels on modern SoCs, safe baseline on old ones. The JNI
 # calls ggml_backend_load_all_from_path(nativeLibraryDir) at init to load them.
 set(BUILD_SHARED_LIBS     ON CACHE BOOL "" FORCE)
-set(GGML_BACKEND_DL       ON CACHE BOOL "" FORCE)
-set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "" FORCE)
+# v0.2.0 SHIP NOTE (2026-07-11): variant backends temporarily OFF. With BACKEND_DL the
+# ggml_threadpool_new/free the JNI bridge links (big-core affinity) live only inside the
+# dlopened CPU plugins (ggml-cpu.h marks them GGML_BACKEND_API) → ld.lld undefined-symbol.
+# Single baseline armv8.0 CPU backend for the first release — safe on every minSdk-28 device;
+# restore variants (+Vulkan) in 0.2.1 by resolving the threadpool via the backend registry.
+set(GGML_BACKEND_DL       OFF CACHE BOOL "" FORCE)
+set(GGML_CPU_ALL_VARIANTS OFF CACHE BOOL "" FORCE)
 
 # GPU offload (Vulkan) — ON by default (2026-07-09). The Kotlin GpuOffloadPlanner still decides
 # PER-SoC whether to actually offload (Adreno → all layers; Mali/Xclipse/unknown → CPU until
