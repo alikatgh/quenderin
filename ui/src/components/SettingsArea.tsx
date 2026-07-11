@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, BrainCircuit, Download, Trash2, HardDrive, Zap, Cpu, FileText, Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Shield, Bell, Monitor, Moon, Sun, ArrowLeft, Save, CheckCircle2, RotateCcw, Cpu } from 'lucide-react';
 import { apiFetch } from '../lib/api.js';
 import { hashPassphrase } from '../lib/passphrase.js';
-import { RetryState } from './RetryState.js';
+import { ModelManagerSection } from './settings/ModelManagerSection.js';
+import { NotesSection } from './settings/NotesSection.js';
+import { MemorySection } from './settings/MemorySection.js';
 
 interface Settings {
     contextSize: number;
@@ -12,17 +14,6 @@ interface Settings {
     privacyLockEnabled: boolean;
     privacyPassphrase: string;
     missionApprovalEnabled: boolean;
-}
-
-interface ModelCatalogEntry {
-    id: string;
-    label: string;
-    ramGb: number;
-    sizeLabel: string;
-    paramsBillions: number;
-    quantization: string;
-    isDownloaded: boolean;
-    fileSizeBytes: number;
 }
 
 interface SettingsAreaProps {
@@ -97,18 +88,6 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     // "keep the existing passphrase" (the input starts blank; we never round-trip the stored hash into it).
     const [passphraseDraft, setPassphraseDraft] = useState('');
     const [isSaved, setIsSaved] = useState(false);
-    const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
-    // r10: an empty catalog is ambiguous — still loading, or the fetch failed (backend down,
-    // expired token)? Without this the section said "Loading models..." FOREVER on failure.
-    const [catalogState, setCatalogState] = useState<'loading' | 'error' | 'ready'>('loading');
-    // r9 H1: the pinned/auto-selected model, from the catalog endpoint — drives the Active badge
-    // and the Use button so a downloaded model can actually be made active from the UI.
-    const [activeModelId, setActiveModelId] = useState<string | null>(null);
-    const [modelActionId, setModelActionId] = useState<string | null>(null); // which model is being downloaded/deleted/activated
-    const [modelActionType, setModelActionType] = useState<'download' | 'delete' | 'switch' | null>(null);
-    // Q-528: the last failed model action, so a rejected download/delete (bad id, missing/expired token)
-    // shows the user WHY instead of just clearing the spinner as if it had succeeded.
-    const [modelActionError, setModelActionError] = useState<{ id: string; message: string } | null>(null);
     const [diagCopied, setDiagCopied] = useState(false);
     const [diagCopiedFromFallback, setDiagCopiedFromFallback] = useState(false);
     const [diagCopyFailed, setDiagCopyFailed] = useState(false);
@@ -117,48 +96,6 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     const [manualDiagnosticsPayload, setManualDiagnosticsPayload] = useState<string | null>(null);
     const manualPayloadRef = useRef<HTMLTextAreaElement | null>(null);
 
-    // Notes
-    const [notes, setNotes] = useState<{ filename: string; title: string; preview: string; modifiedAt: number; sizeBytes: number }[]>([]);
-    const [notesOpen, setNotesOpen] = useState(false);
-    const [deletingNote, setDeletingNote] = useState<string | null>(null);
-
-    // Agent memory
-    const [trajectories, setTrajectories] = useState<{ goal: string; actionCount: number; timestamp: string }[]>([]);
-    const [memoryOpen, setMemoryOpen] = useState(false);
-    const [memoryTotal, setMemoryTotal] = useState(0);
-    const [clearingMemory, setClearingMemory] = useState(false);
-
-    useEffect(() => {
-        if (notesOpen) {
-            apiFetch('/api/notes').then(r => r.ok ? r.json() : null).then(d => { if (d?.notes) setNotes(d.notes); }).catch(() => {});
-        }
-    }, [notesOpen]);
-
-    useEffect(() => {
-        if (memoryOpen) {
-            apiFetch('/api/memory/trajectories').then(r => r.ok ? r.json() : null).then(d => { if (d) { setTrajectories(d.trajectories); setMemoryTotal(d.total); } }).catch(() => {});
-        }
-    }, [memoryOpen]);
-
-    const handleDeleteNote = async (filename: string) => {
-        setDeletingNote(filename);
-        // Q-529: only drop the note from the UI when the DELETE actually succeeded. The old optimistic
-        // remove made a failed delete look successful — the note silently reappeared on the next refresh.
-        const ok = await apiFetch(`/api/notes/${encodeURIComponent(filename)}`, { method: 'DELETE' })
-            .then(r => r.ok)
-            .catch(() => false);
-        if (ok) setNotes(prev => prev.filter(n => n.filename !== filename));
-        setDeletingNote(null);
-    };
-
-    const handleClearMemory = async () => {
-        if (!confirm('Clear all agent learned trajectories? The agent will start fresh without any prior experience.')) return;
-        setClearingMemory(true);
-        await apiFetch('/api/memory/trajectories', { method: 'DELETE' }).catch(() => {});
-        setTrajectories([]);
-        setMemoryTotal(0);
-        setClearingMemory(false);
-    };
 
     const shortDiagnosticsId = lastDiagnosticsId
         ? lastDiagnosticsId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8)
@@ -169,100 +106,6 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
         setPassphraseDraft(''); // never surface the stored hash in the input; a fresh view starts blank
     }, [currentSettings]);
 
-    const refreshCatalog = () => {
-        // Q-527: go through apiFetch (auth header + shared error handling) like every neighbouring call,
-        // and guard on r.ok so a 5xx doesn't get JSON.parse'd as an error page and blank the catalog.
-        apiFetch('/api/models/catalog')
-            .then(r => r.ok ? r.json() : null)
-            .then(d => {
-                if (d) {
-                    setModelCatalog(d.catalog ?? []);
-                    setActiveModelId(d.activeModelId ?? null);
-                    setCatalogState('ready');
-                } else {
-                    setCatalogState('error');
-                }
-            })
-            .catch(() => setCatalogState('error'));
-    };
-
-    useEffect(() => {
-        refreshCatalog();
-    }, []);
-
-    const handleDownloadModel = async (modelId: string) => {
-        setModelActionId(modelId);
-        setModelActionType('download');
-        setModelActionError(null);
-        try {
-            // Q-528: surface a rejected START. The old code ignored res.ok, so a 400/401 (bad id, missing
-            // or expired token) cleared the spinner as if the download had begun. Progress itself still
-            // streams over the WS model_download_progress channel; this only reports the kickoff POST.
-            const res = await apiFetch('/api/models/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ modelId }),
-            });
-            if (!res.ok) {
-                const detail = await res.json().catch(() => null);
-                setModelActionError({ id: modelId, message: detail?.error || `Download failed (${res.status})` });
-            }
-        } catch {
-            setModelActionError({ id: modelId, message: 'Download failed — is the backend reachable?' });
-        } finally {
-            // Poll catalog after a short delay to pick up download status
-            setTimeout(refreshCatalog, 2000);
-            setModelActionId(null);
-            setModelActionType(null);
-        }
-    };
-
-    const handleSwitchModel = async (modelId: string) => {
-        setModelActionId(modelId);
-        setModelActionType('switch');
-        setModelActionError(null);
-        try {
-            // One canonical switch path: REST, like every other model action here (the WS
-            // switch_model twin was removed — dual unused paths had already drifted, r9 H1).
-            const res = await apiFetch('/api/models/switch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ modelId }),
-            });
-            if (!res.ok) {
-                const detail = await res.json().catch(() => null);
-                setModelActionError({ id: modelId, message: detail?.error || `Switch failed (${res.status})` });
-            } else {
-                setActiveModelId(modelId);
-            }
-        } catch {
-            setModelActionError({ id: modelId, message: 'Switch failed — is the backend reachable?' });
-        } finally {
-            refreshCatalog();
-            setModelActionId(null);
-            setModelActionType(null);
-        }
-    };
-
-    const handleDeleteModel = async (modelId: string) => {
-        if (!confirm('Delete this model from disk? You will need to re-download it to use it again.')) return;
-        setModelActionId(modelId);
-        setModelActionType('delete');
-        setModelActionError(null);
-        try {
-            const res = await apiFetch(`/api/models/${modelId}`, { method: 'DELETE' });
-            if (!res.ok) {
-                const detail = await res.json().catch(() => null);
-                setModelActionError({ id: modelId, message: detail?.error || `Delete failed (${res.status})` });
-            }
-        } catch {
-            setModelActionError({ id: modelId, message: 'Delete failed — is the backend reachable?' });
-        } finally {
-            setTimeout(refreshCatalog, 500);
-            setModelActionId(null);
-            setModelActionType(null);
-        }
-    };
 
     useEffect(() => {
         if (!manualDiagnosticsPayload || !manualPayloadRef.current) return;
@@ -653,97 +496,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         </div>
                     </section>
 
-                    {/* Model Manager Section */}
-                    <section className="premium-card p-6">
-                        <div className="flex items-center gap-3 mb-5">
-                            <BrainCircuit className="w-5 h-5 text-emerald-500" />
-                            <div>
-                                <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">AI Model Manager</h2>
-                                <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Download or remove local AI models. All inference is 100% offline.</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            {catalogState === 'error' ? (
-                                <RetryState
-                                    message="Couldn't load the model catalog — is the backend running?"
-                                    onRetry={() => { setCatalogState('loading'); refreshCatalog(); }}
-                                />
-                            ) : modelCatalog.length === 0 ? (
-                                <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-4">Loading models...</div>
-                            ) : modelCatalog.map(m => {
-                                const fileSizeGb = m.fileSizeBytes > 0 ? (m.fileSizeBytes / (1024 ** 3)).toFixed(2) : null;
-                                const isActing = modelActionId === m.id;
-                                // r12: flex-col on phones — the fixed side-by-side layout made the
-                                // metadata line overflow INTO the action buttons at 375px.
-                                return (
-                                    <div key={m.id} className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-xl border transition-all ${m.isDownloaded ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-zinc-50 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800'}`}>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
-                                                {m.isDownloaded && m.id === activeModelId ? (
-                                                    // Active only makes sense for a model that exists on disk — the server pins
-                                                    // a default id at boot even when nothing is downloaded yet.
-                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
-                                                        <CheckCircle2 className="w-2.5 h-2.5" /> Active
-                                                    </span>
-                                                ) : m.isDownloaded && (
-                                                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
-                                                        <CheckCircle2 className="w-2.5 h-2.5" /> Ready
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                                <span className="flex items-center gap-1 tabular-nums"><Zap className="w-3 h-3" />{m.paramsBillions}B params</span>
-                                                <span className="flex items-center gap-1 tabular-nums"><HardDrive className="w-3 h-3" />~{m.ramGb}GB RAM</span>
-                                                {fileSizeGb && <span className="tabular-nums">{fileSizeGb}GB on disk</span>}
-                                                {!m.isDownloaded && <span className="text-zinc-400">{m.sizeLabel}</span>}
-                                                <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">{m.quantization}</span>
-                                            </div>
-                                            {modelActionError?.id === m.id && (
-                                                <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1">
-                                                    <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {modelActionError.message}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex-shrink-0 flex items-center gap-2">
-                                            {m.isDownloaded ? (
-                                                <>
-                                                    {m.id !== activeModelId && (
-                                                        <button
-                                                            onClick={() => handleSwitchModel(m.id)}
-                                                            disabled={isActing}
-                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors disabled:opacity-50"
-                                                        >
-                                                            {isActing && modelActionType === 'switch' ? <span className="animate-spin">⟳</span> : <Zap className="w-3 h-3" />}
-                                                            {isActing && modelActionType === 'switch' ? 'Switching...' : 'Use'}
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() => handleDeleteModel(m.id)}
-                                                        disabled={isActing}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                                    >
-                                                        {isActing && modelActionType === 'delete' ? <span className="animate-spin">⟳</span> : <Trash2 className="w-3 h-3" />}
-                                                        {isActing && modelActionType === 'delete' ? 'Deleting...' : 'Delete'}
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleDownloadModel(m.id)}
-                                                    disabled={isActing}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                                                >
-                                                    {isActing && modelActionType === 'download' ? <span className="animate-spin">⟳</span> : <Download className="w-3 h-3" />}
-                                                    {isActing && modelActionType === 'download' ? 'Starting...' : 'Download'}
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
+                    <ModelManagerSection />
 
                     {/* Hardware Info Section */}
                     {(hardwareTier || hardwareArch || hardwareCpuCores) && (
@@ -778,98 +531,9 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                         </section>
                     )}
 
-                    {/* Notes Panel */}
-                    <section className="premium-card p-6">
-                        <button
-                            type="button"
-                            aria-expanded={notesOpen}
-                            onClick={() => setNotesOpen(o => !o)}
-                            className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
-                        >
-                            <div className="flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-blue-500" />
-                                <div className="text-left">
-                                    <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Saved Notes</h2>
-                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Notes written by the AI using the note_save tool.</p>
-                                </div>
-                            </div>
-                            {notesOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
-                        </button>
-                        {notesOpen && (
-                            <div className="mt-5">
-                                {notes.length === 0 ? (
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-6">No notes saved yet. Ask the AI to "save a note about..."</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {notes.map(note => (
-                                            <div key={note.filename} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{note.title}</p>
-                                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{note.preview}</p>
-                                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 tabular-nums">{new Date(note.modifiedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {(note.sizeBytes / 1024).toFixed(1)} KB</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => handleDeleteNote(note.filename)}
-                                                    disabled={deletingNote === note.filename}
-                                                    className="flex-shrink-0 p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-40"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </section>
+                    <NotesSection />
 
-                    {/* Agent Memory Panel */}
-                    <section className="premium-card p-6">
-                        <button
-                            type="button"
-                            aria-expanded={memoryOpen}
-                            onClick={() => setMemoryOpen(o => !o)}
-                            className="w-full flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
-                        >
-                            <div className="flex items-center gap-3">
-                                <Brain className="w-5 h-5 text-purple-500" />
-                                <div className="text-left">
-                                    <h2 className="text-[15px] font-semibold text-zinc-900 dark:text-white">Agent Memory</h2>
-                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">Goals the spatial agent has learned to complete successfully.</p>
-                                </div>
-                            </div>
-                            {memoryOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
-                        </button>
-                        {memoryOpen && (
-                            <div className="mt-5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400">{memoryTotal} total trajectories stored</p>
-                                    {memoryTotal > 0 && (
-                                        <button
-                                            onClick={handleClearMemory}
-                                            disabled={clearingMemory}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                        >
-                                            <AlertTriangle className="w-3 h-3" />
-                                            {clearingMemory ? 'Clearing...' : 'Clear All'}
-                                        </button>
-                                    )}
-                                </div>
-                                {trajectories.length === 0 ? (
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-6">No learned trajectories yet. Run the spatial agent to build experience.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {trajectories.map((t, i) => (
-                                            <div key={`${t.timestamp}-${i}`} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                                                <p className="text-[13px] font-medium text-zinc-800 dark:text-zinc-200 leading-snug">{t.goal}</p>
-                                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 tabular-nums">{t.actionCount} actions · {new Date(t.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </section>
+                    <MemorySection />
                 </div>
 
                 <div className="mt-10 pt-6 border-t border-zinc-200/60 dark:border-zinc-800/50 flex flex-col items-center text-center">

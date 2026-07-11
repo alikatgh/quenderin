@@ -18,7 +18,7 @@ all + false-green builds (r19/r41) · 3. Non-atomic persistence truncating user 
 |---|------|--------|---------------|
 | 1 | ~~KV context-shift~~ **DONE — already merged** (`0350f55`, discovered 2026-07-11; cross-machine re-baseline). Residual: S23 throughput A/B as post-merge measurement | r8-R2 / r23 / r47 | Device-gated measurement only |
 | 2 | ~~`utils/hardware.ts` unit tests~~ **DONE 2026-07-11** — `classifyTier` extracted pure; 19 tests (band edges, knob invariants, env overrides) | r37 | — |
-| 3 | SettingsArea 4-way split (`<RetryState>` extraction **DONE 2026-07-11** — shared by catalog + telemetry failures, `role="alert"`) | r38 / r44 | Split: when the next feature touches Settings |
+| 3 | ~~SettingsArea split~~ **DONE 2026-07-11** — ModelManager/Notes/Memory extracted to `settings/` (913→547 lines, behavior live-verified); `<RetryState>` shared. Diagnostics stays embedded (entangled with general-settings markup) | r38 / r44 | — |
 | 4 | llm.service download-manager extraction | r44 | When the next download feature lands |
 | 5 | ~~Focus-trap util~~ **DONE 2026-07-11** (`useFocusTrap` — initial focus, Tab wrap both directions, restore-on-close; wired to WelcomeWizard + TroubleshooterGuide, live-verified). axe-core in CI still open | r11 | axe: when UI component tests land |
 | 6 | ~~backgroundDaemon test suite~~ **DONE 2026-07-11** — 5 tests on the visual-diff core (first-frame, static, half-change, rotation reset, unreadable-path degrade) | r37 | — |
