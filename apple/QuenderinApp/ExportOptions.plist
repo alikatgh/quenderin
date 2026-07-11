@@ -17,6 +17,6 @@
     <key>uploadSymbols</key>
     <true/>
     <key>destination</key>
-    <string>export</string>
+    <string>upload</string>
 </dict>
 </plist>
