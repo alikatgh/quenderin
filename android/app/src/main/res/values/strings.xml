@@ -65,6 +65,9 @@
     <string name="onboarding_free_up_storage">Or free up storage and come back.</string>
     <string name="onboarding_downloading">Downloading</string>
     <string name="onboarding_not_enough_space">Not enough free space</string>
+    <string name="chats_title">Chats</string>
+    <string name="chats_empty_title">No conversations yet</string>
+    <string name="chats_empty_body">Start a chat with %1$s — it runs entirely on your phone.</string>
     <string name="onboarding_size_one_time">%1$s · one time, then it\'s yours offline</string>
     <string name="onboarding_warming">Warming up %1$s…</string>
     <string name="onboarding_storage_needs">This model needs ~%1$s GB — your phone has %2$s GB free.</string>

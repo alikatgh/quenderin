@@ -65,6 +65,9 @@
     <string name="onboarding_free_up_storage">または空き容量を確保してからもう一度。</string>
     <string name="onboarding_downloading">ダウンロード中</string>
     <string name="onboarding_not_enough_space">空き容量が足りません</string>
+    <string name="chats_title">チャット</string>
+    <string name="chats_empty_title">まだ会話はありません</string>
+    <string name="chats_empty_body">%1$sとチャットを始めましょう — すべてスマートフォン上で動作します。</string>
     <string name="onboarding_size_one_time">%1$s · 一度きり、その後はオフラインで利用可能</string>
     <string name="onboarding_warming">%1$sをウォームアップ中…</string>
     <string name="onboarding_storage_needs">このモデルには約%1$s GBが必要です — スマートフォンの空きは%2$s GBです。</string>

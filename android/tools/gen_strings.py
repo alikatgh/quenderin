@@ -88,6 +88,10 @@ RES = {
     "onboarding_free_up_storage": "Or free up storage and come back.",
     "onboarding_downloading": "Downloading",
     "onboarding_not_enough_space": "Not enough free space",
+    # conversation list
+    "chats_title": "Chats",
+    "chats_empty_title": "No conversations yet",
+    "chats_empty_body": "Start a chat with %1$s — it runs entirely on your phone.",
     # interpolated first-run strings
     "onboarding_size_one_time": "%1$s · one time, then it's yours offline",
     "onboarding_warming": "Warming up %1$s…",
@@ -159,6 +163,11 @@ EXTRAS = {
     "Downloading %1$s, %2$d percent":
         ("Загрузка %1$s, %2$d процентов", "%1$s 다운로드 중, %2$d퍼센트",
          "%1$sをダウンロード中、%2$dパーセント", "正在下载 %1$s，%2$d％"),
+    "Start a chat with %1$s — it runs entirely on your phone.":
+        ("Начать чат с %1$s — модель работает полностью на вашем телефоне.",
+         "%1$s와 채팅을 시작하세요 — 전부 당신의 휴대폰에서 실행됩니다.",
+         "%1$sとチャットを始めましょう — すべてスマートフォン上で動作します。",
+         "开始与 %1$s 聊天——它完全在你的手机上运行。"),
     "Try again":        ("Повторить", "다시 시도", "再試行", "重试"),
     "Get started":      ("Начать", "시작하기", "始める", "开始"),
     "New conversation": ("Новая беседа", "새 대화", "新しい会話", "新对话"),

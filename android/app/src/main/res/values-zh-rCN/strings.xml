@@ -65,6 +65,9 @@
     <string name="onboarding_free_up_storage">或者清理存储空间后再试。</string>
     <string name="onboarding_downloading">正在下载</string>
     <string name="onboarding_not_enough_space">可用空间不足</string>
+    <string name="chats_title">聊天</string>
+    <string name="chats_empty_title">还没有对话</string>
+    <string name="chats_empty_body">开始与 %1$s 聊天——它完全在你的手机上运行。</string>
     <string name="onboarding_size_one_time">%1$s · 一次下载，永久离线可用</string>
     <string name="onboarding_warming">正在预热 %1$s…</string>
     <string name="onboarding_storage_needs">此模型需要约 %1$s GB——你的手机有 %2$s GB 可用。</string>

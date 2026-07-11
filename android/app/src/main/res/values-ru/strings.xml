@@ -65,6 +65,9 @@
     <string name="onboarding_free_up_storage">Или освободите место и вернитесь.</string>
     <string name="onboarding_downloading">Загрузка</string>
     <string name="onboarding_not_enough_space">Недостаточно свободного места</string>
+    <string name="chats_title">Беседы</string>
+    <string name="chats_empty_title">Пока нет бесед</string>
+    <string name="chats_empty_body">Начать чат с %1$s — модель работает полностью на вашем телефоне.</string>
     <string name="onboarding_size_one_time">%1$s · один раз — и модель ваша, офлайн</string>
     <string name="onboarding_warming">Прогреваем %1$s…</string>
     <string name="onboarding_storage_needs">Этой модели нужно ~%1$s ГБ — на вашем телефоне свободно %2$s ГБ.</string>

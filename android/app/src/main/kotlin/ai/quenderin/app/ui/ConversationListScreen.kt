@@ -65,17 +65,18 @@ fun ConversationListScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Chats",
+                stringResource(R.string.chats_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
             // New chat — a filled circular "+" (WhatsApp's compose button).
+            val newChat = stringResource(R.string.chat_new)
             Box(
                 Modifier
                     .size(44.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .semantics { contentDescription = "New chat" }
+                    .semantics { contentDescription = newChat }
                     .combinedClickable(onClick = onNew, onLongClick = {}),
                 contentAlignment = Alignment.Center,
             ) { PlusIcon(MaterialTheme.colorScheme.onPrimary) }
@@ -151,13 +152,13 @@ private fun EmptyConversationList(model: ModelEntry, modifier: Modifier, onNew: 
         ModelAvatar(size = 72.dp)
         Spacer(Modifier.height(16.dp))
         Text(
-            "No conversations yet",
+            stringResource(R.string.chats_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Start a chat with ${model.label} — it runs entirely on your phone.",
+            stringResource(R.string.chats_empty_body, model.label),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

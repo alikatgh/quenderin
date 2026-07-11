@@ -65,6 +65,9 @@
     <string name="onboarding_free_up_storage">또는 저장 공간을 확보한 후 다시 시도하세요.</string>
     <string name="onboarding_downloading">다운로드 중</string>
     <string name="onboarding_not_enough_space">여유 공간이 부족합니다</string>
+    <string name="chats_title">채팅</string>
+    <string name="chats_empty_title">아직 대화가 없습니다</string>
+    <string name="chats_empty_body">%1$s와 채팅을 시작하세요 — 전부 당신의 휴대폰에서 실행됩니다.</string>
     <string name="onboarding_size_one_time">%1$s · 한 번만 받으면 오프라인에서 계속 사용</string>
     <string name="onboarding_warming">%1$s 준비 중…</string>
     <string name="onboarding_storage_needs">이 모델에는 약 %1$s GB가 필요합니다 — 휴대폰에는 %2$s GB의 여유가 있습니다.</string>
