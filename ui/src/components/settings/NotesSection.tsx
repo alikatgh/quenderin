@@ -61,6 +61,7 @@ export function NotesSection() {
                                     <button
                                         onClick={() => handleDeleteNote(note.filename)}
                                         disabled={deletingNote === note.filename}
+                                        aria-label={`Delete note "${note.title}"`}
                                         className="flex-shrink-0 p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-40"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />

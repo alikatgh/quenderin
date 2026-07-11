@@ -496,6 +496,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (axe gate catches on day one — unlabeled icon button) — the new UI component suite
+  (vitest+jsdom+axe, ui/tests/a11y.test.tsx) flagged the per-note Delete as "button without
+  discernible text" on its FIRST run: icon-only Trash2, no aria-label (NotesSection). Same lesson
+  as the parity bijection: the day a mechanical gate goes up, it finds what review missed —
+  hand-audits (r11) had checked the OTHER icon buttons and skipped this one.
+
 - 2026-07-11 (r23/r24: the "optimized" chunk pin was the pessimization) — manualChunks pinning
   react-syntax-highlighter merged its ASYNC grammar payload into a statically-preloaded chunk:
   619 kB on first paint, invisible in code review, visible only in dist/index.html's modulepreload

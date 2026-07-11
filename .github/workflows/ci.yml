@@ -50,6 +50,12 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Install UI dependencies
+        run: cd ui && npm ci
+
+      - name: UI component + a11y tests (axe-core — r11 gate)
+        run: cd ui && npm test
+
       - name: Golden chore suite (governed fs.* capabilities, no LLM)
         run: npm run test:golden-chores
 

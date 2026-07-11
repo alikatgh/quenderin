@@ -20,7 +20,7 @@ all + false-green builds (r19/r41) · 3. Non-atomic persistence truncating user 
 | 2 | ~~`utils/hardware.ts` unit tests~~ **DONE 2026-07-11** — `classifyTier` extracted pure; 19 tests (band edges, knob invariants, env overrides) | r37 | — |
 | 3 | ~~SettingsArea split~~ **DONE 2026-07-11** — ModelManager/Notes/Memory extracted to `settings/` (913→547 lines, behavior live-verified); `<RetryState>` shared. Diagnostics stays embedded (entangled with general-settings markup) | r38 / r44 | — |
 | 4 | llm.service download-manager extraction | r44 | When the next download feature lands |
-| 5 | ~~Focus-trap util~~ **DONE 2026-07-11** (`useFocusTrap` — initial focus, Tab wrap both directions, restore-on-close; wired to WelcomeWizard + TroubleshooterGuide, live-verified). axe-core in CI still open | r11 | axe: when UI component tests land |
+| 5 | ~~Focus-trap util~~ **DONE 2026-07-11** (`useFocusTrap` — initial focus, Tab wrap both directions, restore-on-close; wired to WelcomeWizard + TroubleshooterGuide, live-verified). ~~axe-core in CI~~ **DONE 2026-07-11** (ui/tests/a11y.test.tsx + CI step; caught an unlabeled icon button day one) | r11 | — |
 | 6 | ~~backgroundDaemon test suite~~ **DONE 2026-07-11** — 5 tests on the visual-diff core (first-frame, static, half-change, rotation reset, unreadable-path degrade) | r37 | — |
 | 7 | Per-IP throttles + WS connection caps | r26 | ONLY if LAN mode becomes supported |
 | 8 | i18n extraction (all three twins together) | r13 | Only with a real second-locale plan |

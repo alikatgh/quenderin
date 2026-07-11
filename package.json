@@ -50,7 +50,8 @@
     "check:router-parity": "python3 scripts/check_router_parity.py",
     "check:sampling-parity": "python3 scripts/check_sampling_parity.py",
     "test:golden-chores": "tsx scripts/golden_chore_suite.ts",
-    "test:sampling-profiles": "vitest run tests/sampling-profiles.test.ts"
+    "test:sampling-profiles": "vitest run tests/sampling-profiles.test.ts",
+    "test:ui": "cd ui && npm test"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.2",
