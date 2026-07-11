@@ -516,6 +516,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (stale JUnit twin: `CoreTest.chatAccumulatesTranscript` expected `send("   ")` to THROW) —
+  send() was changed to RETURN "" on blank (the old `require(...)` crashed the Android send coroutine),
+  and CoreVerify (the canonical 253-check harness) pins `send("   ") == ""` — but the JUnit duplicate at
+  CoreTest.kt:103 still asserted `.isFailure`. Fix: assert `"" == send("   ")`.
+  Lesson: when two harnesses cover the same contract (CoreVerify + JUnit), a behavior change must update BOTH.
+
 - 2026-07-11 (simulator chat = pure symbol soup, e.g. "39A>==)+4=!!=B$E…") — llama-cli with the SAME
   GGUF gave real words → not the model, not sampling: the iOS-simulator Metal compute path yields
   garbage tokens. The smoketest KNEW (QUENDERIN_NGL=0 workaround comment) but the production engine

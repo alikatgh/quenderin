@@ -100,7 +100,11 @@ class CoreTest {
         // after it settles to the final text (still 2) — matching the CoreVerify harness. (The old
         // `listOf(1, 2)` omitted the settle emit and failed against send()'s actual 3-emit sequence.)
         assertEquals(listOf(1, 2, 2), sizes)
-        assertTrue(runCatching { chat.send("   ") }.isFailure)
+        // Blank input is a NO-OP that returns "" — not a throw. send() stopped `require(...)`-ing on
+        // blank because the IllegalArgumentException crashed the Android send coroutine; the canonical
+        // CoreVerify harness pins this same contract ("chat.send(\"   \") == \"\""). This JUnit twin
+        // had lagged behind that change. (docs/BUG_JOURNAL.md — stale-test-after-behavior-change.)
+        assertEquals("", chat.send("   "))
     }
 
     private fun androidProfile(soc: AndroidSoc, ram: Double) =
