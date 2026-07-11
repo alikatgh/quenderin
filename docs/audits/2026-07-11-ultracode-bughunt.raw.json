@@ -1,0 +1,600 @@
+{
+ "synth": {
+  "summary": "19 findings reviewed; all 19 are genuine and distinct \u2014 no exact duplicates (the two model-download findings, the four android.provider findings, and the two atomic-write persistence findings are separate bugs with different triggers, not dedup candidates), so 0 dropped as false positives. Ranking follows the rubric: top tier is anything that feeds unverified bytes to the native GGUF parser, executes a wrong device action, or bypasses a safety/auth gate, ordered within by severity \u00d7 blast-radius; remaining high-severity data/secret-integrity bugs next; then mediums; then lows. Two honest recalibrations: (1) metrics.service.ts:104 downgraded high\u2192medium \u2014 it is a real unserialized read-modify-write race, but the lost content is habit telemetry with bounded per-race loss, not user content, so its blast is materially smaller than the note-truncation bug it was likened to; (2) modelIntegrity.ts:67 keeps its medium base severity but is ranked at #5 (above several highs) because it hands truncated bytes straight to the native GGUF parser \u2014 the rubric's top-priority blast surface. One placement note: agent.service.ts:446 is genuinely high (a persistent device error escapes the loop as an unhandled rejection with no terminal event) but is ranked mid (#13) because it neither performs a wrong action, bypasses a gate, nor loses persisted data \u2014 its blast is a single aborted mission plus a possible process-level unhandled rejection. The two GGUF findings (#1, #5) and the auth/fence bypasses (#3, #4) are the merge blockers; the three lows (#17\u2013#19) are audit-completeness / resource-leak / cosmetic and can ship as follow-ups.",
+  "confirmed": [
+   {
+    "rank": 1,
+    "title": "Partial, in-flight model download is loadable \u2014 native GGUF parser reads a file that is still being written",
+    "severity": "high",
+    "subsystem": "model-download",
+    "file": "src/services/llm.service.ts",
+    "line": 144,
+    "failureScenario": "MODEL_MISSING autotriggers downloadModel(), which fs.createWriteStream(dest) opens the FINAL path (modelPath(entry.id)); fs.existsSync(dest) is true from byte 0. A concurrent generalChat()/generateAction() \u2014 or a user switchModel(sameId) \u2014 calls getModelAndContext(), which selects that exact file purely via fs.existsSync and calls model.loadModel({modelPath: dest}) on a file the write stream is simultaneously appending to. isDownloading is never consulted on any load/select/switch path. Native GGUF loader parses torn/partial bytes \u2192 crash or undefined behavior in the native layer.",
+    "fix": "Download to `dest + '.part'` and fs.renameSync to the real dest only after verifyModelIntegrity succeeds, so fs.existsSync(dest) is never true for an in-progress/unverified file. Second layer: track the in-flight model id (not just the isDownloading boolean) and have selectBestModel/selectPinnedOrBestModel/switchModel skip or reject that id while it is downloading."
+   },
+   {
+    "rank": 2,
+    "title": "Literal \"%s\" in typed text is silently converted to a space \u2014 agent types corrupted text on the device",
+    "severity": "high",
+    "subsystem": "providers",
+    "file": "src/services/providers/android.provider.ts",
+    "line": 185,
+    "failureScenario": "type(\"increase%special\"): the escape regex turns '%' into '\\%' but leaves the following 's' (not in the char class) untouched. spawn('adb', args) has no shell, so `\\%s` reaches the device shell, which strips the single backslash \u2192 `input text` receives \"increase%special\" \u2192 the tool's own %s\u2192space convention fires on the \"%s\" substring \u2192 device renders \"increase pecial\". Bit-for-bit indistinguishable from an intended space, so the agent enters wrong text into a field it controls.",
+    "fix": "A single backslash cannot protect '%' \u2014 the device shell consumes one escape level and `input text`'s %s\u2192space substitution is escape-unaware. Detect any literal '%' immediately followed by 's' in the ORIGINAL text and split the call so the two chars never share the argument input scans (flush pending text, send 's' via a separate input/keyevent call, then resume), or replace the `input text` %s convention with a base64 broadcast-intent typing path (ADB Keyboard) that does not reinterpret payload substrings."
+   },
+   {
+    "rank": 3,
+    "title": "HEAD requests bypass the auth gate on token-protected read routes",
+    "severity": "high",
+    "subsystem": "network-auth",
+    "file": "src/app.ts",
+    "line": 119,
+    "failureScenario": "`curl -I http://localhost/api/notes/<file>.md` with no token. requiresAuth() only requires the token for `req.method === 'GET'` on PROTECTED_READ_PREFIXES, and HEAD is not in MUTATING_METHODS, so the middleware calls next() unauthenticated. Express 5's router falls HEAD back to the GET handler (route.js: `if (method==='head' && !this.methods.head) method='get'`), so memoryService.listNotes() runs in full and res.json() computes a real Content-Length; the body is suppressed for HEAD but the computed headers (presence/exact size of a note or whether /api/sessions has entries) leak to an unauthenticated local process, and any GET-handler side effects execute.",
+    "fix": "Require auth for HEAD as well: change line 119 to `if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(...))` (equivalently `['GET','HEAD'].includes(req.method)`)."
+   },
+   {
+    "rank": 4,
+    "title": "Raw on-screen element text leaks into the \"trusted\" action-history channel, bypassing the untrusted-data fence",
+    "severity": "high",
+    "subsystem": "agent-loop",
+    "file": "src/services/agent/uiVerifier.ts",
+    "line": 164,
+    "failureScenario": "A malicious app renders a button whose label embeds injection text. uiVerifier.verifyAction() interpolates preNode.text/className verbatim into its return string; agent.service.ts:619 pushes that unmodified into actionHistory; promptBuilder.ts builds historyText and inserts it under the section it labels to the model as 'Recent Actions (trusted agent history)' WITHOUT calling wrapUntrustedData \u2014 unlike every other external block (uiState, vision, attachments, corrections, goal, pastMemory) which are all fenced. Attacker-controlled screen text thus reaches the model inside a section presented as trusted, with none of the fence-marker stripping the analogous pastMemory path was deliberately given.",
+    "fix": "In promptBuilder.ts wrap the history block via wrapUntrustedData, e.g. `wrapUntrustedData('RECENT_ACTIONS', actionHistory.slice(-5).join('\\n'))`, instead of the raw historyText, so screen-derived text gets the same fence-stripping and 'passive observation only' framing as every other untrusted source; additionally sanitize preNode.text/className in verifyAction() before interpolation."
+   },
+   {
+    "rank": 5,
+    "title": "Magic-header-only integrity check accepts a truncated download \u2014 torn bytes fed to the GGUF parser",
+    "severity": "medium",
+    "subsystem": "model-download",
+    "file": "src/services/modelIntegrity.ts",
+    "line": 67,
+    "failureScenario": "A multi-GB download with no pinned sha256 is killed after >100MB is written (OOM kill, force-quit, app update). On next launch, downloadModel's 'pre-existing file > 100MB' fast path (llm.service.ts:983-999) calls verifyModelIntegrity, which \u2014 with expectedSha256 falsy \u2014 only checks hasGGUFMagic on the first 4 bytes and never compares file size to the expected total. The intact header passes, the fast path emits progress:100 and returns, and the partial file is handed to the native GGUF parser as complete.",
+    "fix": "Do not infer completeness from `size > 100_000_000`. Persist the expected total size in metaPath whenever known (Content-Length/catalog); when no sha256 is pinned, compare fs.statSync(dest).size against that expected total before accepting a pre-existing file, and fall through to resume/re-download on mismatch \u2014 in addition to the magic-header check. (Base severity medium; ranked here because it feeds unverified bytes to the native parser, the rubric's top blast surface.)"
+   },
+   {
+    "rank": 6,
+    "title": "saveNote() writes directly to the live file instead of atomicWriteFile, truncating notes on crash",
+    "severity": "high",
+    "subsystem": "persistence",
+    "file": "src/services/memory.service.ts",
+    "line": 312,
+    "failureScenario": "Updating an existing note (sanitizeNoteTitle is deterministic, so same notePath). `fs.writeFile(notePath, header + trimmedContent, 'utf-8')` opens with the default O_TRUNC flag; a crash / OOM / power-loss / ENOSPC between truncate and write-completion leaves the file empty or truncated, permanently destroying the prior note content. withWriteLock only serializes in-process writers \u2014 it gives zero crash protection. Every other store in this file already routes through atomicWriteFile.",
+    "fix": "Replace `await fs.writeFile(notePath, header + trimmedContent, 'utf-8');` with `await atomicWriteFile(notePath, header + trimmedContent);` (atomicWriteFile is already imported), matching how memoryPath and correctionsPath are persisted."
+   },
+   {
+    "rank": 7,
+    "title": "undoLast() unconditionally overwrites lastAgent, orphaning a prior mutating run's persisted undo journal",
+    "severity": "high",
+    "subsystem": "capability-safety",
+    "file": "src/services/capability/dashboardTasks.ts",
+    "line": 131,
+    "failureScenario": "Task A mutates: undoable.length>0 so journal.save(actionsA) runs and lastAgent=agentA. Task B runs with zero mutations: journal.save is skipped (journal still holds actionsA) but line 131 still executes lastAgent=agentB, discarding the only reference to agentA's RunSession. undoLast() then calls agentB.undoAll() \u2192 returns 'Nothing to undo from this task.' (empty done array) and unconditionally runs journal.clear(), wiping A's still-valid, still-unreversed persisted actions. The user sees a truthful-looking 'nothing to undo' while the durable cross-session undo record for A's real mutations is permanently destroyed.",
+    "fix": "Move `this.lastAgent = agent;` inside the `if (undoable.length > 0) { ... }` block so lastAgent (and the persisted journal it clears) always tracks the most recent run that actually produced something to undo, keeping the two in lockstep."
+   },
+   {
+    "rank": 8,
+    "title": "Audit ledger never redacts the run's goal field \u2014 user secrets persist in every ledger row",
+    "severity": "high",
+    "subsystem": "capability-safety",
+    "file": "src/services/capability/capability.ts",
+    "line": 118,
+    "failureScenario": "setRunGoal(\"log into billing, password: hunter2\") is taken from the raw user task string; log() stamps `goal: this.runGoal` onto every entry for the run, including plain reads. InMemoryAuditLedger.append() spreads entry and only redacts+truncates input and outcome \u2014 goal passes through completely untouched, and the blocklist gate never inspects the run-level goal. The secret rides untouched into every ledger row for the whole run, directly contradicting the file's 'the ledger is a record, never a place a leaked secret lives' invariant.",
+    "fix": "In InMemoryAuditLedger.append() redact+truncate goal exactly like input/outcome: `goal: entry.goal ? redactSecrets(entry.goal).slice(0, 200) : entry.goal`."
+   },
+   {
+    "rank": 9,
+    "title": "pressKey() silently sends ENTER for any unrecognized key \u2014 can submit forms the agent never meant to submit",
+    "severity": "medium",
+    "subsystem": "providers",
+    "file": "src/services/providers/android.provider.ts",
+    "line": 209,
+    "failureScenario": "`let code = '66'` is the default and only enter/back/home override it. pressKey('escape') to dismiss a picker, or pressKey('tab') to move focus, falls through with code still '66' \u2192 `input keyevent 66` (KEYCODE_ENTER) with no error or no-op. On many forms Enter triggers submission \u2014 a mutating state change the agent never requested and that is untraceable without reading this source.",
+    "fix": "Add explicit mappings for the keys an agent commonly requests (tab\u219261, delete/backspace\u219267, escape\u2192111, space\u219262, arrows\u219219-22), and for a genuinely unrecognized key name reject the promise or log a clear warning and skip sending a keyevent, rather than silently substituting Enter."
+   },
+   {
+    "rank": 10,
+    "title": "Screen dimensions are cached forever \u2014 scroll() swipes to the wrong place after rotation or a transient query failure",
+    "severity": "medium",
+    "subsystem": "providers",
+    "file": "src/services/providers/android.provider.ts",
+    "line": 93,
+    "failureScenario": "screenDimsQueried is set true (line 97) BEFORE the `wm size` try/catch and is never reset. (1) If `wm size` throws (ADB_TIMEOUT on a cold device), the hardcoded 1080x2400 fallback is cached permanently and never re-queried even after the device reports a different real resolution. (2) Once real dims are cached, an in-session portrait\u2194landscape rotation is never invalidated, so scroll()'s startX/startY/endY math keeps using stale values and swipes to the wrong on-screen location.",
+    "fix": "Only set screenDimsQueried=true after a successful parse (move it inside the `if (match)` block, or track 'succeeded' separately from 'attempted') so a failed query is retried next call instead of locking in the fallback; add an explicit invalidate/refresh hook or short TTL so a mid-session rotation is re-queried rather than cached for the instance lifetime."
+   },
+   {
+    "rank": 11,
+    "title": "Blocklist multi-word phrases bypassed by true zero-separator concatenation",
+    "severity": "medium",
+    "subsystem": "capability-safety",
+    "file": "src/services/capability/safety.ts",
+    "line": 38,
+    "failureScenario": "The tokenizer splits on `_`/`-`, so underscore/hyphen inputs still match single-word entries (NOT a bypass \u2014 the candidate's framing was wrong there). But a true no-separator smash \u2014 'placeorder now', 'sendmoney', 'confirmpayment' \u2014 becomes a single merged token that matches neither the multi-word literal-substring check (no space present) nor any single-word entry (component words for place/send order/money aren't independently listed, and 'purchase'/'payment' get absorbed into a larger token). matchedBlockedKeyword returns undefined and a blocked phrase slips through. Narrow: real resourceIds are camelCase/snake_case (already handled); most likely in prose typos or deliberately obfuscated injected text.",
+    "fix": "Add a second multi-word check against a fully-squashed string alongside the existing literal-substring check: `const squashed = lower.replace(/[^\\p{L}\\p{N}]+/gu, ''); if (squashed.includes(kw.replace(/\\s+/g, ''))) return kw;`."
+   },
+   {
+    "rank": 12,
+    "title": "Zero-action anti-lying guard counts attempted capability calls, not successful ones \u2014 refusals credited as progress and poison SkillMemory",
+    "severity": "medium",
+    "subsystem": "capability-safety",
+    "file": "src/services/capability/capabilityAgent.ts",
+    "line": 158,
+    "failureScenario": "Model calls {\"tool\":\"fs.trash\",\"input\":\"delete customer_ssn.csv\"}. `cap = byName.get('fs.trash')` resolves truthy, so usedTools.push/usedSteps.push run unconditionally \u2014 even though runner.execute() refuses via the blocklist ('delete') and returns a 'Refused:' string that is never inspected. Model answers {\"answer\":\"Done, deleted the file.\"}; the guard checks only usedTools.length===0, now false, so it never fires and the false 'Done' is returned with halt:'answered'. Worse, usedSteps.length>0 records the refused sequence into SkillMemory as a 'proven' sequence. Same unconditional push in the plan branch.",
+    "fix": "Only credit a step when the observation reflects an actual attempt/execution, not a refusal \u2014 have runner.execute/executePlan return a structured `{ text, performed }` (or a stable set of refusal-prefix constants) and gate the usedTools/usedSteps push on `performed`, so blocklist/consent/approval/bulk/error refusals never count as progress or feed SkillMemory."
+   },
+   {
+    "rank": 13,
+    "title": "First per-step UI observation is not wrapped in try/catch \u2014 a transient device error silently kills the mission with no terminal event",
+    "severity": "high",
+    "subsystem": "agent-loop",
+    "file": "src/services/agent.service.ts",
+    "line": 446,
+    "failureScenario": "`const state = await this.uiVerifier.waitForIdle(emitter)` sits bare in the while-loop body. waitForIdle throws after 3 cumulative getScreenContext() failures within one call (the retries counter is never reset on an intervening success). The throw propagates out of _runAgentLoop into runAgentLoop's try/finally, which has no catch \u2014 so no emitter.emit('error') / emit('done') ever fires and the rejection re-throws to the caller (possible top-level unhandled rejection / hung UI). The identical call at line 615 is inside the try at 535 and IS caught and retried \u2014 a genuine asymmetry.",
+    "fix": "Wrap the line-446 waitForIdle in the same try/catch used at 535-640 (or extend that outer try to cover the whole step body from 446 onward), so a persistent device error emits 'error'+'done' or enters the existing backoff-and-retry path instead of escaping the loop. (Severity high for the possible process-level unhandled rejection, but ranked here because it performs no wrong action, bypasses no gate, and loses no persisted data.)"
+   },
+   {
+    "rank": 14,
+    "title": "Unguarded read-modify-write race on habits.ndjson can silently drop or corrupt records",
+    "severity": "medium",
+    "subsystem": "persistence",
+    "file": "src/services/metrics.service.ts",
+    "line": 104,
+    "failureScenario": "appendHabitLog is a bare fs.appendFile with no lock. getHabits() reads the whole file, snapshots 'kept = last 1000' when lines>2000, and fires atomicWriteFile(...).catch(()=>{}) WITHOUT awaiting. If a concurrent append lands after the snapshot but the compaction rename completes after the append (independent libuv async chains, no ordering guarantee), the rename replaces the inode with the stale pre-append snapshot \u2192 the appended entry is permanently lost with no error surfaced. Also, two same-process getHabits() compactions share a pid-only tmp name (atomicWrite.ts:13), so the second rename() hits ENOENT and is swallowed. Downgraded high\u2192medium: the lost content is habit telemetry with bounded per-race loss, not user content.",
+    "fix": "Serialize ALL writes to habitsNdjsonPath (both appendHabitLog and getHabits' compaction) through one promise-chain mutex, mirroring the writeChain already used for telemetryPath in this class (or memory.service withWriteLock). Await the atomicWriteFile in getHabits so failures are observable, and make atomicWriteFile's tmp name collision-proof within a process (add a monotonic counter or crypto.randomUUID() suffix alongside pid)."
+   },
+   {
+    "rank": 15,
+    "title": "Hard-stop (kill switch) cannot interrupt in-flight device I/O \u2014 only the LLM decode is abortable",
+    "severity": "medium",
+    "subsystem": "agent-loop",
+    "file": "src/services/agent/uiVerifier.ts",
+    "line": 35,
+    "failureScenario": "stop() only calls _abortController.abort(), whose signal is passed exclusively to generateAction(). waitForIdle(emitter) and ActionExecutor.execute(actionObj, elements, emitter) take no AbortSignal and never check any stop flag; stopped() is only checked between steps and around the pause-wait, not while awaiting waitForIdle or execute. If deviceProvider.getScreenContext()/click/type/scroll/pressKey hangs, stop() cannot short-circuit it \u2014 the loop only exits once the in-flight call settles. (The Q-523 comments scope the guarantee to the decode + loop/pause-wait, so this is an accurately-scoped but real functional gap, not a contradicted doc.)",
+    "fix": "Thread the AbortSignal into waitForIdle(signal) and execute(..., signal); check signal.aborted at each poll iteration in waitForIdle's while loop, and race the device-provider calls against a signal-triggered rejection (Promise.race) so stop() can interrupt an in-flight device call, not just the LLM decode."
+   },
+   {
+    "rank": 16,
+    "title": "Step screenshot leaks to disk on the manual-override and stop-while-paused code paths",
+    "severity": "medium",
+    "subsystem": "agent-loop",
+    "file": "src/services/agent.service.ts",
+    "line": 480,
+    "failureScenario": "state.screenshotPath is only unlinked in the finally at 521-528, attached to the generateAction try at 496-520. The stop-while-paused break at 468 and the manual-override continue at 480 both exit after state was fetched (446) but before that try runs, so the current iteration's 2-5MB PNG (which uiVerifier deliberately leaves for the caller to clean up) is never deleted. Repeated overrides accumulate leaked screen captures \u2014 a privacy-sensitive on-disk leak of the user's screen.",
+    "fix": "Explicitly unlink state.screenshotPath immediately before the continue at 480 and before the break at 468, or restructure to a per-iteration try/finally that unconditionally cleans up the current state's screenshot on every exit path."
+   },
+   {
+    "rank": 17,
+    "title": "executePlan() preview failures are never written to the audit ledger",
+    "severity": "low",
+    "subsystem": "capability-safety",
+    "file": "src/services/capability/runner.ts",
+    "line": 176,
+    "failureScenario": "In execute() a capability.plan(input) throw is ledgered via this.log(..., 'error', ...). In executePlan()'s pre-flight loop the analogous catch only returns a message to the caller \u2014 this.log() is never called, unlike the blocklist-hit (166) and needsConsent (170) branches in the same loop. A plan whose 2nd step's plan() throws aborts with a message but leaves zero trace (including earlier successfully-previewed steps) in ledger.entries(), contradicting the ledger's 'every invocation, incl. refusals' contract.",
+    "fix": "In executePlan()'s pre-flight catch block call `this.log(item.capability, item.input, 'error', `preview failed: ${String(e)}`);` before returning, mirroring the single-action execute() path."
+   },
+   {
+    "rank": 18,
+    "title": "On-device dump/screenshot temp files leak when the adb pull step fails after a successful dump",
+    "severity": "low",
+    "subsystem": "providers",
+    "file": "src/services/providers/android.provider.ts",
+    "line": 123,
+    "failureScenario": "getUiHierarchyXml runs dump\u2192pull\u2192`rm -f devXml` sequentially; if the dump succeeds but the pull rejects (ADB_TIMEOUT, which spawnAdb explicitly models), the await on the rejected pull throws straight to the outer `catch { return \"\" }`, skipping the rm line so devXml is never deleted. Same shape in getScreenContext (cleanup chained via .then after pull). waitForUiIdle calls getUiHierarchyXml up to 10\u00d7 per idle-wait with fresh UUIDs, so repeated transient pull failures accumulate orphaned on-device files.",
+    "fix": "Wrap the dump+pull steps in a try/finally (or attach the `rm -f ... .catch(()=>{})` as an always-run .finally step) so the on-device temp file is removed regardless of whether the pull succeeds, in both getUiHierarchyXml and getScreenContext."
+   },
+   {
+    "rank": 19,
+    "title": "Resume progress can exceed 100% when a 206 response omits Content-Length",
+    "severity": "low",
+    "subsystem": "model-download",
+    "file": "src/services/modelDownloadPlan.ts",
+    "line": 71,
+    "failureScenario": "llm.service.ts:1085 defaults contentLength to 0 when the header is absent; modelDownloadPlan.ts:71's resume branch then sets totalBytes = partialBytes + 0. In the download loop receivedBytes starts at partialBytes and grows per chunk while totalBytes stays fixed, so progress = round(receivedBytes/totalBytes*100) exceeds 100% almost immediately and climbs all session. Reproducible whenever a CDN/proxy answers a Range request with 206 and chunked encoding (no Content-Length). Purely cosmetic \u2014 write/append offset logic is unaffected.",
+    "fix": "In planDownloadWrite's resume branch use `totalBytes: contentLength > 0 ? partialBytes + contentLength : 0` so the loop's existing `if (totalBytes > 0)` guard suppresses percentage display instead of computing a value that can exceed 100%."
+   }
+  ],
+  "falsePositivesDropped": 0
+ },
+ "confirmed": [
+  {
+   "title": "Raw on-screen element text leaks into the \"trusted\" action-history channel, bypassing the untrusted-data fence",
+   "file": "src/services/agent/uiVerifier.ts",
+   "line": 164,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct code trace. uiVerifier.verifyAction() (uiVerifier.ts:164/166) interpolates preNode.text/className \u2014 sourced verbatim from the on-screen UI element the agent is verifying \u2014 into a string returned to the caller. agent.service.ts:619 pushes that string, unmodified, into actionHistory. promptBuilder.ts:83-85 builds `historyText` from actionHistory and inserts it directly into the final prompt (line 115) with NO call to wrapUntrustedData \u2014 unlike every other externally-sourced block in the SAME function (untrustedUiState, untrustedVision, untrustedAttachments, untrustedCorrections, pastTrajectoryHint, untrustedGoal \u2014 all wrapped at lines 67-100), and the trustedInstructions block (line 102) even labels this section 'Recent Actions (trusted agent history)' to the model. Since wrapUntrustedData is exactly what strips embedded fence-marker substrings (lines 17-23 of promptBuilder.ts), and this path skips it entirely, attacker-controlled screen text (e.g., a malicious app's button label) reaches the model inside a section explicitly presented as trusted, with no fence-stripping. This is a real, demonstrable asymmetry versus the analogous pastMemory case, which the code's own comment (lines 60-64) says was deliberately fenced for the identical reason (derived from processing untrusted screens). I downgrade from 'critical' to 'high' because downstream, the model's output is still constrained to the grammar-limited action schema and gated by ActionExecutor's blocklist/coordinate checks, bounding \u2014 but not eliminating \u2014 the practical impact of the injection.",
+   "suggestedFix": "In promptBuilder.ts, wrap the action-history block through wrapUntrustedData (e.g. `wrapUntrustedData('RECENT_ACTIONS', actionHistory.slice(-5).join('\\n'))`) instead of the current unwrapped `historyText`, so screen-derived text embedded in verifyAction's return strings gets the same fence-marker stripping and 'passive observation only' framing as every other untrusted source. Alternatively/additionally, sanitize preNode.text/className in uiVerifier.verifyAction() before interpolation.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "First per-step UI observation is not wrapped in try/catch \u2014 a transient device error silently kills the mission with no terminal event",
+   "file": "src/services/agent.service.ts",
+   "line": 446,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed. `const state = await this.uiVerifier.waitForIdle(emitter);` at line 446 sits directly in the while-loop body (lines 435-641) with no enclosing try/catch of its own. uiVerifier.waitForIdle can throw after 3 cumulative getScreenContext() failures within one call (uiVerifier.ts:73-80, retries variable persists across the up-to-20-poll loop and is never reset on an intervening success). If it throws here, the exception propagates out of `_runAgentLoop`, into `runAgentLoop`'s try/finally (agent.service.ts:320-328) which only resets `_isRunning`/`_abortController` and releases the KV cache in `finally` \u2014 there is no catch, so the exception re-throws to the caller with no `emitter.emit('error', ...)` or `emitter.emit('done')` ever fired. This is a genuine asymmetry: the identical call at line 615 (post-action re-verification) sits inside the try block starting at line 535 and IS caught by the catch at line 629, which emits an error event and retries. The first-call site has no equivalent protection.",
+   "suggestedFix": "Wrap the line-446 waitForIdle call in the same try/catch pattern used at 535-640 (or extend that outer try to cover the whole step body from line 446 onward), so a persistent device error emits 'error' and 'done' (or triggers the existing backoff-and-retry path) instead of propagating an unhandled rejection out of the loop.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Step screenshot leaks to disk on the manual-override and stop-while-paused code paths",
+   "file": "src/services/agent.service.ts",
+   "line": 480,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed by tracing control flow. state.screenshotPath is only unlinked in the finally block at lines 521-528, which is attached to the try/catch wrapping the generateAction call (496-520). Two reachable paths exit the loop body BEFORE that try block executes for the current iteration's `state`: the stop-while-paused `break` at line 468 (after `state` has already been fetched at line 446, but before generateAction) and the manual-override `continue` at line 480 (same). In both cases, the current iteration's screenshot is never passed through the only unlink site, so the 2-5MB PNG is never deleted (uiVerifier.ts:83-91 deliberately keeps the final screenshot for the caller to clean up, so no cleanup happens elsewhere either). I verified all other break/continue statements in the file (438, 518, 593) do NOT leak: 438 breaks before `state` is even fetched, 518's break is inside the try/catch whose finally still runs before the loop exits (JS finally-before-break semantics), and 593 occurs after the finally already ran earlier in that same iteration.",
+   "suggestedFix": "Add an explicit unlink of `state.screenshotPath` immediately before the `continue` at line 480 and before the `break` at line 468 (or restructure to a per-iteration try/finally that unconditionally cleans up the current state's screenshot regardless of which exit path is taken).",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Hard-stop (kill switch) cannot interrupt in-flight device I/O \u2014 only the LLM decode is abortable",
+   "file": "src/services/agent/uiVerifier.ts",
+   "line": 35,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed. stop() (agent.service.ts:189-197) only calls `this._abortController.abort()`; that signal is passed exclusively to `llmProvider.generateAction(...)` calls (agent.service.ts:384, 397, 511). `UiVerifier.waitForIdle(emitter: AgentEventEmitter)` (uiVerifier.ts:35) takes no AbortSignal parameter and never checks any stop flag inside its polling loop (lines 52-82), and `ActionExecutor.execute(actionObj, elements, emitter)` (actionExecutor.ts:51) likewise never receives or consults an abort signal around its deviceProvider calls. The only `stopped()` checkpoints in the loop are between steps (line 438) and inside/after the pause-wait (464-468) \u2014 not while awaiting waitForIdle or execute. So if `deviceProvider.getScreenContext()` (or click/type/scroll/pressKey) hangs, stop() has no way to interrupt it from within this subsystem, and the loop can only exit once that in-flight call itself settles. I checked the Q-523 comments (agent.service.ts:108-110, 187-188) and, unlike the candidate's framing, they don't actually claim an unconditional/all-encompassing kill switch \u2014 they explicitly scope the guarantee to '(a) ends any in-flight generateAction decode' and '(b) breaks the loop + pause-wait' \u2014 so this isn't a contradicted doc-comment so much as an accurately-scoped but real functional gap in the code itself.",
+   "suggestedFix": "Thread the AbortSignal into `waitForIdle(signal)` and `execute(actionObj, elements, emitter, signal)`, checking `signal.aborted` at each poll iteration in waitForIdle's while loop, and race the device-provider calls (getScreenContext/click/type/scroll/pressKey) against the abort signal (e.g. `Promise.race` with a signal-triggered rejection) so stop() can actually short-circuit an in-flight device call, not just the LLM decode.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Audit ledger never redacts the run's `goal` field",
+   "file": "src/services/capability/capability.ts",
+   "line": 118,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct read. `InMemoryAuditLedger.append()` (capability.ts:116-120) is exactly `{ ...entry, input: redactSecrets(entry.input).slice(0,200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0,200) : entry.outcome }` \u2014 `goal` passes through the spread completely untouched, neither redacted nor length-capped. `goal` is set via `CapabilityRunner.setRunGoal(goal)` (runner.ts:44-45) from the raw, user-supplied task string, and `log()` (runner.ts:52-54) stamps `goal: this.runGoal` onto every single entry for the run \u2014 including plain reads. A goal like \"log into billing, password: hunter2\" is never touched by the blocklist gate either (the blocklist only inspects a capability's per-action `input`, never the run-level goal), so the secret rides untouched into every ledger row for the entire run. This directly contradicts the file's own \"redact-then-truncate: the ledger is a record, never a place a leaked secret lives\" comment (line 117) for exactly the field most likely to contain the user's own sensitive text.",
+   "suggestedFix": "In `InMemoryAuditLedger.append()`, redact and truncate `goal` the same way as `input`/`outcome`: `goal: entry.goal ? redactSecrets(entry.goal).slice(0, 200) : entry.goal`.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Blocklist multi-word phrases bypassed by true no-separator concatenation (not underscore/hyphen)",
+   "file": "src/services/capability/safety.ts",
+   "line": 38,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Partially confirmed, but the candidate's framing is inaccurate on two of its three claims. Underscore- and hyphen-separated inputs are NOT a bypass: the tokenizer (`lower.split(/[^\\p{L}\\p{N}]+/u)`) splits on `_`/`-`, so `confirm_purchase_btn` tokenizes to {confirm, purchase, btn} and matches the independently-blocklisted single word 'purchase' \u2014 `matchedBlockedKeyword` returns 'purchase', not undefined, contradicting the candidate's claim it 'sails through ... returning undefined.' However, a genuine bypass exists for TRUE concatenation with zero separator at all, e.g. `placeorder now` or `sendmoney` or `confirmpayment`: tokens become a single merged token ('placeorder', 'sendmoney', 'confirmpayment') that matches neither the multi-word literal-substring check (no space present) nor any single-word entry (since the component words -- for 'place order' and 'send money' -- aren't independently blocklisted, and for 'confirm purchase'/'confirm payment' the independently-blocklisted word 'purchase'/'payment' is merged into a bigger token and no longer stands alone). I verified this holds for all five multi-word phrases in AGENT_BLOCKLIST. This is real but narrower and less severe than claimed: it requires literal word-smashing with no separator and no camelCase boundary, which is uncommon in real resourceIds (which are typically camelCase or snake_case, both already handled) \u2014 more likely to occur in prose typos or deliberately obfuscated injected text.",
+   "suggestedFix": "Add a second check for multi-word phrases that also matches when non-letter/digit characters are stripped entirely: e.g. `const squashed = lower.replace(/[^\\p{L}\\p{N}]+/gu, ''); if (squashed.includes(kw.replace(/\\s+/g, ''))) return kw;` alongside the existing literal-substring check, so `placeorder`/`sendmoney`/`confirmpayment` are caught the same way `confirm_purchase_btn` already is.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "undoLast() unconditionally overwrites lastAgent, orphaning a prior mutating run's persisted undo journal",
+   "file": "src/services/capability/dashboardTasks.ts",
+   "line": 131,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by tracing the exact sequence. Each `start()` call creates a fresh `GovernedAgent` (and fresh `RunSession`) via `this.assemble(...)`. Task A mutates: `undoable.length > 0` so `journal.save(actionsA)` runs (dashboardTasks.ts:126-130), then line 131 unconditionally sets `this.lastAgent = agentA`. Task B runs with zero mutations: `undoable.length === 0` so `journal.save()` is skipped (journal still holds actionsA) but line 131 still unconditionally executes `this.lastAgent = agentB`, discarding the only in-memory reference to agentA's RunSession. Calling `undoLast()` now calls `agentB.undoAll()` which \u2014 per `RunSession.undoAll()` in capability.ts:154-155 \u2014 returns 'Nothing to undo from this task.' since agentB's `done` array is empty; then `this.journal.clear()` (line 168) unconditionally wipes the persisted journal that actually held Task A's still-valid, still-unreversed actions. The user sees a truthful-looking 'nothing to undo' message while the one durable, cross-session undo record for Task A's real mutations is silently and permanently destroyed.",
+   "suggestedFix": "Only advance `lastAgent` (and correspondingly only clear/replace the persisted journal) when the run actually produced undoable actions \u2014 move `this.lastAgent = agent;` inside the `if (undoable.length > 0) { ... }` block so `lastAgent` always tracks 'the most recent run with something to undo', keeping it in lockstep with the journal.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Zero-action anti-lying guard counts attempted capability calls, not successful ones",
+   "file": "src/services/capability/capabilityAgent.ts",
+   "line": 158,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed by tracing a concrete run. With `goalNeedsAction` true, model calls `{\"tool\":\"fs.trash\",\"input\":\"delete customer_ssn.csv\"}`. `cap = this.byName.get('fs.trash')` resolves truthy, so regardless of what `runner.execute()` returns, line 158-161 unconditionally does `usedTools.push('fs.trash'); usedSteps.push({tool:'fs.trash', input:...})`. `runner.execute()` itself refuses this via the blocklist gate (`matchedBlockedKeyword` hits 'delete', runner.ts:98-102) and returns a 'Refused: ...' string with nothing executed \u2014 but that refusal string is never inspected before the push. The model then answers `{\"answer\":\"Done, deleted the file.\"}`; the zero-action guard at capabilityAgent.ts:122-132 checks only `usedTools.length === 0`, which is now false, so it never fires and the false 'Done' claim is returned with `halt:'answered'`. The identical unconditional push exists in the plan branch (lines 169-172). Worse, since `usedSteps.length > 0`, the refused sequence gets recorded into `SkillMemory` (line 135) as a 'proven' sequence for future runs. The guard's own comment explicitly frames its purpose as catching exactly 'zero capability calls' leading to a false Done \u2014 but it measures 'name resolved' not 'action actually took effect', so every refusal path (blocklist/consent/needsApproval/declined/bulkPaused/error) is invisible to it.",
+   "suggestedFix": "Only count a step toward `usedTools`/`usedSteps` when the observation reflects an actual attempt/execution, not a refusal \u2014 e.g. have `runner.execute`/`executePlan` return a structured `{ text: string; performed: boolean }` (or a stable set of refusal-prefix constants) and gate the push on `performed`, so a blocklist/consent/approval/bulk refusal doesn't get credited as progress or fed into SkillMemory.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "executePlan() preview failures are never written to the audit ledger",
+   "file": "src/services/capability/runner.ts",
+   "line": 176,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed directly. In `execute()` (runner.ts:110-115), a `capability.plan(input)` throw is explicitly ledgered via `this.log(capability, input, 'error', ...)`. In `executePlan()`'s pre-flight loop (runner.ts:173-177), the analogous catch block only returns a message to the caller \u2014 `this.log(...)` is never called, unlike the blocklist-hit (line 166) and needsConsent (line 170) branches in the exact same loop, which both do call `this.log`. A plan whose 2nd step's `plan()` throws aborts with a message but leaves zero trace of the plan (including any earlier successfully-previewed steps) in `ledger.entries()`, contradicting the `AuditEntry`/`AuditLedger` doc comment (capability.ts:93-94) describing it as 'every invocation, incl. refusals.'",
+   "suggestedFix": "In `executePlan()`'s pre-flight catch block, call `this.log(item.capability, item.input, 'error', \\`preview failed: ${String(e)}\\`);` before returning, mirroring the single-action `execute()` path.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Partial/in-flight download file is loadable by the model-selection path \u2014 no isDownloading gate on load/switch",
+   "file": "src/services/llm.service.ts",
+   "line": 144,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct grep: `isDownloading` (declared line 191) is read in exactly two places outside downloadModel itself \u2014 resetIdleTimer (line 497, to avoid unloading mid-download) and downloadModel's own re-entrancy guard (line 957). It is never checked in selectBestModel (136-161), selectPinnedOrBestModel (166-185), getModelAndContext (600-898), or switchModel (559-588) \u2014 all of which gate purely on `fs.existsSync(filePath)`. downloadModel writes directly to the FINAL path (`dest = modelPath(entry.id)`, line 969; `fs.createWriteStream(dest, ...)`, line 1104) \u2014 never a temp/.part file \u2014 and fs.existsSync becomes true the instant the write stream opens the path, long before any bytes (let alone all of them) are written. Concrete trigger: MODEL_MISSING fires (no model on disk) \u2192 autoTrigger starts downloadModel() \u2192 the destination file exists on disk from the first instant with partial bytes \u2192 before the download completes, any concurrent generalChat()/generateAction() call (or a user-initiated switchModel(sameId)) invokes getModelAndContext(), which selects that exact file via fs.existsSync and calls `model.loadModel({ modelPath: selected.path })` (line 741) on a file that fs.createWriteStream is simultaneously appending to. Nothing in these three files serializes the two paths.",
+   "suggestedFix": "Write to a temp path during download (e.g. `dest + '.part'`) and fs.renameSync to the real `dest` only after verifyModelIntegrity succeeds, so fs.existsSync(dest) is never true for an in-progress/unverified file. As a second layer, have selectBestModel/selectPinnedOrBestModel/switchModel skip or reject a modelId that is currently being downloaded (track the in-flight id, not just a boolean).",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "Magic-header-only integrity check cannot detect truncation past byte 4, so a truncated download with no pinned SHA-256 can still pass",
+   "file": "src/services/modelIntegrity.ts",
+   "line": 67,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "The core claim holds, though via a cleaner trigger than the one cited. verifyModelIntegrity (59-76) has no else-branch when expectedSha256 is falsy \u2014 only hasGGUFMagic on the first 4 bytes is checked. Concretely reachable without any assumption about fetch/undici's mid-stream error behavior: downloadModel's 'pre-existing file' fast path (llm.service.ts lines 983-999) treats ANY dest file over 100MB as a presumptively-complete prior download and calls verifyModelIntegrity on it; if that succeeds it emits progress:100 and returns immediately (lines 987-992) \u2014 it never compares the file's size against the model's actual expected size. If the process is killed/crashes mid-download (OOM kill, force-quit, app update) after >100MB of a multi-GB file has been written, and the catalog entry has no pinned sha256, the next launch's downloadModel() call hits this fast path, hasGGUFMagic passes (header is intact from the start of the stream), and a partial file is accepted as fully downloaded and handed to the native GGUF parser \u2014 no in-session truncation-without-error assumption required. The doc comment's claim that the magic-only fallback 'still rejects... truncated files' is true only for truncation before byte 4.",
+   "suggestedFix": "Don't infer completeness from `size > 100_000_000`. Persist the expected total size in the metadata file (metaPath) whenever known (from Content-Length/catalog) and, when no sha256 is pinned, compare fs.statSync(dest).size against that expected total before accepting a pre-existing file as complete \u2014 falling through to resume/re-download if the sizes don't match, in addition to the magic-header check.",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "Resume totalBytes silently collapses to already-downloaded size when a 206 response omits Content-Length, making progress exceed 100%",
+   "file": "src/services/modelDownloadPlan.ts",
+   "line": 71,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed directly from the code. llm.service.ts line 1085: `contentLength = Number(response.headers.get('content-length')) || 0` defaults to 0 when the header is absent. modelDownloadPlan.ts line 71 (isResume branch) then sets `totalBytes: partialBytes + contentLength` = `partialBytes + 0` when Content-Length is missing on a 206. Back in the download loop (llm.service.ts 1124-1131), `receivedBytes` starts at `writePlan.writeOffset` (= partialBytes) and grows with every chunk while `totalBytes` (= partialBytes) stays fixed, so `progress = round(receivedBytes/totalBytes*100)` exceeds 100% almost immediately and keeps climbing for the whole resumed session. No other code path recomputes or caps totalBytes. Purely cosmetic (write offset/append logic in planDownloadWrite is unaffected by contentLength), but genuinely reproducible whenever a server answers a Range request with 206 and no Content-Length (common with chunked-encoding CDNs/proxies on resumed transfers).",
+   "suggestedFix": "In planDownloadWrite's resume branch, don't silently fold a missing Content-Length into totalBytes: use `totalBytes: contentLength > 0 ? partialBytes + contentLength : 0` so the download loop's existing `if (totalBytes > 0)` guard correctly suppresses percentage progress instead of computing a value that can exceed 100%.",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "HEAD requests to token-gated user-data GETs bypass the auth gate entirely",
+   "file": "src/app.ts",
+   "line": 119,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Verified against the actual code and the installed express@5.2.1 / router package. requiresAuth() (src/app.ts:117-121) only treats a request as needing the token via `req.method === 'GET'` for PROTECTED_READ_PREFIXES (line 119); HEAD never satisfies this, and it's also not in MUTATING_METHODS, so the global auth middleware at line 122-129 calls next() unconditionally for HEAD requests to /api/notes, /api/sessions, /api/memory, /diagnostics, /api/metrics, /api/agent, /api/tasks. None of these routes register an explicit `.head()` handler (confirmed via grep \u2014 only `.get()` calls exist for all of them, including /diagnostics in src/routes/health.ts). Express's underlying router (node_modules/router/lib/route.js, `_handlesMethod` and `dispatch`) explicitly falls back HEAD to the GET handler when no HEAD-specific route exists (`if (method === 'head' && !this.methods.head) { method = 'get' }`), so the real GET handler executes in full \u2014 e.g. `memoryService.listNotes()` runs and `res.json({notes})` is called. express/lib/response.js confirms `res.send` computes and sets the real `Content-Length` header from the serialized body (line ~187) and only afterward, for `req.method === 'HEAD'`, skips writing the body (line ~216-217) while still sending the computed headers. No other method-based guard exists anywhere in app.ts/server.ts/health.ts. So `curl -I` (HEAD, no token) against any of these routes genuinely executes the protected handler and leaks presence/size metadata (e.g. exact Content-Length of /api/notes/<file>.md, or whether /api/sessions has any entries) to an unauthenticated local process \u2014 exactly the threat model the surrounding comments (lines 103-108) say this gate exists to close.",
+   "suggestedFix": "Change line 119 to also require auth for HEAD: `if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(...))`, or normalize by checking `['GET','HEAD'].includes(req.method)`.",
+   "subsystem": "network-auth"
+  },
+  {
+   "file": "src/services/metrics.service.ts",
+   "line": 104,
+   "title": "Unguarded read-modify-write race on habits.ndjson can silently drop or corrupt habit log records",
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed against the actual code. appendHabitLog (line 84-90) is a bare fs.appendFile with zero locking or serialization. getHabits (line 92-115) reads the whole file, and when lines.length > 2000 it takes a snapshot-based 'kept = last 1000' and fires atomicWriteFile(...).catch(()=>{}) WITHOUT awaiting it (lines 104-108) \u2014 an unserialized read-modify-write-via-rename exactly matching the class of bug the same file's own Q-285 comment (line 49-52) describes fixing for telemetry.json via a writeChain mutex. That mutex protects telemetryPath only; habitsNdjsonPath has no equivalent. Because getHabits's snapshot is taken before any concurrent appendHabitLog write lands, and its compaction rename can complete AFTER that append (Node's fs ops run on the libuv thread pool with no ordering guarantee across independent async chains), the rename in atomicWriteFile fully replaces the file inode with the stale pre-append snapshot, permanently discarding the concurrently-appended entry \u2014 with no error surfaced (appendHabitLog succeeded from its own point of view, and B's compaction write is a fire-and-forget promise whose .catch is a no-op). The secondary claim also checks out: atomicWriteFile's tmp path is only pid-scoped (`${filePath}.${process.pid}.tmp`, atomicWrite.ts:13), so two same-process getHabits() compactions racing on the same tmp name would have the second rename() hit ENOENT against a tmp already consumed by the first \u2014 again silently swallowed by getHabits' .catch. Both mechanisms are real, unguarded hazards, not covered by any existing lock.",
+   "suggestedFix": "Serialize ALL writes to habitsNdjsonPath (both appendHabitLog and the compaction branch in getHabits) through a single promise-chain mutex, mirroring the writeChain pattern already used for telemetryPath in this same class (or reuse memory.service.ts's withWriteLock pattern). Additionally, await the atomicWriteFile call in getHabits instead of fire-and-forget so callers/tests can observe failures, and make atomicWriteFile's tmp filename collision-proof within a single process (e.g. append a monotonic counter or crypto.randomUUID() suffix in addition to pid) so two same-process writers to the same path never target an identical tmp file.",
+   "subsystem": "persistence"
+  },
+  {
+   "file": "src/services/memory.service.ts",
+   "line": 312,
+   "title": "saveNote() writes directly to the live file instead of through atomicWriteFile, truncating existing notes on crash",
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed. saveNote (line 293-316) calls `await fs.writeFile(notePath, header + trimmedContent, 'utf-8')` directly at line 312, inside withWriteLock \u2014 but withWriteLock only serializes against OTHER in-process writers; it provides zero protection against a crash mid-write. fs.writeFile opens the target with the default 'w' flag (O_TRUNC), so on an update to an existing note (same notePath, since sanitizeNoteTitle is deterministic per title) a crash/OOM/power-loss/ENOSPC between truncate and write-completion leaves a truncated or empty file, destroying the prior content \u2014 exactly the failure mode atomicWrite.ts's own docstring (lines 4-11) is written to prevent. Every other store in this same file (memoryPath at 183/210/239, correctionsPath at 391) already routes through atomicWriteFile, and it's already imported in this file (line 6), confirming saveNote is the one write path left exposed with no counterpart guard.",
+   "suggestedFix": "Replace `await fs.writeFile(notePath, header + trimmedContent, 'utf-8');` at memory.service.ts:312 with `await atomicWriteFile(notePath, header + trimmedContent);`, consistent with how memoryPath and correctionsPath are persisted elsewhere in this file.",
+   "subsystem": "persistence"
+  },
+  {
+   "title": "Literal \"%s\" in typed text is silently converted to a single space",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 185,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by tracing the exact pipeline. `escaped = normalized.replace(/[\\s\\\\\"'`$()<>|;&*?~[\\]{}#!%]/g, c => c===' ' ? '%s' : '\\\\'+c)` matches each special character INDIVIDUALLY: a literal '%' becomes '\\%' but the following 's' (not in the character class) is left untouched. `spawnAdb` uses `spawn('adb', args)` with no shell, so this exact string reaches the local `adb` binary unmangled; `adb shell` then joins the args and hands them to the DEVICE's shell (exactly as the code's own comment at lines 175-178 states), which strips a single unquoted backslash and passes through the literal next character. So `\\%s` de-escapes on-device back to the literal two-char sequence `%s` \u2014 bit-for-bit identical to what the encoder emits for an actual space (line 185's `c===' ' ? '%s' : ...` branch). `input text` (per this file's own documented assumption of '%s' as its space token) can't tell the two apart and converts it to a single space. Concrete trigger: type(\"increase%special\") -> escaped \"increase\\%special\" -> device shell delivers \"increase%special\" to `input text` -> tool's own %s convention fires on the substring at index 8-9 -> renders as \"increase pecial\". No guard anywhere disambiguates an intentionally-escaped '%' from the tool's own space token once it survives the shell layer.",
+   "suggestedFix": "A single backslash cannot protect '%' because the device shell consumes exactly one level and `input text`'s %s\u2192space substitution is applied to the final string with no escape awareness of its own. Detect any literal '%' in the original text immediately followed by 's' and break the `input text` call so the two characters never land in the same argument the tool scans (e.g. flush pending text, send 's' via a separate keyevent/input-text call, then resume) \u2014 or abandon the `input text` %s convention altogether in favor of a typing path (e.g. ADB Keyboard's base64 broadcast-intent method) that doesn't reinterpret arbitrary substrings of the payload.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "Screen dimensions are cached forever, so scroll() swipes to the wrong place after rotation or after a transient query failure",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 93,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed directly: `this.screenDimsQueried = true;` (line 97) is set unconditionally BEFORE the try/catch that attempts the `wm size` query, and there is no code anywhere in the class that ever resets `screenDimsQueried` or re-queries dimensions. Two concrete triggers both hold up: (1) if `spawnAdb(['shell','wm','size'])` throws (e.g. ADB_TIMEOUT on a cold-started device), control falls to the catch block, and the hardcoded defaults 1080x2400 (lines 111-113) are cached permanently \u2014 screenDimsQueried is already true, so future calls short-circuit at line 94 and never retry even after the device becomes reachable with a genuinely different resolution. (2) once real dimensions are cached, an in-session orientation change (portrait<->landscape) is never detected or invalidated, so scroll()'s startX/startY/endY math (lines 193-203) keeps using stale values. No guard mitigates either path.",
+   "suggestedFix": "Only set `screenDimsQueried = true` after a successful parse (move it inside the `if (match)` block, or track success separately from 'attempted'), so a failed query is retried on the next call instead of permanently locking in the 1080x2400 fallback. Separately, consider exposing an explicit refresh/invalidate hook (or a short TTL) so a legitimate mid-session rotation can be detected rather than relying on a one-time cache for the life of the instance.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "pressKey() silently sends ENTER for any key it doesn't explicitly recognize",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 209,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed exactly as described: `let code = '66';` is the default, and only 'enter' (line 210, redundantly re-set to '66'), 'back' (line 211, '4'), and 'home' (line 212, '3') override it. Any other key name \u2014 pressKey('tab'), pressKey('delete'), pressKey('escape'), pressKey('space'), etc. \u2014 falls through with `code` still '66' and the provider issues `input keyevent 66` (KEYCODE_ENTER) with no error, warning, or no-op path. Concrete trigger: an agent focused on a multi-line text field calls pressKey('escape') to dismiss a picker, or pressKey('tab') to move focus, and instead the field receives an Enter keypress, which for many forms triggers submission \u2014 a state change the caller never requested and that isn't traceable to a key-mapping gap without reading this source.",
+   "suggestedFix": "Add explicit mappings for other common keys the agent is likely to request (tab -> 61, delete/backspace -> 67, escape -> 111, space -> 62, arrows -> 19-22), and for a genuinely unrecognized key name, reject the promise or log a clear warning and skip sending a keyevent rather than silently substituting Enter.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "On-device dump/screenshot files leak when the adb pull step fails after a successful dump",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 123,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed in both cited locations. In getUiHierarchyXml (lines 123-132): `await this.spawnAdb(['shell','uiautomator','dump',devXml]); await this.spawnAdb(['pull', devXml, xmlTempFile]); await this.spawnAdb(['shell','rm','-f',devXml]).catch(()=>{});` \u2014 if the dump succeeds but the pull call rejects (e.g. ADB_TIMEOUT, which spawnAdb explicitly models and rejects on, per lines 35-41), the `await` on the rejected pull promise throws immediately, jumping straight to the outer `catch { return \"\"; }` and skipping the `rm -f` line entirely, so devXml is never deleted. Same shape in getScreenContext (lines 234-241): the cleanup is chained via `.then()` after pull's `.then()`, so a pull rejection short-circuits the chain before the rm `.then()` runs. waitForUiIdle calls getUiHierarchyXml up to 10 times per idle-wait with a fresh UUID each time, so repeated transient pull failures do accumulate orphaned files with no cleanup path.",
+   "suggestedFix": "Wrap the dump+pull steps in a try/finally (or attach the `rm -f ... .catch(()=>{})` cleanup as a `.finally()`/always-run step) so the on-device temp file is removed regardless of whether the subsequent pull succeeds, in both getUiHierarchyXml and getScreenContext.",
+   "subsystem": "providers"
+  }
+ ],
+ "allRaw": [
+  {
+   "title": "Raw on-screen element text leaks into the \"trusted\" action-history channel, bypassing the untrusted-data fence",
+   "file": "src/services/agent/uiVerifier.ts",
+   "line": 164,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct code trace. uiVerifier.verifyAction() (uiVerifier.ts:164/166) interpolates preNode.text/className \u2014 sourced verbatim from the on-screen UI element the agent is verifying \u2014 into a string returned to the caller. agent.service.ts:619 pushes that string, unmodified, into actionHistory. promptBuilder.ts:83-85 builds `historyText` from actionHistory and inserts it directly into the final prompt (line 115) with NO call to wrapUntrustedData \u2014 unlike every other externally-sourced block in the SAME function (untrustedUiState, untrustedVision, untrustedAttachments, untrustedCorrections, pastTrajectoryHint, untrustedGoal \u2014 all wrapped at lines 67-100), and the trustedInstructions block (line 102) even labels this section 'Recent Actions (trusted agent history)' to the model. Since wrapUntrustedData is exactly what strips embedded fence-marker substrings (lines 17-23 of promptBuilder.ts), and this path skips it entirely, attacker-controlled screen text (e.g., a malicious app's button label) reaches the model inside a section explicitly presented as trusted, with no fence-stripping. This is a real, demonstrable asymmetry versus the analogous pastMemory case, which the code's own comment (lines 60-64) says was deliberately fenced for the identical reason (derived from processing untrusted screens). I downgrade from 'critical' to 'high' because downstream, the model's output is still constrained to the grammar-limited action schema and gated by ActionExecutor's blocklist/coordinate checks, bounding \u2014 but not eliminating \u2014 the practical impact of the injection.",
+   "suggestedFix": "In promptBuilder.ts, wrap the action-history block through wrapUntrustedData (e.g. `wrapUntrustedData('RECENT_ACTIONS', actionHistory.slice(-5).join('\\n'))`) instead of the current unwrapped `historyText`, so screen-derived text embedded in verifyAction's return strings gets the same fence-marker stripping and 'passive observation only' framing as every other untrusted source. Alternatively/additionally, sanitize preNode.text/className in uiVerifier.verifyAction() before interpolation.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "First per-step UI observation is not wrapped in try/catch \u2014 a transient device error silently kills the mission with no terminal event",
+   "file": "src/services/agent.service.ts",
+   "line": 446,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed. `const state = await this.uiVerifier.waitForIdle(emitter);` at line 446 sits directly in the while-loop body (lines 435-641) with no enclosing try/catch of its own. uiVerifier.waitForIdle can throw after 3 cumulative getScreenContext() failures within one call (uiVerifier.ts:73-80, retries variable persists across the up-to-20-poll loop and is never reset on an intervening success). If it throws here, the exception propagates out of `_runAgentLoop`, into `runAgentLoop`'s try/finally (agent.service.ts:320-328) which only resets `_isRunning`/`_abortController` and releases the KV cache in `finally` \u2014 there is no catch, so the exception re-throws to the caller with no `emitter.emit('error', ...)` or `emitter.emit('done')` ever fired. This is a genuine asymmetry: the identical call at line 615 (post-action re-verification) sits inside the try block starting at line 535 and IS caught by the catch at line 629, which emits an error event and retries. The first-call site has no equivalent protection.",
+   "suggestedFix": "Wrap the line-446 waitForIdle call in the same try/catch pattern used at 535-640 (or extend that outer try to cover the whole step body from line 446 onward), so a persistent device error emits 'error' and 'done' (or triggers the existing backoff-and-retry path) instead of propagating an unhandled rejection out of the loop.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Step screenshot leaks to disk on the manual-override and stop-while-paused code paths",
+   "file": "src/services/agent.service.ts",
+   "line": 480,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed by tracing control flow. state.screenshotPath is only unlinked in the finally block at lines 521-528, which is attached to the try/catch wrapping the generateAction call (496-520). Two reachable paths exit the loop body BEFORE that try block executes for the current iteration's `state`: the stop-while-paused `break` at line 468 (after `state` has already been fetched at line 446, but before generateAction) and the manual-override `continue` at line 480 (same). In both cases, the current iteration's screenshot is never passed through the only unlink site, so the 2-5MB PNG is never deleted (uiVerifier.ts:83-91 deliberately keeps the final screenshot for the caller to clean up, so no cleanup happens elsewhere either). I verified all other break/continue statements in the file (438, 518, 593) do NOT leak: 438 breaks before `state` is even fetched, 518's break is inside the try/catch whose finally still runs before the loop exits (JS finally-before-break semantics), and 593 occurs after the finally already ran earlier in that same iteration.",
+   "suggestedFix": "Add an explicit unlink of `state.screenshotPath` immediately before the `continue` at line 480 and before the `break` at line 468 (or restructure to a per-iteration try/finally that unconditionally cleans up the current state's screenshot regardless of which exit path is taken).",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Hard-stop (kill switch) cannot interrupt in-flight device I/O \u2014 only the LLM decode is abortable",
+   "file": "src/services/agent/uiVerifier.ts",
+   "line": 35,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed. stop() (agent.service.ts:189-197) only calls `this._abortController.abort()`; that signal is passed exclusively to `llmProvider.generateAction(...)` calls (agent.service.ts:384, 397, 511). `UiVerifier.waitForIdle(emitter: AgentEventEmitter)` (uiVerifier.ts:35) takes no AbortSignal parameter and never checks any stop flag inside its polling loop (lines 52-82), and `ActionExecutor.execute(actionObj, elements, emitter)` (actionExecutor.ts:51) likewise never receives or consults an abort signal around its deviceProvider calls. The only `stopped()` checkpoints in the loop are between steps (line 438) and inside/after the pause-wait (464-468) \u2014 not while awaiting waitForIdle or execute. So if `deviceProvider.getScreenContext()` (or click/type/scroll/pressKey) hangs, stop() has no way to interrupt it from within this subsystem, and the loop can only exit once that in-flight call itself settles. I checked the Q-523 comments (agent.service.ts:108-110, 187-188) and, unlike the candidate's framing, they don't actually claim an unconditional/all-encompassing kill switch \u2014 they explicitly scope the guarantee to '(a) ends any in-flight generateAction decode' and '(b) breaks the loop + pause-wait' \u2014 so this isn't a contradicted doc-comment so much as an accurately-scoped but real functional gap in the code itself.",
+   "suggestedFix": "Thread the AbortSignal into `waitForIdle(signal)` and `execute(actionObj, elements, emitter, signal)`, checking `signal.aborted` at each poll iteration in waitForIdle's while loop, and race the device-provider calls (getScreenContext/click/type/scroll/pressKey) against the abort signal (e.g. `Promise.race` with a signal-triggered rejection) so stop() can actually short-circuit an in-flight device call, not just the LLM decode.",
+   "subsystem": "agent-loop"
+  },
+  {
+   "title": "Audit ledger never redacts the run's `goal` field",
+   "file": "src/services/capability/capability.ts",
+   "line": 118,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct read. `InMemoryAuditLedger.append()` (capability.ts:116-120) is exactly `{ ...entry, input: redactSecrets(entry.input).slice(0,200), outcome: entry.outcome ? redactSecrets(entry.outcome).slice(0,200) : entry.outcome }` \u2014 `goal` passes through the spread completely untouched, neither redacted nor length-capped. `goal` is set via `CapabilityRunner.setRunGoal(goal)` (runner.ts:44-45) from the raw, user-supplied task string, and `log()` (runner.ts:52-54) stamps `goal: this.runGoal` onto every single entry for the run \u2014 including plain reads. A goal like \"log into billing, password: hunter2\" is never touched by the blocklist gate either (the blocklist only inspects a capability's per-action `input`, never the run-level goal), so the secret rides untouched into every ledger row for the entire run. This directly contradicts the file's own \"redact-then-truncate: the ledger is a record, never a place a leaked secret lives\" comment (line 117) for exactly the field most likely to contain the user's own sensitive text.",
+   "suggestedFix": "In `InMemoryAuditLedger.append()`, redact and truncate `goal` the same way as `input`/`outcome`: `goal: entry.goal ? redactSecrets(entry.goal).slice(0, 200) : entry.goal`.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Blocklist multi-word phrases bypassed by true no-separator concatenation (not underscore/hyphen)",
+   "file": "src/services/capability/safety.ts",
+   "line": 38,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Partially confirmed, but the candidate's framing is inaccurate on two of its three claims. Underscore- and hyphen-separated inputs are NOT a bypass: the tokenizer (`lower.split(/[^\\p{L}\\p{N}]+/u)`) splits on `_`/`-`, so `confirm_purchase_btn` tokenizes to {confirm, purchase, btn} and matches the independently-blocklisted single word 'purchase' \u2014 `matchedBlockedKeyword` returns 'purchase', not undefined, contradicting the candidate's claim it 'sails through ... returning undefined.' However, a genuine bypass exists for TRUE concatenation with zero separator at all, e.g. `placeorder now` or `sendmoney` or `confirmpayment`: tokens become a single merged token ('placeorder', 'sendmoney', 'confirmpayment') that matches neither the multi-word literal-substring check (no space present) nor any single-word entry (since the component words -- for 'place order' and 'send money' -- aren't independently blocklisted, and for 'confirm purchase'/'confirm payment' the independently-blocklisted word 'purchase'/'payment' is merged into a bigger token and no longer stands alone). I verified this holds for all five multi-word phrases in AGENT_BLOCKLIST. This is real but narrower and less severe than claimed: it requires literal word-smashing with no separator and no camelCase boundary, which is uncommon in real resourceIds (which are typically camelCase or snake_case, both already handled) \u2014 more likely to occur in prose typos or deliberately obfuscated injected text.",
+   "suggestedFix": "Add a second check for multi-word phrases that also matches when non-letter/digit characters are stripped entirely: e.g. `const squashed = lower.replace(/[^\\p{L}\\p{N}]+/gu, ''); if (squashed.includes(kw.replace(/\\s+/g, ''))) return kw;` alongside the existing literal-substring check, so `placeorder`/`sendmoney`/`confirmpayment` are caught the same way `confirm_purchase_btn` already is.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "undoLast() unconditionally overwrites lastAgent, orphaning a prior mutating run's persisted undo journal",
+   "file": "src/services/capability/dashboardTasks.ts",
+   "line": 131,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by tracing the exact sequence. Each `start()` call creates a fresh `GovernedAgent` (and fresh `RunSession`) via `this.assemble(...)`. Task A mutates: `undoable.length > 0` so `journal.save(actionsA)` runs (dashboardTasks.ts:126-130), then line 131 unconditionally sets `this.lastAgent = agentA`. Task B runs with zero mutations: `undoable.length === 0` so `journal.save()` is skipped (journal still holds actionsA) but line 131 still unconditionally executes `this.lastAgent = agentB`, discarding the only in-memory reference to agentA's RunSession. Calling `undoLast()` now calls `agentB.undoAll()` which \u2014 per `RunSession.undoAll()` in capability.ts:154-155 \u2014 returns 'Nothing to undo from this task.' since agentB's `done` array is empty; then `this.journal.clear()` (line 168) unconditionally wipes the persisted journal that actually held Task A's still-valid, still-unreversed actions. The user sees a truthful-looking 'nothing to undo' message while the one durable, cross-session undo record for Task A's real mutations is silently and permanently destroyed.",
+   "suggestedFix": "Only advance `lastAgent` (and correspondingly only clear/replace the persisted journal) when the run actually produced undoable actions \u2014 move `this.lastAgent = agent;` inside the `if (undoable.length > 0) { ... }` block so `lastAgent` always tracks 'the most recent run with something to undo', keeping it in lockstep with the journal.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Zero-action anti-lying guard counts attempted capability calls, not successful ones",
+   "file": "src/services/capability/capabilityAgent.ts",
+   "line": 158,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed by tracing a concrete run. With `goalNeedsAction` true, model calls `{\"tool\":\"fs.trash\",\"input\":\"delete customer_ssn.csv\"}`. `cap = this.byName.get('fs.trash')` resolves truthy, so regardless of what `runner.execute()` returns, line 158-161 unconditionally does `usedTools.push('fs.trash'); usedSteps.push({tool:'fs.trash', input:...})`. `runner.execute()` itself refuses this via the blocklist gate (`matchedBlockedKeyword` hits 'delete', runner.ts:98-102) and returns a 'Refused: ...' string with nothing executed \u2014 but that refusal string is never inspected before the push. The model then answers `{\"answer\":\"Done, deleted the file.\"}`; the zero-action guard at capabilityAgent.ts:122-132 checks only `usedTools.length === 0`, which is now false, so it never fires and the false 'Done' claim is returned with `halt:'answered'`. The identical unconditional push exists in the plan branch (lines 169-172). Worse, since `usedSteps.length > 0`, the refused sequence gets recorded into `SkillMemory` (line 135) as a 'proven' sequence for future runs. The guard's own comment explicitly frames its purpose as catching exactly 'zero capability calls' leading to a false Done \u2014 but it measures 'name resolved' not 'action actually took effect', so every refusal path (blocklist/consent/needsApproval/declined/bulkPaused/error) is invisible to it.",
+   "suggestedFix": "Only count a step toward `usedTools`/`usedSteps` when the observation reflects an actual attempt/execution, not a refusal \u2014 e.g. have `runner.execute`/`executePlan` return a structured `{ text: string; performed: boolean }` (or a stable set of refusal-prefix constants) and gate the push on `performed`, so a blocklist/consent/approval/bulk refusal doesn't get credited as progress or fed into SkillMemory.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "executePlan() preview failures are never written to the audit ledger",
+   "file": "src/services/capability/runner.ts",
+   "line": 176,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed directly. In `execute()` (runner.ts:110-115), a `capability.plan(input)` throw is explicitly ledgered via `this.log(capability, input, 'error', ...)`. In `executePlan()`'s pre-flight loop (runner.ts:173-177), the analogous catch block only returns a message to the caller \u2014 `this.log(...)` is never called, unlike the blocklist-hit (line 166) and needsConsent (line 170) branches in the exact same loop, which both do call `this.log`. A plan whose 2nd step's `plan()` throws aborts with a message but leaves zero trace of the plan (including any earlier successfully-previewed steps) in `ledger.entries()`, contradicting the `AuditEntry`/`AuditLedger` doc comment (capability.ts:93-94) describing it as 'every invocation, incl. refusals.'",
+   "suggestedFix": "In `executePlan()`'s pre-flight catch block, call `this.log(item.capability, item.input, 'error', \\`preview failed: ${String(e)}\\`);` before returning, mirroring the single-action `execute()` path.",
+   "subsystem": "capability-safety"
+  },
+  {
+   "title": "Partial/in-flight download file is loadable by the model-selection path \u2014 no isDownloading gate on load/switch",
+   "file": "src/services/llm.service.ts",
+   "line": 144,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by direct grep: `isDownloading` (declared line 191) is read in exactly two places outside downloadModel itself \u2014 resetIdleTimer (line 497, to avoid unloading mid-download) and downloadModel's own re-entrancy guard (line 957). It is never checked in selectBestModel (136-161), selectPinnedOrBestModel (166-185), getModelAndContext (600-898), or switchModel (559-588) \u2014 all of which gate purely on `fs.existsSync(filePath)`. downloadModel writes directly to the FINAL path (`dest = modelPath(entry.id)`, line 969; `fs.createWriteStream(dest, ...)`, line 1104) \u2014 never a temp/.part file \u2014 and fs.existsSync becomes true the instant the write stream opens the path, long before any bytes (let alone all of them) are written. Concrete trigger: MODEL_MISSING fires (no model on disk) \u2192 autoTrigger starts downloadModel() \u2192 the destination file exists on disk from the first instant with partial bytes \u2192 before the download completes, any concurrent generalChat()/generateAction() call (or a user-initiated switchModel(sameId)) invokes getModelAndContext(), which selects that exact file via fs.existsSync and calls `model.loadModel({ modelPath: selected.path })` (line 741) on a file that fs.createWriteStream is simultaneously appending to. Nothing in these three files serializes the two paths.",
+   "suggestedFix": "Write to a temp path during download (e.g. `dest + '.part'`) and fs.renameSync to the real `dest` only after verifyModelIntegrity succeeds, so fs.existsSync(dest) is never true for an in-progress/unverified file. As a second layer, have selectBestModel/selectPinnedOrBestModel/switchModel skip or reject a modelId that is currently being downloaded (track the in-flight id, not just a boolean).",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "Magic-header-only integrity check cannot detect truncation past byte 4, so a truncated download with no pinned SHA-256 can still pass",
+   "file": "src/services/modelIntegrity.ts",
+   "line": 67,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "The core claim holds, though via a cleaner trigger than the one cited. verifyModelIntegrity (59-76) has no else-branch when expectedSha256 is falsy \u2014 only hasGGUFMagic on the first 4 bytes is checked. Concretely reachable without any assumption about fetch/undici's mid-stream error behavior: downloadModel's 'pre-existing file' fast path (llm.service.ts lines 983-999) treats ANY dest file over 100MB as a presumptively-complete prior download and calls verifyModelIntegrity on it; if that succeeds it emits progress:100 and returns immediately (lines 987-992) \u2014 it never compares the file's size against the model's actual expected size. If the process is killed/crashes mid-download (OOM kill, force-quit, app update) after >100MB of a multi-GB file has been written, and the catalog entry has no pinned sha256, the next launch's downloadModel() call hits this fast path, hasGGUFMagic passes (header is intact from the start of the stream), and a partial file is accepted as fully downloaded and handed to the native GGUF parser \u2014 no in-session truncation-without-error assumption required. The doc comment's claim that the magic-only fallback 'still rejects... truncated files' is true only for truncation before byte 4.",
+   "suggestedFix": "Don't infer completeness from `size > 100_000_000`. Persist the expected total size in the metadata file (metaPath) whenever known (from Content-Length/catalog) and, when no sha256 is pinned, compare fs.statSync(dest).size against that expected total before accepting a pre-existing file as complete \u2014 falling through to resume/re-download if the sizes don't match, in addition to the magic-header check.",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "Resume totalBytes silently collapses to already-downloaded size when a 206 response omits Content-Length, making progress exceed 100%",
+   "file": "src/services/modelDownloadPlan.ts",
+   "line": 71,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed directly from the code. llm.service.ts line 1085: `contentLength = Number(response.headers.get('content-length')) || 0` defaults to 0 when the header is absent. modelDownloadPlan.ts line 71 (isResume branch) then sets `totalBytes: partialBytes + contentLength` = `partialBytes + 0` when Content-Length is missing on a 206. Back in the download loop (llm.service.ts 1124-1131), `receivedBytes` starts at `writePlan.writeOffset` (= partialBytes) and grows with every chunk while `totalBytes` (= partialBytes) stays fixed, so `progress = round(receivedBytes/totalBytes*100)` exceeds 100% almost immediately and keeps climbing for the whole resumed session. No other code path recomputes or caps totalBytes. Purely cosmetic (write offset/append logic in planDownloadWrite is unaffected by contentLength), but genuinely reproducible whenever a server answers a Range request with 206 and no Content-Length (common with chunked-encoding CDNs/proxies on resumed transfers).",
+   "suggestedFix": "In planDownloadWrite's resume branch, don't silently fold a missing Content-Length into totalBytes: use `totalBytes: contentLength > 0 ? partialBytes + contentLength : 0` so the download loop's existing `if (totalBytes > 0)` guard correctly suppresses percentage progress instead of computing a value that can exceed 100%.",
+   "subsystem": "model-download"
+  },
+  {
+   "title": "HEAD requests to token-gated user-data GETs bypass the auth gate entirely",
+   "file": "src/app.ts",
+   "line": 119,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Verified against the actual code and the installed express@5.2.1 / router package. requiresAuth() (src/app.ts:117-121) only treats a request as needing the token via `req.method === 'GET'` for PROTECTED_READ_PREFIXES (line 119); HEAD never satisfies this, and it's also not in MUTATING_METHODS, so the global auth middleware at line 122-129 calls next() unconditionally for HEAD requests to /api/notes, /api/sessions, /api/memory, /diagnostics, /api/metrics, /api/agent, /api/tasks. None of these routes register an explicit `.head()` handler (confirmed via grep \u2014 only `.get()` calls exist for all of them, including /diagnostics in src/routes/health.ts). Express's underlying router (node_modules/router/lib/route.js, `_handlesMethod` and `dispatch`) explicitly falls back HEAD to the GET handler when no HEAD-specific route exists (`if (method === 'head' && !this.methods.head) { method = 'get' }`), so the real GET handler executes in full \u2014 e.g. `memoryService.listNotes()` runs and `res.json({notes})` is called. express/lib/response.js confirms `res.send` computes and sets the real `Content-Length` header from the serialized body (line ~187) and only afterward, for `req.method === 'HEAD'`, skips writing the body (line ~216-217) while still sending the computed headers. No other method-based guard exists anywhere in app.ts/server.ts/health.ts. So `curl -I` (HEAD, no token) against any of these routes genuinely executes the protected handler and leaks presence/size metadata (e.g. exact Content-Length of /api/notes/<file>.md, or whether /api/sessions has any entries) to an unauthenticated local process \u2014 exactly the threat model the surrounding comments (lines 103-108) say this gate exists to close.",
+   "suggestedFix": "Change line 119 to also require auth for HEAD: `if ((req.method === 'GET' || req.method === 'HEAD') && PROTECTED_READ_PREFIXES.some(...))`, or normalize by checking `['GET','HEAD'].includes(req.method)`.",
+   "subsystem": "network-auth"
+  },
+  {
+   "file": "src/services/metrics.service.ts",
+   "line": 104,
+   "title": "Unguarded read-modify-write race on habits.ndjson can silently drop or corrupt habit log records",
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed against the actual code. appendHabitLog (line 84-90) is a bare fs.appendFile with zero locking or serialization. getHabits (line 92-115) reads the whole file, and when lines.length > 2000 it takes a snapshot-based 'kept = last 1000' and fires atomicWriteFile(...).catch(()=>{}) WITHOUT awaiting it (lines 104-108) \u2014 an unserialized read-modify-write-via-rename exactly matching the class of bug the same file's own Q-285 comment (line 49-52) describes fixing for telemetry.json via a writeChain mutex. That mutex protects telemetryPath only; habitsNdjsonPath has no equivalent. Because getHabits's snapshot is taken before any concurrent appendHabitLog write lands, and its compaction rename can complete AFTER that append (Node's fs ops run on the libuv thread pool with no ordering guarantee across independent async chains), the rename in atomicWriteFile fully replaces the file inode with the stale pre-append snapshot, permanently discarding the concurrently-appended entry \u2014 with no error surfaced (appendHabitLog succeeded from its own point of view, and B's compaction write is a fire-and-forget promise whose .catch is a no-op). The secondary claim also checks out: atomicWriteFile's tmp path is only pid-scoped (`${filePath}.${process.pid}.tmp`, atomicWrite.ts:13), so two same-process getHabits() compactions racing on the same tmp name would have the second rename() hit ENOENT against a tmp already consumed by the first \u2014 again silently swallowed by getHabits' .catch. Both mechanisms are real, unguarded hazards, not covered by any existing lock.",
+   "suggestedFix": "Serialize ALL writes to habitsNdjsonPath (both appendHabitLog and the compaction branch in getHabits) through a single promise-chain mutex, mirroring the writeChain pattern already used for telemetryPath in this same class (or reuse memory.service.ts's withWriteLock pattern). Additionally, await the atomicWriteFile call in getHabits instead of fire-and-forget so callers/tests can observe failures, and make atomicWriteFile's tmp filename collision-proof within a single process (e.g. append a monotonic counter or crypto.randomUUID() suffix in addition to pid) so two same-process writers to the same path never target an identical tmp file.",
+   "subsystem": "persistence"
+  },
+  {
+   "file": "src/services/memory.service.ts",
+   "line": 312,
+   "title": "saveNote() writes directly to the live file instead of through atomicWriteFile, truncating existing notes on crash",
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed. saveNote (line 293-316) calls `await fs.writeFile(notePath, header + trimmedContent, 'utf-8')` directly at line 312, inside withWriteLock \u2014 but withWriteLock only serializes against OTHER in-process writers; it provides zero protection against a crash mid-write. fs.writeFile opens the target with the default 'w' flag (O_TRUNC), so on an update to an existing note (same notePath, since sanitizeNoteTitle is deterministic per title) a crash/OOM/power-loss/ENOSPC between truncate and write-completion leaves a truncated or empty file, destroying the prior content \u2014 exactly the failure mode atomicWrite.ts's own docstring (lines 4-11) is written to prevent. Every other store in this same file (memoryPath at 183/210/239, correctionsPath at 391) already routes through atomicWriteFile, and it's already imported in this file (line 6), confirming saveNote is the one write path left exposed with no counterpart guard.",
+   "suggestedFix": "Replace `await fs.writeFile(notePath, header + trimmedContent, 'utf-8');` at memory.service.ts:312 with `await atomicWriteFile(notePath, header + trimmedContent);`, consistent with how memoryPath and correctionsPath are persisted elsewhere in this file.",
+   "subsystem": "persistence"
+  },
+  {
+   "title": "Literal \"%s\" in typed text is silently converted to a single space",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 185,
+   "real": true,
+   "severity": "high",
+   "reasoning": "Confirmed by tracing the exact pipeline. `escaped = normalized.replace(/[\\s\\\\\"'`$()<>|;&*?~[\\]{}#!%]/g, c => c===' ' ? '%s' : '\\\\'+c)` matches each special character INDIVIDUALLY: a literal '%' becomes '\\%' but the following 's' (not in the character class) is left untouched. `spawnAdb` uses `spawn('adb', args)` with no shell, so this exact string reaches the local `adb` binary unmangled; `adb shell` then joins the args and hands them to the DEVICE's shell (exactly as the code's own comment at lines 175-178 states), which strips a single unquoted backslash and passes through the literal next character. So `\\%s` de-escapes on-device back to the literal two-char sequence `%s` \u2014 bit-for-bit identical to what the encoder emits for an actual space (line 185's `c===' ' ? '%s' : ...` branch). `input text` (per this file's own documented assumption of '%s' as its space token) can't tell the two apart and converts it to a single space. Concrete trigger: type(\"increase%special\") -> escaped \"increase\\%special\" -> device shell delivers \"increase%special\" to `input text` -> tool's own %s convention fires on the substring at index 8-9 -> renders as \"increase pecial\". No guard anywhere disambiguates an intentionally-escaped '%' from the tool's own space token once it survives the shell layer.",
+   "suggestedFix": "A single backslash cannot protect '%' because the device shell consumes exactly one level and `input text`'s %s\u2192space substitution is applied to the final string with no escape awareness of its own. Detect any literal '%' in the original text immediately followed by 's' and break the `input text` call so the two characters never land in the same argument the tool scans (e.g. flush pending text, send 's' via a separate keyevent/input-text call, then resume) \u2014 or abandon the `input text` %s convention altogether in favor of a typing path (e.g. ADB Keyboard's base64 broadcast-intent method) that doesn't reinterpret arbitrary substrings of the payload.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "Screen dimensions are cached forever, so scroll() swipes to the wrong place after rotation or after a transient query failure",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 93,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed directly: `this.screenDimsQueried = true;` (line 97) is set unconditionally BEFORE the try/catch that attempts the `wm size` query, and there is no code anywhere in the class that ever resets `screenDimsQueried` or re-queries dimensions. Two concrete triggers both hold up: (1) if `spawnAdb(['shell','wm','size'])` throws (e.g. ADB_TIMEOUT on a cold-started device), control falls to the catch block, and the hardcoded defaults 1080x2400 (lines 111-113) are cached permanently \u2014 screenDimsQueried is already true, so future calls short-circuit at line 94 and never retry even after the device becomes reachable with a genuinely different resolution. (2) once real dimensions are cached, an in-session orientation change (portrait<->landscape) is never detected or invalidated, so scroll()'s startX/startY/endY math (lines 193-203) keeps using stale values. No guard mitigates either path.",
+   "suggestedFix": "Only set `screenDimsQueried = true` after a successful parse (move it inside the `if (match)` block, or track success separately from 'attempted'), so a failed query is retried on the next call instead of permanently locking in the 1080x2400 fallback. Separately, consider exposing an explicit refresh/invalidate hook (or a short TTL) so a legitimate mid-session rotation can be detected rather than relying on a one-time cache for the life of the instance.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "pressKey() silently sends ENTER for any key it doesn't explicitly recognize",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 209,
+   "real": true,
+   "severity": "medium",
+   "reasoning": "Confirmed exactly as described: `let code = '66';` is the default, and only 'enter' (line 210, redundantly re-set to '66'), 'back' (line 211, '4'), and 'home' (line 212, '3') override it. Any other key name \u2014 pressKey('tab'), pressKey('delete'), pressKey('escape'), pressKey('space'), etc. \u2014 falls through with `code` still '66' and the provider issues `input keyevent 66` (KEYCODE_ENTER) with no error, warning, or no-op path. Concrete trigger: an agent focused on a multi-line text field calls pressKey('escape') to dismiss a picker, or pressKey('tab') to move focus, and instead the field receives an Enter keypress, which for many forms triggers submission \u2014 a state change the caller never requested and that isn't traceable to a key-mapping gap without reading this source.",
+   "suggestedFix": "Add explicit mappings for other common keys the agent is likely to request (tab -> 61, delete/backspace -> 67, escape -> 111, space -> 62, arrows -> 19-22), and for a genuinely unrecognized key name, reject the promise or log a clear warning and skip sending a keyevent rather than silently substituting Enter.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "On-device dump/screenshot files leak when the adb pull step fails after a successful dump",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 123,
+   "real": true,
+   "severity": "low",
+   "reasoning": "Confirmed in both cited locations. In getUiHierarchyXml (lines 123-132): `await this.spawnAdb(['shell','uiautomator','dump',devXml]); await this.spawnAdb(['pull', devXml, xmlTempFile]); await this.spawnAdb(['shell','rm','-f',devXml]).catch(()=>{});` \u2014 if the dump succeeds but the pull call rejects (e.g. ADB_TIMEOUT, which spawnAdb explicitly models and rejects on, per lines 35-41), the `await` on the rejected pull promise throws immediately, jumping straight to the outer `catch { return \"\"; }` and skipping the `rm -f` line entirely, so devXml is never deleted. Same shape in getScreenContext (lines 234-241): the cleanup is chained via `.then()` after pull's `.then()`, so a pull rejection short-circuits the chain before the rm `.then()` runs. waitForUiIdle calls getUiHierarchyXml up to 10 times per idle-wait with a fresh UUID each time, so repeated transient pull failures do accumulate orphaned files with no cleanup path.",
+   "suggestedFix": "Wrap the dump+pull steps in a try/finally (or attach the `rm -f ... .catch(()=>{})` cleanup as a `.finally()`/always-run step) so the on-device temp file is removed regardless of whether the subsequent pull succeeds, in both getUiHierarchyXml and getScreenContext.",
+   "subsystem": "providers"
+  },
+  {
+   "title": "waitForUiIdle() can treat repeated dump failures as \"UI settled\" and return early",
+   "file": "src/services/providers/android.provider.ts",
+   "line": 148,
+   "real": false,
+   "severity": "medium",
+   "reasoning": "Refuted by reading the actual condition at line 148: `if (currentXml && currentXml === lastXml)`. The `currentXml &&` guard means an empty string (which is what getUiHierarchyXml returns on any failure, line 131) is falsy and short-circuits the whole condition to false, so two consecutive failures do NOT increment stableCount \u2014 they instead hit the `else { stableCount = 0; }` branch each time, exactly like any other non-matching pair. The candidate's premise (\"currentXml===''===lastXml is already true after just ONE poll, giving stableCount=1\") is factually wrong: the guard explicitly prevents empty-string equality from ever counting as stability. A run of dump failures therefore keeps stableCount at 0 and the loop continues polling for the full maxPolls budget (10 iterations) rather than breaking early \u2014 the opposite of what's claimed.",
+   "suggestedFix": "No fix needed \u2014 the existing `currentXml &&` guard already prevents this failure mode.",
+   "subsystem": "providers"
+  }
+ ],
+ "subsystemsScanned": [
+  "agent-loop",
+  "capability-safety",
+  "model-download",
+  "network-auth",
+  "persistence",
+  "providers"
+ ]
+}
