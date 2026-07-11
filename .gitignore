@@ -66,3 +66,7 @@ coverage/
 
 # Local config that may hold secrets (never commit)
 quenderin.json
+
+# TypeScript incremental build cache — regenerated on every build, must not be tracked
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
