@@ -80,8 +80,13 @@ export class PromptBuilder {
             );
         }
 
+        // r-uc #4: the history is NOT trusted — its [Success]/[Failed] entries interpolate raw
+        // on-screen element text (uiVerifier), which a malicious app controls. Every OTHER external
+        // source here is fenced with wrapUntrustedData; history was the one hole, presented AS
+        // "trusted agent history", so attacker screen text reached the model without fence-marker
+        // neutralization. Fence it like the rest — it's a passive record, never trusted instructions.
         const historyText = actionHistory.length > 0
-            ? `\n\nRecent Actions (trusted agent history):\n${actionHistory.slice(-5).join('\n')}`
+            ? '\n\n' + wrapUntrustedData('RECENT_ACTIONS', actionHistory.slice(-5).join('\n'))
             : '';
 
         const untrustedUiState = wrapUntrustedData('UI_STATE', textRepresentation);

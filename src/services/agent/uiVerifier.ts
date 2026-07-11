@@ -160,10 +160,14 @@ export class UiVerifier {
             e.contentDesc === preNode.contentDesc
         );
 
+        // r-uc #4 (defense in depth): this label is attacker-controlled on-screen text that lands in
+        // actionHistory. It's fenced as untrusted in promptBuilder; also cap its length here so a giant
+        // crafted label can't dominate the history window.
+        const label = (preNode.text || preNode.className || '?').slice(0, 80);
         if (nodeStillExists) {
-            return `[Failed] Action on '${preNode.text || preNode.className}' did not dismiss or change it. It is still visible. You may need to scroll, or it may be disabled.`;
+            return `[Failed] Action on '${label}' did not dismiss or change it. It is still visible. You may need to scroll, or it may be disabled.`;
         } else {
-            return `[Success] Action executed and UI changed. Element '${preNode.text || preNode.className}' is no longer in the same state.`;
+            return `[Success] Action executed and UI changed. Element '${label}' is no longer in the same state.`;
         }
     }
 }

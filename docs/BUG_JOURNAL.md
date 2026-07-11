@@ -10,6 +10,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   to a `.part` staging file and `rename` to the real path only after verify (magic + exact SIZE + sha).
   Corollary: a magic-header-only check does NOT catch a truncation that keeps the header — gate on the
   expected byte size or a hash. (r-uc #1/#5: llm.service staging + modelIntegrity size gate)
+- **Fence EVERY external source into the LLM prompt, not most — audit the whole set.** One unfenced
+  channel is the whole hole. Action HISTORY looked internal but embeds attacker-controlled on-screen
+  text; it was the only source presented as "trusted" while UI/vision/attachments/goal/corrections were
+  all wrapped. When you add any prompt input, ask "can an adversary influence its bytes?" — if maybe,
+  wrapUntrustedData it and cap its length. (r-uc #4)
 - **HEAD is not a free pass — gate it exactly like GET.** Express 5 falls an unmatched HEAD back to the
   GET handler, so a route protected only for `method==='GET'` runs its handler (and leaks Content-Length /
   fires side effects) on an un-tokened HEAD. Auth predicates must treat HEAD as GET. (r-uc #3)
@@ -510,6 +515,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (r-uc #4: prompt-injection via the "trusted" action history) — every external source in
+  the agent prompt (UI_STATE, VISION, ATTACHMENTS, USER_GOAL, corrections, trajectory) was fenced with
+  wrapUntrustedData EXCEPT actionHistory, which was labeled "Recent Actions (trusted agent history)".
+  But history embeds raw on-screen element text (uiVerifier's [Success]/[Failed] strings) — attacker
+  controlled. A malicious app label could smuggle instructions into a section the model trusts. Fix:
+  fence history as RECENT_ACTIONS (neutralizes fence markers) + cap the interpolated label to 80 chars.
+  Lesson: audit that EVERY external source shares the fence, not most. (#13 graceful obs-error end, #16
+  screenshot-leak on override/stop paths fixed alongside.)
 
 - 2026-07-11 (r-uc #1/#5: a partial GGUF download was loadable by the native parser) — the download
   streamed straight to the FINAL `modelPath(id)`, and the load path (`selectBestModel`) picks by bare

@@ -443,7 +443,26 @@ export class AgentService {
             emitter.emit('status', `--- Step ${step} ---`);
 
             // 1. Verify and Gather UI State
-            const state = await this.uiVerifier.waitForIdle(emitter);
+            // r-uc #13: a transient device/observation error (adb hiccup, screenshot read failure) must
+            // end the mission through the SAME terminal path as any other failure — a clear error + a
+            // 'done' + a metrics row — not propagate out of the loop, skipping every terminal event and
+            // surfacing the caller's generic "restart the server" catch-all with no recorded outcome.
+            let state: Awaited<ReturnType<typeof this.uiVerifier.waitForIdle>>;
+            try {
+                state = await this.uiVerifier.waitForIdle(emitter);
+            } catch (obsErr) {
+                const msg = obsErr instanceof Error ? obsErr.message : String(obsErr);
+                logger.error('[AgentService] Observation failed:', msg);
+                emitter.emit('error', "**Couldn't read the device screen**\nA temporary error interrupted the mission. To fix this:\n1. Check the device is connected and awake.\n2. Give me the instruction again in a moment.");
+                emitter.emit('done');
+                await this.metricsService.appendMetrics({
+                    id: Date.now().toString(), goal_text: goal, success: false,
+                    total_steps: step, duration_ms: Date.now() - startTimeMs,
+                    total_retries: totalRetries, timestamp: new Date().toISOString(),
+                });
+                isDone = true;   // suppress the post-loop timeout terminal — this run already ended
+                break;
+            }
 
             // 2. Self-Healing State Verification
             if (expectedActionEffect && state.hash === previousUiHash) {
@@ -465,7 +484,12 @@ export class AgentService {
                 emitter.emit('status', " Agent paused for manual human correction. Waiting for resume...");
                 await new Promise(r => setTimeout(r, 1000));
             }
-            if (stopped()) { emitter.emit('status', ' Stopped — you halted the agent.'); break; }
+            if (stopped()) {
+                // r-uc #16: free THIS step's screenshot before the early break — the unlink lives in
+                // generateAction's finally, which a stop-while-paused break never reaches.
+                if (state.screenshotPath) fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
+                emitter.emit('status', ' Stopped — you halted the agent.'); break;
+            }
 
             // Did the human provide a manual override while we were paused?
             if (this._pendingManualOverride) {
@@ -477,6 +501,9 @@ export class AgentService {
 
                 this._pendingManualOverride = null;
                 expectedActionEffect = true;
+                // r-uc #16: free THIS step's screenshot before the override continue — it skips
+                // generateAction (whose finally does the unlink), so otherwise the frame leaks to /tmp.
+                if (state.screenshotPath) fs.unlink(state.screenshotPath).catch(() => { /* already gone */ });
                 continue; // Immediately jump to the next verify loop step
             }
 
