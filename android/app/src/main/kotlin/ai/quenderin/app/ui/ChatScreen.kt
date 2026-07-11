@@ -36,6 +36,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -58,13 +59,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -398,7 +408,10 @@ fun ChatScreen(
     }
 }
 
-// ── Top bar: avatar + name + live "on-device · private" status + overflow menu ──
+// ── Top bar: Material 3 TopAppBar — avatar + name + live "on-device · private" status ──
+// Standard platform chrome (ArrowBack, MoreVert, 48dp IconButtons, tonal surface); the
+// WhatsApp-style tappable contact identity lives in the title slot.
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatTopBar(
     model: ModelEntry,
@@ -409,61 +422,61 @@ private fun ChatTopBar(
     onShare: () -> Unit,
 ) {
     val colors = Quenderin.colors
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 4.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Back to the conversation list (WhatsApp: the chat header's back arrow).
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .semantics { contentDescription = "Back to conversations" }
-                    .combinedClickable(onClick = onBack, onLongClick = {}),
-                contentAlignment = Alignment.Center,
-            ) { BackIcon(MaterialTheme.colorScheme.onSurface) }
-            // The avatar + name is a tappable "contact" that opens the model profile (like tapping a
-            // chat's header in WhatsApp). Ripple + a11y label so it reads as a button.
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.chat_back_to_conversations),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        },
+        title = {
+            // The avatar + name is a tappable "contact" that opens the model profile (like
+            // tapping a chat's header in WhatsApp). Ripple + a11y label so it reads as a button.
+            val aboutModel = stringResource(R.string.chat_about_model, model.label)
             Row(
                 Modifier
-                    .weight(1f)
-                    .combinedClickable(
-                        onClick = onTitleClick,
-                        onLongClick = {},
-                    )
-                    .semantics { contentDescription = "About ${model.label}" }
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onTitleClick)
+                    .semantics { contentDescription = aboutModel }
                     .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ModelAvatar(size = 40.dp)
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
+                Column {
                     Text(
                         model.label,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(7.dp).background(colors.status, CircleShape))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "on-device · private",
+                            stringResource(R.string.badge_on_device_private),
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.statusText,
                         )
                     }
                 }
             }
+        },
+        actions = {
             var menuOpen by remember { mutableStateOf(false) }
             Box {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = "More options" }
-                        .combinedClickable(onClick = { menuOpen = true }, onLongClick = {}),
-                    contentAlignment = Alignment.Center,
-                ) { OverflowIcon(MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.chat_more_options),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.chat_new_conversation)) }, onClick = { menuOpen = false; onNew() })
                     if (hasMessages) {
@@ -471,8 +484,9 @@ private fun ChatTopBar(
                     }
                 }
             }
-        }
-    }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+    )
 }
 
 /** The model rendered as a chat "contact": the Quenderin mascot (the elf from the official app
@@ -759,24 +773,5 @@ private fun SendIcon(color: Color) {
     }
 }
 
-@Composable
-private fun OverflowIcon(color: Color) {
-    androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
-        val cx = size.width / 2f
-        val r = 1.9.dp.toPx()
-        for (fy in listOf(0.26f, 0.5f, 0.74f)) {
-            drawCircle(color, r, androidx.compose.ui.geometry.Offset(cx, size.height * fy))
-        }
-    }
-}
-
-@Composable
-private fun BackIcon(color: Color) {
-    androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
-        val w = size.width; val h = size.height
-        val sw = 2.2.dp.toPx()
-        // A left-pointing chevron.
-        drawLine(color, androidx.compose.ui.geometry.Offset(w * 0.60f, h * 0.24f), androidx.compose.ui.geometry.Offset(w * 0.34f, h * 0.5f), sw, StrokeCap.Round)
-        drawLine(color, androidx.compose.ui.geometry.Offset(w * 0.34f, h * 0.5f), androidx.compose.ui.geometry.Offset(w * 0.60f, h * 0.76f), sw, StrokeCap.Round)
-    }
-}
+// (BackIcon/OverflowIcon Canvas hand-drawings removed — the top bar now uses the platform
+// Material icons via TopAppBar, so the header reads as native Android chrome.)

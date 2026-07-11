@@ -1,5 +1,6 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.R
 import ai.quenderin.core.CalculatorTool
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
@@ -10,7 +11,9 @@ import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.UnitConverterTool
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -38,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -77,14 +83,15 @@ fun MainTabs(
             // shrinking the total via a height() modifier just crushes the icons. Here the content is a
             // fixed 56dp band and navigationBarsPadding() adds the system-nav inset BELOW it — tight
             // like a messaging app, and correct on gesture- and 3-button-nav devices alike.
-            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
+            // M3 NavigationBar look (tonal container, no drop shadow) on the compact 60dp band.
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
                 Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().height(56.dp),
+                    Modifier.fillMaxWidth().navigationBarsPadding().height(60.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    BottomTab(NavKind.Chat, "Chat", tab == 0, { tab = 0 }, Modifier.weight(1f))
-                    BottomTab(NavKind.Agent, "Agent", tab == 1, { tab = 1 }, Modifier.weight(1f))
-                    BottomTab(NavKind.Settings, "Settings", tab == 2, { tab = 2 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Chat, stringResource(R.string.tab_chat), tab == 0, { tab = 0 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Agent, stringResource(R.string.tab_agent), tab == 1, { tab = 1 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Settings, stringResource(R.string.tab_settings), tab == 2, { tab = 2 }, Modifier.weight(1f))
                 }
             }
         },
@@ -194,10 +201,10 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
 private enum class NavKind { Chat, Agent, Settings }
 
 /**
- * One bottom-bar destination: a drawn icon over a small label, the whole column tappable. No pill
- * indicator behind the icon (WhatsApp-style) — selection reads through colour only, and a no-ripple
- * click keeps geometry stable (state never resizes the item). [modifier] carries the RowScope weight
- * so the three tabs split the width evenly.
+ * One bottom-bar destination in the native Material 3 NavigationBar idiom: the icon sits in a
+ * PILL indicator (secondaryContainer when selected, transparent otherwise — colour-only change,
+ * geometry never moves), label below. No-ripple click keeps the band calm like the platform bar.
+ * [modifier] carries the RowScope weight so the three tabs split the width evenly.
  */
 @Composable
 private fun BottomTab(
@@ -207,7 +214,11 @@ private fun BottomTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val labelColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+    val pill by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0f),
+        label = "tabPill",
+    )
     Column(
         modifier
             .fillMaxSize()
@@ -219,11 +230,19 @@ private fun BottomTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        NavIcon(kind, selected)
+        Box(
+            Modifier
+                .width(56.dp)
+                .height(30.dp)
+                .background(pill, RoundedCornerShape(15.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            NavIcon(kind, selected)
+        }
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
-            color = color,
+            color = labelColor,
             modifier = Modifier.padding(top = 3.dp),
         )
     }

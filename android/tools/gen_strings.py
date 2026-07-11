@@ -58,6 +58,41 @@ RES = {
     "consent_read_terms": "Read the full terms",
     "badge_on_device_private": "on-device · private",
     "link_hugging_face": "Hugging Face ↗",
+    # bottom navigation tabs (TSV rows: Chat / Agent / Settings)
+    "tab_chat": "Chat",
+    "tab_agent": "Agent",
+    "tab_settings": "Settings",
+    # first-run flow: welcome page (EXTRAS: phone-baked wording; iOS twin uses %@ device word)
+    "welcome_title": "Meet Quenderin",
+    "welcome_tagline": "A personal AI that lives on your phone — not in someone's cloud.",
+    "welcome_private_title": "Private by design",
+    "welcome_private_body": "Conversations never leave this phone. No account, no tracking.",
+    "welcome_offline_title": "Works offline",
+    "welcome_offline_body": "Download a model once — then it answers anywhere, airplane mode included.",
+    "welcome_oss_title": "Open source",
+    "welcome_oss_body": "Every line of Quenderin is public. Read it, star it, improve it.",
+    # first-run flow: consent page (exact TSV rows — shared wording with iOS)
+    "consent_use_judgement": "Use with judgement",
+    "consent_wrong_title": "AI can be wrong",
+    "consent_wrong_body": "On-device models are small. They can be confidently wrong, outdated, or occasionally inappropriate — and nothing filters them.",
+    "consent_advice_title": "It is not advice",
+    "consent_advice_body": "Nothing Quenderin writes is medical, legal, financial, or safety advice. Verify anything that matters with a qualified source.",
+    "consent_charge_title": "You are in charge",
+    "consent_charge_body": "Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone.",
+    "consent_legal": "By continuing you agree: Quenderin is provided “as is”, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce.",
+    # first-run flow: onboarding hero + phases
+    "onboarding_tagline": "An AI that runs on your phone — even offline.",
+    "onboarding_private_line": "Private by design — no account, no cloud, no tracking.",
+    "onboarding_checking": "Checking your device…",
+    "onboarding_recommended_overline": "RECOMMENDED FOR YOUR DEVICE",
+    "onboarding_free_up_storage": "Or free up storage and come back.",
+    "onboarding_downloading": "Downloading",
+    "onboarding_not_enough_space": "Not enough free space",
+    # interpolated first-run strings
+    "onboarding_size_one_time": "%1$s · one time, then it's yours offline",
+    "onboarding_warming": "Warming up %1$s…",
+    "onboarding_storage_needs": "This model needs ~%1$s GB — your phone has %2$s GB free.",
+    "onboarding_downloading_a11y": "Downloading %1$s, %2$d percent",
     # interpolated (kept as Android format strings; args supplied at the call site)
     "agent_undo_last_move": "Undo last move (%1$d)",
     "chat_remove_named": "Remove %1$s",
@@ -67,6 +102,63 @@ RES = {
 
 # Android-only strings (or wording that differs from any iOS key) — full 4-lang set.
 EXTRAS = {
+    # first-run flow (phone-baked variants of the iOS %@-device rows + format-string conversions)
+    "A personal AI that lives on your phone — not in someone's cloud.":
+        ("Персональный ИИ, который живёт на вашем телефоне — а не в чужом облаке.",
+         "클라우드가 아닌 당신의 휴대폰 안에 사는 개인 AI.",
+         "誰かのクラウドではなく、あなたのスマートフォンに住むパーソナルAI。",
+         "住在你手机上的个人 AI——而不是别人的云端。"),
+    "Private by design":
+        ("Приватность по умолчанию", "설계부터 프라이버시", "設計からプライバシー重視", "隐私为本"),
+    "Conversations never leave this phone. No account, no tracking.":
+        ("Беседы не покидают этот телефон. Без аккаунта, без слежки.",
+         "대화는 이 휴대폰을 떠나지 않습니다. 계정도, 추적도 없습니다.",
+         "会話はこのスマートフォンから出ません。アカウントも追跡もなし。",
+         "对话绝不离开这部手机。无账号，无跟踪。"),
+    "Works offline":
+        ("Работает офлайн", "오프라인에서 작동", "オフラインで動作", "离线可用"),
+    "Download a model once — then it answers anywhere, airplane mode included.":
+        ("Скачайте модель один раз — и она отвечает где угодно, даже в авиарежиме.",
+         "모델을 한 번만 다운로드하면 비행기 모드에서도 어디서나 답합니다.",
+         "モデルを一度ダウンロードすれば、機内モードでもどこでも答えます。",
+         "模型只需下载一次——随处可答，飞行模式也不例外。"),
+    "Open source":
+        ("Открытый код", "오픈 소스", "オープンソース", "开源"),
+    "Every line of Quenderin is public. Read it, star it, improve it.":
+        ("Каждая строка Quenderin открыта. Читайте, ставьте звёзды, улучшайте.",
+         "Quenderin의 모든 코드가 공개되어 있습니다. 읽고, 별을 누르고, 개선하세요.",
+         "Quenderinのコードはすべて公開。読んで、スターを付けて、改善してください。",
+         "Quenderin 的每一行代码都公开。欢迎阅读、加星、改进。"),
+    "An AI that runs on your phone — even offline.":
+        ("ИИ, который работает на вашем телефоне — даже офлайн.",
+         "오프라인에서도 당신의 휴대폰에서 실행되는 AI.",
+         "オフラインでもスマートフォン上で動くAI。",
+         "即使离线也能在你的手机上运行的 AI。"),
+    "Private by design — no account, no cloud, no tracking.":
+        ("Приватность по умолчанию — без аккаунта, облака и слежки.",
+         "설계부터 프라이버시 — 계정, 클라우드, 추적이 없습니다.",
+         "プライバシー最優先の設計 — アカウントもクラウドも追跡もなし。",
+         "隐私为本——无账号、无云端、无跟踪。"),
+    "Or free up storage and come back.":
+        ("Или освободите место и вернитесь.", "또는 저장 공간을 확보한 후 다시 시도하세요.",
+         "または空き容量を確保してからもう一度。", "或者清理存储空间后再试。"),
+    "Downloading":
+        ("Загрузка", "다운로드 중", "ダウンロード中", "正在下载"),
+    "Not enough free space":
+        ("Недостаточно свободного места", "여유 공간이 부족합니다", "空き容量が足りません", "可用空间不足"),
+    "%1$s · one time, then it's yours offline":
+        ("%1$s · один раз — и модель ваша, офлайн", "%1$s · 한 번만 받으면 오프라인에서 계속 사용",
+         "%1$s · 一度きり、その後はオフラインで利用可能", "%1$s · 一次下载，永久离线可用"),
+    "Warming up %1$s…":
+        ("Прогреваем %1$s…", "%1$s 준비 중…", "%1$sをウォームアップ中…", "正在预热 %1$s…"),
+    "This model needs ~%1$s GB — your phone has %2$s GB free.":
+        ("Этой модели нужно ~%1$s ГБ — на вашем телефоне свободно %2$s ГБ.",
+         "이 모델에는 약 %1$s GB가 필요합니다 — 휴대폰에는 %2$s GB의 여유가 있습니다.",
+         "このモデルには約%1$s GBが必要です — スマートフォンの空きは%2$s GBです。",
+         "此模型需要约 %1$s GB——你的手机有 %2$s GB 可用。"),
+    "Downloading %1$s, %2$d percent":
+        ("Загрузка %1$s, %2$d процентов", "%1$s 다운로드 중, %2$d퍼센트",
+         "%1$sをダウンロード中、%2$dパーセント", "正在下载 %1$s，%2$d％"),
     "Try again":        ("Повторить", "다시 시도", "再試行", "重试"),
     "Get started":      ("Начать", "시작하기", "始める", "开始"),
     "New conversation": ("Новая беседа", "새 대화", "新しい会話", "新对话"),

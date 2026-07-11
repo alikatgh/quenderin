@@ -44,23 +44,23 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         ModelAvatar(96.dp)
         Spacer(Modifier.height(18.dp))
         Text(
-            "Meet Quenderin",
+            stringResource(R.string.welcome_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "A personal AI that lives on your phone — not in someone's cloud.",
+            stringResource(R.string.welcome_tagline),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            WelcomeRow("Private by design", "Conversations never leave this phone. No account, no tracking.")
-            WelcomeRow("Works offline", "Download a model once — then it answers anywhere, airplane mode included.")
-            WelcomeRow("Open source", "Every line of Quenderin is public. Read it, star it, improve it.")
+            WelcomeRow(stringResource(R.string.welcome_private_title), stringResource(R.string.welcome_private_body))
+            WelcomeRow(stringResource(R.string.welcome_offline_title), stringResource(R.string.welcome_offline_body))
+            WelcomeRow(stringResource(R.string.welcome_oss_title), stringResource(R.string.welcome_oss_body))
         }
         Spacer(Modifier.height(32.dp))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {

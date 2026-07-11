@@ -43,21 +43,23 @@ fun ConsentScreen(onAgree: () -> Unit) {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            "Use with judgement",
+            stringResource(R.string.consent_use_judgement),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(28.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            ConsentRow("AI can be wrong", SupportContact.CONSENT_WRONG)
-            ConsentRow("It is not advice", SupportContact.CONSENT_NOT_ADVICE)
-            ConsentRow("You are in charge", SupportContact.CONSENT_RESPONSIBILITY)
+            // Same wording as SupportContact.CONSENT_* (shared with iOS) via the string catalog,
+            // so ru/ko/ja/zh users read the disclaimer in their language.
+            ConsentRow(stringResource(R.string.consent_wrong_title), stringResource(R.string.consent_wrong_body))
+            ConsentRow(stringResource(R.string.consent_advice_title), stringResource(R.string.consent_advice_body))
+            ConsentRow(stringResource(R.string.consent_charge_title), stringResource(R.string.consent_charge_body))
         }
         Spacer(Modifier.height(24.dp))
         // The binding sentence, in full, right above the button that accepts it.
         Text(
-            SupportContact.CONSENT_LEGAL,
+            stringResource(R.string.consent_legal),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

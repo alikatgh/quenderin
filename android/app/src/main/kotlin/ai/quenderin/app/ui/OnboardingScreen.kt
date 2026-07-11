@@ -241,7 +241,7 @@ fun OnboardingScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "An AI that runs on your phone — even offline.",
+                    stringResource(R.string.onboarding_tagline),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -312,7 +312,7 @@ private fun PhaseContent(
         when (phase) {
             is OnboardingPhase.Idle -> {
                 Text(
-                    "Private by design — no account, no cloud, no tracking.",
+                    stringResource(R.string.onboarding_private_line),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -323,14 +323,14 @@ private fun PhaseContent(
 
             is OnboardingPhase.Probing ->
                 Text(
-                    "Checking your device…",
+                    stringResource(R.string.onboarding_checking),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
             is OnboardingPhase.Recommended -> {
                 Text(
-                    "RECOMMENDED FOR YOUR DEVICE",
+                    stringResource(R.string.onboarding_recommended_overline),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -383,7 +383,7 @@ private fun PhaseContent(
                     Button(onClick = onChoose) { Text(stringResource(R.string.onboarding_choose_smaller)) }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Or free up storage and come back.",
+                        stringResource(R.string.onboarding_free_up_storage),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -393,23 +393,24 @@ private fun PhaseContent(
             is OnboardingPhase.Downloading -> {
                 val pct = (fraction * 100).toInt().coerceIn(0, 100)
                 Text(
-                    "Downloading",
+                    stringResource(R.string.onboarding_downloading),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(2.dp))
+                val downloadingState = stringResource(R.string.onboarding_downloading_a11y, phase.model.label, pct)
                 Text(
                     phase.model.label,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.semantics {
                         progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
-                        stateDescription = "Downloading ${phase.model.label}, $pct percent"
+                        stateDescription = downloadingState
                     },
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "${phase.model.sizeLabel} · one time, then it's yours offline",
+                    stringResource(R.string.onboarding_size_one_time, phase.model.sizeLabel),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -422,7 +423,7 @@ private fun PhaseContent(
 
             is OnboardingPhase.Loading ->
                 Text(
-                    "Warming up ${phase.model.label}…",
+                    stringResource(R.string.onboarding_warming, phase.model.label),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -469,7 +470,7 @@ private fun StorageShortfallCard(storage: StorageCheckResult) {
                         .background(warn, androidx.compose.foundation.shape.CircleShape),
                 )
                 Text(
-                    "  Not enough free space",
+                    "  " + stringResource(R.string.onboarding_not_enough_space),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = warn,
@@ -477,7 +478,7 @@ private fun StorageShortfallCard(storage: StorageCheckResult) {
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "This model needs ~${gb(storage.requiredBytes)} GB — your phone has ${gb(storage.availableBytes)} GB free.",
+                stringResource(R.string.onboarding_storage_needs, gb(storage.requiredBytes), gb(storage.availableBytes)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

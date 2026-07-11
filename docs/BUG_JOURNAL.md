@@ -516,6 +516,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (Android ru locale showed EN onboarding: hero/welcome/consent all hardcoded literals) —
+  the 43-key localization pass covered the MAIN app but skipped the FIRST-RUN flow (Welcome/Consent/
+  OnboardingScreen) + tab labels + chat status badge. Fix: +30 keys via gen_strings.py (TSV rows the
+  iOS twin already had + EXTRAS), wired through stringResource. Verify per-locale by WALKING the
+  first-run flow (`cmd locale set-app-locales <pkg> --locales ru`), not by grepping key counts.
+
 - 2026-07-11 (Android release: `-Pquenderin.vulkan=false` still built Vulkan → vulkan.hpp fatal) —
   gradle only appended `-DQUENDERIN_VULKAN=ON` when enabled, passed NOTHING when disabled; CMake's
   `option(... ON)` default won. Fix: app/build.gradle.kts:56 always passes ON|OFF explicitly.
