@@ -275,9 +275,9 @@ public struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Text(row.purpose).font(.caption).foregroundStyle(.secondary)
-                        // The technical id stays visible but demoted — power users + the run-log/ledger
-                        // still speak it; a person no longer has to read "mac.ui.tap" as the name.
-                        Text(row.id).font(.caption2.monospaced()).foregroundStyle(.tertiary)
+                        // No raw tool id here — "fs.rename" is developer-speak (owner call,
+                        // 2026-07-11). The run log / audit ledger still records ids for
+                        // anyone who needs to correlate.
                     }
                     Spacer()
                     if row.requiresConsent {

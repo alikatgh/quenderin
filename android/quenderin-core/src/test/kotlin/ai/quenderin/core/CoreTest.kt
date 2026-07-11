@@ -32,6 +32,10 @@ class CoreTest {
         assertEquals(13, ModelCatalog.models.size)
         assertEquals("llama32-1b-q2", ModelCatalog.smallest.id)
         ModelCatalog.models.forEach { assertNotNull(Quantization.info(it.quantization)) }
+        // Russian-first honesty: every entry states its languages; Llama 3.2 says "no Russian".
+        ModelCatalog.models.forEach { assertNotNull(it.languagesLabel) }
+        assertTrue(ModelCatalog.entry("llama32-1b")!!.languagesLabel!!.contains("no Russian"))
+        assertTrue(ConversationContext.DEFAULT_SYSTEM_PROMPT.contains("same language the user writes in"))
     }
 
     @Test fun memoryFitness() {

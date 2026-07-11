@@ -1,0 +1,245 @@
+# translations.tsv — en_key <TAB> ru <TAB> ko <TAB> ja <TAB> zh-Hans
+# Russian filled first (первые пользователи — русскоязычные); ko/ja/zh-Hans pending.
+# Interpolations use format specifiers: %@ (strings), %lld (integers) — must match the key's set.
+# Keys that are concatenated literals in source ("a " + "b") are NOT here: SwiftUI treats those as
+# verbatim strings (no localization lookup) — they need a source-side fix first (tracked in CHANGELOG).
+A one-time download — the main window shows progress and you can cancel any time. Your current model stays installed.	Однократная загрузка — прогресс виден в главном окне, отменить можно в любой момент. Текущая модель останется установленной.			
+A personal AI that lives on your %@ — not in someone's cloud.	Персональный ИИ, который живёт на вашем устройстве (%@) — а не в чужом облаке.			
+About Quenderin	О Quenderin			
+About Quenderin — settings, help, and links	О Quenderin — настройки, справка и ссылки			
+About %@	О модели %@			
+Accept the license on Hugging Face, then download it there	Примите лицензию на Hugging Face и скачайте модель там			
+Actions for %@	Действия для %@			
+Active	Активна			
+Active — in use	Активна — используется			
+Active — protected	Активна — защищена			
+Agent	Агент			
+Agent activity	Действия агента			
+Agent capabilities	Возможности агента			
+All of these run fully on your %@ — a one-time download, then it's yours offline.	Всё это работает полностью на вашем устройстве (%@) — одна загрузка, и модель ваша, офлайн.			
+Allow %@	Разрешить %@			
+Allow all steps for this goal	Разрешить все шаги этой задачи			
+Allow downloads over cellular	Разрешить загрузку по сотовой сети			
+Allow this action	Разрешить это действие			
+Always on	Всегда включено			
+An AI that runs on your %@ — even offline.	ИИ, который работает на вашем устройстве (%@) — даже офлайн.			
+Appearance	Оформление			
+Ask Quenderin anything	Спросите Quenderin о чём угодно			
+Attach a file	Прикрепить файл			
+Attach a file the agent may read (with your permission)	Прикрепить файл, который агент сможет прочитать (с вашего разрешения)			
+Attach a text file to this message	Прикрепить текстовый файл к сообщению			
+Autopilot	Автопилот			
+Back to model choice	Назад к выбору модели			
+Balanced	Сбалансированный			
+Browse or switch conversations from the sidebar in Chat.	Просматривайте и переключайте беседы в боковой панели чата.			
+Cancel	Отмена			
+Cancel download	Отменить загрузку			
+Change model…	Сменить модель…			
+Chat	Чат			
+Chat can’t run this —	Чат не может это выполнить —			
+Chat font	Шрифт чата			
+Chats	Беседы			
+Checking your device…	Проверяем ваше устройство…			
+Choose a different model…	Выбрать другую модель…			
+Choose a model	Выберите модель			
+Choose a smaller model	Выберите модель поменьше			
+Clear	Очистить			
+Clear all conversations…	Удалить все беседы…			
+Clear recent goals	Очистить недавние задачи			
+Clear run	Очистить запуск			
+Clear search	Очистить поиск			
+Community GGUFs — expand a row, pick a file size, then Get.	GGUF от сообщества — раскройте строку, выберите размер файла и нажмите «Скачать».			
+Contact support	Связаться с поддержкой			
+Continue	Продолжить			
+Continue generating from where the reply stopped	Продолжить генерацию с места остановки			
+Copy	Копировать			
+Copy SHA-256	Копировать SHA-256			
+Copy answer	Копировать ответ			
+Copy file name	Копировать имя файла			
+Couldn't get set up	Не удалось завершить настройку			
+Curated models — tap Install to download, or Use if it’s already on disk.	Проверенные модели — нажмите «Установить» для загрузки или «Использовать», если модель уже на диске.			
+Current	Текущая			
+Deeper reasoning	Углублённое рассуждение			
+Delete	Удалить			
+Delete %@ chats…	Удалить бесед: %@…			
+Delete all	Удалить все			
+Delete all %lld conversations?	Удалить все беседы (%lld)?			
+Delete…	Удалить…			
+Density	Плотность			
+Dismiss	Скрыть			
+Dismiss suggestion	Скрыть предложение			
+Don't allow	Не разрешать			
+Done	Готово			
+Download	Скачать			
+Download & continue	Скачать и продолжить			
+Download all	Скачать все			
+Download the complete library (%@)	Скачать всю библиотеку (%@)			
+Downloaded models	Загруженные модели			
+Downloading · %lld%	Загрузка · %lld%			
+Explain the %@	Что такое «%@»			
+Exported from Quenderin (on-device)	Экспортировано из Quenderin (на устройстве)			
+Fast	Быстрый			
+Files	Файлы			
+Finish setting up Quenderin in the main window first.	Сначала завершите настройку Quenderin в главном окне.			
+Gated	С лицензией			
+Gated model — accept its license on Hugging Face first. Quenderin never asks for your HF token.	Модель с лицензией — сначала примите её на Hugging Face. Quenderin никогда не запрашивает ваш токен HF.			
+Generating a reply	Генерация ответа			
+Get	Скачать			
+Get %@	Скачать %@			
+Give the agent a goal	Дайте агенту задачу			
+Grant a workspace folder	Выдать рабочую папку			
+Grant a workspace folder the agent may organize (with your approval per change)	Выдать рабочую папку, которую агент сможет наводить в порядок (каждое изменение — с вашего одобрения)			
+HOW IT WORKS	КАК ЭТО РАБОТАЕТ			
+Hugging Face	Hugging Face			
+I understand and agree	Понимаю и согласен(на)			
+Import	Импортировать			
+Install	Установить			
+Install %@	Установить %@			
+Installed models, the curated catalog, and open GGUFs — flexible for beginners and power users.	Установленные модели, проверенный каталог и открытые GGUF — удобно и новичкам, и опытным.			
+Installed — tap Use to switch to that model.	Установлена — нажмите «Использовать», чтобы переключиться.			
+It opens apps, clicks, types, and works the tools for you — all on your machine.	Он открывает приложения, кликает, печатает и работает с инструментами за вас — всё на вашем компьютере.			
+It uses on-device tools to plan and get it done — privately, on your iPhone.	Он планирует и выполняет задачу инструментами на устройстве — приватно, на вашем iPhone.			
+Jump to latest	К последнему			
+Jump to the latest message	Перейти к последнему сообщению			
+License	Лицензия			
+Loading downloadable files…	Загружаем список файлов…			
+Meet Quenderin	Знакомьтесь: Quenderin			
+Memory fit: %@	Память: %@			
+Message	Сообщение			
+Message bubbles	Пузыри сообщений			
+Model	Модель			
+Model card, license, discussions on huggingface.co	Карточка модели, лицензия и обсуждения на huggingface.co			
+Model library	Библиотека моделей			
+Models	Модели			
+NEEDS YOUR OK IN SETTINGS → AGENT	НУЖНО ВАШЕ РАЗРЕШЕНИЕ В НАСТРОЙКАХ → АГЕНТ			
+New Chat	Новый чат			
+New chat	Новый чат			
+New chat (⌘N)	Новый чат (⌘N)			
+New chats get a one-tap suggestion — coding, reasoning, languages — from what's installed.	Новые чаты получают подсказку в одно касание — код, рассуждения, языки — из установленных моделей.			
+No account, no log-out — your chats never leave this Mac.	Без аккаунта и входа — ваши беседы никогда не покидают этот Mac.			
+No chats yet	Пока нет чатов			
+No conversations yet	Пока нет бесед			
+No files match your filters for this model. Clear quant/size filters or turn off “Fits only”.	Ни один файл не подходит под фильтры. Сбросьте фильтры квантизации/размера или выключите «Только подходящие».			
+No models downloaded yet.	Модели ещё не загружены.			
+No open GGUF models match “%@”.	Открытых GGUF-моделей по запросу «%@» не найдено.			
+No ready-to-run GGUF files in this repo.	В этом репозитории нет готовых GGUF-файлов.			
+Not enough free space	Недостаточно свободного места			
+Not enough memory	Недостаточно памяти			
+OK	ОК			
+Off by default — models are multiple GB, so downloads wait for Wi-Fi. Turn this on to allow cellular data.	По умолчанию выключено — модели весят гигабайты, поэтому загрузки ждут Wi-Fi. Включите, чтобы разрешить сотовые данные.			
+Only this conversation. The defaults for every chat live in Settings.	Только эта беседа. Значения по умолчанию для всех чатов — в Настройках.			
+Open	Открыть			
+Open on Hugging Face	Открыть на Hugging Face			
+Open source page	Открыть страницу модели			
+Open the model's page on huggingface.co	Открыть страницу модели на huggingface.co			
+Or free up disk space and come back.	Или освободите место на диске и вернитесь.			
+Plan novel goals (experimental)	Планировать новые задачи (экспериментально)			
+Plan: 	План:			
+Preview	Предпросмотр			
+Preview of the chat appearance with the current settings	Предпросмотр оформления чата с текущими настройками			
+Privacy	Приватность			
+Privacy Policy	Политика конфиденциальности			
+Quality	Качественный			
+Quant & exact file size also refine files after you tap Show files.	Квантизация и точный размер файла уточняют список после нажатия «Показать файлы».			
+Quenderin	Quenderin			
+Quenderin agent run	Запуск агента Quenderin			
+Quenderin conversation	Беседа Quenderin			
+Quenderin is open source — view on GitHub	Quenderin — открытый код, смотрите на GitHub			
+READY TO USE	ГОТОВО К РАБОТЕ			
+RECENT GOALS	НЕДАВНИЕ ЗАДАЧИ			
+RECOMMENDED FOR YOUR DEVICE	РЕКОМЕНДОВАНО ДЛЯ ВАШЕГО УСТРОЙСТВА			
+RUN LOG	ЖУРНАЛ ЗАПУСКА			
+Re-use goal: %@	Повторить задачу: %@			
+Read the full terms	Прочитать условия полностью			
+Ready	Готово			
+Reasoning	Рассуждение			
+Remove %@	Убрать %@			
+Remove from recents	Убрать из недавних			
+Report answer	Пожаловаться на ответ			
+Report response	Пожаловаться на ответ			
+Retry	Повторить			
+Retry install	Повторить установку			
+Retry install %@	Повторить установку %@			
+Revoke workspace access	Отозвать доступ к рабочей папке			
+Routing	Маршрутизация			
+Runs entirely on your %@. Nothing you type leaves the device.	Работает полностью на вашем устройстве (%@). Ничего из введённого не покидает его.			
+Runs entirely on-device via llama.cpp — no cloud.	Работает полностью на устройстве через llama.cpp — без облака.			
+Search	Поиск			
+Search models — e.g. Qwen, Llama 8B, instruct…	Поиск моделей — например Qwen, Llama 8B, instruct…			
+Search models — e.g. Qwen, Llama, Phi, Gemma…	Поиск моделей — например Qwen, Llama, Phi, Gemma…			
+Search the open catalog	Поиск по открытому каталогу			
+Searching Hugging Face	Ищем на Hugging Face			
+Searching Hugging Face…	Ищем на Hugging Face…			
+Select a chat, or press ⌘N to start one.	Выберите чат или нажмите ⌘N, чтобы начать новый.			
+Settings	Настройки			
+Share conversation	Поделиться беседой			
+Share walkthrough	Поделиться отчётом			
+Show details…	Подробнее…			
+Show in Finder	Показать в Finder			
+Show the full ledger in Finder	Показать весь журнал в Finder			
+Source	Источник			
+Speed	Скорость			
+Start a chat with %@ — it runs entirely on your %@.	Начать чат с %@ — модель работает полностью на вашем устройстве (%@).			
+Step %@	Шаг %@			
+Stop	Стоп			
+Stop agent	Остановить агента			
+Storage	Хранилище			
+Suggest the best model for each task	Предлагать лучшую модель для каждой задачи			
+Support	Поддержка			
+Switch	Переключить			
+Tap to expand → pick a file → Get	Нажмите, чтобы раскрыть → выберите файл → «Скачать»			
+Tap “All results”, turn off “fits RAM”, or raise max size / download.	Нажмите «Все результаты», выключите «влезает в память» или увеличьте лимит размера.			
+Tell the agent what to do on your Mac	Скажите агенту, что сделать на вашем Mac			
+Text size	Размер текста			
+The agent needs a loaded model.	Агенту нужна загруженная модель.			
+The ⋯ menu on each model can delete it and free space — the active model is protected.	Меню ⋯ у каждой модели позволяет удалить её и освободить место — активная модель защищена.			
+Their transcripts and per-chat settings are removed from this Mac. This can't be undone.	Их история и настройки будут удалены с этого Mac. Это действие необратимо.			
+Theme	Тема			
+They download one after another and can be deleted any time in Settings → Storage.	Они загружаются по очереди; удалить можно в любой момент в Настройках → Хранилище.			
+This is the model you’re using now.	Это модель, которую вы используете сейчас.			
+This model needs ~%@ GB — your %@ has %@ GB free.	Этой модели нужно ~%@ ГБ — на вашем устройстве (%@) свободно %@ ГБ.			
+This removes every saved conversation from this %@. It can't be undone.	Все сохранённые беседы будут удалены с этого устройства (%@). Это необратимо.			
+To get ready, resolve: 	Для готовности осталось:			
+Try a family name like Qwen, Llama, Phi, or Mistral — or clear filters above.	Попробуйте название семейства — Qwen, Llama, Phi, Mistral — или сбросьте фильтры выше.			
+Try searching for	Попробуйте поискать			
+Type at least 2 characters. Tip: look for a GGUF re-upload (e.g. TheBloke or bartowski) — those are ready-to-run files; smaller quants (Q4) fit more hardware.	Введите хотя бы 2 символа. Совет: ищите GGUF-выкладки (например TheBloke или bartowski) — это готовые файлы; меньшие квантизации (Q4) подходят большему числу устройств.			
+Undo last move	Отменить последнее перемещение			
+Undo task changes (%lld)	Отменить изменения задачи (%lld)			
+Use	Использовать			
+Use %@	Использовать %@			
+Use example: %@	Пример: %@			
+Use this model	Использовать эту модель			
+Use with judgement	Используйте с умом			
+Version %@	Версия %@			
+Version %@ — on-device · private · open source	Версия %@ — на устройстве · приватно · открытый код			
+View the source on GitHub	Исходный код на GitHub			
+Warming up %@…	Прогреваем %@…			
+What do these mean?	Что это значит?			
+What these mean	Что это значит			
+Why is this recommended?	Почему это рекомендовано?			
+Why this one?	Почему именно она?			
+You can download %@ again any time — it just won't be on this %@.	Вы сможете снова скачать %@ в любой момент — просто модели не будет на этом устройстве (%@).			
+You give a goal. The agent plans steps, uses tools on this device, and shows each step in the run log. Mutating actions always ask you first.	Вы даёте задачу. Агент планирует шаги, использует инструменты на этом устройстве и показывает каждый шаг в журнале. Действия с изменениями всегда сначала спрашивают вас.			
+You’ll still confirm before it changes anything — this only turns the capability on.	Перед любым изменением вас всё равно спросят — это лишь включает возможность.			
+Your device can run %@ (%@)	Ваше устройство может запустить %@ (%@)			
+%@ is running fully on-device.	%@ работает полностью на устройстве.			
+%@ · one time, then it's yours offline	%@ · один раз — и модель ваша, офлайн			
+%@ · %@ downloads	%@ · загрузок: %@			
+%lld	%lld			
+%lld chats selected	Выбрано бесед: %lld			
+%lld models downloading	Загружается моделей: %lld			
+%lld of %lld installed · %@ on disk · %@ free	Установлено %lld из %lld · %@ на диске · %@ свободно			
+%@ — workspace	%@ — рабочая папка			
+on-device · private	на устройстве · приватно			
+· the agent's plan	· план агента			
+Goal: %@	Задача: %@			
+⌘-click rows to change the selection; ⇧-click selects a range.	⌘-клик по строкам меняет выбор; ⇧-клик выбирает диапазон.			
+Last active 	Последняя активность			
+Languages	Языки			
+Russian, English, Chinese + 100 more	Русский, английский, китайский + ещё 100			
+Russian, English, Chinese + 25 more	Русский, английский, китайский + ещё 25			
+Russian, English + 140 more	Русский, английский + ещё 140			
+English & Chinese — weak Russian	Английский и китайский — русский слабый			
+English-focused — weak Russian	В основном английский — русский слабый			
+English + European — weak Russian	Английский + европейские — русский слабый			
+English + 7 more — no Russian	Английский + ещё 7 — без русского			

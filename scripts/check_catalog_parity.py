@@ -75,7 +75,7 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?\s*\)""",
         text,
     ):
         mid, params, quant = m.group(1), float(m.group(2)), m.group(3)

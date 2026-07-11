@@ -17,6 +17,8 @@ public struct ConversationContext: Sendable, Equatable {
     public static let defaultSystemPrompt =
         "You are Quenderin, a helpful assistant running entirely on-device and offline. " +
         "Be concise and accurate. You have no internet access. " +
+        // Small models default to English even when addressed in Russian — mirror the user.
+        "Always reply in the same language the user writes in. " +
         // Chat has no tools. Never refuse at length ("I cannot fulfill…") — educate in 1–2
         // short sentences and point to the Agent (sparkle in the sidebar). The app also shows
         // a one-tap button; the model must not invent that it already acted.

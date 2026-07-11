@@ -76,6 +76,8 @@ class ConversationContext(
         const val DEFAULT_SYSTEM_PROMPT =
             "You are Quenderin, a helpful assistant running entirely on-device and offline. " +
                 "Be concise and accurate. You have no internet access. " +
+                // Small models default to English even when addressed in Russian — mirror the user.
+                "Always reply in the same language the user writes in. " +
                 // Chat has no tools — an "open the browser / send an email" ask typed here
                 // otherwise gets a fluent hallucination of an action that never happened
                 // (live user report on the Mac twin). Route it to the surface that CAN act.

@@ -91,6 +91,12 @@ struct ModelProfileView: View {
                     // ONE (?) on the card header opens the whole glossary — a ring on every row
                     // read as noise (user feedback), and the terms are best explained together.
                     ProfileCard(title: "Specifications", palette: p, glossary: Self.glossary) {
+                        // The value resolves through the string catalog (String.LocalizationValue),
+                        // so "Russian, English + 140 more" reads «Русский, английский…» in a
+                        // Russian UI — the load-bearing info for our Russian-first users.
+                        if let langs = model.languagesLabel {
+                            SpecRow("Languages", String(localized: String.LocalizationValue(langs)), palette: p)
+                        }
                         SpecRow("Parameters", "\(fmt(model.paramsBillions))B", palette: p)
                         SpecRow("Download size", model.sizeLabel.replacingOccurrences(of: " download", with: ""), palette: p)
                         SpecRow("Memory needed", "~\(fmt(model.ramGB)) GB RAM", palette: p)

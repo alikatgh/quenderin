@@ -18,6 +18,18 @@
 - Agent-screen upgrade copy is MoE-honest (13 GB download, SSD-streamed) — never the generic
   "slightly slower replies". `check_catalog_parity.py` fixed to parse hyphenated quant ids.
 
+### Russian-first: UI localization + honest model-language info
+- **Russian UI (macOS + iOS)**: 240-key string catalog (`scripts/translations.tsv` →
+  `build_xcstrings.py` → `Localizable.xcstrings`, wired into both app targets). ko/ja/zh-Hans
+  columns are scaffolded, pending. Known gap: long Settings captions built from concatenated
+  literals are verbatim strings (SwiftUI skips localization) — needs a source-side pass.
+- **Every catalog model states its languages** (`languages` field, all platforms + manifest,
+  decode-safe for older persisted entries) — shown in the model profile, localized. Honest
+  about Russian: the Llama 3.2 tier says "no Russian" out loud (a 1B answered a Russian user
+  in English — the info was missing where the choice is made).
+- **Chat prompt mirrors the user's language** on all three platforms ("Always reply in the
+  same language the user writes in") — small models default to English otherwise.
+
 ### Autopilot — run a goal without babysitting it (macOS)
 - **"Allow all steps for this goal"** on the per-step approval dialog: one grant covers the
   rest of the run; the broker resets at the next goal, so it never leaks.

@@ -75,6 +75,9 @@ def parse_desktop_models(text: str) -> list[dict]:
                 # (CI gate) fails the build on any missing sha256, so the runtime magic-only fallback
                 # can never be the sole integrity defense for a cataloged model (security audit HIGH).
                 "sha256": s_opt("sha256"),
+                # Human-language support, honest about Russian (Russian-first user base).
+                # Optional in the schema so sideloaded entries decode without it.
+                "languages": s_opt("languages"),
             }
         )
     if not models:

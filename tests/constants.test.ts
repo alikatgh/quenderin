@@ -37,6 +37,16 @@ describe('MODEL_CATALOG', () => {
         }
     });
 
+    it('every model states its language support, honest about Russian', () => {
+        // Russian-first user base: the info must exist on every entry, and the Llama 3.2
+        // tier must say "no Russian" out loud rather than omit it.
+        for (const m of MODEL_CATALOG) {
+            expect(m.languages, `${m.id} must state languages`).toBeTruthy();
+        }
+        expect(MODEL_CATALOG.find(m => m.id === 'llama32-1b')!.languages).toContain('no Russian');
+        expect(MODEL_CATALOG.find(m => m.id === 'qwen3-4b')!.languages).toMatch(/^Russian/);
+    });
+
     it('paged-MoE entry budgets the RESIDENT set, not the file', () => {
         // qwen36-35b-a3b streams experts from disk via mmap: ramGb must reflect the
         // dense-spine + hot-experts working set (~5.5), NOT the 13.2 GB download —

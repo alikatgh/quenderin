@@ -1,0 +1,2406 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ is running fully on-device.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ работает полностью на устройстве."
+          }
+        }
+      }
+    },
+    "%@ · %@ downloads": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · загрузок: %@"
+          }
+        }
+      }
+    },
+    "%@ · one time, then it's yours offline": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · один раз — и модель ваша, офлайн"
+          }
+        }
+      }
+    },
+    "%@ — workspace": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — рабочая папка"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld chats selected": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрано бесед: %lld"
+          }
+        }
+      }
+    },
+    "%lld models downloading": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загружается моделей: %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld installed · %@ on disk · %@ free": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено %lld из %lld · %@ на диске · %@ свободно"
+          }
+        }
+      }
+    },
+    "A one-time download — the main window shows progress and you can cancel any time. Your current model stays installed.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Однократная загрузка — прогресс виден в главном окне, отменить можно в любой момент. Текущая модель останется установленной."
+          }
+        }
+      }
+    },
+    "A personal AI that lives on your %@ — not in someone's cloud.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Персональный ИИ, который живёт на вашем устройстве (%@) — а не в чужом облаке."
+          }
+        }
+      }
+    },
+    "About %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О модели %@"
+          }
+        }
+      }
+    },
+    "About Quenderin": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О Quenderin"
+          }
+        }
+      }
+    },
+    "About Quenderin — settings, help, and links": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О Quenderin — настройки, справка и ссылки"
+          }
+        }
+      }
+    },
+    "Accept the license on Hugging Face, then download it there": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Примите лицензию на Hugging Face и скачайте модель там"
+          }
+        }
+      }
+    },
+    "Actions for %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действия для %@"
+          }
+        }
+      }
+    },
+    "Active": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активна"
+          }
+        }
+      }
+    },
+    "Active — in use": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активна — используется"
+          }
+        }
+      }
+    },
+    "Active — protected": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активна — защищена"
+          }
+        }
+      }
+    },
+    "Agent": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агент"
+          }
+        }
+      }
+    },
+    "Agent activity": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действия агента"
+          }
+        }
+      }
+    },
+    "Agent capabilities": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возможности агента"
+          }
+        }
+      }
+    },
+    "All of these run fully on your %@ — a one-time download, then it's yours offline.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё это работает полностью на вашем устройстве (%@) — одна загрузка, и модель ваша, офлайн."
+          }
+        }
+      }
+    },
+    "Allow %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить %@"
+          }
+        }
+      }
+    },
+    "Allow all steps for this goal": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить все шаги этой задачи"
+          }
+        }
+      }
+    },
+    "Allow downloads over cellular": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить загрузку по сотовой сети"
+          }
+        }
+      }
+    },
+    "Allow this action": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить это действие"
+          }
+        }
+      }
+    },
+    "Always on": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всегда включено"
+          }
+        }
+      }
+    },
+    "An AI that runs on your %@ — even offline.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ИИ, который работает на вашем устройстве (%@) — даже офлайн."
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оформление"
+          }
+        }
+      }
+    },
+    "Ask Quenderin anything": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спросите Quenderin о чём угодно"
+          }
+        }
+      }
+    },
+    "Attach a file": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прикрепить файл"
+          }
+        }
+      }
+    },
+    "Attach a file the agent may read (with your permission)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прикрепить файл, который агент сможет прочитать (с вашего разрешения)"
+          }
+        }
+      }
+    },
+    "Attach a text file to this message": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прикрепить текстовый файл к сообщению"
+          }
+        }
+      }
+    },
+    "Autopilot": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автопилот"
+          }
+        }
+      }
+    },
+    "Back to model choice": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назад к выбору модели"
+          }
+        }
+      }
+    },
+    "Balanced": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбалансированный"
+          }
+        }
+      }
+    },
+    "Browse or switch conversations from the sidebar in Chat.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просматривайте и переключайте беседы в боковой панели чата."
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        }
+      }
+    },
+    "Cancel download": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить загрузку"
+          }
+        }
+      }
+    },
+    "Change model…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сменить модель…"
+          }
+        }
+      }
+    },
+    "Chat": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чат"
+          }
+        }
+      }
+    },
+    "Chat can’t run this —": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чат не может это выполнить —"
+          }
+        }
+      }
+    },
+    "Chat font": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шрифт чата"
+          }
+        }
+      }
+    },
+    "Chats": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Беседы"
+          }
+        }
+      }
+    },
+    "Checking your device…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверяем ваше устройство…"
+          }
+        }
+      }
+    },
+    "Choose a different model…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать другую модель…"
+          }
+        }
+      }
+    },
+    "Choose a model": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите модель"
+          }
+        }
+      }
+    },
+    "Choose a smaller model": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите модель поменьше"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить"
+          }
+        }
+      }
+    },
+    "Clear all conversations…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить все беседы…"
+          }
+        }
+      }
+    },
+    "Clear recent goals": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить недавние задачи"
+          }
+        }
+      }
+    },
+    "Clear run": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить запуск"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить поиск"
+          }
+        }
+      }
+    },
+    "Community GGUFs — expand a row, pick a file size, then Get.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GGUF от сообщества — раскройте строку, выберите размер файла и нажмите «Скачать»."
+          }
+        }
+      }
+    },
+    "Contact support": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Связаться с поддержкой"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить"
+          }
+        }
+      }
+    },
+    "Continue generating from where the reply stopped": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить генерацию с места остановки"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать"
+          }
+        }
+      }
+    },
+    "Copy SHA-256": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать SHA-256"
+          }
+        }
+      }
+    },
+    "Copy answer": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать ответ"
+          }
+        }
+      }
+    },
+    "Copy file name": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать имя файла"
+          }
+        }
+      }
+    },
+    "Couldn't get set up": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось завершить настройку"
+          }
+        }
+      }
+    },
+    "Curated models — tap Install to download, or Use if it’s already on disk.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверенные модели — нажмите «Установить» для загрузки или «Использовать», если модель уже на диске."
+          }
+        }
+      }
+    },
+    "Current": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущая"
+          }
+        }
+      }
+    },
+    "Deeper reasoning": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Углублённое рассуждение"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        }
+      }
+    },
+    "Delete %@ chats…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить бесед: %@…"
+          }
+        }
+      }
+    },
+    "Delete all": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить все"
+          }
+        }
+      }
+    },
+    "Delete all %lld conversations?": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить все беседы (%lld)?"
+          }
+        }
+      }
+    },
+    "Delete…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить…"
+          }
+        }
+      }
+    },
+    "Density": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плотность"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть"
+          }
+        }
+      }
+    },
+    "Dismiss suggestion": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть предложение"
+          }
+        }
+      }
+    },
+    "Don't allow": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не разрешать"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать"
+          }
+        }
+      }
+    },
+    "Download & continue": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать и продолжить"
+          }
+        }
+      }
+    },
+    "Download all": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать все"
+          }
+        }
+      }
+    },
+    "Download the complete library (%@)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать всю библиотеку (%@)"
+          }
+        }
+      }
+    },
+    "Downloaded models": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загруженные модели"
+          }
+        }
+      }
+    },
+    "Downloading · %lld%": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка · %lld%"
+          }
+        }
+      }
+    },
+    "English & Chinese — weak Russian": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Английский и китайский — русский слабый"
+          }
+        }
+      }
+    },
+    "English + 7 more — no Russian": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Английский + ещё 7 — без русского"
+          }
+        }
+      }
+    },
+    "English + European — weak Russian": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Английский + европейские — русский слабый"
+          }
+        }
+      }
+    },
+    "English-focused — weak Russian": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В основном английский — русский слабый"
+          }
+        }
+      }
+    },
+    "Explain the %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что такое «%@»"
+          }
+        }
+      }
+    },
+    "Exported from Quenderin (on-device)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспортировано из Quenderin (на устройстве)"
+          }
+        }
+      }
+    },
+    "Fast": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрый"
+          }
+        }
+      }
+    },
+    "Files": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файлы"
+          }
+        }
+      }
+    },
+    "Finish setting up Quenderin in the main window first.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала завершите настройку Quenderin в главном окне."
+          }
+        }
+      }
+    },
+    "Gated": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С лицензией"
+          }
+        }
+      }
+    },
+    "Gated model — accept its license on Hugging Face first. Quenderin never asks for your HF token.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модель с лицензией — сначала примите её на Hugging Face. Quenderin никогда не запрашивает ваш токен HF."
+          }
+        }
+      }
+    },
+    "Generating a reply": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Генерация ответа"
+          }
+        }
+      }
+    },
+    "Get": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать"
+          }
+        }
+      }
+    },
+    "Get %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать %@"
+          }
+        }
+      }
+    },
+    "Give the agent a goal": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дайте агенту задачу"
+          }
+        }
+      }
+    },
+    "Goal: %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Задача: %@"
+          }
+        }
+      }
+    },
+    "Grant a workspace folder": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выдать рабочую папку"
+          }
+        }
+      }
+    },
+    "Grant a workspace folder the agent may organize (with your approval per change)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выдать рабочую папку, которую агент сможет наводить в порядок (каждое изменение — с вашего одобрения)"
+          }
+        }
+      }
+    },
+    "HOW IT WORKS": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "КАК ЭТО РАБОТАЕТ"
+          }
+        }
+      }
+    },
+    "Hugging Face": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face"
+          }
+        }
+      }
+    },
+    "I understand and agree": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Понимаю и согласен(на)"
+          }
+        }
+      }
+    },
+    "Import": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импортировать"
+          }
+        }
+      }
+    },
+    "Install": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить"
+          }
+        }
+      }
+    },
+    "Install %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить %@"
+          }
+        }
+      }
+    },
+    "Installed models, the curated catalog, and open GGUFs — flexible for beginners and power users.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установленные модели, проверенный каталог и открытые GGUF — удобно и новичкам, и опытным."
+          }
+        }
+      }
+    },
+    "Installed — tap Use to switch to that model.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлена — нажмите «Использовать», чтобы переключиться."
+          }
+        }
+      }
+    },
+    "It opens apps, clicks, types, and works the tools for you — all on your machine.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Он открывает приложения, кликает, печатает и работает с инструментами за вас — всё на вашем компьютере."
+          }
+        }
+      }
+    },
+    "It uses on-device tools to plan and get it done — privately, on your iPhone.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Он планирует и выполняет задачу инструментами на устройстве — приватно, на вашем iPhone."
+          }
+        }
+      }
+    },
+    "Jump to latest": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "К последнему"
+          }
+        }
+      }
+    },
+    "Jump to the latest message": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейти к последнему сообщению"
+          }
+        }
+      }
+    },
+    "Languages": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Языки"
+          }
+        }
+      }
+    },
+    "Last active ": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя активность"
+          }
+        }
+      }
+    },
+    "License": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия"
+          }
+        }
+      }
+    },
+    "Loading downloadable files…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загружаем список файлов…"
+          }
+        }
+      }
+    },
+    "Meet Quenderin": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Знакомьтесь: Quenderin"
+          }
+        }
+      }
+    },
+    "Memory fit: %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Память: %@"
+          }
+        }
+      }
+    },
+    "Message": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщение"
+          }
+        }
+      }
+    },
+    "Message bubbles": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пузыри сообщений"
+          }
+        }
+      }
+    },
+    "Model": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модель"
+          }
+        }
+      }
+    },
+    "Model card, license, discussions on huggingface.co": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Карточка модели, лицензия и обсуждения на huggingface.co"
+          }
+        }
+      }
+    },
+    "Model library": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Библиотека моделей"
+          }
+        }
+      }
+    },
+    "Models": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модели"
+          }
+        }
+      }
+    },
+    "NEEDS YOUR OK IN SETTINGS → AGENT": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "НУЖНО ВАШЕ РАЗРЕШЕНИЕ В НАСТРОЙКАХ → АГЕНТ"
+          }
+        }
+      }
+    },
+    "New Chat": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый чат"
+          }
+        }
+      }
+    },
+    "New chat": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый чат"
+          }
+        }
+      }
+    },
+    "New chat (⌘N)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый чат (⌘N)"
+          }
+        }
+      }
+    },
+    "New chats get a one-tap suggestion — coding, reasoning, languages — from what's installed.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новые чаты получают подсказку в одно касание — код, рассуждения, языки — из установленных моделей."
+          }
+        }
+      }
+    },
+    "No account, no log-out — your chats never leave this Mac.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без аккаунта и входа — ваши беседы никогда не покидают этот Mac."
+          }
+        }
+      }
+    },
+    "No chats yet": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет чатов"
+          }
+        }
+      }
+    },
+    "No conversations yet": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет бесед"
+          }
+        }
+      }
+    },
+    "No files match your filters for this model. Clear quant/size filters or turn off “Fits only”.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни один файл не подходит под фильтры. Сбросьте фильтры квантизации/размера или выключите «Только подходящие»."
+          }
+        }
+      }
+    },
+    "No models downloaded yet.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модели ещё не загружены."
+          }
+        }
+      }
+    },
+    "No open GGUF models match “%@”.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открытых GGUF-моделей по запросу «%@» не найдено."
+          }
+        }
+      }
+    },
+    "No ready-to-run GGUF files in this repo.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом репозитории нет готовых GGUF-файлов."
+          }
+        }
+      }
+    },
+    "Not enough free space": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недостаточно свободного места"
+          }
+        }
+      }
+    },
+    "Not enough memory": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недостаточно памяти"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ОК"
+          }
+        }
+      }
+    },
+    "Off by default — models are multiple GB, so downloads wait for Wi-Fi. Turn this on to allow cellular data.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По умолчанию выключено — модели весят гигабайты, поэтому загрузки ждут Wi-Fi. Включите, чтобы разрешить сотовые данные."
+          }
+        }
+      }
+    },
+    "Only this conversation. The defaults for every chat live in Settings.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только эта беседа. Значения по умолчанию для всех чатов — в Настройках."
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть"
+          }
+        }
+      }
+    },
+    "Open on Hugging Face": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть на Hugging Face"
+          }
+        }
+      }
+    },
+    "Open source page": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть страницу модели"
+          }
+        }
+      }
+    },
+    "Open the model's page on huggingface.co": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть страницу модели на huggingface.co"
+          }
+        }
+      }
+    },
+    "Or free up disk space and come back.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Или освободите место на диске и вернитесь."
+          }
+        }
+      }
+    },
+    "Plan novel goals (experimental)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Планировать новые задачи (экспериментально)"
+          }
+        }
+      }
+    },
+    "Plan: ": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "План:"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предпросмотр"
+          }
+        }
+      }
+    },
+    "Preview of the chat appearance with the current settings": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предпросмотр оформления чата с текущими настройками"
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приватность"
+          }
+        }
+      }
+    },
+    "Privacy Policy": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Политика конфиденциальности"
+          }
+        }
+      }
+    },
+    "Quality": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Качественный"
+          }
+        }
+      }
+    },
+    "Quant & exact file size also refine files after you tap Show files.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Квантизация и точный размер файла уточняют список после нажатия «Показать файлы»."
+          }
+        }
+      }
+    },
+    "Quenderin": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderin"
+          }
+        }
+      }
+    },
+    "Quenderin agent run": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запуск агента Quenderin"
+          }
+        }
+      }
+    },
+    "Quenderin conversation": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Беседа Quenderin"
+          }
+        }
+      }
+    },
+    "Quenderin is open source — view on GitHub": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderin — открытый код, смотрите на GitHub"
+          }
+        }
+      }
+    },
+    "READY TO USE": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ГОТОВО К РАБОТЕ"
+          }
+        }
+      }
+    },
+    "RECENT GOALS": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "НЕДАВНИЕ ЗАДАЧИ"
+          }
+        }
+      }
+    },
+    "RECOMMENDED FOR YOUR DEVICE": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "РЕКОМЕНДОВАНО ДЛЯ ВАШЕГО УСТРОЙСТВА"
+          }
+        }
+      }
+    },
+    "RUN LOG": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ЖУРНАЛ ЗАПУСКА"
+          }
+        }
+      }
+    },
+    "Re-use goal: %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить задачу: %@"
+          }
+        }
+      }
+    },
+    "Read the full terms": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать условия полностью"
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        }
+      }
+    },
+    "Reasoning": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рассуждение"
+          }
+        }
+      }
+    },
+    "Remove %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать %@"
+          }
+        }
+      }
+    },
+    "Remove from recents": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать из недавних"
+          }
+        }
+      }
+    },
+    "Report answer": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пожаловаться на ответ"
+          }
+        }
+      }
+    },
+    "Report response": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пожаловаться на ответ"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
+          }
+        }
+      }
+    },
+    "Retry install": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить установку"
+          }
+        }
+      }
+    },
+    "Retry install %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить установку %@"
+          }
+        }
+      }
+    },
+    "Revoke workspace access": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отозвать доступ к рабочей папке"
+          }
+        }
+      }
+    },
+    "Routing": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маршрутизация"
+          }
+        }
+      }
+    },
+    "Runs entirely on your %@. Nothing you type leaves the device.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работает полностью на вашем устройстве (%@). Ничего из введённого не покидает его."
+          }
+        }
+      }
+    },
+    "Runs entirely on-device via llama.cpp — no cloud.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работает полностью на устройстве через llama.cpp — без облака."
+          }
+        }
+      }
+    },
+    "Russian, English + 140 more": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Русский, английский + ещё 140"
+          }
+        }
+      }
+    },
+    "Russian, English, Chinese + 100 more": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Русский, английский, китайский + ещё 100"
+          }
+        }
+      }
+    },
+    "Russian, English, Chinese + 25 more": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Русский, английский, китайский + ещё 25"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск"
+          }
+        }
+      }
+    },
+    "Search models — e.g. Qwen, Llama 8B, instruct…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск моделей — например Qwen, Llama 8B, instruct…"
+          }
+        }
+      }
+    },
+    "Search models — e.g. Qwen, Llama, Phi, Gemma…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск моделей — например Qwen, Llama, Phi, Gemma…"
+          }
+        }
+      }
+    },
+    "Search the open catalog": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск по открытому каталогу"
+          }
+        }
+      }
+    },
+    "Searching Hugging Face": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ищем на Hugging Face"
+          }
+        }
+      }
+    },
+    "Searching Hugging Face…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ищем на Hugging Face…"
+          }
+        }
+      }
+    },
+    "Select a chat, or press ⌘N to start one.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите чат или нажмите ⌘N, чтобы начать новый."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        }
+      }
+    },
+    "Share conversation": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поделиться беседой"
+          }
+        }
+      }
+    },
+    "Share walkthrough": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поделиться отчётом"
+          }
+        }
+      }
+    },
+    "Show details…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подробнее…"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать в Finder"
+          }
+        }
+      }
+    },
+    "Show the full ledger in Finder": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать весь журнал в Finder"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Источник"
+          }
+        }
+      }
+    },
+    "Speed": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скорость"
+          }
+        }
+      }
+    },
+    "Start a chat with %@ — it runs entirely on your %@.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начать чат с %@ — модель работает полностью на вашем устройстве (%@)."
+          }
+        }
+      }
+    },
+    "Step %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаг %@"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стоп"
+          }
+        }
+      }
+    },
+    "Stop agent": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить агента"
+          }
+        }
+      }
+    },
+    "Storage": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хранилище"
+          }
+        }
+      }
+    },
+    "Suggest the best model for each task": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предлагать лучшую модель для каждой задачи"
+          }
+        }
+      }
+    },
+    "Support": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поддержка"
+          }
+        }
+      }
+    },
+    "Switch": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переключить"
+          }
+        }
+      }
+    },
+    "Tap to expand → pick a file → Get": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите, чтобы раскрыть → выберите файл → «Скачать»"
+          }
+        }
+      }
+    },
+    "Tap “All results”, turn off “fits RAM”, or raise max size / download.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите «Все результаты», выключите «влезает в память» или увеличьте лимит размера."
+          }
+        }
+      }
+    },
+    "Tell the agent what to do on your Mac": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скажите агенту, что сделать на вашем Mac"
+          }
+        }
+      }
+    },
+    "Text size": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размер текста"
+          }
+        }
+      }
+    },
+    "The agent needs a loaded model.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агенту нужна загруженная модель."
+          }
+        }
+      }
+    },
+    "The ⋯ menu on each model can delete it and free space — the active model is protected.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меню ⋯ у каждой модели позволяет удалить её и освободить место — активная модель защищена."
+          }
+        }
+      }
+    },
+    "Their transcripts and per-chat settings are removed from this Mac. This can't be undone.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Их история и настройки будут удалены с этого Mac. Это действие необратимо."
+          }
+        }
+      }
+    },
+    "Theme": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тема"
+          }
+        }
+      }
+    },
+    "They download one after another and can be deleted any time in Settings → Storage.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Они загружаются по очереди; удалить можно в любой момент в Настройках → Хранилище."
+          }
+        }
+      }
+    },
+    "This is the model you’re using now.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это модель, которую вы используете сейчас."
+          }
+        }
+      }
+    },
+    "This model needs ~%@ GB — your %@ has %@ GB free.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этой модели нужно ~%@ ГБ — на вашем устройстве (%@) свободно %@ ГБ."
+          }
+        }
+      }
+    },
+    "This removes every saved conversation from this %@. It can't be undone.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все сохранённые беседы будут удалены с этого устройства (%@). Это необратимо."
+          }
+        }
+      }
+    },
+    "To get ready, resolve: ": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для готовности осталось:"
+          }
+        }
+      }
+    },
+    "Try a family name like Qwen, Llama, Phi, or Mistral — or clear filters above.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробуйте название семейства — Qwen, Llama, Phi, Mistral — или сбросьте фильтры выше."
+          }
+        }
+      }
+    },
+    "Try searching for": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробуйте поискать"
+          }
+        }
+      }
+    },
+    "Type at least 2 characters. Tip: look for a GGUF re-upload (e.g. TheBloke or bartowski) — those are ready-to-run files; smaller quants (Q4) fit more hardware.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите хотя бы 2 символа. Совет: ищите GGUF-выкладки (например TheBloke или bartowski) — это готовые файлы; меньшие квантизации (Q4) подходят большему числу устройств."
+          }
+        }
+      }
+    },
+    "Undo last move": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить последнее перемещение"
+          }
+        }
+      }
+    },
+    "Undo task changes (%lld)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить изменения задачи (%lld)"
+          }
+        }
+      }
+    },
+    "Use": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать"
+          }
+        }
+      }
+    },
+    "Use %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать %@"
+          }
+        }
+      }
+    },
+    "Use example: %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пример: %@"
+          }
+        }
+      }
+    },
+    "Use this model": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать эту модель"
+          }
+        }
+      }
+    },
+    "Use with judgement": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Используйте с умом"
+          }
+        }
+      }
+    },
+    "Version %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Версия %@"
+          }
+        }
+      }
+    },
+    "Version %@ — on-device · private · open source": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Версия %@ — на устройстве · приватно · открытый код"
+          }
+        }
+      }
+    },
+    "View the source on GitHub": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный код на GitHub"
+          }
+        }
+      }
+    },
+    "Warming up %@…": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прогреваем %@…"
+          }
+        }
+      }
+    },
+    "What do these mean?": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что это значит?"
+          }
+        }
+      }
+    },
+    "What these mean": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что это значит"
+          }
+        }
+      }
+    },
+    "Why is this recommended?": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почему это рекомендовано?"
+          }
+        }
+      }
+    },
+    "Why this one?": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почему именно она?"
+          }
+        }
+      }
+    },
+    "You can download %@ again any time — it just won't be on this %@.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы сможете снова скачать %@ в любой момент — просто модели не будет на этом устройстве (%@)."
+          }
+        }
+      }
+    },
+    "You give a goal. The agent plans steps, uses tools on this device, and shows each step in the run log. Mutating actions always ask you first.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы даёте задачу. Агент планирует шаги, использует инструменты на этом устройстве и показывает каждый шаг в журнале. Действия с изменениями всегда сначала спрашивают вас."
+          }
+        }
+      }
+    },
+    "Your device can run %@ (%@)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваше устройство может запустить %@ (%@)"
+          }
+        }
+      }
+    },
+    "You’ll still confirm before it changes anything — this only turns the capability on.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перед любым изменением вас всё равно спросят — это лишь включает возможность."
+          }
+        }
+      }
+    },
+    "on-device · private": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "на устройстве · приватно"
+          }
+        }
+      }
+    },
+    "· the agent's plan": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· план агента"
+          }
+        }
+      }
+    },
+    "⌘-click rows to change the selection; ⇧-click selects a range.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘-клик по строкам меняет выбор; ⇧-клик выбирает диапазон."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

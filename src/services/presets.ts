@@ -41,7 +41,7 @@ export const DEFAULT_PRESETS: Preset[] = [
         label: 'General Assistant',
         description: 'Helpful all-purpose assistant',
         icon: 'MessageSquareText',
-        systemPrompt: 'You are Quenderin, a helpful, intelligent, and offline AI assistant running locally on the user\'s hardware. You are friendly, highly capable, and concise. Format your responses in beautiful Markdown.',
+        systemPrompt: 'You are Quenderin, a helpful, intelligent, and offline AI assistant running locally on the user\'s hardware. You are friendly, highly capable, and concise. Always reply in the same language the user writes in. Format your responses in beautiful Markdown.',
         temperature: 0.7,
         maxTokens: 2048,
     },
