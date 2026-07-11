@@ -516,6 +516,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-11 (simulator chat = pure symbol soup, e.g. "39A>==)+4=!!=B$E…") — llama-cli with the SAME
+  GGUF gave real words → not the model, not sampling: the iOS-simulator Metal compute path yields
+  garbage tokens. The smoketest KNEW (QUENDERIN_NGL=0 workaround comment) but the production engine
+  never got the guard. Fix: GpuOffloadPolicy.nGpuLayers → `#if targetEnvironment(simulator)` cpuOnly.
+  Lesson: a workaround living only in a side tool is a bug in the product — promote it the day it's discovered.
+
 - 2026-07-11 (iOS build broken by the mac session's model-dir unification) — `defaultModelsDir()`
   in SHARED QuenderinKit used `fm.homeDirectoryForCurrentUser` (macOS-only) → iOS target failed to
   compile while macOS stayed green. Fix: `#if os(macOS)` keeps `~/.quenderin/models`; iOS gets

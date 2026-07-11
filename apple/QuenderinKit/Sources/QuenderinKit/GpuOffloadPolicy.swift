@@ -23,6 +23,14 @@ public enum GpuOffloadPolicy {
     /// `appMemoryBudgetGB` that sizes the KV cache — if the file alone exceeds it, wiring
     /// it into the GPU working set can only end badly.
     public static func nGpuLayers(fileSizeGB: Double, deviceBudgetGB: Double) -> Int32 {
-        fileSizeGB <= deviceBudgetGB ? allLayers : cpuOnly
+        #if targetEnvironment(simulator)
+        // The iOS-simulator Metal compute path yields GARBAGE tokens (symbol soup) — the
+        // smoketest knew this (QUENDERIN_NGL=0 workaround) but the engine never did, and the
+        // app shipped sim chats that decoded junk. CPU-only in the simulator, always; real
+        // devices keep Metal. (docs/BUG_JOURNAL.md 2026-07-11)
+        return cpuOnly
+        #else
+        return fileSizeGB <= deviceBudgetGB ? allLayers : cpuOnly
+        #endif
     }
 }
