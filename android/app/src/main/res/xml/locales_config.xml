@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Per-app language picker (Android 13+): the user can override the app's
+     language in Settings independent of the system locale. Mirrors iOS's
+     per-app language. Keep in sync with the values-* resource dirs. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en"/>
+    <locale android:name="ru"/>
+    <locale android:name="ko"/>
+    <locale android:name="ja"/>
+    <locale android:name="zh-CN"/>
+</locale-config>

@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileModelStorage
 import ai.quenderin.core.InstalledModel
@@ -131,7 +134,7 @@ fun SettingsScreen(
             LabeledRow("Active model", model.label)
             LabeledRow("Size", model.sizeLabel)
             OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Change model…")
+                Text(stringResource(R.string.model_change))
             }
             Caption("Runs entirely on-device via llama.cpp — no cloud.")
         }
@@ -139,7 +142,7 @@ fun SettingsScreen(
         SettingsGroup("Reasoning") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Deep thinking", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
                     Caption(
                         if (deepThinking) "The model reasons step-by-step before answering — better on hard " +
                             "questions, but noticeably slower."
@@ -173,7 +176,7 @@ fun SettingsScreen(
                 var deliberation by remember { mutableStateOf(agentPrefs.getBoolean("agent.deliberation", false)) }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Deeper reasoning", color = MaterialTheme.colorScheme.onSurface)
+                        Text(stringResource(R.string.settings_deeper_reasoning), color = MaterialTheme.colorScheme.onSurface)
                         Caption("Let the agent think through each step before it acts — better tool choice on " +
                             "tricky goals, but slower. Off by default; applies to your next run.")
                     }
@@ -226,7 +229,7 @@ fun SettingsScreen(
                         skillStore.clear()
                         skillCount = 0
                     }) {
-                        Text("Clear learned skills")
+                        Text(stringResource(R.string.settings_clear_skills))
                     }
                 } else {
                     Caption("No learned agent skills stored yet.")
@@ -279,7 +282,7 @@ fun SettingsScreen(
                                         }
                                     },
                                     modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
-                                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                                ) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
                             }
                         }
                     }
@@ -297,7 +300,7 @@ fun SettingsScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Privacy Policy") }
+                ) { Text(stringResource(R.string.settings_privacy_policy)) }
                 OutlinedButton(
                     onClick = {
                         runCatching {
@@ -305,7 +308,7 @@ fun SettingsScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Contact support") }
+                ) { Text(stringResource(R.string.settings_contact_support)) }
                 // Open source is a feature — say so where users look for "who made this".
                 OutlinedButton(
                     onClick = {
@@ -314,7 +317,7 @@ fun SettingsScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Quenderin is open source — GitHub") }
+                ) { Text(stringResource(R.string.settings_open_source_github)) }
             }
 
         Caption(

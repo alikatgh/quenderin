@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_clear">Clear</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_share">Share</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_run">Run</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_revoke">Revoke</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_dont_allow">Don\'t allow</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_get_started">Get started</string>
+    <string name="chat_new">New chat</string>
+    <string name="chat_new_conversation">New conversation</string>
+    <string name="chat_back_to_conversations">Back to conversations</string>
+    <string name="chat_more_options">More options</string>
+    <string name="chat_attach_file">Attach a file</string>
+    <string name="chat_continue_generating">Continue generating from where the reply stopped</string>
+    <string name="agent_attach_file">Attach file</string>
+    <string name="agent_give_goal">Give the agent a goal</string>
+    <string name="agent_allow_action_q">Allow this action?</string>
+    <string name="onboarding_download_continue">Download &amp; continue</string>
+    <string name="onboarding_choose_different">Choose a different model…</string>
+    <string name="onboarding_choose_smaller">Choose a smaller model</string>
+    <string name="onboarding_ready">Ready.</string>
+    <string name="onboarding_setup_failed">Couldn\'t get set up</string>
+    <string name="model_change">Change model…</string>
+    <string name="model_deep_thinking">Deep thinking</string>
+    <string name="settings_deeper_reasoning">Deeper reasoning</string>
+    <string name="settings_clear_skills">Clear learned skills</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_contact_support">Contact support</string>
+    <string name="settings_open_source_github">Quenderin is open source — GitHub</string>
+    <string name="welcome_view_source">View the source on GitHub</string>
+    <string name="consent_agree">I understand and agree</string>
+    <string name="consent_read_terms">Read the full terms</string>
+    <string name="badge_on_device_private">on-device · private</string>
+    <string name="link_hugging_face">Hugging Face ↗</string>
+    <string name="agent_undo_last_move">Undo last move (%1$d)</string>
+    <string name="chat_remove_named">Remove %1$s</string>
+    <string name="chat_about_model">About %1$s</string>
+    <string name="settings_delete_named">Delete %1$s</string>
+</resources>

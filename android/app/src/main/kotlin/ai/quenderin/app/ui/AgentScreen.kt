@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.app.AgentGoalHistoryStore
 import ai.quenderin.app.DocTree
 import ai.quenderin.app.DocUndoJournal
@@ -213,7 +216,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { session.clear() }, enabled = !running && hasContent) { Text("Clear") }
+            TextButton(onClick = { session.clear() }, enabled = !running && hasContent) { Text(stringResource(R.string.action_clear)) }
         }
 
         if (!hasContent && !running) {
@@ -284,7 +287,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = { pickDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, enabled = !running) {
-                Text("Attach file")
+                Text(stringResource(R.string.agent_attach_file))
             }
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 attachments.keys.sorted().take(3).forEach { name ->
@@ -338,14 +341,14 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 TextButton(onClick = {
                     workspacePrefs.edit().remove("workspace.treeUri").apply()
                     workspaceTree = null
-                }, enabled = !running) { Text("Revoke") }
+                }, enabled = !running) { Text(stringResource(R.string.action_revoke)) }
             }
             Spacer(Modifier.weight(1f))
             if (undoCount > 0) {
                 TextButton(onClick = {
                     undoNotice = undoJournal.undoLast()
                     undoCount = undoJournal.count
-                }, enabled = !running) { Text("Undo last move ($undoCount)") }
+                }, enabled = !running) { Text(stringResource(R.string.agent_undo_last_move, undoCount)) }
             }
         }
         if (workspaceTree != null) {
@@ -393,7 +396,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 value = goal,
                 onValueChange = { goal = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Give the agent a goal") },
+                placeholder = { Text(stringResource(R.string.agent_give_goal)) },
                 enabled = !running,
             )
             Spacer(Modifier.width(8.dp))
@@ -409,7 +412,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                         }
                         runCatching { context.startActivity(Intent.createChooser(share, "Share walkthrough")) }
                     }
-                }) { Text("Share") }
+                }) { Text(stringResource(R.string.action_share)) }
                 Spacer(Modifier.width(8.dp))
             }
             if (running) {
@@ -419,7 +422,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 TextButton(onClick = {
                     session.cancel()
                     broker.cancelPending()
-                }) { Text("Stop") }
+                }) { Text(stringResource(R.string.action_stop)) }
             }
             Button(
                 enabled = !running && goal.isNotBlank(),
@@ -434,7 +437,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                     running = true
                     scope.launch(Dispatchers.IO) { session.run(g) }
                 },
-            ) { Text("Run") }
+            ) { Text(stringResource(R.string.action_run)) }
         }
     }
 
@@ -446,19 +449,19 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 pendingApproval = null
                 broker.answer(false)
             },
-            title = { Text("Allow this action?") },
+            title = { Text(stringResource(R.string.agent_allow_action_q)) },
             text = { Text("${preview.summary}\n\nNothing runs without your yes. Dismissing counts as no.") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingApproval = null
                     broker.answer(true)
-                }) { Text("Allow") }
+                }) { Text(stringResource(R.string.action_allow)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     pendingApproval = null
                     broker.answer(false)
-                }) { Text("Don't allow") }
+                }) { Text(stringResource(R.string.action_dont_allow)) }
             },
         )
     }

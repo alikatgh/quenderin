@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.core.SupportContact
 import android.content.Intent
 import android.net.Uri
@@ -61,12 +64,12 @@ fun ConsentScreen(onAgree: () -> Unit) {
         )
         Spacer(Modifier.height(32.dp))
         Button(onClick = onAgree, modifier = Modifier.fillMaxWidth()) {
-            Text("I understand and agree", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.consent_agree), style = MaterialTheme.typography.titleMedium)
         }
         TextButton(onClick = {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportContact.TERMS_URL))) }
         }) {
-            Text("Read the full terms", color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.consent_read_terms), color = MaterialTheme.colorScheme.primary)
         }
     }
 }

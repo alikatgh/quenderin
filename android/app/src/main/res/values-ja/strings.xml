@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_clear">消去</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="action_continue">続ける</string>
+    <string name="action_delete">削除</string>
+    <string name="action_share">共有</string>
+    <string name="action_stop">停止</string>
+    <string name="action_run">実行</string>
+    <string name="action_remove">削除</string>
+    <string name="action_revoke">取り消す</string>
+    <string name="action_allow">許可</string>
+    <string name="action_dont_allow">許可しない</string>
+    <string name="action_try_again">再試行</string>
+    <string name="action_get_started">始める</string>
+    <string name="chat_new">新しいチャット</string>
+    <string name="chat_new_conversation">新しい会話</string>
+    <string name="chat_back_to_conversations">会話一覧に戻る</string>
+    <string name="chat_more_options">その他</string>
+    <string name="chat_attach_file">ファイルを添付</string>
+    <string name="chat_continue_generating">止まったところから生成を続ける</string>
+    <string name="agent_attach_file">ファイルを添付</string>
+    <string name="agent_give_goal">エージェントに目標を与える</string>
+    <string name="agent_allow_action_q">この操作を許可しますか？</string>
+    <string name="onboarding_download_continue">ダウンロードして続行</string>
+    <string name="onboarding_choose_different">別のモデルを選ぶ…</string>
+    <string name="onboarding_choose_smaller">より小さいモデルを選ぶ</string>
+    <string name="onboarding_ready">準備完了。</string>
+    <string name="onboarding_setup_failed">セットアップできませんでした</string>
+    <string name="model_change">モデルを変更…</string>
+    <string name="model_deep_thinking">深い思考</string>
+    <string name="settings_deeper_reasoning">より深い推論</string>
+    <string name="settings_clear_skills">学習したスキルを消去</string>
+    <string name="settings_privacy_policy">プライバシーポリシー</string>
+    <string name="settings_contact_support">サポートに問い合わせ</string>
+    <string name="settings_open_source_github">Quenderinはオープンソース — GitHub</string>
+    <string name="welcome_view_source">GitHubでソースを見る</string>
+    <string name="consent_agree">理解して同意します</string>
+    <string name="consent_read_terms">利用規約の全文を読む</string>
+    <string name="badge_on_device_private">オンデバイス · プライベート</string>
+    <string name="link_hugging_face">Hugging Face ↗</string>
+    <string name="agent_undo_last_move">直前の移動を取り消す（%1$d）</string>
+    <string name="chat_remove_named">%1$sを削除</string>
+    <string name="chat_about_model">%1$sについて</string>
+    <string name="settings_delete_named">%1$sを削除</string>
+</resources>

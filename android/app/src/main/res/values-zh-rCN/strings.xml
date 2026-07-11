@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_clear">清除</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_continue">继续</string>
+    <string name="action_delete">删除</string>
+    <string name="action_share">分享</string>
+    <string name="action_stop">停止</string>
+    <string name="action_run">运行</string>
+    <string name="action_remove">移除</string>
+    <string name="action_revoke">撤销</string>
+    <string name="action_allow">允许</string>
+    <string name="action_dont_allow">不允许</string>
+    <string name="action_try_again">重试</string>
+    <string name="action_get_started">开始</string>
+    <string name="chat_new">新对话</string>
+    <string name="chat_new_conversation">新对话</string>
+    <string name="chat_back_to_conversations">返回对话列表</string>
+    <string name="chat_more_options">更多选项</string>
+    <string name="chat_attach_file">附加文件</string>
+    <string name="chat_continue_generating">从中断处继续生成</string>
+    <string name="agent_attach_file">附加文件</string>
+    <string name="agent_give_goal">给智能体一个目标</string>
+    <string name="agent_allow_action_q">允许此操作？</string>
+    <string name="onboarding_download_continue">下载并继续</string>
+    <string name="onboarding_choose_different">选择其他模型…</string>
+    <string name="onboarding_choose_smaller">选择更小的模型</string>
+    <string name="onboarding_ready">已就绪。</string>
+    <string name="onboarding_setup_failed">设置未能完成</string>
+    <string name="model_change">更换模型…</string>
+    <string name="model_deep_thinking">深度思考</string>
+    <string name="settings_deeper_reasoning">更深入的推理</string>
+    <string name="settings_clear_skills">清除已学技能</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_contact_support">联系支持</string>
+    <string name="settings_open_source_github">Quenderin 是开源的——GitHub</string>
+    <string name="welcome_view_source">在 GitHub 上查看源代码</string>
+    <string name="consent_agree">我已了解并同意</string>
+    <string name="consent_read_terms">阅读完整条款</string>
+    <string name="badge_on_device_private">设备端 · 私密</string>
+    <string name="link_hugging_face">Hugging Face ↗</string>
+    <string name="agent_undo_last_move">撤销上一次移动（%1$d）</string>
+    <string name="chat_remove_named">移除 %1$s</string>
+    <string name="chat_about_model">关于 %1$s</string>
+    <string name="settings_delete_named">删除 %1$s</string>
+</resources>

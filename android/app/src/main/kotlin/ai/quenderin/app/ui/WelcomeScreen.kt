@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.core.SupportContact
 import android.content.Intent
 import android.net.Uri
@@ -61,12 +64,12 @@ fun WelcomeScreen(onContinue: () -> Unit) {
         }
         Spacer(Modifier.height(32.dp))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-            Text("Continue", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.action_continue), style = MaterialTheme.typography.titleMedium)
         }
         TextButton(onClick = {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportContact.GITHUB_URL))) }
         }) {
-            Text("View the source on GitHub", color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.welcome_view_source), color = MaterialTheme.colorScheme.primary)
         }
     }
 }

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_clear">지우기</string>
+    <string name="action_cancel">취소</string>
+    <string name="action_continue">계속</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_share">공유</string>
+    <string name="action_stop">중지</string>
+    <string name="action_run">실행</string>
+    <string name="action_remove">제거</string>
+    <string name="action_revoke">취소</string>
+    <string name="action_allow">허용</string>
+    <string name="action_dont_allow">허용 안 함</string>
+    <string name="action_try_again">다시 시도</string>
+    <string name="action_get_started">시작하기</string>
+    <string name="chat_new">새 채팅</string>
+    <string name="chat_new_conversation">새 대화</string>
+    <string name="chat_back_to_conversations">대화 목록으로</string>
+    <string name="chat_more_options">더 보기</string>
+    <string name="chat_attach_file">파일 첨부</string>
+    <string name="chat_continue_generating">중단된 지점부터 이어서 생성</string>
+    <string name="agent_attach_file">파일 첨부</string>
+    <string name="agent_give_goal">에이전트에게 목표 주기</string>
+    <string name="agent_allow_action_q">이 동작을 허용할까요?</string>
+    <string name="onboarding_download_continue">다운로드 후 계속</string>
+    <string name="onboarding_choose_different">다른 모델 선택…</string>
+    <string name="onboarding_choose_smaller">더 작은 모델 선택</string>
+    <string name="onboarding_ready">준비됨.</string>
+    <string name="onboarding_setup_failed">설정을 완료하지 못했습니다</string>
+    <string name="model_change">모델 변경…</string>
+    <string name="model_deep_thinking">심층 사고</string>
+    <string name="settings_deeper_reasoning">더 깊은 추론</string>
+    <string name="settings_clear_skills">학습된 스킬 지우기</string>
+    <string name="settings_privacy_policy">개인정보 처리방침</string>
+    <string name="settings_contact_support">지원팀에 문의</string>
+    <string name="settings_open_source_github">Quenderin은 오픈소스입니다 — GitHub</string>
+    <string name="welcome_view_source">GitHub에서 소스 보기</string>
+    <string name="consent_agree">이해했으며 동의합니다</string>
+    <string name="consent_read_terms">전체 약관 읽기</string>
+    <string name="badge_on_device_private">온디바이스 · 프라이빗</string>
+    <string name="link_hugging_face">Hugging Face ↗</string>
+    <string name="agent_undo_last_move">마지막 이동 취소 (%1$d)</string>
+    <string name="chat_remove_named">%1$s 제거</string>
+    <string name="chat_about_model">%1$s 정보</string>
+    <string name="settings_delete_named">%1$s 삭제</string>
+</resources>

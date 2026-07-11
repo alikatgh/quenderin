@@ -4,6 +4,8 @@
 )
 
 package ai.quenderin.app.ui
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
 
 import ai.quenderin.core.AttachedDocument
 import ai.quenderin.core.ChatMessage
@@ -262,7 +264,7 @@ fun ChatScreen(
                     .padding(horizontal = 16.dp, vertical = 2.dp)
                     .semantics { contentDescription = "Continue generating from where the reply stopped" },
             ) {
-                Text("Continue", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.action_continue), style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -297,7 +299,7 @@ fun ChatScreen(
                                 },
                                 modifier = Modifier.semantics { contentDescription = "Remove ${doc.name}" },
                             ) {
-                                Text("Remove", style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.action_remove), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -450,9 +452,9 @@ private fun ChatTopBar(
                     contentAlignment = Alignment.Center,
                 ) { OverflowIcon(MaterialTheme.colorScheme.onSurfaceVariant) }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("New conversation") }, onClick = { menuOpen = false; onNew() })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.chat_new_conversation)) }, onClick = { menuOpen = false; onNew() })
                     if (hasMessages) {
-                        DropdownMenuItem(text = { Text("Share") }, onClick = { menuOpen = false; onShare() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) }, onClick = { menuOpen = false; onShare() })
                     }
                 }
             }

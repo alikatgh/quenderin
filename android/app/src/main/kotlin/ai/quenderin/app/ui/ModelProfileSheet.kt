@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.Quantization
 import android.content.Intent
@@ -92,7 +95,7 @@ internal fun ModelProfileSheet(
         ProfileCard("Reasoning") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Deep thinking", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
                     Caption(
                         if (deepThinking) "The model reasons step-by-step before answering — better on hard " +
                             "questions, but noticeably slower."
@@ -120,7 +123,7 @@ internal fun ModelProfileSheet(
         }
 
         OutlinedButton(onClick = onChangeModel, modifier = Modifier.fillMaxWidth()) {
-            Text("Change model…")
+            Text(stringResource(R.string.model_change))
         }
     }
 }
@@ -132,7 +135,7 @@ private fun StatusChip() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(7.dp).background(colors.status, CircleShape))
         Spacer(Modifier.width(6.dp))
-        Text("on-device · private", style = MaterialTheme.typography.labelMedium, color = colors.statusText)
+        Text(stringResource(R.string.badge_on_device_private), style = MaterialTheme.typography.labelMedium, color = colors.statusText)
     }
 }
 
@@ -176,7 +179,7 @@ private fun LinkRow(label: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = MaterialTheme.colorScheme.onSurface)
-        Text("Hugging Face ↗", color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.link_hugging_face), color = MaterialTheme.colorScheme.primary)
     }
 }
 

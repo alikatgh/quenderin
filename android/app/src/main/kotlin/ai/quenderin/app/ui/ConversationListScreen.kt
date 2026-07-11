@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package ai.quenderin.app.ui
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
 
 import ai.quenderin.core.ConversationSummary
 import ai.quenderin.core.ModelEntry
@@ -132,7 +134,7 @@ private fun ConversationRow(summary: ConversationSummary, onOpen: () -> Unit, on
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
-                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                 onClick = { menuOpen = false; onDelete() },
             )
         }
@@ -171,7 +173,7 @@ private fun EmptyConversationList(model: ModelEntry, modifier: Modifier, onNew: 
         ) {
             PlusIcon(MaterialTheme.colorScheme.onPrimary)
             Spacer(Modifier.width(8.dp))
-            Text("New chat", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.chat_new), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
         }
     }
 }

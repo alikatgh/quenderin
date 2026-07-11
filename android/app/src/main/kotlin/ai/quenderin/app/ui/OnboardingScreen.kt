@@ -1,5 +1,8 @@
 package ai.quenderin.app.ui
 
+import androidx.compose.ui.res.stringResource
+import ai.quenderin.app.R
+
 import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
 import ai.quenderin.core.ConversationPersistence
@@ -315,7 +318,7 @@ private fun PhaseContent(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
-                Button(onClick = onStart) { Text("Get started") }
+                Button(onClick = onStart) { Text(stringResource(R.string.action_get_started)) }
             }
 
             is OnboardingPhase.Probing ->
@@ -372,12 +375,12 @@ private fun PhaseContent(
                 // fits — never a disabled dead-end hero button.
                 val storage = storageCheck(phase.model)
                 if (storage.hasRoom) {
-                    Button(onClick = { onAccept(phase.model) }) { Text("Download & continue") }
-                    TextButton(onClick = onChoose) { Text("Choose a different model…") }
+                    Button(onClick = { onAccept(phase.model) }) { Text(stringResource(R.string.onboarding_download_continue)) }
+                    TextButton(onClick = onChoose) { Text(stringResource(R.string.onboarding_choose_different)) }
                 } else {
                     StorageShortfallCard(storage)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onChoose) { Text("Choose a smaller model") }
+                    Button(onClick = onChoose) { Text(stringResource(R.string.onboarding_choose_smaller)) }
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Or free up storage and come back.",
@@ -414,7 +417,7 @@ private fun PhaseContent(
                 Spacer(Modifier.height(6.dp))
                 // A multi-GB download must never be a trap: cancel returns to the recommendation
                 // (the engine keeps the .part, so a retry resumes).
-                TextButton(onClick = { onCancel(phase.model) }) { Text("Cancel") }
+                TextButton(onClick = { onCancel(phase.model) }) { Text(stringResource(R.string.action_cancel)) }
             }
 
             is OnboardingPhase.Loading ->
@@ -426,10 +429,10 @@ private fun PhaseContent(
                 )
 
             is OnboardingPhase.Ready ->
-                Text("Ready.", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.onboarding_ready), style = MaterialTheme.typography.titleMedium)
 
             is OnboardingPhase.Failed -> {
-                Text("Couldn't get set up", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.onboarding_setup_failed), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(6.dp))
                 Text(
                     phase.reason,
@@ -438,7 +441,7 @@ private fun PhaseContent(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
-                Button(onClick = onStart) { Text("Try again") }
+                Button(onClick = onStart) { Text(stringResource(R.string.action_try_again)) }
             }
         }
     }
