@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
+import { localRequest } from './helpers/localHttp.js';
 
 /**
  * Q-007: read-only GETs that return USER DATA (sessions, notes, agent memory, the diagnostics
@@ -26,7 +27,7 @@ describe('read-route auth (Q-007)', () => {
     it('rejects unauthenticated GETs to user-data routes with 401', async () => {
         await withApp(async (base) => {
             for (const path of ['/api/sessions', '/api/notes', '/api/memory/trajectories', '/diagnostics', '/api/metrics']) {
-                const res = await fetch(`${base}${path}`);
+                const res = await localRequest(`${base}${path}`);
                 expect(res.status, `${path} should require auth`).toBe(401);
             }
         });
@@ -36,7 +37,7 @@ describe('read-route auth (Q-007)', () => {
         await withApp(async (base) => {
             // The route handlers themselves may 200/404/500 depending on injected services (we pass
             // none) — the point is the auth gate does NOT 401 when the token is present.
-            const res = await fetch(`${base}/api/sessions`, { headers: { 'X-Auth-Token': 'secret-token' } });
+            const res = await localRequest(`${base}/api/sessions`, { headers: { 'X-Auth-Token': 'secret-token' } });
             expect(res.status).not.toBe(401);
         });
     });
@@ -44,7 +45,7 @@ describe('read-route auth (Q-007)', () => {
     it('leaves public probes open without a token', async () => {
         await withApp(async (base) => {
             for (const path of ['/health', '/ready']) {
-                const res = await fetch(`${base}${path}`);
+                const res = await localRequest(`${base}${path}`);
                 expect(res.status, `${path} should stay public`).not.toBe(401);
             }
         });

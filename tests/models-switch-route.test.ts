@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
 import type { LlmService } from '../src/services/llm.service.js';
+import { localRequest } from './helpers/localHttp.js';
 
 /**
  * r37: `POST /api/models/switch` became the ONE switch path (the WS twin was removed, r9-H1)
@@ -32,7 +33,7 @@ async function withApp(llm: LlmService, fn: (base: string) => Promise<void>) {
 }
 
 const post = (base: string, body: unknown, token?: string) =>
-    fetch(`${base}/api/models/switch`, {
+    localRequest(`${base}/api/models/switch`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ describe('POST /api/models/switch (the one switch path)', () => {
 
     it('catalog response carries activeModelId for the Active badge', async () => {
         await withApp(fakeLlm(), async (base) => {
-            const res = await fetch(`${base}/api/models/catalog`);
+            const res = await localRequest(`${base}/api/models/catalog`);
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.activeModelId).toBe('qwen3-4b');

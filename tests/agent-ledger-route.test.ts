@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
 import type { AgentService } from '../src/services/agent.service.js';
+import { localRequest } from './helpers/localHttp.js';
 
 /**
  * Q-549 (governance Step 1): GET /api/agent/ledger exposes the device agent's action flight recorder.
@@ -30,14 +31,14 @@ describe('/api/agent/ledger (Q-549)', () => {
 
     it('requires the auth token', async () => {
         await withApp(async (base) => {
-            const res = await fetch(`${base}/api/agent/ledger`);
+            const res = await localRequest(`${base}/api/agent/ledger`);
             expect(res.status).toBe(401);
         });
     });
 
     it('returns the ledger entries when authorized', async () => {
         await withApp(async (base) => {
-            const res = await fetch(`${base}/api/agent/ledger`, { headers: { 'X-Auth-Token': 'secret-token' } });
+            const res = await localRequest(`${base}/api/agent/ledger`, { headers: { 'X-Auth-Token': 'secret-token' } });
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(Array.isArray(body.ledger)).toBe(true);

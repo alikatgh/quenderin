@@ -2,6 +2,7 @@ import { AddressInfo } from 'net';
 import { describe, expect, it } from 'vitest';
 import { getRecommendedModelIdForTotalRam } from '../src/constants.js';
 import { createApp } from '../src/app.js';
+import { localRequest } from './helpers/localHttp.js';
 
 describe('getRecommendedModelIdForTotalRam', () => {
     it('recommends ultra-light Q2_K below 1.5GB', () => {
@@ -47,11 +48,11 @@ describe('getRecommendedModelIdForTotalRam', () => {
         const port = (server.address() as AddressInfo).port;
 
         try {
-            const healthRes = await fetch(`http://127.0.0.1:${port}/health`);
+            const healthRes = await localRequest(`http://127.0.0.1:${port}/health`);
             expect(healthRes.ok).toBe(true);
             const health = await healthRes.json() as { recommendedModelId: string };
 
-            const downloadRes = await fetch(`http://127.0.0.1:${port}/api/models/download`, {
+            const downloadRes = await localRequest(`http://127.0.0.1:${port}/api/models/download`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Auth-Token': TEST_TOKEN },
                 body: JSON.stringify({}),

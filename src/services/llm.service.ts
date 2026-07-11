@@ -58,6 +58,7 @@ import { executeToolCalls } from "./tools/handlers.js";
 import { buildNativeChatFunctions } from "./tools/nativeFunctions.js";
 import { getHardwareProfile } from "../utils/hardware.js";
 import { verifyModelIntegrity } from "./modelIntegrity.js";
+import { planDownloadWrite } from "./modelDownloadPlan.js";
 import logger from "../utils/logger.js";
 
 /** Narrow unknown catch to an Error-like shape with optional `code` */
@@ -1078,34 +1079,29 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 throw new Error("Readable stream not found in fetch response");
             }
 
-            const isResume = response.status === 206;
-
-            // Validate the resume response before trusting the byte accounting (H9):
-            //  • 200 (server ignored our Range — common with CDNs/redirects): the write stream
-            //    truncates below, so the counter MUST restart from 0, else progress counts from
-            //    the stale partial size and can exceed 100%.
-            //  • 206 whose Content-Range starts somewhere other than our partial size: appending
-            //    would write at the wrong offset and corrupt the GGUF — discard the partial + retry.
-            if (receivedBytes > 0 && !isResume) {
-                receivedBytes = 0;
-            } else if (isResume) {
-                const contentRange = response.headers.get('content-range');
-                const startMatch = contentRange ? contentRange.match(/bytes\s+(\d+)-/i) : null;
-                if (!startMatch || Number(startMatch[1]) !== receivedBytes) {
-                    try { fs.unlinkSync(dest); } catch { /* ignore */ }
-                    try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
-                    throw new Error(`Download resume offset mismatch (server '${contentRange ?? 'none'}' vs local ${receivedBytes}); discarded partial — please retry.`);
-                }
-            }
-
+            // Validate the resume response before trusting the byte accounting (H9). The
+            // restart/resume/discard decision is pure logic, unit-tested in modelDownloadPlan.ts;
+            // here we only carry out the fs side effects it prescribes.
             const contentLength = Number(response.headers.get('content-length')) || 0;
-            const totalBytes = isResume ? receivedBytes + contentLength : contentLength;
+            const writePlan = planDownloadWrite({
+                partialBytes: receivedBytes,
+                status: response.status,
+                contentRange: response.headers.get('content-range'),
+                contentLength,
+            });
+            if (writePlan.action === 'discard') {
+                try { fs.unlinkSync(dest); } catch { /* ignore */ }
+                try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
+                throw new Error(writePlan.discardReason);
+            }
+            receivedBytes = writePlan.writeOffset;
+            const totalBytes = writePlan.totalBytes;
 
             // Persist download metadata for resume capability
             fs.writeFileSync(metaPath, JSON.stringify({ modelId: entry.id, totalBytes, startedAt: new Date().toISOString() }));
 
             let lastEmittedProgress = -1;
-            const fileStream = fs.createWriteStream(dest, isResume ? { flags: 'a' } : undefined);
+            const fileStream = fs.createWriteStream(dest, writePlan.append ? { flags: 'a' } : undefined);
             // A write error (e.g. ENOSPC — realistic mid-download for a multi-GB model on a tight disk)
             // emits 'error' on fileStream. Capture it so it surfaces as a thrown error the catch below
             // handles, instead of an unhandled 'error' event → uncaught exception → process exit. The

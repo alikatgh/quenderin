@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
+import { localRequest } from './helpers/localHttp.js';
 
 /**
  * The governed Tasks routes: the ledger (per-task action history — user data, token-gated) and
@@ -20,14 +21,14 @@ describe('/api/tasks/* (governed agent surface)', () => {
 
     it('the ledger requires the auth token (it is the user\'s action history)', async () => {
         await withApp(async (base) => {
-            expect((await fetch(`${base}/api/tasks/ledger`)).status).toBe(401);
-            expect((await fetch(`${base}/api/tasks/capabilities`)).status).toBe(401);
+            expect((await localRequest(`${base}/api/tasks/ledger`)).status).toBe(401);
+            expect((await localRequest(`${base}/api/tasks/capabilities`)).status).toBe(401);
         });
     });
 
     it('returns ledger entries (bounded) when authorized', async () => {
         await withApp(async (base) => {
-            const res = await fetch(`${base}/api/tasks/ledger`, { headers: { 'X-Auth-Token': 'secret-token' } });
+            const res = await localRequest(`${base}/api/tasks/ledger`, { headers: { 'X-Auth-Token': 'secret-token' } });
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(Array.isArray(body.entries)).toBe(true);
@@ -37,7 +38,7 @@ describe('/api/tasks/* (governed agent surface)', () => {
 
     it('lists this machine\'s capabilities with tier/mutates metadata', async () => {
         await withApp(async (base) => {
-            const res = await fetch(`${base}/api/tasks/capabilities`, { headers: { 'X-Auth-Token': 'secret-token' } });
+            const res = await localRequest(`${base}/api/tasks/capabilities`, { headers: { 'X-Auth-Token': 'secret-token' } });
             expect(res.status).toBe(200);
             const body = await res.json() as { capabilities: Array<{ name: string; purpose: string; tier: number; mutates: boolean; needsWorkspace: boolean }> };
             expect(body.capabilities.length).toBeGreaterThan(0);

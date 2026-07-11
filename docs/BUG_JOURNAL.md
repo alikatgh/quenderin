@@ -4,6 +4,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **`fetch` to ephemeral `listen(0)` servers flakes under parallel test load — use `agent:false`.**
+  Node's global fetch (undici) pools keep-alive connections per origin; the OS recycles ephemeral port
+  numbers across suites, so a pooled connection to a since-closed server on a reused port is handed a dead
+  socket → a response whose headers read `null`, intermittently, load-dependent. The tell: the FAILING
+  assertion moves between runs. Fix: a `node:http` request with `agent: false` (fresh unpooled socket per
+  request, closed on end) — `tests/helpers/localHttp.ts`. Never assert headers off a pooled localhost fetch.
 - **A build-config "optimization" can silently defeat code-splitting — verify chunking with the
   modulepreload list, not the config.** A manualChunks pin merges everything from that package —
   including ASYNC-imported payloads — into one chunk; if any part is statically needed, the whole
@@ -495,6 +501,19 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-11 (flaky security-header tests under full-suite parallel load) — `app-headers` intermittently
+  read `referrer-policy`/CSP as `null`; the failing subtest MOVED between runs (non-deterministic). Cause:
+  8 suites spin up `listen(0)` servers + `fetch` (undici) which POOLS keep-alive connections per origin;
+  the OS recycles ephemeral ports, so a pooled connection to a since-closed server on a reused port gets
+  handed a dead socket. Fix: `tests/helpers/localHttp.ts` — `http.request(..., { agent: false })`, a fresh
+  unpooled socket per request; converted all 8 HTTP suites. Verified: 6 clean full runs. Lesson → pattern.
+
+- 2026-07-11 (H9 resume byte-accounting had zero direct tests) — the restart/resume/discard decision that
+  governs bytes fed to node-llama-cpp's GGUF parser (RCE CVEs) was only exercised end-to-end. Extracted the
+  pure logic to `modelDownloadPlan.ts` (`planDownloadWrite`) + 10 tests pinning every branch incl. the H9
+  cases (200-ignored-Range → restart, 206 offset-mismatch/no-Content-Range → discard). Behavior-preserving;
+  `downloadModel` now delegates the decision. Lesson: security-adjacent logic tested only E2E is a latent gap.
 
 - 2026-07-11 (axe gate catches on day one — unlabeled icon button) — the new UI component suite
   (vitest+jsdom+axe, ui/tests/a11y.test.tsx) flagged the per-note Delete as "button without

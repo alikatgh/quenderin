@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
 import type { MetricsService } from '../src/services/metrics.service.js';
+import { localRequest } from './helpers/localHttp.js';
 
 /**
  * Q-599: MetricsService.getHabits() (the background daemon's autonomous-run telemetry) existed but had no
@@ -26,14 +27,14 @@ describe('/api/metrics/habits (Q-599)', () => {
 
     it('requires the auth token (inherits the /api/metrics prefix gate)', async () => {
         await withApp(stubMetrics, async (base) => {
-            const res = await fetch(`${base}/api/metrics/habits`);
+            const res = await localRequest(`${base}/api/metrics/habits`);
             expect(res.status).toBe(401);
         });
     });
 
     it('returns the habits payload when authorized', async () => {
         await withApp(stubMetrics, async (base) => {
-            const res = await fetch(`${base}/api/metrics/habits`, { headers: { 'X-Auth-Token': 'secret-token' } });
+            const res = await localRequest(`${base}/api/metrics/habits`, { headers: { 'X-Auth-Token': 'secret-token' } });
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(Array.isArray(body.habits)).toBe(true);
