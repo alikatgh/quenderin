@@ -151,12 +151,25 @@ loop before any fix; per-finding disposition (fixed / downgraded / rejected) liv
 
 **Deferred, with rationale (2):**
 - #11 (blocklist multi-word phrase bypassed by zero-separator concatenation, e.g. "sendmoney" evading
-  'send money'): REAL but the blocklist matching is parity-pinned across three platforms
-  (`safety.ts` + Swift + Kotlin, `check_safety_parity.py`). A correct fix must land in all three twins
-  together (and add a shared parity vector), which needs the Swift/Kotlin build+test loop — not
-  safely doable from this machine. Tracked for a 3-platform pass. Mitigation today: it is
-  defense-in-depth UNDER consent + per-run approval + ledger, and single-word dangerous tokens
-  ('pay','buy','delete','transfer','withdraw'…) still match.
+  'send money'): REAL, MEDIUM, defense-in-depth (consent + per-run approval + ledger still gate every
+  mutating action; single-word tokens 'pay'/'buy'/'delete'/'transfer'/'withdraw'… still match). The
+  fix is a **design decision, not a hotfix** — deliberately deferred after analysis (toolchains ARE
+  present locally: swift + kotlinc + java).
+  - **Why not a quick patch:** all three matchers substring-match multi-word phrases but boundary-match
+    single words, and the boundary mechanisms ALREADY differ subtly — TS splits tokens on
+    `[^\p{L}\p{N}]` (so `_` is a separator: "pin_" → blocks) while Swift/Kotlin use a `[\p{L}\p{N}_]`
+    lookaround (so `_` is a word char: "pin_" → does NOT block). Any concat fix inherits this.
+  - **Option A — strip-and-substring** (collapse separators, `contains`): parity-TRIVIAL across all 3
+    languages, but false-blocks real actions — "remove allergens" → "removeallergens" ⊃ "removeall".
+  - **Option B — bounded-token match of the concatenated keyword**: no cross-word false positives, but
+    relies on the TS-vs-Swift/Kotlin underscore divergence above → risks a twin-drift SECURITY bug (the
+    exact class the parity system exists to prevent — see BUG_JOURNAL's twin-drift entries).
+  - **Recommended follow-up (scoped):** (1) pick the philosophy tradeoff (accept over-blocking vs.
+    reconcile boundary semantics) — a maintainer/product call, since a safety gate's false-block rate is
+    a UX decision; (2) FIRST converge the underscore boundary semantics across all three matchers with a
+    new `blocklist-underscore` parity vector; (3) then add `blocklist-concatenation` and the matcher
+    change to all three twins together; (4) verify with `swift test` + kotlin CoreVerify + `npm test` +
+    `check_agent_parity.py`. Not landed here to avoid rushing a divergence/false-block into a safety gate.
 - #15 (hard-stop can't interrupt in-flight device I/O — only the LLM decode is abortable): REAL and
   architectural. `spawnAdb`/native input calls run to completion; the kill switch is honored BETWEEN
   steps (the loop checks `signal.aborted` each iteration), so at most one in-flight action completes
