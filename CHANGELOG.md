@@ -20,7 +20,7 @@
 
 ### Russian-first: UI localization + honest model-language info
 - **Russian UI (macOS + iOS)**: 240-key string catalog (`scripts/translations.tsv` →
-  `build_xcstrings.py` → `Localizable.xcstrings`, wired into both app targets). ko/ja/zh-Hans
+  `build_xcstrings.py` → `Localizable.xcstrings`, wired into both app targets). ko/ja/zh-Hans now filled too
   columns are scaffolded, pending. Known gap: long Settings captions built from concatenated
   literals are verbatim strings (SwiftUI skips localization) — needs a source-side pass.
 - **Every catalog model states its languages** (`languages` field, all platforms + manifest,
