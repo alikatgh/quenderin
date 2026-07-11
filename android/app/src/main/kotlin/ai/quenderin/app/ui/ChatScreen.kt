@@ -26,6 +26,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -49,6 +53,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -209,10 +214,18 @@ fun ChatScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
             ) {
                 item { DayDivider("Today") }
-                items(messages) { msg ->
-                    MessageBubble(msg) {
-                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
-                        runCatching { context.startActivity(intent) }
+                // Index as the key: the chat only appends, so an append gives the new row a fresh
+                // key (animates in) while streaming — which mutates the LAST message's text, not the
+                // list — keeps every existing key stable (never re-animates). A content-based key
+                // would churn the last item on every token. Honors the system "remove animations".
+                itemsIndexed(messages, key = { index, _ -> index }) { _, msg ->
+                    Box(Modifier.animateItem(
+                        placementSpec = spring(stiffness = Spring.StiffnessMediumLow,
+                                               dampingRatio = Spring.DampingRatioLowBouncy))) {
+                        MessageBubble(msg) {
+                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
+                            runCatching { context.startActivity(intent) }
+                        }
                     }
                 }
                 if (busy) item { TypingBubble() }
@@ -691,9 +704,17 @@ private fun Composer(
         // button never resizes. When idle it's Send, dimmed until there's text or attachments.
         val canSend = enabled && (input.isNotBlank() || canSendWithAttachments)
         val active = busy || canSend
+        // Springy pop the moment a message becomes sendable (mirrors iOS). animateFloatAsState
+        // honors the system animator-duration-scale, so it's instant when animations are off.
+        val sendScale by animateFloatAsState(
+            targetValue = if (active) 1f else 0.82f,
+            animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioMediumBouncy),
+            label = "sendScale",
+        )
         Box(
             Modifier
                 .size(48.dp)
+                .graphicsLayer { scaleX = sendScale; scaleY = sendScale }
                 .background(
                     if (active) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
