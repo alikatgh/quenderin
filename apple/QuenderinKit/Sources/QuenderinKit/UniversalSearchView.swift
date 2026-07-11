@@ -306,8 +306,7 @@ public struct UniversalSearchView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(p.primary)
             }
-            Text("New here? Start with “Runs on this \(deviceNoun)” above, then search a family name. "
-               + "Experts: open More filters for params, quant, and sort.")
+            Text("New here? Start with “Runs on this \(deviceNoun)” above, then search a family name. Experts: open More filters for params, quant, and sort.")
                 .font(.caption)
                 .foregroundStyle(p.onSurfaceVariant)
                 .padding(.top, 8)

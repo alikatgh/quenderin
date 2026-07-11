@@ -146,8 +146,7 @@ struct ModelProfileView: View {
                     }
 
                     // Prose needs no box and no rules — quiet caption under the cards.
-                    Text("Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — "
-                       + "once downloaded it works fully offline and nothing you type leaves your \(deviceNoun).")
+                    Text("Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — once downloaded it works fully offline and nothing you type leaves your \(deviceNoun).")
                         .font(.footnote)
                         .foregroundStyle(p.onSurfaceVariant)
                         .multilineTextAlignment(.center)

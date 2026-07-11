@@ -3,243 +3,285 @@
 # Interpolations use format specifiers: %@ (strings), %lld (integers) — must match the key's set.
 # Keys that are concatenated literals in source ("a " + "b") are NOT here: SwiftUI treats those as
 # verbatim strings (no localization lookup) — they need a source-side fix first (tracked in CHANGELOG).
-A one-time download — the main window shows progress and you can cancel any time. Your current model stays installed.	Однократная загрузка — прогресс виден в главном окне, отменить можно в любой момент. Текущая модель останется установленной.			
-A personal AI that lives on your %@ — not in someone's cloud.	Персональный ИИ, который живёт на вашем устройстве (%@) — а не в чужом облаке.			
-About Quenderin	О Quenderin			
-About Quenderin — settings, help, and links	О Quenderin — настройки, справка и ссылки			
-About %@	О модели %@			
-Accept the license on Hugging Face, then download it there	Примите лицензию на Hugging Face и скачайте модель там			
-Actions for %@	Действия для %@			
-Active	Активна			
-Active — in use	Активна — используется			
-Active — protected	Активна — защищена			
-Agent	Агент			
-Agent activity	Действия агента			
-Agent capabilities	Возможности агента			
-All of these run fully on your %@ — a one-time download, then it's yours offline.	Всё это работает полностью на вашем устройстве (%@) — одна загрузка, и модель ваша, офлайн.			
-Allow %@	Разрешить %@			
-Allow all steps for this goal	Разрешить все шаги этой задачи			
-Allow downloads over cellular	Разрешить загрузку по сотовой сети			
-Allow this action	Разрешить это действие			
-Always on	Всегда включено			
-An AI that runs on your %@ — even offline.	ИИ, который работает на вашем устройстве (%@) — даже офлайн.			
-Appearance	Оформление			
-Ask Quenderin anything	Спросите Quenderin о чём угодно			
-Attach a file	Прикрепить файл			
-Attach a file the agent may read (with your permission)	Прикрепить файл, который агент сможет прочитать (с вашего разрешения)			
-Attach a text file to this message	Прикрепить текстовый файл к сообщению			
-Autopilot	Автопилот			
-Back to model choice	Назад к выбору модели			
-Balanced	Сбалансированный			
-Browse or switch conversations from the sidebar in Chat.	Просматривайте и переключайте беседы в боковой панели чата.			
-Cancel	Отмена			
-Cancel download	Отменить загрузку			
-Change model…	Сменить модель…			
-Chat	Чат			
-Chat can’t run this —	Чат не может это выполнить —			
-Chat font	Шрифт чата			
-Chats	Беседы			
-Checking your device…	Проверяем ваше устройство…			
-Choose a different model…	Выбрать другую модель…			
-Choose a model	Выберите модель			
-Choose a smaller model	Выберите модель поменьше			
-Clear	Очистить			
-Clear all conversations…	Удалить все беседы…			
-Clear recent goals	Очистить недавние задачи			
-Clear run	Очистить запуск			
-Clear search	Очистить поиск			
-Community GGUFs — expand a row, pick a file size, then Get.	GGUF от сообщества — раскройте строку, выберите размер файла и нажмите «Скачать».			
-Contact support	Связаться с поддержкой			
-Continue	Продолжить			
-Continue generating from where the reply stopped	Продолжить генерацию с места остановки			
-Copy	Копировать			
-Copy SHA-256	Копировать SHA-256			
-Copy answer	Копировать ответ			
-Copy file name	Копировать имя файла			
-Couldn't get set up	Не удалось завершить настройку			
-Curated models — tap Install to download, or Use if it’s already on disk.	Проверенные модели — нажмите «Установить» для загрузки или «Использовать», если модель уже на диске.			
-Current	Текущая			
-Deeper reasoning	Углублённое рассуждение			
-Delete	Удалить			
-Delete %@ chats…	Удалить бесед: %@…			
-Delete all	Удалить все			
-Delete all %lld conversations?	Удалить все беседы (%lld)?			
-Delete…	Удалить…			
-Density	Плотность			
-Dismiss	Скрыть			
-Dismiss suggestion	Скрыть предложение			
-Don't allow	Не разрешать			
-Done	Готово			
-Download	Скачать			
-Download & continue	Скачать и продолжить			
-Download all	Скачать все			
-Download the complete library (%@)	Скачать всю библиотеку (%@)			
-Downloaded models	Загруженные модели			
-Downloading · %lld%	Загрузка · %lld%			
-Explain the %@	Что такое «%@»			
-Exported from Quenderin (on-device)	Экспортировано из Quenderin (на устройстве)			
-Fast	Быстрый			
-Files	Файлы			
-Finish setting up Quenderin in the main window first.	Сначала завершите настройку Quenderin в главном окне.			
-Gated	С лицензией			
-Gated model — accept its license on Hugging Face first. Quenderin never asks for your HF token.	Модель с лицензией — сначала примите её на Hugging Face. Quenderin никогда не запрашивает ваш токен HF.			
-Generating a reply	Генерация ответа			
-Get	Скачать			
-Get %@	Скачать %@			
-Give the agent a goal	Дайте агенту задачу			
-Grant a workspace folder	Выдать рабочую папку			
-Grant a workspace folder the agent may organize (with your approval per change)	Выдать рабочую папку, которую агент сможет наводить в порядок (каждое изменение — с вашего одобрения)			
-HOW IT WORKS	КАК ЭТО РАБОТАЕТ			
-Hugging Face	Hugging Face			
-I understand and agree	Понимаю и согласен(на)			
-Import	Импортировать			
-Install	Установить			
-Install %@	Установить %@			
-Installed models, the curated catalog, and open GGUFs — flexible for beginners and power users.	Установленные модели, проверенный каталог и открытые GGUF — удобно и новичкам, и опытным.			
-Installed — tap Use to switch to that model.	Установлена — нажмите «Использовать», чтобы переключиться.			
-It opens apps, clicks, types, and works the tools for you — all on your machine.	Он открывает приложения, кликает, печатает и работает с инструментами за вас — всё на вашем компьютере.			
-It uses on-device tools to plan and get it done — privately, on your iPhone.	Он планирует и выполняет задачу инструментами на устройстве — приватно, на вашем iPhone.			
-Jump to latest	К последнему			
-Jump to the latest message	Перейти к последнему сообщению			
-License	Лицензия			
-Loading downloadable files…	Загружаем список файлов…			
-Meet Quenderin	Знакомьтесь: Quenderin			
-Memory fit: %@	Память: %@			
-Message	Сообщение			
-Message bubbles	Пузыри сообщений			
-Model	Модель			
-Model card, license, discussions on huggingface.co	Карточка модели, лицензия и обсуждения на huggingface.co			
-Model library	Библиотека моделей			
-Models	Модели			
-NEEDS YOUR OK IN SETTINGS → AGENT	НУЖНО ВАШЕ РАЗРЕШЕНИЕ В НАСТРОЙКАХ → АГЕНТ			
-New Chat	Новый чат			
-New chat	Новый чат			
-New chat (⌘N)	Новый чат (⌘N)			
-New chats get a one-tap suggestion — coding, reasoning, languages — from what's installed.	Новые чаты получают подсказку в одно касание — код, рассуждения, языки — из установленных моделей.			
-No account, no log-out — your chats never leave this Mac.	Без аккаунта и входа — ваши беседы никогда не покидают этот Mac.			
-No chats yet	Пока нет чатов			
-No conversations yet	Пока нет бесед			
-No files match your filters for this model. Clear quant/size filters or turn off “Fits only”.	Ни один файл не подходит под фильтры. Сбросьте фильтры квантизации/размера или выключите «Только подходящие».			
-No models downloaded yet.	Модели ещё не загружены.			
-No open GGUF models match “%@”.	Открытых GGUF-моделей по запросу «%@» не найдено.			
-No ready-to-run GGUF files in this repo.	В этом репозитории нет готовых GGUF-файлов.			
-Not enough free space	Недостаточно свободного места			
-Not enough memory	Недостаточно памяти			
-OK	ОК			
-Off by default — models are multiple GB, so downloads wait for Wi-Fi. Turn this on to allow cellular data.	По умолчанию выключено — модели весят гигабайты, поэтому загрузки ждут Wi-Fi. Включите, чтобы разрешить сотовые данные.			
-Only this conversation. The defaults for every chat live in Settings.	Только эта беседа. Значения по умолчанию для всех чатов — в Настройках.			
-Open	Открыть			
-Open on Hugging Face	Открыть на Hugging Face			
-Open source page	Открыть страницу модели			
-Open the model's page on huggingface.co	Открыть страницу модели на huggingface.co			
-Or free up disk space and come back.	Или освободите место на диске и вернитесь.			
-Plan novel goals (experimental)	Планировать новые задачи (экспериментально)			
-Plan: 	План:			
-Preview	Предпросмотр			
-Preview of the chat appearance with the current settings	Предпросмотр оформления чата с текущими настройками			
-Privacy	Приватность			
-Privacy Policy	Политика конфиденциальности			
-Quality	Качественный			
-Quant & exact file size also refine files after you tap Show files.	Квантизация и точный размер файла уточняют список после нажатия «Показать файлы».			
-Quenderin	Quenderin			
-Quenderin agent run	Запуск агента Quenderin			
-Quenderin conversation	Беседа Quenderin			
-Quenderin is open source — view on GitHub	Quenderin — открытый код, смотрите на GitHub			
-READY TO USE	ГОТОВО К РАБОТЕ			
-RECENT GOALS	НЕДАВНИЕ ЗАДАЧИ			
-RECOMMENDED FOR YOUR DEVICE	РЕКОМЕНДОВАНО ДЛЯ ВАШЕГО УСТРОЙСТВА			
-RUN LOG	ЖУРНАЛ ЗАПУСКА			
-Re-use goal: %@	Повторить задачу: %@			
-Read the full terms	Прочитать условия полностью			
-Ready	Готово			
-Reasoning	Рассуждение			
-Remove %@	Убрать %@			
-Remove from recents	Убрать из недавних			
-Report answer	Пожаловаться на ответ			
-Report response	Пожаловаться на ответ			
-Retry	Повторить			
-Retry install	Повторить установку			
-Retry install %@	Повторить установку %@			
-Revoke workspace access	Отозвать доступ к рабочей папке			
-Routing	Маршрутизация			
-Runs entirely on your %@. Nothing you type leaves the device.	Работает полностью на вашем устройстве (%@). Ничего из введённого не покидает его.			
-Runs entirely on-device via llama.cpp — no cloud.	Работает полностью на устройстве через llama.cpp — без облака.			
-Search	Поиск			
-Search models — e.g. Qwen, Llama 8B, instruct…	Поиск моделей — например Qwen, Llama 8B, instruct…			
-Search models — e.g. Qwen, Llama, Phi, Gemma…	Поиск моделей — например Qwen, Llama, Phi, Gemma…			
-Search the open catalog	Поиск по открытому каталогу			
-Searching Hugging Face	Ищем на Hugging Face			
-Searching Hugging Face…	Ищем на Hugging Face…			
-Select a chat, or press ⌘N to start one.	Выберите чат или нажмите ⌘N, чтобы начать новый.			
-Settings	Настройки			
-Share conversation	Поделиться беседой			
-Share walkthrough	Поделиться отчётом			
-Show details…	Подробнее…			
-Show in Finder	Показать в Finder			
-Show the full ledger in Finder	Показать весь журнал в Finder			
-Source	Источник			
-Speed	Скорость			
-Start a chat with %@ — it runs entirely on your %@.	Начать чат с %@ — модель работает полностью на вашем устройстве (%@).			
-Step %@	Шаг %@			
-Stop	Стоп			
-Stop agent	Остановить агента			
-Storage	Хранилище			
-Suggest the best model for each task	Предлагать лучшую модель для каждой задачи			
-Support	Поддержка			
-Switch	Переключить			
-Tap to expand → pick a file → Get	Нажмите, чтобы раскрыть → выберите файл → «Скачать»			
-Tap “All results”, turn off “fits RAM”, or raise max size / download.	Нажмите «Все результаты», выключите «влезает в память» или увеличьте лимит размера.			
-Tell the agent what to do on your Mac	Скажите агенту, что сделать на вашем Mac			
-Text size	Размер текста			
-The agent needs a loaded model.	Агенту нужна загруженная модель.			
-The ⋯ menu on each model can delete it and free space — the active model is protected.	Меню ⋯ у каждой модели позволяет удалить её и освободить место — активная модель защищена.			
-Their transcripts and per-chat settings are removed from this Mac. This can't be undone.	Их история и настройки будут удалены с этого Mac. Это действие необратимо.			
-Theme	Тема			
-They download one after another and can be deleted any time in Settings → Storage.	Они загружаются по очереди; удалить можно в любой момент в Настройках → Хранилище.			
-This is the model you’re using now.	Это модель, которую вы используете сейчас.			
-This model needs ~%@ GB — your %@ has %@ GB free.	Этой модели нужно ~%@ ГБ — на вашем устройстве (%@) свободно %@ ГБ.			
-This removes every saved conversation from this %@. It can't be undone.	Все сохранённые беседы будут удалены с этого устройства (%@). Это необратимо.			
-To get ready, resolve: 	Для готовности осталось:			
-Try a family name like Qwen, Llama, Phi, or Mistral — or clear filters above.	Попробуйте название семейства — Qwen, Llama, Phi, Mistral — или сбросьте фильтры выше.			
-Try searching for	Попробуйте поискать			
-Type at least 2 characters. Tip: look for a GGUF re-upload (e.g. TheBloke or bartowski) — those are ready-to-run files; smaller quants (Q4) fit more hardware.	Введите хотя бы 2 символа. Совет: ищите GGUF-выкладки (например TheBloke или bartowski) — это готовые файлы; меньшие квантизации (Q4) подходят большему числу устройств.			
-Undo last move	Отменить последнее перемещение			
-Undo task changes (%lld)	Отменить изменения задачи (%lld)			
-Use	Использовать			
-Use %@	Использовать %@			
-Use example: %@	Пример: %@			
-Use this model	Использовать эту модель			
-Use with judgement	Используйте с умом			
-Version %@	Версия %@			
-Version %@ — on-device · private · open source	Версия %@ — на устройстве · приватно · открытый код			
-View the source on GitHub	Исходный код на GitHub			
-Warming up %@…	Прогреваем %@…			
-What do these mean?	Что это значит?			
-What these mean	Что это значит			
-Why is this recommended?	Почему это рекомендовано?			
-Why this one?	Почему именно она?			
-You can download %@ again any time — it just won't be on this %@.	Вы сможете снова скачать %@ в любой момент — просто модели не будет на этом устройстве (%@).			
-You give a goal. The agent plans steps, uses tools on this device, and shows each step in the run log. Mutating actions always ask you first.	Вы даёте задачу. Агент планирует шаги, использует инструменты на этом устройстве и показывает каждый шаг в журнале. Действия с изменениями всегда сначала спрашивают вас.			
-You’ll still confirm before it changes anything — this only turns the capability on.	Перед любым изменением вас всё равно спросят — это лишь включает возможность.			
-Your device can run %@ (%@)	Ваше устройство может запустить %@ (%@)			
-%@ is running fully on-device.	%@ работает полностью на устройстве.			
-%@ · one time, then it's yours offline	%@ · один раз — и модель ваша, офлайн			
-%@ · %@ downloads	%@ · загрузок: %@			
-%lld	%lld			
-%lld chats selected	Выбрано бесед: %lld			
-%lld models downloading	Загружается моделей: %lld			
-%lld of %lld installed · %@ on disk · %@ free	Установлено %lld из %lld · %@ на диске · %@ свободно			
-%@ — workspace	%@ — рабочая папка			
-on-device · private	на устройстве · приватно			
-· the agent's plan	· план агента			
-Goal: %@	Задача: %@			
-⌘-click rows to change the selection; ⇧-click selects a range.	⌘-клик по строкам меняет выбор; ⇧-клик выбирает диапазон.			
-Last active 	Последняя активность			
-Languages	Языки			
-Russian, English, Chinese + 100 more	Русский, английский, китайский + ещё 100			
-Russian, English, Chinese + 25 more	Русский, английский, китайский + ещё 25			
-Russian, English + 140 more	Русский, английский + ещё 140			
-English & Chinese — weak Russian	Английский и китайский — русский слабый			
-English-focused — weak Russian	В основном английский — русский слабый			
-English + European — weak Russian	Английский + европейские — русский слабый			
-English + 7 more — no Russian	Английский + ещё 7 — без русского			
+A one-time download — the main window shows progress and you can cancel any time. Your current model stays installed.	Однократная загрузка — прогресс виден в главном окне, отменить можно в любой момент. Текущая модель останется установленной.	한 번만 다운로드하면 됩니다 — 진행 상황은 기본 창에 표시되며 언제든 취소할 수 있습니다. 현재 모델은 그대로 유지됩니다.	ダウンロードは一度だけ — 進行状況はメインウィンドウに表示され、いつでもキャンセルできます。現在のモデルはそのまま残ります。	只需下载一次——主窗口会显示进度，随时可以取消。当前模型保持不变。
+A personal AI that lives on your %@ — not in someone's cloud.	Персональный ИИ, который живёт на вашем устройстве (%@) — а не в чужом облаке.	클라우드가 아닌 당신의 %@ 안에 사는 개인 AI.	誰かのクラウドではなく、あなたの%@に住むパーソナルAI。	住在你的%@上的个人 AI——而不是别人的云端。
+About Quenderin	О Quenderin	Quenderin 정보	Quenderinについて	关于 Quenderin
+About Quenderin — settings, help, and links	О Quenderin — настройки, справка и ссылки	Quenderin 정보 — 설정, 도움말, 링크	Quenderinについて — 設定・ヘルプ・リンク	关于 Quenderin——设置、帮助与链接
+About %@	О модели %@	%@ 정보	%@について	关于 %@
+Accept the license on Hugging Face, then download it there	Примите лицензию на Hugging Face и скачайте модель там	Hugging Face에서 라이선스에 동의한 뒤 그곳에서 다운로드하세요	Hugging Faceでライセンスに同意し、そこでダウンロードしてください	请先在 Hugging Face 接受许可，然后在那里下载
+Actions for %@	Действия для %@	%@ 관련 동작	%@の操作	%@ 的操作
+Active	Активна	사용 중	使用中	使用中
+Active — in use	Активна — используется	활성 — 사용 중	アクティブ — 使用中	已启用——使用中
+Active — protected	Активна — защищена	활성 — 보호됨	アクティブ — 保護中	已启用——受保护
+Agent	Агент	에이전트	エージェント	智能体
+Agent activity	Действия агента	에이전트 활동	エージェントの活動	智能体活动
+Agent capabilities	Возможности агента	에이전트 기능	エージェントの機能	智能体能力
+All of these run fully on your %@ — a one-time download, then it's yours offline.	Всё это работает полностью на вашем устройстве (%@) — одна загрузка, и модель ваша, офлайн.	모두 당신의 %@에서 완전히 실행됩니다 — 한 번만 다운로드하면 오프라인에서 계속 사용할 수 있습니다.	これらはすべて%@上で完全に動作します — 一度ダウンロードすれば、あとはオフラインで使えます。	这些全部在你的%@上运行——下载一次，之后离线可用。
+Allow %@	Разрешить %@	%@ 허용	%@を許可	允许 %@
+Allow all steps for this goal	Разрешить все шаги этой задачи	이 목표의 모든 단계 허용	この目標のすべてのステップを許可	允许此目标的所有步骤
+Allow downloads over cellular	Разрешить загрузку по сотовой сети	셀룰러 데이터로 다운로드 허용	モバイル通信でのダウンロードを許可	允许使用蜂窝数据下载
+Allow this action	Разрешить это действие	이 동작 허용	この操作を許可	允许此操作
+Always on	Всегда включено	항상 켜짐	常にオン	始终开启
+An AI that runs on your %@ — even offline.	ИИ, который работает на вашем устройстве (%@) — даже офлайн.	오프라인에서도 당신의 %@에서 실행되는 AI.	オフラインでも%@上で動くAI。	即使离线也能在你的%@上运行的 AI。
+Appearance	Оформление	모양	外観	外观
+Ask Quenderin anything	Спросите Quenderin о чём угодно	Quenderin에게 무엇이든 물어보세요	Quenderinに何でも聞いてください	向 Quenderin 提问任何问题
+Attach a file	Прикрепить файл	파일 첨부	ファイルを添付	附加文件
+Attach a file the agent may read (with your permission)	Прикрепить файл, который агент сможет прочитать (с вашего разрешения)	에이전트가 읽을 수 있는 파일 첨부 (당신의 허가 필요)	エージェントが読めるファイルを添付（あなたの許可が必要）	附加智能体可读取的文件（需你许可）
+Attach a text file to this message	Прикрепить текстовый файл к сообщению	이 메시지에 텍스트 파일 첨부	このメッセージにテキストファイルを添付	为此消息附加文本文件
+Autopilot	Автопилот	자동 진행	オートパイロット	自动驾驶
+Back to model choice	Назад к выбору модели	모델 선택으로 돌아가기	モデル選択に戻る	返回模型选择
+Balanced	Сбалансированный	균형	バランス	均衡
+Browse or switch conversations from the sidebar in Chat.	Просматривайте и переключайте беседы в боковой панели чата.	채팅의 사이드바에서 대화를 탐색하거나 전환하세요.	チャットのサイドバーから会話を閲覧・切り替えできます。	在聊天侧边栏中浏览或切换对话。
+Cancel	Отмена	취소	キャンセル	取消
+Cancel download	Отменить загрузку	다운로드 취소	ダウンロードをキャンセル	取消下载
+Change model…	Сменить модель…	모델 변경…	モデルを変更…	更换模型…
+Chat	Чат	채팅	チャット	聊天
+Chat can’t run this —	Чат не может это выполнить —	채팅에서는 실행할 수 없습니다 —	チャットでは実行できません —	聊天无法执行此操作——
+Chat font	Шрифт чата	채팅 글꼴	チャットのフォント	聊天字体
+Chats	Беседы	채팅	チャット	聊天
+Checking your device…	Проверяем ваше устройство…	기기를 확인하는 중…	デバイスを確認中…	正在检查你的设备…
+Choose a different model…	Выбрать другую модель…	다른 모델 선택…	別のモデルを選ぶ…	选择其他模型…
+Choose a model	Выберите модель	모델 선택	モデルを選ぶ	选择模型
+Choose a smaller model	Выберите модель поменьше	더 작은 모델 선택	より小さいモデルを選ぶ	选择更小的模型
+Clear	Очистить	지우기	消去	清除
+Clear all conversations…	Удалить все беседы…	모든 대화 지우기…	すべての会話を消去…	清除所有对话…
+Clear recent goals	Очистить недавние задачи	최근 목표 지우기	最近の目標を消去	清除最近目标
+Clear run	Очистить запуск	실행 기록 지우기	実行ログを消去	清除运行记录
+Clear search	Очистить поиск	검색 지우기	検索を消去	清除搜索
+Community GGUFs — expand a row, pick a file size, then Get.	GGUF от сообщества — раскройте строку, выберите размер файла и нажмите «Скачать».	커뮤니티 GGUF — 행을 펼치고 파일 크기를 고른 뒤 받기를 누르세요.	コミュニティGGUF — 行を開き、ファイルサイズを選んで「入手」を押してください。	社区 GGUF——展开一行，选择文件大小，然后点击获取。
+Contact support	Связаться с поддержкой	지원팀에 문의	サポートに問い合わせ	联系支持
+Continue	Продолжить	계속	続ける	继续
+Continue generating from where the reply stopped	Продолжить генерацию с места остановки	중단된 지점부터 이어서 생성	止まったところから生成を続ける	从中断处继续生成
+Copy	Копировать	복사	コピー	复制
+Copy SHA-256	Копировать SHA-256	SHA-256 복사	SHA-256をコピー	复制 SHA-256
+Copy answer	Копировать ответ	답변 복사	回答をコピー	复制回答
+Copy file name	Копировать имя файла	파일 이름 복사	ファイル名をコピー	复制文件名
+Couldn't get set up	Не удалось завершить настройку	설정을 완료하지 못했습니다	セットアップできませんでした	设置未能完成
+Curated models — tap Install to download, or Use if it’s already on disk.	Проверенные модели — нажмите «Установить» для загрузки или «Использовать», если модель уже на диске.	엄선된 모델 — 설치를 눌러 다운로드하거나, 이미 디스크에 있으면 사용을 누르세요.	厳選モデル — 「インストール」でダウンロード、ディスクにあれば「使う」を押してください。	精选模型——点按安装以下载；若已在磁盘上，点按使用。
+Current	Текущая	현재	現在	当前
+Deeper reasoning	Углублённое рассуждение	더 깊은 추론	より深い推論	更深入的推理
+Delete	Удалить	삭제	削除	删除
+Delete %@ chats…	Удалить бесед: %@…	채팅 %@개 삭제…	%@件のチャットを削除…	删除 %@ 个聊天…
+Delete all	Удалить все	모두 삭제	すべて削除	全部删除
+Delete all %lld conversations?	Удалить все беседы (%lld)?	대화 %lld개를 모두 삭제할까요?	%lld件の会話をすべて削除しますか？	删除全部 %lld 个对话？
+Delete…	Удалить…	삭제…	削除…	删除…
+Density	Плотность	밀도	密度	密度
+Dismiss	Скрыть	닫기	閉じる	关闭
+Dismiss suggestion	Скрыть предложение	제안 닫기	提案を閉じる	关闭建议
+Don't allow	Не разрешать	허용 안 함	許可しない	不允许
+Done	Готово	완료	完了	完成
+Download	Скачать	다운로드	ダウンロード	下载
+Download & continue	Скачать и продолжить	다운로드 후 계속	ダウンロードして続行	下载并继续
+Download all	Скачать все	모두 다운로드	すべてダウンロード	全部下载
+Download the complete library (%@)	Скачать всю библиотеку (%@)	전체 라이브러리 다운로드 (%@)	ライブラリ全体をダウンロード（%@）	下载完整库（%@）
+Downloaded models	Загруженные модели	다운로드된 모델	ダウンロード済みモデル	已下载的模型
+Downloading · %lld%	Загрузка · %lld%	다운로드 중 · %lld%	ダウンロード中 · %lld%	下载中 · %lld%
+Explain the %@	Что такое «%@»	%@ 설명	%@の説明	解释%@
+Exported from Quenderin (on-device)	Экспортировано из Quenderin (на устройстве)	Quenderin에서 내보냄 (기기 내 처리)	Quenderinからエクスポート（オンデバイス）	从 Quenderin 导出（设备端）
+Fast	Быстрый	빠름	高速	快速
+Files	Файлы	파일	ファイル	文件
+Finish setting up Quenderin in the main window first.	Сначала завершите настройку Quenderin в главном окне.	먼저 기본 창에서 Quenderin 설정을 완료하세요.	まずメインウィンドウでQuenderinのセットアップを完了してください。	请先在主窗口完成 Quenderin 的设置。
+Gated	С лицензией	승인 필요	承認制	需授权
+Gated model — accept its license on Hugging Face first. Quenderin never asks for your HF token.	Модель с лицензией — сначала примите её на Hugging Face. Quenderin никогда не запрашивает ваш токен HF.	승인이 필요한 모델 — 먼저 Hugging Face에서 라이선스에 동의하세요. Quenderin은 HF 토큰을 절대 요구하지 않습니다.	承認制モデル — まずHugging Faceでライセンスに同意してください。QuenderinがHFトークンを求めることはありません。	受限模型——请先在 Hugging Face 接受其许可。Quenderin 绝不会索要你的 HF 令牌。
+Generating a reply	Генерация ответа	답변 생성 중	返信を生成中	正在生成回复
+Get	Скачать	받기	入手	获取
+Get %@	Скачать %@	%@ 받기	%@を入手	获取 %@
+Give the agent a goal	Дайте агенту задачу	에이전트에게 목표 주기	エージェントに目標を与える	给智能体一个目标
+Grant a workspace folder	Выдать рабочую папку	작업 폴더 허용	ワークスペースフォルダを許可	授权工作区文件夹
+Grant a workspace folder the agent may organize (with your approval per change)	Выдать рабочую папку, которую агент сможет наводить в порядок (каждое изменение — с вашего одобрения)	에이전트가 정리할 수 있는 작업 폴더를 허용하세요 (변경마다 당신의 승인 필요)	エージェントが整理できるワークスペースフォルダを許可します（変更ごとにあなたの承認が必要）	授权一个智能体可整理的工作区文件夹（每次更改都需你批准）
+HOW IT WORKS	КАК ЭТО РАБОТАЕТ	작동 방식	仕組み	工作原理
+Hugging Face	Hugging Face	Hugging Face	Hugging Face	Hugging Face
+I understand and agree	Понимаю и согласен(на)	이해했으며 동의합니다	理解して同意します	我已了解并同意
+Import	Импортировать	가져오기	読み込む	导入
+Install	Установить	설치	インストール	安装
+Install %@	Установить %@	%@ 설치	%@をインストール	安装 %@
+Installed models, the curated catalog, and open GGUFs — flexible for beginners and power users.	Установленные модели, проверенный каталог и открытые GGUF — удобно и новичкам, и опытным.	설치된 모델, 엄선된 카탈로그, 공개 GGUF — 초보자와 고급 사용자 모두에게 유연합니다.	インストール済みモデル、厳選カタログ、公開GGUF — 初心者にも上級者にも柔軟に対応。	已安装的模型、精选目录和开放 GGUF——新手和高级用户都适用。
+Installed — tap Use to switch to that model.	Установлена — нажмите «Использовать», чтобы переключиться.	설치됨 — 사용을 눌러 해당 모델로 전환하세요.	インストール済み — 「使う」でそのモデルに切り替え。	已安装——点按使用切换到该模型。
+It opens apps, clicks, types, and works the tools for you — all on your machine.	Он открывает приложения, кликает, печатает и работает с инструментами за вас — всё на вашем компьютере.	앱을 열고, 클릭하고, 입력하고, 도구를 다뤄 줍니다 — 전부 당신의 컴퓨터에서.	アプリを開き、クリックし、入力し、ツールを操作します — すべてあなたのマシン上で。	它替你打开应用、点击、输入、使用工具——全部在你的电脑上。
+It uses on-device tools to plan and get it done — privately, on your iPhone.	Он планирует и выполняет задачу инструментами на устройстве — приватно, на вашем iPhone.	기기 내 도구로 계획을 세우고 실행합니다 — 당신의 iPhone에서, 프라이빗하게.	オンデバイスのツールで計画し、やり遂げます — あなたのiPhone上で、プライベートに。	它使用设备端工具进行规划并完成任务——私密地，在你的 iPhone 上。
+Jump to latest	К последнему	최신으로 이동	最新へ移動	跳到最新
+Jump to the latest message	Перейти к последнему сообщению	최신 메시지로 이동	最新のメッセージへ移動	跳到最新消息
+License	Лицензия	라이선스	ライセンス	许可证
+Loading downloadable files…	Загружаем список файлов…	다운로드 가능한 파일 불러오는 중…	ダウンロード可能なファイルを読み込み中…	正在载入可下载文件…
+Meet Quenderin	Знакомьтесь: Quenderin	Quenderin을 만나보세요	Quenderinへようこそ	认识 Quenderin
+Memory fit: %@	Память: %@	메모리 적합도: %@	メモリ適合: %@	内存适配：%@
+Message	Сообщение	메시지	メッセージ	消息
+Message bubbles	Пузыри сообщений	말풍선	吹き出し	消息气泡
+Model	Модель	모델	モデル	模型
+Model card, license, discussions on huggingface.co	Карточка модели, лицензия и обсуждения на huggingface.co	huggingface.co의 모델 카드, 라이선스, 토론	huggingface.coのモデルカード・ライセンス・ディスカッション	huggingface.co 上的模型卡、许可与讨论
+Model library	Библиотека моделей	모델 라이브러리	モデルライブラリ	模型库
+Models	Модели	모델	モデル	模型
+NEEDS YOUR OK IN SETTINGS → AGENT	НУЖНО ВАШЕ РАЗРЕШЕНИЕ В НАСТРОЙКАХ → АГЕНТ	설정 → 에이전트에서 승인 필요	設定 → エージェントで許可が必要	需在设置 → 智能体中授权
+New Chat	Новый чат	새 채팅	新しいチャット	新对话
+New chat	Новый чат	새 채팅	新しいチャット	新对话
+New chat (⌘N)	Новый чат (⌘N)	새 채팅 (⌘N)	新しいチャット (⌘N)	新对话 (⌘N)
+New chats get a one-tap suggestion — coding, reasoning, languages — from what's installed.	Новые чаты получают подсказку в одно касание — код, рассуждения, языки — из установленных моделей.	새 채팅마다 설치된 모델 중에서 한 번의 탭으로 제안을 받습니다 — 코딩·추론·언어별로.	新しいチャットでは、インストール済みモデルからワンタップ提案が届きます — コーディング・推論・言語別に。	新对话会根据已安装的模型获得一键建议——编程、推理、多语言。
+No account, no log-out — your chats never leave this Mac.	Без аккаунта и входа — ваши беседы никогда не покидают этот Mac.	계정도 로그아웃도 없습니다 — 채팅은 이 Mac을 떠나지 않습니다.	アカウントもログアウトもなし — チャットがこのMacを離れることはありません。	无账号、无需退出——你的聊天永远不会离开这台 Mac。
+No chats yet	Пока нет чатов	아직 채팅이 없습니다	まだチャットはありません	还没有聊天
+No conversations yet	Пока нет бесед	아직 대화가 없습니다	まだ会話はありません	还没有对话
+No files match your filters for this model. Clear quant/size filters or turn off “Fits only”.	Ни один файл не подходит под фильтры. Сбросьте фильтры квантизации/размера или выключите «Только подходящие».	이 모델에 대해 필터와 일치하는 파일이 없습니다. 양자화/크기 필터를 지우거나 “맞는 것만”을 끄세요.	このモデルにはフィルタに合うファイルがありません。量子化/サイズのフィルタを解除するか、「適合のみ」をオフにしてください。	没有符合筛选条件的文件。请清除量化/大小筛选，或关闭“仅显示合适的”。
+No models downloaded yet.	Модели ещё не загружены.	아직 다운로드한 모델이 없습니다.	まだダウンロードしたモデルはありません。	尚未下载任何模型。
+No open GGUF models match “%@”.	Открытых GGUF-моделей по запросу «%@» не найдено.	“%@”와 일치하는 공개 GGUF 모델이 없습니다.	「%@」に一致する公開GGUFモデルはありません。	没有与“%@”匹配的开放 GGUF 模型。
+No ready-to-run GGUF files in this repo.	В этом репозитории нет готовых GGUF-файлов.	이 저장소에는 바로 실행 가능한 GGUF 파일이 없습니다.	このリポジトリにはすぐ実行できるGGUFファイルがありません。	此仓库中没有可直接运行的 GGUF 文件。
+Not enough free space	Недостаточно свободного места	여유 공간 부족	空き容量が不足	可用空间不足
+Not enough memory	Недостаточно памяти	메모리 부족	メモリ不足	内存不足
+OK	ОК	확인	OK	好
+Off by default — models are multiple GB, so downloads wait for Wi-Fi. Turn this on to allow cellular data.	По умолчанию выключено — модели весят гигабайты, поэтому загрузки ждут Wi-Fi. Включите, чтобы разрешить сотовые данные.	기본값은 꺼짐입니다 — 모델은 수 GB라 다운로드는 Wi-Fi를 기다립니다. 켜면 셀룰러 데이터를 허용합니다.	既定ではオフ — モデルは数GBあるため、ダウンロードはWi-Fiを待ちます。オンにするとモバイル通信を許可します。	默认关闭——模型有数 GB 大，下载会等待 Wi-Fi。开启后允许使用蜂窝数据。
+Only this conversation. The defaults for every chat live in Settings.	Только эта беседа. Значения по умолчанию для всех чатов — в Настройках.	이 대화에만 적용됩니다. 모든 채팅의 기본값은 설정에 있습니다.	この会話のみに適用。全チャットの既定値は設定にあります。	仅对本次对话生效。所有聊天的默认设置在“设置”中。
+Open	Открыть	열기	開く	打开
+Open on Hugging Face	Открыть на Hugging Face	Hugging Face에서 열기	Hugging Faceで開く	在 Hugging Face 打开
+Open source page	Открыть страницу модели	소스 페이지 열기	ソースページを開く	打开源代码页面
+Open the model's page on huggingface.co	Открыть страницу модели на huggingface.co	huggingface.co에서 모델 페이지 열기	huggingface.coでモデルページを開く	在 huggingface.co 打开模型页面
+Or free up disk space and come back.	Или освободите место на диске и вернитесь.	또는 디스크 공간을 확보한 뒤 다시 시도하세요.	またはディスク容量を空けて、再度お試しください。	或者清理磁盘空间后再试。
+Plan novel goals (experimental)	Планировать новые задачи (экспериментально)	새로운 목표 계획하기 (실험적)	新規目標のプランニング（実験的）	规划新目标（实验性）
+Plan: 	План:	계획: 	計画: 	计划：
+Preview	Предпросмотр	미리보기	プレビュー	预览
+Preview of the chat appearance with the current settings	Предпросмотр оформления чата с текущими настройками	현재 설정 기준 채팅 모양 미리보기	現在の設定でのチャット表示のプレビュー	当前设置下的聊天外观预览
+Privacy	Приватность	개인정보 보호	プライバシー	隐私
+Privacy Policy	Политика конфиденциальности	개인정보 처리방침	プライバシーポリシー	隐私政策
+Quality	Качественный	품질	品質	质量
+Quant & exact file size also refine files after you tap Show files.	Квантизация и точный размер файла уточняют список после нажатия «Показать файлы».	양자화와 정확한 파일 크기는 파일 표시를 누른 뒤에도 목록을 좁혀 줍니다.	量子化と正確なファイルサイズは、「ファイルを表示」後の絞り込みにも使えます。	量化与精确文件大小也会在你点按“显示文件”后进一步筛选。
+Quenderin	Quenderin	Quenderin	Quenderin	Quenderin
+Quenderin agent run	Запуск агента Quenderin	Quenderin 에이전트 실행	Quenderinエージェントの実行	Quenderin 智能体运行
+Quenderin conversation	Беседа Quenderin	Quenderin 대화	Quenderinの会話	Quenderin 对话
+Quenderin is open source — view on GitHub	Quenderin — открытый код, смотрите на GitHub	Quenderin은 오픈소스입니다 — GitHub에서 보기	Quenderinはオープンソース — GitHubで見る	Quenderin 是开源的——在 GitHub 上查看
+READY TO USE	ГОТОВО К РАБОТЕ	바로 사용 가능	すぐ使える	即可使用
+RECENT GOALS	НЕДАВНИЕ ЗАДАЧИ	최근 목표	最近の目標	最近目标
+RECOMMENDED FOR YOUR DEVICE	РЕКОМЕНДОВАНО ДЛЯ ВАШЕГО УСТРОЙСТВА	이 기기에 추천	このデバイスへのおすすめ	为你的设备推荐
+RUN LOG	ЖУРНАЛ ЗАПУСКА	실행 로그	実行ログ	运行日志
+Re-use goal: %@	Повторить задачу: %@	목표 다시 사용: %@	目標を再利用: %@	重用目标：%@
+Read the full terms	Прочитать условия полностью	전체 약관 읽기	利用規約の全文を読む	阅读完整条款
+Ready	Готово	준비됨	準備完了	已就绪
+Reasoning	Рассуждение	추론	推論	推理
+Remove %@	Убрать %@	%@ 제거	%@を削除	移除 %@
+Remove from recents	Убрать из недавних	최근 목록에서 제거	最近の項目から削除	从最近列表移除
+Report answer	Пожаловаться на ответ	답변 신고	回答を報告	举报回答
+Report response	Пожаловаться на ответ	응답 신고	応答を報告	举报回复
+Retry	Повторить	다시 시도	再試行	重试
+Retry install	Повторить установку	설치 다시 시도	インストールを再試行	重试安装
+Retry install %@	Повторить установку %@	%@ 설치 다시 시도	%@のインストールを再試行	重试安装 %@
+Revoke workspace access	Отозвать доступ к рабочей папке	작업 폴더 접근 취소	ワークスペースへのアクセスを取り消す	撤销工作区访问权限
+Routing	Маршрутизация	라우팅	ルーティング	路由
+Runs entirely on your %@. Nothing you type leaves the device.	Работает полностью на вашем устройстве (%@). Ничего из введённого не покидает его.	전부 당신의 %@에서 실행됩니다. 입력한 내용은 기기를 떠나지 않습니다.	すべて%@上で動作します。入力内容がデバイスの外に出ることはありません。	完全在你的%@上运行。你输入的内容不会离开设备。
+Runs entirely on-device via llama.cpp — no cloud.	Работает полностью на устройстве через llama.cpp — без облака.	llama.cpp로 전부 기기에서 실행 — 클라우드 없음.	llama.cppによりすべてオンデバイスで動作 — クラウドなし。	通过 llama.cpp 完全在设备端运行——无云端。
+Search	Поиск	검색	検索	搜索
+Search models — e.g. Qwen, Llama 8B, instruct…	Поиск моделей — например Qwen, Llama 8B, instruct…	모델 검색 — 예: Qwen, Llama 8B, instruct…	モデルを検索 — 例: Qwen、Llama 8B、instruct…	搜索模型——例如 Qwen、Llama 8B、instruct…
+Search models — e.g. Qwen, Llama, Phi, Gemma…	Поиск моделей — например Qwen, Llama, Phi, Gemma…	모델 검색 — 예: Qwen, Llama, Phi, Gemma…	モデルを検索 — 例: Qwen、Llama、Phi、Gemma…	搜索模型——例如 Qwen、Llama、Phi、Gemma…
+Search the open catalog	Поиск по открытому каталогу	공개 카탈로그 검색	公開カタログを検索	搜索开放目录
+Searching Hugging Face	Ищем на Hugging Face	Hugging Face 검색 중	Hugging Faceを検索中	正在搜索 Hugging Face
+Searching Hugging Face…	Ищем на Hugging Face…	Hugging Face 검색 중…	Hugging Faceを検索中…	正在搜索 Hugging Face…
+Select a chat, or press ⌘N to start one.	Выберите чат или нажмите ⌘N, чтобы начать новый.	채팅을 선택하거나 ⌘N을 눌러 시작하세요.	チャットを選ぶか、⌘Nで新規作成。	选择一个聊天，或按 ⌘N 开始。
+Settings	Настройки	설정	設定	设置
+Share conversation	Поделиться беседой	대화 공유	会話を共有	分享对话
+Share walkthrough	Поделиться отчётом	과정 공유	手順を共有	分享过程
+Show details…	Подробнее…	세부 정보 표시…	詳細を表示…	显示详情…
+Show in Finder	Показать в Finder	Finder에서 보기	Finderで表示	在访达中显示
+Show the full ledger in Finder	Показать весь журнал в Finder	전체 기록을 Finder에서 보기	完全な記録をFinderで表示	在访达中显示完整记录
+Source	Источник	소스	ソース	源代码
+Speed	Скорость	속도	速度	速度
+Start a chat with %@ — it runs entirely on your %@.	Начать чат с %@ — модель работает полностью на вашем устройстве (%@).	%1$@와 채팅을 시작하세요 — 전부 당신의 %2$@에서 실행됩니다.	%1$@とチャットを始めましょう — すべて%2$@上で動作します。	开始与 %1$@ 聊天——它完全在你的%2$@上运行。
+Step %@	Шаг %@	단계 %@	ステップ %@	步骤 %@
+Stop	Стоп	중지	停止	停止
+Stop agent	Остановить агента	에이전트 중지	エージェントを停止	停止智能体
+Storage	Хранилище	저장 공간	ストレージ	存储
+Suggest the best model for each task	Предлагать лучшую модель для каждой задачи	작업마다 최적의 모델 제안	タスクごとに最適なモデルを提案	为每个任务推荐最佳模型
+Support	Поддержка	지원	サポート	支持
+Switch	Переключить	전환	切り替え	切换
+Tap to expand → pick a file → Get	Нажмите, чтобы раскрыть → выберите файл → «Скачать»	탭하여 펼치기 → 파일 선택 → 받기	タップして展開 → ファイルを選択 → 入手	点按展开 → 选择文件 → 获取
+Tap “All results”, turn off “fits RAM”, or raise max size / download.	Нажмите «Все результаты», выключите «влезает в память» или увеличьте лимит размера.	“모든 결과”를 탭하거나 “RAM에 맞는 것만”을 끄거나 최대 크기/다운로드를 올리세요.	「すべての結果」をタップ、「RAMに収まるもののみ」をオフ、または最大サイズ/ダウンロードを引き上げてください。	点按“全部结果”，关闭“适合内存”，或调高最大大小/下载限制。
+Tell the agent what to do on your Mac	Скажите агенту, что сделать на вашем Mac	에이전트에게 Mac에서 할 일을 알려주세요	エージェントにMacでやることを伝えてください	告诉智能体要在你的 Mac 上做什么
+Text size	Размер текста	텍스트 크기	文字サイズ	文字大小
+The agent needs a loaded model.	Агенту нужна загруженная модель.	에이전트에는 로드된 모델이 필요합니다.	エージェントには読み込み済みモデルが必要です。	智能体需要已加载的模型。
+The ⋯ menu on each model can delete it and free space — the active model is protected.	Меню ⋯ у каждой модели позволяет удалить её и освободить место — активная модель защищена.	각 모델의 ⋯ 메뉴에서 삭제해 공간을 확보할 수 있습니다 — 활성 모델은 보호됩니다.	各モデルの⋯メニューから削除して容量を空けられます — 使用中のモデルは保護されます。	每个模型的 ⋯ 菜单可删除它以释放空间——当前使用的模型受保护。
+Their transcripts and per-chat settings are removed from this Mac. This can't be undone.	Их история и настройки будут удалены с этого Mac. Это действие необратимо.	대화 내용과 채팅별 설정이 이 Mac에서 삭제됩니다. 되돌릴 수 없습니다.	トランスクリプトとチャットごとの設定がこのMacから削除されます。元に戻せません。	它们的记录和各自设置将从这台 Mac 上删除。此操作无法撤销。
+Theme	Тема	테마	テーマ	主题
+They download one after another and can be deleted any time in Settings → Storage.	Они загружаются по очереди; удалить можно в любой момент в Настройках → Хранилище.	모델은 차례로 다운로드되며 설정 → 저장 공간에서 언제든 삭제할 수 있습니다.	モデルは順番にダウンロードされ、設定 → ストレージからいつでも削除できます。	它们会依次下载，并可随时在设置 → 存储中删除。
+This is the model you’re using now.	Это модель, которую вы используете сейчас.	지금 사용 중인 모델입니다.	現在使用中のモデルです。	这是你当前使用的模型。
+This model needs ~%@ GB — your %@ has %@ GB free.	Этой модели нужно ~%@ ГБ — на вашем устройстве (%@) свободно %@ ГБ.	이 모델에는 약 %1$@ GB가 필요합니다 — 당신의 %2$@에는 %3$@ GB의 여유가 있습니다.	このモデルには約%1$@ GBが必要です — あなたの%2$@の空きは%3$@ GBです。	此模型需要约 %1$@ GB——你的%2$@有 %3$@ GB 可用。
+This removes every saved conversation from this %@. It can't be undone.	Все сохранённые беседы будут удалены с этого устройства (%@). Это необратимо.	저장된 모든 대화가 이 %@에서 삭제됩니다. 되돌릴 수 없습니다.	保存されたすべての会話がこの%@から削除されます。元に戻せません。	这将从这台%@上删除所有已保存的对话。无法撤销。
+To get ready, resolve: 	Для готовности осталось:	준비를 위해 해결하세요: 	準備のために解決してください: 	要就绪，请先解决：
+Try a family name like Qwen, Llama, Phi, or Mistral — or clear filters above.	Попробуйте название семейства — Qwen, Llama, Phi, Mistral — или сбросьте фильтры выше.	Qwen, Llama, Phi, Mistral 같은 계열 이름을 검색하거나 위 필터를 지워 보세요.	Qwen・Llama・Phi・Mistralなどのファミリー名で試すか、上のフィルタを解除してください。	试试 Qwen、Llama、Phi 或 Mistral 这类系列名——或清除上面的筛选。
+Try searching for	Попробуйте поискать	이런 검색어를 시도해 보세요	こんな検索を試す	试试搜索
+Type at least 2 characters. Tip: look for a GGUF re-upload (e.g. TheBloke or bartowski) — those are ready-to-run files; smaller quants (Q4) fit more hardware.	Введите хотя бы 2 символа. Совет: ищите GGUF-выкладки (например TheBloke или bartowski) — это готовые файлы; меньшие квантизации (Q4) подходят большему числу устройств.	2자 이상 입력하세요. 팁: GGUF 재업로드(예: TheBloke, bartowski)를 찾으세요 — 바로 실행 가능한 파일이며, 작은 양자화(Q4)일수록 더 많은 기기에 맞습니다.	2文字以上入力してください。ヒント: GGUFの再アップロード（例: TheBloke、bartowski）を探しましょう — すぐ実行できるファイルで、小さい量子化（Q4）ほど多くのハードウェアに収まります。	请至少输入 2 个字符。提示：找 GGUF 转载版（如 TheBloke 或 bartowski）——那些是即开即用的文件；更小的量化（Q4）适配更多硬件。
+Undo last move	Отменить последнее перемещение	마지막 이동 취소	直前の移動を取り消す	撤销上一次移动
+Undo task changes (%lld)	Отменить изменения задачи (%lld)	작업 변경 사항 취소 (%lld)	タスクの変更を取り消す（%lld）	撤销任务更改（%lld）
+Use	Использовать	사용	使う	使用
+Use %@	Использовать %@	%@ 사용	%@を使う	使用 %@
+Use example: %@	Пример: %@	예시 사용: %@	例を使う: %@	使用示例：%@
+Use this model	Использовать эту модель	이 모델 사용	このモデルを使う	使用此模型
+Use with judgement	Используйте с умом	신중하게 사용하세요	判断力を持って使う	理性使用
+Version %@	Версия %@	버전 %@	バージョン %@	版本 %@
+Version %@ — on-device · private · open source	Версия %@ — на устройстве · приватно · открытый код	버전 %@ — 온디바이스 · 프라이빗 · 오픈소스	バージョン %@ — オンデバイス · プライベート · オープンソース	版本 %@——设备端 · 私密 · 开源
+View the source on GitHub	Исходный код на GitHub	GitHub에서 소스 보기	GitHubでソースを見る	在 GitHub 上查看源代码
+Warming up %@…	Прогреваем %@…	%@ 준비 중…	%@をウォームアップ中…	正在预热 %@…
+What do these mean?	Что это значит?	이것들은 무슨 뜻인가요?	これらの意味は？	这些是什么意思？
+What these mean	Что это значит	의미 설명	これらの意味	含义说明
+Why is this recommended?	Почему это рекомендовано?	왜 이것을 추천하나요?	なぜこれがおすすめ？	为什么推荐这个？
+Why this one?	Почему именно она?	왜 이 모델인가요?	なぜこれ？	为什么是这个？
+You can download %@ again any time — it just won't be on this %@.	Вы сможете снова скачать %@ в любой момент — просто модели не будет на этом устройстве (%@).	%1$@는 언제든 다시 다운로드할 수 있습니다 — 이 %2$@에 남아 있지 않을 뿐입니다.	%1$@はいつでも再ダウンロードできます — この%2$@に残らないだけです。	你可以随时重新下载 %1$@——只是它不再占用这台%2$@的空间。
+You give a goal. The agent plans steps, uses tools on this device, and shows each step in the run log. Mutating actions always ask you first.	Вы даёте задачу. Агент планирует шаги, использует инструменты на этом устройстве и показывает каждый шаг в журнале. Действия с изменениями всегда сначала спрашивают вас.	당신이 목표를 주면, 에이전트가 단계를 계획하고 이 기기의 도구를 사용하며 각 단계를 실행 로그에 보여줍니다. 무언가를 바꾸는 동작은 항상 먼저 물어봅니다.	あなたが目標を与えると、エージェントはステップを計画し、このデバイスのツールを使い、各ステップを実行ログに表示します。変更を伴う操作は必ず先に確認します。	你给出目标。智能体规划步骤、使用本机工具，并在运行日志中展示每一步。会产生更改的操作总是先征求你的同意。
+You’ll still confirm before it changes anything — this only turns the capability on.	Перед любым изменением вас всё равно спросят — это лишь включает возможность.	무언가를 바꾸기 전에는 여전히 확인을 거칩니다 — 이 스위치는 기능을 켤 뿐입니다.	何かを変更する前には必ず確認があります — これは機能をオンにするだけです。	在它做出任何更改前你仍需确认——这只是开启该能力。
+Your device can run %@ (%@)	Ваше устройство может запустить %@ (%@)	이 기기는 %1$@ 실행 가능 (%2$@)	このデバイスは%1$@を実行可能（%2$@）	你的设备可运行 %1$@（%2$@）
+%@ is running fully on-device.	%@ работает полностью на устройстве.	%@가 완전히 기기에서 실행 중입니다.	%@は完全にオンデバイスで動作中です。	%@ 正完全在设备端运行。
+%@ · one time, then it's yours offline	%@ · один раз — и модель ваша, офлайн	%@ · 한 번만 받으면 오프라인에서 계속 사용	%@ · 一度きり、その後はオフラインで利用可能	%@ · 一次下载，永久离线可用
+%@ · %@ downloads	%@ · загрузок: %@	%1$@ · 다운로드 %2$@회	%1$@ · ダウンロード %2$@件	%1$@ · %2$@ 次下载
+%lld	%lld	%lld	%lld	%lld
+%lld chats selected	Выбрано бесед: %lld	채팅 %lld개 선택됨	%lld件のチャットを選択中	已选择 %lld 个聊天
+%lld models downloading	Загружается моделей: %lld	모델 %lld개 다운로드 중	%lld個のモデルをダウンロード中	%lld 个模型下载中
+%lld of %lld installed · %@ on disk · %@ free	Установлено %lld из %lld · %@ на диске · %@ свободно	%1$lld/%2$lld 설치됨 · 디스크 %3$@ · 여유 %4$@	%1$lld/%2$lld個をインストール済み · ディスク%3$@ · 空き%4$@	已安装 %1$lld/%2$lld · 占用 %3$@ · 可用 %4$@
+%@ — workspace	%@ — рабочая папка	%@ — 작업 폴더	%@ — ワークスペース	%@——工作区
+on-device · private	на устройстве · приватно	온디바이스 · 프라이빗	オンデバイス · プライベート	设备端 · 私密
+· the agent's plan	· план агента	· 에이전트의 계획	· エージェントの計画	· 智能体的计划
+Goal: %@	Задача: %@	목표: %@	目標: %@	目标：%@
+⌘-click rows to change the selection; ⇧-click selects a range.	⌘-клик по строкам меняет выбор; ⇧-клик выбирает диапазон.	⌘-클릭으로 선택을 바꾸고, ⇧-클릭으로 범위를 선택합니다.	⌘クリックで選択を変更、⇧クリックで範囲を選択。	⌘-点按更改所选行；⇧-点按选择范围。
+Last active 	Последняя активность	마지막 활동: 	最終アクティブ: 	最近使用：
+Languages	Языки	언어	言語	语言
+Russian, English, Chinese + 100 more	Русский, английский, китайский + ещё 100	러시아어·영어·중국어 외 100개 이상	ロシア語・英語・中国語 + 100以上	俄语、英语、中文 + 100 多种
+Russian, English, Chinese + 25 more	Русский, английский, китайский + ещё 25	러시아어·영어·중국어 외 25개	ロシア語・英語・中国語 + 25	俄语、英语、中文 + 25 种
+Russian, English + 140 more	Русский, английский + ещё 140	러시아어·영어 외 140개	ロシア語・英語 + 140	俄语、英语 + 140 种
+English & Chinese — weak Russian	Английский и китайский — русский слабый	영어·중국어 — 러시아어 약함	英語・中国語 — ロシア語は苦手	英语和中文——俄语较弱
+English-focused — weak Russian	В основном английский — русский слабый	영어 중심 — 러시아어 약함	英語中心 — ロシア語は苦手	以英语为主——俄语较弱
+English + European — weak Russian	Английский + европейские — русский слабый	영어·유럽 언어 — 러시아어 약함	英語＋欧州言語 — ロシア語は苦手	英语+欧洲语言——俄语较弱
+English + 7 more — no Russian	Английский + ещё 7 — без русского	영어 외 7개 — 러시아어 없음	英語 + 7言語 — ロシア語なし	英语 + 7 种——不支持俄语
+# ---- chunk 4: collapsed footers, row labels, enum values (2026-07-11) ----
+A capability above “computes only” runs ONLY with your permission — grant it here, revoke it any time. The agent can never grant itself anything.	Всё, что выше «только вычисляет», работает ТОЛЬКО с вашего разрешения — выдайте его здесь и отзовите в любой момент. Агент не может выдать себе права сам.	“계산만” 위 단계의 기능은 오직 당신의 허가가 있어야 실행됩니다 — 여기서 허용하고 언제든 취소하세요. 에이전트는 스스로 권한을 부여할 수 없습니다.	「計算のみ」より上の機能は、あなたの許可がある場合にのみ動作します — ここで許可し、いつでも取り消せます。エージェントが自分に権限を与えることはできません。	高于“仅计算”的能力只有经你允许才能运行——在这里授权，随时可撤销。智能体永远无法给自己授权。
+Applies to the conversation text. Code blocks keep their own monospaced size. Bubble colors are presets from the brand artwork — every choice stays Quenderin.	Применяется к тексту беседы. Блоки кода сохраняют свой моноширинный размер. Цвета пузырей — пресеты из фирменной палитры: любой выбор остаётся в стиле Quenderin.	대화 텍스트에 적용됩니다. 코드 블록은 고정폭 크기를 유지합니다. 말풍선 색은 브랜드 아트워크의 프리셋입니다 — 어떤 선택도 Quenderin다움을 유지합니다.	会話テキストに適用されます。コードブロックは等幅サイズを保ちます。吹き出しの色はブランドアートワーク由来のプリセット — どれを選んでもQuenderinらしさは変わりません。	应用于对话文本。代码块保持各自的等宽字号。气泡颜色是品牌画作的预设——任何选择都保持 Quenderin 风格。
+Fast: %@ · Balanced: %@ · Quality: %@	Быстрый: %1$@ · Сбалансированный: %2$@ · Качественный: %3$@	빠름: %1$@ · 균형: %2$@ · 품질: %3$@	高速: %1$@ · バランス: %2$@ · 品質: %3$@	快速：%1$@ · 均衡：%2$@ · 质量：%3$@
+For a goal that doesn't match a built-in recipe, let the model draft its own step-by-step plan first — more capable on unusual multi-step tasks, but a small on-device model can plan imperfectly, so it's experimental and off by default. Your permissions and per-change approvals still apply to every step.	Для задачи без готового сценария модель сначала набросает собственный пошаговый план — это сильнее на нестандартных многошаговых задачах, но небольшая локальная модель может планировать неидеально, поэтому функция экспериментальная и по умолчанию выключена. Ваши разрешения и подтверждения на каждое изменение действуют для каждого шага.	기본 레시피와 맞지 않는 목표라면 모델이 먼저 자체 단계별 계획을 세웁니다 — 특이한 다단계 작업에 더 유능하지만, 작은 온디바이스 모델은 계획이 완벽하지 않을 수 있어 실험적 기능이며 기본값은 꺼짐입니다. 당신의 권한과 변경별 승인은 모든 단계에 그대로 적용됩니다.	組み込みレシピに合わない目標では、モデルがまず独自のステップごとの計画を立てます — 珍しい多段階タスクに強い一方、小さなオンデバイスモデルの計画は不完全なこともあるため、実験的機能として既定ではオフです。あなたの権限と変更ごとの承認はすべてのステップに適用されます。	对于不符合内置方案的目标，让模型先起草自己的分步计划——在不寻常的多步任务上更有能力，但小型设备端模型的规划可能不完善，因此这是实验性功能，默认关闭。你的权限和逐项批准仍适用于每一步。
+Let the agent think through each step before it acts. It picks the right tool more often on tricky goals — but it's noticeably slower, because the model reasons on-device first. Off by default; changes apply to your next step.	Пусть агент обдумывает каждый шаг перед действием. На сложных задачах он чаще выбирает верный инструмент — но заметно медленнее, потому что модель сначала рассуждает на устройстве. По умолчанию выключено; изменения действуют со следующего шага.	에이전트가 행동 전에 각 단계를 먼저 생각하게 합니다. 까다로운 목표에서 올바른 도구를 더 자주 고르지만, 모델이 기기에서 먼저 추론하므로 눈에 띄게 느립니다. 기본값은 꺼짐이며 다음 단계부터 적용됩니다.	エージェントに行動前へ各ステップを考えさせます。難しい目標で正しいツールを選びやすくなる一方、モデルがまずオンデバイスで推論するため明らかに遅くなります。既定はオフ。次のステップから適用されます。	让智能体在行动前先思考每一步。在棘手的目标上它更常选对工具——但明显更慢，因为模型要先在设备端推理。默认关闭；从下一步开始生效。
+Nothing yet. Every capability the agent uses — including the refused ones — is recorded here and in a plain file you can read.	Пока пусто. Каждая использованная агентом возможность — включая отклонённые — записывается здесь и в обычный файл, который вы можете прочитать.	아직 없습니다. 에이전트가 사용한 모든 기능은 — 거부된 것까지 — 여기와 당신이 읽을 수 있는 일반 파일에 기록됩니다.	まだありません。エージェントが使ったすべての機能は — 拒否されたものも含めて — ここと、あなたが読める平文ファイルに記録されます。	暂时没有。智能体使用的每项能力——包括被拒绝的——都会记录在这里和一个你可以直接阅读的文件中。
+Run goals start to finish without asking Allow for every step — for when you can't sit in front of the Mac. Blocked actions (like payments) still refuse, tools you haven't granted in Settings still won't run, every step lands in the audit log, and you can undo a task's changes afterwards. Off by default; applies from your next goal.	Выполнять задачи от начала до конца, не спрашивая «Разрешить» на каждом шаге — на случай, когда вы не у Mac. Запрещённые действия (например, платежи) всё равно отклоняются, невыданные в Настройках инструменты не запускаются, каждый шаг попадает в журнал, а изменения задачи можно потом отменить. По умолчанию выключено; действует со следующей задачи.	목표를 처음부터 끝까지, 단계마다 허용을 묻지 않고 실행합니다 — Mac 앞에 있을 수 없을 때를 위해. 차단된 동작(결제 등)은 여전히 거부되고, 설정에서 허용하지 않은 도구는 실행되지 않으며, 모든 단계가 감사 로그에 남고, 작업의 변경은 나중에 취소할 수 있습니다. 기본값은 꺼짐, 다음 목표부터 적용됩니다.	目標を最初から最後まで、ステップごとの「許可」なしで実行します — Macの前に座れないときのために。ブロック対象の操作（支払いなど）は引き続き拒否され、設定で許可していないツールは動かず、すべてのステップが監査ログに残り、タスクの変更は後から取り消せます。既定はオフ。次の目標から適用されます。	从头到尾执行目标，无需每一步都点“允许”——适合你不在 Mac 前的时候。被禁止的操作（如支付）仍会拒绝，未在设置中授权的工具仍不会运行，每一步都记入审计日志，任务的更改事后可撤销。默认关闭；从下一个目标开始生效。
+When you start a chat, Quenderin checks what you're asking (code, reasoning, another language) and offers the best installed model for it — a suggestion you can tap, never a silent switch.	Когда вы начинаете чат, Quenderin смотрит, о чём вы спрашиваете (код, рассуждение, другой язык), и предлагает лучшую установленную модель — это подсказка, по которой можно тапнуть, а не тихая подмена.	채팅을 시작하면 Quenderin이 질문 유형(코드, 추론, 다른 언어)을 확인하고 가장 적합한 설치 모델을 제안합니다 — 탭할 수 있는 제안일 뿐, 조용히 바꾸지 않습니다.	チャットを始めると、Quenderinは質問の種類（コード・推論・別の言語）を確認し、最適なインストール済みモデルを提案します — タップできる提案であり、黙って切り替えることはありません。	当你开始聊天时，Quenderin 会判断你在问什么（代码、推理、其他语言），并推荐最合适的已安装模型——只是一个可点按的建议，绝不悄悄切换。
+You're on %@, which isn't one of these three — picking one switches to it.	Сейчас активна %@ — она не входит в эти три; выбор любой из них переключит на неё.	현재 %@를 사용 중이며, 이 셋에 속하지 않습니다 — 하나를 고르면 그 모델로 전환됩니다.	現在は%@を使用中で、この3つには含まれません — 選ぶとそのモデルに切り替わります。	你当前使用的 %@ 不在这三个之中——选择任意一个即切换过去。
+You're on cellular. This model is large — connect to Wi-Fi, or allow cellular downloads in settings.	Вы в сотовой сети. Модель большая — подключитесь к Wi-Fi или разрешите сотовые загрузки в настройках.	셀룰러에 연결되어 있습니다. 이 모델은 큽니다 — Wi-Fi에 연결하거나 설정에서 셀룰러 다운로드를 허용하세요.	モバイル通信に接続中です。このモデルは大きいため、Wi-Fiに接続するか、設定でモバイルダウンロードを許可してください。	你正在使用蜂窝网络。此模型较大——请连接 Wi-Fi，或在设置中允许蜂窝下载。
+Active model	Активная модель	활성 모델	使用中のモデル	当前模型
+Size	Размер	크기	サイズ	大小
+Saved conversations	Сохранённые беседы	저장된 대화	保存済みの会話	已保存的对话
+Total on device	Всего на устройстве	기기 내 총량	デバイス上の合計	设备上共计
+Responses are AI-generated on-device and may be inaccurate or objectionable.	Ответы генерируются ИИ на устройстве и могут быть неточными или неуместными.	응답은 기기에서 AI가 생성하며 부정확하거나 부적절할 수 있습니다.	応答はデバイス上でAIが生成するため、不正確または不適切な場合があります。	回复由设备端 AI 生成，可能不准确或不恰当。
+System	Системный	시스템	システム	系统
+Serif	С засечками	세리프	セリフ	衬线
+Monospaced	Моноширинный	고정폭	等幅	等宽
+Small	Мелкий	작게	小	小
+Standard	Стандартный	표준	標準	标准
+Large	Крупный	크게	大	大
+Extra large	Очень крупный	아주 크게	特大	特大
+Teal (default)	Бирюзовый (по умолчанию)	청록 (기본)	ティール（既定）	青绿（默认）
+Copper	Медный	구리	カッパー	铜色
+Forest	Лесной	포레스트	フォレスト	森绿
+Slate	Графитовый	슬레이트	スレート	石板灰
+Light	Светлая	라이트	ライト	浅色
+Dark	Тёмная	다크	ダーク	深色
+Comfortable	Просторная	여유	ゆったり	宽松
+Compact	Компактная	컴팩트	コンパクト	紧凑
+# ---- chunk 5: consent screen + About rows (2026-07-11) ----
+AI can be wrong	ИИ может ошибаться	AI는 틀릴 수 있습니다	AIは間違えることがある	AI 可能出错
+It is not advice	Это не совет	조언이 아닙니다	助言ではありません	这不是建议
+You are in charge	Решаете вы	책임은 당신에게 있습니다	主導権はあなたに	由你做主
+On-device models are small. They can be confidently wrong, outdated, or occasionally inappropriate — and nothing filters them.	Локальные модели невелики. Они могут уверенно ошибаться, устаревать и иногда выдавать неуместное — и ничто их не фильтрует.	온디바이스 모델은 작습니다. 자신 있게 틀리거나, 오래됐거나, 때로 부적절할 수 있으며 — 아무것도 이를 걸러주지 않습니다.	オンデバイスモデルは小型です。自信満々に間違えたり、情報が古かったり、時に不適切だったりします — そして何もそれをフィルタしません。	设备端模型很小。它们可能自信地出错、信息过时，偶尔还会不恰当——而且没有任何过滤。
+Nothing Quenderin writes is medical, legal, financial, or safety advice. Verify anything that matters with a qualified source.	Ничто из написанного Quenderin не является медицинским, юридическим, финансовым советом или советом по безопасности. Всё важное проверяйте у квалифицированного источника.	Quenderin이 쓰는 어떤 것도 의료·법률·금융·안전에 관한 조언이 아닙니다. 중요한 것은 반드시 자격 있는 출처로 확인하세요.	Quenderinが書くものは、医療・法律・金融・安全に関する助言ではありません。重要なことは必ず信頼できる情報源で確認してください。	Quenderin 写的任何内容都不是医疗、法律、金融或安全建议。重要事项请向合格的来源核实。
+Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone.	Каждый ответ генерируется и используется на ваш страх и риск и по вашему усмотрению — что с ним делать, решаете только вы.	모든 답변의 생성과 활용은 당신의 위험과 판단에 달려 있습니다 — 그것으로 무엇을 할지는 오직 당신의 결정입니다.	すべての回答は、あなた自身のリスクと判断で生成・利用されます — それをどう使うかはあなただけの決定です。	每个回答的生成与使用都由你自担风险、自行判断——如何处置完全由你决定。
+By continuing you agree: Quenderin is provided “as is”, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce.	Продолжая, вы соглашаетесь: Quenderin предоставляется «как есть», и в максимальной мере, допускаемой законом, проект Quenderin и его участники не несут никакой ответственности ни перед кем и ни при каких обстоятельствах — ни за программу, ни за что-либо, созданное её ИИ-моделями.	계속하면 다음에 동의하는 것입니다: Quenderin은 “있는 그대로” 제공되며, 법이 허용하는 최대 범위에서 Quenderin 프로젝트와 기여자들은 소프트웨어 및 AI 모델이 생성하는 어떤 것에 대해서도, 누구에게도, 어떤 상황에서도 책임을 지지 않습니다.	続行することで同意したことになります: Quenderinは「現状のまま」提供され、法律が許す最大限の範囲で、Quenderinプロジェクトとその貢献者は、ソフトウェアおよびAIモデルが生成するいかなるものについても、誰に対しても、いかなる状況でも責任を負いません。	继续即表示你同意：Quenderin 按“现状”提供，在法律允许的最大范围内，Quenderin 项目及其贡献者不对本软件或其 AI 模型生成的任何内容，在任何情况下对任何人承担责任。
+Get help	Получить помощь	도움 받기	ヘルプを見る	获取帮助
+What's new — the changelog	Что нового — журнал изменений	새로운 소식 — 변경 내역	新着情報 — 変更履歴	新变化——更新日志
+the website	веб-сайт	웹사이트	ウェブサイト	官网

@@ -19,10 +19,11 @@ TSV = os.path.join(ROOT, "scripts", "translations.tsv")
 OUT = os.path.join(ROOT, "apple", "QuenderinApp", "Localizable.xcstrings")
 LANGS = ["ru", "ko", "ja", "zh-Hans"]
 
-SPEC = re.compile(r'%(?:lld|@|d|\.\d+f|f|%)')
+SPEC = re.compile(r'%(?:\d+\$)?(?:lld|@|d|\.\d+f|f)')
 
 def specs(s):
-    return sorted(SPEC.findall(s.replace("%%", "")))
+    # positional (%1$@) and plain (%@) count as the same specifier for validation
+    return sorted(re.sub(r'%\d+\$', '%', m) for m in SPEC.findall(s.replace("%%", "")))
 
 strings = {}
 errors = []

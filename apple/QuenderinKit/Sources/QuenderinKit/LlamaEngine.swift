@@ -102,8 +102,7 @@ public actor LlamaEngine: InferenceEngine {
         loaded = entry.id
         #else
         throw InferenceError.loadFailed(
-            reason: "llama.cpp is not linked into QuenderinKit yet. Add a `llama` module dependency "
-                  + "(see the wiring notes in LlamaEngine.swift), or use MockInferenceEngine in the meantime."
+            reason: "llama.cpp is not linked into QuenderinKit yet. Add a `llama` module dependency (see the wiring notes in LlamaEngine.swift), or use MockInferenceEngine in the meantime."
         )
         #endif
     }

@@ -45,8 +45,7 @@ public struct ModelSearchView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Search the open catalog")
                             .font(.headline).foregroundStyle(p.onSurface)
-                        Text("Any GGUF on Hugging Face your \(deviceNoun) can run. Community uploads — not vetted by "
-                           + "Quenderin, but every download is verified against Hugging Face's own checksum before it runs.")
+                        Text("Any GGUF on Hugging Face your \(deviceNoun) can run. Community uploads — not vetted by Quenderin, but every download is verified against Hugging Face's own checksum before it runs.")
                             .font(.caption).foregroundStyle(p.onSurfaceVariant)
                             .fixedSize(horizontal: false, vertical: true)
                     }

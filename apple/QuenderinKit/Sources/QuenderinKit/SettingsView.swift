@@ -187,24 +187,15 @@ public struct SettingsView: View {
     private var reasoningSection: some View {
         Section("Reasoning") {
             Toggle("Autopilot", isOn: $autopilotOn)
-            Text("Run goals start to finish without asking Allow for every step — for when you "
-               + "can't sit in front of the Mac. Blocked actions (like payments) still refuse, tools "
-               + "you haven't granted in Settings still won't run, every step lands in the audit "
-               + "log, and you can undo a task's changes afterwards. Off by default; applies from "
-               + "your next goal.")
+            Text("Run goals start to finish without asking Allow for every step — for when you can't sit in front of the Mac. Blocked actions (like payments) still refuse, tools you haven't granted in Settings still won't run, every step lands in the audit log, and you can undo a task's changes afterwards. Off by default; applies from your next goal.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle("Deeper reasoning", isOn: $deliberationOn)
-            Text("Let the agent think through each step before it acts. It picks the right tool more "
-               + "often on tricky goals — but it's noticeably slower, because the model reasons "
-               + "on-device first. Off by default; changes apply to your next step.")
+            Text("Let the agent think through each step before it acts. It picks the right tool more often on tricky goals — but it's noticeably slower, because the model reasons on-device first. Off by default; changes apply to your next step.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle("Plan novel goals (experimental)", isOn: $dynamicPlanningOn)
-            Text("For a goal that doesn't match a built-in recipe, let the model draft its own "
-               + "step-by-step plan first — more capable on unusual multi-step tasks, but a small "
-               + "on-device model can plan imperfectly, so it's experimental and off by default. Your "
-               + "permissions and per-change approvals still apply to every step.")
+            Text("For a goal that doesn't match a built-in recipe, let the model draft its own step-by-step plan first — more capable on unusual multi-step tasks, but a small on-device model can plan imperfectly, so it's experimental and off by default. Your permissions and per-change approvals still apply to every step.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -213,9 +204,7 @@ public struct SettingsView: View {
     private var routingSection: some View {
         Section("Routing") {
             Toggle("Suggest the best model for each task", isOn: $appSettings.suggestBestModel)
-            Text("When you start a chat, Quenderin checks what you're asking (code, reasoning, "
-               + "another language) and offers the best installed model for it — a suggestion you "
-               + "can tap, never a silent switch.")
+            Text("When you start a chat, Quenderin checks what you're asking (code, reasoning, another language) and offers the best installed model for it — a suggestion you can tap, never a silent switch.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -249,17 +238,20 @@ public struct SettingsView: View {
     private var capabilityRows: [CapabilityRow] {
         AgentToolkit.capabilities().map {
             CapabilityRow(id: $0.name, displayName: CapabilityCatalog.displayName(for: $0.name),
-                          purpose: $0.purpose, tier: $0.tier, requiresConsent: $0.requiresConsent)
+                          // The English purpose doubles as the localization key (ru/ko/ja/zh-Hans
+                          // live in Localizable.xcstrings; unknown keys fall back to English).
+                          purpose: String(localized: String.LocalizationValue($0.purpose)),
+                          tier: $0.tier, requiresConsent: $0.requiresConsent)
         }
     }
 
     private func tierLabel(_ tier: CapabilityTier) -> String {
         switch tier {
-        case .pureCompute: return "computes only — no side effects"
-        case .readOnly: return "reads what you attach"
-        case .reversibleWrite: return "makes undoable changes"
-        case .appAction: return "acts in apps"
-        case .irreversible: return "irreversible — never autonomous"
+        case .pureCompute: return String(localized: "computes only — no side effects")
+        case .readOnly: return String(localized: "reads what you attach")
+        case .reversibleWrite: return String(localized: "makes undoable changes")
+        case .appAction: return String(localized: "acts in apps")
+        case .irreversible: return String(localized: "irreversible — never autonomous")
         }
     }
 
@@ -293,8 +285,7 @@ public struct SettingsView: View {
                     }
                 }
             }
-            Text("A capability above \u{201C}computes only\u{201D} runs ONLY with your permission — grant it here, "
-               + "revoke it any time. The agent can never grant itself anything.")
+            Text("A capability above \u{201C}computes only\u{201D} runs ONLY with your permission — grant it here, revoke it any time. The agent can never grant itself anything.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .id(consentRefresh)
@@ -303,8 +294,7 @@ public struct SettingsView: View {
     private var agentActivitySection: some View {
         Section("Agent activity") {
             if recentAgentActivity.isEmpty {
-                Text("Nothing yet. Every capability the agent uses — including the refused ones — "
-                   + "is recorded here and in a plain file you can read.")
+                Text("Nothing yet. Every capability the agent uses — including the refused ones — is recorded here and in a plain file you can read.")
                     .font(.footnote).foregroundStyle(.secondary)
             } else {
                 ForEach(Array(recentAgentActivity.enumerated()), id: \.offset) { _, entry in
@@ -357,8 +347,7 @@ public struct SettingsView: View {
             Picker("Density", selection: $appSettings.messageDensity) {
                 ForEach(AppSettings.MessageDensity.allCases, id: \.self) { Text($0.label).tag($0) }
             }
-            Text("Applies to the conversation text. Code blocks keep their own monospaced size. "
-               + "Bubble colors are presets from the brand artwork — every choice stays Quenderin.")
+            Text("Applies to the conversation text. Code blocks keep their own monospaced size. Bubble colors are presets from the brand artwork — every choice stays Quenderin.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -568,8 +557,7 @@ public struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-                Text("Quenderin runs entirely on your device. No account, no cloud, no tracking — "
-                   + "once a model is downloaded it works fully offline, and nothing you type leaves your \(deviceNoun).")
+                Text("Quenderin runs entirely on your device. No account, no cloud, no tracking — once a model is downloaded it works fully offline, and nothing you type leaves your \(deviceNoun).")
                     .font(.footnote).foregroundStyle(.secondary)
                 // Open source is a feature — say so where users look for "who made this".
                 if let url = URL(string: SupportContact.githubURL) {
@@ -655,7 +643,10 @@ private struct AppearancePreviewCard: View {
 
 /// A title-on-the-left, value-on-the-right settings row.
 private struct LabeledRow: View {
-    let title: String
+    // LocalizedStringKey, not String: a literal passed to a String parameter binds
+    // verbatim and silently skips the string catalog ("Active model" stayed English
+    // in a Japanese UI). The value stays String — it's data, never localized copy.
+    let title: LocalizedStringKey
     let value: String
 
     var body: some View {

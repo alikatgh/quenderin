@@ -31,17 +31,17 @@ public struct ConsentView: View {
 
                 VStack(alignment: .leading, spacing: 18) {
                     ConsentRow(icon: "exclamationmark.bubble", title: "AI can be wrong",
-                               detail: SupportContact.consentWrong, palette: p)
+                               detail: String(localized: String.LocalizationValue(SupportContact.consentWrong)), palette: p)
                     ConsentRow(icon: "stethoscope", title: "It is not advice",
-                               detail: SupportContact.consentNotAdvice, palette: p)
+                               detail: String(localized: String.LocalizationValue(SupportContact.consentNotAdvice)), palette: p)
                     ConsentRow(icon: "person.fill.checkmark", title: "You are in charge",
-                               detail: SupportContact.consentResponsibility, palette: p)
+                               detail: String(localized: String.LocalizationValue(SupportContact.consentResponsibility)), palette: p)
                 }
                 .padding(.top, 28)
                 .frame(maxWidth: 380, alignment: .leading)
 
                 // The binding sentence, in full, right above the button that accepts it.
-                Text(SupportContact.consentLegal)
+                Text(String(localized: String.LocalizationValue(SupportContact.consentLegal)))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
                     .multilineTextAlignment(.center)
@@ -80,7 +80,8 @@ public struct ConsentView: View {
 
 private struct ConsentRow: View {
     let icon: String
-    let title: String
+    // LocalizedStringKey so literal titles hit the string catalog (String binds verbatim).
+    let title: LocalizedStringKey
     let detail: String
     let palette: QuenderinPalette
 

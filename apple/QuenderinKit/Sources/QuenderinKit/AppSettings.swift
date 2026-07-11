@@ -20,7 +20,7 @@ public final class AppSettings: ObservableObject {
             case .dark: return .dark
             }
         }
-        public var label: String { rawValue.capitalized }
+        public var label: String { String(localized: String.LocalizationValue(rawValue.capitalized)) }
     }
 
     public enum ChatFontStyle: String, CaseIterable {
@@ -34,9 +34,9 @@ public final class AppSettings: ObservableObject {
         }
         public var label: String {
             switch self {
-            case .standard: return "System"
-            case .serif: return "Serif"
-            case .monospaced: return "Monospaced"
+            case .standard: return String(localized: "System")
+            case .serif: return String(localized: "Serif")
+            case .monospaced: return String(localized: "Monospaced")
             }
         }
     }
@@ -53,10 +53,10 @@ public final class AppSettings: ObservableObject {
         }
         public var label: String {
             switch self {
-            case .small: return "Small"
-            case .standard: return "Standard"
-            case .large: return "Large"
-            case .extraLarge: return "Extra large"
+            case .small: return String(localized: "Small")
+            case .standard: return String(localized: "Standard")
+            case .large: return String(localized: "Large")
+            case .extraLarge: return String(localized: "Extra large")
             }
         }
     }
@@ -67,10 +67,10 @@ public final class AppSettings: ObservableObject {
         case teal, copper, forest, slate
         public var label: String {
             switch self {
-            case .teal: return "Teal (default)"
-            case .copper: return "Copper"
-            case .forest: return "Forest"
-            case .slate: return "Slate"
+            case .teal: return String(localized: "Teal (default)")
+            case .copper: return String(localized: "Copper")
+            case .forest: return String(localized: "Forest")
+            case .slate: return String(localized: "Slate")
             }
         }
         /// (bubble, text, timestamp) for the USER side, per color scheme — each pair checked
@@ -92,7 +92,7 @@ public final class AppSettings: ObservableObject {
     public enum MessageDensity: String, CaseIterable {
         case comfortable, compact
         public var spacing: CGFloat { self == .comfortable ? 6 : 3 }
-        public var label: String { rawValue.capitalized }
+        public var label: String { String(localized: String.LocalizationValue(rawValue.capitalized)) }
     }
 
     @Published public var theme: Theme { didSet { save(theme.rawValue, "theme") } }

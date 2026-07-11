@@ -1,0 +1,62 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCalendarsUsageDescription": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ассистент Quenderin может прочитать события календаря на сегодня, когда вы его об этом попросите — только с вашего разрешения; ничто не покидает устройство."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderin의 온디바이스 어시스턴트는 당신이 요청할 때 오늘의 캘린더 일정을 읽을 수 있습니다 — 당신의 허가가 있을 때만, 어떤 것도 기기를 떠나지 않습니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderinのオンデバイスアシスタントは、あなたが頼んだときに今日のカレンダー予定を読み取れます — あなたの許可があるときだけで、何もデバイスの外に出ません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当你提出请求时，Quenderin 的设备端助手可以读取今天的日历事件——仅在你允许时，且任何内容都不会离开设备。"
+          }
+        }
+      }
+    },
+    "NSCalendarsFullAccessUsageDescription": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ассистент Quenderin может прочитать события календаря на сегодня, когда вы его об этом попросите — только с вашего разрешения; ничто не покидает устройство."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderin의 온디바이스 어시스턴트는 당신이 요청할 때 오늘의 캘린더 일정을 읽을 수 있습니다 — 당신의 허가가 있을 때만, 어떤 것도 기기를 떠나지 않습니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quenderinのオンデバイスアシスタントは、あなたが頼んだときに今日のカレンダー予定を読み取れます — あなたの許可があるときだけで、何もデバイスの外に出ません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当你提出请求时，Quenderin 的设备端助手可以读取今天的日历事件——仅在你允许时，且任何内容都不会离开设备。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

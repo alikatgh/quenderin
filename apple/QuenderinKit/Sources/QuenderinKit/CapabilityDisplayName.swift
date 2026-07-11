@@ -49,7 +49,10 @@ public enum CapabilityCatalog {
 
     /// The friendly name for a capability id — an explicit entry, else a prettified id.
     public static func displayName(for id: String) -> String {
-        displayNames[id] ?? prettify(id)
+        // Localized at lookup: the English map value doubles as the catalog key
+        // (Localizable.xcstrings in the app bundle carries ru/ko/ja/zh-Hans).
+        guard let name = displayNames[id] else { return prettify(id) }
+        return String(localized: String.LocalizationValue(name))
     }
 
     /// Turn `some.new_tool` into "Some New Tool" — a graceful fallback for an unmapped id so a newly

@@ -194,10 +194,8 @@ public enum IPhoneModelSelector {
                 thermalBattery: ThermalBattery.estimate(for: sm, chip: device.chip, batteryMAh: device.batteryMAh, peakTokensPerSecond: tokS),
                 confidence: runnable ? .forced : .unsupported,
                 rationale: runnable
-                    ? "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). "
-                        + "Using the smallest model, \(sm.label), so it stays responsive and is never jetsam-killed."
-                    : "\(device.deviceName) doesn't have enough memory to run on-device AI (~\(fmt(usableGB)) GB "
-                        + "usable; even \(sm.label) needs ~\(fmt(runtime)) GB). On-device inference isn't supported here.",
+                    ? "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). Using the smallest model, \(sm.label), so it stays responsive and is never jetsam-killed."
+                    : "\(device.deviceName) doesn't have enough memory to run on-device AI (~\(fmt(usableGB)) GB usable; even \(sm.label) needs ~\(fmt(runtime)) GB). On-device inference isn't supported here.",
                 device: device,
                 alternatives: options   // everything considered, for transparency
             )

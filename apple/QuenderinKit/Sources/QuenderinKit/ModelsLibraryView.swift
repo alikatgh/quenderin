@@ -66,10 +66,7 @@ public struct ModelsLibraryView: View {
                 }
                 if !groups.recommended.isEmpty {
                     sectionHeader("Recommended", color: p.primary, palette: p,
-                                  hint: "The largest model that loads comfortably in this \(deviceNoun)'s "
-                                      + "\(Int(HardwareProbe.current().totalRAMGB)) GB of memory — the best answers "
-                                      + "it can run without slowdowns. Picked by the same live check that grades "
-                                      + "every card's fit badge.")
+                                  hint: "The largest model that loads comfortably in this \(deviceNoun)'s \(Int(HardwareProbe.current().totalRAMGB)) GB of memory — the best answers it can run without slowdowns. Picked by the same live check that grades every card's fit badge.")
                     grid(groups.recommended, palette: p)
                 }
                 if !groups.available.isEmpty {
@@ -82,15 +79,12 @@ public struct ModelsLibraryView: View {
                     grid(groups.blocked, palette: p)
                 }
 
-                Text("Installed is not the same as loadable: models load one at a time, and RAM decides "
-                   + "which can run. The fit badges are live for this \(deviceNoun). Click a model for its "
-                   + "full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
+                Text("Installed is not the same as loadable: models load one at a time, and RAM decides which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
 
                 // Open Hub + local filter live on the Search rail/tab — not buried under this grid.
-                Text("Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, "
-                   + "catalog, and open Hugging Face GGUFs in one place.")
+                Text("Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.")
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 4)

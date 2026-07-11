@@ -71,9 +71,7 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
             exampleGoal: "Put my daughter's birthday on the calendar today",
             steps: [
                 .init(title: "Add the event", toolHint: "mac.calendar.add",
-                      guidance: "Input format: \"Title | today HH:MM | minutes\" "
-                          + "(or YYYY-MM-DD HH:MM). Example: "
-                          + "\"Daughter birthday | today 09:00 | 60\"."),
+                      guidance: "Input format: \"Title | today HH:MM | minutes\" (or YYYY-MM-DD HH:MM). Example: \"Daughter birthday | today 09:00 | 60\"."),
             ]),
     ]
 
@@ -165,9 +163,7 @@ public struct AgentRecipe: Sendable, Equatable, Identifiable {
             // stay free to pick a better tool. (After 2 non-advancing turns the loop drops this line
             // entirely for the neutral goal restatement — see AgentLoop's `dynamicStalls`.) No firm
             // "suggested tool" whisper, no purpose echo — just a soft hint plus the real decision ask.
-            return "Plan so far: \(done) of \(steps.count) done. Likely next — \(next.title) "
-                 + "(try \(next.toolHint); if a different tool clearly fits better, use that instead). "
-                 + "Decide the single best next action."
+            return "Plan so far: \(done) of \(steps.count) done. Likely next — \(next.title) (try \(next.toolHint); if a different tool clearly fits better, use that instead). Decide the single best next action."
         }
         var line = "Recipe \"\(title)\" (\(steps.count) steps). Done: \(done). "
         line += "Next is step \(cursor + 1) — \(next.title) (suggested tool: \(next.toolHint))."

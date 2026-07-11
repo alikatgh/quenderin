@@ -95,7 +95,7 @@ struct AboutView: View {
     }
 
     @ViewBuilder
-    private func aboutRow(icon: String, title: String, detail: String, external: Bool, palette p: QuenderinPalette, action: @escaping () -> Void) -> some View {
+    private func aboutRow(icon: String, title: LocalizedStringKey, detail: String, external: Bool, palette p: QuenderinPalette, action: @escaping () -> Void) -> some View {
         AboutRowButton(icon: icon, title: title, detail: detail, external: external, palette: p, action: action)
     }
 }
@@ -118,7 +118,7 @@ private struct OpenSettingsRow: View {
 /// background tint only — geometry never moves (UI rule).
 private struct AboutRowButton: View {
     let icon: String
-    let title: String
+    let title: LocalizedStringKey
     let detail: String
     let external: Bool
     let palette: QuenderinPalette

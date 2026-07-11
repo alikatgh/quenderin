@@ -724,8 +724,7 @@ private struct EmptyChatState: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
             if isLowQualityModel {
-                Text("You're on the lightest model — quick, but it simplifies and sometimes rambles. "
-                   + "For anything that matters, pick a bigger one in the Model library.")
+                Text("You're on the lightest model — quick, but it simplifies and sometimes rambles. For anything that matters, pick a bigger one in the Model library.")
                     .font(.footnote)
                     .foregroundStyle(palette.onSurfaceVariant)
                     .multilineTextAlignment(.center)
