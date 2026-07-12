@@ -1,5 +1,7 @@
 package ai.quenderin.app.ui
 
+import ai.quenderin.app.R
+import androidx.compose.ui.res.stringResource
 import ai.quenderin.core.MemoryCheckResult
 import ai.quenderin.core.MemoryFitness
 import ai.quenderin.core.MemorySeverity
@@ -197,7 +199,7 @@ private fun ModelPickerRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "${entry.sizeLabel.removeSuffix(" download")} · ${entry.quantization} · needs ~${fmt1(entry.ramGB)} GB RAM",
+                stringResource(R.string.picker_model_meta, entry.sizeLabel.removeSuffix(" download"), entry.quantization, fmt1(entry.ramGB)),
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

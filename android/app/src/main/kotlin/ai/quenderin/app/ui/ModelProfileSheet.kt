@@ -80,46 +80,39 @@ internal fun ModelProfileSheet(
             )
         }
 
-        ProfileCard("Specifications") {
-            SpecRow("Parameters", "${fmt(model.paramsBillions)}B")
-            SpecRow("Download size", model.sizeLabel.removeSuffix(" download"))
-            SpecRow("Memory needed", "~${fmt(model.ramGB)} GB RAM")
-            SpecRow("Quantization", model.quantization)
+        ProfileCard(stringResource(R.string.profile_specifications)) {
+            SpecRow(stringResource(R.string.profile_parameters), stringResource(R.string.profile_params_value, fmt(model.paramsBillions)))
+            SpecRow(stringResource(R.string.profile_download_size), model.sizeLabel.removeSuffix(" download"))
+            SpecRow(stringResource(R.string.profile_memory_needed), stringResource(R.string.profile_memory_value, fmt(model.ramGB)))
+            SpecRow(stringResource(R.string.profile_quantization), model.quantization)
             if (quant != null) {
-                SpecRow("Precision", "${fmt(quant.bitsPerWeight)} bits/weight")
-                SpecRow("Quality", quant.quality)
+                SpecRow(stringResource(R.string.profile_precision), stringResource(R.string.profile_precision_bits, fmt(quant.bitsPerWeight)))
+                SpecRow(stringResource(R.string.profile_quality), quant.quality)
             }
-            SpecRow("Format", "GGUF")
+            SpecRow(stringResource(R.string.profile_format), "GGUF")
         }
 
-        ProfileCard("Reasoning") {
+        ProfileCard(stringResource(R.string.profile_reasoning)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
-                    Caption(
-                        if (deepThinking) "The model reasons step-by-step before answering — better on hard " +
-                            "questions, but noticeably slower."
-                        else "Off: fast, direct answers. Turn on to let the model reason step-by-step (slower).",
-                    )
+                    Caption(stringResource(if (deepThinking) R.string.profile_reasoning_on else R.string.profile_reasoning_off))
                 }
                 Spacer(Modifier.width(12.dp))
                 Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
             }
         }
 
-        ProfileCard("Privacy") {
-            Caption(
-                "Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — once " +
-                    "downloaded it works fully offline and nothing you type leaves your phone.",
-            )
+        ProfileCard(stringResource(R.string.profile_privacy)) {
+            Caption(stringResource(R.string.profile_privacy_body))
         }
 
-        ProfileCard("Technical") {
-            SpecRow("File", model.filename)
-            LinkRow("Source") {
+        ProfileCard(stringResource(R.string.profile_technical)) {
+            SpecRow(stringResource(R.string.profile_file), model.filename)
+            LinkRow(stringResource(R.string.profile_source)) {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(model.url))) }
             }
-            SpecRow("Checksum", model.sha256?.let { "${it.take(12)}…" } ?: "magic-only")
+            SpecRow(stringResource(R.string.profile_checksum), model.sha256?.let { "${it.take(12)}…" } ?: stringResource(R.string.profile_checksum_magic))
         }
 
         OutlinedButton(onClick = onChangeModel, modifier = Modifier.fillMaxWidth()) {
@@ -174,7 +167,7 @@ private fun SpecRow(label: String, value: String) {
 @Composable
 private fun LinkRow(label: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 24.dp).clickable(onClickLabel = "Open source page") { onClick() },
+        Modifier.fillMaxWidth().heightIn(min = 24.dp).clickable(onClickLabel = stringResource(R.string.profile_open_source_page)) { onClick() },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -192,14 +185,17 @@ private fun Caption(text: String) {
 private fun fmt(d: Double): String = if (d % 1.0 == 0.0) d.toInt().toString() else d.toString()
 
 /** One-line, family-specific description keyed off the catalog id. Purely cosmetic copy. */
-internal fun modelBlurb(id: String): String = when {
-    id.startsWith("qwen3") -> "Alibaba's Qwen3 — a strong, broadly multilingual all-rounder."
-    id.startsWith("qwen25-coder") -> "Qwen2.5 Coder — tuned for programming and code reasoning."
-    id.startsWith("deepseek-r1") -> "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers."
-    id.startsWith("mistral") -> "Mistral — a fast, well-balanced general-purpose model."
-    id.startsWith("gemma4") -> "Google's Gemma 4 — the newest Gemma; excellent multilingual quality per GB."
-    id.startsWith("gemma3") -> "Google's Gemma 3 — strong multilingual coverage for its size."
-    id.startsWith("phi4") -> "Microsoft's Phi-4 Mini — efficient and capable for its footprint."
-    id.startsWith("llama") -> "Meta's Llama — a capable, general-purpose instruct model."
-    else -> "An on-device language model running locally via llama.cpp."
-}
+@Composable
+internal fun modelBlurb(id: String): String = stringResource(
+    when {
+        id.startsWith("qwen3") -> R.string.blurb_qwen3
+        id.startsWith("qwen25-coder") -> R.string.blurb_qwen25_coder
+        id.startsWith("deepseek-r1") -> R.string.blurb_deepseek_r1
+        id.startsWith("mistral") -> R.string.blurb_mistral
+        id.startsWith("gemma4") -> R.string.blurb_gemma4
+        id.startsWith("gemma3") -> R.string.blurb_gemma3
+        id.startsWith("phi4") -> R.string.blurb_phi4
+        id.startsWith("llama") -> R.string.blurb_llama
+        else -> R.string.blurb_generic
+    }
+)

@@ -450,7 +450,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
                 broker.answer(false)
             },
             title = { Text(stringResource(R.string.agent_allow_action_q)) },
-            text = { Text("${preview.summary}\n\nNothing runs without your yes. Dismissing counts as no.") },
+            text = { Text("${preview.summary}\n\n" + stringResource(R.string.agent_approval_note)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingApproval = null
