@@ -8,35 +8,23 @@ bare "Share" in non-UI code is never touched. Interpolated strings are left for 
 manual pass. Adds the stringResource + R imports to any file it changed.
 Prints a per-file report; run from android/, then `git diff` before building.
 """
-import re, os
+import re, os, sys, glob
 
-# english -> resource id (non-interpolated only; must match gen_strings.RES)
-IDMAP = {
- "Clear":"action_clear","Cancel":"action_cancel","Continue":"action_continue",
- "Delete":"action_delete","Share":"action_share","Stop":"action_stop","Run":"action_run",
- "Remove":"action_remove","Revoke":"action_revoke","Allow":"action_allow",
- "Don't allow":"action_dont_allow","Try again":"action_try_again","Get started":"action_get_started",
- "New chat":"chat_new","New conversation":"chat_new_conversation",
- "Back to conversations":"chat_back_to_conversations","More options":"chat_more_options",
- "Attach a file":"chat_attach_file","Continue generating from where the reply stopped":"chat_continue_generating",
- "Attach file":"agent_attach_file","Give the agent a goal":"agent_give_goal",
- "Allow this action?":"agent_allow_action_q","Download & continue":"onboarding_download_continue",
- "Choose a different model…":"onboarding_choose_different","Choose a smaller model":"onboarding_choose_smaller",
- "Ready.":"onboarding_ready","Couldn't get set up":"onboarding_setup_failed",
- "Change model…":"model_change","Deep thinking":"model_deep_thinking",
- "Deeper reasoning":"settings_deeper_reasoning","Clear learned skills":"settings_clear_skills",
- "Privacy Policy":"settings_privacy_policy","Contact support":"settings_contact_support",
- "Quenderin is open source — GitHub":"settings_open_source_github",
- "View the source on GitHub":"welcome_view_source","I understand and agree":"consent_agree",
- "Read the full terms":"consent_read_terms","on-device · private":"badge_on_device_private",
- "Hugging Face ↗":"link_hugging_face",
-}
+# english -> resource id, DERIVED from gen_strings.RES (the single source of truth — no hand copy
+# to drift). Interpolated ids (%1$s/%1$d) can't be a bare stringResource() call, so they're skipped.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_strings import RES  # importing runs its load + guards but writes nothing (generation is under main())
+IDMAP = {en: rid for rid, en in RES.items() if "%" not in en}
 
+# Keep this alternation identical to extract_strings.APIS's core (the inventory tool) — both gate on
+# "this line calls a localizable Compose API".
 API = re.compile(r'(?:\bText|\bButton|\bOutlinedButton|\bTextButton|\bFilledTonalButton|label\s*=|placeholder\s*=|contentDescription\s*=|title\s*=)')
 IMPORT_SR = "import androidx.compose.ui.res.stringResource"
 IMPORT_R = "import ai.quenderin.app.R"
 
-files = [os.path.join("app/src/main/kotlin/ai/quenderin/app/ui", f) for f in os.listdir("app/src/main/kotlin/ai/quenderin/app/ui") if f.endswith(".kt")]
+# Same file set as extract_strings.py: the ui/ package AND the app package root (MainActivity etc.).
+files = sorted(glob.glob("app/src/main/kotlin/ai/quenderin/app/ui/*.kt")) + \
+        sorted(glob.glob("app/src/main/kotlin/ai/quenderin/app/*.kt"))
 total = 0
 for path in files:
     lines = open(path, encoding="utf-8").read().split("\n")
@@ -53,11 +41,12 @@ for path in files:
                 changed += 1
     if changed:
         src = "\n".join(lines)
-        # add imports after the package line if missing
+        # add imports after the package line if missing. re.MULTILINE so ^package matches even when
+        # the file opens with a @file:OptIn(...) annotation before the package declaration.
         if IMPORT_SR not in src:
-            src = re.sub(r'(^package [^\n]+\n)', r'\1\n' + IMPORT_SR + "\n" + IMPORT_R + "\n", src, count=1)
+            src = re.sub(r'(^package [^\n]+\n)', r'\1\n' + IMPORT_SR + "\n" + IMPORT_R + "\n", src, count=1, flags=re.MULTILINE)
         elif IMPORT_R not in src:
-            src = re.sub(r'(^package [^\n]+\n)', r'\1\n' + IMPORT_R + "\n", src, count=1)
+            src = re.sub(r'(^package [^\n]+\n)', r'\1\n' + IMPORT_R + "\n", src, count=1, flags=re.MULTILINE)
         open(path, "w", encoding="utf-8").write(src)
         print(f"{os.path.basename(path)}: {changed} replaced")
         total += changed

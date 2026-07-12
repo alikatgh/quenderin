@@ -42,6 +42,17 @@
     <string name="tab_chat">Чат</string>
     <string name="tab_agent">Агент</string>
     <string name="tab_settings">Настройки</string>
+    <string name="chat_empty_title">Спросите %1$s о чём угодно</string>
+    <string name="chat_empty_body">Работает полностью на вашем телефоне. Ничего из введённого не покидает устройство.</string>
+    <string name="chat_composer_placeholder">Сообщение</string>
+    <string name="chat_day_today">Сегодня</string>
+    <string name="chat_send">Отправить сообщение</string>
+    <string name="chat_stop">Остановить генерацию</string>
+    <string name="ai_disclaimer">Ответы генерируются ИИ на устройстве и могут быть неточными или неуместными.</string>
+    <string name="chat_share_conversation">Поделиться беседой</string>
+    <string name="chat_report_response">Пожаловаться на этот ответ</string>
+    <string name="chat_generation_error">Не удалось сгенерировать ответ: %1$s</string>
+    <string name="chat_generation_error_a11y">Ошибка генерации: %1$s</string>
     <string name="welcome_title">Знакомьтесь: Quenderin</string>
     <string name="welcome_tagline">Персональный ИИ, который живёт на вашем телефоне — а не в чужом облаке.</string>
     <string name="welcome_private_title">Приватность по умолчанию</string>

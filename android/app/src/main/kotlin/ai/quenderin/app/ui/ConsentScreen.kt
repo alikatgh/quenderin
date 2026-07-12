@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.dp
  * on fresh installs, and once to existing users who predate it (its own SharedPreferences
  * flag in AppRoot). Local models can be confidently wrong; here the user acknowledges that
  * the judgement — and the responsibility — stays with them. Twin of iOS `ConsentView`; the
- * copy lives in [SupportContact] so both platforms ship one wording.
+ * copy lives in the localized string catalog (consent_* keys, generated from the shared
+ * scripts/translations.tsv rows), so ru/ko/ja/zh users read the disclaimer in their language.
  */
 @Composable
 fun ConsentScreen(onAgree: () -> Unit) {

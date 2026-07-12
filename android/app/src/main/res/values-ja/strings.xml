@@ -42,6 +42,17 @@
     <string name="tab_chat">チャット</string>
     <string name="tab_agent">エージェント</string>
     <string name="tab_settings">設定</string>
+    <string name="chat_empty_title">%1$sに何でも聞いてください</string>
+    <string name="chat_empty_body">すべてスマートフォン上で動作します。入力した内容は端末から出ません。</string>
+    <string name="chat_composer_placeholder">メッセージ</string>
+    <string name="chat_day_today">今日</string>
+    <string name="chat_send">メッセージを送信</string>
+    <string name="chat_stop">生成を停止</string>
+    <string name="ai_disclaimer">応答はデバイス上でAIが生成するため、不正確または不適切な場合があります。</string>
+    <string name="chat_share_conversation">会話を共有</string>
+    <string name="chat_report_response">この応答を報告</string>
+    <string name="chat_generation_error">返信を生成できませんでした: %1$s</string>
+    <string name="chat_generation_error_a11y">生成エラー: %1$s</string>
     <string name="welcome_title">Quenderinへようこそ</string>
     <string name="welcome_tagline">誰かのクラウドではなく、あなたのスマートフォンに住むパーソナルAI。</string>
     <string name="welcome_private_title">設計からプライバシー重視</string>
@@ -64,7 +75,7 @@
     <string name="onboarding_recommended_overline">このデバイスへのおすすめ</string>
     <string name="onboarding_free_up_storage">または空き容量を確保してからもう一度。</string>
     <string name="onboarding_downloading">ダウンロード中</string>
-    <string name="onboarding_not_enough_space">空き容量が足りません</string>
+    <string name="onboarding_not_enough_space">空き容量が不足</string>
     <string name="chats_title">チャット</string>
     <string name="chats_empty_title">まだ会話はありません</string>
     <string name="chats_empty_body">%1$sとチャットを始めましょう — すべてスマートフォン上で動作します。</string>

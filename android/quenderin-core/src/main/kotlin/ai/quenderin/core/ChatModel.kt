@@ -15,6 +15,13 @@ data class ChatMessage(
     /** Documents attached to this (user) message. UI shows chips + typed text; [engineText] is
      *  what the model gets. */
     val documents: List<AttachedDocument> = emptyList(),
+    /** Stable per-message identity for UI list keys. Assigned at construction and PRESERVED by
+     *  copy(), so streaming — which copies the growing assistant message every token
+     *  ([ChatModel.writeAssistant]) — keeps one stable key per row (no re-animation on each token),
+     *  while a future non-append mutation (delete/regenerate/trim) still identifies each surviving
+     *  row correctly. Not persisted; only needs to be stable within a UI session. Twin of iOS
+     *  `ChatMessage.id`, which the streaming loop already looks messages up by. */
+    val id: Long = nextId(),
 ) {
     /** The text the ENGINE sees: labeled documents first, then the typed message. Composed into
      *  every windowed history pass so follow-ups keep the document in context. Twin of iOS. */
@@ -24,6 +31,11 @@ data class ChatMessage(
             val docs = documents.joinToString("\n\n") { "Attached file \"${it.name}\":\n${it.text}" }
             return "$docs\n\n$text"
         }
+
+    companion object {
+        private val idCounter = java.util.concurrent.atomic.AtomicLong(0L)
+        private fun nextId(): Long = idCounter.incrementAndGet()
+    }
 }
 
 /**
@@ -196,7 +208,9 @@ class ChatModel(
     private fun writeAssistant(gen: Long, index: Int, textValue: String) {
         val changed = synchronized(lock) {
             if (gen != activeGeneration || index >= _messages.size) return@synchronized false
-            _messages[index] = ChatMessage(Role.ASSISTANT, textValue)
+            // copy() (not a fresh ChatMessage) so the row keeps its stable [ChatMessage.id] across
+            // every streamed token — the UI list key stays put instead of churning per token.
+            _messages[index] = _messages[index].copy(text = textValue)
             true
         }
         if (changed) emit()

@@ -267,6 +267,8 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             if (!installed.isActive) {
+                                // Hoisted: stringResource() can't be called inside the semantics{} lambda.
+                                val deleteDesc = stringResource(R.string.settings_delete_named, installed.model.label)
                                 TextButton(
                                     onClick = {
                                         // Deleting a model unlinks a multi-GB GGUF — blocking FS I/O that
@@ -281,7 +283,7 @@ fun SettingsScreen(
                                             reloadModels()
                                         }
                                     },
-                                    modifier = Modifier.semantics { contentDescription = "Delete ${installed.model.label}" },
+                                    modifier = Modifier.semantics { contentDescription = deleteDesc },
                                 ) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
                             }
                         }
@@ -292,7 +294,7 @@ fun SettingsScreen(
             }
 
             SettingsGroup("Privacy & support") {
-                Caption(SupportContact.AI_DISCLAIMER)
+                Caption(stringResource(R.string.ai_disclaimer))
                 Button(
                     onClick = {
                         runCatching {

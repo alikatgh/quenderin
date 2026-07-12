@@ -29,7 +29,8 @@ v0.2.0 is submitted to the App Store (iOS + macOS universal) and pending review.
   GPU (Vulkan/Adreno) offload and per-CPU-variant kernels return in 0.2.1.
 - Verified end-to-end on an Android 15 arm64 emulator: model download →
   streaming inference → agent tools.
-- Native Material 3 chrome (platform top bar + pill tab indicator) and the
-  full first-run flow localized in all 5 languages.
+- Native Material 3 chrome (platform top bar + pill tab indicator); the whole
+  UI — first-run flow AND the in-conversation chat screen — localized in all 5
+  languages, including screen-reader labels.
 
-APK SHA-256: `131d73070332fccbfb93c005d3581d5e52480d03d75a3d880b14088807b9c329`
+APK SHA-256: `9fd45301b042dd86efdf0339c1a6373d6cbec3125021b4a98bd5d3618e2f14fa`

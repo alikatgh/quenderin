@@ -34,10 +34,11 @@ android {
     namespace = "ai.quenderin.app"
     compileSdk = 35
 
-    // Vulkan is ON by default (2026-07-09): Adreno devices get full GPU offload via
-    // GpuOffloadPlanner; Mali/Xclipse/unknown stay on CPU until forceGpu. Opt OUT with
-    // -Pquenderin.vulkan=false for a CPU-only .so (smaller / more portable for emulators).
-    val enableVulkan = project.findProperty("quenderin.vulkan")?.toString() != "false"
+    // Vulkan is OFF by default for v0.2.0 — the plain `./gradlew :app:bundleRelease` (per RELEASE.md)
+    // must reproduce the shipped, emulator-verified CPU-only artifact the release notes describe. The
+    // GPU path returns in 0.2.1 alongside the CPU-variant work. Opt IN with -Pquenderin.vulkan=true;
+    // GpuOffloadPlanner still gates offload per-SoC (Adreno only) when it IS compiled in.
+    val enableVulkan = project.findProperty("quenderin.vulkan")?.toString() == "true"
 
     defaultConfig {
         applicationId = "ai.quenderin.app"
@@ -77,10 +78,11 @@ android {
 
     packaging {
         jniLibs {
-            // Extract .so files to nativeLibraryDir instead of mmapping them from inside the APK:
-            // ggml's CPU-variant runtime pick (ggml_backend_load_all_from_path) enumerates that
-            // directory with a filesystem scan, which sees nothing when the libs only exist as APK
-            // entries. Costs some disk (no shared APK mmap) — the price of the DOTPROD/I8MM kernels.
+            // Retained for 0.2.1's CPU-variant dispatch: ggml's runtime pick
+            // (ggml_backend_load_all_from_path) filesystem-scans nativeLibraryDir, which sees nothing
+            // when variant .so files exist only as APK entries. v0.2.0 ships a single baseline .so
+            // (variants OFF — see jni/CMakeLists.txt SHIP NOTE), so the scan currently finds just that
+            // one lib; kept true so restoring variants in 0.2.1 needs no packaging change.
             useLegacyPackaging = true
         }
     }

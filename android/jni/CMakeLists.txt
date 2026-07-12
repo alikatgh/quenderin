@@ -20,10 +20,10 @@ set(GGML_OPENMP          OFF CACHE BOOL "" FORCE)
 
 # Per-CPU-feature backends (OSS audit: the #1 prefill lever). A single generic arm64-v8a build never
 # uses the DOTPROD/I8MM matmul kernels — why prefill ran no faster than decode (measured: both
-# 3.5 tok/s on a cool S23). GGML_CPU_ALL_VARIANTS builds ggml's Android variant set
-# (android_armv8.0 … armv9.2 — DOTPROD, MATMUL_INT8, …) as dlopen-able backends; the best one for
-# the device is picked at RUNTIME — fast kernels on modern SoCs, safe baseline on old ones. The JNI
-# calls ggml_backend_load_all_from_path(nativeLibraryDir) at init to load them.
+# 3.5 tok/s on a cool S23). When ENABLED (planned for 0.2.1), GGML_CPU_ALL_VARIANTS builds ggml's
+# Android variant set (android_armv8.0 … armv9.2 — DOTPROD, MATMUL_INT8, …) as dlopen-able backends,
+# the best one picked at RUNTIME; the JNI calls ggml_backend_load_all_from_path(nativeLibraryDir) at
+# init to load them. For v0.2.0 BOTH flags are OFF (SHIP NOTE below) → one baseline armv8.0 backend.
 set(BUILD_SHARED_LIBS     ON CACHE BOOL "" FORCE)
 # v0.2.0 SHIP NOTE (2026-07-11): variant backends temporarily OFF. With BACKEND_DL the
 # ggml_threadpool_new/free the JNI bridge links (big-core affinity) live only inside the
@@ -33,12 +33,12 @@ set(BUILD_SHARED_LIBS     ON CACHE BOOL "" FORCE)
 set(GGML_BACKEND_DL       OFF CACHE BOOL "" FORCE)
 set(GGML_CPU_ALL_VARIANTS OFF CACHE BOOL "" FORCE)
 
-# GPU offload (Vulkan) — ON by default (2026-07-09). The Kotlin GpuOffloadPlanner still decides
-# PER-SoC whether to actually offload (Adreno → all layers; Mali/Xclipse/unknown → CPU until
-# forceGpu). A Vulkan build is safe on every device: non-Adreno simply never sets n_gpu_layers.
-# Opt out with -DQUENDERIN_VULKAN=OFF (or Gradle -Pquenderin.vulkan=false) for CPU-only .so.
-# The Android NDK ships libvulkan.so (API 24+), so llama.cpp's find_package(Vulkan) resolves.
-option(QUENDERIN_VULKAN "Build llama.cpp with the Vulkan GPU backend" ON)
+# GPU offload (Vulkan) — OFF by default for v0.2.0 (CPU-only baseline; matches the release notes and
+# the emulator-verified build). The GPU path returns in 0.2.1. When built IN, the Kotlin
+# GpuOffloadPlanner still decides PER-SoC whether to offload (Adreno → all layers; others → CPU until
+# forceGpu), so a Vulkan build stays safe on every device. Opt IN with -DQUENDERIN_VULKAN=ON (or
+# Gradle -Pquenderin.vulkan=true). NDK ships libvulkan.so (API 24+), so find_package(Vulkan) resolves.
+option(QUENDERIN_VULKAN "Build llama.cpp with the Vulkan GPU backend" OFF)
 if(QUENDERIN_VULKAN)
     set(GGML_VULKAN ON CACHE BOOL "" FORCE)
     message(STATUS "quenderin: Vulkan GPU backend ENABLED (GpuOffloadPlanner gates offload per SoC)")

@@ -404,11 +404,8 @@ public struct ChatView: View {
                     .background(p.primary.opacity(canSend || model.isGenerating ? 1 : 0.4), in: Circle())
             }
             .buttonStyle(.plain)
-            // Springy pop the moment a message becomes sendable — the button
-            // "wakes up" instead of just changing opacity. Nil under Reduce Motion.
-            .scaleEffect(reduceMotion ? 1 : (canSend || model.isGenerating ? 1 : 0.82))
-            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6),
-                       value: canSend || model.isGenerating)
+            // Sendable state is signalled by COLOUR only (primary → 40% opacity, above) — never
+            // geometry. UI_DESIGN_RULES §1: state must not drive transform/scale.
             .disabled(!canSend && !model.isGenerating)
             .help(model.isGenerating ? "Stop generating" : "Send message")
             .accessibilityLabel(model.isGenerating ? "Stop generating" : "Send message")

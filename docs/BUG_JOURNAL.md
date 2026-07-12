@@ -514,7 +514,42 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   path that logs a skipped step as `allowed`/`ok` (with a made-up result) turns the audit into a lie.
   Label by what executed: nothing ran → `dryRun`, every step. (dry-run executePlan, 2026-07-06)
 
+- **Localization misses hide where a visual walkthrough can't see: `semantics{}` a11y strings and
+  shared core constants.** A screen can look fully translated while TalkBack reads English and a
+  core-constant disclaimer stays EN. Inventory EVERY user-facing literal — `Text(...)`, every
+  `contentDescription`/`CustomAccessibilityAction`, and constants rendered directly (`AI_DISCLAIMER`) —
+  not just the visible labels. `stringResource` can't go inside a non-composable `semantics{}` lambda,
+  so hoist a `val` above it. (xhigh review, 2026-07-12)
+
+- **Two stores that can define the same key must FAIL THE BUILD on overlap, not pick a winner.** An
+  override dict (Android `EXTRAS`) silently shadowing the shared source (`translations.tsv`) drifts
+  with zero signal — ko/ja wording forked on one string for weeks. Make the derived store a build
+  ERROR on collision; let the shared source always win. (gen_strings EXTRAS-vs-TSV, 2026-07-12)
+
+- **A custom M3 ColorScheme leaves unset roles at the BASELINE palette — off-brand and contrast-unsafe
+  if you pair them.** `darkColorScheme()` defaults `secondaryContainer` to baseline purple; a
+  `primary`-tinted icon on it measured ≈2.65:1 (< 3:1). Set the roles you consume, and pair a container
+  with its `on…` role, never `primary`-on-container. (bottom-tab pill, 2026-07-12)
+
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-12 (xhigh code-review: "localized" UI still shipped EN — the IN-CONVERSATION chat screen was
+  never inventoried; 4 a11y contentDescriptions + the AI disclaimer + empty-state stayed hardcoded) —
+  the l10n pass covered screens it VISITED; strings inside `semantics{}` lambdas and the shared
+  `AI_DISCLAIMER` core constant were invisible to a visual walkthrough. Fix: +11 keys, a11y strings
+  hoisted to a `val stringResource(...)`. Verified live in ru on the emulator (empty state + disclaimer).
+
+- 2026-07-12 (gen_strings `EXTRAS` shadowed shared TSV rows → ko/ja drift on "Not enough free space") —
+  translations_for() checked EXTRAS before the TSV, so a hand-typed copy silently overrode the iOS-shared
+  wording. Fix: TSV wins; a build-time `_dupes` guard hard-fails if an EXTRAS key names a TSV row.
+  Also fixed same-file: `esc()` now escapes backslashes first; a bare-`%` check turns a latent per-locale
+  `UnknownFormatConversionException` into a build error; `locales_config.xml` is generated from `LANGS`.
+
+- 2026-07-12 (M3 custom ColorScheme left `secondaryContainer` unset → selected-tab icon ≈2.65:1, off-brand) —
+  `darkColorScheme()` defaults it to baseline purple; the `primary`-tinted icon on it failed 3:1. Fix: set
+  brand `secondary{,On}Container` both schemes; icon uses `onSecondaryContainer`. Also: send-button
+  scale-on-canSend (iOS+Android) broke UI_DESIGN_RULES §1 (state ≠ geometry) → removed, colour/opacity
+  carries the signal; tab labels got `maxLines=1`; chat list keys now use a stable `ChatMessage.id`.
 
 - 2026-07-11 (Android ru locale showed EN onboarding: hero/welcome/consent all hardcoded literals) —
   the 43-key localization pass covered the MAIN app but skipped the FIRST-RUN flow (Welcome/Consent/

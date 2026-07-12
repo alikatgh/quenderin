@@ -3,12 +3,19 @@
 gen_strings.py — generate Android string resources for en + ru/ko/ja/zh-Hans.
 
 Source of truth for translations is ../../scripts/translations.tsv (the same file
-that drives iOS Localizable.xcstrings). English strings that match a TSV key reuse
-those translations; Android-only strings use the EXTRAS dict below.
+that drives iOS Localizable.xcstrings). TSV rows win; Android-only strings use the
+EXTRAS dict below. A build-time guard hard-fails if an EXTRAS key shadows a TSV row,
+so the two can never silently fork.
 
 Emits: app/src/main/res/values{,-ru,-ko,-ja,-zh-rCN}/strings.xml
+   and: app/src/main/res/xml/locales_config.xml (from LANGS — the per-app language
+        picker can't drift from the shipped resource locales).
 Resource ids come from RES (id -> english). %1$s/%1$d format strings are declared
 here verbatim so aapt/lint validate specifier parity across every locale.
+
+Importable without side effects: `from gen_strings import RES` runs the load + guards
+but writes nothing (generation lives under main()); codemod_stringres.py derives its
+english->id map from RES this way, so the two never drift.
 """
 import os, re, html
 
@@ -62,6 +69,19 @@ RES = {
     "tab_chat": "Chat",
     "tab_agent": "Agent",
     "tab_settings": "Settings",
+    # in-conversation chat screen (empty state, composer, day divider, send/stop a11y)
+    "chat_empty_title": "Ask %1$s anything",
+    "chat_empty_body": "Runs entirely on your phone. Nothing you type leaves the device.",
+    "chat_composer_placeholder": "Message",   # resolves from the shared TSV "Message" row
+    "chat_day_today": "Today",
+    "chat_send": "Send message",
+    "chat_stop": "Stop generating",
+    # AI disclaimer (shown beneath chat/agent output + in Settings) + report + errors + share
+    "ai_disclaimer": "Responses are AI-generated on-device and may be inaccurate or objectionable.",  # TSV
+    "chat_share_conversation": "Share conversation",   # resolves from the shared TSV row
+    "chat_report_response": "Report this response",
+    "chat_generation_error": "Couldn't generate a reply: %1$s",
+    "chat_generation_error_a11y": "Generation error: %1$s",
     # first-run flow: welcome page (EXTRAS: phone-baked wording; iOS twin uses %@ device word)
     "welcome_title": "Meet Quenderin",
     "welcome_tagline": "A personal AI that lives on your phone — not in someone's cloud.",
@@ -148,8 +168,9 @@ EXTRAS = {
          "または空き容量を確保してからもう一度。", "或者清理存储空间后再试。"),
     "Downloading":
         ("Загрузка", "다운로드 중", "ダウンロード中", "正在下载"),
-    "Not enough free space":
-        ("Недостаточно свободного места", "여유 공간이 부족합니다", "空き容量が足りません", "可用空间不足"),
+    # NOTE: "Not enough free space" and "Attach a file" intentionally NOT here — they exist as
+    # rows in scripts/translations.tsv (shared with iOS) and resolve from there. The dup-guard
+    # below hard-fails if an EXTRAS key collides with a TSV row, so shared strings can't fork.
     "%1$s · one time, then it's yours offline":
         ("%1$s · один раз — и модель ваша, офлайн", "%1$s · 한 번만 받으면 오프라인에서 계속 사용",
          "%1$s · 一度きり、その後はオフラインで利用可能", "%1$s · 一次下载，永久离线可用"),
@@ -168,6 +189,25 @@ EXTRAS = {
          "%1$s와 채팅을 시작하세요 — 전부 당신의 휴대폰에서 실행됩니다.",
          "%1$sとチャットを始めましょう — すべてスマートフォン上で動作します。",
          "开始与 %1$s 聊天——它完全在你的手机上运行。"),
+    # in-conversation chat screen (phone-baked; iOS twin uses the %@-device TSV rows)
+    "Ask %1$s anything":
+        ("Спросите %1$s о чём угодно", "%1$s에게 무엇이든 물어보세요",
+         "%1$sに何でも聞いてください", "向 %1$s 提问任何问题"),
+    "Runs entirely on your phone. Nothing you type leaves the device.":
+        ("Работает полностью на вашем телефоне. Ничего из введённого не покидает устройство.",
+         "전부 당신의 휴대폰에서 실행됩니다. 입력한 어떤 것도 기기를 벗어나지 않습니다.",
+         "すべてスマートフォン上で動作します。入力した内容は端末から出ません。",
+         "完全在你的手机上运行。你输入的任何内容都不会离开设备。"),
+    "Today":            ("Сегодня", "오늘", "今日", "今天"),
+    "Send message":     ("Отправить сообщение", "메시지 보내기", "メッセージを送信", "发送消息"),
+    "Stop generating":  ("Остановить генерацию", "생성 중지", "生成を停止", "停止生成"),
+    "Report this response":
+        ("Пожаловаться на этот ответ", "이 응답 신고", "この応答を報告", "举报此回复"),
+    "Couldn't generate a reply: %1$s":
+        ("Не удалось сгенерировать ответ: %1$s", "답변을 생성하지 못했습니다: %1$s",
+         "返信を生成できませんでした: %1$s", "无法生成回复：%1$s"),
+    "Generation error: %1$s":
+        ("Ошибка генерации: %1$s", "생성 오류: %1$s", "生成エラー: %1$s", "生成错误：%1$s"),
     "Try again":        ("Повторить", "다시 시도", "再試行", "重试"),
     "Get started":      ("Начать", "시작하기", "始める", "开始"),
     "New conversation": ("Новая беседа", "새 대화", "新しい会話", "新对话"),
@@ -185,7 +225,6 @@ EXTRAS = {
     "Remove %1$s":      ("Убрать %1$s", "%1$s 제거", "%1$sを削除", "移除 %1$s"),
     "About %1$s":       ("О модели %1$s", "%1$s 정보", "%1$sについて", "关于 %1$s"),
     "Delete %1$s":      ("Удалить %1$s", "%1$s 삭제", "%1$sを削除", "删除 %1$s"),
-    "Attach a file":    ("Прикрепить файл", "파일 첨부", "ファイルを添付", "附加文件"),
     "Remove":           ("Убрать", "제거", "削除", "移除"),
     "Revoke":           ("Отозвать", "취소", "取り消す", "撤销"),
     "Run":              ("Запустить", "실행", "実行", "运行"),
@@ -201,43 +240,95 @@ for line in open(TSV, encoding="utf-8"):
     if len(c) == 5:
         tsv[c[0]] = c[1:]
 
+# GUARD: the TSV is the single source of truth for any string shared with iOS. An EXTRAS key that
+# ALSO names a TSV row would silently fork one platform's wording from the other — so hard-fail here
+# and make the author delete the EXTRAS copy (it resolves from the TSV) or give it distinct English.
+_dupes = sorted(set(EXTRAS) & set(tsv))
+if _dupes:
+    raise SystemExit(
+        "gen_strings: EXTRAS keys shadow shared TSV rows — delete them (they resolve from the TSV):\n  "
+        + "\n  ".join(map(repr, _dupes)))
+
+_POSITIONAL = re.compile(r'%\d+\$[a-zA-Z]')  # Android positional format specifier, e.g. %1$s / %2$d
+
+def _check_percent(rid, lang, val):
+    # A literal ASCII '%' that is neither an escaped '%%' nor part of a positional specifier is a
+    # trap: Resources.getString(id, args) always runs String.format, and a stray '%' throws
+    # UnknownFormatConversionException in exactly the one locale carrying it. Catch it at BUILD time.
+    residue = _POSITIONAL.sub("", val.replace("%%", ""))
+    if "%" in residue:
+        raise SystemExit(
+            f"gen_strings: bare '%' in {rid} [{lang}]: {val!r}\n"
+            "  escape a literal percent as '%%', or use a positional '%1$s'-style specifier.")
+
 def esc(s):
-    # XML-escape + Android apostrophe rule
+    # Backslash FIRST (order matters — the apostrophe/quote rules below add their own backslashes),
+    # then XML-escape, then the Android apostrophe/quote escaping.
+    s = s.replace("\\", "\\\\")
     s = html.escape(s, quote=False)
     return s.replace("'", "\\'").replace('"', '\\"')
 
 def translations_for(en):
-    if en in EXTRAS:
-        return dict(zip(("ru", "ko", "ja", "zh-rCN"), EXTRAS[en]))
+    # TSV (shared with iOS) wins over EXTRAS — matches the docstring contract, and the _dupes guard
+    # guarantees the two never disagree for the same English key anyway.
     if en in tsv:
         return dict(zip(("ru", "ko", "ja", "zh-rCN"), tsv[en]))
+    if en in EXTRAS:
+        return dict(zip(("ru", "ko", "ja", "zh-rCN"), EXTRAS[en]))
     return None
 
 def write_xml(path, pairs):
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    lang = os.path.basename(os.path.dirname(path)).replace("values-", "") or "en"
     out = ['<?xml version="1.0" encoding="utf-8"?>', "<resources>"]
     for rid, val in pairs:
-        fmt = ' formatted="false"' if ("%" in val and "$" not in val) else ""
+        _check_percent(rid, lang, val)
+        # formatted="false" only for display strings with NO positional args (suppresses aapt's
+        # lone-percent lint); positional strings stay formatted (the default) so args validate.
+        fmt = ' formatted="false"' if (not _POSITIONAL.search(val) and "%" in val) else ""
         out.append(f'    <string name="{rid}"{fmt}>{esc(val)}</string>')
     out.append("</resources>\n")
     open(path, "w", encoding="utf-8").write("\n".join(out))
 
-# English base
-write_xml(os.path.join(RESDIR, "values", "strings.xml"), list(RES.items()))
+def _bcp47(qualifier):
+    # Android resource qualifier -> BCP-47 for <locale-config>: "zh-rCN" -> "zh-CN".
+    return qualifier.replace("-r", "-")
 
-missing = []
-for lang, idx in LANGS:
-    pairs = []
-    for rid, en in RES.items():
-        t = translations_for(en)
-        if t is None:
-            missing.append(en); continue
-        pairs.append((rid, t[lang]))
-    write_xml(os.path.join(RESDIR, f"values-{lang}", "strings.xml"), pairs)
+def write_locales_config():
+    # Generated from LANGS (+ en) so the per-app language picker can NEVER drift from the resource
+    # locales actually shipped — add a column to LANGS and this file updates in the same run.
+    path = os.path.join(RESDIR, "xml", "locales_config.xml")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    locales = ["en"] + [_bcp47(l) for l, _ in LANGS]
+    out = ['<?xml version="1.0" encoding="utf-8"?>',
+           '<!-- GENERATED by tools/gen_strings.py from LANGS — do not hand-edit. -->',
+           '<locale-config xmlns:android="http://schemas.android.com/apk/res/android">']
+    out += [f'    <locale android:name="{loc}"/>' for loc in locales]
+    out += ['</locale-config>', '']
+    open(path, "w", encoding="utf-8").write("\n".join(out))
 
-if missing:
-    print("MISSING translations (add to EXTRAS):")
-    for m in sorted(set(missing)):
-        print("   ", repr(m))
-else:
-    print(f"wrote en + {len(LANGS)} locales, {len(RES)} strings each")
+def main():
+    # English base
+    write_xml(os.path.join(RESDIR, "values", "strings.xml"), list(RES.items()))
+
+    missing = []
+    for lang, idx in LANGS:
+        pairs = []
+        for rid, en in RES.items():
+            t = translations_for(en)
+            if t is None:
+                missing.append(en); continue
+            pairs.append((rid, t[lang]))
+        write_xml(os.path.join(RESDIR, f"values-{lang}", "strings.xml"), pairs)
+
+    write_locales_config()
+
+    if missing:
+        print("MISSING translations (add to EXTRAS):")
+        for m in sorted(set(missing)):
+            print("   ", repr(m))
+    else:
+        print(f"wrote en + {len(LANGS)} locales, {len(RES)} strings each (+ locales_config.xml)")
+
+if __name__ == "__main__":
+    main()

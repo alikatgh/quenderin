@@ -26,10 +26,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -53,7 +51,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -197,6 +194,8 @@ fun ChatScreen(
     // targetSdk 35 forces edge-to-edge on Android 15+, which makes the manifest's `adjustResize` a no-op —
     // without this the keyboard draws OVER the input field and you can't see what you're typing.
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
+        // Hoisted: the onShare lambda below is a non-composable event handler.
+        val shareTitle = stringResource(R.string.chat_share_conversation)
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
@@ -210,7 +209,7 @@ fun ChatScreen(
                     putExtra(Intent.EXTRA_SUBJECT, "Quenderin conversation")
                     putExtra(Intent.EXTRA_TEXT, md)
                 }
-                runCatching { context.startActivity(Intent.createChooser(share, "Share conversation")) }
+                runCatching { context.startActivity(Intent.createChooser(share, shareTitle)) }
             },
         )
 
@@ -223,12 +222,12 @@ fun ChatScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
             ) {
-                item { DayDivider("Today") }
-                // Index as the key: the chat only appends, so an append gives the new row a fresh
-                // key (animates in) while streaming — which mutates the LAST message's text, not the
-                // list — keeps every existing key stable (never re-animates). A content-based key
-                // would churn the last item on every token. Honors the system "remove animations".
-                itemsIndexed(messages, key = { index, _ -> index }) { _, msg ->
+                item { DayDivider(stringResource(R.string.chat_day_today)) }
+                // Key by the message's stable id (preserved across streaming copies): an append gets
+                // a fresh key (animates in), streaming keeps the last row's key put (no per-token
+                // re-animation), and a future delete/reorder still identifies each surviving row —
+                // unlike an index key, which would silently re-key everything after a mutation.
+                itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
                     Box(Modifier.animateItem(
                         placementSpec = spring(stiffness = Spring.StiffnessMediumLow,
                                                dampingRatio = Spring.DampingRatioLowBouncy))) {
@@ -244,19 +243,20 @@ fun ChatScreen(
 
         // A failed generation is shown here instead of being silently dropped.
         sendError?.let { err ->
+            val errorDesc = stringResource(R.string.chat_generation_error_a11y, err)
             Text(
-                "⚠️ Couldn't generate a reply: $err",
+                "⚠️ " + stringResource(R.string.chat_generation_error, err),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .semantics { contentDescription = "Generation error: $err" },
+                    .semantics { contentDescription = errorDesc },
             )
         }
 
         Text(
-            SupportContact.AI_DISCLAIMER,
+            stringResource(R.string.ai_disclaimer),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -264,6 +264,8 @@ fun ChatScreen(
 
         // Token-cap mid-sentence → Continue chip (KNOWN_FAILURE_MODES). Mirrors iOS ChatView.
         if (chat.lastHitTokenCap && !busy) {
+            // Hoisted: stringResource() can't be called inside the non-composable semantics{} lambda.
+            val continueDesc = stringResource(R.string.chat_continue_generating)
             TextButton(
                 onClick = {
                     busy = true
@@ -285,7 +287,7 @@ fun ChatScreen(
                 },
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 2.dp)
-                    .semantics { contentDescription = "Continue generating from where the reply stopped" },
+                    .semantics { contentDescription = continueDesc },
             ) {
                 Text(stringResource(R.string.action_continue), style = MaterialTheme.typography.labelLarge)
             }
@@ -302,6 +304,7 @@ fun ChatScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 pendingDocuments.forEach { doc ->
+                    val removeDesc = stringResource(R.string.chat_remove_named, doc.name)
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = QuenderinShapes.pill,
@@ -320,7 +323,7 @@ fun ChatScreen(
                                 onClick = {
                                     pendingDocuments = pendingDocuments.filter { it.name != doc.name }
                                 },
-                                modifier = Modifier.semantics { contentDescription = "Remove ${doc.name}" },
+                                modifier = Modifier.semantics { contentDescription = removeDesc },
                             ) {
                                 Text(stringResource(R.string.action_remove), style = MaterialTheme.typography.labelSmall)
                             }
@@ -508,6 +511,7 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     val mine = msg.role == Role.USER
     val colors = Quenderin.colors
     val reportable = !mine && msg.text.isNotBlank()
+    val reportLabel = stringResource(R.string.chat_report_response)
     Column(
         Modifier
             .fillMaxWidth()
@@ -528,7 +532,7 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                                 .combinedClickable(onClick = {}, onLongClick = onReport)
                                 .semantics {
                                     customActions = listOf(
-                                        CustomAccessibilityAction("Report this response") { onReport(); true }
+                                        CustomAccessibilityAction(reportLabel) { onReport(); true }
                                     )
                                 }
                         else Modifier,
@@ -638,13 +642,13 @@ private fun EmptyState(model: ModelEntry, modifier: Modifier) {
         ModelAvatar(size = 72.dp)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Ask ${model.label} anything",
+            stringResource(R.string.chat_empty_title, model.label),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Runs entirely on your phone. Nothing you type leaves the device.",
+            stringResource(R.string.chat_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.widthIn(max = 280.dp),
@@ -673,11 +677,12 @@ private fun Composer(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Attach (paperclip) — geometry-stable 34dp circle, twin of iOS ChatView attach control.
+        val attachDesc = stringResource(R.string.chat_attach_file)
         Box(
             Modifier
                 .size(34.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                .semantics { contentDescription = "Attach a file" }
+                .semantics { contentDescription = attachDesc }
                 .combinedClickable(
                     enabled = enabled,
                     onClick = onAttach,
@@ -697,7 +702,7 @@ private fun Composer(
             Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 if (input.isEmpty()) {
                     Text(
-                        "Message",
+                        stringResource(R.string.chat_composer_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -718,23 +723,19 @@ private fun Composer(
         // button never resizes. When idle it's Send, dimmed until there's text or attachments.
         val canSend = enabled && (input.isNotBlank() || canSendWithAttachments)
         val active = busy || canSend
-        // Springy pop the moment a message becomes sendable (mirrors iOS). animateFloatAsState
-        // honors the system animator-duration-scale, so it's instant when animations are off.
-        val sendScale by animateFloatAsState(
-            targetValue = if (active) 1f else 0.82f,
-            animationSpec = spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioMediumBouncy),
-            label = "sendScale",
-        )
+        val sendDesc = stringResource(R.string.chat_send)
+        val stopDesc = stringResource(R.string.chat_stop)
+        // Sendable state is signalled by COLOUR only (primary → 40% alpha) — never geometry.
+        // UI_DESIGN_RULES §1: state must not drive transform/scale, so the button stays a fixed 48dp.
         Box(
             Modifier
                 .size(48.dp)
-                .graphicsLayer { scaleX = sendScale; scaleY = sendScale }
                 .background(
                     if (active) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                     CircleShape,
                 )
-                .semantics { contentDescription = if (busy) "Stop generating" else "Send message" }
+                .semantics { contentDescription = if (busy) stopDesc else sendDesc }
                 .combinedClickable(
                     enabled = active,
                     onClick = { if (busy) onStop() else onSend() },

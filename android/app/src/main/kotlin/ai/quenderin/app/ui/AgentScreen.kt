@@ -382,7 +382,7 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
 
         // AI-content disclaimer (Generative-AI content policy).
         Text(
-            SupportContact.AI_DISCLAIMER,
+            stringResource(R.string.ai_disclaimer),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),

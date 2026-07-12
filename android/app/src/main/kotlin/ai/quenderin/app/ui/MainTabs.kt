@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -243,6 +244,8 @@ private fun BottomTab(
             label,
             style = MaterialTheme.typography.labelMedium,
             color = labelColor,
+            maxLines = 1,                       // never wrap past the fixed 60dp band at large font scale
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 3.dp),
         )
     }
@@ -254,7 +257,9 @@ private fun BottomTab(
  */
 @Composable
 private fun NavIcon(kind: NavKind, selected: Boolean) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    // onSecondaryContainer pairs with the secondaryContainer pill behind it (guaranteed contrast);
+    // primary-on-pill measured ≈2.65:1 in the dark scheme, below the 3:1 non-text minimum.
+    val color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Canvas(Modifier.size(24.dp).clearAndSetSemantics {}) {
         val s = size.minDimension
         val sw = 1.9.dp.toPx()

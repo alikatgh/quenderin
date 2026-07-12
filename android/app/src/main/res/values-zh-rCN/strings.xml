@@ -42,6 +42,17 @@
     <string name="tab_chat">聊天</string>
     <string name="tab_agent">智能体</string>
     <string name="tab_settings">设置</string>
+    <string name="chat_empty_title">向 %1$s 提问任何问题</string>
+    <string name="chat_empty_body">完全在你的手机上运行。你输入的任何内容都不会离开设备。</string>
+    <string name="chat_composer_placeholder">消息</string>
+    <string name="chat_day_today">今天</string>
+    <string name="chat_send">发送消息</string>
+    <string name="chat_stop">停止生成</string>
+    <string name="ai_disclaimer">回复由设备端 AI 生成，可能不准确或不恰当。</string>
+    <string name="chat_share_conversation">分享对话</string>
+    <string name="chat_report_response">举报此回复</string>
+    <string name="chat_generation_error">无法生成回复：%1$s</string>
+    <string name="chat_generation_error_a11y">生成错误：%1$s</string>
     <string name="welcome_title">认识 Quenderin</string>
     <string name="welcome_tagline">住在你手机上的个人 AI——而不是别人的云端。</string>
     <string name="welcome_private_title">隐私为本</string>
