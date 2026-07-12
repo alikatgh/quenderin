@@ -8,7 +8,7 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application") version "8.5.2"
+    id("com.android.application") version "9.2.1"
     kotlin("android") version "2.0.21"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
 }
