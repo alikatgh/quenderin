@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -412,8 +413,10 @@ fun ChatScreen(
 }
 
 // ── Top bar: Material 3 TopAppBar — avatar + name + live "on-device · private" status ──
-// Standard platform chrome (ArrowBack, MoreVert, 48dp IconButtons, tonal surface); the
-// WhatsApp-style tappable contact identity lives in the title slot.
+// Standard platform chrome (ArrowBack, MoreVert, 48dp IconButtons); the WhatsApp-style tappable
+// contact identity lives in the title slot. The container uses the warm `background` (not the cold
+// pure-white `surface`) so the header flows from the status bar into the chat canvas as one warm
+// field; a hairline below is the only separator (project rule: hairline borders, no shadows).
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatTopBar(
@@ -425,6 +428,7 @@ private fun ChatTopBar(
     onShare: () -> Unit,
 ) {
     val colors = Quenderin.colors
+    Column {
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onBack) {
@@ -488,8 +492,10 @@ private fun ChatTopBar(
                 }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
     )
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+    }
 }
 
 /** The model rendered as a chat "contact": the Quenderin mascot (the elf from the official app
