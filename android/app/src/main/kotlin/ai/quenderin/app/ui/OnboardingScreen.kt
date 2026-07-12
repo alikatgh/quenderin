@@ -342,13 +342,15 @@ private fun PhaseContent(
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    phase.model.sizeLabel,
+                    localizedSizeLabel(phase.model),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    phase.fitness.message,
+                    // Selector path (production): recompose the rationale in the user's language from
+                    // sel's structured fields. Band path (test-only): the English message stands.
+                    selection?.let { localizedRationale(it) } ?: phase.fitness.message,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -356,13 +358,13 @@ private fun PhaseContent(
                 selection?.let { sel ->
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        sel.thermalBattery.chatVerdict,
+                        localizedChatVerdict(sel),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        sel.thermalBattery.sustainedVerdict,
+                        localizedSustainedVerdict(sel),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -410,7 +412,7 @@ private fun PhaseContent(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    stringResource(R.string.onboarding_size_one_time, phase.model.sizeLabel),
+                    stringResource(R.string.onboarding_size_one_time, phase.model.sizeLabel.removeSuffix(" download")),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

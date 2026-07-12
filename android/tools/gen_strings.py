@@ -82,6 +82,21 @@ RES = {
     "chat_report_response": "Report this response",
     "chat_generation_error": "Couldn't generate a reply: %1$s",
     "chat_generation_error_a11y": "Generation error: %1$s",
+    # Onboarding model-fitness copy — recomposed in the UI from AndroidModelSelector / ThermalBattery /
+    # MemoryFitness structured fields (numbers pre-formatted with the app locale, passed as %n$s).
+    "fitness_rationale": "%1$s for your %2$s: ~%3$s tok/s on the %4$s (%5$s), using ~%6$s GB of your ~%7$s GB native-memory budget (~%8$s GB headroom).",
+    "fitness_speed_comfortably": "comfortably",
+    "fitness_speed_smoothly": "smoothly",
+    "fitness_speed_usably": "usably",
+    "fitness_chat_verdict": "Light for chat — a typical reply costs ~%1$s%% battery and barely warms the phone.",
+    "fitness_sustained_verdict": "Sustained / agent use: warms and throttles ~%1$s%% slower after a few minutes, drawing ~%2$s%%/hr of continuous generation.",
+    "fitness_note_over_budget": "needs ~%1$s GB, over your ~%2$s GB usable budget",
+    "fitness_note_too_slow": "~%1$s tok/s on the %2$s — too slow",
+    "fitness_note_ok": "~%1$s tok/s, uses ~%2$s GB",
+    "model_size_download": "%1$s download",
+    "memory_blocked": "Loading %1$s needs ~%2$s GB of memory — more than this device can safely spare (%3$s GB free of %4$s GB). Close other apps or choose a smaller model.",
+    "memory_warning": "%1$s will leave only %2$s GB free. System may be slow.",
+    "memory_safe": "%1$s fits comfortably.",
     # first-run flow: welcome page (EXTRAS: phone-baked wording; iOS twin uses %@ device word)
     "welcome_title": "Meet Quenderin",
     "welcome_tagline": "A personal AI that lives on your phone — not in someone's cloud.",
@@ -208,6 +223,49 @@ EXTRAS = {
          "返信を生成できませんでした: %1$s", "无法生成回复：%1$s"),
     "Generation error: %1$s":
         ("Ошибка генерации: %1$s", "생성 오류: %1$s", "生成エラー: %1$s", "生成错误：%1$s"),
+    # onboarding model-fitness (numbers pre-formatted with the app locale in the UI; units localized here)
+    "%1$s for your %2$s: ~%3$s tok/s on the %4$s (%5$s), using ~%6$s GB of your ~%7$s GB native-memory budget (~%8$s GB headroom).":
+        ("%1$s для вашего %2$s: ~%3$s ток/с на %4$s (%5$s), используя ~%6$s ГБ из ~%7$s ГБ бюджета нативной памяти (~%8$s ГБ запаса).",
+         "%2$s에 맞는 %1$s: %4$s에서 ~%3$s tok/s (%5$s), 네이티브 메모리 예산 ~%7$s GB 중 ~%6$s GB 사용 (~%8$s GB 여유).",
+         "%2$s向けの%1$s：%4$sで~%3$s tok/s（%5$s）、ネイティブメモリ予算~%7$s GBのうち~%6$s GBを使用（~%8$s GBの余裕）。",
+         "适合你的%2$s的%1$s：在%4$s上约 %3$s tok/s（%5$s），占用原生内存预算 ~%7$s GB 中的 ~%6$s GB（~%8$s GB 余量）。"),
+    "comfortably": ("с запасом", "여유롭게", "余裕をもって", "从容"),
+    "smoothly":    ("плавно", "부드럽게", "スムーズに", "流畅"),
+    "usably":      ("приемлемо", "쓸 만하게", "実用的に", "可用"),
+    "Light for chat — a typical reply costs ~%1$s%% battery and barely warms the phone.":
+        ("Лёгкая для чата — типичный ответ расходует ~%1$s%% заряда и почти не нагревает телефон.",
+         "채팅에 가벼움 — 일반적인 답변은 배터리 ~%1$s%%를 사용하며 기기가 거의 발열되지 않습니다.",
+         "チャットには軽量 — 一般的な返信はバッテリー約%1$s%%を消費し、ほとんど発熱しません。",
+         "聊天轻量——一次典型回复约耗电 %1$s%%，几乎不发热。"),
+    "Sustained / agent use: warms and throttles ~%1$s%% slower after a few minutes, drawing ~%2$s%%/hr of continuous generation.":
+        ("Длительная работа / режим агента: через несколько минут нагревается и замедляется на ~%1$s%%, потребляя ~%2$s%%/час при непрерывной генерации.",
+         "지속 사용 / 에이전트 모드: 몇 분 후 발열로 ~%1$s%% 느려지며, 연속 생성 시 시간당 ~%2$s%%를 소모합니다.",
+         "継続使用／エージェント: 数分後に発熱で約%1$s%%遅くなり、連続生成で毎時約%2$s%%を消費します。",
+         "持续使用／智能体：几分钟后因发热降速约 %1$s%%，连续生成每小时约耗电 %2$s%%。"),
+    "needs ~%1$s GB, over your ~%2$s GB usable budget":
+        ("нужно ~%1$s ГБ — больше вашего доступного бюджета ~%2$s ГБ",
+         "~%1$s GB 필요 — 사용 가능한 예산 ~%2$s GB 초과", "~%1$s GB必要 — 使用可能な予算~%2$s GBを超過",
+         "需要 ~%1$s GB，超出可用预算 ~%2$s GB"),
+    "~%1$s tok/s on the %2$s — too slow":
+        ("~%1$s ток/с на %2$s — слишком медленно", "%2$s에서 ~%1$s tok/s — 너무 느림",
+         "%2$sで~%1$s tok/s — 遅すぎます", "在%2$s上约 %1$s tok/s——太慢"),
+    "~%1$s tok/s, uses ~%2$s GB":
+        ("~%1$s ток/с, использует ~%2$s ГБ", "~%1$s tok/s, ~%2$s GB 사용",
+         "~%1$s tok/s、~%2$s GB使用", "约 %1$s tok/s，占用 ~%2$s GB"),
+    "%1$s download":
+        ("%1$s · загрузка", "%1$s 다운로드", "%1$s ダウンロード", "%1$s 下载"),
+    "Loading %1$s needs ~%2$s GB of memory — more than this device can safely spare (%3$s GB free of %4$s GB). Close other apps or choose a smaller model.":
+        ("Для загрузки %1$s нужно ~%2$s ГБ памяти — больше, чем это устройство может безопасно выделить (%3$s ГБ свободно из %4$s ГБ). Закройте другие приложения или выберите модель меньше.",
+         "%1$s 로드에는 ~%2$s GB 메모리가 필요합니다 — 이 기기가 안전하게 확보할 수 있는 양(%4$s GB 중 %3$s GB 여유)을 초과합니다. 다른 앱을 닫거나 더 작은 모델을 선택하세요.",
+         "%1$sの読み込みには~%2$s GBのメモリが必要です — この端末が安全に確保できる量（%4$s GB中%3$s GB空き）を超えます。他のアプリを閉じるか、より小さいモデルを選んでください。",
+         "加载 %1$s 需要 ~%2$s GB 内存——超出本设备可安全提供的范围（%4$s GB 中 %3$s GB 可用）。请关闭其他应用或选择更小的模型。"),
+    "%1$s will leave only %2$s GB free. System may be slow.":
+        ("%1$s оставит свободными лишь %2$s ГБ. Система может работать медленно.",
+         "%1$s를 사용하면 %2$s GB만 남습니다. 시스템이 느려질 수 있습니다.",
+         "%1$sを使うと空きは%2$s GBだけになります。システムが遅くなる場合があります。",
+         "%1$s 将只剩 %2$s GB 可用。系统可能变慢。"),
+    "%1$s fits comfortably.":
+        ("%1$s помещается с запасом.", "%1$s는 여유롭게 실행됩니다.", "%1$sは余裕をもって動作します。", "%1$s 运行从容。"),
     "Try again":        ("Повторить", "다시 시도", "再試行", "重试"),
     "Get started":      ("Начать", "시작하기", "始める", "开始"),
     "New conversation": ("Новая беседа", "새 대화", "新しい会話", "新对话"),

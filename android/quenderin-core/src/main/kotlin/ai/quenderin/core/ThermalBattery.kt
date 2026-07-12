@@ -20,6 +20,12 @@ data class ThermalBatteryEstimate(
     val chatVerdict: String,
     /** Honest warning for sustained / agent-loop use (heat + throttle + drain). */
     val sustainedVerdict: String,
+    /** % of battery a single typical (~300-token) reply costs — the figure [chatVerdict] states.
+     *  Exposed so the UI can recompose the verdict in the user's language. */
+    val replyPercent: Double,
+    /** % of peak speed LOST once throttled (100·(1−throttledFraction)) — the figure
+     *  [sustainedVerdict] states; exposed for the localized UI recomposition. */
+    val throttledLossPercent: Double,
 )
 
 object ThermalBattery {
@@ -56,6 +62,8 @@ object ThermalBattery {
             chatVerdict = "Light for chat — a typical reply costs ~$replyStr% battery and barely warms the phone.",
             sustainedVerdict = "Sustained / agent use: warms and throttles ~$lossPct% slower after a few minutes, " +
                 "drawing ~${drainPctPerHour.roundToInt()}%/hr of continuous generation.",
+            replyPercent = replyPct,
+            throttledLossPercent = lossPct.toDouble(),
         )
     }
 }
