@@ -33,4 +33,4 @@ v0.2.0 is submitted to the App Store (iOS + macOS universal) and pending review.
   UI — first-run flow AND the in-conversation chat screen — localized in all 5
   languages, including screen-reader labels.
 
-APK SHA-256: `eade676e21fa935f90e7882bddbad279fd596639e3fb282b66465fba716c1655`
+APK SHA-256: `3cc1fc4cf90ad53aba86254d7cb8fae97a19f1f27381dff76d3eab0ecb9a7097`
