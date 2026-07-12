@@ -131,6 +131,12 @@ RES = {
     "blurb_generic": "An on-device language model running locally via llama.cpp.",
     "agent_approval_note": "Nothing runs without your yes. Dismissing counts as no.",
     "picker_model_meta": "%1$s · %2$s · needs ~%3$s GB RAM",
+    # model picker fit badges + memory-shortfall note
+    "fit_too_big": "Too big",
+    "fit_fits": "Fits",
+    "fit_tight": "Tight",
+    "picker_not_enough_memory": "Not enough memory",
+    "picker_memory_shortfall": "Needs ~%1$s GB to load — this phone has %2$s GB free.",
     # first-run flow: welcome page (EXTRAS: phone-baked wording; iOS twin uses %@ device word)
     "welcome_title": "Meet Quenderin",
     "welcome_tagline": "A personal AI that lives on your phone — not in someone's cloud.",
@@ -383,6 +389,14 @@ EXTRAS = {
     "%1$s · %2$s · needs ~%3$s GB RAM":
         ("%1$s · %2$s · нужно ~%3$s ГБ ОЗУ", "%1$s · %2$s · ~%3$s GB RAM 필요",
          "%1$s · %2$s · ~%3$s GB RAM必要", "%1$s · %2$s · 需要 ~%3$s GB 内存"),
+    "Too big":  ("Слишком большая", "너무 큼", "大きすぎ", "太大"),
+    "Fits":     ("Подходит", "적합", "適合", "合适"),
+    "Tight":    ("Впритык", "빠듯함", "ぎりぎり", "紧张"),
+    "Needs ~%1$s GB to load — this phone has %2$s GB free.":
+        ("Для загрузки нужно ~%1$s ГБ — на телефоне свободно %2$s ГБ.",
+         "로드하려면 ~%1$s GB 필요 — 이 휴대폰은 %2$s GB 여유.",
+         "読み込みに~%1$s GB必要 — この端末の空きは%2$s GB。",
+         "加载需要 ~%1$s GB——本手机剩余 %2$s GB。"),
     "Try again":        ("Повторить", "다시 시도", "再試行", "重试"),
     "Get started":      ("Начать", "시작하기", "始める", "开始"),
     "New conversation": ("Новая беседа", "새 대화", "新しい会話", "新对话"),

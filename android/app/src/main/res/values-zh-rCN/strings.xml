@@ -99,6 +99,11 @@
     <string name="blurb_generic">通过 llama.cpp 在本地运行的设备端语言模型。</string>
     <string name="agent_approval_note">未经你同意，任何操作都不会执行。关闭视为拒绝。</string>
     <string name="picker_model_meta">%1$s · %2$s · 需要 ~%3$s GB 内存</string>
+    <string name="fit_too_big">太大</string>
+    <string name="fit_fits">合适</string>
+    <string name="fit_tight">紧张</string>
+    <string name="picker_not_enough_memory">内存不足</string>
+    <string name="picker_memory_shortfall">加载需要 ~%1$s GB——本手机剩余 %2$s GB。</string>
     <string name="welcome_title">认识 Quenderin</string>
     <string name="welcome_tagline">住在你手机上的个人 AI——而不是别人的云端。</string>
     <string name="welcome_private_title">隐私为本</string>

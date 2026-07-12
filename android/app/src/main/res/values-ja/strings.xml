@@ -99,6 +99,11 @@
     <string name="blurb_generic">llama.cpp によりローカルで動作するオンデバイス言語モデル。</string>
     <string name="agent_approval_note">あなたの「はい」なしには何も実行されません。閉じると「いいえ」とみなされます。</string>
     <string name="picker_model_meta">%1$s · %2$s · ~%3$s GB RAM必要</string>
+    <string name="fit_too_big">大きすぎ</string>
+    <string name="fit_fits">適合</string>
+    <string name="fit_tight">ぎりぎり</string>
+    <string name="picker_not_enough_memory">メモリ不足</string>
+    <string name="picker_memory_shortfall">読み込みに~%1$s GB必要 — この端末の空きは%2$s GB。</string>
     <string name="welcome_title">Quenderinへようこそ</string>
     <string name="welcome_tagline">誰かのクラウドではなく、あなたのスマートフォンに住むパーソナルAI。</string>
     <string name="welcome_private_title">設計からプライバシー重視</string>

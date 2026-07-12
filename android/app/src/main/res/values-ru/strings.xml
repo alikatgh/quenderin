@@ -99,6 +99,11 @@
     <string name="blurb_generic">Локальная языковая модель, работающая на устройстве через llama.cpp.</string>
     <string name="agent_approval_note">Ничто не запускается без вашего «да». Закрытие считается отказом.</string>
     <string name="picker_model_meta">%1$s · %2$s · нужно ~%3$s ГБ ОЗУ</string>
+    <string name="fit_too_big">Слишком большая</string>
+    <string name="fit_fits">Подходит</string>
+    <string name="fit_tight">Впритык</string>
+    <string name="picker_not_enough_memory">Недостаточно памяти</string>
+    <string name="picker_memory_shortfall">Для загрузки нужно ~%1$s ГБ — на телефоне свободно %2$s ГБ.</string>
     <string name="welcome_title">Знакомьтесь: Quenderin</string>
     <string name="welcome_tagline">Персональный ИИ, который живёт на вашем телефоне — а не в чужом облаке.</string>
     <string name="welcome_private_title">Приватность по умолчанию</string>

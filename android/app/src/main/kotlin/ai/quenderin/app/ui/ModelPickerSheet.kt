@@ -215,9 +215,9 @@ private fun ModelPickerRow(
 @Composable
 private fun FitBadge(fitness: MemoryCheckResult) {
     when {
-        !fitness.canLoad -> DotBadge(MaterialTheme.colorScheme.error, "Too big", MaterialTheme.colorScheme.error)
-        fitness.severity == MemorySeverity.SAFE -> DotBadge(Quenderin.colors.status, "Fits", Quenderin.colors.statusText)
-        else -> DotBadge(Warn, "Tight", Warn)
+        !fitness.canLoad -> DotBadge(MaterialTheme.colorScheme.error, stringResource(R.string.fit_too_big), MaterialTheme.colorScheme.error)
+        fitness.severity == MemorySeverity.SAFE -> DotBadge(Quenderin.colors.status, stringResource(R.string.fit_fits), Quenderin.colors.statusText)
+        else -> DotBadge(Warn, stringResource(R.string.fit_tight), Warn)
     }
 }
 
@@ -243,14 +243,14 @@ private fun MemoryShortfallNote(fitness: MemoryCheckResult) {
                 Box(Modifier.size(7.dp).background(Warn, CircleShape))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Not enough memory",
+                    stringResource(R.string.picker_not_enough_memory),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Text(
-                "Needs ~${fmt1(fitness.requiredGB)} GB to load — this phone has ${fmt1(fitness.availableGB)} GB free.",
+                stringResource(R.string.picker_memory_shortfall, fmt1(fitness.requiredGB), fmt1(fitness.availableGB)),
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

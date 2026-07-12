@@ -99,6 +99,11 @@
     <string name="blurb_generic">An on-device language model running locally via llama.cpp.</string>
     <string name="agent_approval_note">Nothing runs without your yes. Dismissing counts as no.</string>
     <string name="picker_model_meta">%1$s · %2$s · needs ~%3$s GB RAM</string>
+    <string name="fit_too_big">Too big</string>
+    <string name="fit_fits">Fits</string>
+    <string name="fit_tight">Tight</string>
+    <string name="picker_not_enough_memory">Not enough memory</string>
+    <string name="picker_memory_shortfall">Needs ~%1$s GB to load — this phone has %2$s GB free.</string>
     <string name="welcome_title">Meet Quenderin</string>
     <string name="welcome_tagline">A personal AI that lives on your phone — not in someone\'s cloud.</string>
     <string name="welcome_private_title">Private by design</string>
