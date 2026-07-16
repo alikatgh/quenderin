@@ -26,10 +26,10 @@
 
 <main class="container legal" id="main">
   <h1>Privacy Policy</h1>
-  <p class="legal-updated">Last updated: 7 June 2026</p>
+  <p class="legal-updated">Last updated: 16 July 2026</p>
 
   <div class="legal-note">
-    <p><strong>The short version.</strong> Quenderin is built so there is nothing to collect. The <strong>app runs entirely on your device</strong> and sends your conversations to no one. This <strong>website uses no cookies, no analytics, no third-party trackers, and no forms</strong>. We collect <strong>no personal data at all</strong>; following the project happens on GitHub, under GitHub&rsquo;s own policy.</p>
+    <p><strong>The short version.</strong> Quenderin is built so there is nothing to collect. The <strong>app runs entirely on your device</strong>, uses <strong>no third-party AI service</strong>, and sends your conversations to no one. This <strong>website uses no cookies, no analytics, no third-party trackers, and no forms</strong>. We collect <strong>no personal data at all</strong>; following the project happens on GitHub, under GitHub&rsquo;s own policy.</p>
   </div>
 
   <p>This policy explains what data we process, why, and your rights under the EU General Data Protection Regulation (GDPR), the UK GDPR, the California Consumer Privacy Act (CCPA/CPRA), and the requirements of the Apple App Store and Google Play.</p>
@@ -47,10 +47,15 @@
   <p>The Quenderin application performs all AI inference <strong>locally on your device</strong> using a model you download once. After that one-time download:</p>
   <ul>
     <li>Your prompts, conversations, and any files you use are processed <strong>only on your device</strong> and are never transmitted to us or any third party.</li>
+    <li>The app <strong>does not use, integrate, or send data to any third-party AI service</strong>. Inference is performed by the open-source llama.cpp engine compiled into the app itself.</li>
     <li>We operate <strong>no servers</strong> that receive your content. There are no accounts, no sign-in, and no cloud sync.</li>
     <li>We collect <strong>no usage analytics, no telemetry, and no crash data</strong> from the app.</li>
   </ul>
-  <p>For app-store disclosures, our "data collected" is <strong>None</strong>. The model file is downloaded from a public model host (e.g. Hugging Face) over a standard request; that host may log the request per its own policy. We do not receive that data.</p>
+  <p>For app-store disclosures, our "data collected" is <strong>None</strong>. The app's only network activity is fetching model files:</p>
+  <ul>
+    <li><strong>Model downloads.</strong> Model files are downloaded from a public model host (Hugging Face, <code>huggingface.co</code>) over a standard request; that host may log the request per its <a href="https://huggingface.co/privacy" rel="noopener">own policy</a>. We do not receive that data.</li>
+    <li><strong>Model-catalog search (optional).</strong> If you search for a model to download, the search term you type is sent to Hugging Face&rsquo;s public model index to find matching files. Nothing else is attached to that request &mdash; no conversation content, no account, and no identifiers beyond what any web request carries (such as an IP address). Search terms are used only to return catalog results and are never stored by us.</li>
+  </ul>
 
   <h2>3. This website</h2>
   <p>This marketing website is a static site that loads <strong>no third-party resources, cookies, fonts, analytics, or trackers</strong>. We do not set cookies and we do not profile visitors. Standard, transient server logs may be kept by our hosting provider for security and operation (e.g. IP address, time, page requested); we do not use these to identify you.</p>

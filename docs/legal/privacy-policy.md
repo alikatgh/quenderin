@@ -21,13 +21,24 @@ to anyone else.
 
 ## The only network connection
 
-The single time Quenderin uses the network is when **you choose to download a model**. The app
-fetches the model file you selected directly from **Hugging Face** (`huggingface.co`), a public
-model host. This is an ordinary download of a public file — **no information about you is sent**
-beyond what any download requires (your device's IP address is visible to Hugging Face, as with
-any web request). That connection is governed by
-[Hugging Face's privacy policy](https://huggingface.co/privacy). After the download, all AI
-inference happens offline on your device; you can use the app with no network connection at all.
+Quenderin **does not use, integrate, or send data to any third-party AI service** — inference is
+performed by the open-source llama.cpp engine compiled into the app itself. The app's only network
+activity is fetching model files:
+
+- **Model downloads.** When **you choose to download a model**, the app fetches the model file you
+  selected directly from **Hugging Face** (`huggingface.co`), a public model host. This is an
+  ordinary download of a public file — **no information about you is sent** beyond what any
+  download requires (your device's IP address is visible to Hugging Face, as with any web
+  request). That connection is governed by
+  [Hugging Face's privacy policy](https://huggingface.co/privacy).
+- **Model-catalog search (optional).** If you search for a model to download, the search term you
+  type is sent to Hugging Face's public model index to find matching files. Nothing else is
+  attached to that request — no conversation content, no account, and no identifiers beyond what
+  any web request carries. Search terms are used only to return catalog results and are never
+  stored by us.
+
+After a download, all AI inference happens offline on your device; you can use the app with no
+network connection at all.
 
 ## Data stored on your device
 
