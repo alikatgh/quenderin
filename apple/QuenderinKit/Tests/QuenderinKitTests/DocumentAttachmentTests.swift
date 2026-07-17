@@ -68,10 +68,25 @@ final class DocumentAttachmentTests: XCTestCase {
         // The transcript keeps the typed text + chip metadata (bubble stays readable)…
         XCTAssertEqual(chat.messages.first?.text, "what does the plan say?")
         XCTAssertEqual(chat.messages.first?.documents, [doc])
-        // …while the ENGINE saw the composed engineText, with the doc clearly labeled.
+        // …while the ENGINE saw the composed engineText: the readable-capability frame (defeats
+        // the trained "I can't open attachments" refusal), the marked doc body, then the ask.
         let sent = engine.lastHistory.first { $0.role == .user }
-        XCTAssertTrue(sent?.text.contains("Attached file \"plan.txt\":\nship milestone one") ?? false)
+        XCTAssertTrue(sent?.text.contains("you can read it directly") ?? false)
+        XCTAssertTrue(sent?.text.contains("--- BEGIN \"plan.txt\" ---\nship milestone one\n--- END \"plan.txt\" ---") ?? false)
         XCTAssertTrue(sent?.text.hasSuffix("what does the plan say?") ?? false)
+    }
+
+    /// A punctuation-only ask ("?") with a document must become a concrete task — a bare "?"
+    /// after a long doc reliably triggers small models' "I can't view attachments" reflex.
+    @MainActor
+    func testPunctuationOnlyAskFallsBackToSummarizeTask() async {
+        let engine = RecordingEngine()
+        let chat = ChatModel(engine: engine)
+        await chat.send("?", documents: [AttachedDocument(name: "a.txt", text: "alpha")])
+        let sent = engine.lastHistory.first { $0.role == .user }
+        XCTAssertTrue(sent?.text.hasSuffix("Briefly summarize the attached file.") ?? false)
+        // The bubble still shows what the user actually typed.
+        XCTAssertEqual(chat.messages.first?.text, "?")
     }
 
     @MainActor

@@ -34,10 +34,24 @@ public struct ChatMessage: Sendable, Identifiable, Equatable {
     /// The text the ENGINE sees: attached documents first (clearly labeled), then the typed
     /// message. Kept out of `text` so bubbles/persistence previews stay readable, but composed
     /// into every windowed history pass — follow-up questions still have the document in context.
+    ///
+    /// The frame must ASSERT the text is readable: chat-tuned small models are trained to say
+    /// "I can't open attachments", and a bare label + a low-content question ("?") reliably
+    /// triggers that refusal even with the document right there in context (live find, 0.2.0(4):
+    /// attach a PDF, send "?" → "I can't view or process attached files"). An explicit
+    /// capability statement + end markers defeat the reflex, and an empty/punctuation-only
+    /// question falls back to a concrete task so the model always has something to do.
     public var engineText: String {
         guard !documents.isEmpty else { return text }
-        let docs = documents.map { "Attached file \"\($0.name)\":\n\($0.text)" }.joined(separator: "\n\n")
-        return "\(docs)\n\n\(text)"
+        let docs = documents.map { doc in
+            "The user attached the file \"\(doc.name)\". Its full extracted text is included "
+            + "between the markers below — you can read it directly; use it to answer.\n"
+            + "--- BEGIN \"\(doc.name)\" ---\n\(doc.text)\n--- END \"\(doc.name)\" ---"
+        }.joined(separator: "\n\n")
+        let ask = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasRealAsk = ask.contains(where: { $0.isLetter || $0.isNumber })
+        let question = hasRealAsk ? text : "Briefly summarize the attached file."
+        return "\(docs)\n\n\(question)"
     }
 }
 
