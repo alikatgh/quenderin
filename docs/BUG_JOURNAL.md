@@ -547,6 +547,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-17 (SIGABRT on EVERY ⌘Q after inference — `ggml_abort` under `__cxa_finalize` in AppKit's exit path;
+  11 identical reports in one day, llama offsets 1875684/2750812) — llama.cpp Metal keeps a residency-set worker
+  alive for the process lifetime and its GLOBAL C++ destructor asserts at exit. Fix: macOS NSApplicationDelegate
+  `applicationShouldTerminate` → flush defaults → `_exit(0)` (skips finalizers; all state persists continuously).
+  Lesson: scripted `osascript quit` hid this for hours — it returns before the crash; CHECK DiagnosticReports after
+  quit tests, not just "process gone".
 - 2026-07-17 (SIGABRT on send with a PDF attached — `ggml_abort` in `llama_decode`, crash report from live use) —
   the whole prompt went to llama_decode as ONE batch; >n_batch(2048 default) tokens = process abort, and >n_ctx
   would too. LlamaEngine now clamps prompt tokens middle-out to (n_ctx − reserve) and prefills in n_batch chunks.

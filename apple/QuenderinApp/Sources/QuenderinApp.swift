@@ -11,8 +11,28 @@ import QuenderinKit
 ///   - downloader: `URLSessionModelDownloader` → real streamed GGUF download.
 /// Both sit behind protocol seams, and onboarding + chat share ONE engine instance
 /// (load in onboarding, generate in chat).
+#if os(macOS)
+/// Quit must NOT run C++ static destructors: after any inference, llama.cpp's Metal backend
+/// keeps a residency-set worker alive for the process lifetime, and its GLOBAL teardown in
+/// `__cxa_finalize` hits `ggml_abort` → SIGABRT — "Quenderin quit unexpectedly" on every ⌘Q
+/// (crash reports 0.2.0(5), 2026-07-17; 11 in one day, byte-identical llama offsets). Every
+/// piece of user state is persisted continuously (conversations per turn, agent ledger per
+/// action, settings via UserDefaults), so after a defaults flush a hard `_exit(0)` — which
+/// skips atexit/finalizers entirely — loses nothing and is the established workaround for
+/// ggml's Metal teardown assert. Never replace with `exit(0)`: that RUNS the finalizers.
+final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        UserDefaults.standard.synchronize()
+        _exit(0)
+    }
+}
+#endif
+
 @main
 struct QuenderinApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(QuenderinMacAppDelegate.self) private var appDelegate
+    #endif
     @StateObject private var onboarding: OnboardingModel
     @StateObject private var conversations: ConversationCoordinator
     @StateObject private var agent: AgentSession
