@@ -93,6 +93,14 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false
+        # The agent's opt-in Mac tools drive other apps via Apple Events (AppleScript);
+        # macOS shows its per-app Automation consent on first use — this string is that
+        # dialog's explanation. Without it (or the matching entitlement) every mac.* tool
+        # dies with AppleScript -600 in the sandboxed build (found in review-prep testing).
+        NSAppleEventsUsageDescription: >-
+          Quenderin's on-device assistant uses Apple Events to work other apps for you —
+          only for tools you turn on, only with macOS's own per-app permission, and
+          nothing leaves your Mac.
     entitlements:
       path: Quenderin-macOS.entitlements
       properties:
@@ -103,3 +111,7 @@ targets:
         # The chat composer's attach button (.fileImporter) — without this the
         # sandboxed open panel silently never presents (App Review 2.1a, 0.2.0(2)).
         com.apple.security.files.user-selected.read-only: true
+        # The agent's opt-in Mac tools (open app, front app, clipboard, notes…) send
+        # Apple Events; sandbox denies them outright (-600) without this. Gated twice
+        # at runtime: the in-app per-tool consent AND macOS's Automation prompt.
+        com.apple.security.automation.apple-events: true

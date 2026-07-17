@@ -24,5 +24,7 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Quenderin's on-device assistant uses Apple Events to work other apps for you — only for tools you turn on, only with macOS's own per-app permission, and nothing leaves your Mac.</string>
 </dict>
 </plist>

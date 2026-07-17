@@ -343,10 +343,26 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         // 1) Prompt → tokens.
-        let newTokens = tokenize(text: prompt, addBOS: true)
-        guard !newTokens.isEmpty else {
+        let rawTokens = tokenize(text: prompt, addBOS: true)
+        guard !rawTokens.isEmpty else {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "tokenizer produced no tokens"))
             return
+        }
+        // 1b) Clamp to the context window. llama.cpp hard-aborts the PROCESS (ggml_abort →
+        // SIGABRT) when asked to decode more tokens than the KV cache can seat — a 24 KB PDF
+        // attachment tokenizes well past a small n_ctx (App Review-visible crash, 0.2.0(4)).
+        // Truncate middle-out: the head keeps the attachment label/lead-in, the tail keeps the
+        // user's actual question (the prompt ends with it); the dropped middle is what a context
+        // this size could never hold anyway. Reserve headroom so the reply has room to decode.
+        let nCtx = Int(llama_n_ctx(context))
+        let reserve = max(256, min(options.maxTokens, nCtx / 4))
+        let promptLimit = max(16, nCtx - reserve)
+        let newTokens: [llama_token]
+        if rawTokens.count > promptLimit {
+            let head = promptLimit / 2
+            newTokens = Array(rawTokens.prefix(head)) + Array(rawTokens.suffix(promptLimit - head))
+        } else {
+            newTokens = rawTokens
         }
 
         // 2) Sampler chain from the request options (penalties → top-p → temperature → dist).
@@ -385,9 +401,22 @@ public actor LlamaEngine: InferenceEngine {
         // negative = fatal) — NOT collapsed to Bool, so callers can distinguish a graceful
         // context-limit stop from a genuine failure, mirroring llama_generate.h's contract.
         func decode(_ toks: inout [llama_token]) -> Int32 {
-            toks.withUnsafeMutableBufferPointer {
-                llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count)))
+            // llama.cpp also hard-aborts if ONE llama_decode call carries more tokens than
+            // n_batch (2048 default — we never raise it), so a long prefill is fed in
+            // n_batch-sized chunks: the standard prompt-processing loop. A within-limit prompt
+            // is exactly one chunk ≡ the old single-call behavior, same borrowed-pointer rule.
+            let nBatch = max(1, Int(llama_n_batch(context)))
+            var start = 0
+            while start < toks.count {
+                let end = min(start + nBatch, toks.count)
+                var chunk = Array(toks[start..<end])
+                let rc = chunk.withUnsafeMutableBufferPointer {
+                    llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count)))
+                }
+                if rc != 0 { return rc }
+                start = end
             }
+            return 0
         }
 
         // Reuse the KV cache from the prior turn: decode only the tokens NOT already cached, so

@@ -547,6 +547,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-17 (SIGABRT on send with a PDF attached — `ggml_abort` in `llama_decode`, crash report from live use) —
+  the whole prompt went to llama_decode as ONE batch; >n_batch(2048 default) tokens = process abort, and >n_ctx
+  would too. LlamaEngine now clamps prompt tokens middle-out to (n_ctx − reserve) and prefills in n_batch chunks.
+  Lesson: llama.cpp treats oversize batches as ABORT, not error — clamp + chunk BEFORE decode, and test attach
+  with >8 KB documents (24 KB extractor cap ≈ 6k tokens tripped it; short chat never does).
+- 2026-07-17 (Model library "0 of 13 installed · Zero KB" while chat ran the model fine; delete would no-op) —
+  ModelLibraryController scanned `FileManagerModelStorage(directory:)` WITHOUT `extraSearchDirs:
+  legacyModelsDirs()`, unlike the engine's `defaultModelStorage()`. All 4 sites (refresh/size-label/sizeOnDisk/
+  delete) now share one storage incl. legacy dirs. Lesson: when a path set is policy, make ONE factory the only
+  way to build it — a second construction site WILL drift.
+- 2026-07-17 (agent mac tools dead in MAS build: "System Events got an error: Application isn't running (-600)"
+  after in-app consent) — sandbox denies Apple Events outright without `com.apple.security.automation.apple-events`;
+  added it + `NSAppleEventsUsageDescription`, macOS now shows its per-app Automation consent (answer once).
+  Lesson: -600 from osascript in a sandboxed app = missing automation entitlement, not a scripting bug.
 - 2026-07-17 (archive died at GenerateDSYMFile, "lipo: can't write … (No space left on device)") — disk was 100%
   full (241 GB Desktop); freed DerivedData/.build/pkg caches → clean. The failure was MASKED as exit 0 because the
   command was piped `| tail -5` (tail's exit code wins). Lesson: when the toolchain fails at a WRITE step, `df -h`

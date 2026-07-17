@@ -478,6 +478,11 @@ final class ModelLibraryController: ObservableObject {
     private var tasks: [String: Task<Void, Never>] = [:]
     private let downloader: ModelDownloader
     private let modelsDir: URL
+    /// The library's eyes: primary dir + (for the production default) the legacy App Support dir —
+    /// the SAME set the engine's load path searches. Scanning only `modelsDir` left every
+    /// legacy-dir install invisible here: "0 of 13 installed · Zero KB on disk" while chat happily
+    /// ran the model, and delete() silently missed the real file (review-prep find, 0.2.0(4)).
+    private let storage: FileManagerModelStorage
     /// Network gate for the library's LIVE downloads (Q-271) — twin of OnboardingModel's. Injected
     /// for tests; live by default via a captured monitor so the gate bites on-device with no wiring.
     private let networkStatus: () -> NetworkStatus
@@ -491,6 +496,10 @@ final class ModelLibraryController: ObservableObject {
     ) {
         self.downloader = downloader
         self.modelsDir = modelsDir ?? OnboardingModel.defaultModelsDir()
+        // Legacy search dirs only for the production default — an injected test dir stays isolated.
+        self.storage = FileManagerModelStorage(
+            directory: self.modelsDir,
+            extraSearchDirs: modelsDir == nil ? OnboardingModel.legacyModelsDirs() : [])
         if let networkStatus {
             self.networkStatus = networkStatus
         } else {
@@ -507,7 +516,7 @@ final class ModelLibraryController: ObservableObject {
     }
 
     func refresh() {
-        let installed = Set(FileManagerModelStorage(directory: modelsDir).installedFilenames())
+        let installed = Set(storage.installedFilenames())
         for entry in ModelCatalog.models where tasks[entry.id] == nil {
             states[entry.id] = installed.contains(entry.filename) ? .installed : .notInstalled
         }
@@ -542,7 +551,7 @@ final class ModelLibraryController: ObservableObject {
     }
 
     var installedSizeLabel: String {
-        let mgr = ModelManager(storage: FileManagerModelStorage(directory: modelsDir), activeModelID: "")
+        let mgr = ModelManager(storage: storage, activeModelID: "")
         return ByteCountFormatter.string(fromByteCount: mgr.totalBytesUsed, countStyle: .file)
     }
 
@@ -621,17 +630,18 @@ final class ModelLibraryController: ObservableObject {
         }
     }
 
-    /// Bytes this model occupies on disk (0 when not installed).
+    /// Bytes this model occupies on disk (0 when not installed) — searched across primary +
+    /// legacy dirs, like the load path.
     func sizeOnDisk(_ entry: ModelEntry) -> Int64 {
-        let url = modelsDir.appendingPathComponent(entry.filename)
-        return (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+        storage.sizeBytes(of: entry.filename)
     }
 
     /// Delete an installed model file. The ACTIVE model is protected — the UI never offers
-    /// this for it, and the guard holds even if it did.
+    /// this for it, and the guard holds even if it did. Removes the file from EVERY search
+    /// dir — a legacy-dir install must actually disappear, not just from the primary dir.
     func delete(_ entry: ModelEntry, activeModelID: String) {
         guard entry.id != activeModelID else { return }
-        try? FileManager.default.removeItem(at: modelsDir.appendingPathComponent(entry.filename))
+        storage.delete(entry.filename)
         SideloadedModels.shared.remove(id: entry.id)   // forget a searched model too (no-op for catalog ids)
         states[entry.id] = nil                          // drop its state row so it leaves "yours"
         refresh()
