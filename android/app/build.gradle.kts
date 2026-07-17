@@ -9,8 +9,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application") version "8.5.2"
-    kotlin("android") version "2.0.21"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    kotlin("android") version "2.4.10"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.10"
 }
 
 // Release signing credentials come from a GITIGNORED keystore.properties at the repo root — never git.
@@ -128,12 +128,12 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.activity:activity-compose:1.9.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     // Background, resumable model downloads (ModelDownloadWorker + WorkManagerModelDownloader).
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
-    implementation("androidx.core:core-ktx:1.13.1") // NotificationCompat for the download notification
-    implementation("androidx.documentfile:documentfile:1.0.1") // SAF workspace fs.* (DocWorkspace.kt)
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation("androidx.core:core-ktx:1.19.0") // NotificationCompat for the download notification
+    implementation("androidx.documentfile:documentfile:1.1.0") // SAF workspace fs.* (DocWorkspace.kt)
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
