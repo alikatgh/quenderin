@@ -24,9 +24,5 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Quenderin's on-device assistant can read today's calendar events when you ask it to — only with your permission, and nothing leaves your Mac.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>Quenderin's on-device assistant can read today's calendar events when you ask it to — only with your permission, and nothing leaves your Mac.</string>
 </dict>
 </plist>

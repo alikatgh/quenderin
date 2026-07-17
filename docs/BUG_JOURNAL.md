@@ -38,6 +38,20 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   (tests/agent-parity.test.ts), 3 of 19 vectors failed on real divergences (JS `Math.round` is half-toward-+∞,
   `[^a-z0-9]` splits on accents exactly like Java's non-Unicode `\b`, `String(number)` is a 17-digit shortest-repr).
   When logic is hand-ported to K platforms, the conformance suite must enumerate all K. (agent-parity Desktop leg)
+- **Edge-to-edge (targetSdk 35+) hands YOU the system-bar icon color — leave it unset and light-theme icons vanish.**
+  Drawing under the status/nav bars stops the OS from auto-picking a contrasting icon tint, so white icons disappear on
+  a light background. Set `isAppearanceLight{Status,Nav}Bars = !dark` in the theme via a `SideEffect` + WindowCompat
+  insets controller. Tell: "time / wi-fi / battery invisible" *only* in light theme. (Quenderin QuenderinTheme, native-feel pass)
+- **A custom Material 3 ColorScheme falls back to the M3 BASELINE for every role you leave unset — a "warm" theme then
+  shows cold bars/menus/sheets.** `darkColorScheme()`/`lightColorScheme()` default the whole surfaceContainer ladder
+  (+ inverse*, tertiary) to baseline lavender, so setting only primary/background leaves TopAppBar, bottom bar, dropdowns
+  and dialogs cold. Set the ENTIRE surface family in both schemes — one shared fix cascades to every component. Tell:
+  chrome looks "off / not-native" while content looks right. (Quenderin Theme.kt, native-feel pass)
+- **A sandboxed Mac app's file pickers die SILENTLY without `files.user-selected.read-only` — and an entitlement
+  with no code path behind it is itself a rejection.** `.fileImporter`/NSOpenPanel in a MAS build just never presents
+  (button looks dead — App Review calls it "unresponsive", 2.1a) when the entitlement is missing; debug runs mask it.
+  Converse trap: a leftover entitlement (calendars with the EventKit tool compiled only into the iOS branch) trips
+  2.4.5i "no matching functionality". Audit entitlements per-target against compiled-in code before every submit.
 - **A `swift test` exit code of 0 can mask an XCTest failure — grep the output for "failure", never trust `$?`.**
   With both an XCTest suite and a swift-testing run in one invocation, the process can exit 0 while an XCTest
   suite reports `1 failure`. Always check `Executed N tests, with M failures` / `Test Suite 'All tests' passed`.
@@ -532,6 +546,25 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   with its `on…` role, never `primary`-on-container. (bottom-tab pill, 2026-07-12)
 
 ## Chronological log (newest first, 5 lines max)
+
+- 2026-07-17 (App Review 2.1a: macOS attach paperclip "not responsive" — open panel never appears in the MAS build) —
+  sandboxed `.fileImporter` needs `com.apple.security.files.user-selected.read-only`; the macOS entitlements
+  (project.yml `entitlements.properties`) lacked it, so the powerbox silently refused to present. Also 2.4.5i: the
+  `personal-information.calendars` entitlement had NO matching macOS code path (EventKit tool is iOS-`#else`-only;
+  the mac twin is AppleScript) → removed. Lesson: entitlements are per-platform claims — audit each against what that
+  target actually compiles in, and test attach/pickers in a RELEASE sandboxed build, not a debug run.
+
+- 2026-07-12 (Android status bar time/wi-fi/battery invisible in light theme — white system icons on the cream bg) —
+  edge-to-edge (targetSdk 35) draws under the bars, so the OS no longer auto-tints the status/nav icons for contrast;
+  nothing set their appearance, so they stayed light and vanished. Fix: `QuenderinTheme` `SideEffect` sets
+  `isAppearanceLight{Status,Nav}Bars = !dark` via the WindowCompat insets controller. Lesson: going edge-to-edge makes
+  system-bar icon color YOUR job — set it from the theme or light-theme icons disappear.
+
+- 2026-07-12 (warm cream/teal app, but top bar, bottom bar, dropdown menus, sheets & dialogs rendered COLD M3 lavender) —
+  the custom ColorScheme set primary/secondary/background but left the surfaceContainer ladder (+ inverse*, tertiary)
+  unset, so `darkColorScheme()`/`lightColorScheme()` filled those roles with the M3 baseline. Fix: set the WHOLE surface
+  family in BOTH schemes — one edit cascaded the fix to every M3 component at once. Lesson: an M3 ColorScheme role you
+  don't set is NOT inherited from your brand color — it silently falls back to the cool baseline.
 
 - 2026-07-12 (xhigh code-review: "localized" UI still shipped EN — the IN-CONVERSATION chat screen was
   never inventoried; 4 a11y contentDescriptions + the AI disclaimer + empty-state stayed hardcoded) —

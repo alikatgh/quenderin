@@ -93,15 +93,6 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false
-        # T1 device perception (device.calendar.today) is cross-platform — the Mac
-        # build exercises the same EventKit seam, so it needs the same usage strings
-        # (missing string = crash at the permission prompt = review rejection).
-        NSCalendarsUsageDescription: >-
-          Quenderin's on-device assistant can read today's calendar events when you ask it to —
-          only with your permission, and nothing leaves your Mac.
-        NSCalendarsFullAccessUsageDescription: >-
-          Quenderin's on-device assistant can read today's calendar events when you ask it to —
-          only with your permission, and nothing leaves your Mac.
     entitlements:
       path: Quenderin-macOS.entitlements
       properties:
@@ -109,6 +100,6 @@ targets:
         com.apple.security.app-sandbox: true
         # Outbound HTTPS for the model download (Hugging Face); nothing inbound.
         com.apple.security.network.client: true
-        # Sandboxed EventKit access for the calendar perception tool — without
-        # this the OS denies/kills the call even with the usage string present.
-        com.apple.security.personal-information.calendars: true
+        # The chat composer's attach button (.fileImporter) — without this the
+        # sandboxed open panel silently never presents (App Review 2.1a, 0.2.0(2)).
+        com.apple.security.files.user-selected.read-only: true
