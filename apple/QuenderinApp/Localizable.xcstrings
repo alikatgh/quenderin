@@ -1009,30 +1009,30 @@
         }
       }
     },
-    "Attach a text file to this message": {
+    "Attach a text or PDF file to this message": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このメッセージにテキストファイルを添付"
+            "value": "このメッセージにテキストまたはPDFファイルを添付"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 메시지에 텍스트 파일 첨부"
+            "value": "이 메시지에 텍스트 또는 PDF 파일 첨부"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прикрепить текстовый файл к сообщению"
+            "value": "Прикрепить текстовый файл или PDF к сообщению"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为此消息附加文本文件"
+            "value": "为此消息附加文本或 PDF 文件"
           }
         }
       }

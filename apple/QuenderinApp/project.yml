@@ -81,7 +81,7 @@ targets:
         PRODUCT_NAME: Quenderin
         ENABLE_HARDENED_RUNTIME: YES
         MARKETING_VERSION: "0.2.0"
-        CURRENT_PROJECT_VERSION: 3
+        CURRENT_PROJECT_VERSION: 4
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
     info:
@@ -89,7 +89,7 @@ targets:
       properties:
         CFBundleDisplayName: Quenderin
         CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "3"
+        CFBundleVersion: "4"
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false

@@ -547,6 +547,15 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-17 (archive died at GenerateDSYMFile, "lipo: can't write … (No space left on device)") — disk was 100%
+  full (241 GB Desktop); freed DerivedData/.build/pkg caches → clean. The failure was MASKED as exit 0 because the
+  command was piped `| tail -5` (tail's exit code wins). Lesson: when the toolchain fails at a WRITE step, `df -h`
+  first; never pipe a build you need the exit code from — log to a file and `grep SUCCEEDED`.
+- 2026-07-17 (attach picker offered images, then scolded post-pick with the orange "isn't a text file" notice) —
+  ChatView.swift `.fileImporter` used `allowedContentTypes: [.item]` (everything). Narrowed to `[.text, .pdf]` to
+  match DocumentTextExtractor; unsupported files now grey out in the panel itself; extractor stays as backstop
+  (scanned PDFs, non-UTF-8, oversize). Lesson: gate at the picker, not after — mirror the ingester's real support
+  in `allowedContentTypes` so the OS does the explaining.
 - 2026-07-17 (App Review 2.1a: macOS attach paperclip "not responsive" — open panel never appears in the MAS build) —
   sandboxed `.fileImporter` needs `com.apple.security.files.user-selected.read-only`; the macOS entitlements
   (project.yml `entitlements.properties`) lacked it, so the powerbox silently refused to present. Also 2.4.5i: the

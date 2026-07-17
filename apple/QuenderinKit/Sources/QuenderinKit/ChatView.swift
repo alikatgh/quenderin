@@ -1,5 +1,6 @@
 #if canImport(SwiftUI)
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The chat screen. Themed message bubbles with speaker-side tails, a pill composer with a circular
 /// send button, a typing indicator, and an empty state — the SwiftUI twin of Android's redesigned
@@ -348,7 +349,11 @@ public struct ChatView: View {
         .padding(.vertical, 10)
         // Extraction happens HERE, at attach time — what the model will see is fixed now, and a
         // binary/oversized file is refused with a visible reason instead of mangled silently.
-        .fileImporter(isPresented: $showAttachPicker, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+        // Only what DocumentTextExtractor can actually ingest — text (any UTF-8 kind: .txt, .md,
+        // source, .json…) and PDF. The picker greys out everything else, so users aren't offered
+        // images just to be refused after the fact; the extractor stays as the backstop for
+        // encoding/scanned-PDF/oversize edge cases the type system can't see.
+        .fileImporter(isPresented: $showAttachPicker, allowedContentTypes: [.text, .pdf], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
             for url in urls {
                 let scoped = url.startAccessingSecurityScopedResource()
@@ -375,7 +380,7 @@ public struct ChatView: View {
             }
             .buttonStyle(.plain)
             .disabled(model.isGenerating)
-            .help("Attach a text file to this message")
+            .help("Attach a text or PDF file to this message")
             .accessibilityLabel("Attach a file")
 
             TextField("Message", text: $draft)
