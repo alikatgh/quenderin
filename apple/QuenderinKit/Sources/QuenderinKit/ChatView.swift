@@ -130,6 +130,12 @@ public struct ChatView: View {
                         transcriptStack(spacing: settings.messageDensity.spacing) {
                             DayDivider(text: "Today", palette: p)
                             ForEach(model.messages) { message in
+                                // The just-appended assistant message is EMPTY until the first
+                                // token lands; rendering it would stack an "…" bubble on top of
+                                // the typing indicator below — two thinking bubbles at once
+                                // (user report, 0.2.0(6)). Exactly one owns each moment: the
+                                // TypingBubble before the first token, this bubble from then on.
+                                if !(message.role == .assistant && message.text.isEmpty && model.isGenerating) {
                                 ChatBubble(message: message, palette: p,
                                            accent: settings.bubbleAccent.colors(dark: scheme == .dark))
                                     .id(message.id)
@@ -139,6 +145,7 @@ public struct ChatView: View {
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .bottom).combined(with: .opacity),
                                         removal: .opacity))
+                                }
                                 if let handoff = latestHandoff, handoff.assistantID == message.id {
                                     AgentHandoffCard(goal: handoff.goal, palette: p, compact: true) {
                                         runWithAgent(handoff.goal)
@@ -146,7 +153,10 @@ public struct ChatView: View {
                                     .id("handoff-\(message.id)")
                                 }
                             }
-                            if model.isGenerating {
+                            // Only while NOTHING has streamed yet — once the reply bubble has
+                            // text, it is its own progress signal and the dots would just
+                            // double it below.
+                            if model.isGenerating, model.messages.last?.text.isEmpty != false {
                                 TypingBubble(palette: p)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .id("typing")
