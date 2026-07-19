@@ -81,6 +81,17 @@ private final class ChunkedDownloadDelegate: NSObject, URLSessionDataDelegate, @
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
                     didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        // Reject a non-2xx response BEFORE writing a single byte. HuggingFace serves a plain-text
+        // "Entry not found" (HTTP 404) for a dead file path, and 429/503 bodies when throttling —
+        // without this guard those bodies were streamed to disk and then failed the GGUF magic
+        // check downstream, surfacing as a cryptic `ModelIntegrityError` ("error 0") instead of the
+        // real cause (App Review 2.1a, 0.2.0(9): a broken catalog URL 404'd → the reviewer saw a
+        // model-integrity error on download). A clear transport error is both honest and retryable.
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            completionHandler(.cancel)
+            finish(throwing: DownloadError.transport(reason: "the download server returned HTTP \(http.statusCode)"))
+            return
+        }
         do {
             try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)

@@ -35,6 +35,7 @@ a row BEFORE fixing it. When shipping a feature that touches generation, re-read
 | Download corruption / tampering | ✅ | SHA-256 / GGUF-magic gate on every path (onboarding, library, bulk, drag-import); corrupt files deleted, never listed. Concurrent writers to the SAME target file are excluded by `DownloadCoordinator` (single in-flight guard keyed by filename — Q-003); drag-import checks a catalog match against its pinned SHA-256, not magic-only (Q-010). |
 | Disk full mid-download | ✅ | `DiskSpace` preflight before the tap; bulk-download offered only with ≥10 GB headroom. |
 | Interrupted downloads | ✅ | Resumable background session; survives relaunch (verified live 2026-07-03). |
+| Dead / renamed catalog URL, or a non-2xx server body (404 "Entry not found", 429 throttle, gated wall) written to disk and misdiagnosed as an integrity failure | ✅ | Downloader rejects non-2xx in `ChunkedDownloadDelegate.didReceive response` BEFORE writing a byte → a clear `.transport(HTTP <code>)`, never the error-page body reaching the GGUF gate as a cryptic `ModelIntegrityError`; `describe()` gives integrity errors a human sentence. **Root cause fixed** (App Review 2.1a, 0.2.0(9)): `ggml-org/gemma-4-12B` 404'd (no Q4_K_M quant there) and was the 16 GB-Mac auto-pick → "ModelIntegrityError error 0"; repointed to `unsloth/gemma-4-12b-it-GGUF` (real SHA, all 4 twins). CI guards: `scripts/check_catalog_urls.py` (live-URL) + `check_catalog_parity.py` (twins agree). |
 | Model too big for RAM (jetsam / OOM) | ✅ | `MemoryFitness` gates every offer surface (picker, library, presets, router). |
 | Surprise multi-GB downloads from a settings tap | ✅ | Speed dial confirms before fetching (2026-07-03). |
 | Quit mid-generation loses the partial reply | 🟨 | Accepted: persist-on-turn-end is the consistency boundary; a mid-token crash-safe journal isn't worth the complexity today. |
@@ -46,6 +47,7 @@ a row BEFORE fixing it. When shipping a feature that touches generation, re-read
 | Harmful autonomous agent actions | ✅ | `SafetyBlocklist` hard-gates tool calls (pay/delete/credentials…); parity-tested both platforms. Desktop device agent: audit ledger + bulk brake + **opt-in per-run mission approval** (Q-549 Step 3, `setMissionApproval` / Settings toggle / `QUENDERIN_MISSION_APPROVAL`, fail-closed; Allow dialog Escape = decline). |
 | Objectionable AI content presented as fact | ✅ | Standing disclaimer under chat + agent; flagged-output notice; per-response Report → support email. |
 | Prompt injection via second JSON object in agent output | ✅ | First-complete-object parsing, parity-pinned (H13). |
+| Single-window Mac app: closing the main window leaves no way to reopen it | ✅ | `applicationShouldTerminateAfterLastWindowClosed → true` (`QuenderinApp.swift`): quit-on-last-close, Apple's sanctioned single-window remedy (App Review 4.0.0 Design, 0.2.0(9)). All state persists continuously; relaunch restores the active model → `.ready` and the most-recent conversation. Settings (⌘,) is a separate window, so this fires only once the LAST window closes. |
 
 ## Cross-platform drift (the meta-failure)
 

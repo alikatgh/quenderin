@@ -1,0 +1,58 @@
+name: Catalog URL liveness
+
+# Model download URLs rot: a HuggingFace repo gets renamed, a quant is dropped, `main` moves.
+# When that happens a user's multi-GB download 404s mid-onboarding — the worst possible moment
+# (App Review rejected 0.2.0(9), 2026-07-19, 2.1a: gemma4-12b's URL 404'd — the exact 16 GB-Mac
+# auto-pick — and surfaced as "ModelIntegrityError error 0"). The parity check (in ci.yml) proves
+# the four platform twins AGREE, but agreeing on the SAME dead URL still ships a dead URL. Only a
+# live request proves a URL resolves — so this does exactly that.
+#
+# Deliberately NOT part of the always-on ci.yml matrix: it needs network + depends on HF uptime,
+# which would make every unrelated PR flaky. Instead it runs (a) whenever a PR/push actually TOUCHES
+# a catalog file — the moment a dead URL would be introduced, e.g. this very bug — and (b) weekly, to
+# catch URLs that were live at merge but rotted later. Transient HF throttling is absorbed by retries.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC — proactive rot detection
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'shared/model-catalog.json'
+      - 'src/constants.ts'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/ModelCatalog.swift'
+      - 'android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelCatalog.kt'
+      - 'scripts/check_catalog_urls.py'
+  push:
+    branches: [main, master]
+    paths:
+      - 'shared/model-catalog.json'
+      - 'src/constants.ts'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/ModelCatalog.swift'
+      - 'android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelCatalog.kt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-urls-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  urls:
+    name: Every catalog URL resolves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Range-GET every model URL (retry to absorb transient HF throttling)
+        run: |
+          for attempt in 1 2 3; do
+            if python3 scripts/check_catalog_urls.py; then exit 0; fi
+            echo "::warning::catalog URL check attempt ${attempt}/3 failed — likely transient HF throttling; retrying in 20s"
+            sleep 20
+          done
+          echo "::error::catalog URL check failed after 3 attempts — a model download URL is dead. Repoint it (scripts/refresh_model_hashes.py) before this reaches users."
+          exit 1

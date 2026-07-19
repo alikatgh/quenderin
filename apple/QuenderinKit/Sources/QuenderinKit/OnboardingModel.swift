@@ -383,6 +383,15 @@ public final class OnboardingModel: ObservableObject {
             case .transport(let reason): return "Download failed: \(reason)"
             case .cancelled: return "Download cancelled."
             }
+        case let error as ModelIntegrityError:
+            // Never surface the raw enum ("…ModelIntegrityError error 0.") — that reached App
+            // Review as the whole failure message (2.1a, 0.2.0(9)). Both cases are retryable.
+            switch error {
+            case .notGGUF:
+                return "That download didn't arrive as a valid model file — the server may have returned an error page or the transfer was interrupted. Please try again."
+            case .checksumMismatch:
+                return "The downloaded model failed its integrity check and may be corrupted. Please download it again."
+            }
         case let error as InferenceError:
             switch error {
             case .modelNotLoaded: return "No model is loaded yet."

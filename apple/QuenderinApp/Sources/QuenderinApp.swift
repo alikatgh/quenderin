@@ -21,6 +21,18 @@ import QuenderinKit
 /// skips atexit/finalizers entirely — loses nothing and is the established workaround for
 /// ggml's Metal teardown assert. Never replace with `exit(0)`: that RUNS the finalizers.
 final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
+    /// Quenderin is a single-window chat app: closing the main window must QUIT, not leave a
+    /// windowless ghost process with no way back (App Review 4.0.0 Design, 0.2.0(9), 2026-07-19 —
+    /// "when the user closes the main window there is no menu item to re-open it"). Apple's
+    /// sanctioned single-window remedy is exactly this: save state and quit on last-window-close.
+    /// Nothing is lost — every piece of user state is persisted continuously (conversations per
+    /// turn, agent ledger per action, settings via UserDefaults), and relaunch restores the active
+    /// model straight to `.ready` and the most-recent conversation. The Settings (⌘,) window is a
+    /// separate window, so this only fires once the LAST window closes. Termination still flows
+    /// through `applicationShouldTerminate` below → the `_exit(0)` that dodges ggml's Metal-teardown
+    /// SIGABRT.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         UserDefaults.standard.synchronize()
         _exit(0)

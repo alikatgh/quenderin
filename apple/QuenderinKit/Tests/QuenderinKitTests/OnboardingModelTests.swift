@@ -205,6 +205,19 @@ final class OnboardingModelTests: XCTestCase {
         XCTAssertTrue(message.contains("offline"), "message should explain the cause: \(message)")
     }
 
+    /// App Review 2.1a (0.2.0(9)): a `ModelIntegrityError` reached the failure screen as its raw
+    /// `localizedDescription` ("…ModelIntegrityError error 0."). `describe` must map both cases to a
+    /// plain, retryable sentence — never leak the enum, never the word "error 0".
+    func testDescribeGivesIntegrityErrorsAHumanMessage() {
+        for err in [ModelIntegrityError.notGGUF(foundMagic: "456e7472"),
+                    ModelIntegrityError.checksumMismatch(expected: "aa", actual: "bb")] {
+            let message = OnboardingModel.describe(err)
+            XCTAssertFalse(message.contains("ModelIntegrityError"), "leaked the enum: \(message)")
+            XCTAssertFalse(message.lowercased().contains("error 0"), "leaked raw code: \(message)")
+            XCTAssertTrue(message.lowercased().contains("again"), "should invite a retry: \(message)")
+        }
+    }
+
     func testStartUsesIPhoneSelectorWhenProfileInjected() async {
         let dir = freshModelsDir()
         let device = IOSDeviceProfile(

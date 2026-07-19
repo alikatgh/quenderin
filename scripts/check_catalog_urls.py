@@ -11,9 +11,12 @@ WITHOUT downloading gigabytes. Run it before any release (and periodically):
 
     python3 scripts/check_catalog_urls.py        # exit 0 = all live, 1 = one or more dead
 
-It is NOT a blocking CI gate (it needs network + depends on HF uptime, which would make CI flaky) —
-it's a maintainer pre-release check. When something is dead, repoint it with
-`scripts/refresh_model_hashes.py` (which also refreshes the pinned sha256).
+Wired into CI via `.github/workflows/catalog-urls.yml` — but deliberately NOT in the always-on
+ci.yml matrix (network + HF uptime would make every unrelated PR flaky). That workflow runs this
+only when a PR/push actually TOUCHES a catalog file (the moment a dead URL is introduced) and weekly
+(to catch later rot), with retries to absorb transient throttling. Also run it by hand before any
+release. When something is dead, repoint it with `scripts/refresh_model_hashes.py` (which also
+refreshes the pinned sha256).
 """
 from __future__ import annotations
 

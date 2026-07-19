@@ -47,6 +47,30 @@ final class URLSessionModelDownloaderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathExtension("partial").path))
     }
 
+    /// Root-cause regression for App Review 2.1a (0.2.0(9)): a catalog URL that 404'd streamed
+    /// HuggingFace's "Entry not found" body to disk, which then failed the GGUF magic check and
+    /// surfaced as a cryptic `ModelIntegrityError`. A non-2xx status must now be rejected up front
+    /// as a clear transport error — and crucially the error body must NEVER be written (so it can't
+    /// reach the integrity gate), even when, as here, that body isn't GGUF.
+    func testNon2xxResponseThrowsTransportAndWritesNoFile() async {
+        StubURLProtocol.reset(body: Data("Entry not found".utf8), statusCode: 404)
+        let destination = tempDestination()
+        defer { try? FileManager.default.removeItem(at: destination.deletingLastPathComponent()) }
+
+        do {
+            for try await _ in makeDownloader().download(from: URL(string: "https://example.com/dead.gguf")!, to: destination) {}
+            XCTFail("expected the stream to throw on a 404")
+        } catch let error as DownloadError {
+            guard case .transport(let reason) = error else { return XCTFail("expected .transport, got \(error)") }
+            XCTAssertTrue(reason.contains("404"), "transport reason should name the status: \(reason)")
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path), "no model file on a 404")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathExtension("partial").path),
+                       "the 404 error body must never be written to the .partial file")
+    }
+
     func testTransportFailureThrowsAndLeavesNoFile() async {
         StubURLProtocol.reset(body: Data(), failError: URLError(.notConnectedToInternet))
         let destination = tempDestination()
@@ -70,10 +94,12 @@ final class URLSessionModelDownloaderTests: XCTestCase {
 private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var responseBody = Data()
     nonisolated(unsafe) static var failError: Error?
+    nonisolated(unsafe) static var statusCode = 200
 
-    static func reset(body: Data, failError: Error? = nil) {
+    static func reset(body: Data, failError: Error? = nil, statusCode: Int = 200) {
         responseBody = body
         self.failError = failError
+        self.statusCode = statusCode
     }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -89,7 +115,7 @@ private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
         let body = Self.responseBody
         let response = HTTPURLResponse(
             url: request.url!,
-            statusCode: 200,
+            statusCode: Self.statusCode,
             httpVersion: "HTTP/1.1",
             headerFields: ["Content-Length": String(body.count)]
         )!

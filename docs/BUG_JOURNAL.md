@@ -10,6 +10,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   to a `.part` staging file and `rename` to the real path only after verify (magic + exact SIZE + sha).
   Corollary: a magic-header-only check does NOT catch a truncation that keeps the header — gate on the
   expected byte size or a hash. (r-uc #1/#5: llm.service staging + modelIntegrity size gate)
+- **A non-2xx HTTP body is NEVER your file — reject on status BEFORE writing a byte, or the integrity gate
+  misdiagnoses the cause.** A dead/renamed catalog URL (404 "Entry not found"), a rate-limit (429), or a
+  gated-model wall streams a text/HTML body to disk; a magic/SHA gate then correctly rejects it but reports
+  a cryptic "integrity error" that hides the real cause (bad URL / throttling). Check `HTTPURLResponse.statusCode`
+  in `didReceive response` and fail with a transport error naming the code. AND: a pinned SHA is not proof the
+  file EXISTS — only `scripts/check_catalog_urls.py` (live HEAD/range on every catalog URL) proves that, so run
+  it in CI; parity across twins (`check_catalog_parity.py`) is necessary but not sufficient. (App Review 2.1a, 0.2.0(9): gemma4-12b 404)
+- **A single-window desktop app must handle window-close explicitly.** On macOS a SwiftUI `WindowGroup` app that
+  neither quits on last-close (`applicationShouldTerminateAfterLastWindowClosed`) nor offers a reopen menu item
+  becomes a windowless ghost — an automatic App Review Guideline 4 rejection. Pick one at the point you ship any
+  single-window scene. (App Review 4.0.0, 0.2.0(9))
 - **Fence EVERY external source into the LLM prompt, not most — audit the whole set.** One unfenced
   channel is the whole hole. Action HISTORY looked internal but embeds attacker-controlled on-screen
   text; it was the only source presented as "trusted" while UI/vision/attachments/goal/corrections were
@@ -547,6 +558,21 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-07-19 (App Review 2.1a reject, 0.2.0(9): "app delivered error message upon the model downloading
+  process" — screenshot = "QuenderinKit.ModelIntegrityError error 0" on a MacBook Air M3) — the `gemma4-12b`
+  catalog URL (`ggml-org/gemma-4-12B-it-GGUF/…Q4_K_M.gguf`) 404'd ("Entry not found"); that repo has no
+  Q4_K_M quant so its pinned SHA was never real — and it's the EXACT 16 GB-Mac auto-pick (band→14B→memory-gate
+  blocks→largest *fitting* is gemma4-12b). The 404 body was streamed to disk (downloader never checked HTTP
+  status) → failed the GGUF-magic gate → `.notGGUF` shown via `describe()`'s `default` branch as the raw
+  `localizedDescription`. Fix: repoint to `unsloth/gemma-4-12b-it-GGUF` (real SHA, all 4 twins) + reject non-2xx
+  in `ChunkedDownloadDelegate.didReceive response` BEFORE writing + a `ModelIntegrityError` case in `describe()`.
+  Lesson: `scripts/check_catalog_urls.py` would've caught this — wire it into CI; a non-2xx body is never your file.
+- 2026-07-19 (App Review 4.0.0 Design reject, 0.2.0(9): closing the main window leaves no menu item to reopen it) —
+  SwiftUI single-`WindowGroup` app; closing the last window left a windowless ghost process with no reopen path.
+  Fix: `applicationShouldTerminateAfterLastWindowClosed → true` (`QuenderinApp.swift`) — Apple's sanctioned
+  single-window remedy; state persists continuously, relaunch restores model→`.ready` + last conversation.
+  Lesson: a single-window SwiftUI app MUST quit-on-last-close OR expose a reopen menu item — the default
+  (stay alive with no window) is an automatic Guideline 4 rejection.
 - 2026-07-17 (SIGABRT on EVERY ⌘Q after inference — `ggml_abort` under `__cxa_finalize` in AppKit's exit path;
   11 identical reports in one day, llama offsets 1875684/2750812) — llama.cpp Metal keeps a residency-set worker
   alive for the process lifetime and its GLOBAL C++ destructor asserts at exit. Fix: macOS NSApplicationDelegate
