@@ -649,7 +649,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 
 /* Code block + copy-to-clipboard */
 .codeblock { position: relative; max-width: 560px; margin: 2rem auto 0; }
-.codeblock pre { margin: 0; background: var(--ink-900); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r-lg); padding: 1.25rem 1.4rem; overflow-x: auto; }
+.codeblock pre { margin: 0; background: var(--ink-900); color: #cfe0f0; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r-lg); padding: 1.25rem 1.4rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.7; white-space: pre; }
 .codeblock code { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.7; color: #cfe0f0; white-space: pre; }
 .copy-btn { position: absolute; top: 0.7rem; right: 0.7rem; font: inherit; font-size: 0.72rem; font-weight: 500; padding: 0.3rem 0.7rem; border-radius: var(--r-md); border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: #cfe0f0; cursor: pointer; transition: background-color var(--dur-base) var(--ease-out); }
 .copy-btn:hover { background: rgba(255,255,255,0.14); }
@@ -684,6 +684,42 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .app-window img { display: block; width: 100%; height: auto; }
 .app-window-caption { padding: 0.55rem 0.9rem; font-size: 0.78rem; color: var(--text-muted, #89B3D7); border-top: 1px solid rgba(255,255,255,0.08); background: #101017; }
 .app-window-tall { max-width: 420px; margin-inline: auto; }
+
+/* ── Hero 3D phone — iOS is the headline market, so the hero IS the phone ──────
+   Pure CSS device: perspective tilt, titanium frame, dynamic island, glass glare,
+   brand-teal glow, gentle float. No libraries (the footer promises "nothing loads
+   from a third party"). Float lives on .hero-phone (translateY); the 3D tilt lives
+   on .hero-phone__tilt via --ry/--rx so pointer parallax and float never collide. */
+.hero-phone-fig { margin: 0; }
+.hero-phone { --pd: 34px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
+.hero-phone::before { content: ""; position: absolute; inset: -16% -22%; z-index: 0; background: radial-gradient(closest-side, rgba(82,147,154,0.40), transparent 70%); filter: blur(36px); }
+.hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -21deg)) rotateX(var(--rx, 6deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
+/* Real depth: four rim walls fold back from the front-face edges (preserve-3d), so the
+   phone reads as a solid object with thickness, not a tilted flat card. */
+.hero-phone__body { position: relative; transform-style: preserve-3d; }
+.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #545b61 0%, #2a2f34 34%, #0d1012 78%, #05070a 100%); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+.hero-phone__side--l { top: 6%; height: 88%; left: 0; width: var(--pd); transform-origin: left center; transform: rotateY(90deg); border-radius: 8px 0 0 8px; }
+.hero-phone__side--r { top: 6%; height: 88%; right: 0; width: var(--pd); transform-origin: right center; transform: rotateY(-90deg); border-radius: 0 8px 8px 0; }
+.hero-phone__side--t { left: 7%; width: 86%; top: 0; height: var(--pd); transform-origin: center top; transform: rotateX(-90deg); }
+.hero-phone__side--b { left: 7%; width: 86%; bottom: 0; height: var(--pd); transform-origin: center bottom; transform: rotateX(90deg); }
+.hero-phone__frame {
+  position: relative; border-radius: 46px; padding: 9px;
+  background: linear-gradient(150deg, #4c5359 0%, #262b30 28%, #0d0f11 54%, #17191c 72%, #363b40 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.5),
+    inset 0 -2px 5px rgba(0,0,0,0.75),
+    -20px 36px 60px -26px rgba(0,0,0,0.72),
+    0 44px 76px -36px rgba(82,147,154,0.55);
+}
+.hero-phone__btn { position: absolute; left: -2px; top: 26%; width: 3px; height: 54px; border-radius: 3px 0 0 3px; background: linear-gradient(#3c4247, #14171a); }
+.hero-phone__screen { position: relative; border-radius: 38px; overflow: hidden; background: #000; aspect-ratio: 1320 / 2868; box-shadow: 0 0 0 2px #000; }
+.hero-phone__screen img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.hero-phone__island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 30%; height: 19px; border-radius: 11px; background: #000; z-index: 3; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
+.hero-phone__glare { position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: 38px; background: linear-gradient(122deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 15%, transparent 40%); }
+.hero-phone__caption { margin-top: 1.15rem; text-align: center; font-size: 0.82rem; color: var(--text-muted, #89B3D7); }
+@keyframes heroPhoneFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@media (prefers-reduced-motion: reduce) { .hero-phone { animation: none; } .hero-phone__tilt { transition: none; } }
+@media (max-width: 860px) { .hero-phone { width: min(232px, 58%); } .hero-phone__tilt { --ry: -11deg; --rx: 3deg; } .hero-phone::before { opacity: 0.6; } }
 .section-sub { max-width: 560px; margin: 0.6rem auto 0; color: var(--text-muted, #89B3D7); }
 .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; align-items: start; margin-top: 2rem; }
 .shot { margin: 0; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r-xl); overflow: hidden; background: #0B0B10; }
