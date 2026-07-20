@@ -567,6 +567,15 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .legal-header { border-bottom: 1px solid var(--border); padding-block: 1.1rem; background: var(--n-000); }
 .legal-header .brand { color: var(--text); }
 .legal { max-width: 760px; padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+/* Blog post navigation — the in/out nav the site was missing. */
+.post-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem 1.5rem; flex-wrap: wrap; }
+.post-nav { display: flex; gap: 1.4rem; font-size: 0.92rem; }
+.post-nav a { color: var(--text-secondary); transition: color var(--dur-base) var(--ease-out); }
+.post-nav a:hover { color: var(--text); }
+.post-kicker { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); margin: 0 0 0.4rem; }
+.post-kicker a { color: inherit; }
+.post-foot { display: flex; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.95rem; }
+.post-foot a { color: var(--brand); font-weight: 500; }
 .legal h1 { font-size: clamp(2rem, 4vw, 2.75rem); margin-bottom: 0.6rem; }
 .legal-updated { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; font-family: var(--font-mono); }
 .legal h2 { font-size: 1.45rem; margin-top: 2.5rem; margin-bottom: 0.6rem; }

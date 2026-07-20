@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Probe, download, offline — how setup actually works</title>
+<meta name="description" content="The homepage says one download, then it's yours. Here is what actually happens in those three steps — how Quenderin guesses what your device can run, verifies the model it pulls, and what you trade away by running it on your own CPU. With the catch on each, honestly." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-setup.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog.html">← Blog</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="post-kicker"><a href="blog.html">Blog</a> · behind the scenes</p>
+  <h1>Probe, download, offline — how setup actually works</h1>
+  <p class="legal-updated">20 July 2026</p>
+
+  <p>The homepage promises "one download, then it's just yours" in three tidy steps. That is true, but
+  a promise isn't an explanation. Here is what actually happens in each step, why it's built that way,
+  and — because a small local model is a set of trade-offs, not magic — where each one can bite you. No
+  marketing. Every piece below maps to code you can read.</p>
+
+  <h2>1 · Probe — guessing what your device can run, and admitting it's a guess</h2>
+  <p>On first launch Quenderin reads your hardware: total RAM, the chip, and on a phone the app's
+  <em>jetsam</em> memory budget — the amount iOS will let one app hold before it kills it. It then picks
+  the largest model that clears a memory-fitness gate: past <strong>85%</strong> of the budget is a hard
+  "no", past <strong>65%</strong> is a "this will be tight" warning, and a size-dependent overhead factor
+  is added on top for the KV cache that inference needs at runtime. The picker shows every model in the
+  catalog as <strong>Fits</strong>, <strong>Tight</strong>, or <strong>Too big</strong> with the real
+  numbers, and it will not offer you one that would run out of memory.</p>
+  <p><strong>The catch.</strong> Total RAM is not free RAM. This is a heuristic: a laptop with forty
+  browser tabs open has far less headroom than the probe assumes, and the jetsam budget on phones is
+  deliberately pessimistic, so on mobile it tends to <em>under</em>-pick rather than risk a crash. Treat
+  the recommendation as a sensible default, not a guarantee — you can always override it and pick a
+  bigger (or smaller) model yourself, with the same honest fitness label next to each.</p>
+
+  <h2>2 · Download — one multi-gigabyte pull, verified before it's trusted</h2>
+  <p>The model is a single GGUF file streamed from a pinned URL to disk in the OS's native chunks. Three
+  things happen that you don't see: the downloader <strong>checks the HTTP status before it writes a
+  byte</strong> (a server error page is never mistaken for a model); the finished file is gated on its
+  GGUF magic header and, when the catalog pins one, its exact <strong>SHA-256</strong>, before it is ever
+  handed to the parser; and a disk-space preflight refuses to <em>start</em> a download that can't finish.
+  It's resumable — lose Wi-Fi at 80% and it picks up where it left off — and it honors a Wi-Fi-only policy
+  by default so a multi-GB pull never surprises your cellular bill.</p>
+  <p>Why the ceremony: a torn, truncated, or substituted model file is a native-parser attack surface, so
+  nothing loads until it verifies. <strong>The catch.</strong> It is genuinely large and it is the slow
+  part of first-run — from 0.4 GB for the ultra-light build to ~13 GB for the big mixture-of-experts one.
+  The mirror can rate-limit you, and a pinned URL rots the day a repository is renamed. We shipped a dead
+  one once; Apple's reviewer hit it before we did, and the fix (plus a CI check so it can't recur) is in
+  <a href="changelog.html">the changelog</a>. After this one time, it never happens again — the model is
+  a file on your disk.</p>
+
+  <h2>3 · Go offline — the model on your CPU, and the ceiling that comes with it</h2>
+  <p>From then on, inference runs entirely through <a href="https://github.com/ggml-org/llama.cpp" rel="noopener">llama.cpp</a>
+  — Metal on Apple silicon, and CPU with memory-mapped weights when a model is too big for the GPU budget.
+  There are <strong>zero network calls</strong> after setup; an offline-readiness check confirms it before
+  you leave signal. This is the whole point: nothing you type leaves the machine. No account, no telemetry,
+  works in a tunnel, on a plane, in a tent.</p>
+  <p><strong>The honest trade-off</strong> — and it is a real one. A model that fits on your device is
+  smaller than a frontier model in a datacenter, and it <em>will</em> sometimes be confidently wrong. We
+  don't hide that: every model carries a plain-language quality grade, the empty state warns you before
+  you start, and the router can suggest a larger model you've installed for a hard task. Sustained
+  generation warms the chip and uses battery; the context window is smaller than a server's. You are
+  trading a slice of raw capability for the network never being in the loop. For anyone offline,
+  private-by-necessity, or simply done being metered, that trade is the entire reason to be here — and if
+  it isn't your trade, we'd rather you know that up front than find out later.</p>
+
+  <h2>None of this is a claim you have to take on faith</h2>
+  <p>The probe (the memory-fitness math and the model picker), the download integrity gate, and the engine
+  are all open source — read them, or read the measured numbers instead of our adjectives on
+  <a href="reality.html">the real-numbers page</a>. Where it's all going, stage by stage:
+  <a href="roadmap.html">the roadmap</a>. Or just <a href="download.html">get it</a>.</p>
+
+  <nav class="post-foot" aria-label="More from the blog">
+    <a href="blog.html">← All posts</a>
+    <a href="blog-computer-use.html">Next: a computer-use agent that never leaves your Mac →</a>
+  </nav>
+</main>
+</body>
+</html>
