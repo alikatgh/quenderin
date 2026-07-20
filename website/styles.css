@@ -255,7 +255,7 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .trust-list { display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; font-size: 0.88rem; color: var(--text-secondary); font-weight: 500; }
 
 /* ---------- Sections ---------- */
-.section { padding-block: clamp(3.25rem, 6.5vw, 5.25rem); background: var(--surface); }
+.section { padding-block: clamp(2rem, 3.6vw, 3.25rem); background: var(--surface); }
 /* Section rule — a faint hairline with a brand diamond, to give the big transitions
    between sections something intentional instead of a dead void. */
 .section-rule { max-width: 880px; margin-inline: auto; display: flex; align-items: center; gap: 1.1rem; }
