@@ -226,8 +226,8 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .hero .btn-ghost { color: #fff; border-color: rgba(255,255,255,0.45); }
 .hero .btn-ghost:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,0.12); }
 
-.hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; padding-block: clamp(4.5rem, 11vw, 8rem); }
-.hero-visual { perspective: 1200px; }
+.hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; padding-block: clamp(2.25rem, 4.5vw, 3.5rem); }
+.hero-visual { perspective: 880px; perspective-origin: 55% 38%; }
 .eyebrow { font-size: 0.82rem; font-weight: 500; letter-spacing: 0.02em; color: var(--brand); margin-bottom: 1rem; }
 .hero h1 { font-size: clamp(2.7rem, 6.2vw, 4.75rem); }
 .lede { margin-top: 1.5rem; font-size: clamp(1.05rem, 1.6vw, 1.25rem); color: var(--text-secondary); max-width: 36ch; font-weight: 400; }
@@ -755,13 +755,15 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
    from a third party"). Float lives on .hero-phone (translateY); the 3D tilt lives
    on .hero-phone__tilt via --ry/--rx so pointer parallax and float never collide. */
 .hero-phone-fig { margin: 0; }
-.hero-phone { --pd: 26px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
+.hero-phone { --pd: 38px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
 .hero-phone::before { content: ""; position: absolute; inset: -16% -22%; z-index: 0; background: radial-gradient(closest-side, rgba(82,147,154,0.40), transparent 70%); filter: blur(36px); }
-.hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -21deg)) rotateX(var(--rx, 6deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
+.hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -27deg)) rotateX(var(--rx, 8deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
 /* Real depth: four rim walls fold back from the front-face edges (preserve-3d), so the
    phone reads as a solid object with thickness, not a tilted flat card. */
 .hero-phone__body { position: relative; transform-style: preserve-3d; }
-.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #2b3035 0%, #16191c 46%, #08090b 100%); box-shadow: inset 0 0 6px rgba(0,0,0,0.55); backface-visibility: hidden; }
+/* Brushed-titanium rim. Mid-grey (NOT near-black) so the depth reads against the
+   dark hero; a 1px bright inner line is the polished chamfer catching light. */
+.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #a6abb1 0%, #696e74 44%, #3c4045 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 -3px 5px rgba(0,0,0,0.45); backface-visibility: hidden; }
 .hero-phone__side--l { top: 6%; height: 88%; left: 0; width: var(--pd); transform-origin: left center; transform: rotateY(90deg); border-radius: 8px 0 0 8px; }
 .hero-phone__side--r { top: 6%; height: 88%; right: 0; width: var(--pd); transform-origin: right center; transform: rotateY(-90deg); border-radius: 0 8px 8px 0; }
 .hero-phone__side--t { left: 7%; width: 86%; top: 0; height: var(--pd); transform-origin: center top; transform: rotateX(-90deg); }
@@ -772,7 +774,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
   box-shadow:
     inset 0 1px 1px rgba(255,255,255,0.5),
     inset 0 -2px 5px rgba(0,0,0,0.75),
-    -20px 36px 60px -26px rgba(0,0,0,0.72),
+    22px 42px 62px -26px rgba(0,0,0,0.7),
     0 44px 76px -36px rgba(82,147,154,0.55);
 }
 .hero-phone__btn { position: absolute; left: -2px; top: 26%; width: 3px; height: 54px; border-radius: 3px 0 0 3px; background: linear-gradient(#3c4247, #14171a); }
@@ -783,7 +785,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .hero-phone__caption { margin-top: 1.15rem; text-align: center; font-size: 0.82rem; color: var(--text-muted, #89B3D7); }
 @keyframes heroPhoneFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) { .hero-phone { animation: none; } .hero-phone__tilt { transition: none; } }
-@media (max-width: 860px) { .hero-phone { width: min(232px, 58%); } .hero-phone__tilt { --ry: -11deg; --rx: 3deg; } .hero-phone::before { opacity: 0.6; } }
+@media (max-width: 860px) { .hero-phone { width: min(236px, 60%); --pd: 26px; } .hero-phone__tilt { --ry: -18deg; --rx: 6deg; } .hero-phone::before { opacity: 0.6; } }
 .section-sub { max-width: 560px; margin: 0.6rem auto 0; color: var(--text-muted, #89B3D7); }
 /* Screens carousel — a peek slider (active centered, neighbours peeking) with prev/next
    + dots, instead of dumping four shots in a grid. Native scroll-snap does touch/swipe;
