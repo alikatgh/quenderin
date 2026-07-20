@@ -17,7 +17,7 @@ _13 models — generated from `shared/model-catalog.json`; edit `src/constants.t
 |----|-------|--------|---------------|----------|--------------|
 | `qwen36-35b-a3b` | Qwen3.6 35B MoE (Best Agent, Big Download) | 35B | ~5.5 GB | 13.2 GB download | `UD-IQ3_XXS` |
 | `qwen3-14b` | Qwen3 14B (Best Quality) | 14B | ~11 GB | 9.0 GB download | `Q4_K_M` |
-| `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.4 GB download | `Q4_K_M` |
+| `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.1 GB download | `Q4_K_M` |
 | `qwen25-coder-7b` | Qwen2.5 Coder 7B (Coding) | 7B | ~6.5 GB | 4.7 GB download | `Q4_K_M` |
 | `deepseek-r1-7b` | DeepSeek-R1 7B (Reasoning) | 7B | ~6.5 GB | 4.7 GB download | `Q4_K_M` |
 | `llama3-8b` | Llama 3 8B (Best Quality) | 8B | ~6.75 GB | 4.7 GB download | `Q4_K_M` |
