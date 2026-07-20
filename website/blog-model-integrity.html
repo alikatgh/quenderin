@@ -46,7 +46,7 @@
   when the catalog pins one, the whole-file SHA-256. Magic alone rejects HTML error pages and obviously-wrong
   files instantly; the hash catches a silent substitution or a truncation that happens to keep the header:</p>
 
-  <div class="codeblock"><pre>static func verify(fileURL: URL, expectedSHA256: String?) throws {
+  <div class="codeblock" data-file="ModelIntegrity.swift"><pre>static func verify(fileURL: URL, expectedSHA256: String?) throws {
     let head = try readHead(fileURL, 4)
     guard hasGGUFMagic(head) else {                    // 47 47 55 46  ==  "GGUF"
         throw ModelIntegrityError.notGGUF(foundMagic: head.hex)
@@ -78,7 +78,7 @@
   reject a non-2xx response <strong>before writing a single byte</strong>, so an error page can never become
   a file to misdiagnose:</p>
 
-  <div class="codeblock"><pre>func urlSession(_ s: URLSession, dataTask: URLSessionDataTask,
+  <div class="codeblock" data-file="ModelDownloader.swift"><pre>func urlSession(_ s: URLSession, dataTask: URLSessionDataTask,
                 didReceive response: URLResponse,
                 completionHandler: @escaping (URLSession.ResponseDisposition) -&gt; Void) {
     // 404 "Entry not found", 429 throttling, a gated-model wall — none of these are your file.

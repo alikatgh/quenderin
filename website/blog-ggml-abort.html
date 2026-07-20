@@ -60,7 +60,7 @@
   run <code>atexit</code> handlers or C++ finalizers</strong> &mdash; it skips the entire teardown that was
   aborting. So the macOS app delegate flushes anything that needs flushing, then exits hard:</p>
 
-  <div class="codeblock"><pre>final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
+  <div class="codeblock" data-file="QuenderinApp.swift"><pre>final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         UserDefaults.standard.synchronize()   // persist the last of the settings
         _exit(0)                              // skip atexit/finalizers → no ggml_abort

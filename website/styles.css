@@ -675,7 +675,12 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* Blog posts: the 560px cap is for the homepage terminal — in an article the code
    block must use the full text column and a smaller size so long lines fit, with a
    real scrollbar for the ones that still don't (was clipping silently at 560px). */
-.legal .codeblock { max-width: 100%; margin-inline: 0; }
+.legal .codeblock { max-width: 100%; margin: 1.9rem 0; }
+/* Editor-style filename header — a real detail (says "this is an actual file"),
+   and it doubles the code block's chrome so it doesn't read as a bare <pre> dump. */
+.legal .codeblock[data-file] { background: var(--ink-900); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r-lg); overflow: hidden; }
+.legal .codeblock[data-file]::before { content: "" attr(data-file); display: block; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.02em; color: rgba(207,224,240,0.5); padding: 0.5rem 1.15rem; border-bottom: 1px solid rgba(255,255,255,0.07); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legal .codeblock[data-file] pre { background: transparent; border: none; border-radius: 0; }
 .legal .codeblock pre { font-size: 0.76rem; line-height: 1.65; padding: 1.05rem 1.15rem; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent; }
 .legal .codeblock pre::-webkit-scrollbar { height: 8px; }
 .legal .codeblock pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
