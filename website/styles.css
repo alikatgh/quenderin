@@ -256,6 +256,11 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 
 /* ---------- Sections ---------- */
 .section { padding-block: clamp(3.25rem, 6.5vw, 5.25rem); background: var(--surface); }
+/* Section rule — a faint hairline with a brand diamond, to give the big transitions
+   between sections something intentional instead of a dead void. */
+.section-rule { max-width: 880px; margin-inline: auto; display: flex; align-items: center; gap: 1.1rem; }
+.section-rule::before, .section-rule::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border) 28%, var(--border) 72%, transparent); }
+.section-rule i { flex: 0 0 auto; width: 6px; height: 6px; transform: rotate(45deg); background: var(--brand); border-radius: 1px; opacity: 0.85; }
 .section.tint { background: var(--surface-tint); }
 .section-head { max-width: 42rem; margin-bottom: 2.25rem; }
 .section-head h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); }
@@ -492,6 +497,13 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .split-copy h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); }
 .split-copy .checklist { margin-top: 1.75rem; }
 .split-visual { display: flex; justify-content: center; min-width: 0; }
+/* Agent trust points: give the four a marker, a title line, and room to breathe —
+   was a dense stack of bold bullets thrown at the reader all at once. */
+.agent-points { list-style: none; padding: 0; margin: 1.6rem 0; display: grid; gap: 1.15rem; }
+.agent-points li { padding-left: 1.55rem; position: relative; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.55; }
+.agent-points li::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 8px; height: 8px; border-radius: 2px; background: var(--brand); }
+.agent-points li strong { display: block; color: var(--text); margin-bottom: 0.15rem; font-size: 1rem; font-weight: 600; }
+.agent-points li code { color: var(--text); }
 
 /* Vertical numbered steps (paired with the phone) */
 .steplist { display: grid; gap: 1.75rem; margin-top: 2rem; }
@@ -730,9 +742,21 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 @media (prefers-reduced-motion: reduce) { .hero-phone { animation: none; } .hero-phone__tilt { transition: none; } }
 @media (max-width: 860px) { .hero-phone { width: min(232px, 58%); } .hero-phone__tilt { --ry: -11deg; --rx: 3deg; } .hero-phone::before { opacity: 0.6; } }
 .section-sub { max-width: 560px; margin: 0.6rem auto 0; color: var(--text-muted, #89B3D7); }
-.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; align-items: start; margin-top: 2rem; }
-.shot { margin: 0; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r-xl); overflow: hidden; background: #0B0B10; }
+/* Screens carousel — a peek slider (active centered, neighbours peeking) with prev/next
+   + dots, instead of dumping four shots in a grid. Native scroll-snap does touch/swipe;
+   the JS drives the arrows and the active dot. */
+.shots { position: relative; margin-top: 2.5rem; max-width: 940px; margin-inline: auto; }
+.shots-track { display: flex; gap: 1.4rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 0.5rem 0.25rem 1.1rem; scrollbar-width: none; -ms-overflow-style: none; }
+.shots-track::-webkit-scrollbar { display: none; }
+.shot { flex: 0 0 clamp(230px, 46%, 300px); scroll-snap-align: center; margin: 0; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r-xl); overflow: hidden; background: #0B0B10; }
 .shot img { display: block; width: 100%; height: auto; }
-.shot figcaption { padding: 0.7rem 0.95rem; font-size: 0.84rem; color: var(--text-muted, #89B3D7); border-top: 1px solid rgba(255,255,255,0.08); }
-@media (max-width: 880px) { .shots { grid-template-columns: 1fr; max-width: 440px; margin-inline: auto; } }
+.shot figcaption { padding: 0.75rem 0.95rem; font-size: 0.84rem; color: var(--text-muted, #89B3D7); border-top: 1px solid rgba(255,255,255,0.08); min-height: 4.4em; }
+.shots-btn { position: absolute; top: 42%; transform: translateY(-50%); z-index: 3; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--n-000); color: var(--text); font-size: 1.5rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(10,37,64,0.12); transition: background var(--dur-base) var(--ease-out); }
+.shots-btn:hover { background: var(--surface); }
+.shots-prev { left: -10px; }
+.shots-next { right: -10px; }
+.shots-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.3rem; }
+.shots-dots button { width: 8px; height: 8px; padding: 0; border: none; border-radius: 50%; background: var(--border); cursor: pointer; transition: background var(--dur-base) var(--ease-out), width var(--dur-base) var(--ease-out); }
+.shots-dots button.is-active { background: var(--brand); width: 22px; border-radius: 4px; }
+@media (max-width: 620px) { .shot { flex-basis: 80%; } .shots-btn { display: none; } }
 /* The frames stay dark in both site themes - they hold a dark-UI screenshot. */

@@ -317,23 +317,28 @@
         <h2 data-i18n="screens.title">Not mockups. These are renders of the real UI.</h2>
         <p class="section-sub" data-i18n="screens.sub">Every image on this page is generated from the shipping SwiftUI code &mdash; when the app changes, the site re-renders with it.</p>
       </header>
-      <div class="shots">
-        <figure class="shot reveal">
-          <img src="assets/app/welcome.png" width="520" height="720" alt="Quenderin's first-launch welcome screen: private by design, works offline, open source" loading="lazy" decoding="async" />
-          <figcaption data-i18n="screens.welcome">First launch &mdash; three promises, then you&rsquo;re in.</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/app/profile.png" width="520" height="820" alt="The model profile: parameters, download size, memory, quantization — with a plain-language glossary behind one help button" loading="lazy" decoding="async" />
-          <figcaption data-i18n="screens.profile">Every model explained in plain language &mdash; no jargon assumed.</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/app/picker.png" width="520" height="820" alt="The fitness-aware model picker" loading="lazy" decoding="async" />
-          <figcaption data-i18n="screens.picker">The catalog knows your hardware &mdash; Fits, Tight, or Too big, honestly.</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/app/agent.png" width="720" height="560" alt="The agent's run log: numbered tool calls (unit converter, calculator) and the final answer" loading="lazy" decoding="async" />
-          <figcaption data-i18n="screens.agent">The agent shows its work &mdash; every tool call in the run log, and it can never touch payments, deletion, or credentials.</figcaption>
-        </figure>
+      <div class="shots reveal" role="group" aria-roledescription="carousel" aria-label="Screens from the app">
+        <button class="shots-btn shots-prev" type="button" aria-label="Previous screen">&lsaquo;</button>
+        <div class="shots-track" id="shots-track" tabindex="0">
+          <figure class="shot">
+            <img src="assets/app/welcome.png" width="520" height="720" alt="Quenderin's first-launch welcome screen: private by design, works offline, open source" loading="lazy" decoding="async" />
+            <figcaption data-i18n="screens.welcome">First launch &mdash; three promises, then you&rsquo;re in.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="assets/app/profile.png" width="520" height="820" alt="The model profile: parameters, download size, memory, quantization — with a plain-language glossary behind one help button" loading="lazy" decoding="async" />
+            <figcaption data-i18n="screens.profile">Every model explained in plain language &mdash; no jargon assumed.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="assets/app/picker.png" width="520" height="820" alt="The fitness-aware model picker" loading="lazy" decoding="async" />
+            <figcaption data-i18n="screens.picker">The catalog knows your hardware &mdash; Fits, Tight, or Too big, honestly.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="assets/app/agent.png" width="720" height="560" alt="The agent's run log: numbered tool calls (unit converter, calculator) and the final answer" loading="lazy" decoding="async" />
+            <figcaption data-i18n="screens.agent">The agent shows its work &mdash; every tool call in the run log, and it can never touch payments, deletion, or credentials.</figcaption>
+          </figure>
+        </div>
+        <button class="shots-btn shots-next" type="button" aria-label="Next screen">&rsaquo;</button>
+        <div class="shots-dots" id="shots-dots" role="tablist" aria-label="Choose screen"></div>
       </div>
     </div>
   </section>
@@ -408,6 +413,8 @@
       </div>
     </div>
   </section>
+
+  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
 
   <!-- MADE FOR -->
   <section class="section" id="use-cases">
@@ -651,6 +658,36 @@ npm run electron:dev</code></pre>
     tilt.style.setProperty('--ry', '-19deg');
     tilt.style.setProperty('--rx', '5deg');
   });
+})();
+
+/* Screens carousel: prev/next arrows + dots over a native scroll-snap track. */
+(function () {
+  var track = document.getElementById('shots-track');
+  var dotsWrap = document.getElementById('shots-dots');
+  if (!track || !dotsWrap) return;
+  var shots = [].slice.call(track.querySelectorAll('.shot'));
+  shots.forEach(function (s, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', 'Screen ' + (i + 1));
+    b.addEventListener('click', function () { s.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); });
+    dotsWrap.appendChild(b);
+  });
+  var dots = [].slice.call(dotsWrap.children);
+  function step(dir) { track.scrollBy({ left: dir * (shots[0].offsetWidth + 22), behavior: 'smooth' }); }
+  var wrap = track.parentNode;
+  var prev = wrap.querySelector('.shots-prev'), next = wrap.querySelector('.shots-next');
+  if (prev) prev.addEventListener('click', function () { step(-1); });
+  if (next) next.addEventListener('click', function () { step(1); });
+  var active = -1, raf = 0;
+  function update() {
+    var c = track.scrollLeft + track.clientWidth / 2, best = 0, bd = 1e9;
+    shots.forEach(function (s, i) { var m = s.offsetLeft + s.offsetWidth / 2, d = Math.abs(m - c); if (d < bd) { bd = d; best = i; } });
+    if (best !== active) { active = best; dots.forEach(function (d, i) { d.classList.toggle('is-active', i === best); }); }
+  }
+  track.addEventListener('scroll', function () { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; update(); }); });
+  update();
 })();
 </script>
 <script src="main.js" defer></script>
