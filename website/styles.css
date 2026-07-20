@@ -712,13 +712,13 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
    from a third party"). Float lives on .hero-phone (translateY); the 3D tilt lives
    on .hero-phone__tilt via --ry/--rx so pointer parallax and float never collide. */
 .hero-phone-fig { margin: 0; }
-.hero-phone { --pd: 34px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
+.hero-phone { --pd: 26px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
 .hero-phone::before { content: ""; position: absolute; inset: -16% -22%; z-index: 0; background: radial-gradient(closest-side, rgba(82,147,154,0.40), transparent 70%); filter: blur(36px); }
 .hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -21deg)) rotateX(var(--rx, 6deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
 /* Real depth: four rim walls fold back from the front-face edges (preserve-3d), so the
    phone reads as a solid object with thickness, not a tilted flat card. */
 .hero-phone__body { position: relative; transform-style: preserve-3d; }
-.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #545b61 0%, #2a2f34 34%, #0d1012 78%, #05070a 100%); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #2b3035 0%, #16191c 46%, #08090b 100%); box-shadow: inset 0 0 6px rgba(0,0,0,0.55); backface-visibility: hidden; }
 .hero-phone__side--l { top: 6%; height: 88%; left: 0; width: var(--pd); transform-origin: left center; transform: rotateY(90deg); border-radius: 8px 0 0 8px; }
 .hero-phone__side--r { top: 6%; height: 88%; right: 0; width: var(--pd); transform-origin: right center; transform: rotateY(-90deg); border-radius: 0 8px 8px 0; }
 .hero-phone__side--t { left: 7%; width: 86%; top: 0; height: var(--pd); transform-origin: center top; transform: rotateX(-90deg); }
@@ -736,7 +736,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .hero-phone__screen { position: relative; border-radius: 38px; overflow: hidden; background: #000; aspect-ratio: 1320 / 2868; box-shadow: 0 0 0 2px #000; }
 .hero-phone__screen img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .hero-phone__island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 30%; height: 19px; border-radius: 11px; background: #000; z-index: 3; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
-.hero-phone__glare { position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: 38px; background: linear-gradient(122deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 15%, transparent 40%); }
+.hero-phone__glare { position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: 38px; background: radial-gradient(130% 90% at 6% -8%, rgba(255,255,255,0.14), rgba(255,255,255,0.03) 34%, transparent 56%); }
 .hero-phone__caption { margin-top: 1.15rem; text-align: center; font-size: 0.82rem; color: var(--text-muted, #89B3D7); }
 @keyframes heroPhoneFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) { .hero-phone { animation: none; } .hero-phone__tilt { transition: none; } }
