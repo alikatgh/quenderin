@@ -672,6 +672,13 @@ html.js .reveal.in { opacity: 1; transform: none; }
 .codeblock { position: relative; max-width: 560px; margin: 2rem auto 0; }
 .codeblock pre { margin: 0; background: var(--ink-900); color: #cfe0f0; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r-lg); padding: 1.25rem 1.4rem; overflow-x: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.7; white-space: pre; }
 .codeblock code { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.7; color: #cfe0f0; white-space: pre; }
+/* Blog posts: the 560px cap is for the homepage terminal — in an article the code
+   block must use the full text column and a smaller size so long lines fit, with a
+   real scrollbar for the ones that still don't (was clipping silently at 560px). */
+.legal .codeblock { max-width: 100%; margin-inline: 0; }
+.legal .codeblock pre { font-size: 0.76rem; line-height: 1.65; padding: 1.05rem 1.15rem; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent; }
+.legal .codeblock pre::-webkit-scrollbar { height: 8px; }
+.legal .codeblock pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
 .copy-btn { position: absolute; top: 0.7rem; right: 0.7rem; font: inherit; font-size: 0.72rem; font-weight: 500; padding: 0.3rem 0.7rem; border-radius: var(--r-md); border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: #cfe0f0; cursor: pointer; transition: background-color var(--dur-base) var(--ease-out); }
 .copy-btn:hover { background: rgba(255,255,255,0.14); }
 .copy-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
