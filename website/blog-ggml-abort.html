@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>The crash that only happened after you'd used it — ggml, Metal, and _exit(0)</title>
+<meta name="description" content="A SIGABRT on every Cmd-Q, but only after the first message — 11 byte-identical crash reports in a day. The cause was llama.cpp's Metal backend asserting inside C++ static destructors at process exit, and the fix is one line: _exit(0). What it costs, and how it should really be fixed." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-ggml-abort.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog.html">← Blog</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="post-kicker"><a href="blog.html">Blog</a> · engineering</p>
+  <h1>The crash that only happened after you&rsquo;d used it</h1>
+  <p class="legal-updated">20 July 2026 · ggml, Metal, and <code>_exit(0)</code></p>
+
+  <p>The bug report was maddening because it was so consistent. The Mac app crashed on
+  <kbd>&#8984;Q</kbd> &mdash; <em>&ldquo;Quenderin quit unexpectedly&rdquo;</em> &mdash; but only if you had sent at
+  least one message first. Quit before chatting: clean. Chat once, then quit: <code>SIGABRT</code>.
+  Eleven crash reports came in on a single day, and when we lined them up the llama.cpp stack offsets
+  were <strong>byte-identical</strong> across all of them. A byte-identical crash is not a race; it&rsquo;s
+  a deterministic path someone walks every single time.</p>
+
+  <h2>What the crash report actually said</h2>
+  <p>The abort came from <code>ggml_abort</code>, and it fired inside <code>__cxa_finalize</code> &mdash;
+  the C++ runtime phase that runs <strong>static destructors at process exit</strong>. That&rsquo;s the tell.
+  Nothing in our code was running; the process was on its way out, and a global C++ teardown tripped an
+  assertion deep in the inference library.</p>
+  <p>Here is the mechanism. After any inference, llama.cpp&rsquo;s Metal backend keeps a residency-set
+  worker alive for the lifetime of the process &mdash; that&rsquo;s a performance feature, it avoids
+  re-warming the GPU on every decode. But it means there is live GPU state when the process exits. AppKit
+  calls <code>exit()</code> on <kbd>&#8984;Q</kbd>, <code>exit()</code> runs <code>atexit</code> handlers and
+  C++ static destructors, and one of those destructors tears down ggml&rsquo;s Metal context in an order it
+  doesn&rsquo;t actually support &mdash; so it calls <code>ggml_abort</code> instead of failing quietly. The
+  first message is what arms it: no inference, no Metal worker, no crash.</p>
+
+  <h2>The fix is one line, and it&rsquo;s a blunt one</h2>
+  <p>You cannot fix someone else&rsquo;s static destructor from the outside. What you <em>can</em> do is
+  never reach it. <code>_exit(2)</code> terminates the process immediately and, crucially, <strong>does not
+  run <code>atexit</code> handlers or C++ finalizers</strong> &mdash; it skips the entire teardown that was
+  aborting. So the macOS app delegate flushes anything that needs flushing, then exits hard:</p>
+
+  <div class="codeblock"><pre>final class QuenderinMacAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        UserDefaults.standard.synchronize()   // persist the last of the settings
+        _exit(0)                              // skip atexit/finalizers → no ggml_abort
+    }
+}</pre></div>
+
+  <p>The reason this is safe here, and not just a way to hide a crash, is that <strong>Quenderin has nothing
+  to lose at exit</strong>. Every piece of user state is persisted <em>continuously</em>, not on shutdown:
+  each conversation turn is written as it happens, every agent action is appended to an on-disk ledger, and
+  settings go through <code>UserDefaults</code>. By the time you press <kbd>&#8984;Q</kbd> there is no
+  unsaved work for a graceful teardown to save. So skipping the teardown loses nothing &mdash; it just
+  removes the one thing in it that was broken.</p>
+  <p>One footgun worth naming: it has to be <code>_exit(0)</code>, not <code>exit(0)</code>. <code>exit()</code>
+  is the function that <em>runs</em> the finalizers &mdash; using it would reproduce the exact crash. The
+  underscore is load-bearing.</p>
+
+  <h2>The limitations, honestly</h2>
+  <p>This is a workaround, and it&rsquo;s worth being clear about what it does and doesn&rsquo;t buy:</p>
+  <ul>
+    <li><strong>It papers over an upstream assert.</strong> The real defect is that a library aborts during
+      global teardown instead of tolerating it. We&rsquo;re routing around that, not fixing it.</li>
+    <li><strong>It&rsquo;s a process-wide sledgehammer.</strong> <code>_exit</code> skips <em>all</em>
+      cleanup &mdash; flushing buffers, closing files, releasing OS handles. That&rsquo;s fine for an app the
+      OS is about to reclaim entirely, but you could not do this inside a library or a plugin that shares a
+      process with code that <em>does</em> need graceful shutdown. It only works because we own the whole
+      process.</li>
+    <li><strong>It only covers the exit path.</strong> The same &ldquo;ggml aborts instead of returning an
+      error&rdquo; shape shows up elsewhere &mdash; feed <code>llama_decode</code> a batch larger than
+      <code>n_batch</code> and it will <code>ggml_abort</code> mid-run too. Each one needs its own guard
+      (there, clamping the prompt and prefilling in chunks); <code>_exit</code> does nothing for them.</li>
+  </ul>
+
+  <h2>How it should actually be fixed</h2>
+  <p>The clean fixes all move upstream of the workaround:</p>
+  <ul>
+    <li><strong>An explicit, ordered shutdown.</strong> The right shape is a <code>engine.shutdown()</code>
+      that quiesces the Metal residency worker and frees the ggml context <em>deterministically, before</em>
+      <code>__cxa_finalize</code> ever runs &mdash; so exit has nothing left to tear down. That turns
+      <code>_exit</code> from a necessity into an optimization.</li>
+    <li><strong>The upstream assert should tolerate teardown.</strong> A backend that keeps global state for
+      the process lifetime should either register no static destructor that touches the GPU, or make that
+      destructor a no-op once the runtime is finalizing. That&rsquo;s the actual bug, and it belongs in
+      llama.cpp.</li>
+    <li><strong>Treat &ldquo;the engine aborts&rdquo; as a contract.</strong> Once you accept that this
+      library ends the process rather than throwing, you design the whole lifecycle around it: guard every
+      entry point that can trip an assert, and never assume a clean unwind. That framing is what turned a
+      recurring crash into a checklist.</li>
+  </ul>
+
+  <p>The lesson generalizes past this one library: <strong>an inference engine that calls <code>abort()</code>
+  instead of returning an error is a different kind of dependency.</strong> You stop reasoning about return
+  values and start reasoning about process lifetime &mdash; and sometimes the most correct thing you can do
+  is refuse to run the code that would crash.</p>
+
+  <nav class="post-foot" aria-label="More from the blog">
+    <a href="blog.html">← All posts</a>
+    <a href="blog-model-integrity.html">Next: never trust a model file until it&rsquo;s verified →</a>
+  </nav>
+</main>
+</body>
+</html>

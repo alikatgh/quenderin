@@ -28,6 +28,19 @@
   <h1>Blog</h1>
   <p class="legal-updated">Notes from building an AI that runs on your own machine &mdash; how it works, what we decided, and what broke on the way. The unabridged version is <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">the git history</a>; the disasters live in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener">the bug journal</a>.</p>
 
+  <h2><a href="blog-model-integrity.html">Never trust a model file until it&rsquo;s verified</a></h2>
+  <p class="legal-updated">20 July 2026 &middot; engineering</p>
+  <p>A model is multi-gigabyte untrusted bytes going into a native C++ parser. The gate between
+  &ldquo;downloaded&rdquo; and &ldquo;loaded&rdquo; &mdash; HTTP status before the first byte, GGUF magic, SHA-256 &mdash;
+  the App Store rejection that proved we needed it, and why a pinned hash still rots.
+  <a href="blog-model-integrity.html">Read it &rarr;</a></p>
+
+  <h2><a href="blog-ggml-abort.html">The crash that only happened after you&rsquo;d used it</a></h2>
+  <p class="legal-updated">20 July 2026 &middot; engineering</p>
+  <p>A <code>SIGABRT</code> on every &#8984;Q, but only after the first message &mdash; 11 byte-identical crash
+  reports in a day. llama.cpp&rsquo;s Metal backend asserting inside C++ static destructors at process exit,
+  and a one-line fix (<code>_exit(0)</code>) with a real cost. <a href="blog-ggml-abort.html">Read it &rarr;</a></p>
+
   <h2><a href="blog-setup.html">Probe, download, offline &mdash; how setup actually works</a></h2>
   <p class="legal-updated">20 July 2026</p>
   <p>&ldquo;One download, then it&rsquo;s yours&rdquo; &mdash; but a promise isn&rsquo;t an explanation. What actually

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Never trust a model file until it's verified</title>
+<meta name="description" content="A model is multi-gigabyte untrusted bytes, streamed from a public mirror into a native C++ parser. Here's the gate that stands between 'downloaded' and 'loaded' — HTTP status before the first byte, GGUF magic, SHA-256 — the App Store rejection that proved we needed it, and why a pinned hash still isn't enough." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-model-integrity.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog.html">← Blog</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="post-kicker"><a href="blog.html">Blog</a> · engineering</p>
+  <h1>Never trust a model file until it&rsquo;s verified</h1>
+  <p class="legal-updated">20 July 2026 · the gate between &ldquo;downloaded&rdquo; and &ldquo;loaded&rdquo;</p>
+
+  <p>A local model is the most dangerous input the app handles. It&rsquo;s a multi-gigabyte binary,
+  streamed from a public mirror you don&rsquo;t control, and its destiny is to be memory-mapped and parsed
+  by a native C++ loader (llama.cpp&rsquo;s GGUF reader). Untrusted bytes going straight into a native parser
+  is the textbook remote-code-execution surface. A truncated transfer, a poisoned mirror, a TLS-MITM, or
+  &mdash; as it turned out &mdash; a plain HTTP error page, all reach the same parser. So there is a hard gate
+  between <em>downloaded</em> and <em>loaded</em>, and nothing crosses it unverified.</p>
+
+  <h2>The gate</h2>
+  <p>Two checks. First, the GGUF magic header &mdash; the four bytes every real model starts with. Second,
+  when the catalog pins one, the whole-file SHA-256. Magic alone rejects HTML error pages and obviously-wrong
+  files instantly; the hash catches a silent substitution or a truncation that happens to keep the header:</p>
+
+  <div class="codeblock"><pre>static func verify(fileURL: URL, expectedSHA256: String?) throws {
+    let head = try readHead(fileURL, 4)
+    guard hasGGUFMagic(head) else {                    // 47 47 55 46  ==  "GGUF"
+        throw ModelIntegrityError.notGGUF(foundMagic: head.hex)
+    }
+    if let expected = expectedSHA256, !expected.isEmpty {
+        let actual = try sha256Hex(of: fileURL)        // streamed, constant memory
+        guard actual.caseInsensitiveCompare(expected) == .orderedSame else {
+            throw ModelIntegrityError.checksumMismatch(expected: expected, actual: actual)
+        }
+    }
+}</pre></div>
+
+  <p>The SHA is computed by streaming the file through the hasher a megabyte at a time, so verifying a 13 GB
+  model costs kilobytes of RAM, not gigabytes. The file is written to a <code>.partial</code> staging path
+  and only <code>rename</code>d into its real location <em>after</em> it verifies &mdash; because any consumer
+  that picks a model by &ldquo;does this file exist&rdquo; must never be able to see a half-written one.</p>
+
+  <h2>The App Store reviewer found the hole for us</h2>
+  <p>Here is the part we didn&rsquo;t design for. One catalog entry &mdash; a Gemma model &mdash; pointed at a
+  repository that didn&rsquo;t actually host that quantization. The URL 404&rsquo;d. And the downloader, at that
+  point, wrote <em>whatever the server sent</em> to disk before anyone checked the status code. So Hugging
+  Face&rsquo;s plain-text <code>Entry not found</code> body landed on disk, failed the GGUF magic check, and
+  surfaced to the user as a cryptic <code>ModelIntegrityError error 0</code>. It was the model
+  <em>auto-recommended</em> for a 16 GB MacBook Air &mdash; exactly the machine Apple reviews on. They
+  rejected the build with &ldquo;the app delivered an error message upon the model downloading process,&rdquo;
+  and they were right.</p>
+  <p>The integrity gate did its job &mdash; it refused to load a non-model &mdash; but the diagnosis was
+  backwards: a <em>network</em> failure was being reported as a <em>corruption</em> failure. The fix is to
+  reject a non-2xx response <strong>before writing a single byte</strong>, so an error page can never become
+  a file to misdiagnose:</p>
+
+  <div class="codeblock"><pre>func urlSession(_ s: URLSession, dataTask: URLSessionDataTask,
+                didReceive response: URLResponse,
+                completionHandler: @escaping (URLSession.ResponseDisposition) -&gt; Void) {
+    // 404 "Entry not found", 429 throttling, a gated-model wall — none of these are your file.
+    if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+        completionHandler(.cancel)
+        finish(throwing: DownloadError.transport(reason: "the server returned HTTP \(http.statusCode)"))
+        return
+    }
+    // ...only now create the .partial file and start streaming bytes to it.
+}</pre></div>
+
+  <p>Same download, three fixes: the status check above (so a server error reads as a server error), a real
+  URL with a real pinned hash, and a human-readable message for the integrity errors that <em>are</em> real.
+  The whole story, including the resubmission, is in <a href="changelog.html">the changelog</a>.</p>
+
+  <h2>The limitation: a pinned hash rots</h2>
+  <p>A SHA-256 pin is a promise about a specific sequence of bytes, and it&rsquo;s only as true as the day it
+  was made. Repositories get renamed. Quantizations get dropped and re-uploaded. <code>main</code> moves.
+  The moment any of that happens, the pin is pointing at bytes that no longer exist, and a check that was
+  protecting you is now the thing breaking your download.</p>
+  <p>Worse, the check we <em>did</em> have &mdash; a cross-platform parity test that all four implementations
+  (iOS, Android, desktop, and the shared manifest) agree on the same URL and hash &mdash; gives false
+  comfort here. It proves the twins <strong>agree</strong>. It says nothing about whether the URL is
+  <strong>alive</strong>. All four agreeing on the same dead link still ships a dead link.</p>
+
+  <h2>How to actually solve it</h2>
+  <ul>
+    <li><strong>Liveness in CI, not just parity.</strong> The immediate fix, already shipped: a job that does
+      a one-byte ranged GET against every catalog URL and fails if any is dead or non-GGUF. It runs whenever
+      a catalog file changes and on a schedule, so rot is caught by us, before a user&rsquo;s multi-GB
+      download 404s at the worst possible moment.</li>
+    <li><strong>Content-addressed fetches.</strong> The deeper fix is to stop trusting a <em>path</em> and
+      fetch by <em>hash</em>. Ask a CDN for the object whose content is <code>sha256:…</code>; a content
+      address can&rsquo;t rot, because the name <em>is</em> the verification. Hugging Face&rsquo;s Xet backend
+      is already moving this way; leaning on it removes the &ldquo;renamed repo&rdquo; failure mode entirely.</li>
+    <li><strong>Signed manifests.</strong> Pinning per-file hashes is fragile at scale. Sign the whole
+      catalog manifest once, verify the signature on device, and trust the hashes transitively. That also
+      closes the gap where an attacker who could rewrite the manifest could swap in their own &ldquo;valid&rdquo;
+      hash.</li>
+  </ul>
+
+  <p>None of this is paranoia. The threat model is simply honest about what the inputs are: bytes from a
+  server you don&rsquo;t own, going into a parser written in C. Verification is the cheapest insurance there
+  is &mdash; and the failure that taught us to check the <em>status code</em> first cost one App Store round
+  trip, which is a bargain compared to the alternative.</p>
+
+  <nav class="post-foot" aria-label="More from the blog">
+    <a href="blog.html">← All posts</a>
+    <a href="blog-setup.html">Related: probe, download, offline — how setup works →</a>
+  </nav>
+</main>
+</body>
+</html>
