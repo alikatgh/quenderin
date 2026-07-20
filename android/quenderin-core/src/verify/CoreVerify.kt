@@ -1792,7 +1792,12 @@ fun main() {
         )
         val decoded = store.decode(store.encode(messages))
         val old = store.decode("USER\thi\nASSISTANT\thello")
-        decoded == messages && old.size == 2 && old[0].documents.isEmpty() && old[0].text == "hi"
+        // Compare PERSISTED content (role, text, documents), not the whole data class: `id` is a
+        // UI-session identity that isn't serialized, so decode assigns a fresh one. This mirrors the
+        // iOS twin's ConversationStoreTests, which compares role/text/documents rather than `==`.
+        decoded.map { Triple(it.role, it.text, it.documents) } ==
+            messages.map { Triple(it.role, it.text, it.documents) } &&
+            old.size == 2 && old[0].documents.isEmpty() && old[0].text == "hi"
     })
     check("DocumentTextExtractor caps, truncates, and rejects binary", run {
         val dir = java.nio.file.Files.createTempDirectory("docx").toFile()
