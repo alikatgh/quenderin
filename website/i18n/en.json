@@ -130,7 +130,7 @@
   "faq.q4": "Do I need a powerful phone?",
   "faq.a4": "No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs—down to a 0.4 GB ultra-light build.",
   "faq.q5": "When can I install it?",
-  "faq.a5": "The iPhone app is on the App Store now, free. The desktop is open source and runnable from GitHub today, and a native Android app is on the way—star or watch the repo on GitHub to hear the moment it lands.",
+  "faq.a5": "The iPhone app is on the App Store today, and the native Android app is in closed beta on Google Play—join the testers group to run it now. The desktop app is open source and runnable from GitHub on macOS and Linux.",
   "cta.title": "Bring your AI offline.",
   "cta.body": "It’s free on the App Store for iPhone, and open source you can run from GitHub today — desktop on macOS and Linux, with the native Android app now in closed beta you can join.",
   "cta.btn1": "Star on GitHub",
