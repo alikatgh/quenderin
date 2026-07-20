@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 — iOS on the App Store (2026-07-20)
+- **Quenderin: Offline AI Chat is live on the App Store** — free, on iPhone, worldwide (175 regions):
+  <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
+  our first public store release. (The Mac App Store build follows once its review clears.)
+
 ## Unreleased
 
 ### Paged MoE — frontier-class agent quality on 16 GB machines

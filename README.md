@@ -8,6 +8,10 @@
 <p align="center">Private on-device chat, and a local computer-use agent — a governed, private alternative to cloud agents like Cowork.</p>
 
 <p align="center">
+  <a href="https://apps.apple.com/app/id6789854363"><strong>📱 Download on the App Store</strong></a> — free, on iPhone
+</p>
+
+<p align="center">
   <a href="https://quenderin.org">quenderin.org</a> ·
   <a href="https://quenderin.org/download.html">download</a> ·
   <a href="https://quenderin.org/roadmap.html">roadmap</a> ·

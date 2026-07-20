@@ -49,7 +49,9 @@ You'll see coherent output ("the sky is blue because…") at ~177 tok/s (Mac) / 
       with the **`workflow`** scope (the env token here lacks it). Then Settings → Pages → Source: "GitHub Actions".
 
 ## 7. App Store / Play submission
-- [ ] Apple Developer + Google Play accounts, signing, screenshots, store listings.
+- [x] **iOS — LIVE on the App Store** (0.2.0, free, worldwide — [id6789854363](https://apps.apple.com/app/id6789854363), 2026-07-20). Apple Developer account, signing, screenshots, listing all done.
+- [ ] macOS — Mac App Store review in progress (0.2.0(9) rejected → build 10 fixes pending resubmit; see `appstore/APPLE_REVIEW_REPLY_0.2.0-build10.md`).
+- [ ] Android — Google Play account, signing, screenshots, store listing.
 
 ## 8. Replace estimated chip scores with measured (after §2/§3 on real hardware)
 - [ ] Capture real **on-phone** tok/s + battery (run the smoke tests on a physical device), then

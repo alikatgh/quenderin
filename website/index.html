@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Quenderin — On-device AI chat, and a local computer-use agent</title>
-<meta name="description" content="Quenderin runs open LLMs fully on your device: private chat on your phone, and on your Mac a local computer-use agent that drives files, apps, and Apple Shortcuts — asking before every change. Nothing leaves the machine." />
+<meta name="description" content="Quenderin runs open LLMs fully on your device — private chat on iPhone, free on the App Store, plus a Mac computer-use agent that drives files, apps, and Apple Shortcuts, asking before every change. Nothing leaves the machine." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/" />
@@ -68,7 +68,7 @@
     {
       "@type": "Question",
       "name": "What devices does it run on?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development — the same hardware-detection and model-selection engine, rebuilt natively for performance." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Quenderin is on the App Store for iPhone today, and the desktop app runs on macOS and Linux. A native Android app is in active development — the same hardware-detection and model-selection engine, rebuilt natively for performance." }
     },
     {
       "@type": "Question",
@@ -78,7 +78,7 @@
     {
       "@type": "Question",
       "name": "When can I install it?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It is open source and runnable from GitHub today. The polished mobile apps are on the way — star or watch the repo on GitHub to hear the moment they land." }
+      "acceptedAnswer": { "@type": "Answer", "text": "The iPhone app is on the App Store now, free. The desktop app runs on macOS and Linux and is open source and runnable from GitHub today. A native Android app is on the way — star or watch the repo on GitHub to hear the moment it lands." }
     }
   ]
 }
@@ -174,10 +174,14 @@
             the machine.
           </p>
           <div class="cta-row">
-            <!-- Fresh i18n keys on purpose: the old hero.cta1/cta2 translations would relabel
-                 these buttons with stale text in the 11 non-EN locales. New keys fall back to
-                 the inline English until retranslation. -->
-            <a class="btn btn-primary" href="download.html" data-i18n="hero.ctaDownload">Download — Windows &amp; Linux</a>
+            <!-- iOS shipped to the App Store 2026-07-20. The OFFICIAL Apple badge (self-hosted,
+                 unmodified per Apple's marketing guidelines) leads — a shipped product shows the
+                 real badge, not a text button. Desktop + GitHub stay text buttons (no official
+                 badge exists for those). -->
+            <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:52px;width:auto;display:block" />
+            </a>
+            <a class="btn btn-ghost" href="download.html" data-i18n="hero.ctaDownload">Download — Windows &amp; Linux</a>
             <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View on GitHub</a>
           </div>
           <ul class="spec-strip" aria-label="Measured facts">
