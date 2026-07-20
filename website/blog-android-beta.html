@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Quenderin for Android is in closed beta — how to get in</title>
+<meta name="description" content="The native Android app is in closed testing. Two steps to join — the Google Group, then the Play opt-in — plus an honest look at what the Android build is, what isn't there yet, and why Google makes you join a group first." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-android-beta.html" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog.html">← Blog</a>
+      <a href="download.html">Download</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="post-kicker"><a href="blog.html">Blog</a> · Android</p>
+  <h1>Quenderin for Android is in closed beta &mdash; how to get in</h1>
+  <p class="legal-updated">20 July 2026 · join the test</p>
+
+  <p>The native Android app is real and running. It&rsquo;s not on the public Play Store yet &mdash; it&rsquo;s in
+  Google&rsquo;s <strong>closed testing</strong> track, which has a two-step door. Here is exactly how to
+  walk through it, and an honest account of what you get on the other side and what&rsquo;s still rough.</p>
+
+  <h2>Two steps, and why the first one is a Google Group</h2>
+  <p>Google runs every closed test through an opt-in list. For Quenderin that list is a public Google Group,
+  and joining it is <em>literally</em> what makes you a tester &mdash; there is no separate approval queue.</p>
+  <ol>
+    <li><strong>Join the testers group</strong> &mdash;
+      <a href="https://groups.google.com/g/quenderin-testers" rel="noopener">groups.google.com/g/quenderin-testers</a>.
+      Use the <strong>same Google account that&rsquo;s signed into the Play Store on your phone.</strong> This is
+      the step people trip on: opt in with account A, try to install under account B, and Play will swear
+      the app doesn&rsquo;t exist. Membership is auto-approved &mdash; no waiting.</li>
+    <li><strong>Opt in on Google Play</strong> &mdash;
+      <a href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">play.google.com/apps/testing/ai.quenderin.app</a>.
+      Tap <em>Become a tester</em>, then install. Prefer the store page directly? It&rsquo;s
+      <a href="https://play.google.com/store/apps/details?id=ai.quenderin.app" rel="noopener">here</a> &mdash; but you
+      still have to be in the group first. If Play 404s or says <em>item not available</em>, it simply
+      hasn&rsquo;t propagated to your account yet: give it a few minutes, occasionally an hour.</li>
+  </ol>
+
+  <h2>The &ldquo;12 testers for 14 days&rdquo; thing, said plainly</h2>
+  <p>Google won&rsquo;t let a closed test graduate to the public Store until at least <strong>12 testers have
+  opted in and stayed engaged for 14 continuous days</strong>. That&rsquo;s the honest reason this reads like a
+  recruitment drive: we need a dozen people actually <em>opening</em> the app across two weeks. Install-and-forget
+  doesn&rsquo;t count; a few opens spread over the fortnight does. If you join, that&rsquo;s the whole favour &mdash;
+  keep it on your phone and poke at it now and then.</p>
+
+  <h2>What the Android build actually is</h2>
+  <p>It&rsquo;s the same local-inference core as the iPhone app: probe your hardware, recommend a model that
+  fits, pull one GGUF file once, then run it <strong>fully offline</strong> through
+  <a href="https://github.com/ggml-org/llama.cpp" rel="noopener">llama.cpp</a> &mdash; rebuilt natively for
+  Android, not wrapped in a web view.</p>
+  <p>The honest engineering note: iOS and Android don&rsquo;t share a codebase. The core logic &mdash; the
+  memory-fitness math that decides what your device can run, the model catalog, the download-integrity gate
+  &mdash; is <strong>hand-ported</strong> between Swift and Kotlin. What keeps the two from drifting apart is a
+  parity harness: a shared set of test vectors that both platforms must produce byte-identical answers for,
+  checked on every commit in CI. It has caught real divergence between the twins more than once, which is
+  exactly why it exists.</p>
+
+  <h2>What&rsquo;s rough, and what isn&rsquo;t here yet</h2>
+  <ul>
+    <li><strong>It&rsquo;s an early build.</strong> Expect UI rough edges, and on older or tighter-memory phones,
+      model loads that are slower than you&rsquo;d like. That&rsquo;s the kind of thing this test exists to surface.</li>
+    <li><strong>A small local model is a small model everywhere.</strong> It will sometimes be confidently
+      wrong. Every model carries a plain-language quality grade, same as on iOS &mdash; we&rsquo;d rather tell you
+      the ceiling than let you discover it mid-answer.</li>
+    <li><strong>The computer-use agent is macOS-only today.</strong> The part that operates a whole machine on
+      your behalf lives in the Mac app. On Android, Quenderin is the private, offline chat &mdash; the model in
+      your pocket, not desktop automation.</li>
+  </ul>
+
+  <h2>Tell us what breaks</h2>
+  <p>The entire point of a closed test is the feedback. The
+  <a href="https://groups.google.com/g/quenderin-testers" rel="noopener">group</a> is the place for it, or file
+  an issue on <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>. If your device is on
+  the older or lower-RAM end, that&rsquo;s <em>exactly</em> the data we need &mdash; the memory probe is a heuristic,
+  and real devices in real hands are how it gets less wrong. How that probe works, and where it can bite, is in
+  <a href="blog-setup.html">the setup post</a>.</p>
+
+  <p>Two links, that&rsquo;s the whole ask:
+  <a href="https://groups.google.com/g/quenderin-testers" rel="noopener">join the group</a>, then
+  <a href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">opt in on Play</a>. Thank you for
+  helping it reach the finish line.</p>
+
+  <nav class="post-foot" aria-label="More from the blog">
+    <a href="blog.html">← All posts</a>
+    <a href="blog-setup.html">Related: probe, download, offline — how setup works →</a>
+  </nav>
+</main>
+<script src="post.js" defer></script>
+</body>
+</html>

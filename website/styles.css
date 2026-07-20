@@ -272,6 +272,22 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .band h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
 .band p { margin-top: 1.25rem; font-size: 1.15rem; color: var(--text-secondary); }
 
+/* Android closed-beta recruitment callout (#android-beta). Bordered panel, no shadow
+   (hairline per design rules); two numbered steps side by side, stacking when narrow. */
+.beta-card { max-width: 62rem; margin-inline: auto; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-tint); padding: clamp(1.6rem, 3.4vw, 2.75rem); }
+.beta-card__head { max-width: 44rem; }
+.beta-badge { display: inline-block; margin-bottom: 0.9rem; padding: 0.32rem 0.72rem; border-radius: 999px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.03em; }
+.beta-card h2 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); }
+.beta-sub { margin-top: 0.85rem; color: var(--text-secondary); font-size: 1.08rem; max-width: 40rem; }
+.beta-steps { list-style: none; margin: 1.9rem 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.25rem, 3vw, 2.4rem); }
+.beta-steps > li { display: flex; gap: 1rem; align-items: flex-start; }
+.beta-step-num { flex: 0 0 auto; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border); color: var(--brand); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+.beta-steps h3 { font-size: 1.12rem; }
+.beta-steps p { margin: 0.45rem 0 1rem; color: var(--text-secondary); font-size: 0.98rem; }
+.beta-foot { margin-top: 1.8rem; padding-top: 1.35rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.92rem; max-width: 44rem; }
+.beta-foot a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 680px) { .beta-steps { grid-template-columns: 1fr; } }
+
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .step { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.75rem; background: var(--surface); transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }

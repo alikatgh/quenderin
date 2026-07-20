@@ -350,6 +350,39 @@
     </div>
   </section>
 
+  <!-- ANDROID CLOSED BETA — recruitment callout: join group → opt in on Play → install.
+       Placed right after the real-UI screens: value shown, now here's the way in. -->
+  <section class="section" id="android-beta">
+    <div class="container">
+      <div class="beta-card reveal">
+        <div class="beta-card__head">
+          <p class="beta-badge" data-i18n="beta.badge">Android · Closed beta &mdash; open now</p>
+          <h2 data-i18n="beta.title">Get Quenderin on Android.</h2>
+          <p class="beta-sub" data-i18n="beta.sub">The native Android app is in closed testing right now. It takes two steps &mdash; Google runs closed betas through an opt-in group, so you join that first.</p>
+        </div>
+        <ol class="beta-steps">
+          <li>
+            <span class="beta-step-num">1</span>
+            <div>
+              <h3 data-i18n="beta.s1t">Join the testers group</h3>
+              <p data-i18n="beta.s1b">Join with the same Google account your phone uses &mdash; that membership is what makes you a tester. It&rsquo;s auto-approved, no waiting.</p>
+              <a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener" data-i18n="beta.s1cta">Join the group &rarr;</a>
+            </div>
+          </li>
+          <li>
+            <span class="beta-step-num">2</span>
+            <div>
+              <h3 data-i18n="beta.s2t">Opt in on Google Play</h3>
+              <p data-i18n="beta.s2b">Once you&rsquo;re in the group, accept the test and install. If Play can&rsquo;t find it yet, give it a few minutes to reach your account.</p>
+              <a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener" data-i18n="beta.s2cta">Become a tester &rarr;</a>
+            </div>
+          </li>
+        </ol>
+        <p class="beta-foot" data-i18n-html="beta.foot">It&rsquo;s an early build &mdash; expect rough edges, and your feedback shapes what ships. Full walkthrough, and what&rsquo;s different about the Android port, in <a href="blog-android-beta.html">the beta guide</a>.</p>
+      </div>
+    </div>
+  </section>
+
   <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
 
   <!-- FEATURES -->
@@ -545,7 +578,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q3">What devices does it run on?</summary>
-          <p data-i18n="faq.a3">The desktop app runs today on macOS and Linux. Native iOS and Android apps are in active development&mdash;the same hardware-detection and model-selection engine, rebuilt natively for performance.</p>
+          <p data-i18n="faq.a3">The iPhone app is on the App Store, and the desktop app runs on macOS and Linux&mdash;all today. The native Android app is in closed beta right now, and you can join the test to run it. It&rsquo;s the same hardware-detection and model-selection engine, rebuilt natively for each platform.</p>
         </details>
         <details>
           <summary data-i18n="faq.q4">Do I need a powerful phone?</summary>
@@ -574,7 +607,7 @@ npm install
 npm run electron:dev</code></pre>
         <button class="copy-btn" type="button" data-copy-target="gs-cmd" aria-label="Copy command"><span data-i18n="gs.copy">Copy</span></button>
       </div>
-      <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>macOS</strong> &amp; <strong>Linux</strong> today &middot; <strong>iOS</strong> &amp; <strong>Android</strong> in active development</p>
+      <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>iOS</strong> on the App Store &middot; <strong>macOS</strong> &amp; <strong>Linux</strong> today &middot; <strong>Android</strong> in closed beta</p>
     </div>
   </section>
 
@@ -582,7 +615,7 @@ npm run electron:dev</code></pre>
   <section class="cta-band" data-theme="dark" id="waitlist">
     <div class="container reveal cta-inner">
       <h2 data-i18n="cta.title">Bring your AI offline.</h2>
-      <p data-i18n="cta.body">It&rsquo;s free on the App Store for iPhone, and open source you can run from GitHub today &mdash; desktop on macOS and Linux, with a native Android app on the way.</p>
+      <p data-i18n="cta.body">It&rsquo;s free on the App Store for iPhone, and open source you can run from GitHub today &mdash; desktop on macOS and Linux, with the native Android app now in closed beta you can join.</p>
       <div class="cta-row">
         <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
           <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:50px;width:auto;display:block" />
