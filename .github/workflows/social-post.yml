@@ -39,10 +39,11 @@ jobs:
         env:
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
-          # Weeks 1–2 (2026-07-27 … 08-07) are hand-scheduled in the Meta
-          # Planner; the cron takes over from week 3. Move this back once the
-          # token is live if you want the cron to cover earlier dates too.
-          FB_AUTOPILOT_FROM: '2026-08-10'
+          # Full-auto: the cron covers the WHOLE calendar from launch. Add the
+          # token before Mon 2026-07-27 and every Mon/Wed/Fri post fires itself
+          # through December — no hand-scheduling. This guard just refuses to
+          # post anything dated before the calendar starts.
+          FB_AUTOPILOT_FROM: '2026-07-27'
         run: |
           FLAGS=""
           if [ -n "${{ inputs.date }}" ]; then FLAGS="--date ${{ inputs.date }}"; fi

@@ -18,14 +18,18 @@ your phone").
 - **Assets:** every post image is already public at `quenderin.org/assets/app/…`;
   the cover graphic is at `quenderin.org/assets/social/feature-graphic-1024x500.png`.
 
-## Delivery model (hybrid — same as before)
+## Delivery model — full auto (chosen path)
 
-- **Weeks 1–2 (Mon 07-27 → Fri 08-07, 6 posts): hand-scheduled by you** in the
-  Meta Business Suite Planner. These fire via Facebook's own scheduler — no token
-  needed. Captions + image URLs are in `docs/social/calendar.md`.
-- **Week 3 onward (from Mon 08-10): the cron** posts automatically, once the token
-  is added. `FB_AUTOPILOT_FROM=2026-08-10` in the workflow makes the cron skip
-  everything before that day, so the hand-scheduled window can't double-post.
+**Add the token before Mon 2026-07-27 and the cron posts the entire calendar by
+itself**, Mon/Wed/Fri through December — no Planner, no hand-scheduling. The
+workflow's `FB_AUTOPILOT_FROM=2026-07-27` just refuses to post anything dated
+before the calendar starts. The one thing only you can do is **mint the token**
+(step 2 below) — everything else is already wired.
+
+_Optional fallback:_ if the token won't be ready before the 27th, you can
+hand-schedule the first posts in the Meta Business Suite Planner from
+`docs/social/calendar.md` (add the link as the first comment after each), then
+raise `FB_AUTOPILOT_FROM` past those dates so the cron doesn't double-post.
 
 ## Your steps
 
@@ -37,22 +41,7 @@ your phone").
 - **About → Website:** `https://quenderin.org`; add the App Store link
   `https://apps.apple.com/app/id6789854363`.
 
-### 2. Hand-schedule weeks 1–2 (~15 min)
-In Meta Business Suite → **Planner** → Create post → Schedule, for each of the 6
-dates below (14:00 in your timezone is fine). Copy the caption + image from
-`docs/social/calendar.md`; after each publishes, **add the link as the first
-comment** yourself (the cron does this automatically later):
-
-| Date | Pillar | Post |
-|------|--------|------|
-| Mon 07-27 | spotlight | ios-launch |
-| Wed 07-29 | engineering | ggml-abort |
-| Fri 07-31 | reality | sometimes-wrong |
-| Mon 08-03 | spotlight | offline-proof |
-| Wed 08-05 | engineering | model-integrity |
-| Fri 08-07 | reality | real-numbers |
-
-### 3. Mint the token + add secrets — **before Mon 08-10** (~10 min)
+### 2. Mint the token + add secrets — **before Mon 07-27** (~10 min) ⭐ the unlock
 1. **developers.facebook.com** → My Apps → **Create App** → type **Business**
    (name e.g. `quenderin-poster`; it can stay in Dev mode — you're only posting
    to your own Page).
@@ -69,12 +58,12 @@ comment** yourself (the cron does this automatically later):
    - `FB_PAGE_ID` — the numeric Page id
    - `FB_PAGE_TOKEN` — the Page access token
 
-### 4. Test, then it's automatic (~2 min)
+### 3. Test, then it's automatic (~2 min)
 - GitHub → **Actions → "Quenderin → Facebook" → Run workflow** with
   `dry_run = true` → confirm it prints the right post.
-- Run again with `dry_run = false` and `date = 2026-08-10` to publish the first
-  cron post live. If it looks right, you're done — every Mon/Wed/Fri fires
-  automatically through December.
+- Run again with `dry_run = false` and `date = 2026-07-27` to publish the launch
+  post live (or just wait for the 27th). If it looks right, you're done — every
+  Mon/Wed/Fri fires automatically through December.
 
 ## Ongoing (~15 min/week — see FACEBOOK_STRATEGY.md)
 - Reply to comments; end reality posts by inviting one ("what model next?").
