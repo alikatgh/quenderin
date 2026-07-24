@@ -14,7 +14,8 @@ file is the source of truth for cross-machine context.)_
    file picker that browser automation can't drive). Files are ready:
    - Cover → `website/assets/social/feature-graphic-1024x500.png`
    - Profile → `brand/icon-square-1024.png` (the elf-art brand mark)
-3. **Decide on the git stash** (see Gotchas) — old WIP from another branch.
+3. **Review branch `wip/website-deploy-docs`** (see Gotchas) — preserved old WIP;
+   decide whether to keep, reconcile, or delete it.
 4. **Later:** refresh the ↻-rotated Nov–Dec social posts; finish the RU Play
    screenshots; optionally add a Russian social stream.
 
@@ -125,10 +126,18 @@ gh workflow run "Deploy website"                                         # GH Pa
 
 ## Gotchas / environment
 
-- **Git stash present** (`stash@{0}`): old WIP from branch `feat/model-switching`
-  — "cloudflare-website-prep: _headers + README + workflow-deactivation". From a
-  different branch; **not applied** (could disable CI / clobber `_headers`).
-  Inspect with `git stash show -p stash@{0}` and decide keep/drop.
+- **Branch `wip/website-deploy-docs`** (pushed): the old local stash, preserved so
+  nothing was lost across machines. It's only the `website/README.md` deploy-docs
+  rewrite (Cloudflare-first); the stash also meant to delete
+  `.github/workflows/deploy-website.yml` but that's **stale** — main now uses the
+  Cloudflare Worker + Pages mirror + GH Pages. **Not merged.** Reconcile with
+  main's current deploy story before merging, or just delete the branch. Based on
+  old commit `28fe0a4`, not current main.
+- **Signing secret is safe:** `android/keystore.properties` (real store/key
+  passwords) is gitignored on main. It briefly got swept into the wip commit while
+  branching off the old base (which predated the ignore rule) — caught and stripped
+  before any push, so it never left this machine. Don't `git add -A` on a branch
+  based on pre-`android/.gitignore` history.
 - **Browser automation** (claude-in-chrome) was flaky this session; **FB image
   upload is blocked** by the native OS file picker — those two uploads are
   inherently manual.
