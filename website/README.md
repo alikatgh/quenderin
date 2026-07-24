@@ -54,20 +54,11 @@ python3 -m http.server 8080
 
 ## Put it online — pick one
 
-### A. GitHub Pages (recommended)
-A ready-made workflow ships at **`website/deploy/github-pages.yml`**. It lives
-here rather than in `.github/workflows/` only because the token that pushed this
-commit lacked GitHub's `workflow` scope — so activate it from your own machine or
-the web UI (both have the scope):
-
-1. Put it in place — either:
-   - **Web UI:** GitHub → *Add file → Create new file* → name it
-     `.github/workflows/deploy-website.yml`, paste the contents of
-     `website/deploy/github-pages.yml`; or
-   - **Locally:** `git mv website/deploy/github-pages.yml .github/workflows/deploy-website.yml`
-     then commit & push (your local credentials have `workflow` scope).
-2. Repo **Settings → Pages → Source: GitHub Actions** (one-time).
-3. Done — every push touching `website/` publishes to `https://alikatgh.github.io/quenderin/`.
+### A. Cloudflare Pages (recommended)
+Create a Pages project → connect this repo → set **Build output directory** to
+`website` and leave the build command empty (the site is static). `website/_headers`
+applies the security headers. Add your custom domain under the project's
+*Custom domains* tab.
 
 ### B. Netlify
 New site → connect the repo → set **Base directory** to `website`. `netlify.toml`
@@ -76,16 +67,21 @@ handles the rest. (Or drag-and-drop the `website/` folder into Netlify.)
 ### C. Vercel
 Import the repo → set **Root Directory** to `website`. `vercel.json` handles the rest.
 
+### D. GitHub Pages (dormant)
+A ready-made workflow sits at **`website/deploy/github-pages.yml`**, deactivated.
+To enable it: `git mv website/deploy/github-pages.yml .github/workflows/deploy-website.yml`,
+push, then set repo **Settings → Pages → Source: GitHub Actions**.
+
 ## Configure before launch
 
-- **Waitlist form** — `index.html` has a `<form action="https://formspree.io/f/your-form-id">`.
-  Replace that endpoint with your own [Formspree](https://formspree.io) (or other)
-  form ID. The "Star on GitHub" CTA works without any setup.
-- **Custom domain** — update the `canonical`, Open Graph `og:url`/`og:image`, and
-  `sitemap.xml`/`robots.txt` URLs from `alikatgh.github.io/quenderin` to your domain.
-- **OG image** — `og-image.svg` works on most platforms; some social scrapers
-  prefer PNG. If a preview doesn't render, rasterize it to `og-image.png` (1200×630)
-  and update the two `og:image` / `twitter:image` tags.
+- **Custom domain** — update the `canonical`, Open Graph `og:url` / `og:image`, the
+  JSON-LD `url`, and `sitemap.xml` / `robots.txt` from `alikatgh.github.io/quenderin`
+  to your domain (e.g. across `index.html` + the legal pages).
+- **Social image** — `og-image.png` (1200×630) is already generated and wired into the
+  `og:image` / `twitter:image` tags. Re-run `node scripts/rasterize.mjs` after editing
+  `og-image.svg`.
+- **Following the project** — the CTA is GitHub-only (Star + Watch releases); there is no
+  email form or third-party dependency to configure.
 
 ## Editing
 
