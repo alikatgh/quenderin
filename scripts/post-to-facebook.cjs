@@ -66,11 +66,15 @@ if (post.rotated) {
   console.log('  NOTE: this is a rotated (repeat) entry — consider refreshing its angle.');
 }
 
-const PAGE_ID = process.env.FB_PAGE_ID;
 const TOKEN = process.env.FB_PAGE_TOKEN;
 
-if (dryRun || !PAGE_ID || !TOKEN) {
-  console.log(dryRun ? '\n[dry-run] would post:\n' : '\n[no FB_PAGE_ID/FB_PAGE_TOKEN — nothing sent]\n');
+// Publish against `me`, not the numeric page id: a Page access token resolves
+// `me` to its own Page. Posting to /{page-id}/photos with that token is
+// rejected as "(#100) global id not allowed", so the token alone is enough.
+const TARGET = 'me';
+
+if (dryRun || !TOKEN) {
+  console.log(dryRun ? '\n[dry-run] would post:\n' : '\n[no FB_PAGE_TOKEN — nothing sent]\n');
   console.log('caption:\n' + post.caption);
   console.log('\nimage:  ' + post.image);
   console.log('link (1st comment): ' + post.link);
@@ -93,15 +97,23 @@ async function graph(url, body) {
     caption: post.caption,
     access_token: TOKEN,
   });
-  const photo = await graph(`${GRAPH}/${PAGE_ID}/photos`, photoBody);
+  const photo = await graph(`${GRAPH}/${TARGET}/photos`, photoBody);
   const storyId = photo.post_id || photo.id;
   console.log(`  posted photo → ${storyId}`);
 
-  // 2) link as the first comment
+  // 2) link as the first comment - best-effort. Commenting needs
+  //    pages_manage_engagement (posting only needs pages_manage_posts); if the
+  //    token lacks it, log the link and move on rather than fail after the post
+  //    already published.
   if (post.link && storyId) {
-    const commentBody = new URLSearchParams({ message: post.link, access_token: TOKEN });
-    const comment = await graph(`${GRAPH}/${storyId}/comments`, commentBody);
-    console.log(`  link comment → ${comment.id}`);
+    try {
+      const commentBody = new URLSearchParams({ message: post.link, access_token: TOKEN });
+      const comment = await graph(`${GRAPH}/${storyId}/comments`, commentBody);
+      console.log(`  link comment → ${comment.id}`);
+    } catch (e) {
+      console.warn(`  note: could not add link comment (${e.message}). Post is up. ` +
+        `Grant pages_manage_engagement to enable auto-comments. Link: ${post.link}`);
+    }
   }
   console.log('  done.');
 })().catch((err) => {

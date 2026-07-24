@@ -489,4 +489,239 @@ const reality = [
   },
 ];
 
-module.exports = { spotlight, engineering, reality };
+/* ---------------------------------------------------------------------- */
+/* Model-of-the-week series — generated from the REAL catalog so every     */
+/* number is accurate. An ongoing spotlight thread: "which model fits your */
+/* device, and what it's for." One screenshot (the picker) brands the      */
+/* series; the honest fits/tight/too-big framing carries the voice.        */
+/* ---------------------------------------------------------------------- */
+const catalog = require('../shared/model-catalog.json');
+const modelList = Array.isArray(catalog) ? catalog : catalog.models || [];
+
+const modelPurpose = (m) => {
+  const s = `${m.id} ${m.label}`.toLowerCase();
+  if (/coder|code/.test(s)) return 'Tuned for writing and explaining code';
+  if (/r1|deepseek|reason/.test(s)) return 'A reasoning model — it thinks step by step before it answers';
+  if (/gemma|multiling/.test(s)) return 'Broad multilingual coverage';
+  if (/a3b|moe|35b/.test(s)) return 'A mixture-of-experts model: big-model skills on modest RAM';
+  if (/best quality|14b/.test(s)) return 'The highest-quality model in the catalog';
+  if (/mistral/.test(s)) return 'A fast, capable all-rounder';
+  if (/1b|0\.5b|mini|ultra|light/.test(s)) return 'Tiny and quick — runs on modest phones';
+  return 'A solid all-round on-device chat model';
+};
+
+const modelSeries = modelList.map((m) => {
+  const name = String(m.label || m.id).replace(/\s*\(.*\)\s*$/, '');
+  const langs = String(m.languages || '').trim();
+  return {
+    id: `model-${m.id}`,
+    caption:
+      `Model spotlight: ${name}.\n\n` +
+      `${m.paramsBillions}B parameters, ${m.quantization} — ${m.sizeLabel}, about ` +
+      `${m.ramGb} GB of RAM to run. ${modelPurpose(m)}.` +
+      (langs ? ` Speaks ${langs}.` : '') +
+      `\n\nEvery token runs on your device. Before you download, the app's picker ` +
+      `tells you honestly whether it Fits, is Tight, or is Too big for your hardware.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/models.html`, 'spotlight'),
+  };
+});
+
+/* ---------------------------------------------------------------------- */
+/* Extra engineering + reality beats — more of the same honest voice so a  */
+/* full year fills with mostly-fresh posts (links point only to pages that */
+/* actually exist on quenderin.org).                                       */
+/* ---------------------------------------------------------------------- */
+const engineeringExtra = [
+  {
+    id: 'quant-tradeoff',
+    caption:
+      `Why we ship Q4, not the "full" model.\n\n` +
+      `Quantization shrinks a model by storing its weights in fewer bits. Q4_K_M ` +
+      `is the sweet spot on a phone: about a quarter the size, most of the quality. ` +
+      `We pick the quant per model and tell you the real download and RAM up front — ` +
+      `no "HD" asterisks.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/how-it-works.html`, 'engineering'),
+  },
+  {
+    id: 'jetsam-budget',
+    caption:
+      `The number iOS never shows you — and the one that decides everything.\n\n` +
+      `A phone has, say, 6 GB of RAM, but the OS will kill your app long before you ` +
+      `use it all (jetsam). Total RAM is a lie; the budget is what matters. The app ` +
+      `probes for it and sizes the model to survive, not to look impressive.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/blog-setup.html`, 'engineering'),
+  },
+  {
+    id: 'no-neural-engine',
+    caption:
+      `Why Quenderin runs on the CPU/GPU, not the "AI chip."\n\n` +
+      `The Neural Engine is fast but closed — you can't run an arbitrary GGUF on it ` +
+      `today. llama.cpp uses Metal (GPU) and the CPU, which is what makes "bring any ` +
+      `model" possible. We'd rather be honest about the trade-off than market a chip ` +
+      `we don't use.`,
+    image: IMG('chat.png'),
+    link: utm(`${SITE}/research.html`, 'engineering'),
+  },
+  {
+    id: 'streaming-no-jank',
+    caption:
+      `Making tokens appear the instant they're generated — without the UI stuttering.\n\n` +
+      `Generation happens on a background thread; the transcript follows along and ` +
+      `stops the moment you scroll up to read. Small thing, but it's the difference ` +
+      `between "feels native" and "feels like a webview."`,
+    image: IMG('chat.png'),
+    link: utm(`${SITE}/features.html`, 'engineering'),
+  },
+  {
+    id: 'gguf-import',
+    caption:
+      `Bring any model. Drag a GGUF in.\n\n` +
+      `The curated catalog is a starting point, not a walled garden — drop in any ` +
+      `GGUF from Hugging Face and it runs. Same integrity checks (magic bytes, size) ` +
+      `as the catalog models. Your device, your model, your choice.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/features.html`, 'engineering'),
+  },
+  {
+    id: 'prove-offline',
+    caption:
+      `"No data leaves the device" — how you can verify it, not just trust it.\n\n` +
+      `Turn on airplane mode and it still works: that's the demo. But the real proof ` +
+      `is the code — it's all on GitHub, and there's no analytics SDK, no API client, ` +
+      `nothing to phone home. Read it yourself.`,
+    image: IMG('phone-chat.png'),
+    link: utm(GH, 'engineering'),
+  },
+  {
+    id: 'task-router',
+    caption:
+      `How the app suggests the right model for a new chat.\n\n` +
+      `Ask for code, it points at your installed coder model; ask a reasoning ` +
+      `question, it points at the reasoning one. A one-tap suggestion — never a ` +
+      `silent switch behind your back. You're always the one who decides.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/features.html`, 'engineering'),
+  },
+  {
+    id: 'one-core-three-platforms',
+    caption:
+      `One inference core, three platforms.\n\n` +
+      `iPhone, Mac, and desktop all run the same llama.cpp core through a shared ` +
+      `layer, so a fix on one lands everywhere and the behaviour matches. Less magic, ` +
+      `fewer "works on my device" surprises.`,
+    image: IMG('agent.png'),
+    link: utm(`${SITE}/how-it-works.html`, 'engineering'),
+  },
+  {
+    id: 'agent-trust-loop',
+    caption:
+      `The agent asks before it changes anything — by design, not by prompt.\n\n` +
+      `Every action that modifies your machine stops for a yes. It keeps a reviewable ` +
+      `per-task log and can undo a whole task, even in a new session. A cloud agent ` +
+      `can promise this; a local one can prove it.`,
+    image: IMG('agent.png'),
+    link: utm(`${SITE}/why-local-agent.html`, 'engineering'),
+  },
+  {
+    id: 'changelog-open',
+    caption:
+      `Every release, written down in plain language.\n\n` +
+      `What changed, what broke, what we fixed — the changelog is public and honest, ` +
+      `including the embarrassing bits. If you're going to trust software with your ` +
+      `private conversations, you should be able to see how it's built over time.`,
+    image: IMG('welcome.png'),
+    link: utm(`${SITE}/changelog.html`, 'engineering'),
+  },
+];
+
+const realityExtra = [
+  {
+    id: 'no-data-to-sell',
+    caption:
+      `We don't have a privacy policy that says "we won't sell your data."\n\n` +
+      `We have one that says there is no data. No account, no telemetry, no server ` +
+      `that ever sees your conversations — because there is no server. You can't ` +
+      `leak what you never collect.`,
+    image: IMG('welcome.png'),
+    link: utm(`${SITE}/privacy.html`, 'reality'),
+  },
+  {
+    id: 'airplane-test',
+    caption:
+      `The airplane test.\n\n` +
+      `Put your phone in airplane mode and ask it something. It still answers — ` +
+      `because the model is on the phone, not in a datacenter you're renting by the ` +
+      `token. Works on a flight, in a tunnel, off the grid, or the day the Wi-Fi dies.`,
+    image: IMG('phone-chat.png'),
+    link: utm(`${SITE}/reality.html`, 'reality'),
+  },
+  {
+    id: 'when-not-to-use',
+    caption:
+      `When you should NOT use a small on-device model.\n\n` +
+      `Medical, legal, or financial decisions. Anything where being confidently wrong ` +
+      `is expensive. A 3B model that fits your phone is smaller than a datacenter ` +
+      `model and will sometimes miss — we say so, in the app. Honesty is the feature.`,
+    image: IMG('chat.png'),
+    link: utm(`${SITE}/faq.html`, 'reality'),
+  },
+  {
+    id: 'read-the-roadmap',
+    caption:
+      `What's next isn't a secret.\n\n` +
+      `The roadmap is public — what we're building, what we're weighing, what we've ` +
+      `decided against and why. Tell us what matters to you; a roadmap you can argue ` +
+      `with is better than a hype thread you can't.`,
+    image: IMG('welcome.png'),
+    link: utm(`${SITE}/roadmap.html`, 'reality'),
+  },
+  {
+    id: 'add-a-model',
+    caption:
+      `Which model should we add next?\n\n` +
+      `New open models ship every week. If there's one you want in the catalog — ` +
+      `sized and quantized so it just fits and just runs — tell us. This catalog ` +
+      `grows from what people actually ask for.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/models.html`, 'reality'),
+  },
+  {
+    id: 'free-and-honest',
+    caption:
+      `Free, no ads, no account — and here's why that's sustainable.\n\n` +
+      `There's no server to pay for: the model runs on your device, so our costs ` +
+      `don't scale with your usage. That's not a growth hack, it's the architecture. ` +
+      `It's also why we can be MIT and mean it.`,
+    image: IMG('chat.png'),
+    link: utm(`${SITE}/faq.html`, 'reality'),
+  },
+  {
+    id: 'own-your-model',
+    caption:
+      `You own the model file.\n\n` +
+      `Once it's downloaded it's yours — a plain GGUF on your disk. No subscription ` +
+      `that bricks it, no remote kill switch, no "your access has been revoked." ` +
+      `Delete the app tomorrow and the model still runs in anything that reads GGUF.`,
+    image: IMG('picker.png'),
+    link: utm(`${SITE}/reality.html`, 'reality'),
+  },
+  {
+    id: 'plainly-different',
+    caption:
+      `The difference from cloud AI, in one line: nothing you type leaves the device.\n\n` +
+      `Not "encrypted in transit," not "we don't train on your data" — it never ` +
+      `travels at all. For a diary, a health question, a work secret, that's not a ` +
+      `nice-to-have. That's the whole point.`,
+    image: IMG('phone-chat.png'),
+    link: utm(`${SITE}/why-local-agent.html`, 'reality'),
+  },
+];
+
+module.exports = {
+  spotlight: [...spotlight, ...modelSeries],
+  engineering: [...engineering, ...engineeringExtra],
+  reality: [...reality, ...realityExtra],
+};
