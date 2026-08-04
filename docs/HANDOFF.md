@@ -15,16 +15,18 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Desktop Electron** | Research prototype — **not** the product (`docs/PRODUCT.md`). |
 | **CI / catalog** | Green; 13 models parity + live URLs. |
 | **First-run wait** | DownloadWaitPlayground (tips + mini-game + ETA) — shipped 2026-08-04. |
-| **First chat** | Starter chips (summarize / rewrite / math / …) — shipped this session. |
+| **First chat** | Starter chips + auto-open first chat — shipped. |
+| **Prefill honesty** | “Thinking · Ns” typing bubble — shipped. |
+| **Small-model prompt** | Lead-with-answer / no-invent system prompt twins — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
-1. **Quality of small-model chat** — better system prompts per model size, tighter max tokens defaults, refuse computer-task walls more helpfully (partially done via ActionIntent).
-2. **Android real-inference default** — many builds ship mock unless NDK/llama is wired; users “chat” with nothing real.
+1. **Android real-inference default** — many builds ship mock unless NDK/llama is wired; users “chat” with nothing real.
+2. **Per-tier system prompts / maxTokens** — even tighter for 1B vs 7B.
 3. **Vision / photo** — still ⏳ (KNOWN_FAILURE_MODES); documents-as-text only.
-4. **TTFT / “thinking” honesty** — long prefill looks frozen; show elapsed / phase.
-5. **Conversation empty list UX** — first launch after onboarding should land in a chat that already shows starters (not an empty Chats list dead-end).
-6. **Russian/long Settings strings** — known localization gap (CHANGELOG).
+4. **Prefill phase split** — “Loading prompt…” vs “Writing…” if engine exposes prefill/decode.
+5. **Russian/long Settings strings** — known localization gap (CHANGELOG).
+6. **Desktop chat starters** — mobile got them first; Electron wizard/chat still thinner.
 
 ### Owner-only (still)
 

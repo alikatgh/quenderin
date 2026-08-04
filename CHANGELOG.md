@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+### Chat feels alive during prefill + sharper small-model prompt
+- **“Thinking · Ns”** on the typing bubble (iOS + Android) so multi-second prefill isn’t a frozen UI.
+- **System prompt** rewritten for 1–4B: lead with the answer, short bullets, no inventing facts/URLs/tool
+  results, language-mirror + Agent redirect kept (twins in sync).
+- **Android:** failed generation shows **Retry** (restores last prompt into the composer).
+
 ### Day-one usability (empty chat is no longer a blank stare)
 - **Starter chips** on empty chat (iOS + Android): Summarize, Rewrite, Translate, Brainstorm,
   Explain simply, Quick math, Draft email, Packing list — prompts tuned for 1–4B offline models.

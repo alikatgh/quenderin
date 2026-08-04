@@ -699,27 +699,40 @@ private struct BottomEdgeKey: PreferenceKey {
 }
 #endif
 
-/// Assistant-side "…" while a reply is being generated — three dots pulsing in sequence.
+/// Assistant-side thinking indicator — pulsing dots + elapsed seconds so long prefill
+/// doesn't look frozen (common on phones while the model loads the prompt).
 private struct TypingBubble: View {
     let palette: QuenderinPalette
     @State private var phase = 0.0
+    @State private var startedAt = Date()
 
     var body: some View {
-        HStack(spacing: 5) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .fill(palette.assistantTimestamp)
-                    .frame(width: 7, height: 7)
-                    .opacity(0.3 + 0.7 * pulse(i))
+        HStack(spacing: 10) {
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(palette.assistantTimestamp)
+                        .frame(width: 7, height: 7)
+                        .opacity(0.3 + 0.7 * pulse(i))
+                }
+            }
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let secs = max(0, Int(context.date.timeIntervalSince(startedAt)))
+                Text(secs < 2 ? "Thinking…" : "Thinking · \(secs)s")
+                    .font(.caption)
+                    .foregroundStyle(palette.assistantTimestamp)
+                    .monospacedDigit()
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(palette.assistantBubble, in: BubbleShape(mine: false))
         .onAppear {
+            startedAt = Date()
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { phase = 1 }
         }
-        .accessibilityLabel("Generating a reply")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Thinking, generating a reply")
     }
 
     private func pulse(_ i: Int) -> Double {

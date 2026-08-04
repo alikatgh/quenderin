@@ -82,6 +82,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -107,6 +108,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -286,18 +288,37 @@ fun ChatScreen(
             }
         }
 
-        // A failed generation is shown here instead of being silently dropped.
+        // A failed generation is shown here instead of being silently dropped — Retry re-sends.
         sendError?.let { err ->
             val errorDesc = stringResource(R.string.chat_generation_error_a11y, err)
-            Text(
-                "⚠️ " + stringResource(R.string.chat_generation_error, err),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier
+            Row(
+                Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .semantics { contentDescription = errorDesc },
-            )
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "⚠️ " + stringResource(R.string.chat_generation_error, err),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = errorDesc },
+                )
+                TextButton(
+                    onClick = {
+                        // Put the last user line back in the composer (don't re-append a duplicate
+                        // user turn via sendCurrent — chat.send always appends).
+                        val lastUser = messages.lastOrNull { it.role == Role.USER }?.text
+                        sendError = null
+                        if (!lastUser.isNullOrBlank()) input = lastUser
+                    },
+                    enabled = !busy,
+                ) {
+                    Text(stringResource(R.string.chat_retry))
+                }
+            }
         }
 
         Text(
@@ -606,28 +627,51 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     }
 }
 
-/** Assistant-side "…" while a reply is being generated. */
+/** Assistant-side thinking indicator — dots + elapsed so long prefill doesn't look frozen. */
 @Composable
 private fun TypingBubble() {
     val colors = Quenderin.colors
     val t = rememberInfiniteTransition(label = "typing")
+    var elapsedSec by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        elapsedSec = 0
+        while (true) {
+            delay(1_000)
+            elapsedSec += 1
+        }
+    }
+    val label = if (elapsedSec < 2) {
+        stringResource(R.string.chat_thinking)
+    } else {
+        stringResource(R.string.chat_thinking_elapsed, elapsedSec)
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(color = colors.assistantBubble, shape = QuenderinShapes.assistantBubble) {
             Row(
                 Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                for (i in 0 until 3) {
-                    val a by t.animateFloat(
-                        initialValue = 0.3f, targetValue = 1f,
-                        animationSpec = infiniteRepeatable(
-                            tween(600, delayMillis = i * 160), RepeatMode.Reverse,
-                        ),
-                        label = "dot$i",
-                    )
-                    Box(Modifier.size(7.dp).background(colors.assistantTimestamp.copy(alpha = a), CircleShape))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    for (i in 0 until 3) {
+                        val a by t.animateFloat(
+                            initialValue = 0.3f, targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                tween(600, delayMillis = i * 160), RepeatMode.Reverse,
+                            ),
+                            label = "dot$i",
+                        )
+                        Box(Modifier.size(7.dp).background(colors.assistantTimestamp.copy(alpha = a), CircleShape))
+                    }
                 }
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    color = colors.assistantTimestamp,
+                )
             }
         }
     }

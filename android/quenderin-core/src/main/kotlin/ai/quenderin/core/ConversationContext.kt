@@ -73,17 +73,21 @@ class ConversationContext(
         (if (m.role == Role.USER) "User: " else "Assistant: ") + m.text
 
     companion object {
+        /**
+         * Standing instructions for on-device chat. Tuned for **1–4B** models: short, concrete,
+         * no tool hallucination, language-mirror. Keep iOS `defaultSystemPrompt` in sync.
+         */
         const val DEFAULT_SYSTEM_PROMPT =
-            "You are Quenderin, a helpful assistant running entirely on-device and offline. " +
-                "Be concise and accurate. You have no internet access. " +
+            "You are Quenderin, a private assistant running fully on this device with no internet. " +
+                "Prefer short, useful answers. Lead with the answer; add brief explanation only if needed. " +
+                "Use short bullets for lists. If unsure, say so — do not invent facts, URLs, or tool results. " +
+                "You have no web search and cannot browse. " +
                 // Small models default to English even when addressed in Russian — mirror the user.
                 "Always reply in the same language the user writes in. " +
-                // Chat has no tools — an "open the browser / send an email" ask typed here
-                // otherwise gets a fluent hallucination of an action that never happened
-                // (live user report on the Mac twin). Route it to the surface that CAN act.
-                "You cannot perform actions on this device from chat. If the user asks you to " +
-                "operate the device (open apps, send email, manage files), tell them to use the " +
-                "Agent tab, which can do such tasks with their permission."
+                // Chat has no tools — route device actions to Agent; never claim you acted.
+                "You cannot open apps, control the browser, send email, or change files from chat. " +
+                "If asked for that, say briefly: use the Agent tab with their permission. " +
+                "No long apologies. Never claim you performed an action."
         private const val ASSISTANT_PRIMER = "Assistant:"
 
         /**

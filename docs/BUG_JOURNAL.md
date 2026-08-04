@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — Long prefill looked frozen (dots only); small models rambled / hallucinated tools.
+  Fix: TypingBubble “Thinking · Ns”; system prompt lead-with-answer + no invent facts/URLs/actions
+  (iOS+Android twins). Android gen error → Retry fills composer. Lesson: time honesty during TTFT
+  beats prettier dots; prompt craft is free quality for 1–4B.
 - 2026-08-04 — Product felt “not usable” despite green CI: empty chat + empty Chats list dead-ends.
   Fix: ChatStarters (8 offline-friendly chips) on iOS/Android empty chat; auto-open first chat after
   onboarding; download ETA from velocity. Lesson: ship-ready ≠ day-one usable — empty states need
