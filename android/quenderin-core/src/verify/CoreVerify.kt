@@ -255,6 +255,15 @@ fun main() {
         ChatStarters.offlineChat.size == 8 &&
             ChatStarters.offlineChat.map { it.id }.toSet().size == 8 &&
             ChatStarters.offlineChat.all { it.title.isNotBlank() && it.prompt.isNotBlank() })
+    val ruStarters = ChatStarters.offlineChat("ru")
+    check(
+        "chat starters localize to Russian without losing ids or paste suffix",
+        ruStarters.map { it.id } == ChatStarters.offlineChat.map { it.id } &&
+            ruStarters.first { it.id == "summarize" }.title == "Кратко" &&
+            ruStarters.first { it.id == "summarize" }.prompt.startsWith("Суммируй") &&
+            ruStarters.first { it.id == "summarize" }.prompt.endsWith(":\n\n") &&
+            ChatStarters.offlineChat("de").first().title == "Summarize",
+    )
     check("chat tiers: tiny < small < full maxTokens",
         ChatTier.TINY.maxTokens < ChatTier.SMALL.maxTokens &&
             ChatTier.SMALL.maxTokens < ChatTier.FULL.maxTokens &&

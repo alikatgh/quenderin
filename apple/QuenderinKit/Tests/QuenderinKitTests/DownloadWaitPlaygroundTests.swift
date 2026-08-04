@@ -11,6 +11,20 @@ final class DownloadWaitPlaygroundTests: XCTestCase {
         }
     }
 
+    func testChatStartersLocalizedRussian() {
+        let ru = Locale(identifier: "ru_RU")
+        let pack = ChatStarters.offlineChat(locale: ru)
+        XCTAssertEqual(pack.map(\.id), ChatStarters.offlineChat.map(\.id))
+        let summarize = pack.first { $0.id == "summarize" }
+        XCTAssertEqual(summarize?.title, "Кратко")
+        XCTAssertTrue(summarize?.prompt.hasPrefix("Суммируй") == true)
+        // Paste-ready suffix preserved so empty-chat fill-vs-send logic still works.
+        XCTAssertTrue(summarize?.prompt.hasSuffix(":\n\n") == true)
+        // Unknown locale falls back to English.
+        let en = ChatStarters.offlineChat(locale: Locale(identifier: "de_DE"))
+        XCTAssertEqual(en.first?.title, "Summarize")
+    }
+
     func testDownloadETANeedsSamples() {
         XCTAssertNil(DownloadETA.estimate(samples: [], progress: 0.5))
         let t0 = Date(timeIntervalSinceReferenceDate: 1000)

@@ -768,7 +768,12 @@ private fun EmptyState(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ChatStarters.offlineChat.forEach { starter ->
+            val localeStarters = remember {
+                ChatStarters.offlineChat(
+                    java.util.Locale.getDefault().language,
+                )
+            }
+            localeStarters.forEach { starter ->
                 val chipDesc = stringResource(R.string.chat_try_starter_a11y, starter.title)
                 Surface(
                     onClick = { onStarter(starter) },

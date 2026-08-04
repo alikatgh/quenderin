@@ -13,6 +13,9 @@
   Source uses `String(localized:)` where `String` params used to skip the catalog.
 - **Android locales** (ru/ko/ja/zh-rCN): filled 28 missing keys — demo mode, engine row, generation
   phase, chat starters a11y, download-wait playground tips/scores.
+- **Localized chat starters** (ru/ko/ja/zh): empty-chat chips + prompts resolve to the UI language so
+  Russian-first users are not forced into English on first message (iOS `offlineChat(locale:)`,
+  Android `offlineChat(languageCode)`).
 - **Desktop general preset**: system prompt aligned with mobile ConversationContext (lead-with-answer,
   no invent); `maxTokens` 512 (was 2048) to curb ramble on small local models.
 

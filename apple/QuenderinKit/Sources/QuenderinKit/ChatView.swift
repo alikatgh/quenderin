@@ -129,6 +129,7 @@ public struct ChatView: View {
                             onStarter: { starter in
                                 // Prompts that end with ":\n\n" want the user to paste — fill draft.
                                 // Complete prompts send immediately so first-run is one tap.
+                                // Starters are already locale-resolved via ChatStarters.offlineChat(locale:).
                                 if starter.prompt.hasSuffix(":\n\n") || starter.prompt.hasSuffix(":\n") {
                                     draft = starter.prompt
                                     composerFocused = true
@@ -829,7 +830,7 @@ private struct EmptyChatState: View {
                         alignment: .leading,
                         spacing: 8
                     ) {
-                        ForEach(ChatStarters.offlineChat) { starter in
+                        ForEach(ChatStarters.offlineChat()) { starter in
                             Button {
                                 onStarter(starter)
                             } label: {
@@ -846,7 +847,7 @@ private struct EmptyChatState: View {
                                     )
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Try: \(starter.title)")
+                            .accessibilityLabel(String(localized: "Try: \(starter.title)"))
                             .accessibilityHint(starter.prompt)
                         }
                     }
