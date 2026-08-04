@@ -69,6 +69,18 @@ add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 add_library(quenderin_llama SHARED llama_jni.cpp)
 # ggml/include for ggml-backend.h (runtime CPU-variant pick) + ggml-cpu.h (pinned threadpool).
 target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)
+# llama.cpp replaced use_mmap/use_mlock with load_mode — detect so llama_jni.cpp can compile against
+# either the vendored pin (old bools) or a HEAD checkout (CI syntax-check / future pin bumps).
+if(EXISTS "${LLAMA_DIR}/include/llama.h")
+    file(READ "${LLAMA_DIR}/include/llama.h" _QUENDERIN_LLAMA_H)
+    # Match the enum / MMAP constant — not llama_load_model_from_file (substring false positive).
+    if(_QUENDERIN_LLAMA_H MATCHES "enum[ \t]+llama_load_mode" OR _QUENDERIN_LLAMA_H MATCHES "LLAMA_LOAD_MODE_MMAP")
+        target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_LLAMA_LOAD_MODE=1)
+        message(STATUS "quenderin: llama.cpp load_mode API detected")
+    else()
+        message(STATUS "quenderin: llama.cpp legacy use_mmap/use_mlock API")
+    endif()
+endif()
 # ggml-cpu carries ggml_threadpool_new (big-core affinity). llama/ggml already pull most of it;
 # link explicitly so the affinity symbols always resolve.
 target_link_libraries(quenderin_llama llama ggml android log)

@@ -377,8 +377,16 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     // Jetsam/LMK guard (this project's target class — memory-tight phones under background pressure):
     // mmap keeps weights pageable (fast cold start, OS-reclaimable); mlock is explicitly OFF so we
     // never wire multi-GB resident, which is exactly what triggers a low-memory kill on app switch.
+    //
+    // llama.cpp API: older pins use bool use_mmap/use_mlock; HEAD replaced them with
+    // enum llama_load_mode (LLAMA_LOAD_MODE_MMAP == mmap, no mlock — the safe default we pin).
+    // QUENDERIN_LLAMA_LOAD_MODE is set by CMake / check-jni-syntax.sh when the header has load_mode.
+#if defined(QUENDERIN_LLAMA_LOAD_MODE) && QUENDERIN_LLAMA_LOAD_MODE
+    mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+#else
     mp.use_mmap = true;
     mp.use_mlock = false;
+#endif
     llama_model* model = llama_model_load_from_file(path, mp);
     env->ReleaseStringUTFChars(model_path, path);
     if (!model) { LOGE("model load failed"); return 0; }

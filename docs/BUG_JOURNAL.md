@@ -78,6 +78,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   llama.cpp uses `ggml_threadpool_params.cpumask` + `strict_cpu` + `llama_attach_threadpool`,
   not the old `llama_context_params.cpumask`. Rank cores by `cpuinfo_max_freq`, pin top-N.
   (llama_jni.cpp `pin_threads`, ThreadPlanner.bestCoreIndices)
+- **CI that clones llama.cpp HEAD will break when the C API renames fields — dual-compile or pin.**
+  `use_mmap`/`use_mlock` on `llama_model_params` became `load_mode` (`LLAMA_LOAD_MODE_MMAP`). Vendored
+  pin still had the bools; CI syntax-check used HEAD → red. Detect the enum (`LLAMA_LOAD_MODE_MMAP` /
+  `enum llama_load_mode`) and `#if` both paths; never greptest `llama_load_mode` alone — it is a
+  *prefix* of `llama_load_model_from_file` and false-positives the legacy pin. (check-jni-syntax.sh,
+  llama_jni.cpp QUENDERIN_LLAMA_LOAD_MODE)
+- **`npm audit --audit-level=high` fails the whole Node matrix — overrides beat force-downgrades.**
+  Transitive high/criticals (brace-expansion@5 via minimatch@10, sharp via @xenova/transformers)
+  block CI even when your direct deps are fine. Prefer `package.json` `overrides` (pin fixed
+  minors) over `npm audit fix --force` (which can downgrade @xenova/transformers to 1.x).
 - **`verify()` after a move must NOT re-run a resolve that requires the source to still exist.**
   resolve() for plan/run correctly 404s a missing source; post-run verify sees the source gone
   *because the move worked*. Parse shape only, then check dest present + source absent. Otherwise
@@ -558,6 +568,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — main CI red: Android JNI syntax-check + `npm audit --audit-level=high`.
+  Cause: llama.cpp HEAD dropped `use_mmap`/`use_mlock` for `load_mode`; root had high/critical
+  transitive vulns (brace-expansion@5, sharp via transformers). Fix: dual-API `#if` + header
+  detect in check-jni-syntax/CMake; npm overrides for brace-expansion@5 + sharp 0.35.3. Lesson:
+  pin or dual-compile against C API renames; never greptest a field that is a prefix of another API name.
 - 2026-07-19 (App Review 2.1a reject, 0.2.0(9): "app delivered error message upon the model downloading
   process" — screenshot = "QuenderinKit.ModelIntegrityError error 0" on a MacBook Air M3) — the `gemma4-12b`
   catalog URL (`ggml-org/gemma-4-12B-it-GGUF/…Q4_K_M.gguf`) 404'd ("Entry not found"); that repo has no
