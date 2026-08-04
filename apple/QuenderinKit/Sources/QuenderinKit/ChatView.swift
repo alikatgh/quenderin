@@ -171,7 +171,7 @@ public struct ChatView: View {
                             // text, it is its own progress signal and the dots would just
                             // double it below.
                             if model.isGenerating, model.messages.last?.text.isEmpty != false {
-                                TypingBubble(palette: p)
+                                TypingBubble(palette: p, phase: model.generationPhase)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .id("typing")
                             }
@@ -710,11 +710,12 @@ private struct BottomEdgeKey: PreferenceKey {
 }
 #endif
 
-/// Assistant-side thinking indicator — pulsing dots + elapsed seconds so long prefill
-/// doesn't look frozen (common on phones while the model loads the prompt).
+/// Assistant-side thinking indicator — phase label (loading prompt vs writing) + elapsed
+/// seconds so long prefill doesn't look frozen.
 private struct TypingBubble: View {
     let palette: QuenderinPalette
-    @State private var phase = 0.0
+    var phase: GenerationPhase = .loadingPrompt
+    @State private var pulsePhase = 0.0
     @State private var startedAt = Date()
 
     var body: some View {
@@ -729,7 +730,13 @@ private struct TypingBubble: View {
             }
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let secs = max(0, Int(context.date.timeIntervalSince(startedAt)))
-                Text(secs < 2 ? "Thinking…" : "Thinking · \(secs)s")
+                let base: String = {
+                    switch phase {
+                    case .writing: return "Writing"
+                    case .loadingPrompt, .idle: return "Loading prompt"
+                    }
+                }()
+                Text(secs < 1 ? "\(base)…" : "\(base) · \(secs)s")
                     .font(.caption)
                     .foregroundStyle(palette.assistantTimestamp)
                     .monospacedDigit()
@@ -740,15 +747,14 @@ private struct TypingBubble: View {
         .background(palette.assistantBubble, in: BubbleShape(mine: false))
         .onAppear {
             startedAt = Date()
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { phase = 1 }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { pulsePhase = 1 }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Thinking, generating a reply")
+        .accessibilityLabel(phase == .writing ? "Writing a reply" : "Loading prompt, generating a reply")
     }
 
     private func pulse(_ i: Int) -> Double {
-        // Stagger the three dots so the pulse travels left-to-right.
-        let shifted = (phase + Double(i) * 0.22).truncatingRemainder(dividingBy: 1)
+        let shifted = (pulsePhase + Double(i) * 0.22).truncatingRemainder(dividingBy: 1)
         return shifted
     }
 }

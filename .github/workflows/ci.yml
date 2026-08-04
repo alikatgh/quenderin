@@ -190,3 +190,5 @@ jobs:
         run: python3 scripts/check_safety_parity.py
       - name: Sampling recipes match shared/sampling-profiles.json (Swift/Kotlin/JNI)
         run: python3 scripts/check_sampling_parity.py
+      - name: Golden chat UX contracts (starters, tiers, vision refusal)
+        run: python3 scripts/check_golden_chat_prompts.py

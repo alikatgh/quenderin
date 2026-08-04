@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Prefill phase + honest photo refusal + golden chat gate
+- **GenerationPhase** (`loadingPrompt` → `writing`) drives “Loading prompt · Ns” / “Writing · Ns”
+  (iOS + Android typing bubbles).
+- **Image attach** refused with an explicit vision-not-available message (not “isn’t a text file”).
+- **`shared/golden-chat-prompts.json`** + `scripts/check_golden_chat_prompts.py` CI gate (starters,
+  tiers, vision refusal copy).
+
 ### Ship path: no silent mock releases
 - **Android release/bundle fails** without `jni/llama.cpp` (escape: `-Pquenderin.allowMockRelease=true`).
 - **BuildConfig.QUENDERIN_HAS_NATIVE_LLAMA** + Settings “Inference engine” row (real vs demo).

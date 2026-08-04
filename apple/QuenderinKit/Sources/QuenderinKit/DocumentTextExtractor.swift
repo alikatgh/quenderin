@@ -16,9 +16,19 @@ public enum DocumentTextExtractor {
 
     /// 24 KB default: big enough for READMEs/configs/notes, small enough that a 2048-token
     /// context (a phone under pressure) still has room to answer about it.
+    private static let imageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff",
+    ]
+
     public static func extract(name: String, url: URL, maxBytes: Int = 24 * 1024) -> Extraction {
+        let ext = (name as NSString).pathExtension.lowercased()
+        if imageExtensions.contains(ext) {
+            return .rejected(reason:
+                "\"\(name)\" is an image — on-device vision isn't available yet. " +
+                "Describe the photo in your message, or attach a text/PDF file instead.")
+        }
         #if canImport(PDFKit)
-        if name.lowercased().hasSuffix(".pdf") {
+        if ext == "pdf" {
             return extractPDF(name: name, url: url, maxBytes: maxBytes)
         }
         #endif
@@ -31,7 +41,7 @@ public enum DocumentTextExtractor {
         }
         let truncated = data.count > maxBytes
         guard let text = String(data: truncated ? data.prefix(maxBytes) : data, encoding: .utf8) else {
-            return .rejected(reason: "\"\(name)\" isn't a text file — only text and PDF attachments are supported for now.")
+            return .rejected(reason: "\"\(name)\" isn't a text file — only text and PDF attachments are supported for now (vision for photos is coming later).")
         }
         let body = truncated ? text + "\n[…file truncated at \(maxBytes / 1024) KB]" : text
         return .document(AttachedDocument(name: name, text: body))

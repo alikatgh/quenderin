@@ -1,0 +1,67 @@
+{
+  "_comment": "Golden first-message prompts for offline chat quality. Not an LLM eval suite — structural gates: starters stay offline-friendly, tiers stay ordered, image refusal copy stays honest. CI: python3 scripts/check_golden_chat_prompts.py",
+  "starters": [
+    {
+      "id": "summarize",
+      "title": "Summarize",
+      "prompt_suffix": ":\n\n",
+      "offline_ok": true,
+      "paste_ready": true
+    },
+    {
+      "id": "rewrite",
+      "title": "Rewrite clearly",
+      "prompt_suffix": ":\n\n",
+      "offline_ok": true,
+      "paste_ready": true
+    },
+    {
+      "id": "translate",
+      "title": "Translate",
+      "prompt_suffix": ":\n\n",
+      "offline_ok": true,
+      "paste_ready": true
+    },
+    {
+      "id": "brainstorm",
+      "title": "Brainstorm",
+      "offline_ok": true,
+      "paste_ready": false,
+      "must_not_require": ["internet", "browse", "open app", "camera"]
+    },
+    {
+      "id": "explain",
+      "title": "Explain simply",
+      "offline_ok": true,
+      "paste_ready": false
+    },
+    {
+      "id": "math",
+      "title": "Quick math",
+      "offline_ok": true,
+      "paste_ready": false,
+      "expects_numbers": true
+    },
+    {
+      "id": "email",
+      "title": "Draft email",
+      "offline_ok": true,
+      "paste_ready": false
+    },
+    {
+      "id": "checklist",
+      "title": "Packing list",
+      "offline_ok": true,
+      "paste_ready": false
+    }
+  ],
+  "tiers": {
+    "tiny_max_params_b": 2.0,
+    "small_max_params_b": 5.5,
+    "max_tokens": { "tiny": 256, "small": 384, "full": 512 }
+  },
+  "vision": {
+    "status": "not_available",
+    "refusal_must_contain": ["vision", "image"]
+  }
+}

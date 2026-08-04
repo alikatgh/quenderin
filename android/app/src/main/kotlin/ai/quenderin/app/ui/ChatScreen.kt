@@ -134,6 +134,7 @@ fun ChatScreen(
     var messages by remember { mutableStateOf(chat.messages) }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var genPhase by remember { mutableStateOf(ai.quenderin.core.GenerationPhase.IDLE) }
     // The in-flight generation coroutine, so Stop can cancel it (and the coordinator can join it on a
     // conversation switch). Held across recompositions.
     var sendJob by remember { mutableStateOf<Job?>(null) }
@@ -180,12 +181,16 @@ fun ChatScreen(
     }
     LaunchedEffect(coordinator) {
         messages = chat.messages
+        genPhase = chat.generationPhase
         // chat.send() runs on Dispatchers.IO (below), so its onChange fires from a background thread —
         // writing Compose state (`messages`) off the main thread is a threading violation (Q-228). Marshal
         // every emit onto the main dispatcher. Main.immediate keeps same-thread emits (the settle, which
         // can land on main) synchronous instead of posting an extra frame.
         chat.onChange = { next ->
             scope.launch(Dispatchers.Main.immediate) { messages = next }
+        }
+        chat.onPhaseChange = { phase ->
+            scope.launch(Dispatchers.Main.immediate) { genPhase = phase }
         }
     }
     val listState = rememberLazyListState()
@@ -284,7 +289,7 @@ fun ChatScreen(
                         }
                     }
                 }
-                if (busy) item { TypingBubble() }
+                if (busy) item { TypingBubble(phase = genPhase) }
             }
         }
 
@@ -642,9 +647,9 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     }
 }
 
-/** Assistant-side thinking indicator — dots + elapsed so long prefill doesn't look frozen. */
+/** Assistant-side thinking indicator — phase (loading prompt / writing) + elapsed. */
 @Composable
-private fun TypingBubble() {
+private fun TypingBubble(phase: ai.quenderin.core.GenerationPhase = ai.quenderin.core.GenerationPhase.LOADING_PROMPT) {
     val colors = Quenderin.colors
     val t = rememberInfiniteTransition(label = "typing")
     var elapsedSec by remember { mutableIntStateOf(0) }
@@ -655,10 +660,14 @@ private fun TypingBubble() {
             elapsedSec += 1
         }
     }
-    val label = if (elapsedSec < 2) {
-        stringResource(R.string.chat_thinking)
+    val base = when (phase) {
+        ai.quenderin.core.GenerationPhase.WRITING -> stringResource(R.string.chat_writing)
+        else -> stringResource(R.string.chat_loading_prompt)
+    }
+    val label = if (elapsedSec < 1) {
+        "$base…"
     } else {
-        stringResource(R.string.chat_thinking_elapsed, elapsedSec)
+        stringResource(R.string.chat_phase_elapsed, base, elapsedSec)
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(color = colors.assistantBubble, shape = QuenderinShapes.assistantBubble) {

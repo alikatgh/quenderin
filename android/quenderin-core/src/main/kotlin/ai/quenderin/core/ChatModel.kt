@@ -2,6 +2,15 @@ package ai.quenderin.core
 
 enum class Role { USER, ASSISTANT }
 
+/** Where generation is in its lifecycle — twin of iOS `GenerationPhase`. */
+enum class GenerationPhase {
+    IDLE,
+    /** Engine processing the prompt; no tokens yet (can take seconds on phones). */
+    LOADING_PROMPT,
+    /** First token arrived; reply is streaming. */
+    WRITING,
+}
+
 /**
  * A document the user attached to a chat message — name for display, extracted text for the
  * model. Extraction happens AT ATTACH TIME (strict UTF-8, size-capped) so what the model sees is
@@ -85,6 +94,14 @@ class ChatModel(
         private set
 
     /**
+     * Prefill vs decode — UI shows "Loading prompt…" until the first token, then "Writing…".
+     * Twin of iOS `ChatModel.generationPhase`.
+     */
+    @Volatile
+    var generationPhase: GenerationPhase = GenerationPhase.IDLE
+        private set
+
+    /**
      * True when the last settled reply stopped because it hit the engine's token cap mid-stream
      * (not Stop, not EOG). The UI surfaces a "Continue" affordance so the user can extend the
      * answer instead of staring at a mid-sentence cut. Twin of iOS `ChatModel.lastHitTokenCap`.
@@ -93,6 +110,14 @@ class ChatModel(
     @Volatile
     var lastHitTokenCap: Boolean = false
         private set
+
+    /** Optional listener for phase flips (Compose polls [generationPhase] or rebinds here). */
+    var onPhaseChange: (GenerationPhase) -> Unit = {}
+
+    private fun setPhase(p: GenerationPhase) {
+        generationPhase = p
+        onPhaseChange(p)
+    }
 
     private fun emit() = onChange(messages)
 
@@ -130,6 +155,7 @@ class ChatModel(
         synchronized(lock) {
             if (isGenerating) return ""
             isGenerating = true
+            setPhase(GenerationPhase.LOADING_PROMPT)
             myGen = ++activeGeneration
             _messages += ChatMessage(Role.USER, trimmed, documents)
             afterUser = _messages.toList()
@@ -165,6 +191,7 @@ class ChatModel(
                 // penalty, stop paying for tokens — the settle-time collapse below cleans up. Checked every
                 // 32 tokens like iOS; asks the engine to end the native decode now. (Q-237)
                 tokenCount += 1
+                if (tokenCount == 1) setPhase(GenerationPhase.WRITING)
                 if (tokenCount % 32 == 0 && DegenerationGuard.looksDegenerate(sb.toString())) {
                     engine.requestCancel()
                 }
@@ -197,7 +224,10 @@ class ChatModel(
             synchronized(lock) {
                 // Only the CURRENT generation owns isGenerating; a superseded send must not clear a flag a
                 // newer send/lifecycle op already re-set (M10 finally-safety, same as AgentSession).
-                if (activeGeneration == myGen) isGenerating = false
+                if (activeGeneration == myGen) {
+                    isGenerating = false
+                    setPhase(GenerationPhase.IDLE)
+                }
             }
         }
     }
@@ -236,6 +266,7 @@ class ChatModel(
             if (!isGenerating) return
             activeGeneration++   // supersede the running send → its remaining writes become no-ops
             isGenerating = false
+            setPhase(GenerationPhase.IDLE)
         }
         engine.requestCancel()
     }

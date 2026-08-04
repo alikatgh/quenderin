@@ -25,9 +25,24 @@ object DocumentTextExtractor {
      *  stops at [maxBytes]; this only bounds peak RAM for a hostile multi-hundred-MB file. */
     private const val PDF_RAW_CAP = 8 * 1024 * 1024
 
+    private val imageExtensions = setOf(
+        "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff",
+    )
+
+    private fun isImageName(name: String): Boolean {
+        val ext = name.substringAfterLast('.', missingDelimiterValue = "").lowercase()
+        return ext in imageExtensions
+    }
+
+    private fun imageRejected(name: String) = Extraction.Rejected(
+        "\"$name\" is an image — on-device vision isn't available yet. " +
+            "Describe the photo in your message, or attach a text/PDF file instead.",
+    )
+
     @JvmOverloads
     fun extract(name: String, file: File, maxBytes: Int = DEFAULT_MAX_BYTES): Extraction {
         if (!file.isFile) return Extraction.Rejected("Couldn't open \"$name\".")
+        if (isImageName(name)) return imageRejected(name)
         if (isPdfName(name)) {
             val bytes = try {
                 file.inputStream().use { it.readNBytes(PDF_RAW_CAP + 1) }
@@ -57,6 +72,7 @@ object DocumentTextExtractor {
     @JvmOverloads
     fun extract(name: String, bytes: ByteArray, maxBytes: Int = DEFAULT_MAX_BYTES): Extraction {
         if (bytes.isEmpty()) return Extraction.Rejected("\"$name\" is empty.")
+        if (isImageName(name) || looksLikeImage(bytes)) return imageRejected(name)
         if (isPdfName(name) || looksLikePdf(bytes)) {
             if (bytes.size > PDF_RAW_CAP) {
                 return Extraction.Rejected(
@@ -75,7 +91,8 @@ object DocumentTextExtractor {
             decoder.decode(java.nio.ByteBuffer.wrap(slice)).toString()
         } catch (_: Throwable) {
             return Extraction.Rejected(
-                "\"$name\" isn't a text file — only text and PDF attachments are supported for now.",
+                "\"$name\" isn't a text file — only text and PDF attachments are supported for now " +
+                    "(vision for photos is coming later).",
             )
         }
         val body = if (truncated) text + "\n[…file truncated at ${maxBytes / 1024} KB]" else text
@@ -83,6 +100,29 @@ object DocumentTextExtractor {
     }
 
     private fun isPdfName(name: String): Boolean = name.lowercase().endsWith(".pdf")
+
+    /** Magic-byte sniff for common image formats (when the SAF name lacks a useful extension). */
+    private fun looksLikeImage(bytes: ByteArray): Boolean {
+        if (bytes.size < 4) return false
+        // PNG
+        if (bytes[0] == 0x89.toByte() && bytes[1] == 'P'.code.toByte() &&
+            bytes[2] == 'N'.code.toByte() && bytes[3] == 'G'.code.toByte()
+        ) {
+            return true
+        }
+        // JPEG
+        if (bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()) return true
+        // GIF
+        if (bytes[0] == 'G'.code.toByte() && bytes[1] == 'I'.code.toByte() && bytes[2] == 'F'.code.toByte()) return true
+        // WEBP: RIFF....WEBP
+        if (bytes.size >= 12 &&
+            bytes[0] == 'R'.code.toByte() && bytes[1] == 'I'.code.toByte() &&
+            bytes[8] == 'W'.code.toByte() && bytes[9] == 'E'.code.toByte()
+        ) {
+            return true
+        }
+        return false
+    }
 
     private fun looksLikePdf(bytes: ByteArray): Boolean {
         if (bytes.size < 5) return false

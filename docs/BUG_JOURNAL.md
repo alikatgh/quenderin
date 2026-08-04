@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — Prefill looked like dead UI; image attach failed as “not a text file”.
+  Fix: GenerationPhase loadingPrompt→writing + phase labels; image magic/name gate with
+  vision-not-yet copy (iOS+Android); golden chat structural CI. Lesson: name the wait phase;
+  refuse photos honestly, not as “binary”.
 - 2026-08-04 — Release could ship mock chat as if real; mock replies said “on-device offline”.
   Fix: release/bundle fail without jni/llama.cpp (-Pquenderin.allowMockRelease escape);
   BuildConfig + Settings engine row; honest mock canned text. Lesson: fail closed on ship

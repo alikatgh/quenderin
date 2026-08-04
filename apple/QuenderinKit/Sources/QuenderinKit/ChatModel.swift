@@ -63,6 +63,15 @@ public extension ChatMessage {
     var isFlagged: Bool { role == .assistant && SafetyBlocklist.isBlocked(text) }
 }
 
+/// Where generation is in its lifecycle — drives honest UI during long prefill.
+public enum GenerationPhase: String, Sendable, Equatable {
+    case idle
+    /// Engine is processing the prompt (no tokens yet) — can take seconds on phones.
+    case loadingPrompt
+    /// First token has arrived; the reply is streaming.
+    case writing
+}
+
 /// Drives a chat conversation against any `InferenceEngine`, appending tokens to
 /// the in-flight assistant message as they stream in. Runs on the mock engine
 /// today; swaps to `LlamaEngine` with no change.
@@ -70,6 +79,8 @@ public extension ChatMessage {
 public final class ChatModel: ObservableObject {
     @Published public private(set) var messages: [ChatMessage] = []
     @Published public private(set) var isGenerating = false
+    /// Prefill vs decode — UI shows "Loading prompt…" until the first token, then "Writing…".
+    @Published public private(set) var generationPhase: GenerationPhase = .idle
     /// True when the last settled reply stopped because it hit `options.maxTokens` (not Stop, not
     /// EOG). The chat UI surfaces a "Continue" chip so a mid-sentence cut is recoverable
     /// (KNOWN_FAILURE_MODES). Cleared on the next send / reset / restore.
@@ -134,9 +145,13 @@ public final class ChatModel: ObservableObject {
         let systemPrompt = tier.systemPrompt
 
         isGenerating = true
+        generationPhase = .loadingPrompt
         stopRequested = false
         lastHitTokenCap = false
-        defer { isGenerating = false }
+        defer {
+            isGenerating = false
+            generationPhase = .idle
+        }
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
         // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,
@@ -178,6 +193,7 @@ public final class ChatModel: ObservableObject {
                 // Degeneration guard: if the tail is verbatim-looping despite the sampler's
                 // repetition penalty, stop paying for tokens — the collapse below cleans up.
                 tokenCount += 1
+                if tokenCount == 1 { generationPhase = .writing }
                 if tokenCount % 32 == 0, DegenerationGuard.looksDegenerate(assistant.text) {
                     hitDegeneration = true
                     break
