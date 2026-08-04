@@ -27,7 +27,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         with:
           # Self-enable Pages on first run — the manual Settings→Pages step was never
           # done, so every deploy since the redesign died here with "Not Found".
