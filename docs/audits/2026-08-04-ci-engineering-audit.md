@@ -58,13 +58,26 @@ Avoided `npm audit fix --force` (would downgrade `@xenova/transformers` to 1.x).
 - `npm audit --audit-level=high` → 0 (root + ui)
 - `tsc --noEmit`, eslint src, vitest **632/632**, golden chores ALL PASSED, ui a11y **5/5**
 
-## Residual (not blockers)
+## Follow-up (same day, agent 100% pass)
 
-1. Major Dependabot PRs (TS 7, eslint 10, AGP 9, React majors, Kotlin 2.4 group) — dedicated branches.
-2. Electron 43 / Gradle 9 — previously CI-green but major; do not auto-merge without smoke.
-3. iOS `LlamaEngine.swift` still uses `use_mmap`/`use_mlock` against **pinned xcframework** (correct until framework bump).
-4. Store readiness still human-gated (accounts, signing, console paste) — see `docs/SHIP_READINESS.md`.
+| Action | Result |
+|--------|--------|
+| Merge #132, #133 (ui + root npm minor/patch) | Merged — full CI green |
+| Close majors / failing Dependabot | Closed #116–#117, #119, #121–#122, #125–#126, #131 |
+| Optional green majors left open | #120 Electron 43, #124 Gradle 9 (commented) |
+| Delete obsolete remote branches | `wip/website-deploy-docs`, empty `feat/ship-readiness`, `security-fixes`, `readiness-phase2`, 4× `claude/*` |
+| Catalog | parity OK; **13/13 URLs live** |
+| Docs | `docs/HANDOFF.md` + `docs/SHIP_READINESS.md` updated for software 100% |
+
+## Residual (owner-only — not agent-completable)
+
+1. Facebook secrets + cover/profile images — `docs/HANDOFF.md`
+2. Store console pastes / questionnaires / physical-device tok/s — `docs/SHIP_READINESS.md`
+3. Optional: Electron 43 (#120), Gradle 9 (#124) with intentional smoke
+4. iOS `LlamaEngine.swift` still uses `use_mmap`/`use_mlock` against **pinned xcframework** (correct until framework bump)
 
 ## Commits
 
 - `79b45eb` — `fix(ci): green main — llama load_mode dual-API + npm audit overrides`
+- `6cab16b` — audit report
+- Dependabot merges #108–#113, #132–#133

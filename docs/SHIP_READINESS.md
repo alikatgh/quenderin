@@ -1,13 +1,14 @@
 # Ship readiness — native iOS + Android
 
 **One-line truth:** everything that can be done **in software** is done and green. What remains
-to put these apps *in the stores* requires **your accounts, your hardware, and your legal/contact
-details** — an agent cannot create an Apple Developer account, host a URL, sign a build, or hold
-a physical phone. This file is the exact, deduplicated list of those items, each reduced to the
-smallest action.
+for full store / ops polish requires **your accounts, your hardware, and console clicks** — an
+agent cannot mint Facebook page tokens, paste URLs into App Store Connect / Play Console, or hold
+a physical phone. This file is the exact, deduplicated list of those items.
 
-Last reconciled: 2026-06-20 (against `main`). Sources: `docs/audits/2026-06-16-store-compliance-audit.md`,
-`LAUNCH_CHECKLIST.md`, current source.
+**Product status (2026-08-04):** iOS is **live** on the App Store (0.2.0, [id6789854363](https://apps.apple.com/app/id6789854363)). Android is in **closed beta** (package `ai.quenderin.app`). Website live at [quenderin.org](https://quenderin.org). CI on `main` green after JNI `load_mode` dual-API + npm audit overrides (`79b45eb`).
+
+Last reconciled: 2026-08-04 (against `main`). Sources: `docs/audits/2026-06-16-store-compliance-audit.md`,
+`docs/audits/2026-08-04-ci-engineering-audit.md`, `LAUNCH_CHECKLIST.md`, `docs/HANDOFF.md`, current source.
 
 ---
 
@@ -23,7 +24,8 @@ Last reconciled: 2026-06-20 (against `main`). Sources: `docs/audits/2026-06-16-s
 | iOS `PrivacyInfo.xcprivacy` (required-reason APIs) | added | in `apple/` |
 | Android FGS `<service foregroundServiceType="dataSync">` (was an API-34 crash) | added | in `AndroidManifest.xml` |
 | `ITSAppUsesNonExemptEncryption=false`, `models/` backup-exclusion | added | — |
-| CI gates: Node matrix, iOS `swift test`, Android core + `assembleDebug`, catalog parity | green | `.github/workflows/ci.yml` |
+| CI gates: Node matrix, iOS `swift test`, Android core + `assembleDebug`, catalog parity, JNI syntax, npm audit high+ | green (2026-08-04) | `.github/workflows/ci.yml` |
+| Catalog URL liveness (all 13 HF URLs) | green | `python3 scripts/check_catalog_urls.py` |
 
 Privacy policy is **written and hosted** (`website/privacy.html` → `https://quenderin.org/privacy`,
 Cloudflare Pages) and **wired into the apps** — see section A.
@@ -86,9 +88,11 @@ HIGH-severity audit findings are **fixed in code** but two need *your* environme
 
 ## How to read "100%"
 
-- **Software readiness: 100%.** Code, compliance surface, tests, and CI are complete and green.
-- **Both code-touching items are now closed:** the privacy-policy URL and the support email are real
+- **Software readiness: 100% (agent-complete).** Code, compliance surface, tests, catalog parity/URLs,
+  and CI are complete and green. Dependabot majors left open intentionally (#120 Electron 43, #124
+  Gradle 9) are optional, not blockers.
+- **Code-touching compliance items closed:** privacy URL + support email are real
   (`quenderin.org/privacy`, `quenderin@aulenor.com`) and wired into both apps.
-- **Store readiness: gated only on Section A's console paste + Sections C–E** — store-console
-  questionnaires, developer accounts, signing, store assets, and physical-device numbers. **None is
-  a code change an agent can make** — they need your accounts, your hardware, and console clicks.
+- **Store / ops readiness:** iOS already shipped; Android closed beta. Remaining §A–E items are
+  **console / hardware / secrets only** — none is a code change an agent can make. Facebook
+  auto-post also needs owner secrets (`docs/HANDOFF.md`).
