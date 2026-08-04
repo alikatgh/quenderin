@@ -254,8 +254,8 @@ public struct ChatView: View {
                         .overlay(Circle().strokeBorder(p.onSurfaceVariant.opacity(0.15), lineWidth: 1))
                         .padding(.trailing, 16)
                         .padding(.bottom, 10)
-                        .help("Jump to the latest message")
-                        .accessibilityLabel("Jump to latest")
+                        .help(String(localized: "Jump to the latest message"))
+                        .accessibilityLabel(String(localized: "Jump to latest"))
                     }
                 }
             }
@@ -279,7 +279,7 @@ public struct ChatView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal)
-                    .accessibilityLabel("Demo mode. Replies are canned until a real on-device engine is linked.")
+                    .accessibilityLabel(String(localized: "Demo mode. Replies are canned until a real on-device engine is linked."))
             }
 
             Text(SupportContact.aiDisclaimer)
@@ -312,7 +312,7 @@ public struct ChatView: View {
                               subject: Text("Quenderin conversation"),
                               message: Text("Exported from Quenderin (on-device)")) {
                         Image(systemName: "square.and.arrow.up")
-                            .accessibilityLabel("Share conversation")
+                            .accessibilityLabel(String(localized: "Share conversation"))
                     }
                 }
             }
@@ -374,7 +374,7 @@ public struct ChatView: View {
                         .background(p.primary.opacity(0.12), in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Continue generating from where the reply stopped")
+                .accessibilityLabel(String(localized: "Continue generating from where the reply stopped"))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 6)
             }
@@ -416,10 +416,10 @@ public struct ChatView: View {
             }
             .buttonStyle(.plain)
             .disabled(model.isGenerating)
-            .help("Attach a text or PDF file to this message")
-            .accessibilityLabel("Attach a file")
+            .help(String(localized: "Attach a text, PDF, or image (images: vision not available yet)"))
+            .accessibilityLabel(String(localized: "Attach a file"))
 
-            TextField("Message — or try a suggestion above", text: $draft)
+            TextField(String(localized: "Message — or try a suggestion above"), text: $draft)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.send)
@@ -448,8 +448,8 @@ public struct ChatView: View {
             // Sendable state is signalled by COLOUR only (primary → 40% opacity, above) — never
             // geometry. UI_DESIGN_RULES §1: state must not drive transform/scale.
             .disabled(!canSend && !model.isGenerating)
-            .help(model.isGenerating ? "Stop generating" : "Send message")
-            .accessibilityLabel(model.isGenerating ? "Stop generating" : "Send message")
+            .help(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
+            .accessibilityLabel(model.isGenerating ? String(localized: "Stop generating") : String(localized: "Send message"))
         }
     }
 }
@@ -571,7 +571,7 @@ private struct RouteSuggestionChip: View {
                     .foregroundStyle(palette.onSurfaceVariant)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Dismiss suggestion")
+            .accessibilityLabel(String(localized: "Dismiss suggestion"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
@@ -731,10 +731,11 @@ private struct TypingBubble: View {
             }
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let secs = max(0, Int(context.date.timeIntervalSince(startedAt)))
+                // String(localized:) so phase labels hit the catalog (raw "Writing" stayed EN in RU UI).
                 let base: String = {
                     switch phase {
-                    case .writing: return "Writing"
-                    case .loadingPrompt, .idle: return "Loading prompt"
+                    case .writing: return String(localized: "Writing")
+                    case .loadingPrompt, .idle: return String(localized: "Loading prompt")
                     }
                 }()
                 Text(secs < 1 ? "\(base)…" : "\(base) · \(secs)s")
@@ -751,7 +752,11 @@ private struct TypingBubble: View {
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { pulsePhase = 1 }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(phase == .writing ? "Writing a reply" : "Loading prompt, generating a reply")
+        .accessibilityLabel(
+            phase == .writing
+                ? String(localized: "Writing a reply")
+                : String(localized: "Loading prompt, generating a reply")
+        )
     }
 
     private func pulse(_ i: Int) -> Double {

@@ -417,12 +417,16 @@ public struct SettingsView: View {
     }
 
     private var modelSection: some View {
-        Section("Model") {
+        // Section titles and captions use LocalizedStringKey literals so they hit the string catalog
+        // (passing String into Text often binds as non-localizable verbatim — CHANGELOG localization gap).
+        Section {
                 LabeledRow(title: "Active model", value: model.label)
                 LabeledRow(title: "Size", value: model.sizeLabel)
                 LabeledRow(
                     title: "Inference engine",
-                    value: DefaultInferenceEngine.isReal ? "On-device (llama.cpp)" : "Demo (mock)"
+                    value: DefaultInferenceEngine.isReal
+                        ? String(localized: "On-device (llama.cpp)")
+                        : String(localized: "Demo (mock)")
                 )
                 if !DefaultInferenceEngine.isReal {
                     Text("This build is demo-only until llama.cpp is linked (xcframework or QUENDERIN_LLAMA_DIR). See QuenderinKit INTEGRATION.md.")
@@ -434,6 +438,8 @@ public struct SettingsView: View {
                 }
                 Text("Runs entirely on-device via llama.cpp — no cloud.")
                     .font(.footnote).foregroundStyle(.secondary)
+        } header: {
+            Text("Model")
         }
     }
 

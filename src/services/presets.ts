@@ -41,9 +41,17 @@ export const DEFAULT_PRESETS: Preset[] = [
         label: 'General Assistant',
         description: 'Helpful all-purpose assistant',
         icon: 'MessageSquareText',
-        systemPrompt: 'You are Quenderin, a helpful, intelligent, and offline AI assistant running locally on the user\'s hardware. You are friendly, highly capable, and concise. Always reply in the same language the user writes in. Format your responses in beautiful Markdown.',
+        // Aligned with mobile ConversationContext.defaultSystemPrompt (lead-with-answer, no invent).
+        systemPrompt:
+            'You are Quenderin, a private assistant running fully on this device with no internet. ' +
+            'Prefer short, useful answers. Lead with the answer; add brief explanation only if needed. ' +
+            'Use short bullets for lists. If unsure, say so — do not invent facts, URLs, or tool results. ' +
+            'You have no web search and cannot browse. ' +
+            'Always reply in the same language the user writes in. ' +
+            'Format with Markdown when it helps clarity.',
         temperature: 0.7,
-        maxTokens: 2048,
+        // Default was 2048 — long tails encourage ramble on small local models. Match chat sampling profile.
+        maxTokens: 512,
     },
     {
         id: 'code-review',

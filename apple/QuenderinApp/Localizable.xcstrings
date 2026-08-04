@@ -1009,30 +1009,30 @@
         }
       }
     },
-    "Attach a text or PDF file to this message": {
+    "Attach a text, PDF, or image (images: vision not available yet)": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このメッセージにテキストまたはPDFファイルを添付"
+            "value": "テキスト、PDF、画像を添付（画像の視覚認識は未対応）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 메시지에 텍스트 또는 PDF 파일 첨부"
+            "value": "텍스트·PDF·이미지 첨부 (이미지는 아직 시각 인식 불가)"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прикрепить текстовый файл или PDF к сообщению"
+            "value": "Прикрепить текст, PDF или изображение (зрение пока недоступно)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为此消息附加文本或 PDF 文件"
+            "value": "附加文本、PDF 或图片（图片：视觉功能尚不可用）"
           }
         }
       }
@@ -2213,6 +2213,90 @@
         }
       }
     },
+    "Demo (mock)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デモ（モック）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 (목업)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демо (заглушка)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "演示（模拟）"
+          }
+        }
+      }
+    },
+    "Demo mode — replies are canned until this build links a real on-device model engine.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デモモード — 実オンデバイスエンジンがリンクされるまで定型応答です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 모드 — 실제 온디바이스 엔진이 연결되기 전까지 미리 준비된 답변입니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демо-режим — ответы заготовлены, пока сборка не связана с реальной on-device моделью."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "演示模式——在链接真实设备端引擎之前，回复为预制内容。"
+          }
+        }
+      }
+    },
+    "Demo mode. Replies are canned until a real on-device engine is linked.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デモモード。実オンデバイスエンジンがリンクされるまで定型応答です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 모드. 실제 온디바이스 엔진이 연결되기 전까지 미리 준비된 답변입니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демо-режим. Ответы заготовлены, пока не подключен реальный on-device движок."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "演示模式。在链接真实设备端引擎之前，回复为预制内容。"
+          }
+        }
+      }
+    },
     "Density": {
       "localizations": {
         "ja": {
@@ -3305,6 +3389,34 @@
         }
       }
     },
+    "Inference engine": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推論エンジン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추론 엔진"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Движок вывода"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推理引擎"
+          }
+        }
+      }
+    },
     "Install": {
       "localizations": {
         "ja": {
@@ -3753,6 +3865,62 @@
         }
       }
     },
+    "Loading prompt": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロンプト読込中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "프롬프트 로딩"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка запроса"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载提示中"
+          }
+        }
+      }
+    },
+    "Loading prompt, generating a reply": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロンプト読込・返信生成中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "프롬프트 로딩, 답변 생성 중"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка запроса, генерация ответа"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载提示、正在生成回复"
+          }
+        }
+      }
+    },
     "Meet Quenderin": {
       "localizations": {
         "ja": {
@@ -3861,6 +4029,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "消息气泡"
+          }
+        }
+      }
+    },
+    "Message — or try a suggestion above": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メッセージ — または上の提案を試す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메시지 — 또는 위 제안을 사용해 보세요"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщение — или выберите подсказку выше"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消息——或试试上方的建议"
           }
         }
       }
@@ -4505,6 +4701,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认关闭——模型有数 GB 大，下载会等待 Wi-Fi。开启后允许使用蜂窝数据。"
+          }
+        }
+      }
+    },
+    "On-device (llama.cpp)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オンデバイス (llama.cpp)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기 내 (llama.cpp)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На устройстве (llama.cpp)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备端 (llama.cpp)"
           }
         }
       }
@@ -5606,13 +5830,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "llama.cppによりすべてオンデバイスで動作 — クラウドなし。"
+            "value": "llama.cppで完全オンデバイス — クラウドなし。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "llama.cpp로 전부 기기에서 실행 — 클라우드 없음."
+            "value": "llama.cpp로 완전 기기 내 실행 — 클라우드 없음."
           }
         },
         "ru": {
@@ -5624,7 +5848,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通过 llama.cpp 完全在设备端运行——无云端。"
+            "value": "完全通过 llama.cpp 在设备端运行——无云端。"
           }
         }
       }
@@ -5933,6 +6157,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择一个聊天，或按 ⌘N 开始。"
+          }
+        }
+      }
+    },
+    "Send message": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メッセージを送信"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메시지 보내기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправить сообщение"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发送消息"
           }
         }
       }
@@ -6413,6 +6665,34 @@
         }
       }
     },
+    "Stop generating": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成を停止"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "생성 중지"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить генерацию"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止生成"
+          }
+        }
+      }
+    },
     "Storage": {
       "localizations": {
         "ja": {
@@ -6833,6 +7113,34 @@
         }
       }
     },
+    "This build is demo-only until llama.cpp is linked (xcframework or QUENDERIN_LLAMA_DIR). See QuenderinKit INTEGRATION.md.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llama.cppがリンクされるまで(xcframework または QUENDERIN_LLAMA_DIR)このビルドはデモ専用です。QuenderinKit INTEGRATION.md を参照。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llama.cpp가 연결되기 전까지(xcframework 또는 QUENDERIN_LLAMA_DIR) 이 빌드는 데모 전용입니다. QuenderinKit INTEGRATION.md 참고."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта сборка — только демо, пока не подключён llama.cpp (xcframework или QUENDERIN_LLAMA_DIR). См. QuenderinKit INTEGRATION.md."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在链接 llama.cpp 之前（xcframework 或 QUENDERIN_LLAMA_DIR），此构建仅为演示。见 QuenderinKit INTEGRATION.md。"
+          }
+        }
+      }
+    },
     "This is the model you’re using now.": {
       "localizations": {
         "ja": {
@@ -6997,6 +7305,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "试试 Qwen、Llama、Phi 或 Mistral 这类系列名——或清除上面的筛选。"
+          }
+        }
+      }
+    },
+    "Try one": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "試す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하나 시도"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробуйте"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试试"
           }
         }
       }
@@ -7533,6 +7869,62 @@
         }
       }
     },
+    "Writing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き込み中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작성 중"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пишет"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在写入"
+          }
+        }
+      }
+    },
+    "Writing a reply": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信を作成中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "답변 작성 중"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пишет ответ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在写回复"
+          }
+        }
+      }
+    },
     "You are in charge": {
       "localizations": {
         "ja": {
@@ -7669,6 +8061,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "你正在使用蜂窝网络。此模型较大——请连接 Wi-Fi，或在设置中允许蜂窝下载。"
+          }
+        }
+      }
+    },
+    "You're on the lightest model — quick, but it simplifies and sometimes rambles. For anything that matters, pick a bigger one in the Model library.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最軽量モデルです — 速いですが単純化し、時に冗長です。大事なことはモデルライブラリで大きなものを選んでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 가벼운 모델입니다 — 빠르지만 단순화하고 때로 장황합니다. 중요한 일은 모델 라이브러리에서 더 큰 모델을 고르세요."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У вас самая лёгкая модель — быстро, но упрощает и иногда растекается. Для важного выберите модель побольше в библиотеке."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你在用最轻量模型——快，但会简化并偶尔啰嗦。重要事项请在模型库中选更大的。"
           }
         }
       }

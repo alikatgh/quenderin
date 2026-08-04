@@ -23,11 +23,13 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Prefill phase** | Loading prompt vs Writing labels — shipped. |
 | **Photo attach** | Honest vision-not-yet refusal; pickers accept images — shipped (real vision still ⏳). |
 | **Golden chat gate** | Structural CI on starters/tiers/vision copy — shipped (`npm run check:golden-chat`). |
+| **Desktop general prompt** | Lead-with-answer / no-invent + maxTokens 512 — shipped (aligned with mobile). |
+| **Localization pass** | Engine honesty, generation phase, attach/vision help, download-wait strings in iOS catalog + Android ru/ko/ja/zh — shipped 2026-08-04. |
 
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
-2. **Russian/long Settings strings** — known localization gap (CHANGELOG).
+2. **Remaining SwiftUI localization gaps** — some long concatenated Settings captions still skip the catalog (CHANGELOG). Day-one chat/engine/wait copy is covered.
 3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
 
 ### Owner-only (still)

@@ -7,6 +7,15 @@
 
 ## Unreleased
 
+### Localization + desktop prompt parity (usability)
+- **iOS string catalog**: engine honesty, Loading prompt / Writing phase, attach help (vision not yet),
+  demo banner, Send/Stop a11y — keys in `scripts/translations.tsv` → `Localizable.xcstrings`.
+  Source uses `String(localized:)` where `String` params used to skip the catalog.
+- **Android locales** (ru/ko/ja/zh-rCN): filled 28 missing keys — demo mode, engine row, generation
+  phase, chat starters a11y, download-wait playground tips/scores.
+- **Desktop general preset**: system prompt aligned with mobile ConversationContext (lead-with-answer,
+  no invent); `maxTokens` 512 (was 2048) to curb ramble on small local models.
+
 ### Prefill phase + honest photo refusal + golden chat gate
 - **GenerationPhase** (`loadingPrompt` → `writing`) drives “Loading prompt · Ns” / “Writing · Ns”
   (iOS + Android typing bubbles). Desktop shows “Loading prompt · Ns” during prefill.
