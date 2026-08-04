@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Day-one usability (empty chat is no longer a blank stare)
+- **Starter chips** on empty chat (iOS + Android): Summarize, Rewrite, Translate, Brainstorm,
+  Explain simply, Quick math, Draft email, Packing list — prompts tuned for 1–4B offline models.
+  Paste-ready chips fill the composer; complete prompts send in one tap.
+- **Auto-open first chat** after onboarding when there is no history (skip empty Chats list).
+- **Download ETA** (~N min left) from recent throughput on the wait playground.
+
 ### Download wait is no longer a dead screen
 - **Catch-the-tokens mini-game + rotating tips** while the first model downloads (iOS, Android,
   desktop wizard). Sticky progress stays visible; multi-GB installs used to strand users on a

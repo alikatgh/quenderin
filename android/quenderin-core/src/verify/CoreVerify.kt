@@ -251,6 +251,10 @@ fun main() {
     val onboarding = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
         .apply { onChange = { phases += it } }
     onboarding.start { DeviceProfile(totalRamGB = 8.0, freeRamGB = 6.0) }
+    check("chat starters: 8 offline-friendly first messages",
+        ChatStarters.offlineChat.size == 8 &&
+            ChatStarters.offlineChat.map { it.id }.toSet().size == 8 &&
+            ChatStarters.offlineChat.all { it.title.isNotBlank() && it.prompt.isNotBlank() })
     check("onboarding recommends Qwen3 4B for an 8 GB device",
         (onboarding.phase as? OnboardingPhase.Recommended)?.model?.id == "qwen3-4b")
     onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))

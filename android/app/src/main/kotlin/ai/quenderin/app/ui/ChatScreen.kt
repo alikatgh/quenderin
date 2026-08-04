@@ -9,6 +9,8 @@ import ai.quenderin.app.R
 
 import ai.quenderin.core.AttachedDocument
 import ai.quenderin.core.ChatMessage
+import ai.quenderin.core.ChatStarter
+import ai.quenderin.core.ChatStarters
 import ai.quenderin.core.ConversationExporter
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
@@ -40,6 +42,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,7 +59,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -214,8 +220,46 @@ fun ChatScreen(
             },
         )
 
+        // Shared by composer Send and empty-state starter chips.
+        fun sendCurrent(textOverride: String? = null) {
+            val text = (textOverride ?: input).trim()
+            if (text.isEmpty() && pendingDocuments.isEmpty()) return
+            if (busy) return
+            val docs = pendingDocuments
+            input = ""
+            pendingDocuments = emptyList()
+            attachmentNotice = null
+            busy = true
+            sendError = null
+            sendJob = scope.launch {
+                try {
+                    withContext(Dispatchers.IO) { chat.send(text, docs) }
+                } catch (t: Throwable) {
+                    if (t is kotlinx.coroutines.CancellationException) throw t
+                    Log.e("Quenderin", "chat.send failed", t)
+                    sendError = t.message?.takeIf { it.isNotBlank() }
+                        ?: "${t.javaClass.simpleName}: generation failed"
+                } finally {
+                    withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
+                    busy = false
+                    sendJob = null
+                }
+            }
+        }
+
         if (messages.isEmpty() && !busy) {
-            EmptyState(model, Modifier.weight(1f))
+            EmptyState(
+                model = model,
+                modifier = Modifier.weight(1f),
+                onStarter = { starter ->
+                    // Paste-ready prompts end with ":\n\n" — fill composer. Others send now.
+                    if (starter.prompt.endsWith(":\n\n") || starter.prompt.endsWith(":\n")) {
+                        input = starter.prompt
+                    } else {
+                        sendCurrent(starter.prompt)
+                    }
+                },
+            )
         } else {
             LazyColumn(
                 state = listState,
@@ -344,41 +388,7 @@ fun ChatScreen(
             canSendWithAttachments = pendingDocuments.isNotEmpty(),
             onInput = { input = it },
             onAttach = { pickDocument.launch(arrayOf("text/*", "application/json", "application/*")) },
-            onSend = {
-                val text = input.trim()
-                // Documents alone are a legitimate send ("summarize this") — twin of ChatModel.
-                if (text.isEmpty() && pendingDocuments.isEmpty()) return@Composer
-                val docs = pendingDocuments
-                input = ""
-                pendingDocuments = emptyList()
-                attachmentNotice = null
-                // Flip busy synchronously on the main thread so a rapid double-tap can't enqueue a
-                // second send before the flag is set.
-                busy = true
-                sendError = null
-                // Launch on Main and hop to IO only for the blocking generation, so every Compose state
-                // write (busy/sendError, and messages via onChange) stays on the main thread (Q-228) — the
-                // engine's onChange fires from IO, but the state assignments here don't.
-                sendJob = scope.launch {
-                    try {
-                        withContext(Dispatchers.IO) { chat.send(text, docs) }
-                    } catch (t: Throwable) {
-                        // Do NOT swallow: surface + log the reason. A silent catch makes a real
-                        // failure indistinguishable from the app ignoring the message. Cancellation from
-                        // Stop is normal control flow, not an error — don't show it as one.
-                        if (t is kotlinx.coroutines.CancellationException) throw t
-                        Log.e("Quenderin", "chat.send failed", t)
-                        sendError = t.message?.takeIf { it.isNotBlank() }
-                            ?: "${t.javaClass.simpleName}: generation failed"
-                    } finally {
-                        // persist() runs even after Stop/cancel (NonCancellable) so the streamed partial is
-                        // saved, and it stops-then-snapshots so nothing further bleeds in.
-                        withContext(kotlinx.coroutines.NonCancellable) { coordinator.persist() }
-                        busy = false
-                        sendJob = null
-                    }
-                }
-            },
+            onSend = { sendCurrent() },
             onStop = {
                 // Real stop: end the native decode now (not one token late / dead during prefill) and
                 // cancel the coroutine so its blocking send unwinds. The streamed partial stays. (Q-005)
@@ -638,10 +648,18 @@ private fun DayDivider(text: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun EmptyState(model: ModelEntry, modifier: Modifier) {
+private fun EmptyState(
+    model: ModelEntry,
+    modifier: Modifier,
+    onStarter: (ChatStarter) -> Unit = {},
+) {
     Column(
-        modifier.fillMaxWidth().padding(32.dp),
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -660,6 +678,44 @@ private fun EmptyState(model: ModelEntry, modifier: Modifier) {
             modifier = Modifier.widthIn(max = 280.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.chat_try_one),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .widthIn(max = 340.dp)
+                .fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            modifier = Modifier.widthIn(max = 340.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ChatStarters.offlineChat.forEach { starter ->
+                val chipDesc = stringResource(R.string.chat_try_starter_a11y, starter.title)
+                Surface(
+                    onClick = { onStarter(starter) },
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f),
+                    ),
+                    modifier = Modifier.semantics { contentDescription = chipDesc },
+                ) {
+                    Text(
+                        starter.title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

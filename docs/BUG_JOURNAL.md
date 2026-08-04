@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — Product felt “not usable” despite green CI: empty chat + empty Chats list dead-ends.
+  Fix: ChatStarters (8 offline-friendly chips) on iOS/Android empty chat; auto-open first chat after
+  onboarding; download ETA from velocity. Lesson: ship-ready ≠ day-one usable — empty states need
+  one-tap first success, not “Ask anything” prose alone.
 - 2026-08-04 — First-run multi-GB model download was a dead progress ring (impatience bounce).
   UX: DownloadWaitPlayground on iOS + Android + desktop — sticky progress, rotating privacy tips,
   “catch the tokens” mini-game; desktop can continue wizard while download runs in background.

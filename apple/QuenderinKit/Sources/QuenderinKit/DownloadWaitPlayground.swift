@@ -26,6 +26,29 @@ public enum DownloadWaitTips {
     }
 }
 
+/// Estimate remaining download time from (time, progress) samples. Pure for unit tests.
+public enum DownloadETA {
+    /// Returns a short label like "~2 min left", or nil if not enough data.
+    public static func estimate(samples: [(Date, Double)], progress: Double, now: Date = Date()) -> String? {
+        guard progress > 0.02, progress < 0.99, samples.count >= 2 else { return nil }
+        let recent = samples.filter { now.timeIntervalSince($0.0) <= 30 }
+        guard let first = recent.first, let last = recent.last else { return nil }
+        let dt = last.0.timeIntervalSince(first.0)
+        let dp = last.1 - first.1
+        guard dt >= 2, dp > 0.005 else { return nil }
+        let rate = dp / dt // progress fraction per second
+        let remaining = (1.0 - progress) / rate
+        guard remaining.isFinite, remaining > 0, remaining < 6 * 3600 else { return nil }
+        if remaining < 60 { return "~\(max(1, Int(remaining.rounded())))s left" }
+        if remaining < 3600 {
+            let m = Int((remaining / 60).rounded())
+            return "~\(max(1, m)) min left"
+        }
+        let h = remaining / 3600
+        return String(format: "~%.1f h left", h)
+    }
+}
+
 /// Lightweight “catch the tokens” arcade state for the download wait screen.
 /// Pure value type — UI drives tick/tap; no timers inside.
 public struct TokenCatchGame: Equatable, Sendable {
@@ -95,6 +118,7 @@ public struct DownloadWaitPlayground: View {
     var onCancel: () -> Void
 
     @State private var game = TokenCatchGame()
+    @State private var etaSamples: [(Date, Double)] = []
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -112,6 +136,11 @@ public struct DownloadWaitPlayground: View {
         self.onCancel = onCancel
     }
 
+    /// Remaining time from recent progress velocity (nil until enough samples).
+    private var etaLabel: String? {
+        DownloadETA.estimate(samples: etaSamples, progress: progress)
+    }
+
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         let pct = Int((progress * 100).rounded())
@@ -121,16 +150,29 @@ public struct DownloadWaitPlayground: View {
                 HStack(spacing: 8) {
                     ModelAvatar(size: 28, modelID: modelID)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Downloading · \(pctClamped)%")
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(p.onSurface)
-                            .accessibilityAddTraits(.updatesFrequently)
+                        HStack(spacing: 8) {
+                            Text("Downloading · \(pctClamped)%")
+                                .font(.caption.monospacedDigit().weight(.semibold))
+                                .foregroundStyle(p.onSurface)
+                                .accessibilityAddTraits(.updatesFrequently)
+                            if let etaLabel {
+                                Text(etaLabel)
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(p.onSurfaceVariant)
+                            }
+                        }
                         Text("\(modelLabel) · \(sizeLabel)")
                             .font(.caption2)
                             .foregroundStyle(p.onSurfaceVariant)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
+                }
+                .onChange(of: progress) { newProgress in
+                    let now = Date()
+                    etaSamples.append((now, newProgress))
+                    // Keep ~30s of samples
+                    etaSamples = etaSamples.filter { now.timeIntervalSince($0.0) < 30 }
                 }
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {

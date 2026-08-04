@@ -2,6 +2,27 @@ import XCTest
 @testable import QuenderinKit
 
 final class DownloadWaitPlaygroundTests: XCTestCase {
+    func testChatStartersPack() {
+        XCTAssertEqual(ChatStarters.offlineChat.count, 8)
+        XCTAssertEqual(Set(ChatStarters.offlineChat.map(\.id)).count, 8, "starter ids must be unique")
+        for s in ChatStarters.offlineChat {
+            XCTAssertFalse(s.title.isEmpty)
+            XCTAssertFalse(s.prompt.isEmpty)
+        }
+    }
+
+    func testDownloadETANeedsSamples() {
+        XCTAssertNil(DownloadETA.estimate(samples: [], progress: 0.5))
+        let t0 = Date(timeIntervalSinceReferenceDate: 1000)
+        let samples = [
+            (t0, 0.10),
+            (t0.addingTimeInterval(10), 0.30),
+        ]
+        let label = DownloadETA.estimate(samples: samples, progress: 0.30, now: t0.addingTimeInterval(10))
+        XCTAssertNotNil(label)
+        XCTAssertTrue(label!.contains("left"), label ?? "nil")
+    }
+
     func testTipsNonEmptyAndRotate() {
         XCTAssertGreaterThanOrEqual(DownloadWaitTips.all.count, 4)
         let a = DownloadWaitTips.tip(at: Date(timeIntervalSinceReferenceDate: 0), rotateEverySeconds: 6)

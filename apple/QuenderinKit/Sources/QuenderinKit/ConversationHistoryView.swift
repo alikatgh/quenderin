@@ -36,6 +36,14 @@ public struct ChatHomeView: View {
         .onChange(of: showConversation) { open in
             if !open { coordinator.persist() }
         }
+        // First open after onboarding: skip the empty "No conversations yet" list and land in a
+        // blank chat with starter chips. Returning users with history still see the list.
+        .onAppear {
+            if coordinator.summaries.isEmpty, !showConversation {
+                coordinator.startNew()
+                showConversation = true
+            }
+        }
     }
 
     @ViewBuilder

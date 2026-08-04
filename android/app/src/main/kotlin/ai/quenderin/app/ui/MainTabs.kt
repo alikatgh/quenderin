@@ -159,8 +159,21 @@ private fun ChatTab(
 ) {
     val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
     var summaries by remember { mutableStateOf(coordinator.summaries) }
-    var inConversation by remember { mutableStateOf(false) }
-    LaunchedEffect(coordinator) { coordinator.onChange = { summaries = it } }
+    // First-open after onboarding: skip the empty Chats list (a dead end) and land in a blank
+    // chat with starter chips. Returning users with saved threads still see the list.
+    var inConversation by remember {
+        mutableStateOf(coordinator.summaries.isEmpty())
+    }
+    LaunchedEffect(coordinator) {
+        coordinator.onChange = { summaries = it }
+        if (coordinator.summaries.isEmpty() && !inConversation) {
+            coordinator.startNew()
+            inConversation = true
+        } else if (coordinator.summaries.isEmpty() && inConversation) {
+            // Ensure an open conversation exists for the empty-state starters.
+            coordinator.startNew()
+        }
+    }
 
     if (inConversation) {
         ChatScreen(

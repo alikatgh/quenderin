@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -74,11 +75,22 @@ fun DownloadWaitPlayground(
         )
     }
     var tipIndex by remember { mutableIntStateOf(0) }
+    // (elapsedMs, fraction) samples for ETA
+    val etaSamples = remember { mutableStateListOf<Pair<Long, Float>>() }
+    var etaLabel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(6_000)
             tipIndex = (tipIndex + 1) % tips.size
         }
+    }
+    LaunchedEffect(fraction) {
+        val now = System.currentTimeMillis()
+        etaSamples.add(now to fraction)
+        while (etaSamples.isNotEmpty() && now - etaSamples.first().first > 30_000) {
+            etaSamples.removeAt(0)
+        }
+        etaLabel = estimateEta(etaSamples.toList(), fraction)
     }
 
     val scheme = MaterialTheme.colorScheme
@@ -95,13 +107,26 @@ fun DownloadWaitPlayground(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                stringResource(R.string.wait_downloading_pct, pct),
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontFeatureSettings = "tnum",
-                ),
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.wait_downloading_pct, pct),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                )
+                etaLabel?.let { eta ->
+                    Text(
+                        eta,
+                        style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
             Text(
                 "$modelLabel · $sizeLabel",
                 style = MaterialTheme.typography.bodySmall,
@@ -190,6 +215,24 @@ fun DownloadWaitPlayground(
         TextButton(onClick = onCancel) {
             Text(stringResource(R.string.wait_cancel_download))
         }
+    }
+}
+
+/** Remaining-time label from (timestampMs, fraction) samples — twin of iOS DownloadETA. */
+internal fun estimateEta(samples: List<Pair<Long, Float>>, progress: Float): String? {
+    if (progress <= 0.02f || progress >= 0.99f || samples.size < 2) return null
+    val first = samples.first()
+    val last = samples.last()
+    val dtSec = (last.first - first.first) / 1000.0
+    val dp = (last.second - first.second).toDouble()
+    if (dtSec < 2.0 || dp <= 0.005) return null
+    val rate = dp / dtSec
+    val remaining = (1.0 - progress) / rate
+    if (!remaining.isFinite() || remaining <= 0 || remaining >= 6 * 3600) return null
+    return when {
+        remaining < 60 -> "~${maxOf(1, remaining.toInt())}s left"
+        remaining < 3600 -> "~${maxOf(1, (remaining / 60).toInt())} min left"
+        else -> String.format("~%.1f h left", remaining / 3600.0)
     }
 }
 

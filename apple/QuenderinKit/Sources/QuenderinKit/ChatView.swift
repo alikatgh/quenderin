@@ -123,8 +123,22 @@ public struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     if model.messages.isEmpty, !model.isGenerating {
-                        EmptyChatState(palette: p, activeModel: activeModel)
-                            .frame(maxWidth: .infinity, minHeight: 360)
+                        EmptyChatState(
+                            palette: p,
+                            activeModel: activeModel,
+                            onStarter: { starter in
+                                // Prompts that end with ":\n\n" want the user to paste — fill draft.
+                                // Complete prompts send immediately so first-run is one tap.
+                                if starter.prompt.hasSuffix(":\n\n") || starter.prompt.hasSuffix(":\n") {
+                                    draft = starter.prompt
+                                    composerFocused = true
+                                } else {
+                                    draft = starter.prompt
+                                    send()
+                                }
+                            }
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 360)
                     } else {
                         // macOS: plain VStack (LazyVStack remeasure jank). iOS: lazy for memory.
                         transcriptStack(spacing: settings.messageDensity.spacing) {
@@ -393,7 +407,7 @@ public struct ChatView: View {
             .help("Attach a text or PDF file to this message")
             .accessibilityLabel("Attach a file")
 
-            TextField("Message", text: $draft)
+            TextField("Message — or try a suggestion above", text: $draft)
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.send)
@@ -732,6 +746,7 @@ private struct DayDivider: View {
 private struct EmptyChatState: View {
     let palette: QuenderinPalette
     var activeModel: ModelEntry? = nil
+    var onStarter: ((ChatStarter) -> Void)? = nil
 
     /// True when the loaded model's quantization is graded "Low" — the honest heads-up
     /// belongs BEFORE the first disappointing answer, not buried in the profile sheet.
@@ -742,10 +757,16 @@ private struct EmptyChatState: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            ModelAvatar(size: 72)
-            Text("Ask Quenderin anything")
-                .font(.title3.weight(.medium))
-                .foregroundStyle(palette.onSurface)
+            ModelAvatar(size: 72, modelID: activeModel?.id)
+            if let label = activeModel?.label {
+                Text("Ask \(label)")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(palette.onSurface)
+            } else {
+                Text("Ask Quenderin anything")
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(palette.onSurface)
+            }
             Text("Runs entirely on your \(deviceNoun). Nothing you type leaves the device.")
                 .font(.subheadline)
                 .foregroundStyle(palette.onSurfaceVariant)
@@ -758,6 +779,44 @@ private struct EmptyChatState: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
                     .padding(.top, 2)
+            }
+            // Starters turn a blank chat into a one-tap first success with small models.
+            if let onStarter {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Try one")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // FlowLayout isn't available on older OS — simple wrapping via adaptive grid.
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 140), spacing: 8)],
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+                        ForEach(ChatStarters.offlineChat) { starter in
+                            Button {
+                                onStarter(starter)
+                            } label: {
+                                Text(starter.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(palette.onSurface)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(palette.surfaceVariant, in: RoundedRectangle(cornerRadius: 10))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .strokeBorder(palette.onSurfaceVariant.opacity(0.14), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Try: \(starter.title)")
+                            .accessibilityHint(starter.prompt)
+                        }
+                    }
+                }
+                .frame(maxWidth: 340)
+                .padding(.top, 10)
             }
         }
         .padding(32)
