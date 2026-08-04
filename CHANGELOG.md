@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Ship path: no silent mock releases
+- **Android release/bundle fails** without `jni/llama.cpp` (escape: `-Pquenderin.allowMockRelease=true`).
+- **BuildConfig.QUENDERIN_HAS_NATIVE_LLAMA** + Settings “Inference engine” row (real vs demo).
+- Mock canned reply no longer pretends to be real on-device AI (iOS + Android).
+
 ### ChatTier + honest demo mode
 - **ChatTier** (tiny ≤2B / small ≤5.5B / full): shorter maxTokens + tighter prompt for small models
   (iOS GenerationOptions + Android LlamaEngine override).

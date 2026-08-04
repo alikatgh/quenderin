@@ -26,10 +26,12 @@ states the app ships in and how to cross the on-device cliff.
 > real engine. Matches the iOS twin (Mac Metal + simulated iPhone). Physical-phone tok/s/
 > battery/thermals are the only thing left to measure.
 
-The app **boots on `MockInferenceEngine`** so the whole onboarding → chat flow runs the
-moment you open it in Android Studio — no llama.cpp required. `MainActivity` switches to
-the real `LlamaEngine` automatically once `libquenderin_llama.so` is present. So you can
-ship/run the shell first and link llama.cpp second.
+The app **boots on `MockInferenceEngine`** when `jni/llama.cpp` is absent so onboarding → chat
+runs in Android Studio without NDK. `MainActivity` switches to real `LlamaEngine` automatically
+once `libquenderin_llama.so` is present (Gradle auto-enables `externalNativeBuild` when the
+checkout exists). **Demo mode is labeled in chat + Settings** and mock replies say they are
+canned. **Release/bundle builds fail** without `jni/llama.cpp` unless you pass
+`-Pquenderin.allowMockRelease=true` (intentional demo APK only).
 
 ## Step 1 — open + run on the mock
 

@@ -48,6 +48,8 @@ android {
         versionName = "0.2.0"
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
+        // Compile-time mirror of "will this APK load libquenderin_llama.so?" — UI/Settings read it.
+        buildConfigField("boolean", "QUENDERIN_HAS_NATIVE_LLAMA", if (nativeLlama) "true" else "false")
 
         if (nativeLlama) {
             ndk { abiFilters += listOf("arm64-v8a") }   // add "x86_64" for x86 emulators
@@ -118,6 +120,26 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
+}
+
+// Release artifacts without native llama silently ship demo-mode chat. Fail closed unless
+// explicitly allowed (CI debug builds use assembleDebug and stay mock-friendly).
+// Escape hatch: ./gradlew :app:bundleRelease -Pquenderin.allowMockRelease=true
+gradle.taskGraph.whenReady {
+    val releaseTasks = allTasks.filter {
+        it.path.endsWith(":app:assembleRelease") || it.path.endsWith(":app:bundleRelease")
+    }
+    if (releaseTasks.isNotEmpty() && !nativeLlama) {
+        val allow = project.findProperty("quenderin.allowMockRelease")?.toString() == "true"
+        if (!allow) {
+            throw GradleException(
+                "Release requires android/jni/llama.cpp (real on-device engine). " +
+                    "Clone per android/INTEGRATION.md, or pass -Pquenderin.allowMockRelease=true " +
+                    "for an intentional demo APK. assembleDebug stays mock-friendly without it."
+            )
+        }
+        logger.warn("WARNING: release build with mock engine (quenderin.allowMockRelease=true)")
+    }
 }
 
 dependencies {

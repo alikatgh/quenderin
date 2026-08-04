@@ -133,6 +133,15 @@ fun SettingsScreen(
         SettingsGroup("Model") {
             LabeledRow("Active model", model.label)
             LabeledRow("Size", model.sizeLabel)
+            val engineStatus = if (ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
+                stringResource(R.string.settings_engine_real)
+            } else {
+                stringResource(R.string.settings_engine_demo)
+            }
+            LabeledRow(stringResource(R.string.settings_engine), engineStatus)
+            if (!ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
+                Caption(stringResource(R.string.settings_engine_demo_hint))
+            }
             OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.model_change))
             }

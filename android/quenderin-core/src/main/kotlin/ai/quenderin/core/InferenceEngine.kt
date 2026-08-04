@@ -94,9 +94,14 @@ interface InferenceEngine {
 
 class EngineNotLoadedException : IllegalStateException("No model is loaded")
 
-/** Canned engine for previews, tests, and bringing up the app before JNI exists. */
+/**
+ * Canned engine for previews, tests, and bringing up the app before JNI exists.
+ * Default reply is **honest about demo mode** so UI/dev never confuses mock with real llama.
+ */
 class MockInferenceEngine(
-    private val cannedReply: String = "Hello from Quenderin — running on-device, offline.",
+    private val cannedReply: String =
+        "Demo mode: this build has no native llama.cpp. Replies are canned until you link " +
+            "libquenderin_llama.so (see android/INTEGRATION.md). Your UI and download flow still work.",
 ) : InferenceEngine {
     override var loadedModelId: String? = null
         private set

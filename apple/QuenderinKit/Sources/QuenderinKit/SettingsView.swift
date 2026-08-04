@@ -420,6 +420,15 @@ public struct SettingsView: View {
         Section("Model") {
                 LabeledRow(title: "Active model", value: model.label)
                 LabeledRow(title: "Size", value: model.sizeLabel)
+                LabeledRow(
+                    title: "Inference engine",
+                    value: DefaultInferenceEngine.isReal ? "On-device (llama.cpp)" : "Demo (mock)"
+                )
+                if !DefaultInferenceEngine.isReal {
+                    Text("This build is demo-only until llama.cpp is linked (xcframework or QUENDERIN_LLAMA_DIR). See QuenderinKit INTEGRATION.md.")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
                 Button { showPicker = true } label: {
                     Label("Change model…", systemImage: "arrow.triangle.2.circlepath")
                 }

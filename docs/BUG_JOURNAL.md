@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — Release could ship mock chat as if real; mock replies said “on-device offline”.
+  Fix: release/bundle fail without jni/llama.cpp (-Pquenderin.allowMockRelease escape);
+  BuildConfig + Settings engine row; honest mock canned text. Lesson: fail closed on ship
+  path; demo must self-identify in product copy AND build graph.
 - 2026-08-04 — Mock builds silently looked “real”; 1B models needed shorter caps than 7B.
   Fix: Demo-mode banner when llama not linked; ChatTier (tiny/small/full) maxTokens + prompt
   suffix; send(model:) wires tier on iOS+Android. Lesson: never let canned replies masquerade

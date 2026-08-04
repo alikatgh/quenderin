@@ -7,7 +7,8 @@ public actor MockInferenceEngine: InferenceEngine {
     private var loaded: String?
     private let cannedReply: String
 
-    public init(cannedReply: String = "Hello from Quenderin — running fully on-device, offline.") {
+    /// Default reply is honest about demo mode so UI/dev never confuses mock with real llama.
+    public init(cannedReply: String = "Demo mode: this build has no native llama.cpp. Replies are canned until llama is linked (see QuenderinKit INTEGRATION.md). Your UI and download flow still work.") {
         self.cannedReply = cannedReply
     }
 
