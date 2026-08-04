@@ -235,7 +235,7 @@ fun ChatScreen(
             sendError = null
             sendJob = scope.launch {
                 try {
-                    withContext(Dispatchers.IO) { chat.send(text, docs) }
+                    withContext(Dispatchers.IO) { chat.send(text, docs, model) }
                 } catch (t: Throwable) {
                     if (t is kotlinx.coroutines.CancellationException) throw t
                     Log.e("Quenderin", "chat.send failed", t)
@@ -319,6 +319,21 @@ fun ChatScreen(
                     Text(stringResource(R.string.chat_retry))
                 }
             }
+        }
+
+        if (!ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
+            Text(
+                stringResource(R.string.chat_demo_mode),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp)
+                    .semantics {
+                        contentDescription = "Demo mode. Replies are canned until native llama is linked."
+                    },
+            )
         }
 
         Text(

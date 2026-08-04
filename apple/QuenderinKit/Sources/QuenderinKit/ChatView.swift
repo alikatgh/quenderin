@@ -92,7 +92,7 @@ public struct ChatView: View {
             return
         }
         agentSuggestion = nil
-        Task { await model.send(prompt, documents: documents) }
+        Task { await model.send(prompt, documents: documents, model: activeModel) }
     }
 
     /// Latest computer-task handoff target — O(n) once per body, not O(n²) per bubble.
@@ -269,6 +269,17 @@ public struct ChatView: View {
                     onDismiss: { suggestionDismissed = true }
                 )
                 .frame(maxWidth: 760)
+            }
+
+            if !DefaultInferenceEngine.isReal {
+                // Honest: this build is UI-only until llama.cpp is linked (xcframework / QUENDERIN_LLAMA_DIR).
+                Text("Demo mode — replies are canned until this build links a real on-device model engine.")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal)
+                    .accessibilityLabel("Demo mode. Replies are canned until a real on-device engine is linked.")
             }
 
             Text(SupportContact.aiDisclaimer)

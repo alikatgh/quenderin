@@ -255,6 +255,12 @@ fun main() {
         ChatStarters.offlineChat.size == 8 &&
             ChatStarters.offlineChat.map { it.id }.toSet().size == 8 &&
             ChatStarters.offlineChat.all { it.title.isNotBlank() && it.prompt.isNotBlank() })
+    check("chat tiers: tiny < small < full maxTokens",
+        ChatTier.TINY.maxTokens < ChatTier.SMALL.maxTokens &&
+            ChatTier.SMALL.maxTokens < ChatTier.FULL.maxTokens &&
+            ChatTier.of(1.0) == ChatTier.TINY &&
+            ChatTier.of(4.0) == ChatTier.SMALL &&
+            ChatTier.of(7.0) == ChatTier.FULL)
     check("onboarding recommends Qwen3 4B for an 8 GB device",
         (onboarding.phase as? OnboardingPhase.Recommended)?.model?.id == "qwen3-4b")
     onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))

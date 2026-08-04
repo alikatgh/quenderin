@@ -50,6 +50,7 @@
     <string name="chat_thinking">Thinking…</string>
     <string name="chat_thinking_elapsed">Thinking · %1$ds</string>
     <string name="chat_retry">Retry</string>
+    <string name="chat_demo_mode">Demo mode — replies are canned until this APK links native llama.cpp (see android/INTEGRATION.md).</string>
     <string name="chat_day_today">Today</string>
     <string name="chat_send">Send message</string>
     <string name="chat_stop">Stop generating</string>

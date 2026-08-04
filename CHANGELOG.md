@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+### ChatTier + honest demo mode
+- **ChatTier** (tiny ≤2B / small ≤5.5B / full): shorter maxTokens + tighter prompt for small models
+  (iOS GenerationOptions + Android LlamaEngine override).
+- **Demo-mode banner** when the build has no native llama (mock engine) — no more fake “on-device” chat.
+- Desktop empty-state suggestions aligned with mobile offline starters; Thinking · Ns on desktop too.
+
 ### Chat feels alive during prefill + sharper small-model prompt
 - **“Thinking · Ns”** on the typing bubble (iOS + Android) so multi-second prefill isn’t a frozen UI.
 - **System prompt** rewritten for 1–4B: lead with the answer, short bullets, no inventing facts/URLs/tool

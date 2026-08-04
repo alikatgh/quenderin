@@ -117,9 +117,21 @@ public final class ChatModel: ObservableObject {
     /// Send a prompt and stream the reply. No-ops on empty input (unless documents are
     /// attached — "summarize this file" with no extra words is a legitimate send) or while a
     /// previous generation is still running.
-    public func send(_ prompt: String, documents: [AttachedDocument] = [], options: GenerationOptions = .init()) async {
+    ///
+    /// - Parameter model: when set, applies [ChatTier] maxTokens + system-prompt suffix for that
+    ///   model's size class (1B stays short; 7B+ gets full budget).
+    public func send(
+        _ prompt: String,
+        documents: [AttachedDocument] = [],
+        options: GenerationOptions? = nil,
+        model: ModelEntry? = nil
+    ) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
+
+        let tier = ChatTier.of(model: model)
+        let resolvedOptions = options ?? tier.chatOptions
+        let systemPrompt = tier.systemPrompt
 
         isGenerating = true
         stopRequested = false
@@ -139,7 +151,12 @@ public final class ChatModel: ObservableObject {
         // Template-less engines fall back to the flat transcript; the assistant remembers prior
         // turns either way. Attached documents are composed in (engineText) BEFORE windowing so
         // the token budget counts them.
-        let windowed = context.windowedHistory(messages.map { message in
+        let budgetContext = ConversationContext(
+            systemPrompt: systemPrompt,
+            contextTokens: context.contextTokens,
+            reservedForResponse: context.reservedForResponse
+        )
+        let windowed = budgetContext.windowedHistory(messages.map { message in
             guard !message.documents.isEmpty else { return message }
             var composed = message
             composed.text = message.engineText
@@ -153,7 +170,7 @@ public final class ChatModel: ObservableObject {
         var tokenCount = 0
         var hitDegeneration = false
         do {
-            let stream = try await engine.generateChat(system: context.systemPrompt, history: windowed, options: options)
+            let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
                 // Dropping the iterator on break terminates the stream (the engine's
                 // onTermination stops decoding), so Stop also stops the compute.
@@ -187,7 +204,7 @@ public final class ChatModel: ObservableObject {
         }
         // Token-cap mid-sentence → Continue. Count is per streamed piece from the UTF-8 decoder
         // (≈ per token on iOS). Not Stop, not degeneration, and we hit the budget.
-        if !stopRequested, !hitDegeneration, tokenCount >= options.maxTokens {
+        if !stopRequested, !hitDegeneration, tokenCount >= resolvedOptions.maxTokens {
             lastHitTokenCap = true
         }
         if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }

@@ -30,11 +30,12 @@ const PRESET_OPTIONS = [
     { id: 'summarizer', label: 'Summary', Icon: FileText },
 ];
 
+// Offline-friendly starters (aligned with mobile ChatStarters — what 1–4B models do well).
 const SUGGESTIONS = [
-    { text: 'Write a Python script to parse CSV files', icon: Code },
-    { text: 'Explain quantum computing simply', icon: GraduationCap },
-    { text: 'Draft a professional email template', icon: PenTool },
-    { text: 'Summarize the key ideas of stoicism', icon: FileText },
+    { text: 'Give me 5 practical dinner ideas that use eggs and rice. One line each.', icon: Sparkles },
+    { text: 'Explain jet lag like I\'m 12 years old — short paragraphs, no jargon.', icon: GraduationCap },
+    { text: 'What is 17% of 240? Show the arithmetic in one line.', icon: Code },
+    { text: 'Draft a short, polite email declining a meeting because of a schedule conflict. Under 80 words.', icon: PenTool },
 ];
 
 /** Strip <tool_call>...</tool_call> XML from rendered text */
@@ -58,10 +59,21 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
     const [lastSentPayload, setLastSentPayload] = useState<{ message: string, attachments: { name: string, content: string }[] } | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [thinkingSec, setThinkingSec] = useState(0);
 
     const chatLogs = logs.filter(l => ['chat', 'chat_response', 'error'].includes(l.type));
     const lastUserMessage = [...logs].reverse().find((l) => l.type === 'chat')?.message;
     const retryAttachmentCount = lastSentPayload?.attachments?.length ?? 0;
+
+    useEffect(() => {
+        if (status !== 'running') {
+            setThinkingSec(0);
+            return;
+        }
+        setThinkingSec(0);
+        const id = window.setInterval(() => setThinkingSec((s) => s + 1), 1000);
+        return () => clearInterval(id);
+    }, [status]);
 
     const lastLogKey = chatLogs.length > 0
         ? `${chatLogs.length}-${chatLogs[chatLogs.length - 1]?.message?.length ?? 0}`
@@ -331,12 +343,15 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                         <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-500/15 flex flex-shrink-0 items-center justify-center mt-0.5">
                                             <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                                         </div>
-                                        <div className="flex items-center gap-2 pt-1.5">
+                                        <div className="flex items-center gap-2.5 pt-1.5">
                                             <div className="flex gap-1">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                                                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
                                                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                                             </div>
+                                            <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+                                                {thinkingSec < 2 ? 'Thinking…' : `Thinking · ${thinkingSec}s`}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

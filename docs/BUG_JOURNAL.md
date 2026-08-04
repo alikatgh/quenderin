@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — Mock builds silently looked “real”; 1B models needed shorter caps than 7B.
+  Fix: Demo-mode banner when llama not linked; ChatTier (tiny/small/full) maxTokens + prompt
+  suffix; send(model:) wires tier on iOS+Android. Lesson: never let canned replies masquerade
+  as on-device AI; size knobs are free quality.
 - 2026-08-04 — Long prefill looked frozen (dots only); small models rambled / hallucinated tools.
   Fix: TypingBubble “Thinking · Ns”; system prompt lead-with-answer + no invent facts/URLs/actions
   (iOS+Android twins). Android gen error → Retry fills composer. Lesson: time honesty during TTFT

@@ -47,6 +47,13 @@ class LlamaEngine(
     private var handle: Long = 0L
 
     /**
+     * Per-send chat decode cap from [ChatTier] (tiny models get 256, full 512). Null → [maxTokens].
+     * Written on the UI/send path before [completeChat]; read under [lock] inside generation.
+     */
+    @Volatile
+    var chatMaxTokensOverride: Int? = null
+
+    /**
      * When true, reasoning models (Qwen3, DeepSeek-R1) are allowed to emit their <think> chain before
      * answering — slower but shows the model's reasoning. Default OFF: fast, direct replies (the native
      * side closes an empty think block). Toggled from Settings ("Deep thinking"). @Volatile: read on the
@@ -204,7 +211,8 @@ class LlamaEngine(
                         .append('\u001F').append(clean(m.text)).append('\u001E')
                 }
             }
-            nativeCompleteChatStreaming(handle, payload, maxTokens, !enableThinking, TokenSink { onToken(it) })
+            val cap = chatMaxTokensOverride ?: maxTokens
+            nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { onToken(it) })
         }
 
     private fun ensureReady() {

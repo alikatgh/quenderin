@@ -104,7 +104,7 @@ class ChatModel(
      * race two writers onto the transcript.
      */
     @JvmOverloads
-    fun send(text: String, documents: List<AttachedDocument> = emptyList()): String {
+    fun send(text: String, documents: List<AttachedDocument> = emptyList(), model: ModelEntry? = null): String {
         val trimmed = text.trim()
         // Documents alone are a legitimate send ("summarize this file" with no extra words). Twin-drift
         // fix: an empty send is a SILENT no-op (return ""), matching iOS ChatModel's `guard … else { return }`
@@ -112,6 +112,10 @@ class ChatModel(
         // while iOS ignored it, and it was inconsistent even with this file's own already-generating guard
         // (which returns "" too).
         if (trimmed.isEmpty() && documents.isEmpty()) return ""
+        val tier = ChatTier.of(model)
+        val systemPrompt = tier.systemPrompt
+        // Cap decode for tiny models (LlamaEngine honors chatMaxTokensOverride).
+        (engine as? LlamaEngine)?.chatMaxTokensOverride = tier.maxTokens
         // The user line + placeholder assistant slot + this generation's id are established atomically
         // under the lock, so a concurrent reset/restore either happens fully before (this send sees the
         // new transcript) or fully after (it bumps our id and we drop our writes below), never
@@ -134,7 +138,12 @@ class ChatModel(
             // template (early-stop + higher quality). Trimmed to the engine's REAL loaded n_ctx (often
             // 512–2048 on phones), not a hardcoded 4096 that would overflow the native window (Q-167).
             // Attached documents are composed in (engineText) BEFORE windowing so the budget counts them.
-            history = context.windowedHistory(
+            val budgetCtx = ConversationContext(
+                systemPrompt = systemPrompt,
+                contextTokens = context.contextTokens,
+                reservedForResponse = context.reservedForResponse,
+            )
+            history = budgetCtx.windowedHistory(
                 _messages.map { if (it.documents.isEmpty()) it else it.copy(text = it.engineText, documents = emptyList()) },
                 engine.loadedContextTokens,
             )
@@ -150,7 +159,7 @@ class ChatModel(
             var tokenCount = 0
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
-            val reply = engine.completeChat(context.systemPrompt, history) { piece ->
+            val reply = engine.completeChat(systemPrompt, history) { piece ->
                 sb.append(piece)
                 // Degeneration guard: if the tail is verbatim-looping despite the sampler's repetition
                 // penalty, stop paying for tokens — the settle-time collapse below cleans up. Checked every
