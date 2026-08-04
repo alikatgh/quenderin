@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Download wait is no longer a dead screen
+- **Catch-the-tokens mini-game + rotating tips** while the first model downloads (iOS, Android,
+  desktop wizard). Sticky progress stays visible; multi-GB installs used to strand users on a
+  percentage ring only.
+- **Desktop:** setup wizard can continue (voice step) while the model keeps downloading in the
+  background — no more disabled “Next” trap.
+
 ### Paged MoE — frontier-class agent quality on 16 GB machines
 - **New catalog flagship: Qwen3.6 35B MoE** (`qwen36-35b-a3b`, UD-IQ3_XXS, 13.2 GB, sha256-pinned,
   all platforms + shared manifest). Only ~3B of 35B params run per token, so with mmap the OS page

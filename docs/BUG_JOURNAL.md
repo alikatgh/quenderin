@@ -568,6 +568,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-04 — First-run multi-GB model download was a dead progress ring (impatience bounce).
+  UX: DownloadWaitPlayground on iOS + Android + desktop — sticky progress, rotating privacy tips,
+  “catch the tokens” mini-game; desktop can continue wizard while download runs in background.
+  Pure game engine unit-tested (iOS). Lesson: never strand users on wait-only screens for multi-GB.
 - 2026-08-04 — main CI red: Android JNI syntax-check + `npm audit --audit-level=high`.
   Cause: llama.cpp HEAD dropped `use_mmap`/`use_mlock` for `load_mode`; root had high/critical
   transitive vulns (brace-expansion@5, sharp via transformers). Fix: dual-API `#if` + header

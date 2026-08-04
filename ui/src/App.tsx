@@ -13,6 +13,7 @@ import { PrivacyLock } from './components/PrivacyLock.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { hashPassphrase, isPassphraseHash } from './lib/passphrase.js';
 import { useFocusTrap } from './lib/useFocusTrap.js';
+import { DownloadWaitPlayground } from './components/DownloadWaitPlayground.js';
 
 // Lazy-load heavy components — they import syntax highlighter, markdown,
 // and data-fetching code that isn't needed on initial render.
@@ -133,35 +134,8 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
                   </div>
                 </div>
               ) : isModelDownloading || downloadProgress > 0 ? (
-                <div className="animate-in fade-in duration-300 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700/50">
-                  <div className="flex justify-between text-xs font-semibold mb-2">
-                    <span className="text-emerald-600 dark:text-emerald-400">Downloading AI Knowledge...</span>
-                    <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">{downloadProgress}%</span>
-                  </div>
-                  <div
-                    className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 mb-4 overflow-hidden"
-                    role="progressbar"
-                    aria-label="Model download progress"
-                    aria-valuenow={downloadProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className="bg-emerald-500 h-2 transition-all duration-300 ease-out"
-                      style={{ width: `${downloadProgress}%` }}
-                    ></div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className={`text-xs flex items-center gap-2 ${downloadProgress > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {downloadProgress > 0 && <CheckCircle2 className="w-3.5 h-3.5" />} 1. Downloading AI Knowledge...
-                    </p>
-                    <p className={`text-xs flex items-center gap-2 ${downloadProgress >= 99 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {downloadProgress >= 99 && <CheckCircle2 className="w-3.5 h-3.5" />} 2. Saving to safe offline storage...
-                    </p>
-                    <p className={`text-xs flex items-center gap-2 ${downloadProgress === 100 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {downloadProgress === 100 && <CheckCircle2 className="w-3.5 h-3.5" />} 3. Awakening Assistant.
-                    </p>
-                  </div>
+                <div className="animate-in fade-in duration-300">
+                  <DownloadWaitPlayground progress={downloadProgress} />
                 </div>
               ) : (
                 <div className="animate-in fade-in duration-300 mb-6">
@@ -176,10 +150,13 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
 
               <button
                 onClick={() => setStep(3)}
-                disabled={downloadProgress < 100 && isModelDownloading}
-                className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                // Download continues in the background — don't trap the user on a dead wait.
+                className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group"
               >
-                Next: Enable Voice <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                {(isModelDownloading || (downloadProgress > 0 && downloadProgress < 100))
+                  ? 'Continue while downloading'
+                  : 'Next: Enable Voice'}
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           )}

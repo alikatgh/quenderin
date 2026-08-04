@@ -20,6 +20,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalContext
@@ -229,10 +231,17 @@ fun OnboardingScreen(
         Box(Modifier.fillMaxSize()) {
             AmbientGlow()   // slow-breathing background wash so the screen is never dead-static
 
+            val isDownloading = phase is OnboardingPhase.Downloading
             Column(
-                modifier = Modifier.fillMaxSize().padding(28.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(28.dp)
+                    .then(
+                        if (isDownloading) Modifier.verticalScroll(rememberScrollState())
+                        else Modifier,
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = if (isDownloading) Arrangement.Top else Arrangement.Center,
             ) {
                 Text(
                     "Quenderin",
@@ -247,13 +256,15 @@ fun OnboardingScreen(
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(Modifier.height(36.dp))
-
-                // The living brand mark: a breathing core whose behaviour reads the current phase
-                // (scanning while probing, a progress ring while downloading, a fast pulse while loading).
-                ModelCore(phase = phase, fraction = animFraction)
-
-                Spacer(Modifier.height(28.dp))
+                // During multi-GB download the compact progress card + mini-game take the space —
+                // the big ModelCore is redundant with the percent bar.
+                if (!isDownloading) {
+                    Spacer(Modifier.height(36.dp))
+                    ModelCore(phase = phase, fraction = animFraction)
+                    Spacer(Modifier.height(28.dp))
+                } else {
+                    Spacer(Modifier.height(16.dp))
+                }
 
                 // Phase-specific copy + actions, crossfaded so a phase change glides instead of snapping.
                 // contentKey keys on the phase TYPE, so a download's per-percent updates don't re-run the
@@ -393,34 +404,13 @@ private fun PhaseContent(
             }
 
             is OnboardingPhase.Downloading -> {
-                val pct = (fraction * 100).toInt().coerceIn(0, 100)
-                Text(
-                    stringResource(R.string.onboarding_downloading),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // Multi-GB waits used to be a dead progress ring — offer tips + token-catch game.
+                DownloadWaitPlayground(
+                    modelLabel = phase.model.label,
+                    sizeLabel = phase.model.sizeLabel.removeSuffix(" download"),
+                    fraction = fraction,
+                    onCancel = { onCancel(phase.model) },
                 )
-                Spacer(Modifier.height(2.dp))
-                val downloadingState = stringResource(R.string.onboarding_downloading_a11y, phase.model.label, pct)
-                Text(
-                    phase.model.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics {
-                        progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
-                        stateDescription = downloadingState
-                    },
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.onboarding_size_one_time, phase.model.sizeLabel.removeSuffix(" download")),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(6.dp))
-                // A multi-GB download must never be a trap: cancel returns to the recommendation
-                // (the engine keeps the .part, so a retry resumes).
-                TextButton(onClick = { onCancel(phase.model) }) { Text(stringResource(R.string.action_cancel)) }
             }
 
             is OnboardingPhase.Loading ->

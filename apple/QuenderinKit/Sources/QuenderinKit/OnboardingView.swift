@@ -15,24 +15,32 @@ public struct OnboardingView: View {
 
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
+        let downloading = downloadProgress != nil
         ZStack {
             p.background.ignoresSafeArea()
-            VStack(spacing: 12) {
-                Text("Quenderin")
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(p.onSurface)
-                Text("An AI that runs on your \(deviceNoun) — even offline.")
-                    .font(.subheadline)
-                    .foregroundStyle(p.onSurfaceVariant)
-                    .multilineTextAlignment(.center)
+            ScrollView {
+                VStack(spacing: 12) {
+                    Text("Quenderin")
+                        .font(.title.weight(.semibold))
+                        .foregroundStyle(p.onSurface)
+                    Text("An AI that runs on your \(deviceNoun) — even offline.")
+                        .font(.subheadline)
+                        .foregroundStyle(p.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
 
-                ModelCoreView(palette: p, progress: downloadProgress, spinning: isProbingOrLoading)
-                    .padding(.vertical, 16)
+                    // During a multi-GB download the big core is redundant with the compact
+                    // progress card in DownloadWaitPlayground — hide it so the mini-game fits.
+                    if !downloading {
+                        ModelCoreView(palette: p, progress: downloadProgress, spinning: isProbingOrLoading)
+                            .padding(.vertical, 16)
+                    }
 
-                phaseContent(p)
+                    phaseContent(p)
+                }
+                .padding(28)
+                .frame(maxWidth: 420)
+                .frame(maxWidth: .infinity)
             }
-            .padding(28)
-            .frame(maxWidth: 380)
         }
         .task {
             if case .probing = model.phase { await model.start() }
@@ -155,23 +163,16 @@ public struct OnboardingView: View {
             }
 
         case let .downloading(entry, progress):
-            VStack(spacing: 4) {
-                Text("Downloading · \(Int(progress * 100))%")
-                    .font(.caption.monospacedDigit()).foregroundStyle(p.onSurfaceVariant)
-                HStack(spacing: 7) {
-                    ModelAvatar(size: 22, modelID: entry.id)
-                    Text(entry.label).font(.headline).foregroundStyle(p.onSurface)
-                }
-                Text("\(entry.sizeLabel) · one time, then it's yours offline")
-                    .font(.caption).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
-                // A 9 GB download must never be a trap: cancel returns to the recommendation
-                // screen (the partial is discarded by the next attempt's integrity gate).
-                Button("Cancel") { model.cancelInstall() }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(p.onSurfaceVariant)
-                    .padding(.top, 6)
-            }
+            // Multi-GB waits used to be a dead progress ring — users bounced. Keep download
+            // status sticky and offer tips + a casual token-catch game until the model is ready.
+            DownloadWaitPlayground(
+                modelLabel: entry.label,
+                sizeLabel: entry.sizeLabel,
+                modelID: entry.id,
+                progress: progress,
+                onCancel: { model.cancelInstall() }
+            )
+            .padding(.top, 4)
 
         case let .loading(entry):
             HStack(spacing: 7) {

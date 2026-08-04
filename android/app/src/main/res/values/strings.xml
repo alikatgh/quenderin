@@ -134,6 +134,22 @@
     <string name="onboarding_warming">Warming up %1$s…</string>
     <string name="onboarding_storage_needs">This model needs ~%1$s GB — your phone has %2$s GB free.</string>
     <string name="onboarding_downloading_a11y">Downloading %1$s, %2$d percent</string>
+    <!-- Download wait playground (multi-GB first-run engagement) -->
+    <string name="wait_downloading_pct">Downloading · %1$d%%</string>
+    <string name="wait_one_time_play">One time — then fully offline. Play while it finishes.</string>
+    <string name="wait_catch_title">Catch the tokens</string>
+    <string name="wait_score">Score %1$d</string>
+    <string name="wait_best">Best this wait · %1$d</string>
+    <string name="wait_cancel_download">Cancel download</string>
+    <string name="wait_tap_hint">Tap the glowing dots</string>
+    <string name="wait_tip_1">Nothing you type will leave this device — the model runs entirely offline.</string>
+    <string name="wait_tip_2">One download, then airplane mode works. No account. No API keys.</string>
+    <string name="wait_tip_3">Bigger models think deeper; smaller ones answer faster. You can switch later.</string>
+    <string name="wait_tip_4">Wi‑Fi recommended: multi‑GB downloads on cellular can cost real money.</string>
+    <string name="wait_tip_5">When this finishes, chat is private by design — even we can’t see it.</string>
+    <string name="wait_tip_6">The agent can do pure math offline. Vision/screen tools are opt‑in later.</string>
+    <string name="wait_tip_7">Heat is the real ceiling on phones, not memory — short chats stay cool.</string>
+    <string name="wait_tip_8">You can cancel anytime; a partial download resumes next attempt.</string>
     <string name="agent_undo_last_move">Undo last move (%1$d)</string>
     <string name="chat_remove_named">Remove %1$s</string>
     <string name="chat_about_model">About %1$s</string>
