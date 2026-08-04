@@ -18,19 +18,19 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **First chat** | Starter chips + auto-open first chat — shipped. |
 | **Prefill honesty** | “Thinking · Ns” typing bubble — shipped. |
 | **Small-model prompt** | Lead-with-answer / no-invent system prompt twins — shipped. |
+| **ChatTier** | tiny/small/full maxTokens + prompt suffix — shipped. |
+| **Engine honesty** | Demo banner + Settings row; release fails without native llama — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
-1. **Android real-inference default** — many builds ship mock unless NDK/llama is wired; users “chat” with nothing real.
-2. **Per-tier system prompts / maxTokens** — even tighter for 1B vs 7B.
-3. **Vision / photo** — still ⏳ (KNOWN_FAILURE_MODES); documents-as-text only.
-4. **Prefill phase split** — “Loading prompt…” vs “Writing…” if engine exposes prefill/decode.
-5. **Russian/long Settings strings** — known localization gap (CHANGELOG).
-6. **Desktop chat starters** — mobile got them first; Electron wizard/chat still thinner.
+1. **Vision / photo** — still ⏳ (KNOWN_FAILURE_MODES); documents-as-text only.
+2. **Prefill phase split** — “Loading prompt…” vs “Writing…” if engine exposes prefill/decode.
+3. **Russian/long Settings strings** — known localization gap (CHANGELOG).
+4. **Quality eval harness** — golden prompts × model tiers, catch regressions.
 
 ### Owner-only (still)
 
-Facebook secrets/images · store console pastes · physical-device tok/s · signing/notarize desktop.
+Facebook secrets/images · store console pastes · physical-device tok/s · signing/notarize desktop · Play production.
 
 ---
 
@@ -41,6 +41,8 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 | 2026-08-04 | CI: JNI `load_mode` dual-API + npm audit overrides |
 | 2026-08-04 | UX: download wait playground (game + tips) iOS/Android/desktop |
 | 2026-08-04 | UX: **ChatStarters** empty-state chips + download ETA |
+| 2026-08-04 | Chat: Thinking·Ns, ChatTier, demo-mode honesty |
+| 2026-08-04 | Android: **fail-closed release** without `jni/llama.cpp` |
 
 ---
 
