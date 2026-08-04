@@ -349,8 +349,9 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
                                                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }} />
                                                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400 dark:bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                                             </div>
-                                            <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums">
-                                                {thinkingSec < 2 ? 'Thinking…' : `Thinking · ${thinkingSec}s`}
+                                            {/* Twin of mobile loadingPrompt phase — shown until first assistant tokens stream */}
+                                            <span className="text-[12px] text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">
+                                                {thinkingSec < 1 ? 'Loading prompt…' : `Loading prompt · ${thinkingSec}s`}
                                             </span>
                                         </div>
                                     </div>

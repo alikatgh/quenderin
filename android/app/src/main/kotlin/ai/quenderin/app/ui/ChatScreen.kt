@@ -428,7 +428,13 @@ fun ChatScreen(
             busy = busy,
             canSendWithAttachments = pendingDocuments.isNotEmpty(),
             onInput = { input = it },
-            onAttach = { pickDocument.launch(arrayOf("text/*", "application/json", "application/*")) },
+            // image/* is intentional: picker accepts photos so DocumentTextExtractor can refuse
+            // with an honest vision-not-yet message (not a silent "file type not supported" from SAF).
+            onAttach = {
+                pickDocument.launch(
+                    arrayOf("text/*", "application/json", "application/pdf", "application/*", "image/*"),
+                )
+            },
             onSend = { sendCurrent() },
             onStop = {
                 // Real stop: end the native decode now (not one token late / dead during prefill) and

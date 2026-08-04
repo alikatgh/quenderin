@@ -388,7 +388,8 @@ public struct ChatView: View {
         // source, .json…) and PDF. The picker greys out everything else, so users aren't offered
         // images just to be refused after the fact; the extractor stays as the backstop for
         // encoding/scanned-PDF/oversize edge cases the type system can't see.
-        .fileImporter(isPresented: $showAttachPicker, allowedContentTypes: [.text, .pdf], allowsMultipleSelection: true) { result in
+        // Images allowed so users get an honest vision-not-yet rejection instead of a hidden picker.
+        .fileImporter(isPresented: $showAttachPicker, allowedContentTypes: [.text, .pdf, .image], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
             for url in urls {
                 let scoped = url.startAccessingSecurityScopedResource()

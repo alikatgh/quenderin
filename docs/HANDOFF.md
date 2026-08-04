@@ -21,12 +21,12 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **ChatTier** | tiny/small/full maxTokens + prompt suffix — shipped. |
 | **Engine honesty** | Demo banner + Settings row; release fails without native llama — shipped. |
 | **Prefill phase** | Loading prompt vs Writing labels — shipped. |
-| **Photo attach** | Honest vision-not-yet refusal — shipped (real vision still ⏳). |
-| **Golden chat gate** | Structural CI on starters/tiers/vision copy — shipped. |
+| **Photo attach** | Honest vision-not-yet refusal; pickers accept images — shipped (real vision still ⏳). |
+| **Golden chat gate** | Structural CI on starters/tiers/vision copy — shipped (`npm run check:golden-chat`). |
 
 ### Highest-impact remaining product work (agent-doable)
 
-1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path).
+1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
 2. **Russian/long Settings strings** — known localization gap (CHANGELOG).
 3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
 

@@ -9,9 +9,10 @@
 
 ### Prefill phase + honest photo refusal + golden chat gate
 - **GenerationPhase** (`loadingPrompt` → `writing`) drives “Loading prompt · Ns” / “Writing · Ns”
-  (iOS + Android typing bubbles).
+  (iOS + Android typing bubbles). Desktop shows “Loading prompt · Ns” during prefill.
 - **Image attach** refused with an explicit vision-not-available message (not “isn’t a text file”).
-- **`shared/golden-chat-prompts.json`** + `scripts/check_golden_chat_prompts.py` CI gate (starters,
+  Pickers now **accept images** so that refusal is reachable (iOS + Android).
+- **`shared/golden-chat-prompts.json`** + `npm run check:golden-chat` CI gate (starters,
   tiers, vision refusal copy).
 
 ### Ship path: no silent mock releases

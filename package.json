@@ -49,6 +49,7 @@
     "electron:build:all": "npm run build:tsc && npm run build:ui && electron-builder --linux --win nsis portable",
     "check:router-parity": "python3 scripts/check_router_parity.py",
     "check:sampling-parity": "python3 scripts/check_sampling_parity.py",
+    "check:golden-chat": "python3 scripts/check_golden_chat_prompts.py",
     "test:golden-chores": "tsx scripts/golden_chore_suite.ts",
     "test:sampling-profiles": "vitest run tests/sampling-profiles.test.ts",
     "test:ui": "cd ui && npm test"
