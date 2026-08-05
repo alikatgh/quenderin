@@ -162,6 +162,32 @@ fun SettingsScreen(
             }
         }
 
+        // Twin of iOS Settings → Routing (AppSettings.suggestBestModel). ChatScreen reads the same key.
+        SettingsGroup(stringResource(R.string.settings_routing)) {
+            val routePrefs = remember {
+                context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE)
+            }
+            var suggestBest by remember {
+                mutableStateOf(routePrefs.getBoolean("suggestBestModel", true))
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_suggest_best_model),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Caption(stringResource(R.string.settings_suggest_best_model_hint))
+                }
+                Switch(
+                    checked = suggestBest,
+                    onCheckedChange = { on ->
+                        suggestBest = on
+                        routePrefs.edit().putBoolean("suggestBestModel", on).apply()
+                    },
+                )
+            }
+        }
+
         // The agent capability pane — the Android twin of the iOS Settings → Agent section and the
         // dashboard's "What it can do here": every T1+ capability in plain words with its consent
         // toggle (the SAME PrefsConsentStore the Agent screen's runner reads, so this pane IS the

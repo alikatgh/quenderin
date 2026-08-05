@@ -441,6 +441,24 @@ fun main() {
     // Twin-drift fix: an empty send is a SILENT no-op returning "" (matches iOS ChatModel), not a throw.
     check("chat empty message is a silent no-op (returns \"\", twin of iOS)",
         chat.send("   ") == "" && chat.messages.map { it.role } == listOf(Role.USER, Role.ASSISTANT))
+    
+    check("DemoMockReplies answers starter math and stays honest about demo mode",
+        DemoMockReplies.reply("What is 17% of 240?").contains("40.8") &&
+            DemoMockReplies.reply("What is 17% of 240?").lowercase().contains("demo"))
+    check("DemoMockReplies Russian math keeps demo honesty",
+        DemoMockReplies.reply("Сколько 17% от 240?").contains("40") &&
+            DemoMockReplies.reply("привет").contains("llama"))
+    check("MockInferenceEngine uses smart demo when canned is null", run {
+        val e = MockInferenceEngine()
+        e.load(ModelCatalog.smallest, "/dev/null")
+        e.complete("What is 17% of 240?").contains("40.8")
+    })
+    check("MockInferenceEngine honors explicit canned reply", run {
+        val e = MockInferenceEngine(cannedReply = "fixed-reply")
+        e.load(ModelCatalog.smallest, "/dev/null")
+        e.complete("What is 17% of 240?") == "fixed-reply"
+    })
+
     check("Q-588: an empty engine reply becomes an honest notice, not a silent blank bubble", run {
         val e = MockInferenceEngine(cannedReply = "")
         e.load(ModelCatalog.smallest, "/dev/null")

@@ -169,4 +169,9 @@
     <string name="chat_copy">복사</string>
     <string name="chat_copied">복사됨</string>
     <string name="chat_continue">계속</string>
+    <string name="chat_switch_model">전환</string>
+    <string name="chat_dismiss_suggestion">제안 닫기</string>
+    <string name="settings_routing">라우팅</string>
+    <string name="settings_suggest_best_model">작업에 맞는 최적 모델 제안</string>
+    <string name="settings_suggest_best_model_hint">채팅을 시작할 때 질문 유형(코드, 추론, 다른 언어)을 보고 설치된 모델 중 가장 적합한 것을 제안합니다 — 탭할 수 있는 제안이며 조용히 바꾸지 않습니다.</string>
 </resources>

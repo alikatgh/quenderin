@@ -169,4 +169,9 @@
     <string name="chat_copy">复制</string>
     <string name="chat_copied">已复制</string>
     <string name="chat_continue">继续</string>
+    <string name="chat_switch_model">切换</string>
+    <string name="chat_dismiss_suggestion">关闭建议</string>
+    <string name="settings_routing">路由</string>
+    <string name="settings_suggest_best_model">为每项任务建议最佳模型</string>
+    <string name="settings_suggest_best_model_hint">开始聊天时，Quenderin 会判断你在问什么（代码、推理、其他语言），并建议已安装的最合适模型——可点选的建议，绝不会静默切换。</string>
 </resources>

@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Demo mock feels usable + Android model router (usability)
+- **DemoMockReplies** (iOS + Android): when no native llama is linked, starter-like prompts
+  (math, packing, jet lag, dinner ideas, email) get a short useful canned answer **plus** an
+  honest demo footer — not a single frozen “canned until linked” wall for every tap.
+- **Android ModelRouter chip**: empty-chat first draft (≥12 chars) offers Switch to the best
+  installed model (never silent). Settings → Routing toggle (`suggestBestModel`, default on).
+
 ### Chat recovery + copy parity (usability)
 - **Locale-aware empty-reply notice + continue cue** (`ChatUserFacing` twins): zero-token and token-cap
   recovery no longer force English into a Russian (ko/ja/zh) chat.

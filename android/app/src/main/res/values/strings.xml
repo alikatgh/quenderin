@@ -56,6 +56,11 @@
     <string name="chat_copy">Copy</string>
     <string name="chat_copied">Copied</string>
     <string name="chat_continue">Continue</string>
+    <string name="chat_switch_model">Switch</string>
+    <string name="chat_dismiss_suggestion">Dismiss suggestion</string>
+    <string name="settings_routing">Routing</string>
+    <string name="settings_suggest_best_model">Suggest the best model for each task</string>
+    <string name="settings_suggest_best_model_hint">When you start a chat, Quenderin checks what you\'re asking (code, reasoning, another language) and offers the best installed model for it — a suggestion you can tap, never a silent switch.</string>
     <string name="chat_demo_mode">Demo mode — replies are canned until this APK links native llama.cpp (see android/INTEGRATION.md).</string>
     <string name="settings_engine">Inference engine</string>
     <string name="settings_engine_real">On-device (llama.cpp)</string>

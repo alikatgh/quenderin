@@ -15,11 +15,16 @@ import ai.quenderin.core.ConversationExporter
 import ai.quenderin.core.ChatModel
 import ai.quenderin.core.ConversationCoordinator
 import ai.quenderin.core.DocumentTextExtractor
+import ai.quenderin.core.FileModelStorage
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.ModelManager
+import ai.quenderin.core.ModelRouter
 import ai.quenderin.core.Role
+import ai.quenderin.core.RouteDecision
 import ai.quenderin.core.SupportContact
 import ai.quenderin.core.isFlagged
+import java.io.File
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -148,7 +153,33 @@ fun ChatScreen(
     // Queued attachments for the next send — extracted at pick time (twin of iOS ChatView).
     var pendingDocuments by remember { mutableStateOf<List<AttachedDocument>>(emptyList()) }
     var attachmentNotice by remember { mutableStateOf<String?>(null) }
+    // Router suggestion for the drafted FIRST message (twin of iOS ChatView.routeSuggestion).
+    var routeSuggestionDismissed by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
+    val suggestBestModel = prefs.getBoolean("suggestBestModel", true)
+    val modelsDir = remember { File(context.filesDir, "models") }
+    val installedModels = remember(model.id) {
+        ModelManager(FileModelStorage(modelsDir), initialActiveModelId = model.id)
+            .installed()
+            .map { it.model }
+    }
+    val (totalRamGb, freeRamGb) = remember {
+        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+        val gb = 1_073_741_824.0
+        (mi.totalMem / gb) to (mi.availMem / gb)
+    }
+    val routeSuggestion: Pair<RouteDecision, ModelEntry>? = remember(
+        input, messages.isEmpty(), model.id, routeSuggestionDismissed, suggestBestModel, installedModels,
+    ) {
+        if (!suggestBestModel || routeSuggestionDismissed || !messages.isEmpty()) return@remember null
+        if (input.trim().length < 12 || installedModels.size <= 1) return@remember null
+        val decision = ModelRouter.route(input, installedModels, totalRamGb, freeRamGb) ?: return@remember null
+        if (decision.modelId == model.id) return@remember null
+        val entry = installedModels.firstOrNull { it.id == decision.modelId } ?: return@remember null
+        decision to entry
+    }
     val pickDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -236,6 +267,7 @@ fun ChatScreen(
             input = ""
             pendingDocuments = emptyList()
             attachmentNotice = null
+            routeSuggestionDismissed = false
             busy = true
             sendError = null
             sendJob = scope.launch {
@@ -347,6 +379,18 @@ fun ChatScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
+
+        // Router suggestion while drafting the FIRST message — never a silent switch (iOS twin).
+        routeSuggestion?.let { (decision, entry) ->
+            RouteSuggestionChip(
+                reason = decision.reason,
+                onSwitch = {
+                    routeSuggestionDismissed = true
+                    onSelectModel(entry)
+                },
+                onDismiss = { routeSuggestionDismissed = true },
+            )
+        }
 
         // Token-cap mid-sentence → Continue chip (KNOWN_FAILURE_MODES). Mirrors iOS ChatView.
         if (chat.lastHitTokenCap && !busy) {
@@ -565,6 +609,51 @@ internal fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
         contentScale = ContentScale.Crop,
         modifier = Modifier.size(size).clip(CircleShape),
     )
+}
+
+/** Router pick offered — never imposed. Twin of iOS `RouteSuggestionChip`. */
+@Composable
+private fun RouteSuggestionChip(
+    reason: String,
+    onSwitch: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val dismissLabel = stringResource(R.string.chat_dismiss_suggestion)
+    val switchLabel = stringResource(R.string.chat_switch_model)
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(999.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                reason,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(
+                onClick = onSwitch,
+                modifier = Modifier.semantics { contentDescription = switchLabel },
+            ) {
+                Text(switchLabel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = dismissLabel },
+            ) {
+                Text("✕", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
 }
 
 // ── Message bubble with a speaker-side tail + flagged-output safeguard ──

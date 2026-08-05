@@ -96,12 +96,13 @@ class EngineNotLoadedException : IllegalStateException("No model is loaded")
 
 /**
  * Canned engine for previews, tests, and bringing up the app before JNI exists.
- * Default reply is **honest about demo mode** so UI/dev never confuses mock with real llama.
+ *
+ * @param cannedReply when non-null, always return that string (tests inject exact text).
+ *   When null (default), [DemoMockReplies] picks an honest demo answer from the prompt so
+ *   starter chips feel usable without a native engine.
  */
 class MockInferenceEngine(
-    private val cannedReply: String =
-        "Demo mode: this build has no native llama.cpp. Replies are canned until you link " +
-            "libquenderin_llama.so (see android/INTEGRATION.md). Your UI and download flow still work.",
+    private val cannedReply: String? = null,
 ) : InferenceEngine {
     override var loadedModelId: String? = null
         private set
@@ -111,6 +112,6 @@ class MockInferenceEngine(
 
     override fun complete(prompt: String): String {
         if (loadedModelId == null) throw EngineNotLoadedException()
-        return cannedReply
+        return cannedReply ?: DemoMockReplies.reply(prompt)
     }
 }

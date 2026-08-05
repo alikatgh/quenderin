@@ -169,4 +169,9 @@
     <string name="chat_copy">Копировать</string>
     <string name="chat_copied">Скопировано</string>
     <string name="chat_continue">Продолжить</string>
+    <string name="chat_switch_model">Сменить</string>
+    <string name="chat_dismiss_suggestion">Скрыть предложение</string>
+    <string name="settings_routing">Маршрутизация</string>
+    <string name="settings_suggest_best_model">Предлагать лучшую модель для задачи</string>
+    <string name="settings_suggest_best_model_hint">В начале чата Quenderin смотрит, о чём вы спрашиваете (код, рассуждение, другой язык), и предлагает лучшую установленную модель — подсказка, которую можно нажать, никогда не тихая смена.</string>
 </resources>

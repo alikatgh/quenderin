@@ -169,4 +169,9 @@
     <string name="chat_copy">コピー</string>
     <string name="chat_copied">コピーしました</string>
     <string name="chat_continue">続ける</string>
+    <string name="chat_switch_model">切替</string>
+    <string name="chat_dismiss_suggestion">提案を閉じる</string>
+    <string name="settings_routing">ルーティング</string>
+    <string name="settings_suggest_best_model">タスクに最適なモデルを提案</string>
+    <string name="settings_suggest_best_model_hint">チャット開始時に内容（コード・推論・他言語）を見て、インストール済みの最適モデルを提案します — タップで切替、自動切替はしません。</string>
 </resources>
