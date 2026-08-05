@@ -7,6 +7,8 @@ package ai.quenderin.app.ui
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
 
+import ai.quenderin.app.AgentHandoff
+import ai.quenderin.core.ActionIntent
 import ai.quenderin.core.AttachedDocument
 import ai.quenderin.core.ChatMessage
 import ai.quenderin.core.ChatStarter
@@ -131,6 +133,8 @@ fun ChatScreen(
     onSelectModel: (ModelEntry) -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
+    /** Switch to the Agent tab after a chat→agent handoff (twin of iOS AgentHandoff shell). */
+    onOpenAgent: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val chat = coordinator.chat
@@ -155,6 +159,8 @@ fun ChatScreen(
     var attachmentNotice by remember { mutableStateOf<String?>(null) }
     // Router suggestion for the drafted FIRST message (twin of iOS ChatView.routeSuggestion).
     var routeSuggestionDismissed by remember { mutableStateOf(false) }
+    // Sticky computer-task handoff target (twin of iOS agentSuggestion).
+    var agentSuggestion by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE) }
     val suggestBestModel = prefs.getBoolean("suggestBestModel", true)
@@ -268,6 +274,20 @@ fun ChatScreen(
             pendingDocuments = emptyList()
             attachmentNotice = null
             routeSuggestionDismissed = false
+            // Computer task → educate + handoff button. Do NOT call the model (it only produces
+            // "I cannot fulfill…" walls). Twin of iOS ChatView.send ActionIntent short-circuit.
+            if (text.isNotEmpty() && ActionIntent.looksLikeComputerTask(text)) {
+                agentSuggestion = text
+                chat.recordGuidedTurn(
+                    userText = text,
+                    documents = docs,
+                    assistantText = ActionIntent.GUIDED_ASSISTANT_REPLY,
+                )
+                messages = chat.messages
+                scope.launch { coordinator.persist() }
+                return
+            }
+            agentSuggestion = null
             busy = true
             sendError = null
             sendJob = scope.launch {
@@ -284,6 +304,12 @@ fun ChatScreen(
                     sendJob = null
                 }
             }
+        }
+
+        fun runWithAgent(goal: String) {
+            agentSuggestion = null
+            AgentHandoff.send(goal)
+            onOpenAgent()
         }
 
         if (messages.isEmpty() && !busy) {
@@ -311,13 +337,26 @@ fun ChatScreen(
                 // a fresh key (animates in), streaming keeps the last row's key put (no per-token
                 // re-animation), and a future delete/reorder still identifies each surviving row —
                 // unlike an index key, which would silently re-key everything after a mutation.
-                itemsIndexed(messages, key = { _, msg -> msg.id }) { _, msg ->
+                itemsIndexed(messages, key = { _, msg -> msg.id }) { index, msg ->
                     Box(Modifier.animateItem(
                         placementSpec = spring(stiffness = Spring.StiffnessMediumLow,
                                                dampingRatio = Spring.DampingRatioLowBouncy))) {
-                        MessageBubble(msg) {
-                            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
-                            runCatching { context.startActivity(intent) }
+                        Column {
+                            MessageBubble(msg) {
+                                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(SupportContact.reportMailtoUri(msg.text, "chat")))
+                                runCatching { context.startActivity(intent) }
+                            }
+                            // In-transcript handoff under the guided assistant bubble (iOS twin).
+                            val prev = messages.getOrNull(index - 1)
+                            if (msg.role == Role.ASSISTANT &&
+                                prev?.role == Role.USER &&
+                                ActionIntent.looksLikeComputerTask(prev.text)
+                            ) {
+                                AgentHandoffChip(
+                                    onRun = { runWithAgent(prev.text) },
+                                    onDismiss = null,
+                                )
+                            }
                         }
                     }
                 }
@@ -389,6 +428,14 @@ fun ChatScreen(
                     onSelectModel(entry)
                 },
                 onDismiss = { routeSuggestionDismissed = true },
+            )
+        }
+
+        // Sticky computer-task handoff above the composer (iOS twin).
+        agentSuggestion?.let { goal ->
+            AgentHandoffChip(
+                onRun = { runWithAgent(goal) },
+                onDismiss = { agentSuggestion = null },
             )
         }
 
@@ -611,6 +658,41 @@ internal fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
     )
 }
 
+/** Chat→Agent handoff chip — twin of iOS `AgentHandoffCard`. */
+@Composable
+private fun AgentHandoffChip(
+    onRun: () -> Unit,
+    onDismiss: (() -> Unit)?,
+) {
+    val title = stringResource(R.string.chat_open_in_agent)
+    val lead = stringResource(R.string.chat_cant_run_this)
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(999.dp),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                lead,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = onRun) {
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
+            if (onDismiss != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("✕", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
+}
+
 /** Router pick offered — never imposed. Twin of iOS `RouteSuggestionChip`. */
 @Composable
 private fun RouteSuggestionChip(
@@ -743,9 +825,10 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                                 )
                             }
                         } else {
-                            // Assistant replies are Markdown — bold/headings/lists/code, not raw markers.
+                            // Rewrite old "I cannot fulfill… use the Agent" walls to guided education.
+                            val shown = ActionIntent.displayAssistantText(msg.text)
                             MarkdownText(
-                                text = msg.text,
+                                text = shown,
                                 color = colors.onAssistantBubble,
                             )
                         }

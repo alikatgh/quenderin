@@ -116,12 +116,18 @@ fun MainTabs(
                     onSelectModel = onSelectModel,
                     deepThinking = deepThinking,
                     onDeepThinkingChange = { deepThinking = it },
+                    onOpenAgent = { tab = 1 },
                 )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 1)) {
                 // EchoTool deliberately not shipped (dev/demo tool — weak models grab it as a scratchpad
                 // and burn mission steps on it; live-caught on the Mac twin).
-                AgentScreen(engine = engine, tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool()))
+                AgentScreen(
+                    engine = engine,
+                    tools = listOf(CalculatorTool(), UnitConverterTool(), DateCalcTool()),
+                    // Re-check when this tab becomes active so a chat handoff lands immediately.
+                    handoffTick = tab,
+                )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
                 SettingsScreen(
@@ -156,6 +162,7 @@ private fun ChatTab(
     onSelectModel: (ModelEntry) -> Unit,
     deepThinking: Boolean,
     onDeepThinkingChange: (Boolean) -> Unit,
+    onOpenAgent: () -> Unit = {},
 ) {
     val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
     var summaries by remember { mutableStateOf(coordinator.summaries) }
@@ -183,6 +190,7 @@ private fun ChatTab(
             onSelectModel = onSelectModel,
             deepThinking = deepThinking,
             onDeepThinkingChange = onDeepThinkingChange,
+            onOpenAgent = onOpenAgent,
         )
     } else {
         ConversationListScreen(

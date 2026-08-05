@@ -60,6 +60,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,7 +87,12 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
+fun AgentScreen(
+    engine: InferenceEngine,
+    tools: List<AgentTool>,
+    /** Bumps when the Agent tab is selected so a chat handoff is consumed immediately. */
+    handoffTick: Int = 0,
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var steps by remember { mutableStateOf<List<AgentStep>>(emptyList()) }
@@ -94,6 +100,15 @@ fun AgentScreen(engine: InferenceEngine, tools: List<AgentTool>) {
     var running by remember { mutableStateOf(false) }
     var haltReason by remember { mutableStateOf<AgentRun.HaltReason?>(null) }
     var goal by remember { mutableStateOf("") }
+    // Chat→Agent handoff: fill the goal field when the user tapped "Open in Agent" in chat.
+    // Twin of iOS AgentView consuming AgentHandoff.shared.pending. Auto-run is opt-in via
+    // the Run button so the user can still edit the goal (bounded agent, ask before act).
+    LaunchedEffect(handoffTick) {
+        val pending = ai.quenderin.app.AgentHandoff.take()
+        if (!pending.isNullOrBlank() && !running) {
+            goal = pending
+        }
+    }
     // Every goal the user has run, newest first — the re-use affordance (twin of iOS
     // AgentRecentGoals). The store persists via SharedPreferences (async apply, no
     // main-thread I/O); this snapshot mirrors it into Compose state.

@@ -7,6 +7,12 @@
 
 ## Unreleased
 
+### Android chat→Agent handoff (usability parity)
+- **ActionIntent short-circuit on Android chat**: computer-task prompts get a guided reply +
+  **Open in Agent** chip (no “I cannot fulfill…” wall). `AgentHandoff` baton switches tab and
+  fills the Agent goal field (user still taps Run — ask-before-act).
+- `ChatModel.recordGuidedTurn` + `ActionIntent.displayAssistantText` twins of iOS.
+
 ### Demo mock feels usable + Android model router (usability)
 - **DemoMockReplies** (iOS + Android): when no native llama is linked, starter-like prompts
   (math, packing, jet lag, dinner ideas, email) get a short useful canned answer **plus** an

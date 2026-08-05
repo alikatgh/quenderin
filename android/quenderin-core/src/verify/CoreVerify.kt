@@ -1051,6 +1051,21 @@ fun main() {
         )
         tasks.all { ActionIntent.looksLikeComputerTask(it) } && chat.none { ActionIntent.looksLikeComputerTask(it) }
     })
+    check("ActionIntent guided reply is non-empty and handoff title is set",
+        ActionIntent.GUIDED_ASSISTANT_REPLY.contains("Agent") &&
+            ActionIntent.HANDOFF_BUTTON_TITLE.isNotBlank())
+    check("ActionIntent rewrites cannot-fulfill prose to guided copy",
+        ActionIntent.displayAssistantText("I cannot fulfill that request. Use the Agent tab.")
+            == ActionIntent.GUIDED_ASSISTANT_REPLY)
+    check("ChatModel.recordGuidedTurn appends user+assistant without engine", run {
+        val e = MockInferenceEngine(cannedReply = "should-not-call")
+        e.load(ModelCatalog.smallest, "/dev/null")
+        val c = ChatModel(e)
+        c.recordGuidedTurn("open browser and write email to a@b.com", assistantText = ActionIntent.GUIDED_ASSISTANT_REPLY)
+        c.messages.size == 2 &&
+            c.messages[0].role == Role.USER &&
+            c.messages[1].text == ActionIntent.GUIDED_ASSISTANT_REPLY
+    })
 
     check("decision grammar is byte-identical to the Swift twin (cross-platform SHA pin)", run {
         // Must equal AgentDecisionGrammarTests.expectedSHA256 — drift breaks a build, not the field.

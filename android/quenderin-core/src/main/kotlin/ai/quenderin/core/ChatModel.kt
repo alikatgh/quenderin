@@ -122,6 +122,26 @@ class ChatModel(
     private fun emit() = onChange(messages)
 
     /**
+     * Record a user turn + a fixed assistant reply without calling the model. Used when chat
+     * detects a computer task ([ActionIntent]) so the user gets education + a handoff button
+     * instead of a generated "I cannot fulfill that request" wall. Twin of iOS
+     * `ChatModel.recordGuidedTurn`.
+     */
+    fun recordGuidedTurn(
+        userText: String,
+        documents: List<AttachedDocument> = emptyList(),
+        assistantText: String,
+    ) {
+        val trimmed = userText.trim()
+        if ((trimmed.isEmpty() && documents.isEmpty()) || isGenerating) return
+        synchronized(lock) {
+            _messages += ChatMessage(Role.USER, trimmed, documents)
+            _messages += ChatMessage(Role.ASSISTANT, assistantText)
+        }
+        emit()
+    }
+
+    /**
      * Appends the user's line, runs the engine over the whole transcript streaming into a placeholder
      * assistant message, settles the final text, and returns it. Blocking; the app calls it off the main
      * thread. Throws [EngineNotLoadedException] if no model is loaded (surfaced to the UI, never

@@ -174,4 +174,6 @@
     <string name="settings_routing">Маршрутизация</string>
     <string name="settings_suggest_best_model">Предлагать лучшую модель для задачи</string>
     <string name="settings_suggest_best_model_hint">В начале чата Quenderin смотрит, о чём вы спрашиваете (код, рассуждение, другой язык), и предлагает лучшую установленную модель — подсказка, которую можно нажать, никогда не тихая смена.</string>
+    <string name="chat_open_in_agent">Открыть в Агенте</string>
+    <string name="chat_cant_run_this">Чат это не выполнит —</string>
 </resources>

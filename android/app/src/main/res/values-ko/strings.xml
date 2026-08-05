@@ -174,4 +174,6 @@
     <string name="settings_routing">라우팅</string>
     <string name="settings_suggest_best_model">작업에 맞는 최적 모델 제안</string>
     <string name="settings_suggest_best_model_hint">채팅을 시작할 때 질문 유형(코드, 추론, 다른 언어)을 보고 설치된 모델 중 가장 적합한 것을 제안합니다 — 탭할 수 있는 제안이며 조용히 바꾸지 않습니다.</string>
+    <string name="chat_open_in_agent">에이전트에서 열기</string>
+    <string name="chat_cant_run_this">채팅에서는 실행할 수 없습니다 —</string>
 </resources>

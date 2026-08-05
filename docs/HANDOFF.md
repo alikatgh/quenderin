@@ -30,6 +30,7 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Android copy message** | Long-press Copy + Report menu — shipped (parity with iOS). |
 | **Demo mock replies** | Starter-aware canned answers + demo footer (no more one wall for every prompt) — shipped. |
 | **Android model router** | First-message Switch suggestion + Settings routing toggle — shipped (iOS parity). |
+| **Android Agent handoff** | Computer-task short-circuit + Open in Agent chip — shipped (iOS parity). |
 
 ### Highest-impact remaining product work (agent-doable)
 
@@ -47,6 +48,7 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-05 | Chat: Android ActionIntent handoff (guided reply → Agent tab) |
 | 2026-08-05 | Chat: DemoMockReplies + Android ModelRouter suggestion chip |
 | 2026-08-05 | Chat: ChatUserFacing empty/continue locale packs + Android copy long-press |
 | 2026-08-05 | Chat: localized first-run starters (ru/ko/ja/zh) |
