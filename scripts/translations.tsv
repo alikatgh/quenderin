@@ -303,3 +303,8 @@ Send message	Отправить сообщение	메시지 보내기	メッセ
 Stop generating	Остановить генерацию	생성 중지	生成を停止	停止生成
 You're on the lightest model — quick, but it simplifies and sometimes rambles. For anything that matters, pick a bigger one in the Model library.	У вас самая лёгкая модель — быстро, но упрощает и иногда растекается. Для важного выберите модель побольше в библиотеке.	가장 가벼운 모델입니다 — 빠르지만 단순화하고 때로 장황합니다. 중요한 일은 모델 라이브러리에서 더 큰 모델을 고르세요.	最軽量モデルです — 速いですが単純化し、時に冗長です。大事なことはモデルライブラリで大きなものを選んでください。	你在用最轻量模型——快，但会简化并偶尔啰嗦。重要事项请在模型库中选更大的。
 Try one	Попробуйте	하나 시도	試す	试试
+
+# ---- chunk 8: chat Continue/handoff a11y (2026-08-06) ----
+Open in Agent	Открыть в Агенте	에이전트에서 열기	エージェントで開く	在智能体中打开
+Today	Сегодня	오늘	今日	今天
+Switches to the Agent and runs this request	Переключает на Агента и запускает этот запрос	에이전트로 전환하고 이 요청을 실행합니다	エージェントに切り替えてこの要求を実行します	切换到智能体并运行此请求

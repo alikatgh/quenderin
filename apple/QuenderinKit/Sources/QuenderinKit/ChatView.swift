@@ -143,7 +143,7 @@ public struct ChatView: View {
                     } else {
                         // macOS: plain VStack (LazyVStack remeasure jank). iOS: lazy for memory.
                         transcriptStack(spacing: settings.messageDensity.spacing) {
-                            DayDivider(text: "Today", palette: p)
+                            DayDivider(text: String(localized: "Today"), palette: p)
                             ForEach(model.messages) { message in
                                 // The just-appended assistant message is EMPTY until the first
                                 // token lands; rendering it would stack an "…" bubble on top of
@@ -367,7 +367,7 @@ public struct ChatView: View {
                 Button {
                     Task { await model.continueLast() }
                 } label: {
-                    Label("Continue", systemImage: "arrow.forward.circle")
+                    Label(String(localized: "Continue"), systemImage: "arrow.forward.circle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(p.primary)
                         .padding(.horizontal, 12)
@@ -562,7 +562,7 @@ private struct RouteSuggestionChip: View {
                 .foregroundStyle(palette.onSurfaceVariant)
                 .lineLimit(1)
             Spacer(minLength: 8)
-            Button("Switch") { onSwitch() }
+            Button(String(localized: "Switch")) { onSwitch() }
                 .buttonStyle(.borderless)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(palette.primary)
@@ -604,13 +604,14 @@ private struct AgentHandoffCard: View {
                     .foregroundStyle(palette.onSurfaceVariant)
             }
             Button(action: onRun) {
-                Text(compact ? ActionIntent.handoffButtonTitle : "open in Agent")
+                // Both compact and expanded use the same catalog key (handoff title is localizable).
+                Text(String(localized: String.LocalizationValue(ActionIntent.handoffButtonTitle)))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(palette.primary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(ActionIntent.handoffButtonTitle)
-            .accessibilityHint("Switches to the Agent and runs this request")
+            .accessibilityLabel(String(localized: String.LocalizationValue(ActionIntent.handoffButtonTitle)))
+            .accessibilityHint(String(localized: "Switches to the Agent and runs this request"))
             .help(goal)
             if let onDismiss {
                 Button(action: onDismiss) {
@@ -619,7 +620,7 @@ private struct AgentHandoffCard: View {
                         .foregroundStyle(palette.onSurfaceVariant.opacity(0.7))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Dismiss")
+                .accessibilityLabel(String(localized: "Dismiss"))
             }
         }
         .padding(.horizontal, 10)

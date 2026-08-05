@@ -33,6 +33,7 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Android Agent handoff** | Computer-task short-circuit + Open in Agent chip — shipped (iOS parity). |
 | **Android low-quality heads-up** | Empty-chat warning for Low quant — shipped (iOS parity). |
 | **RU ActionIntent** | Computer-task detection for Russian phrasing — shipped both platforms. |
+| **Android Agent auto-run** | Open in Agent starts the run (iOS parity) — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
@@ -50,6 +51,7 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-06 | Agent: Android handoff auto-runs; iOS Continue/Today/Switch localization |
 | 2026-08-06 | Chat: Android low-quality empty-state heads-up + RU ActionIntent patterns |
 | 2026-08-05 | Chat: Android ActionIntent handoff (guided reply → Agent tab) |
 | 2026-08-05 | Chat: DemoMockReplies + Android ModelRouter suggestion chip |

@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * M4's screen: give the agent a goal and watch it plan → use tools → answer. Compose twin
@@ -100,15 +101,6 @@ fun AgentScreen(
     var running by remember { mutableStateOf(false) }
     var haltReason by remember { mutableStateOf<AgentRun.HaltReason?>(null) }
     var goal by remember { mutableStateOf("") }
-    // Chat→Agent handoff: fill the goal field when the user tapped "Open in Agent" in chat.
-    // Twin of iOS AgentView consuming AgentHandoff.shared.pending. Auto-run is opt-in via
-    // the Run button so the user can still edit the goal (bounded agent, ask before act).
-    LaunchedEffect(handoffTick) {
-        val pending = ai.quenderin.app.AgentHandoff.take()
-        if (!pending.isNullOrBlank() && !running) {
-            goal = pending
-        }
-    }
     // Every goal the user has run, newest first — the re-use affordance (twin of iOS
     // AgentRecentGoals). The store persists via SharedPreferences (async apply, no
     // main-thread I/O); this snapshot mirrors it into Compose state.
@@ -197,6 +189,17 @@ fun AgentScreen(
                     undoCount = undoJournal.count   // a run's moves surface the Undo button live
                 }
             }
+        }
+    }
+    // Chat→Agent handoff: consume pending goal and RUN (twin of iOS AgentView.onReceive).
+    // The "Open in Agent" tap WAS the run gesture; every mutation still previews + asks.
+    LaunchedEffect(handoffTick) {
+        val pending = ai.quenderin.app.AgentHandoff.take()
+        if (!pending.isNullOrBlank() && !running) {
+            recentGoals = goalHistory.record(pending)
+            goal = ""
+            running = true
+            withContext(Dispatchers.IO) { session.run(pending) }
         }
     }
     // The document picker — the user's attach gesture is what populates fs.read's map. The pick

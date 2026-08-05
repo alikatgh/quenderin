@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Agent handoff auto-runs on Android (usability parity)
+- **Open in Agent** now starts the run immediately (twin of iOS): the chat CTA was already the
+  run gesture; mutating steps still preview + ask. Goal field clears and history records on submit.
+- iOS chat: localize Continue / Today / Switch / handoff a11y via catalog.
+
 ### Low-quality heads-up on Android + RU ActionIntent (usability)
 - **Android empty chat**: same “lightest model” honesty as iOS when quant quality is Low
   (Q2_K etc.) — before the first disappointing answer.
