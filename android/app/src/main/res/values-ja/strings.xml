@@ -176,4 +176,6 @@
     <string name="settings_suggest_best_model_hint">チャット開始時に内容（コード・推論・他言語）を見て、インストール済みの最適モデルを提案します — タップで切替、自動切替はしません。</string>
     <string name="chat_open_in_agent">エージェントで開く</string>
     <string name="chat_cant_run_this">チャットでは実行できません —</string>
+    <string name="chat_share_subject">Quenderinの会話</string>
+    <string name="chat_low_quality_heads_up">最軽量モデルです — 速いですが単純化し、時に冗長です。大事なことはモデルライブラリで大きなものを選んでください。</string>
 </resources>

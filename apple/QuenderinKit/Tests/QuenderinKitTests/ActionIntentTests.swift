@@ -16,6 +16,11 @@ final class ActionIntentTests: XCTestCase {
             "move the PDF files to the archive folder",
             "run my morning shortcut",
             "create a folder called Taxes 2026",
+            // Russian-first (kept in sync with Android CoreVerify).
+            "открой браузер и напиши письмо",
+            "отправь письмо арендодателю",
+            "организуй папку загрузок",
+            "создай папку Налоги 2026",
         ]
         for text in tasks {
             XCTAssertTrue(ActionIntent.looksLikeComputerTask(text), "should detect: \(text)")
@@ -31,6 +36,9 @@ final class ActionIntentTests: XCTestCase {
             "who invented the shortcut for copy and paste",
             "convert 5 miles to km, then take 20% of that",
             "days until 2027-01-01",
+            "что такое электронная почта",
+            "как браузер рисует HTML",
+            "сколько 17% от 240",
         ]
         for text in chat {
             XCTAssertFalse(ActionIntent.looksLikeComputerTask(text), "should NOT detect: \(text)")

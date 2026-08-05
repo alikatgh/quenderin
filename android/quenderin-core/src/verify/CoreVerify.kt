@@ -1039,6 +1039,11 @@ fun main() {
             "move the PDF files to the archive folder",
             "run my morning shortcut",
             "create a folder called Taxes 2026",
+            // Russian-first fixtures (same detector on iOS).
+            "открой браузер и напиши письмо",
+            "отправь письмо арендодателю",
+            "организуй папку загрузок",
+            "создай папку Налоги 2026",
         )
         val chat = listOf(
             "what is an email address",
@@ -1048,6 +1053,9 @@ fun main() {
             "who invented the shortcut for copy and paste",
             "convert 5 miles to km, then take 20% of that",
             "days until 2027-01-01",
+            "что такое электронная почта",
+            "как браузер рисует HTML",
+            "сколько 17% от 240",
         )
         tasks.all { ActionIntent.looksLikeComputerTask(it) } && chat.none { ActionIntent.looksLikeComputerTask(it) }
     })

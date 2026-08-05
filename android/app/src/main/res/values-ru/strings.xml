@@ -176,4 +176,6 @@
     <string name="settings_suggest_best_model_hint">В начале чата Quenderin смотрит, о чём вы спрашиваете (код, рассуждение, другой язык), и предлагает лучшую установленную модель — подсказка, которую можно нажать, никогда не тихая смена.</string>
     <string name="chat_open_in_agent">Открыть в Агенте</string>
     <string name="chat_cant_run_this">Чат это не выполнит —</string>
+    <string name="chat_share_subject">Беседа Quenderin</string>
+    <string name="chat_low_quality_heads_up">У вас самая лёгкая модель — быстро, но упрощает и иногда растекается. Для важного выберите модель побольше в библиотеке.</string>
 </resources>

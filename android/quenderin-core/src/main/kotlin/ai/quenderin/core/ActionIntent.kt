@@ -10,7 +10,11 @@ package ai.quenderin.core
  * reply still explains — while a false positive nags.
  */
 object ActionIntent {
-    /** Regexes over the lowercased message. IDENTICAL strings in the Swift twin. */
+    /**
+     * Regexes over the lowercased message. IDENTICAL strings in the Swift twin.
+     * English uses `\b`; Russian patterns omit `\b` (Unicode word boundaries are unreliable
+     * for Cyrillic in both Swift and Kotlin regex engines).
+     */
     private val patterns: List<Regex> = listOf(
         """\b(open|launch|start|quit|close)\b.*\b(browser|safari|chrome|firefox|mail|finder|app|application)\b""",
         """\b(write|send|compose|draft)\b.*\b(e-?mail|message)\b""",
@@ -18,6 +22,13 @@ object ActionIntent {
         """\b(move|rename|trash|copy)\b.*\b(files?|folders?)\b""",
         """\brun\b.*\bshortcut""",
         """\b(create|make)\b.*\b(folder|directory)\b""",
+        // Russian-first (conservative — verb + object, not single-word chat questions).
+        """открой.*(браузер|chrome|safari|firefox|почт|приложен|mail)""",
+        """(запусти|закрой).*(браузер|chrome|safari|приложен|mail)""",
+        """(напиши|отправь|составь).*(письм|email|e-mail|сообщен)""",
+        """(организуй|убери|разбери|почисти).*(файл|папк|загрузк|документ|рабоч)""",
+        """(переименуй|перемести|удали|скопируй).*(файл|папк)""",
+        """создай.*папк""",
     ).map { Regex(it) }
 
     /** True when the text reads as an operate-the-computer request rather than a question. */

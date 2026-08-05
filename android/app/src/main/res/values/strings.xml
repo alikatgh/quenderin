@@ -73,6 +73,8 @@
     <string name="chat_stop">Stop generating</string>
     <string name="ai_disclaimer">Responses are AI-generated on-device and may be inaccurate or objectionable.</string>
     <string name="chat_share_conversation">Share conversation</string>
+    <string name="chat_share_subject">Quenderin conversation</string>
+    <string name="chat_low_quality_heads_up">You\'re on the lightest model — quick, but it simplifies and sometimes rambles. For anything that matters, pick a bigger one in the Model library.</string>
     <string name="chat_report_response">Report this response</string>
     <string name="chat_generation_error">Couldn\'t generate a reply: %1$s</string>
     <string name="chat_generation_error_a11y">Generation error: %1$s</string>

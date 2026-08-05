@@ -176,4 +176,6 @@
     <string name="settings_suggest_best_model_hint">开始聊天时，Quenderin 会判断你在问什么（代码、推理、其他语言），并建议已安装的最合适模型——可点选的建议，绝不会静默切换。</string>
     <string name="chat_open_in_agent">在智能体中打开</string>
     <string name="chat_cant_run_this">聊天无法执行此操作——</string>
+    <string name="chat_share_subject">Quenderin 对话</string>
+    <string name="chat_low_quality_heads_up">你在用最轻量模型——快，但会简化并偶尔啰嗦。重要事项请在模型库中选更大的。</string>
 </resources>

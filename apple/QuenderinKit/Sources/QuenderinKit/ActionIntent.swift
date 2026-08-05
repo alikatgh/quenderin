@@ -14,6 +14,7 @@ import Combine
 /// Kotlin twin (`ai.quenderin.core.ActionIntent`); both platforms run the same fixtures.
 public enum ActionIntent {
     /// Regexes over the lowercased message. IDENTICAL strings in the Kotlin twin.
+    /// English uses `\b`; Russian patterns omit `\b` (Cyrillic word boundaries are unreliable).
     static let patterns: [String] = [
         #"\b(open|launch|start|quit|close)\b.*\b(browser|safari|chrome|firefox|mail|finder|app|application)\b"#,
         #"\b(write|send|compose|draft)\b.*\b(e-?mail|message)\b"#,
@@ -21,6 +22,13 @@ public enum ActionIntent {
         #"\b(move|rename|trash|copy)\b.*\b(files?|folders?)\b"#,
         #"\brun\b.*\bshortcut"#,
         #"\b(create|make)\b.*\b(folder|directory)\b"#,
+        // Russian-first (conservative — verb + object, not single-word chat questions).
+        #"открой.*(браузер|chrome|safari|firefox|почт|приложен|mail)"#,
+        #"(запусти|закрой).*(браузер|chrome|safari|приложен|mail)"#,
+        #"(напиши|отправь|составь).*(письм|email|e-mail|сообщен)"#,
+        #"(организуй|убери|разбери|почисти).*(файл|папк|загрузк|документ|рабоч)"#,
+        #"(переименуй|перемести|удали|скопируй).*(файл|папк)"#,
+        #"создай.*папк"#,
     ]
 
     /// True when the text reads as an operate-the-computer request rather than a question.

@@ -22,6 +22,7 @@ import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.ModelEntry
 import ai.quenderin.core.ModelManager
 import ai.quenderin.core.ModelRouter
+import ai.quenderin.core.Quantization
 import ai.quenderin.core.Role
 import ai.quenderin.core.RouteDecision
 import ai.quenderin.core.SupportContact
@@ -247,6 +248,7 @@ fun ChatScreen(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
         // Hoisted: the onShare lambda below is a non-composable event handler.
         val shareTitle = stringResource(R.string.chat_share_conversation)
+        val shareSubject = stringResource(R.string.chat_share_subject)
         ChatTopBar(
             model = model,
             hasMessages = messages.isNotEmpty(),
@@ -257,7 +259,7 @@ fun ChatScreen(
                 val md = ConversationExporter.markdown(messages, model.label)
                 val share = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "Quenderin conversation")
+                    putExtra(Intent.EXTRA_SUBJECT, shareSubject)
                     putExtra(Intent.EXTRA_TEXT, md)
                 }
                 runCatching { context.startActivity(Intent.createChooser(share, shareTitle)) }
@@ -967,6 +969,18 @@ private fun EmptyState(
             modifier = Modifier.widthIn(max = 280.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+        // Honest heads-up BEFORE the first disappointing answer (iOS EmptyChatState twin).
+        val isLowQuality = Quantization.info(model.quantization)?.quality == "Low"
+        if (isLowQuality) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.chat_low_quality_heads_up),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.widthIn(max = 300.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
         Spacer(Modifier.height(16.dp))
         Text(
             stringResource(R.string.chat_try_one),

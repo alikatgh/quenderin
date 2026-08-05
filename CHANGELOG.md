@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Low-quality heads-up on Android + RU ActionIntent (usability)
+- **Android empty chat**: same “lightest model” honesty as iOS when quant quality is Low
+  (Q2_K etc.) — before the first disappointing answer.
+- **Share subject** localized (`chat_share_subject`).
+- **ActionIntent Russian patterns** (iOS + Android twins): computer-task handoff works for
+  “открой браузер…”, “отправь письмо…”, etc., without false-firing on pure chat questions.
+
 ### Android chat→Agent handoff (usability parity)
 - **ActionIntent short-circuit on Android chat**: computer-task prompts get a guided reply +
   **Open in Agent** chip (no “I cannot fulfill…” wall). `AgentHandoff` baton switches tab and

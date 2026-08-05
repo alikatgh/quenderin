@@ -1,6 +1,6 @@
 # Handoff — pick up here
 
-_Last updated: 2026-08-05 (usability wave)._  
+_Last updated: 2026-08-06 (usability wave)._  
 _(Agent memory is machine-local — this file is the cross-machine source of truth.)_
 
 ## TL;DR — **not** “product ready” yet
@@ -31,6 +31,8 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Demo mock replies** | Starter-aware canned answers + demo footer (no more one wall for every prompt) — shipped. |
 | **Android model router** | First-message Switch suggestion + Settings routing toggle — shipped (iOS parity). |
 | **Android Agent handoff** | Computer-task short-circuit + Open in Agent chip — shipped (iOS parity). |
+| **Android low-quality heads-up** | Empty-chat warning for Low quant — shipped (iOS parity). |
+| **RU ActionIntent** | Computer-task detection for Russian phrasing — shipped both platforms. |
 
 ### Highest-impact remaining product work (agent-doable)
 
@@ -48,6 +50,7 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-06 | Chat: Android low-quality empty-state heads-up + RU ActionIntent patterns |
 | 2026-08-05 | Chat: Android ActionIntent handoff (guided reply → Agent tab) |
 | 2026-08-05 | Chat: DemoMockReplies + Android ModelRouter suggestion chip |
 | 2026-08-05 | Chat: ChatUserFacing empty/continue locale packs + Android copy long-press |

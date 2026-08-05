@@ -176,4 +176,6 @@
     <string name="settings_suggest_best_model_hint">채팅을 시작할 때 질문 유형(코드, 추론, 다른 언어)을 보고 설치된 모델 중 가장 적합한 것을 제안합니다 — 탭할 수 있는 제안이며 조용히 바꾸지 않습니다.</string>
     <string name="chat_open_in_agent">에이전트에서 열기</string>
     <string name="chat_cant_run_this">채팅에서는 실행할 수 없습니다 —</string>
+    <string name="chat_share_subject">Quenderin 대화</string>
+    <string name="chat_low_quality_heads_up">가장 가벼운 모델입니다 — 빠르지만 단순화하고 때로 장황합니다. 중요한 일은 모델 라이브러리에서 더 큰 모델을 고르세요.</string>
 </resources>
