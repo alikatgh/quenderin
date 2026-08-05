@@ -103,7 +103,7 @@ public final class ChatModel: ObservableObject {
     /// picks up mid-thought. No-op when `lastHitTokenCap` is false.
     public func continueLast(options: GenerationOptions = .init()) async {
         guard lastHitTokenCap, !isGenerating else { return }
-        await send("Continue from where you left off. Do not repeat what you already wrote.", options: options)
+        await send(ChatUserFacing.continueCue(), options: options)
     }
 
     private let engine: InferenceEngine
@@ -216,7 +216,7 @@ public final class ChatModel: ObservableObject {
         // silently EMPTY bubble — an engine that produced zero tokens gets an honest notice.
         assistant.text = DegenerationGuard.collapseRepeatedParagraphs(assistant.text)
         if assistant.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !stopRequested {
-            assistant.text = "The model returned an empty reply. Try rephrasing, or pick a larger model in the Model library."
+            assistant.text = ChatUserFacing.emptyReply()
         }
         // Token-cap mid-sentence → Continue. Count is per streamed piece from the UTF-8 decoder
         // (≈ per token on iOS). Not Stop, not degeneration, and we hit the budget.

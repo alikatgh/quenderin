@@ -26,7 +26,12 @@ final class ChatModelTests: XCTestCase {
         let chat = ChatModel(engine: await loadedMock(""))
         await chat.send("hello?")
         XCTAssertEqual(chat.messages.count, 2)
-        XCTAssertTrue(chat.messages[1].text.contains("empty reply"),
+        XCTAssertEqual(chat.messages[1].text, ChatUserFacing.emptyReply(),
+                       "zero-token settle must use ChatUserFacing notice")
+        XCTAssertTrue(chat.messages[1].text.contains("empty reply") ||
+                      chat.messages[1].text.contains("пустой") ||
+                      chat.messages[1].text.contains("빈 답변") ||
+                      chat.messages[1].text.contains("空"),
                       "a zero-token generation must never settle as a silent blank bubble")
     }
 

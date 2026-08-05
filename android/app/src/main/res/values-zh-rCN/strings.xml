@@ -166,4 +166,7 @@
     <string name="wait_tip_6">智能体可离线做纯数学。视觉/屏幕工具稍后可选。</string>
     <string name="wait_tip_7">手机的真正上限是发热而非内存——短对话保持凉爽。</string>
     <string name="wait_tip_8">可随时取消；部分下载会在下次尝试时继续。</string>
+    <string name="chat_copy">复制</string>
+    <string name="chat_copied">已复制</string>
+    <string name="chat_continue">继续</string>
 </resources>

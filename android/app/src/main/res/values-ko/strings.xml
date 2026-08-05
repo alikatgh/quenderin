@@ -166,4 +166,7 @@
     <string name="wait_tip_6">에이전트는 오프라인 순수 수학을 할 수 있습니다. 비전/화면 도구는 나중에 선택입니다.</string>
     <string name="wait_tip_7">폰의 진짜 한계는 메모리가 아니라 발열입니다 — 짧은 채팅은 시원합니다.</string>
     <string name="wait_tip_8">언제든 취소할 수 있습니다. 부분 다운로드는 다음 시도에서 이어집니다.</string>
+    <string name="chat_copy">복사</string>
+    <string name="chat_copied">복사됨</string>
+    <string name="chat_continue">계속</string>
 </resources>

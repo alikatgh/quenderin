@@ -446,7 +446,11 @@ fun main() {
         e.load(ModelCatalog.smallest, "/dev/null")
         val c = ChatModel(e)
         val r = c.send("hi")
-        r.contains("empty reply") && c.messages.last().text.contains("empty reply")
+        // Empty-reply notice is locale-aware (matches ChatModel's Locale.getDefault()).
+        c.messages.last().text == ChatUserFacing.emptyReply(java.util.Locale.getDefault().language) &&
+            ChatUserFacing.emptyReply("en").contains("empty reply") &&
+            ChatUserFacing.emptyReply("ru").contains("пустой") &&
+            ChatUserFacing.continueCue("ru").contains("Продолжи")
     })
 
     // --- ConversationContext (chat memory + context-window budgeting; twin of Swift) ---

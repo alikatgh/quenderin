@@ -53,6 +53,9 @@
     <string name="chat_writing">Writing</string>
     <string name="chat_phase_elapsed">%1$s · %2$ds</string>
     <string name="chat_retry">Retry</string>
+    <string name="chat_copy">Copy</string>
+    <string name="chat_copied">Copied</string>
+    <string name="chat_continue">Continue</string>
     <string name="chat_demo_mode">Demo mode — replies are canned until this APK links native llama.cpp (see android/INTEGRATION.md).</string>
     <string name="settings_engine">Inference engine</string>
     <string name="settings_engine_real">On-device (llama.cpp)</string>

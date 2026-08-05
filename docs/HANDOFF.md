@@ -1,6 +1,6 @@
 # Handoff — pick up here
 
-_Last updated: 2026-08-04 (usability wave)._  
+_Last updated: 2026-08-05 (usability wave)._  
 _(Agent memory is machine-local — this file is the cross-machine source of truth.)_
 
 ## TL;DR — **not** “product ready” yet
@@ -26,11 +26,13 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Desktop general prompt** | Lead-with-answer / no-invent + maxTokens 512 — shipped (aligned with mobile). |
 | **Localization pass** | Engine honesty, generation phase, attach/vision help, download-wait strings in iOS catalog + Android ru/ko/ja/zh — shipped 2026-08-04. |
 | **Localized starters** | Empty-chat chips + prompts in ru/ko/ja/zh — shipped (not English-only on first run). |
+| **Empty-reply / Continue cues** | Locale-aware via `ChatUserFacing` (ru/ko/ja/zh) — shipped. |
+| **Android copy message** | Long-press Copy + Report menu — shipped (parity with iOS). |
 
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
-2. **Remaining SwiftUI localization gaps** — some long Settings captions / interpolations still skip the catalog. Day-one chat/engine/wait/starters covered.
+2. **Remaining SwiftUI localization gaps** — some long Settings captions / interpolations still skip the catalog. Day-one chat/engine/wait/starters/recovery covered.
 3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
 
 ### Owner-only (still)
@@ -43,6 +45,9 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-05 | Chat: ChatUserFacing empty/continue locale packs + Android copy long-press |
+| 2026-08-05 | Chat: localized first-run starters (ru/ko/ja/zh) |
+| 2026-08-04 | i18n: engine/phase/wait strings + desktop general prompt parity |
 | 2026-08-04 | CI: JNI `load_mode` dual-API + npm audit overrides |
 | 2026-08-04 | UX: download wait playground (game + tips) iOS/Android/desktop |
 | 2026-08-04 | UX: **ChatStarters** empty-state chips + download ETA |

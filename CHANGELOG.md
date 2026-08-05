@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Chat recovery + copy parity (usability)
+- **Locale-aware empty-reply notice + continue cue** (`ChatUserFacing` twins): zero-token and token-cap
+  recovery no longer force English into a Russian (ko/ja/zh) chat.
+- **Android long-press menu**: Copy + Report (was Report-only on long-press) — parity with iOS context menu.
+
 ### Localization + desktop prompt parity (usability)
 - **iOS string catalog**: engine honesty, Loading prompt / Writing phase, attach help (vision not yet),
   demo banner, Send/Stop a11y — keys in `scripts/translations.tsv` → `Localizable.xcstrings`.

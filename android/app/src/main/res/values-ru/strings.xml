@@ -166,4 +166,7 @@
     <string name="wait_tip_6">Агент умеет чистую математику офлайн. Зрение/экранные инструменты — позже, по желанию.</string>
     <string name="wait_tip_7">На телефонах потолок — нагрев, не память: короткие чаты остаются прохладными.</string>
     <string name="wait_tip_8">Можно отменить в любой момент; частичная загрузка продолжится при следующей попытке.</string>
+    <string name="chat_copy">Копировать</string>
+    <string name="chat_copied">Скопировано</string>
+    <string name="chat_continue">Продолжить</string>
 </resources>

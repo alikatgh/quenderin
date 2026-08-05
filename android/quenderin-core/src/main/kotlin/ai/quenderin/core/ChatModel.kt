@@ -210,7 +210,8 @@ class ChatModel(
             // exactly as iOS's `!stopRequested` guard. (writeAssistant also drops a superseded write.)
             val stillActive = synchronized(lock) { myGen == activeGeneration }
             val finalText = if (settled.isBlank() && stillActive) {
-                "The model returned an empty reply. Try rephrasing, or pick a larger model in the Model library."
+                // Locale-aware notice (ru/ko/ja/zh); default EN for tests / unknown locales.
+                ChatUserFacing.emptyReply(java.util.Locale.getDefault().language)
             } else {
                 settled
             }
@@ -238,7 +239,7 @@ class ChatModel(
      */
     fun continueLast(): String {
         if (!lastHitTokenCap || isGenerating) return ""
-        return send("Continue from where you left off. Do not repeat what you already wrote.")
+        return send(ChatUserFacing.continueCue(java.util.Locale.getDefault().language))
     }
 
     /** Write the assistant placeholder iff this generation is still the active one and the slot is still

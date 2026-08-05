@@ -166,4 +166,7 @@
     <string name="wait_tip_6">エージェントはオフラインで純粋な計算ができます。視覚/画面ツールは後で任意。</string>
     <string name="wait_tip_7">スマホの天井はメモリではなく熱 — 短いチャットは涼しく保たれます。</string>
     <string name="wait_tip_8">いつでもキャンセル可能。途中までダウンロードした分は次回に続きます。</string>
+    <string name="chat_copy">コピー</string>
+    <string name="chat_copied">コピーしました</string>
+    <string name="chat_continue">続ける</string>
 </resources>

@@ -573,8 +573,19 @@ internal fun ModelAvatar(size: androidx.compose.ui.unit.Dp) {
 private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
     val mine = msg.role == Role.USER
     val colors = Quenderin.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val canCopy = msg.text.isNotBlank()
     val reportable = !mine && msg.text.isNotBlank()
     val reportLabel = stringResource(R.string.chat_report_response)
+    val copyLabel = stringResource(R.string.chat_copy)
+    val copiedToast = stringResource(R.string.chat_copied)
+    var menuOpen by remember { mutableStateOf(false) }
+    fun copyText() {
+        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+            as? android.content.ClipboardManager
+        cm?.setPrimaryClip(android.content.ClipData.newPlainText("message", msg.text))
+        android.widget.Toast.makeText(context, copiedToast, android.widget.Toast.LENGTH_SHORT).show()
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -584,59 +595,91 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
             Modifier.fillMaxWidth(),
             horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
         ) {
-            Surface(
-                color = if (mine) colors.userBubble else colors.assistantBubble,
-                shape = if (mine) QuenderinShapes.userBubble else QuenderinShapes.assistantBubble,
-                modifier = Modifier
-                    .widthIn(max = 300.dp)
-                    .then(
-                        if (reportable)
-                            Modifier
-                                .combinedClickable(onClick = {}, onLongClick = onReport)
-                                .semantics {
-                                    customActions = listOf(
-                                        CustomAccessibilityAction(reportLabel) { onReport(); true }
+            Box {
+                Surface(
+                    color = if (mine) colors.userBubble else colors.assistantBubble,
+                    shape = if (mine) QuenderinShapes.userBubble else QuenderinShapes.assistantBubble,
+                    modifier = Modifier
+                        .widthIn(max = 300.dp)
+                        .then(
+                            if (canCopy || reportable)
+                                Modifier
+                                    .combinedClickable(
+                                        onClick = {},
+                                        onLongClick = { menuOpen = true },
+                                    )
+                                    .semantics {
+                                        val actions = buildList {
+                                            if (canCopy) {
+                                                add(CustomAccessibilityAction(copyLabel) { copyText(); true })
+                                            }
+                                            if (reportable) {
+                                                add(CustomAccessibilityAction(reportLabel) { onReport(); true })
+                                            }
+                                        }
+                                        customActions = actions
+                                    }
+                            else Modifier,
+                        ),
+                ) {
+                    Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp)) {
+                        // Attached-document chips — what was attached (not the extracted body).
+                        // Twin of iOS ChatBubble document labels. Geometry-stable capsules.
+                        if (msg.documents.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                msg.documents.forEach { doc ->
+                                    Text(
+                                        doc.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (mine) colors.userTimestamp else colors.assistantTimestamp,
+                                        maxLines = 1,
                                     )
                                 }
-                        else Modifier,
-                    ),
-            ) {
-                Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp)) {
-                    // Attached-document chips — what was attached (not the extracted body).
-                    // Twin of iOS ChatBubble document labels. Geometry-stable capsules.
-                    if (msg.documents.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            msg.documents.forEach { doc ->
+                            }
+                            if (msg.text.isNotBlank()) Spacer(Modifier.height(6.dp))
+                        }
+                        if (mine) {
+                            // User text shown literally (empty when documents-only "summarize this").
+                            if (msg.text.isNotBlank()) {
                                 Text(
-                                    doc.name,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (mine) colors.userTimestamp else colors.assistantTimestamp,
-                                    maxLines = 1,
+                                    text = msg.text,
+                                    color = colors.onUserBubble,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            } else if (msg.documents.isEmpty()) {
+                                Text(
+                                    text = " ",
+                                    color = colors.onUserBubble,
+                                    style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
-                        }
-                        if (msg.text.isNotBlank()) Spacer(Modifier.height(6.dp))
-                    }
-                    if (mine) {
-                        // User text shown literally (empty when documents-only "summarize this").
-                        if (msg.text.isNotBlank()) {
-                            Text(
+                        } else {
+                            // Assistant replies are Markdown — bold/headings/lists/code, not raw markers.
+                            MarkdownText(
                                 text = msg.text,
-                                color = colors.onUserBubble,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        } else if (msg.documents.isEmpty()) {
-                            Text(
-                                text = " ",
-                                color = colors.onUserBubble,
-                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.onAssistantBubble,
                             )
                         }
-                    } else {
-                        // Assistant replies are Markdown — bold/headings/lists/code, not raw markers.
-                        MarkdownText(
-                            text = msg.text,
-                            color = colors.onAssistantBubble,
+                    }
+                }
+                // Long-press menu: Copy (all bubbles) + Report (assistant only) — twin of iOS contextMenu.
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (canCopy) {
+                        DropdownMenuItem(
+                            text = { Text(copyLabel) },
+                            onClick = {
+                                menuOpen = false
+                                copyText()
+                            },
+                        )
+                    }
+                    if (reportable) {
+                        DropdownMenuItem(
+                            text = { Text(reportLabel) },
+                            onClick = {
+                                menuOpen = false
+                                onReport()
+                            },
                         )
                     }
                 }
