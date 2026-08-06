@@ -48,10 +48,15 @@ public enum ModelRouter {
         "step by step", "step-by-step", "prove ", "proof", "solve ", "puzzle",
         "logic", "deduce", "how many ", "if x", "therefore", "riddle", "chain of thought",
         "reason through", "think through", "math problem",
+        "по шагам", "докажи", "реши ", "загадк", "сколько будет",
     ]
 
-    static let translateMarkers = ["translate", "translation", "in spanish", "in french",
-                                   "in german", "in japanese", "in chinese", "into english"]
+    static let translateMarkers = [
+        "translate", "translation", "in spanish", "in french",
+        "in german", "in japanese", "in chinese", "into english",
+        // Russian-first (Cyrillic already trips multilingual via nonLatin share; these help mixed scripts).
+        "переведи", "перевод", "на английский", "на русский", "на испанский",
+    ]
 
     /// Classify a prompt. Priority when several match: coding > multilingual > reasoning >
     /// general — a Chinese coding question should still get the coding model.

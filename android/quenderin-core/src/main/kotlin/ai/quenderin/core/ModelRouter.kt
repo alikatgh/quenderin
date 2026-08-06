@@ -35,11 +35,14 @@ object ModelRouter {
         "step by step", "step-by-step", "prove ", "proof", "solve ", "puzzle",
         "logic", "deduce", "how many ", "if x", "therefore", "riddle", "chain of thought",
         "reason through", "think through", "math problem",
+        "по шагам", "докажи", "реши ", "загадк", "сколько будет",
     )
 
     internal val translateMarkers = listOf(
         "translate", "translation", "in spanish", "in french",
         "in german", "in japanese", "in chinese", "into english",
+        // Russian-first (Cyrillic already trips multilingual via nonLatin share; these help mixed scripts).
+        "переведи", "перевод", "на английский", "на русский", "на испанский",
     )
 
     /** Classify a prompt. Priority when several match: coding > multilingual > reasoning > general. */
