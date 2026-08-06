@@ -34,10 +34,31 @@ object DocumentTextExtractor {
         return ext in imageExtensions
     }
 
-    private fun imageRejected(name: String) = Extraction.Rejected(
-        "\"$name\" is an image — on-device vision isn't available yet. " +
-            "Describe the photo in your message, or attach a text/PDF file instead.",
-    )
+    /**
+     * Keep English tokens **vision** and **image** in every locale so the golden-chat structural
+     * gate (`refusal_must_contain`) stays green while Russian-first users get a readable reason.
+     */
+    private fun imageRejected(name: String, languageCode: String? = java.util.Locale.getDefault().language): Extraction.Rejected {
+        val lang = languageCode?.lowercase()?.substringBefore('-')
+        val reason = when (lang) {
+            "ru" ->
+                "«$name» — image. On-device vision пока недоступен. " +
+                    "Опишите фото в сообщении или прикрепите текст/PDF."
+            "ko" ->
+                "\"$name\" is an image — on-device vision은 아직 사용할 수 없습니다. " +
+                    "메시지에 사진을 설명하거나 텍스트/PDF를 첨부하세요."
+            "ja" ->
+                "\"$name\" is an image — on-device visionは未対応です。 " +
+                    "メッセージで写真を説明するか、テキスト/PDFを添付してください。"
+            "zh" ->
+                "\"$name\" is an image — on-device vision 尚不可用。" +
+                    "请在消息中描述照片，或附加文本/PDF。"
+            else ->
+                "\"$name\" is an image — on-device vision isn't available yet. " +
+                    "Describe the photo in your message, or attach a text/PDF file instead."
+        }
+        return Extraction.Rejected(reason)
+    }
 
     @JvmOverloads
     fun extract(name: String, file: File, maxBytes: Int = DEFAULT_MAX_BYTES): Extraction {

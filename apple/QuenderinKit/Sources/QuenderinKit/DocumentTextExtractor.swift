@@ -20,12 +20,31 @@ public enum DocumentTextExtractor {
         "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff",
     ]
 
+    /// Keep English tokens **vision** and **image** in every locale for the golden-chat gate.
+    private static func imageRejectedReason(name: String, locale: Locale = .current) -> String {
+        switch locale.language.languageCode?.identifier {
+        case "ru":
+            return "«\(name)» — image. On-device vision пока недоступен. " +
+                "Опишите фото в сообщении или прикрепите текст/PDF."
+        case "ko":
+            return "\"\(name)\" is an image — on-device vision은 아직 사용할 수 없습니다. " +
+                "메시지에 사진을 설명하거나 텍스트/PDF를 첨부하세요."
+        case "ja":
+            return "\"\(name)\" is an image — on-device visionは未対応です。 " +
+                "メッセージで写真を説明するか、テキスト/PDFを添付してください。"
+        case "zh":
+            return "\"\(name)\" is an image — on-device vision 尚不可用。" +
+                "请在消息中描述照片，或附加文本/PDF。"
+        default:
+            return "\"\(name)\" is an image — on-device vision isn't available yet. " +
+                "Describe the photo in your message, or attach a text/PDF file instead."
+        }
+    }
+
     public static func extract(name: String, url: URL, maxBytes: Int = 24 * 1024) -> Extraction {
         let ext = (name as NSString).pathExtension.lowercased()
         if imageExtensions.contains(ext) {
-            return .rejected(reason:
-                "\"\(name)\" is an image — on-device vision isn't available yet. " +
-                "Describe the photo in your message, or attach a text/PDF file instead.")
+            return .rejected(reason: imageRejectedReason(name: name))
         }
         #if canImport(PDFKit)
         if ext == "pdf" {

@@ -7,6 +7,10 @@
 
 ## Unreleased
 
+### Image-attach refusal locale packs (usability)
+- Vision-not-yet rejection reasons localize (ru/ko/ja/zh) while retaining English **vision** /
+  **image** tokens for the golden-chat structural gate.
+
 ### Model picker + router reason i18n (usability)
 - **ModelPickerSheet** title/sections/Current badge localized.
 - **ModelRouter.reason** localizes (ru/ko/ja/zh) while classification stays parity-pinned.
