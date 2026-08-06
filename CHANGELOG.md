@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Android Settings i18n + guided handoff locale packs (usability)
+- **Settings screen** section titles and common rows (Speed/Model/Reasoning/Agent/Storage/…) are
+  string-resourced for en/ru/ko/ja/zh — Russian-first users no longer see an English Settings shell.
+- **Guided computer-task reply** is locale-aware on both platforms (`ActionIntent.guidedAssistantReply`).
+
 ### Agent handoff auto-runs on Android (usability parity)
 - **Open in Agent** now starts the run immediately (twin of iOS): the chat CTA was already the
   run gesture; mutating steps still preview + ask. Goal field clears and history records on submit.

@@ -283,7 +283,9 @@ fun ChatScreen(
                 chat.recordGuidedTurn(
                     userText = text,
                     documents = docs,
-                    assistantText = ActionIntent.GUIDED_ASSISTANT_REPLY,
+                    assistantText = ActionIntent.guidedAssistantReply(
+                        java.util.Locale.getDefault().language,
+                    ),
                 )
                 messages = chat.messages
                 scope.launch { coordinator.persist() }
@@ -828,7 +830,10 @@ private fun MessageBubble(msg: ChatMessage, onReport: () -> Unit = {}) {
                             }
                         } else {
                             // Rewrite old "I cannot fulfill… use the Agent" walls to guided education.
-                            val shown = ActionIntent.displayAssistantText(msg.text)
+                            val shown = ActionIntent.displayAssistantText(
+                                msg.text,
+                                java.util.Locale.getDefault().language,
+                            )
                             MarkdownText(
                                 text = shown,
                                 color = colors.onAssistantBubble,

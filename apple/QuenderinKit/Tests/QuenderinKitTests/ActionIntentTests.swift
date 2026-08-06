@@ -61,9 +61,12 @@ final class ActionIntentTests: XCTestCase {
         let wall = "I cannot fulfill that request. I am running entirely offline and do not have "
             + "the ability to operate your computer. Please use the Agent tab (the sparkle icon)."
         XCTAssertTrue(ActionIntent.looksLikeAgentRedirectProse(wall))
-        XCTAssertEqual(ActionIntent.displayAssistantText(wall), ActionIntent.guidedAssistantReply)
+        XCTAssertEqual(ActionIntent.displayAssistantText(wall, locale: Locale(identifier: "en_US")),
+                       ActionIntent.guidedAssistantReply)
         XCTAssertFalse(ActionIntent.looksLikeAgentRedirectProse("Село Хочо находится в префектуре Нагано."))
         XCTAssertEqual(ActionIntent.displayAssistantText("Paris is the capital."),
                        "Paris is the capital.")
+        let ru = ActionIntent.localizedGuidedReply(locale: Locale(identifier: "ru_RU"))
+        XCTAssertTrue(ru.contains("Агент"), ru)
     }
 }

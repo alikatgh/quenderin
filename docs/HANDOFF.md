@@ -34,11 +34,13 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Android low-quality heads-up** | Empty-chat warning for Low quant — shipped (iOS parity). |
 | **RU ActionIntent** | Computer-task detection for Russian phrasing — shipped both platforms. |
 | **Android Agent auto-run** | Open in Agent starts the run (iOS parity) — shipped. |
+| **Android Settings i18n** | Section titles + speed/model rows localized — shipped. |
+| **Guided handoff locale** | Computer-task education reply in ru/ko/ja/zh — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
-2. **Remaining SwiftUI localization gaps** — some long Settings captions / interpolations still skip the catalog. Day-one chat/engine/wait/starters/recovery covered.
+2. **Remaining long Settings captions** — some footnotes still English on Android; iOS catalog gaps on concatenations.
 3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
 
 ### Owner-only (still)
@@ -51,6 +53,7 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-06 | Settings: Android section i18n + locale-aware guided handoff reply |
 | 2026-08-06 | Agent: Android handoff auto-runs; iOS Continue/Today/Switch localization |
 | 2026-08-06 | Chat: Android low-quality empty-state heads-up + RU ActionIntent patterns |
 | 2026-08-05 | Chat: Android ActionIntent handoff (guided reply → Agent tab) |

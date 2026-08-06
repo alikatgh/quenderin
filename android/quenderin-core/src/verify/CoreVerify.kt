@@ -1061,7 +1061,8 @@ fun main() {
     })
     check("ActionIntent guided reply is non-empty and handoff title is set",
         ActionIntent.GUIDED_ASSISTANT_REPLY.contains("Agent") &&
-            ActionIntent.HANDOFF_BUTTON_TITLE.isNotBlank())
+            ActionIntent.HANDOFF_BUTTON_TITLE.isNotBlank() &&
+            ActionIntent.guidedAssistantReply("ru").contains("Агент"))
     check("ActionIntent rewrites cannot-fulfill prose to guided copy",
         ActionIntent.displayAssistantText("I cannot fulfill that request. Use the Agent tab.")
             == ActionIntent.GUIDED_ASSISTANT_REPLY)

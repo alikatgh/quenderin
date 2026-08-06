@@ -41,11 +41,35 @@ object ActionIntent {
      * Fixed educational reply when chat short-circuits a computer task — no model call, no
      * "I cannot fulfill that request" wall. The UI always pairs this with a real button.
      * Mobile wording (phone), twin intent of iOS `guidedAssistantReply` (Mac).
+     * Canonical English — tests / CoreVerify pin this string.
      */
     const val GUIDED_ASSISTANT_REPLY =
         "Chat is for questions and writing help — it can’t open apps, control the browser, or send mail for you.\n\n" +
             "**The Agent can.** Tap **Agent** in the tab bar, or use the button below. " +
             "It will take your request and ask before changing anything."
+
+    /** Locale-aware guided reply for the transcript (ru/ko/ja/zh); default English. */
+    fun guidedAssistantReply(languageCode: String? = null): String {
+        return when (languageCode?.lowercase()?.substringBefore('-')) {
+            "ru" ->
+                "Чат — для вопросов и помощи с текстом. Он не открывает приложения, не управляет браузером и не шлёт почту.\n\n" +
+                    "**Это может Агент.** Нажмите **Агент** внизу или кнопку ниже. " +
+                    "Он возьмёт ваш запрос и спросит перед любыми изменениями."
+            "ko" ->
+                "채팅은 질문과 글쓰기 도움용입니다. 앱을 열거나 브라우저를 제어하거나 메일을 보내지 않습니다.\n\n" +
+                    "**에이전트는 할 수 있습니다.** 하단 **에이전트** 탭 또는 아래 버튼을 누르세요. " +
+                    "요청을 받아 변경 전에 확인합니다."
+            "ja" ->
+                "チャットは質問と文章の手伝い用です。アプリ起動・ブラウザ操作・メール送信はできません。\n\n" +
+                    "**エージェントなら可能です。** 下の **エージェント** タブか下のボタンを押してください。" +
+                    "変更の前に確認します。"
+            "zh" ->
+                "聊天用于提问和写作帮助——它不会打开应用、控制浏览器或发邮件。\n\n" +
+                    "**智能体可以。** 点底部 **智能体** 或下方按钮。" +
+                    "它会接手请求，并在做任何更改前征求同意。"
+            else -> GUIDED_ASSISTANT_REPLY
+        }
+    }
 
     /** In-transcript / composer link label — modest, not a billboard. */
     const val HANDOFF_BUTTON_TITLE = "Open in Agent"
@@ -74,6 +98,6 @@ object ActionIntent {
     }
 
     /** Text to show for an assistant bubble: rewrite dead-end agent redirects to the guided copy. */
-    fun displayAssistantText(text: String): String =
-        if (looksLikeAgentRedirectProse(text)) GUIDED_ASSISTANT_REPLY else text
+    fun displayAssistantText(text: String, languageCode: String? = null): String =
+        if (looksLikeAgentRedirectProse(text)) guidedAssistantReply(languageCode) else text
 }

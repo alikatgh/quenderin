@@ -96,12 +96,12 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text(
-            "Settings",
+            stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
         )
-        SettingsGroup("Speed") {
+        SettingsGroup(stringResource(R.string.settings_speed)) {
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control
             // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
             // (download if needed → load → swap).
@@ -112,27 +112,37 @@ fun SettingsScreen(
             }
             val choice = remember(totalRamGb) { SpeedPresets.forDevice(totalRamGb) }
             val current = choice.presetFor(model.id)
+            val fastLabel = stringResource(R.string.settings_speed_fast)
+            val balLabel = stringResource(R.string.settings_speed_balanced)
+            val qualLabel = stringResource(R.string.settings_speed_quality)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PresetChip("Fast", current == SpeedPreset.FAST, Modifier.weight(1f)) {
+                PresetChip(fastLabel, current == SpeedPreset.FAST, Modifier.weight(1f)) {
                     if (choice.fast.id != model.id) onSelectModel(choice.fast)
                 }
-                PresetChip("Balanced", current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
+                PresetChip(balLabel, current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
                     if (choice.balanced.id != model.id) onSelectModel(choice.balanced)
                 }
-                PresetChip("Quality", current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
+                PresetChip(qualLabel, current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
                     if (choice.quality.id != model.id) onSelectModel(choice.quality)
                 }
             }
             Caption(
-                if (current == null) "Custom model active (${model.label}) — pick a preset to switch."
-                else "Fast: ${choice.fast.label} · Balanced: ${choice.balanced.label} · Quality: ${choice.quality.label}. " +
-                    "Switching downloads the model if needed.",
+                if (current == null) {
+                    stringResource(R.string.settings_custom_model, model.label)
+                } else {
+                    stringResource(
+                        R.string.settings_speed_presets_line,
+                        choice.fast.label,
+                        choice.balanced.label,
+                        choice.quality.label,
+                    )
+                },
             )
         }
 
-        SettingsGroup("Model") {
-            LabeledRow("Active model", model.label)
-            LabeledRow("Size", model.sizeLabel)
+        SettingsGroup(stringResource(R.string.settings_model)) {
+            LabeledRow(stringResource(R.string.settings_active_model), model.label)
+            LabeledRow(stringResource(R.string.settings_size), model.sizeLabel)
             val engineStatus = if (ai.quenderin.core.LlamaEngine.NATIVE_AVAILABLE) {
                 stringResource(R.string.settings_engine_real)
             } else {
@@ -145,17 +155,16 @@ fun SettingsScreen(
             OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.model_change))
             }
-            Caption("Runs entirely on-device via llama.cpp — no cloud.")
+            Caption(stringResource(R.string.settings_on_device_llama))
         }
 
-        SettingsGroup("Reasoning") {
+        SettingsGroup(stringResource(R.string.settings_reasoning)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
                     Caption(
-                        if (deepThinking) "The model reasons step-by-step before answering — better on hard " +
-                            "questions, but noticeably slower."
-                        else "Off: fast, direct answers. Turn on to let the model reason step-by-step (slower).",
+                        if (deepThinking) stringResource(R.string.settings_deep_thinking_on)
+                        else stringResource(R.string.settings_deep_thinking_off),
                     )
                 }
                 Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
@@ -192,7 +201,7 @@ fun SettingsScreen(
         // dashboard's "What it can do here": every T1+ capability in plain words with its consent
         // toggle (the SAME PrefsConsentStore the Agent screen's runner reads, so this pane IS the
         // grant), plus the last ledger rows — refusals included, the local flight recorder.
-        SettingsGroup("Agent") {
+        SettingsGroup(stringResource(R.string.settings_agent)) {
             val consent = remember { ai.quenderin.app.PrefsConsentStore(context) }
             // Metadata-only instances (empty seams) — listing runs nothing; the pane can't drift
             // from the agent because both read the same capability classes and consent store.
@@ -259,7 +268,7 @@ fun SettingsScreen(
                 val skillStore = remember { ai.quenderin.app.PrefsSkillMemoryStore(context) }
                 var skillCount by remember { mutableStateOf(skillStore.memory().size) }
                 if (skillCount > 0) {
-                    Caption("Remembered skills from past agent runs: $skillCount (local only).")
+                    Caption(stringResource(R.string.settings_skills_count, skillCount))
                     TextButton(onClick = {
                         skillStore.clear()
                         skillCount = 0
@@ -267,19 +276,19 @@ fun SettingsScreen(
                         Text(stringResource(R.string.settings_clear_skills))
                     }
                 } else {
-                    Caption("No learned agent skills stored yet.")
+                    Caption(stringResource(R.string.settings_no_skills_yet))
                 }
             }
         }
 
-            SettingsGroup("Storage") {
-                LabeledRow("Saved conversations", conversationCount.toString())
-                Caption("Browse, switch, or clear conversations from the History button in Chat.")
+            SettingsGroup(stringResource(R.string.settings_storage)) {
+                LabeledRow(stringResource(R.string.settings_saved_conversations), conversationCount.toString())
+                Caption(stringResource(R.string.settings_history_hint))
             }
 
-            SettingsGroup("Downloaded models") {
+            SettingsGroup(stringResource(R.string.settings_downloaded_models)) {
                 if (installedModels.isEmpty()) {
-                    Caption("No models downloaded yet.")
+                    Caption(stringResource(R.string.settings_no_models_yet))
                 } else {
                     installedModels.forEach { installed ->
                         Row(
@@ -291,7 +300,7 @@ fun SettingsScreen(
                                 Text(installed.model.label)
                                 if (installed.isActive) {
                                     Text(
-                                        "Active",
+                                        stringResource(R.string.settings_active),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
@@ -323,12 +332,15 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    LabeledRow("Total on device", Formatter.formatShortFileSize(context, totalModelBytes))
+                    LabeledRow(
+                        stringResource(R.string.settings_total_on_device),
+                        Formatter.formatShortFileSize(context, totalModelBytes),
+                    )
                 }
-                Caption("Delete a model to free space — the active model is protected.")
+                Caption(stringResource(R.string.settings_delete_model_hint))
             }
 
-            SettingsGroup("Privacy & support") {
+            SettingsGroup(stringResource(R.string.settings_privacy_support)) {
                 Caption(stringResource(R.string.ai_disclaimer))
                 Button(
                     onClick = {

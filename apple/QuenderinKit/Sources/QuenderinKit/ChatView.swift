@@ -88,7 +88,7 @@ public struct ChatView: View {
         if ActionIntent.looksLikeComputerTask(prompt) {
             agentSuggestion = prompt
             model.recordGuidedTurn(userText: prompt, documents: documents,
-                                   assistantText: ActionIntent.guidedAssistantReply)
+                                   assistantText: ActionIntent.localizedGuidedReply())
             return
         }
         agentSuggestion = nil
