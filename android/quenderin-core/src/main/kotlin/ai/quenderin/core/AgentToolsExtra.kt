@@ -160,22 +160,26 @@ object DateCalc {
         val lower = text.lowercase()
         val dates = isoDates(text)
 
-        if (dates.size >= 2 && lower.contains("between")) {
+        if (dates.size >= 2 && (lower.contains("between") || lower.contains("между"))) {
             val days = abs(ChronoUnit.DAYS.between(dates[0], dates[1]))
-            return "$days day${if (days == 1L) "" else "s"}"
+            return formatDayCount(days)
         }
 
         if (dates.size == 1) {
             // "what day of the week is <date>" → the weekday name. Specific triggers so it can't
             // collide with an offset query like "90 days after <date>". (Identical names to iOS.)
-            if (lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week")) {
+            if (lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week")
+                || lower.contains("день недели") || lower.contains("какой день")
+            ) {
                 val names = arrayOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
                 return names[dates[0].dayOfWeek.value - 1]   // DayOfWeek: MONDAY=1 … SUNDAY=7
             }
             val stripped = text.replace(isoRegex, " ")
             val n = firstInteger(stripped) ?: return null
             val isMinus = lower.contains("minus") || lower.contains("subtract") || lower.contains("before")
+                || lower.contains("минус") || lower.contains("до ") || lower.contains("назад")
             val isPlus = lower.contains("plus") || lower.contains("add") || lower.contains("after")
+                || lower.contains("плюс") || lower.contains("после") || lower.contains("через")
             if (!isPlus && !isMinus) return null
             // Twin-drift fix: LocalDate.plusDays THROWS DateTimeException on year overflow (caps at year
             // ±999,999,999) and nothing upstream catches it — a huge Int day-offset (well within the parse)
@@ -185,5 +189,22 @@ object DateCalc {
         }
 
         return null
+    }
+
+    /** Day-count observation — English default keeps agent-loop/tests stable; RU when device is Russian. */
+    private fun formatDayCount(days: Long): String {
+        val lang = java.util.Locale.getDefault().language
+        if (lang == "ru") {
+            val n = days % 100
+            val n1 = days % 10
+            val word = when {
+                n in 11L..14L -> "дней"
+                n1 == 1L -> "день"
+                n1 in 2L..4L -> "дня"
+                else -> "дней"
+            }
+            return "$days $word"
+        }
+        return "$days day${if (days == 1L) "" else "s"}"
     }
 }

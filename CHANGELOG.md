@@ -7,6 +7,10 @@
 
 ## Unreleased
 
+### History preview + date-tool RU markers (usability)
+- Conversation list “You:” prefix localizes (Вы/나/…); empty-title packs already shipped.
+- DateCalc accepts Russian triggers (между, через, день недели) on both platforms; RU day-count plurals.
+
 ### New conversation + agent halt locale packs (usability)
 - Empty history title localizes (“Новая беседа” etc.).
 - Agent halt banners localize (RU first; EN default for tests/export).

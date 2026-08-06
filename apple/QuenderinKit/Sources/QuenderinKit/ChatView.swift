@@ -528,7 +528,7 @@ private struct ChatBubble: View {
                 Button {
                     copyToPasteboard(message.text)
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                    Label(String(localized: "Copy"), systemImage: "doc.on.doc")
                 }
             }
             if message.role == .assistant, !message.text.isEmpty {
@@ -537,7 +537,7 @@ private struct ChatBubble: View {
                         openURL(url)
                     }
                 } label: {
-                    Label("Report response", systemImage: "flag")
+                    Label(String(localized: "Report response"), systemImage: "flag")
                 }
             }
         }
@@ -599,7 +599,7 @@ private struct AgentHandoffCard: View {
                 .font(.caption2)
                 .foregroundStyle(palette.primary)
             if !compact {
-                Text("Chat can’t run this —")
+                Text("Chat can’t run this —")  // LocalizedStringKey → catalog
                     .font(.caption)
                     .foregroundStyle(palette.onSurfaceVariant)
             }
@@ -797,6 +797,7 @@ private struct EmptyChatState: View {
         VStack(spacing: 14) {
             ModelAvatar(size: 72, modelID: activeModel?.id)
             if let label = activeModel?.label {
+                // Format key "Ask %@" lives in the string catalog.
                 Text("Ask \(label)")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(palette.onSurface)

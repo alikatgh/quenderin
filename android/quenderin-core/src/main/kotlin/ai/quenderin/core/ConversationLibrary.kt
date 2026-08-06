@@ -69,8 +69,18 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
             } else {
                 collapsed.substring(0, collapsed.offsetByCodePoints(0, limit)) + "…"
             }
-            return if (message.role == Role.USER) "You: $body" else body
+            return if (message.role == Role.USER) "${youPrefix()}$body" else body
         }
+
+        /** History preview prefix for user lines (locale-aware). */
+        fun youPrefix(languageCode: String? = java.util.Locale.getDefault().language): String =
+            when (languageCode?.lowercase()?.substringBefore('-')) {
+                "ru" -> "Вы: "
+                "ko" -> "나: "
+                "ja" -> "自分: "
+                "zh" -> "我: "
+                else -> "You: "
+            }
 
         /**
          * A short display title from the first user line: whitespace collapsed and truncated.

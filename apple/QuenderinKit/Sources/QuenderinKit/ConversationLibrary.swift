@@ -73,7 +73,18 @@ public final class ConversationLibrary {
         let body = scalars.count > limit
             ? String(String.UnicodeScalarView(scalars.prefix(limit))) + "…"
             : collapsed
-        return message.role == .user ? "You: \(body)" : body
+        return message.role == .user ? "\(youPrefix())\(body)" : body
+    }
+
+    /// History preview prefix for user lines (locale-aware).
+    public static func youPrefix(locale: Locale = .current) -> String {
+        switch locale.language.languageCode?.identifier {
+        case "ru": return "Вы: "
+        case "ko": return "나: "
+        case "ja": return "自分: "
+        case "zh": return "我: "
+        default: return "You: "
+        }
     }
 
     /// A short display title from the first user line: whitespace collapsed and truncated.

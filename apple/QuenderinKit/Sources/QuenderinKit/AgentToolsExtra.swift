@@ -185,16 +185,17 @@ enum DateCalc {
         let lower = text.lowercased()
         let dates = isoDates(in: text)
 
-        if dates.count >= 2 && lower.contains("between") {
+        if dates.count >= 2 && (lower.contains("between") || lower.contains("между")) {
             let days = utcCalendar().dateComponents([.day], from: dates[0], to: dates[1]).day ?? 0
             let n = abs(days)
-            return "\(n) day\(n == 1 ? "" : "s")"
+            return formatDayCount(n)
         }
 
         if dates.count == 1 {
             // "what day of the week is <date>" → the weekday name (deterministic, UTC). Specific
             // triggers so it can't collide with an offset query like "90 days after <date>".
-            if lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week") {
+            if lower.contains("weekday") || lower.contains("day of the week") || lower.contains("day of week")
+                || lower.contains("день недели") || lower.contains("какой день") {
                 let weekday = utcCalendar().component(.weekday, from: dates[0])   // 1 = Sunday … 7 = Saturday
                 let names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
                 guard weekday >= 1, weekday <= 7 else { return nil }
@@ -204,12 +205,33 @@ enum DateCalc {
             let stripped = text.replacingOccurrences(of: #"\d{4}-\d{2}-\d{2}"#, with: " ", options: .regularExpression)
             guard let n = firstInteger(in: stripped) else { return nil }
             let isMinus = lower.contains("minus") || lower.contains("subtract") || lower.contains("before")
+                || lower.contains("минус") || lower.contains("до ") || lower.contains("назад")
             let isPlus = lower.contains("plus") || lower.contains("add") || lower.contains("after")
+                || lower.contains("плюс") || lower.contains("после") || lower.contains("через")
             guard isPlus || isMinus else { return nil }
             guard let result = utcCalendar().date(byAdding: .day, value: isMinus ? -n : n, to: dates[0]) else { return nil }
             return formatter().string(from: result)
         }
 
         return nil
+    }
+
+    /// Day-count observation — English default for tests; Russian plural forms on RU devices.
+    private static func formatDayCount(_ days: Int) -> String {
+        let lang = Locale.current.language.languageCode?.identifier
+        if lang == "ru" {
+            let n = abs(days) % 100
+            let n1 = abs(days) % 10
+            let word: String
+            switch (n, n1) {
+            case (11...14, _): word = "дней"
+            case (_, 1): word = "день"
+            case (_, 2...4): word = "дня"
+            default: word = "дней"
+            }
+            return "\(abs(days)) \(word)"
+        }
+        let n = abs(days)
+        return "\(n) day\(n == 1 ? "" : "s")"
     }
 }

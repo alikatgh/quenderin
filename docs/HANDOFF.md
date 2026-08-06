@@ -40,6 +40,7 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Picker + router reason i18n** | Model picker shell + localized route reasons — shipped. |
 | **Image refusal locale** | Vision-not-yet copy in ru/ko/ja/zh — shipped. |
 | **New chat + halt locale** | History empty title + agent halt banners — shipped. |
+| **History You: + DateCalc RU** | Preview prefix + Russian date triggers — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
