@@ -223,4 +223,24 @@
     <string name="settings_recent_agent_activity">Недавние действия агента (сначала новые, включая отказы):</string>
     <string name="agent_working_planning">Планирую задачу…</string>
     <string name="agent_working_first_hint">Модель думает на устройстве — первый шаг самый долгий.</string>
+    <string name="picker_choose_model">Выберите модель</string>
+    <string name="picker_offline_once">Всё это работает полностью на телефоне — одна загрузка, и модель ваша офлайн.</string>
+    <string name="picker_recommended">Рекомендовано для этого телефона</string>
+    <string name="picker_all_models">Все модели</string>
+    <string name="picker_too_big_section">Слишком большие для этого телефона</string>
+    <string name="picker_fits">Подходит</string>
+    <string name="picker_tight">Впритык</string>
+    <string name="picker_too_big">Слишком большая</string>
+    <string name="agent_may_read_files">Агент может читать прикреплённые файлы</string>
+    <string name="agent_may_organize_workspace">Агент может упорядочивать папку рабочего пространства</string>
+    <string name="settings_about_on_device">Quenderin работает полностью на вашем устройстве. Без аккаунта, облака и слежки — после загрузки модель работает офлайн, и ничто из введённого не покидает телефон.</string>
+    <string name="router_task_coding">вопрос по коду</string>
+    <string name="router_task_reasoning">задача по шагам</string>
+    <string name="router_task_multilingual">многоязычный запрос</string>
+    <string name="router_task_general">общий вопрос</string>
+    <string name="router_best_fit">%1$s — %2$s лучше всего подходит из установленных</string>
+    <string name="router_largest">%1$s — %2$s самая крупная из установленных</string>
+    <string name="picker_current">Активна</string>
+    <string name="agent_grant_folder">Выдать папку</string>
+    <string name="agent_folder_named">Папка: %1$s</string>
 </resources>

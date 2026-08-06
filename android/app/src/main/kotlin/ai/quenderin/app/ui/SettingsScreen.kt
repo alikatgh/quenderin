@@ -368,10 +368,7 @@ fun SettingsScreen(
                 ) { Text(stringResource(R.string.settings_open_source_github)) }
             }
 
-        Caption(
-            "Quenderin runs entirely on your device. No account, no cloud, no tracking — once a " +
-                "model is downloaded it works fully offline, and nothing you type leaves your phone.",
-        )
+        Caption(stringResource(R.string.settings_about_on_device))
         Spacer(Modifier.height(24.dp))   // breathing room at the very bottom, above the nav bar
     }
 

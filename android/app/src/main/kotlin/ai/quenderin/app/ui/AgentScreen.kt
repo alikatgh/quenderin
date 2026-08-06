@@ -331,7 +331,7 @@ fun AgentScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "The agent may read attached files",
+                    stringResource(R.string.agent_may_read_files),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -354,7 +354,16 @@ fun AgentScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = { pickWorkspace.launch(null) }, enabled = !running) {
-                Text(if (workspaceTree == null) "Grant a folder" else "Folder: ${workspaceTree?.name() ?: "(gone)"}")
+                Text(
+                    if (workspaceTree == null) {
+                        stringResource(R.string.agent_grant_folder)
+                    } else {
+                        stringResource(
+                            R.string.agent_folder_named,
+                            workspaceTree?.name() ?: "…",
+                        )
+                    },
+                )
             }
             if (workspaceTree != null) {
                 TextButton(onClick = {
@@ -376,7 +385,7 @@ fun AgentScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "The agent may organize the workspace folder",
+                    stringResource(R.string.agent_may_organize_workspace),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),

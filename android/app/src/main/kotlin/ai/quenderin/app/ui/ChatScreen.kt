@@ -182,7 +182,10 @@ fun ChatScreen(
     ) {
         if (!suggestBestModel || routeSuggestionDismissed || !messages.isEmpty()) return@remember null
         if (input.trim().length < 12 || installedModels.size <= 1) return@remember null
-        val decision = ModelRouter.route(input, installedModels, totalRamGb, freeRamGb) ?: return@remember null
+        val decision = ModelRouter.route(
+            input, installedModels, totalRamGb, freeRamGb,
+            java.util.Locale.getDefault().language,
+        ) ?: return@remember null
         if (decision.modelId == model.id) return@remember null
         val entry = installedModels.firstOrNull { it.id == decision.modelId } ?: return@remember null
         decision to entry

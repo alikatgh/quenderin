@@ -223,4 +223,24 @@
     <string name="settings_recent_agent_activity">最近智能体活动（最新在前，含拒绝）:</string>
     <string name="agent_working_planning">正在规划任务…</string>
     <string name="agent_working_first_hint">模型在设备上思考——第一步最久。</string>
+    <string name="picker_choose_model">选择模型</string>
+    <string name="picker_offline_once">这些全部在手机上运行——下载一次，之后离线可用。</string>
+    <string name="picker_recommended">为本机推荐</string>
+    <string name="picker_all_models">全部模型</string>
+    <string name="picker_too_big_section">对本机过大</string>
+    <string name="picker_fits">合适</string>
+    <string name="picker_tight">偏紧</string>
+    <string name="picker_too_big">过大</string>
+    <string name="agent_may_read_files">智能体可读取附加文件</string>
+    <string name="agent_may_organize_workspace">智能体可整理工作区文件夹</string>
+    <string name="settings_about_on_device">Quenderin 完全在你的设备上运行。无账号、无云端、无跟踪——下载后完全离线，输入内容不会离开手机。</string>
+    <string name="router_task_coding">编程问题</string>
+    <string name="router_task_reasoning">分步问题</string>
+    <string name="router_task_multilingual">多语言提示</string>
+    <string name="router_task_general">一般问题</string>
+    <string name="router_best_fit">%1$s — 已安装中 %2$s 最合适</string>
+    <string name="router_largest">%1$s — 已安装中 %2$s 最大</string>
+    <string name="picker_current">当前</string>
+    <string name="agent_grant_folder">授予文件夹</string>
+    <string name="agent_folder_named">文件夹：%1$s</string>
 </resources>

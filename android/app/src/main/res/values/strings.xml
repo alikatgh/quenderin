@@ -224,4 +224,24 @@
     <string name="settings_recent_agent_activity">Recent agent activity (newest first, refusals included):</string>
     <string name="agent_working_planning">Planning the task…</string>
     <string name="agent_working_first_hint">The model is thinking on-device — the first step takes the longest.</string>
+    <string name="picker_choose_model">Choose a model</string>
+    <string name="picker_offline_once">All of these run fully on your phone — a one-time download, then it\'s yours offline.</string>
+    <string name="picker_recommended">Recommended for this phone</string>
+    <string name="picker_all_models">All models</string>
+    <string name="picker_too_big_section">Too big for this phone</string>
+    <string name="picker_fits">Fits</string>
+    <string name="picker_tight">Tight</string>
+    <string name="picker_too_big">Too big</string>
+    <string name="agent_may_read_files">The agent may read attached files</string>
+    <string name="agent_may_organize_workspace">The agent may organize the workspace folder</string>
+    <string name="settings_about_on_device">Quenderin runs entirely on your device. No account, no cloud, no tracking — once a model is downloaded it works fully offline, and nothing you type leaves your phone.</string>
+    <string name="router_task_coding">a coding question</string>
+    <string name="router_task_reasoning">a step-by-step problem</string>
+    <string name="router_task_multilingual">a multilingual prompt</string>
+    <string name="router_task_general">a general question</string>
+    <string name="router_best_fit">%1$s — %2$s is the best fit you have installed</string>
+    <string name="router_largest">%1$s — %2$s is the largest model you have installed</string>
+    <string name="picker_current">Current</string>
+    <string name="agent_grant_folder">Grant a folder</string>
+    <string name="agent_folder_named">Folder: %1$s</string>
 </resources>

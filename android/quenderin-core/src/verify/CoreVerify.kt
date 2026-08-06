@@ -189,6 +189,13 @@ fun main() {
         coder != null && coder.modelId.startsWith("qwen25-coder") &&
             tight != null && !tight.modelId.startsWith("qwen25-coder") && ModelRouter.route("hi", emptyList(), 16.0, 8.0) == null
     })
+    // Classification parity is language-independent; reason copy may localize.
+    check("router reason localizes for Russian without changing the pick", run {
+        val en = ModelRouter.route("debug this python function", ModelCatalog.models, 16.0, 12.0, "en")
+        val ru = ModelRouter.route("debug this python function", ModelCatalog.models, 16.0, 12.0, "ru")
+        en != null && ru != null && en.modelId == ru.modelId &&
+            ru.reason.contains("код") && en.reason.contains("coding")
+    })
 
     // --- DegenerationGuard (twin of iOS DegenerationGuardTests) ---
     run {

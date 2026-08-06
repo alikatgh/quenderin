@@ -80,22 +80,83 @@ object ModelRouter {
         TaskKind.GENERAL -> listOf("llama", "mistral", "qwen3", "gemma4", "gemma3", "phi4", "deepseek-r1", "qwen25-coder")
     }
 
-    internal fun taskLabel(task: TaskKind): String = when (task) {
-        TaskKind.CODING -> "a coding question"
-        TaskKind.REASONING -> "a step-by-step problem"
-        TaskKind.MULTILINGUAL -> "a multilingual prompt"
-        TaskKind.GENERAL -> "a general question"
+    /** English task labels — kept for tests / default. */
+    internal fun taskLabel(task: TaskKind): String = taskLabel(task, null)
+
+    internal fun taskLabel(task: TaskKind, languageCode: String?): String {
+        val lang = languageCode?.lowercase()?.substringBefore('-')
+        return when (lang) {
+            "ru" -> when (task) {
+                TaskKind.CODING -> "вопрос по коду"
+                TaskKind.REASONING -> "задача по шагам"
+                TaskKind.MULTILINGUAL -> "многоязычный запрос"
+                TaskKind.GENERAL -> "общий вопрос"
+            }
+            "ko" -> when (task) {
+                TaskKind.CODING -> "코딩 질문"
+                TaskKind.REASONING -> "단계별 문제"
+                TaskKind.MULTILINGUAL -> "다국어 프롬프트"
+                TaskKind.GENERAL -> "일반 질문"
+            }
+            "ja" -> when (task) {
+                TaskKind.CODING -> "コーディングの質問"
+                TaskKind.REASONING -> "段階的な問題"
+                TaskKind.MULTILINGUAL -> "多言語のプロンプト"
+                TaskKind.GENERAL -> "一般的な質問"
+            }
+            "zh" -> when (task) {
+                TaskKind.CODING -> "编程问题"
+                TaskKind.REASONING -> "分步问题"
+                TaskKind.MULTILINGUAL -> "多语言提示"
+                TaskKind.GENERAL -> "一般问题"
+            }
+            else -> when (task) {
+                TaskKind.CODING -> "a coding question"
+                TaskKind.REASONING -> "a step-by-step problem"
+                TaskKind.MULTILINGUAL -> "a multilingual prompt"
+                TaskKind.GENERAL -> "a general question"
+            }
+        }
+    }
+
+    private fun reasonBestFit(task: TaskKind, label: String, languageCode: String?): String {
+        val t = taskLabel(task, languageCode)
+        val lang = languageCode?.lowercase()?.substringBefore('-')
+        return when (lang) {
+            "ru" -> "$t — $label лучше всего подходит из установленных"
+            "ko" -> "$t — 설치된 것 중 ${label}가 가장 적합합니다"
+            "ja" -> "$t — インストール済みでは${label}が最適です"
+            "zh" -> "$t — 已安装中 $label 最合适"
+            else -> "$t — $label is the best fit you have installed"
+        }
+    }
+
+    private fun reasonLargest(task: TaskKind, label: String, languageCode: String?): String {
+        val t = taskLabel(task, languageCode)
+        val lang = languageCode?.lowercase()?.substringBefore('-')
+        return when (lang) {
+            "ru" -> "$t — $label самая крупная из установленных"
+            "ko" -> "$t — 설치된 것 중 ${label}가 가장 큽니다"
+            "ja" -> "$t — インストール済みでは${label}が最大です"
+            "zh" -> "$t — 已安装中 $label 最大"
+            else -> "$t — $label is the largest model you have installed"
+        }
     }
 
     /**
      * The best installed model for this prompt on this device, or null when nothing is installed.
      * Within a family, prefers the LARGEST variant that can load right now.
+     *
+     * @param languageCode optional ISO language for the human [RouteDecision.reason]
+     *   (classification is language-independent and parity-tested).
      */
+    @JvmOverloads
     fun route(
         prompt: String,
         installed: List<ModelEntry>,
         totalRamGb: Double,
         freeRamGb: Double,
+        languageCode: String? = null,
     ): RouteDecision? {
         if (installed.isEmpty()) return null
         val task = classify(prompt)
@@ -108,7 +169,7 @@ object ModelRouter {
                 return RouteDecision(
                     modelId = best.id,
                     task = task,
-                    reason = "${taskLabel(task)} — ${best.label} is the best fit you have installed",
+                    reason = reasonBestFit(task, best.label, languageCode),
                 )
             }
         }
@@ -116,7 +177,7 @@ object ModelRouter {
         return RouteDecision(
             modelId = best.id,
             task = task,
-            reason = "${taskLabel(task)} — ${best.label} is the largest model you have installed",
+            reason = reasonLargest(task, best.label, languageCode),
         )
     }
 }

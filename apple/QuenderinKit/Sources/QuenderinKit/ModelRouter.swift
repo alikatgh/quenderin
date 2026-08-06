@@ -90,12 +90,66 @@ public enum ModelRouter {
         }
     }
 
-    static func taskLabel(_ task: TaskKind) -> String {
-        switch task {
-        case .coding: return "a coding question"
-        case .reasoning: return "a step-by-step problem"
-        case .multilingual: return "a multilingual prompt"
-        case .general: return "a general question"
+    static func taskLabel(_ task: TaskKind, languageCode: String? = nil) -> String {
+        let lang = languageCode?.lowercased()
+        switch lang {
+        case "ru":
+            switch task {
+            case .coding: return "вопрос по коду"
+            case .reasoning: return "задача по шагам"
+            case .multilingual: return "многоязычный запрос"
+            case .general: return "общий вопрос"
+            }
+        case "ko":
+            switch task {
+            case .coding: return "코딩 질문"
+            case .reasoning: return "단계별 문제"
+            case .multilingual: return "다국어 프롬프트"
+            case .general: return "일반 질문"
+            }
+        case "ja":
+            switch task {
+            case .coding: return "コーディングの質問"
+            case .reasoning: return "段階的な問題"
+            case .multilingual: return "多言語のプロンプト"
+            case .general: return "一般的な質問"
+            }
+        case "zh":
+            switch task {
+            case .coding: return "编程问题"
+            case .reasoning: return "分步问题"
+            case .multilingual: return "多语言提示"
+            case .general: return "一般问题"
+            }
+        default:
+            switch task {
+            case .coding: return "a coding question"
+            case .reasoning: return "a step-by-step problem"
+            case .multilingual: return "a multilingual prompt"
+            case .general: return "a general question"
+            }
+        }
+    }
+
+    private static func reasonBestFit(task: TaskKind, label: String, languageCode: String?) -> String {
+        let t = taskLabel(task, languageCode: languageCode)
+        switch languageCode?.lowercased() {
+        case "ru": return "\(t) — \(label) лучше всего подходит из установленных"
+        case "ko": return "\(t) — 설치된 것 중 \(label)가 가장 적합합니다"
+        case "ja": return "\(t) — インストール済みでは\(label)が最適です"
+        case "zh": return "\(t) — 已安装中 \(label) 最合适"
+        default: return "\(t) — \(label) is the best fit you have installed"
+        }
+    }
+
+    private static func reasonLargest(task: TaskKind, label: String, languageCode: String?) -> String {
+        let t = taskLabel(task, languageCode: languageCode)
+        switch languageCode?.lowercased() {
+        case "ru": return "\(t) — \(label) самая крупная из установленных"
+        case "ko": return "\(t) — 설치된 것 중 \(label)가 가장 큽니다"
+        case "ja": return "\(t) — インストール済みでは\(label)が最大です"
+        case "zh": return "\(t) — 已安装中 \(label) 最大"
+        default: return "\(t) — \(label) is the largest model you have installed"
         }
     }
 
@@ -103,18 +157,21 @@ public enum ModelRouter {
 
     /// Live-device convenience: same free-RAM convention as `MemoryFitness.check(for:)`
     /// (iOS doesn't reliably expose free memory, so total is the budget).
-    public static func route(prompt: String, installed: [ModelEntry]) -> RouteDecision? {
+    public static func route(prompt: String, installed: [ModelEntry], languageCode: String? = nil) -> RouteDecision? {
         let total = HardwareProbe.current().totalRAMGB
-        return route(prompt: prompt, installed: installed, totalRAMGB: total, freeRAMGB: total)
+        let code = languageCode ?? Locale.current.language.languageCode?.identifier
+        return route(prompt: prompt, installed: installed, totalRAMGB: total, freeRAMGB: total, languageCode: code)
     }
 
     /// The best installed model for this prompt on this device, or nil when nothing is
     /// installed. Within a family, prefers the LARGEST variant that can load right now.
+    /// Classification is language-independent (parity-tested); [RouteDecision.reason] may localize.
     public static func route(
         prompt: String,
         installed: [ModelEntry],
         totalRAMGB: Double,
-        freeRAMGB: Double
+        freeRAMGB: Double,
+        languageCode: String? = nil
     ) -> RouteDecision? {
         guard !installed.isEmpty else { return nil }
         let task = classify(prompt)
@@ -129,7 +186,7 @@ public enum ModelRouter {
                 return RouteDecision(
                     modelID: best.id,
                     task: task,
-                    reason: "\(taskLabel(task)) — \(best.label) is the best fit you have installed"
+                    reason: reasonBestFit(task: task, label: best.label, languageCode: languageCode)
                 )
             }
         }
@@ -138,7 +195,7 @@ public enum ModelRouter {
         return RouteDecision(
             modelID: best.id,
             task: task,
-            reason: "\(taskLabel(task)) — \(best.label) is the largest model you have installed"
+            reason: reasonLargest(task: task, label: best.label, languageCode: languageCode)
         )
     }
 }

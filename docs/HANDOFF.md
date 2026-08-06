@@ -37,11 +37,12 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Android Settings i18n** | Section titles + speed/model rows localized — shipped. |
 | **Guided handoff locale** | Computer-task education reply in ru/ko/ja/zh — shipped. |
 | **Android Agent empty i18n** | Title, examples, working rows, recents — shipped. |
+| **Picker + router reason i18n** | Model picker shell + localized route reasons — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
-2. **Residual English** — ModelRouter reason lines; some agent/capability purpose strings.
+2. **Residual English** — some capability purpose strings / onboarding footnotes.
 3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
 
 ### Owner-only (still)
@@ -54,6 +55,7 @@ Facebook secrets/images · store console pastes · physical-device tok/s · sign
 
 | When | What |
 |------|------|
+| 2026-08-06 | UX: model picker + ModelRouter reason i18n |
 | 2026-08-06 | Agent: Android empty-state + working rows i18n (ru/ko/ja/zh) |
 | 2026-08-06 | Settings: Android section i18n + locale-aware guided handoff reply |
 | 2026-08-06 | Agent: Android handoff auto-runs; iOS Continue/Today/Switch localization |

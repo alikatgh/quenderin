@@ -77,12 +77,12 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
 
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Text(
-            "Choose a model",
+            stringResource(R.string.picker_choose_model),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         )
         Text(
-            "All of these run fully on your phone — a one-time download, then it's yours offline.",
+            stringResource(R.string.picker_offline_once),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
@@ -96,20 +96,20 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (recommended.isNotEmpty()) {
-                SectionHeader("Recommended for this phone", MaterialTheme.colorScheme.primary)
+                SectionHeader(stringResource(R.string.picker_recommended), MaterialTheme.colorScheme.primary)
                 recommended.forEach { (entry, fitness) ->
                     ModelPickerRow(entry, fitness, isRecommended = true, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
             }
             if (fitting.isNotEmpty()) {
-                SectionHeader("All models", MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader(stringResource(R.string.picker_all_models), MaterialTheme.colorScheme.onSurfaceVariant)
                 fitting.forEach { (entry, fitness) ->
                     ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
             }
             if (blocked.isNotEmpty()) {
                 // Ineligible models sink to the BOTTOM: the sheet opens on choices, not warnings.
-                SectionHeader("Too big for this phone", MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader(stringResource(R.string.picker_too_big_section), MaterialTheme.colorScheme.onSurfaceVariant)
                 blocked.forEach { (entry, fitness) ->
                     ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
@@ -186,7 +186,11 @@ private fun ModelPickerRow(
                 Spacer(Modifier.width(10.dp))
                 if (isCurrent) {
                     // The model you're already running — status-green, same dot+word language.
-                    DotBadge(Quenderin.colors.status, "Current", Quenderin.colors.statusText)
+                    DotBadge(
+                        Quenderin.colors.status,
+                        stringResource(R.string.picker_current),
+                        Quenderin.colors.statusText,
+                    )
                 } else {
                     FitBadge(fitness)
                 }

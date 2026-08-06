@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Model picker + router reason i18n (usability)
+- **ModelPickerSheet** title/sections/Current badge localized.
+- **ModelRouter.reason** localizes (ru/ko/ja/zh) while classification stays parity-pinned.
+- Agent grant-folder / “may read files” consent lines + Settings about blurb localized.
+
 ### Android Agent empty-state i18n (usability)
 - Agent title, empty guidance, multi-step **example goals**, recent goals, working/planning rows,
   and remaining Settings captions are string-resourced for en/ru/ko/ja/zh — day-one Agent tab is

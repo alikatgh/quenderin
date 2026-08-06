@@ -223,4 +223,24 @@
     <string name="settings_recent_agent_activity">最近のエージェント活動（新しい順、拒否含む）:</string>
     <string name="agent_working_planning">タスクを計画中…</string>
     <string name="agent_working_first_hint">モデルがオンデバイスで考えています — 最初のステップが一番時間がかかります。</string>
+    <string name="picker_choose_model">モデルを選ぶ</string>
+    <string name="picker_offline_once">すべて端末上で動作します — 一度のダウンロードでオフライン利用。</string>
+    <string name="picker_recommended">この端末向けおすすめ</string>
+    <string name="picker_all_models">すべてのモデル</string>
+    <string name="picker_too_big_section">この端末には大きすぎる</string>
+    <string name="picker_fits">適合</string>
+    <string name="picker_tight">ぎりぎり</string>
+    <string name="picker_too_big">大きすぎ</string>
+    <string name="agent_may_read_files">エージェントは添付ファイルを読めます</string>
+    <string name="agent_may_organize_workspace">エージェントは作業フォルダを整理できます</string>
+    <string name="settings_about_on_device">Quenderinは端末上だけで動きます。アカウント・クラウド・追跡なし — ダウンロード後は完全オフラインで、入力は端末外に出ません。</string>
+    <string name="router_task_coding">コーディングの質問</string>
+    <string name="router_task_reasoning">段階的な問題</string>
+    <string name="router_task_multilingual">多言語のプロンプト</string>
+    <string name="router_task_general">一般的な質問</string>
+    <string name="router_best_fit">%1$s — インストール済みでは%2$sが最適です</string>
+    <string name="router_largest">%1$s — インストール済みでは%2$sが最大です</string>
+    <string name="picker_current">使用中</string>
+    <string name="agent_grant_folder">フォルダを許可</string>
+    <string name="agent_folder_named">フォルダ: %1$s</string>
 </resources>
