@@ -204,4 +204,23 @@
     <string name="settings_skills_count">Запомненные навыки агента: %1$d (только локально).</string>
     <string name="settings_custom_model">Активна своя модель (%1$s) — выберите пресет, чтобы сменить.</string>
     <string name="settings_speed_presets_line">Быстро: %1$s · Сбалансировано: %2$s · Качество: %3$s. Смена загружает модель при необходимости.</string>
+    <string name="agent_title">Агент</string>
+    <string name="agent_empty_title">Дайте агенту многошаговую задачу</string>
+    <string name="agent_empty_body">Он планирует, вызывает инструменты и связывает результаты.</string>
+    <string name="agent_recent_goals">НЕДАВНИЕ ЗАДАЧИ</string>
+    <string name="agent_clear_recents">Очистить недавние</string>
+    <string name="agent_remove_from_recents">Убрать из недавних</string>
+    <string name="agent_report_answer">Пожаловаться на этот ответ</string>
+    <string name="agent_share_subject">Запуск агента Quenderin</string>
+    <string name="agent_share_walkthrough">Поделиться ходом</string>
+    <string name="agent_example_1">Переведи 5 миль в км, затем возьми 20% от этого</string>
+    <string name="agent_example_2">Сколько дней до 2027-01-01 — и сколько недель?</string>
+    <string name="agent_example_3">18% от 240, затем переведи столько км в мили</string>
+    <string name="agent_working_first">Планирую первый шаг…</string>
+    <string name="agent_working_next">Шаг %1$d…</string>
+    <string name="settings_always_on_tools">Калькулятор, единицы и даты всегда включены — чистые вычисления, без побочных эффектов.</string>
+    <string name="settings_agent_deliberation_hint">Пусть агент продумывает каждый шаг — лучше выбирает инструменты, но медленнее. По умолчанию выкл.; с следующего запуска.</string>
+    <string name="settings_recent_agent_activity">Недавние действия агента (сначала новые, включая отказы):</string>
+    <string name="agent_working_planning">Планирую задачу…</string>
+    <string name="agent_working_first_hint">Модель думает на устройстве — первый шаг самый долгий.</string>
 </resources>

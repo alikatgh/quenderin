@@ -204,4 +204,23 @@
     <string name="settings_skills_count">過去の実行から記憶したスキル: %1$d（ローカルのみ）。</string>
     <string name="settings_custom_model">カスタムモデル使用中（%1$s）— プリセットを選ぶと切替。</string>
     <string name="settings_speed_presets_line">高速: %1$s · バランス: %2$s · 品質: %3$s。切替時に必要ならダウンロード。</string>
+    <string name="agent_title">エージェント</string>
+    <string name="agent_empty_title">エージェントに多段階の目標を</string>
+    <string name="agent_empty_body">計画し、ツールを呼び、結果をつなげます。</string>
+    <string name="agent_recent_goals">最近の目標</string>
+    <string name="agent_clear_recents">最近をクリア</string>
+    <string name="agent_remove_from_recents">最近から削除</string>
+    <string name="agent_report_answer">この回答を報告</string>
+    <string name="agent_share_subject">Quenderinエージェント実行</string>
+    <string name="agent_share_walkthrough">手順を共有</string>
+    <string name="agent_example_1">5マイルをkmに換算し、その20%を求めて</string>
+    <string name="agent_example_2">2027-01-01まで何日 — 何週間？</string>
+    <string name="agent_example_3">240の18%を求め、そのkmをマイルに変換</string>
+    <string name="agent_working_first">最初のステップを計画中…</string>
+    <string name="agent_working_next">ステップ%1$dを実行中…</string>
+    <string name="settings_always_on_tools">電卓・単位・日付ツールは常時オン — 純粋計算、副作用なし。</string>
+    <string name="settings_agent_deliberation_hint">各ステップ前に考えさせます — 難しい目標でツール選択が良くなるが遅くなります。既定オフ；次の実行から。</string>
+    <string name="settings_recent_agent_activity">最近のエージェント活動（新しい順、拒否含む）:</string>
+    <string name="agent_working_planning">タスクを計画中…</string>
+    <string name="agent_working_first_hint">モデルがオンデバイスで考えています — 最初のステップが一番時間がかかります。</string>
 </resources>

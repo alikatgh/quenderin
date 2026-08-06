@@ -204,4 +204,23 @@
     <string name="settings_skills_count">来自过往运行的已记技能：%1$d（仅本地）。</string>
     <string name="settings_custom_model">当前为自定义模型（%1$s）——选择预设即可切换。</string>
     <string name="settings_speed_presets_line">快速：%1$s · 均衡：%2$s · 质量：%3$s。切换时如需会下载。</string>
+    <string name="agent_title">智能体</string>
+    <string name="agent_empty_title">给智能体一个多步骤目标</string>
+    <string name="agent_empty_body">它会规划、调用工具并串联结果。</string>
+    <string name="agent_recent_goals">最近目标</string>
+    <string name="agent_clear_recents">清除最近</string>
+    <string name="agent_remove_from_recents">从最近移除</string>
+    <string name="agent_report_answer">举报此回答</string>
+    <string name="agent_share_subject">Quenderin 智能体运行</string>
+    <string name="agent_share_walkthrough">分享过程</string>
+    <string name="agent_example_1">把 5 英里换成公里，再取其中的 20%</string>
+    <string name="agent_example_2">距 2027-01-01 还有多少天——多少周？</string>
+    <string name="agent_example_3">240 的 18%，再把这么多公里换成英里</string>
+    <string name="agent_working_first">正在规划第一步…</string>
+    <string name="agent_working_next">正在进行第 %1$d 步…</string>
+    <string name="settings_always_on_tools">计算器、单位与日期工具始终开启——纯计算，无副作用。</string>
+    <string name="settings_agent_deliberation_hint">让智能体在每步前思考——难目标上工具选择更好，但更慢。默认关；下次运行起效。</string>
+    <string name="settings_recent_agent_activity">最近智能体活动（最新在前，含拒绝）:</string>
+    <string name="agent_working_planning">正在规划任务…</string>
+    <string name="agent_working_first_hint">模型在设备上思考——第一步最久。</string>
 </resources>

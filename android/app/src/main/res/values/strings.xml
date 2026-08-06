@@ -205,4 +205,23 @@
     <string name="settings_skills_count">Remembered skills from past agent runs: %1$d (local only).</string>
     <string name="settings_custom_model">Custom model active (%1$s) — pick a preset to switch.</string>
     <string name="settings_speed_presets_line">Fast: %1$s · Balanced: %2$s · Quality: %3$s. Switching downloads the model if needed.</string>
+    <string name="agent_title">Agent</string>
+    <string name="agent_empty_title">Give the agent a multi-step goal</string>
+    <string name="agent_empty_body">It plans, calls tools, and chains the results.</string>
+    <string name="agent_recent_goals">RECENT GOALS</string>
+    <string name="agent_clear_recents">Clear recent goals</string>
+    <string name="agent_remove_from_recents">Remove from recents</string>
+    <string name="agent_report_answer">Report this answer</string>
+    <string name="agent_share_subject">Quenderin agent run</string>
+    <string name="agent_share_walkthrough">Share walkthrough</string>
+    <string name="agent_example_1">Convert 5 miles to km, then take 20% of that</string>
+    <string name="agent_example_2">Days until 2027-01-01 — and how many weeks?</string>
+    <string name="agent_example_3">18% of 240, then convert that many km to miles</string>
+    <string name="agent_working_first">Planning the first step…</string>
+    <string name="agent_working_next">Working on step %1$d…</string>
+    <string name="settings_always_on_tools">Calculator, unit and date tools are always on — pure compute, no side effects.</string>
+    <string name="settings_agent_deliberation_hint">Let the agent think through each step before it acts — better tool choice on tricky goals, but slower. Off by default; applies to your next run.</string>
+    <string name="settings_recent_agent_activity">Recent agent activity (newest first, refusals included):</string>
+    <string name="agent_working_planning">Planning the task…</string>
+    <string name="agent_working_first_hint">The model is thinking on-device — the first step takes the longest.</string>
 </resources>

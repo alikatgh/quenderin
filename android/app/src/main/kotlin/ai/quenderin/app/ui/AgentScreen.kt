@@ -229,7 +229,7 @@ fun AgentScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Agent",
+                stringResource(R.string.agent_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
@@ -270,6 +270,7 @@ fun AgentScreen(
                             runCatching { context.startActivity(intent) }
                             Unit
                         }
+                        val reportLabel = stringResource(R.string.agent_report_answer)
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = RoundedCornerShape(12.dp),
@@ -277,7 +278,7 @@ fun AgentScreen(
                                 .combinedClickable(onClick = {}, onLongClick = reportAnswer)
                                 .semantics {
                                     customActions = listOf(
-                                        CustomAccessibilityAction("Report this answer") { reportAnswer(); true },
+                                        CustomAccessibilityAction(reportLabel) { reportAnswer(); true },
                                     )
                                 },
                         ) {
@@ -421,14 +422,16 @@ fun AgentScreen(
             // Export the completed run as a Markdown walkthrough — shown only once a run has finished,
             // mirroring chat's Share. The agent's reasoning leaves the device on the user's terms.
             if (!running && haltReason != null) {
+                val shareSubject = stringResource(R.string.agent_share_subject)
+                val shareChooser = stringResource(R.string.agent_share_walkthrough)
                 TextButton(onClick = {
                     session.exportMarkdown()?.let { md ->
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "Quenderin agent run")
+                            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
                             putExtra(Intent.EXTRA_TEXT, md)
                         }
-                        runCatching { context.startActivity(Intent.createChooser(share, "Share walkthrough")) }
+                        runCatching { context.startActivity(Intent.createChooser(share, shareChooser)) }
                     }
                 }) { Text(stringResource(R.string.action_share)) }
                 Spacer(Modifier.width(8.dp))
@@ -505,13 +508,17 @@ private fun AgentWorkingRow(stepNumber: Int, firstStep: Boolean) {
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(
-                    if (firstStep) "Planning the task…" else "Working on step $stepNumber…",
+                    if (firstStep) {
+                        stringResource(R.string.agent_working_planning)
+                    } else {
+                        stringResource(R.string.agent_working_next, stepNumber)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (firstStep) {
                     Text(
-                        "The model is thinking on-device — the first step takes the longest.",
+                        stringResource(R.string.agent_working_first_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -569,26 +576,29 @@ private fun AgentEmptyState(
         AgentSparkGlyph()
         Spacer(Modifier.height(16.dp))
         Text(
-            "Give the agent a multi-step goal",
+            stringResource(R.string.agent_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "It plans, calls tools, and chains the results.",
+            stringResource(R.string.agent_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(22.dp))
         // Examples as a left-aligned list, but the block itself is centered horizontally.
+        // Locale-matched examples so Russian-first empty state isn't English-only.
+        val examples = listOf(
+            stringResource(R.string.agent_example_1),
+            stringResource(R.string.agent_example_2),
+            stringResource(R.string.agent_example_3),
+        )
+        val removeRecentLabel = stringResource(R.string.agent_remove_from_recents)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(
-                "Convert 5 miles to km, then take 20% of that",
-                "Days until 2027-01-01 — and how many weeks?",
-                "18% of 240, then convert that many km to miles",
-            ).forEach { example ->
+            examples.forEach { example ->
                 // Tapping an example drops it into the goal field, ready to edit or run
                 // (twin of the iOS empty state).
                 Text(
@@ -607,7 +617,7 @@ private fun AgentEmptyState(
             Spacer(Modifier.height(22.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "RECENT GOALS",
+                    stringResource(R.string.agent_recent_goals),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -623,7 +633,7 @@ private fun AgentEmptyState(
                             )
                             .semantics {
                                 customActions = listOf(
-                                    CustomAccessibilityAction("Remove from recents") {
+                                    CustomAccessibilityAction(removeRecentLabel) {
                                         onRemoveRecent(entry.goal); true
                                     },
                                 )
@@ -631,7 +641,7 @@ private fun AgentEmptyState(
                     )
                 }
                 Text(
-                    "Clear recent goals",
+                    stringResource(R.string.agent_clear_recents),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { onClearRecents() },

@@ -210,7 +210,7 @@ fun SettingsScreen(
                     ai.quenderin.app.docWorkspaceCapabilities({ null }, ai.quenderin.app.DocUndoJournal()) +
                     ai.quenderin.app.devicePerceptionCapabilities(context)
             }
-            Caption("Calculator, unit and date tools are always on — pure compute, no side effects.")
+            Caption(stringResource(R.string.settings_always_on_tools))
             // Opt-in "Deeper reasoning" for the AGENT (distinct from chat's Deep thinking) — the twin of
             // the iOS Settings → Agent "Deeper reasoning" toggle. Writes the SAME "agent.deliberation"
             // key the Agent screen reads live at run time. Self-contained (local state + direct prefs
@@ -221,8 +221,7 @@ fun SettingsScreen(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.settings_deeper_reasoning), color = MaterialTheme.colorScheme.onSurface)
-                        Caption("Let the agent think through each step before it acts — better tool choice on " +
-                            "tricky goals, but slower. Off by default; applies to your next run.")
+                        Caption(stringResource(R.string.settings_agent_deliberation_hint))
                     }
                     Switch(
                         checked = deliberation,
@@ -254,7 +253,7 @@ fun SettingsScreen(
                     .entries().takeLast(10).reversed()
             }
             if (ledgerRows.isNotEmpty()) {
-                Caption("Recent agent activity (newest first, refusals included):")
+                Caption(stringResource(R.string.settings_recent_agent_activity))
                 ledgerRows.forEach { row ->
                     Text(
                         "${if (row.decision == "allowed") "✓" else "✗"} ${row.capability} · ${row.decision}",

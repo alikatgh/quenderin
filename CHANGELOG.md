@@ -7,6 +7,11 @@
 
 ## Unreleased
 
+### Android Agent empty-state i18n (usability)
+- Agent title, empty guidance, multi-step **example goals**, recent goals, working/planning rows,
+  and remaining Settings captions are string-resourced for en/ru/ko/ja/zh — day-one Agent tab is
+  no longer English-only for Russian-first users.
+
 ### Android Settings i18n + guided handoff locale packs (usability)
 - **Settings screen** section titles and common rows (Speed/Model/Reasoning/Agent/Storage/…) are
   string-resourced for en/ru/ko/ja/zh — Russian-first users no longer see an English Settings shell.

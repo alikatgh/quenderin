@@ -204,4 +204,23 @@
     <string name="settings_skills_count">과거 실행에서 기억한 스킬: %1$d (로컬 전용).</string>
     <string name="settings_custom_model">사용자 지정 모델 활성(%1$s) — 프리셋을 고르면 전환됩니다.</string>
     <string name="settings_speed_presets_line">빠름: %1$s · 균형: %2$s · 품질: %3$s. 전환 시 필요하면 다운로드합니다.</string>
+    <string name="agent_title">에이전트</string>
+    <string name="agent_empty_title">에이전트에게 다단계 목표를 주세요</string>
+    <string name="agent_empty_body">계획하고, 도구를 호출하고, 결과를 이어서 처리합니다.</string>
+    <string name="agent_recent_goals">최근 목표</string>
+    <string name="agent_clear_recents">최근 목록 지우기</string>
+    <string name="agent_remove_from_recents">최근 목록에서 제거</string>
+    <string name="agent_report_answer">이 답변 신고</string>
+    <string name="agent_share_subject">Quenderin 에이전트 실행</string>
+    <string name="agent_share_walkthrough">과정 공유</string>
+    <string name="agent_example_1">5마일을 km로 바꾼 뒤 그 값의 20%를 구해 주세요</string>
+    <string name="agent_example_2">2027-01-01까지 며칠 — 몇 주인가요?</string>
+    <string name="agent_example_3">240의 18%를 구한 뒤 그만큼의 km를 마일로 변환</string>
+    <string name="agent_working_first">첫 단계 계획 중…</string>
+    <string name="agent_working_next">%1$d단계 작업 중…</string>
+    <string name="settings_always_on_tools">계산기·단위·날짜 도구는 항상 켜져 있습니다 — 순수 계산, 부작용 없음.</string>
+    <string name="settings_agent_deliberation_hint">각 단계 전에 생각하게 합니다 — 까다로운 목표에서 도구 선택이 낫지만 더 느립니다. 기본 꺼짐; 다음 실행부터.</string>
+    <string name="settings_recent_agent_activity">최근 에이전트 활동(최신 먼저, 거부 포함):</string>
+    <string name="agent_working_planning">작업 계획 중…</string>
+    <string name="agent_working_first_hint">모델이 기기에서 생각 중입니다 — 첫 단계가 가장 오래 걸립니다.</string>
 </resources>
