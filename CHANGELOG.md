@@ -7,6 +7,10 @@
 
 ## Unreleased
 
+### New conversation + agent halt locale packs (usability)
+- Empty history title localizes (“Новая беседа” etc.).
+- Agent halt banners localize (RU first; EN default for tests/export).
+
 ### Image-attach refusal locale packs (usability)
 - Vision-not-yet rejection reasons localize (ru/ko/ja/zh) while retaining English **vision** /
   **image** tokens for the golden-chat structural gate.

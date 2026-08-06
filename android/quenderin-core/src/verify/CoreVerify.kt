@@ -569,7 +569,7 @@ fun main() {
         lib.remove("a") && ConversationLibrary(lib.snapshot()).list().map { it.id } == listOf("b")
     })
     check("conversation library derives a title from the first user message", run {
-        ConversationLibrary.titleFromFirstUserMessage(null) == "New conversation" &&
+        ConversationLibrary.titleFromFirstUserMessage(null, "en") == "New conversation" && ConversationLibrary.titleFromFirstUserMessage(null, "ru") == "Новая беседа" &&
             ConversationLibrary.titleFromFirstUserMessage("  hello   there  ") == "hello there" &&
             ConversationLibrary.titleFromFirstUserMessage("x".repeat(60)).let { it.length == 41 && it.endsWith("…") }
     })

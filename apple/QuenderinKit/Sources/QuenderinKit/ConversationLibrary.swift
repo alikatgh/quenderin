@@ -78,9 +78,9 @@ public final class ConversationLibrary {
 
     /// A short display title from the first user line: whitespace collapsed and truncated.
     /// An empty conversation gets a generic label.
-    public static func title(fromFirstUserMessage text: String?) -> String {
+    public static func title(fromFirstUserMessage text: String?, locale: Locale = .current) -> String {
         let trimmed = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "New conversation" }
+        guard !trimmed.isEmpty else { return newConversationLabel(locale: locale) }
         let collapsed = trimmed.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         let limit = 40
         // Truncate by Unicode scalar (code point), NOT grapheme — so the cut matches Kotlin's
@@ -90,5 +90,16 @@ public final class ConversationLibrary {
         let scalars = Array(collapsed.unicodeScalars)
         guard scalars.count > limit else { return collapsed }
         return String(String.UnicodeScalarView(scalars.prefix(limit))) + "…"
+    }
+
+    /// Empty-chat history label — locale-aware for Russian-first users.
+    public static func newConversationLabel(locale: Locale = .current) -> String {
+        switch locale.language.languageCode?.identifier {
+        case "ru": return "Новая беседа"
+        case "ko": return "새 대화"
+        case "ja": return "新しい会話"
+        case "zh": return "新对话"
+        default: return "New conversation"
+        }
     }
 }

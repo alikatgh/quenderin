@@ -39,6 +39,7 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Android Agent empty i18n** | Title, examples, working rows, recents — shipped. |
 | **Picker + router reason i18n** | Model picker shell + localized route reasons — shipped. |
 | **Image refusal locale** | Vision-not-yet copy in ru/ko/ja/zh — shipped. |
+| **New chat + halt locale** | History empty title + agent halt banners — shipped. |
 
 ### Highest-impact remaining product work (agent-doable)
 

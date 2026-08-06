@@ -23,7 +23,7 @@ import ai.quenderin.core.FileAuditLedger
 import ai.quenderin.core.FileReadCapability
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.SupportContact
-import ai.quenderin.core.userMessage
+import ai.quenderin.core.userMessageFor
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -293,7 +293,8 @@ fun AgentScreen(
                 // The agent stopped without an answer (step limit, safety gate, plan error):
                 // say so instead of trailing off into silence.
                 if (answer == null && !running) {
-                    haltReason?.userMessage?.let { msg -> item { AgentHaltBanner(msg) } }
+                    haltReason?.userMessageFor(java.util.Locale.getDefault().language)
+                        ?.let { msg -> item { AgentHaltBanner(msg) } }
                 }
             }
         }

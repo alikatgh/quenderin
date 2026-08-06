@@ -18,16 +18,34 @@ public struct AgentRun: Sendable, Equatable {
 public extension AgentRun.HaltReason {
     /// A short, user-facing explanation for why the agent stopped, shown when there is no
     /// answer to display. `.answered` returns nil — the answer itself is shown instead.
-    /// Kept identical to Android `AgentRun.HaltReason.userMessage` (cross-platform parity).
-    var userMessage: String? {
+    /// English default; use `userMessage(locale:)` for Russian-first UI.
+    var userMessage: String? { userMessage(locale: Locale(identifier: "en_US")) }
+
+    func userMessage(locale: Locale) -> String? {
+        let lang = locale.language.languageCode?.identifier
         switch self {
-        case .answered:  return nil
-        case .maxSteps:  return "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
-        case .blocked:   return "The agent stopped: a step was blocked by the on-device safety filter."
-        case .planError: return "The agent couldn't work out a step-by-step plan for that goal."
-        case .stalled:   return "The agent got stuck repeating the same step. Try rephrasing the goal."
-        case .cancelled: return "Stopped — you halted the agent."
-        case .needsPermission: return "Something needs your permission before it can continue — nothing was completed. Use the button below, or turn it on in Settings → Agent (and macOS System Settings › Privacy if the system asks)."
+        case .answered: return nil
+        case .maxSteps:
+            if lang == "ru" { return "Агент достиг лимита шагов, не дав ответа. Упростите или уточните задачу." }
+            return "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
+        case .blocked:
+            if lang == "ru" { return "Агент остановился: шаг заблокирован встроенным фильтром безопасности." }
+            return "The agent stopped: a step was blocked by the on-device safety filter."
+        case .planError:
+            if lang == "ru" { return "Агент не смог составить пошаговый план для этой задачи." }
+            return "The agent couldn't work out a step-by-step plan for that goal."
+        case .stalled:
+            if lang == "ru" { return "Агент зациклился на одном шаге. Переформулируйте задачу." }
+            return "The agent got stuck repeating the same step. Try rephrasing the goal."
+        case .cancelled:
+            if lang == "ru" { return "Остановлено — вы прервали агента." }
+            return "Stopped — you halted the agent."
+        case .needsPermission:
+            if lang == "ru" {
+                return "Агенту нужно разрешение, которого ещё нет — ничего не выполнено. " +
+                    "Используйте кнопку ниже или Настройки → Агент (и системные настройки конфиденциальности, если macOS спросит)."
+            }
+            return "Something needs your permission before it can continue — nothing was completed. Use the button below, or turn it on in Settings → Agent (and macOS System Settings › Privacy if the system asks)."
         }
     }
 }

@@ -76,9 +76,9 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
          * A short display title from the first user line: whitespace collapsed and truncated.
          * An empty conversation gets a generic label.
          */
-        fun titleFromFirstUserMessage(text: String?): String {
+        fun titleFromFirstUserMessage(text: String?, languageCode: String? = java.util.Locale.getDefault().language): String {
             val trimmed = (text ?: "").trim()
-            if (trimmed.isEmpty()) return "New conversation"
+            if (trimmed.isEmpty()) return newConversationLabel(languageCode)
             // Twin-drift fix: collapse ALL Unicode whitespace (incl. U+00A0 NBSP), not just ASCII \s. iOS
             // uses Character.isWhitespace, so an ASCII-only split drifted the persisted title/preview (and
             // its code-point count → truncation point). [\s\p{Z}] adds the Unicode separators to match.
@@ -91,5 +91,15 @@ class ConversationLibrary(snapshot: List<ConversationSummary> = emptyList()) {
             val end = collapsed.offsetByCodePoints(0, limit)
             return collapsed.substring(0, end) + "…"
         }
+
+        /** Empty-chat history label — locale-aware for Russian-first users. */
+        fun newConversationLabel(languageCode: String? = null): String =
+            when (languageCode?.lowercase()?.substringBefore('-')) {
+                "ru" -> "Новая беседа"
+                "ko" -> "새 대화"
+                "ja" -> "新しい会話"
+                "zh" -> "新对话"
+                else -> "New conversation"
+            }
     }
 }

@@ -11,19 +11,45 @@ data class AgentRun(val steps: List<AgentStep>, val answer: String?, val haltRea
 
 /**
  * A short, user-facing explanation for why the agent stopped, shown when there is no answer
- * to display. ANSWERED returns null — the answer itself is shown instead. Kept identical to
- * iOS `AgentRun.HaltReason.userMessage` (cross-platform parity).
+ * to display. ANSWERED returns null — the answer itself is shown instead.
+ * English is the cross-platform default; use [userMessageFor] for RU-first UI.
  */
 val AgentRun.HaltReason.userMessage: String?
-    get() = when (this) {
+    get() = userMessageFor(languageCode = null)
+
+fun AgentRun.HaltReason.userMessageFor(languageCode: String?): String? {
+    val lang = languageCode?.lowercase()?.substringBefore('-')
+    return when (this) {
         AgentRun.HaltReason.ANSWERED -> null
-        AgentRun.HaltReason.MAX_STEPS -> "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
-        AgentRun.HaltReason.BLOCKED -> "The agent stopped: a step was blocked by the on-device safety filter."
-        AgentRun.HaltReason.PLAN_ERROR -> "The agent couldn't work out a step-by-step plan for that goal."
-        AgentRun.HaltReason.STALLED -> "The agent got stuck repeating the same step. Try rephrasing the goal."
-        AgentRun.HaltReason.CANCELLED -> "Stopped — you halted the agent."
-        AgentRun.HaltReason.NEEDS_PERMISSION -> "The agent needs a permission it doesn't have yet — nothing was completed. The run log above shows exactly which one and where to grant it (Quenderin Settings → Agent, or macOS System Settings › Privacy). Grant it, then run the goal again."
+        AgentRun.HaltReason.MAX_STEPS -> when (lang) {
+            "ru" -> "Агент достиг лимита шагов, не дав ответа. Упростите или уточните задачу."
+            else -> "The agent reached its step limit before reaching an answer. Try a simpler or more specific goal."
+        }
+        AgentRun.HaltReason.BLOCKED -> when (lang) {
+            "ru" -> "Агент остановился: шаг заблокирован встроенным фильтром безопасности."
+            else -> "The agent stopped: a step was blocked by the on-device safety filter."
+        }
+        AgentRun.HaltReason.PLAN_ERROR -> when (lang) {
+            "ru" -> "Агент не смог составить пошаговый план для этой задачи."
+            else -> "The agent couldn't work out a step-by-step plan for that goal."
+        }
+        AgentRun.HaltReason.STALLED -> when (lang) {
+            "ru" -> "Агент зациклился на одном шаге. Переформулируйте задачу."
+            else -> "The agent got stuck repeating the same step. Try rephrasing the goal."
+        }
+        AgentRun.HaltReason.CANCELLED -> when (lang) {
+            "ru" -> "Остановлено — вы прервали агента."
+            else -> "Stopped — you halted the agent."
+        }
+        AgentRun.HaltReason.NEEDS_PERMISSION -> when (lang) {
+            "ru" ->
+                "Агенту нужно разрешение, которого ещё нет — ничего не выполнено. " +
+                    "В журнале выше видно, какое именно (Настройки → Агент). Выдайте его и запустите задачу снова."
+            else ->
+                "The agent needs a permission it doesn't have yet — nothing was completed. The run log above shows exactly which one and where to grant it (Quenderin Settings → Agent, or macOS System Settings › Privacy). Grant it, then run the goal again."
+        }
     }
+}
 
 /**
  * The vision's perceive → plan → execute loop, in the shippable form: a **tool-use** agent.

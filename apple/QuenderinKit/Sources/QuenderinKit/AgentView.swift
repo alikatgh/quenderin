@@ -145,7 +145,7 @@ public struct AgentView: View {
                                 }
                             }
                         runActions(palette: p, showShare: true)
-                    } else if !session.isRunning, let message = session.haltReason?.userMessage {
+                    } else if !session.isRunning, let message = session.haltReason?.userMessage(locale: .current) {
                         // The agent stopped without an answer (step limit, safety gate, plan error):
                         // say so, then GUIDE. A PERMISSION halt is special — the goal was fine, it
                         // just lacked a grant — so instead of "try a different goal", offer the
