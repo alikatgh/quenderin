@@ -62,6 +62,11 @@ object UnitConverter {
         "minute" to "min", "minutes" to "min", "mins" to "min",
         "hr" to "h", "hrs" to "h", "hour" to "h", "hours" to "h",
         "days" to "day", "weeks" to "week",
+        // Russian-first common unit names (agent examples + RU UI).
+        "км" to "km", "метры" to "m", "метр" to "m", "мили" to "mi", "миля" to "mi",
+        "кг" to "kg", "г" to "g", "фунт" to "lb", "фунтов" to "lb",
+        "с" to "c", "цельсий" to "c", "фаренгейт" to "f",
+        "час" to "h", "часа" to "h", "часов" to "h", "мин" to "min", "минут" to "min",
     )
 
     fun canonical(unit: String): String {
@@ -74,6 +79,8 @@ object UnitConverter {
         val sep = when {
             lower.contains(" to ") -> " to "
             lower.contains(" in ") -> " in "
+            lower.contains(" в ") -> " в "   // Russian "20 км в мили"
+            lower.contains(" на ") -> " на "
             else -> return null
         }
         val parts = lower.split(sep)

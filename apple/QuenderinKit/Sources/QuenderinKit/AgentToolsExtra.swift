@@ -68,6 +68,11 @@ enum UnitConverter {
         "minute": "min", "minutes": "min", "mins": "min",
         "hr": "h", "hrs": "h", "hour": "h", "hours": "h",
         "days": "day", "weeks": "week",
+        // Russian-first common unit names (agent examples + RU UI).
+        "км": "km", "метры": "m", "метр": "m", "мили": "mi", "миля": "mi",
+        "кг": "kg", "г": "g", "фунт": "lb", "фунтов": "lb",
+        "цельсий": "c", "фаренгейт": "f",
+        "час": "h", "часа": "h", "часов": "h", "мин": "min", "минут": "min",
     ]
 
     static func canonical(_ unit: String) -> String {
@@ -78,7 +83,11 @@ enum UnitConverter {
     static func parse(_ text: String) -> Request? {
         let lower = text.lowercased()
         let sep: String
-        if lower.contains(" to ") { sep = " to " } else if lower.contains(" in ") { sep = " in " } else { return nil }
+        if lower.contains(" to ") { sep = " to " }
+        else if lower.contains(" in ") { sep = " in " }
+        else if lower.contains(" в ") { sep = " в " }   // Russian "20 км в мили"
+        else if lower.contains(" на ") { sep = " на " }
+        else { return nil }
         let parts = lower.components(separatedBy: sep)
         guard parts.count == 2 else { return nil }
         let toUnit = canonical(parts[1])
