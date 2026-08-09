@@ -109,7 +109,10 @@ for ln in lines:
         out.append(ln); continue
     cols = ln.split("\t")
     if len(cols) == 5 and cols[0] in T and (not cols[2] or not cols[3] or not cols[4]):
-        cols[2], cols[3], cols[4] = T[cols[0]]
+        ko, ja, zh = T[cols[0]]
+        if not cols[2]: cols[2] = ko
+        if not cols[3]: cols[3] = ja
+        if not cols[4]: cols[4] = zh
         hit += 1
     out.append("\t".join(cols))
 open(path, "w", encoding="utf-8").write("\n".join(out))

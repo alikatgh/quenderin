@@ -125,8 +125,13 @@ def patch_kotlin(path: Path) -> None:
         if not idm or idm.group(1) not in HASHES:
             return line
         seen.add(idm.group(1))
-        line = re.sub(rf',\s*{HEX64}(\s*\))', r"\1", line)  # drop an existing hash arg (idempotent)
-        return re.sub(r"\)(\s*,?\s*)$", f', "{HASHES[idm.group(1)]}")' + r"\1", line, count=1)
+        # drop an existing hash arg (idempotent), whether it sits right before the closing
+        # paren or before a trailing `, languagesLabel = "..."` named argument
+        line = re.sub(rf',\s*{HEX64}(?=\s*(?:\)|,\s*languagesLabel\s*=))', "", line)
+        hash_arg = f', "{HASHES[idm.group(1)]}"'
+        if re.search(r',\s*languagesLabel\s*=', line):
+            return re.sub(r',\s*languagesLabel\s*=', hash_arg + r", languagesLabel =", line, count=1)
+        return re.sub(r"\)(\s*,?\s*)$", hash_arg + ")" + r"\1", line, count=1)
 
     text = "".join(patch_line(ln) for ln in text.splitlines(keepends=True))
     _finish(path, text, seen)

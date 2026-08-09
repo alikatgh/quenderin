@@ -43,7 +43,12 @@ class JvmHttpRangeClient(
             throw DownloadException("HTTP $code for $url")
         }
 
-        val resumed = code == HttpURLConnection.HTTP_PARTIAL
+        // A 206 alone isn't enough to trust as resumable: a non-compliant server/proxy can return
+        // 206 while actually serving from byte 0, ignoring the Range header. Verify Content-Range's
+        // start matches what we asked for before appending onto the existing .part file, or the
+        // appended bytes end up misaligned (same class of bug already fixed on the TS/desktop twin,
+        // docs/BUG_JOURNAL.md H9).
+        val resumed = code == HttpURLConnection.HTTP_PARTIAL && contentRangeStartMatches(conn, offsetBytes)
         val total = totalBytes(conn, resumed, offsetBytes)
         val stream = conn.inputStream
         val body = sequence {
@@ -60,6 +65,14 @@ class JvmHttpRangeClient(
             }
         }
         return RangeResponse(totalBytes = total, resumed = resumed, body = body)
+    }
+
+    /** Whether a 206's `Content-Range: bytes start-end/total` actually starts at [offsetBytes]. */
+    private fun contentRangeStartMatches(conn: HttpURLConnection, offsetBytes: Long): Boolean {
+        val contentRange = conn.getHeaderField("Content-Range") ?: return false
+        val start = Regex("""bytes\s+(\d+)-""").find(contentRange)?.groupValues?.get(1)?.toLongOrNull()
+            ?: return false
+        return start == offsetBytes
     }
 
     /** 206 → full size is after the `/` in `Content-Range`; 200 → `Content-Length` is the full size. */

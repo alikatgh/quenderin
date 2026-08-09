@@ -566,8 +566,116 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   `primary`-tinted icon on it measured ≈2.65:1 (< 3:1). Set the roles you consume, and pair a container
   with its `on…` role, never `primary`-on-container. (bottom-tab pill, 2026-07-12)
 
+- **A fallback that swaps the SIZING parameter must RE-DERIVE the size.** The F16 KV-cache retry reused the
+  `n_ctx` computed for Q8_0's cheaper per-token cost, so the "safe" fallback nearly DOUBLED actual KV memory
+  on exactly the memory-tight devices it exists to rescue. When a budget (context length, buffer, pool count)
+  is computed assuming parameter A and a retry/fallback silently substitutes B, audit that branch for stale
+  SIZING, not just stale correctness — and clamp the dependents (`n_batch`/`n_ubatch`) too. (llama_jni.cpp F16 retry, 2026-08-10)
+
+- **`Promise.race` against a timeout abandons the AWAIT, never the OPERATION.** The loser keeps running and
+  still assigns shared instance state — so a timed-out `loadModel()` + a retry with a different model runs TWO
+  concurrent native inits and leaks the loser's `LlamaContext`. A race at the CALL SITE cannot cancel; give the
+  operation itself a join/reentrancy queue (memoize the in-flight promise, chain the next call onto it). Any
+  async op that sets a native handle or singleton needs this, not a race. (llm.ts loadModel, 2026-08-10)
+
+- **A layered "stop" must go through the COORDINATOR, not just the engine — then grep every sibling call site.**
+  `llmService.stopGeneration()` halts the engine but never resets `generationService.state.isGenerating`, so the
+  next `generateResponse()` hits the "already generating" guard and is SILENTLY DROPPED. Found in
+  `executeDeleteConversationFn`, and the identical bug sat in its sibling `handleUnloadModelFn` — one handler was
+  written right (`handleStopFn`) and the pattern never propagated. When you fix a defect in one handler, grep the
+  adjacent handlers/platform twins for the same shape before closing it. (ChatScreen stop call sites, 2026-08-10)
+
+- **A client-side lockout that lives only in component state is defeated by F5.** Brute-force counters
+  (`failedAttempts`/`lockoutUntil`) exist to resist a LOCAL attacker with the device in hand — plain `useState`
+  resets on reload, giving unlimited passphrase guesses. Persist them to `localStorage` under a key SEPARATE from
+  any secret material, rehydrate as the `useState` initializer, and let the existing expiry effect self-clear a
+  stale lockout. Grep any throttle/attempt counter for a persistence boundary. (PrivacyLock.tsx, 2026-08-10)
+
+- **A regex source-patcher anchored on "the last `)`" breaks the day an optional trailing clause is added.**
+  `refresh_model_hashes.py` inserted the sha256 before the line's final paren, so entries with a trailing
+  `languagesLabel = "…"` got a positional arg after a named one (invalid Kotlin) plus a DUPLICATE hash on every
+  re-run. Anchor BOTH the removal and insertion regexes on the named clause when present, fall back to the
+  trailing token otherwise — and make "run the patch twice, assert identical output" a standing idempotency
+  test for any codegen/patch script. (refresh_model_hashes.patch_line, 2026-08-10)
+
+- **An OR-guard ("fire if ANY field is missing") followed by an unconditional multi-assign always CLOBBERS the
+  fields that weren't the reason it fired.** `if not (ko and ja and zh)` then `cols[2],cols[3],cols[4] = ko,ja,zh`
+  wiped hand-edited ja/zh translations on every re-run where only ko was blank. Assign each field independently
+  and conditionally (`if not cols[N]`). Grep for a multi-target assignment sitting under an `or`/`any()` guard.
+  (merge_kja_zh_{1,2,3}.py, 2026-08-10)
+
+- **Format-specifier validators must compare POSITIONALLY, never as a sorted multiset.** `build_xcstrings.py`
+  reduced specifiers to a sorted list of TYPES, so a translation that transposed which type occupies which
+  argument slot (`%1$@ %2$lld` → `%1$lld %2$@`) passed validation and shipped a `String(format:)` crash. Sorting
+  discards exactly the information the check exists to protect — build an ordered `position -> type` map
+  (unnumbered specifiers default to scan order) and compare that. (build_xcstrings.specs, 2026-08-10)
+
 ## Chronological log (newest first, 5 lines max)
 
+- 2026-08-10 (`android/jni/llama_jni.cpp:428`) — F16 KV-cache fallback kept the Q8_0-sized `n_ctx`, nearly
+  doubling actual KV memory on memory-tight devices. Cause: the retry swapped only `type_k`/`type_v` and never
+  re-derived `n_ctx`. Fix: scale `n_ctx` by `KVCacheType.Q8_0.relativeCostPerToken` (0.53, matching
+  KVCachePolicy.kt) with a 512-token floor before the F16 retry, and clamp `n_batch`/`n_ubatch` to it.
+  Lesson: a fallback that swaps the sizing parameter must re-derive the size, not inherit A's budget for B.
+- 2026-08-10 (`android/quenderin-core/…/JvmDownloadIO.kt:51`) — a resumed download trusted any HTTP `206`
+  without checking that `Content-Range`'s start matched the requested offset, so a non-compliant proxy serving
+  from byte 0 would misalign appended bytes. Cause: `resumed = code == HTTP_PARTIAL` alone. Fix: added
+  `contentRangeStartMatches(conn, offsetBytes)`; a missing/mismatched start now falls through to the existing
+  truncate-and-restart path (ModelDownloadEngine.kt:136-139). Lesson: a status code never proves Range was honored.
+- 2026-08-10 (`off-grid-mobile/src/services/llm.ts:57`) — a timed-out `loadModel()` plus a retry with a different
+  model ran two concurrent native inits and leaked the loser's `LlamaContext`. Cause: `Promise.race` abandons the
+  await but never cancels `initContextWithFallback()`, and there was no reentrancy guard. Fix: renamed the body to
+  `loadModelInternal()` and made `loadModel()` a serializer chaining onto a `loadingPromise` field.
+  Lesson: race the call site and the operation still runs — give the operation itself a join queue.
+- 2026-08-10 (`off-grid-mobile/src/screens/ChatScreen/useChatGenerationActions.ts:290`) — deleting a conversation
+  mid-stream could silently drop the next sent message. Cause: `executeDeleteConversationFn` called
+  `llmService.stopGeneration()` only, leaving `generationService.state.isGenerating` stuck true so the next
+  `generateResponse()` hit the already-generating guard. Fix: `await Promise.all([generationService.stopGeneration(),
+  llmService.stopGeneration()])`, mirroring `handleStopFn`. Lesson: stop through the coordinator, not the engine.
+- 2026-08-10 (`off-grid-mobile/src/screens/ChatScreen/useChatModelActions.ts:217`) — `handleUnloadModelFn` had the
+  identical bug as its sibling above: `llmService.stopGeneration()` only, immediately before unloading the model,
+  leaving `generationService.state.isGenerating` stuck true. Fix: imported `generationService` and awaited both
+  stops in a `Promise.all`, same as the ChatGenerationActions fix.
+  Lesson: a defect fixed in one handler is not fixed — grep the adjacent handlers for the same shape.
+- 2026-08-10 (`apple/QuenderinKit/Sources/QuenderinKit/ModelDownloader.swift:148`) — fresh-download SHA-256
+  verification silently downgraded to a magic-header-only check for every HF-search/sideloaded model. Cause: the
+  expected hash was re-derived via a `ModelCatalog`-by-URL lookup that never contains non-curated entries. Fix:
+  added an `expectedSHA256:` parameter (default protocol-extension impl keeps Background/Mock downloaders
+  compiling); `OnboardingModel.install()` now passes `model.sha256`. Lesson: never re-derive a value the caller holds.
+- 2026-08-10 (`apple/QuenderinKit/Sources/QuenderinKit/ConversationCoordinator.swift:63`) — switching conversations
+  mid-generation (`startNew()`/`open()`) silently discarded the just-sent user message with no save and no warning.
+  Cause: `persist()` unconditionally no-oped whenever `chat.isGenerating`. Fix: trim the trailing in-flight assistant
+  placeholder and save the completed turns instead of skipping the save; the test that asserted the old no-save
+  behavior as intentional was rewritten. Lesson: "skip while busy" must still preserve the user's completed input.
+- 2026-08-10 (`apple/QuenderinKit/Sources/QuenderinKit/ChatModel.swift:104`) — the Continue chip after a token-cap
+  stop silently switched the reply to the `.small` system-prompt/token-budget tier on any larger model. Cause:
+  `continueLast()` had no `model` parameter, so `send()` resolved `ChatTier.of(model: nil)`. Fix: added
+  `model: ModelEntry? = nil` to `continueLast(options:model:)`, forwarded to `send()`, and passed
+  `model: activeModel` from ChatView. Lesson: a sibling call site that drops a parameter changes policy invisibly.
+- 2026-08-10 (`ui/src/hooks/useAgentSocket.ts:265`) — a legitimate empty-string task answer rendered as the literal
+  unexplained text "answered". Cause: the `task_done` handler used a truthy check on `data.answer`, which is typed
+  `string | null` (AgentMessage union, line 64), so `''` fell into the halt branch. Fix: `if (data.answer !== null)`.
+  Lesson: when `''` is a valid value, branch on `!== null`, never on truthiness.
+- 2026-08-10 (`ui/src/components/PrivacyLock.tsx:13`) — the brute-force lockout reset on page reload, allowing
+  unlimited passphrase guesses. Cause: `failedAttempts`/`lockoutUntil` lived only in React state with no
+  persistence. Fix: `readLockoutState()` rehydrates both from a dedicated `quenderin_lockout_state` localStorage
+  key (separate from any secret material) as the `useState` initializers, plus an effect persisting every change;
+  the existing countdown effect already self-clears an expired lockout. Lesson: a throttle F5 defeats isn't one.
+- 2026-08-10 (`scripts/refresh_model_hashes.py:129`) — the Kotlin catalog patcher emitted a positional arg after a
+  named one (invalid Kotlin) plus a duplicate hash on every re-run, for entries with a trailing `languagesLabel`.
+  Cause: both the insertion and the idempotent-removal regexes assumed the sha256 sits right before the line's
+  final `)`. Fix: anchor both on the `, languagesLabel =` clause when present, fall back to trailing `)` otherwise.
+  Lesson: patch scripts need an idempotency check — run twice, assert identical output.
+- 2026-08-10 (`scripts/merge_kja_zh_1.py:137`, + `merge_kja_zh_2.py:151`, `merge_kja_zh_3.py:112`) — re-running the
+  merge wiped already-filled or hand-edited ja/zh cells whenever only ko was blank. Cause: the guard is an OR across
+  ko/ja/zh (fires if ANY is empty) but the assignment unconditionally overwrote all three columns. Fix: three
+  independent `if not cols[N]: cols[N] = …` assignments; applied identically to all three sibling scripts.
+  Lesson: an OR-guarded unconditional multi-assign always clobbers the fields that weren't the reason it fired.
+- 2026-08-10 (`scripts/build_xcstrings.py:26`) — the format-specifier validator passed a translation that transposed
+  which specifier TYPE sits at which argument POSITION, risking a `String(format:)` crash. Cause: `specs()` reduced
+  specifiers to an unordered sorted multiset of types, discarding position. Fix: build an ordered
+  `position -> type` map (unnumbered specifiers default to scan order) and compare that; real run against
+  translations.tsv produced byte-identical output. Lesson: sorting throws away exactly what the check protects.
 - 2026-08-04 — Image picker hid photos so users never saw the vision-not-yet message.
   Fix: iOS fileImporter + Android SAF accept image/*; refusal path already honest. Lesson:
   if you ship a refusal, let the user reach it.

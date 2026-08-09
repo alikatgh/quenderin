@@ -101,9 +101,14 @@ public final class ChatModel: ObservableObject {
 
     /// Extend the previous reply after a token-cap stop. Sends a short continue cue so the model
     /// picks up mid-thought. No-op when `lastHitTokenCap` is false.
-    public func continueLast(options: GenerationOptions = .init()) async {
+    ///
+    /// - Parameter model: the model that produced the reply being continued — forwarded to
+    ///   `send()` so the continuation uses the SAME tier (system prompt + token budget) as the
+    ///   turn it's extending, instead of `send()`'s `model: nil` default (which resolves to
+    ///   `.small` regardless of what actually generated the original reply).
+    public func continueLast(options: GenerationOptions = .init(), model: ModelEntry? = nil) async {
         guard lastHitTokenCap, !isGenerating else { return }
-        await send(ChatUserFacing.continueCue(), options: options)
+        await send(ChatUserFacing.continueCue(), options: options, model: model)
     }
 
     private let engine: InferenceEngine

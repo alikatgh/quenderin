@@ -421,6 +421,13 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
         LOGE("context init failed with q8_0 KV cache — retrying with f16 (model likely lacks flash-attention support)");
         cp.type_k = GGML_TYPE_F16;
         cp.type_v = GGML_TYPE_F16;
+        // n_ctx above was sized in Kotlin assuming Q8_0's cheaper per-token cost
+        // (KVCachePolicy.kt Q8_0.relativeCostPerToken = 0.53); f16 costs ~1/0.53 more per token, so
+        // shrink n_ctx by that same ratio here or the f16 retry roughly doubles its memory budget on
+        // exactly the memory-tight devices this sizing exists to protect.
+        cp.n_ctx = std::max<uint32_t>(512, (uint32_t) (cp.n_ctx * 0.53f));
+        cp.n_batch  = std::min<uint32_t>(cp.n_batch, cp.n_ctx);
+        cp.n_ubatch = cp.n_batch;
         ctx = llama_init_from_model(model, cp);
     }
     if (!ctx) { LOGE("context init failed"); llama_model_free(model); return 0; }

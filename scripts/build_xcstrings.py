@@ -22,8 +22,15 @@ LANGS = ["ru", "ko", "ja", "zh-Hans"]
 SPEC = re.compile(r'%(?:\d+\$)?(?:lld|@|d|\.\d+f|f)')
 
 def specs(s):
-    # positional (%1$@) and plain (%@) count as the same specifier for validation
-    return sorted(re.sub(r'%\d+\$', '%', m) for m in SPEC.findall(s.replace("%%", "")))
+    # map each specifier's ARGUMENT POSITION -> its type (unnumbered specifiers default to
+    # their scan order), so a translation can't legally put a different type at a position
+    # than the key has there while still matching on an unordered multiset
+    out = {}
+    for i, m in enumerate(SPEC.finditer(s.replace("%%", "")), 1):
+        pm = re.match(r'%(\d+)\$', m.group(0))
+        pos = int(pm.group(1)) if pm else i
+        out[pos] = re.sub(r'^%\d+\$', '%', m.group(0))
+    return out
 
 strings = {}
 errors = []

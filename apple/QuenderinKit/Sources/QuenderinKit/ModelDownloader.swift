@@ -20,6 +20,20 @@ public protocol ModelDownloader: Sendable {
     /// Stream progress while downloading `url` to `destination`. The stream
     /// finishes after a `.finished` event, or throws a `DownloadError`.
     func download(from url: URL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error>
+
+    /// Same as above, but verifies against `expectedSHA256` when the caller already knows it
+    /// (e.g. a Hugging-Face-search or sideloaded `ModelEntry` not in the curated `ModelCatalog`)
+    /// instead of relying on a catalog-URL lookup that only covers curated models. Nil falls back
+    /// to the implementation's own resolution (curated-catalog lookup, then magic-header-only).
+    func download(from url: URL, to destination: URL, expectedSHA256: String?) -> AsyncThrowingStream<DownloadEvent, Error>
+}
+
+public extension ModelDownloader {
+    /// Default for conformers that don't yet distinguish a caller-supplied hash: unchanged
+    /// behavior via the 2-arg overload.
+    func download(from url: URL, to destination: URL, expectedSHA256: String?) -> AsyncThrowingStream<DownloadEvent, Error> {
+        download(from: url, to: destination)
+    }
 }
 
 /// Foreground `URLSession` downloader with streamed progress.
@@ -38,8 +52,12 @@ public struct URLSessionModelDownloader: ModelDownloader {
     }
 
     public func download(from url: URL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error> {
+        download(from: url, to: destination, expectedSHA256: nil)
+    }
+
+    public func download(from url: URL, to destination: URL, expectedSHA256: String?) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
-            let delegate = ChunkedDownloadDelegate(sourceURL: url, destination: destination, continuation: continuation)
+            let delegate = ChunkedDownloadDelegate(sourceURL: url, destination: destination, expectedSHA256: expectedSHA256, continuation: continuation)
             // A dedicated delegate queue serializes the didReceive* callbacks, so the delegate's
             // mutable state is touched on one thread at a time (see its @unchecked Sendable note).
             let queue = OperationQueue()
@@ -63,6 +81,7 @@ private final class ChunkedDownloadDelegate: NSObject, URLSessionDataDelegate, @
     private let sourceURL: URL
     private let destination: URL
     private let partial: URL
+    private let expectedSHA256: String?
     private let continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
 
     private var handle: FileHandle?
@@ -71,10 +90,11 @@ private final class ChunkedDownloadDelegate: NSObject, URLSessionDataDelegate, @
     private var lastReported = 0.0
     private var finished = false
 
-    init(sourceURL: URL, destination: URL, continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation) {
+    init(sourceURL: URL, destination: URL, expectedSHA256: String?, continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation) {
         self.sourceURL = sourceURL
         self.destination = destination
         self.partial = destination.appendingPathExtension("partial")
+        self.expectedSHA256 = expectedSHA256
         self.continuation = continuation
     }
 
@@ -143,9 +163,10 @@ private final class ChunkedDownloadDelegate: NSObject, URLSessionDataDelegate, @
             try? FileManager.default.removeItem(at: destination)
             try FileManager.default.moveItem(at: partial, to: destination)
             // Integrity gate (C3): verify before signaling success — a MITM, poisoned mirror, or
-            // truncated transfer must not reach the GGUF parser. Resolve the expected SHA-256 from
-            // the catalog by URL (nil → GGUF magic-header check only).
-            let expectedSHA = ModelCatalog.models.first { $0.downloadURL == sourceURL }?.sha256
+            // truncated transfer must not reach the GGUF parser. Prefer the caller-supplied hash
+            // (covers HF-search/sideloaded models the curated catalog doesn't know about); fall
+            // back to a catalog-by-URL lookup, then GGUF magic-header check only.
+            let expectedSHA = expectedSHA256 ?? ModelCatalog.models.first { $0.downloadURL == sourceURL }?.sha256
             try ModelIntegrity.verify(fileURL: destination, expectedSHA256: expectedSHA)
             continuation.yield(.progress(1.0))
             continuation.yield(.finished(destination))

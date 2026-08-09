@@ -130,7 +130,7 @@ final class ConversationCoordinatorTests: XCTestCase {
     /// transcript ending in an empty assistant turn (see `ChatModelTests` for the matching
     /// `isGenerating` spin-wait pattern this borrows).
     @MainActor
-    func testPersistIsNoOpWhileGenerating() async {
+    func testPersistSavesUserTurnAndTrimsPartialAssistantWhileGenerating() async {
         let persistence = InMemoryConversationPersistence()
         let chat = await loadedChat("one two three four five")
         let coord = ConversationCoordinator(chat: chat, persistence: persistence, now: { 1 })
@@ -141,9 +141,13 @@ final class ConversationCoordinatorTests: XCTestCase {
         while chat.messages.count < 2 { await Task.yield() }   // user+placeholder assistant appended
         XCTAssertTrue(chat.isGenerating)
 
-        coord.open("does-not-exist")   // persist() runs first internally; must not save mid-stream
-        XCTAssertTrue(coord.summaries.isEmpty)                    // "hello" never landed — still no row
-        XCTAssertTrue(persistence.loadTranscript(id: id).isEmpty) // and nothing was written to disk
+        coord.open("does-not-exist")   // persist() runs first internally: must save the user's turn,
+        // trimming the still-streaming (empty/partial) assistant placeholder rather than losing the
+        // whole exchange to the isGenerating no-op.
+        XCTAssertEqual(coord.summaries.count, 1)
+        let saved = persistence.loadTranscript(id: id)
+        XCTAssertEqual(saved.map(\.role), [.user])
+        XCTAssertEqual(saved.map(\.text), ["hello"])
 
         await task.value   // let the stream finish so the task doesn't leak past the test
     }

@@ -365,7 +365,7 @@ public struct ChatView: View {
             // only appears when lastHitTokenCap is set; no layout shift on other replies.
             if model.lastHitTokenCap && !model.isGenerating {
                 Button {
-                    Task { await model.continueLast() }
+                    Task { await model.continueLast(model: activeModel) }
                 } label: {
                     Label(String(localized: "Continue"), systemImage: "arrow.forward.circle")
                         .font(.caption.weight(.semibold))

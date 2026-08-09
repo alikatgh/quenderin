@@ -262,7 +262,7 @@ export function useAgentSocket() {
                     setTaskStatus('done');
                     setTaskLog((prev) => {
                         const next = [...prev];
-                        if (data.answer) {
+                        if (data.answer !== null) {
                             next.push({ id: `ta-${crypto.randomUUID()}`, kind: 'answer', text: data.answer });
                         } else {
                             const why: Record<string, string> = {

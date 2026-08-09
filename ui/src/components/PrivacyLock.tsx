@@ -6,13 +6,33 @@ import { hashPassphrase, isPassphraseHash } from '../lib/passphrase.js';
 const MAX_FAILED_ATTEMPTS = 5;
 /** Lockout duration in ms (5 minutes) */
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+/** Separate from the passphrase itself — just the brute-force counters, so a reload can't reset them. */
+const LOCKOUT_STORAGE_KEY = 'quenderin_lockout_state';
+
+function readLockoutState(): { failedAttempts: number; lockoutUntil: number | null } {
+    try {
+        const raw = localStorage.getItem(LOCKOUT_STORAGE_KEY);
+        if (!raw) return { failedAttempts: 0, lockoutUntil: null };
+        const parsed = JSON.parse(raw);
+        return {
+            failedAttempts: typeof parsed.failedAttempts === 'number' ? parsed.failedAttempts : 0,
+            lockoutUntil: typeof parsed.lockoutUntil === 'number' ? parsed.lockoutUntil : null,
+        };
+    } catch { return { failedAttempts: 0, lockoutUntil: null }; }
+}
 
 export function PrivacyLock({ isEnabled, expectedPassphrase, onUnlock }: { isEnabled: boolean, expectedPassphrase?: string, onUnlock: () => void }) {
     const [passphrase, setPassphrase] = useState('');
     const [error, setError] = useState(false);
-    const [failedAttempts, setFailedAttempts] = useState(0);
-    const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+    const [failedAttempts, setFailedAttempts] = useState(() => readLockoutState().failedAttempts);
+    const [lockoutUntil, setLockoutUntil] = useState<number | null>(() => readLockoutState().lockoutUntil);
     const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+    // Persist the counters (not the passphrase) so a reload can't reset a lockout in progress —
+    // component state alone was trivially defeated by hitting F5 (deep-hunt).
+    useEffect(() => {
+        try { localStorage.setItem(LOCKOUT_STORAGE_KEY, JSON.stringify({ failedAttempts, lockoutUntil })); } catch { /* best-effort */ }
+    }, [failedAttempts, lockoutUntil]);
 
     // NOTE: this component must NEVER call onUnlock() as a side-effect of a prop change. It used to
     // auto-unlock whenever `!isEnabled || !expectedPassphrase` — but an empty passphrase ('') is falsy,

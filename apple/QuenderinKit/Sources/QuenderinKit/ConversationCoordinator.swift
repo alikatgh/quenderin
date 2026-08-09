@@ -56,15 +56,20 @@ public final class ConversationCoordinator: ObservableObject {
     private func refresh() { summaries = manager.list() }
 
     /// Persist the current conversation — call when a turn finishes. No-ops on an empty chat so
-    /// untouched "New conversation" rows don't pile up, while a reply is still streaming —
-    /// `chat.messages` ends in a placeholder/partial assistant turn until `send()` completes, and
-    /// callers like `startNew()`/`open()` can run mid-stream (e.g. the user navigates away) —
-    /// and when nothing new was said since the last save (see `savedCount`).
+    /// untouched "New conversation" rows don't pile up, and when nothing new was said since the
+    /// last save (see `savedCount`). Callers like `startNew()`/`open()` can run mid-stream (e.g.
+    /// the user navigates away) — `chat.messages` then ends in a placeholder/partial assistant
+    /// turn, which is trimmed before saving so the just-sent user message (and any prior
+    /// completed turns) is still persisted instead of silently dropped.
     public func persist() {
-        guard let id = manager.currentID, !chat.messages.isEmpty, !chat.isGenerating,
-              chat.messages.count > savedCount else { return }
-        manager.save(id: id, messages: chat.messages, modelID: activeModelID)
-        savedCount = chat.messages.count
+        guard let id = manager.currentID, !chat.messages.isEmpty else { return }
+        var toSave = chat.messages
+        if chat.isGenerating, toSave.last?.role == .assistant {
+            toSave.removeLast()
+        }
+        guard toSave.count > savedCount else { return }
+        manager.save(id: id, messages: toSave, modelID: activeModelID)
+        savedCount = toSave.count
         refresh()
     }
 

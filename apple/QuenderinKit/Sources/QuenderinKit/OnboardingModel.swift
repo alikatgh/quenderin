@@ -244,8 +244,10 @@ public final class OnboardingModel: ObservableObject {
             }
             phase = .downloading(model, progress: 0)
             do {
-                // Consumed sequentially on the main actor → ordered phase updates.
-                for try await event in downloader.download(from: url, to: destination) {
+                // Consumed sequentially on the main actor → ordered phase updates. Pass the
+                // already-known hash so an HF-search/sideloaded model (never in ModelCatalog)
+                // still gets SHA-256 verified instead of silently falling back to header-only.
+                for try await event in downloader.download(from: url, to: destination, expectedSHA256: model.sha256) {
                     switch event {
                     case .progress(let fraction):
                         phase = .downloading(model, progress: fraction)
