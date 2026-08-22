@@ -2,7 +2,7 @@
 // dependencies, so it compiles fast and unit-tests on the JVM. The Android `:app`
 // module (Jetpack Compose UI + the JNI LlamaEngine) depends on this.
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.4.10"
 }
 
 repositories { mavenCentral() }
