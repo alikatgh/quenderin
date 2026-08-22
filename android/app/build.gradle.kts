@@ -34,18 +34,18 @@ android {
     namespace = "ai.quenderin.app"
     compileSdk = 35
 
-    // Vulkan is OFF by default for v0.2.0 — the plain `./gradlew :app:bundleRelease` (per RELEASE.md)
-    // must reproduce the shipped, emulator-verified CPU-only artifact the release notes describe. The
-    // GPU path returns in 0.2.1 alongside the CPU-variant work. Opt IN with -Pquenderin.vulkan=true;
-    // GpuOffloadPlanner still gates offload per-SoC (Adreno only) when it IS compiled in.
+    // Vulkan stays opt-in (`-Pquenderin.vulkan=true`): the vendored llama.cpp Vulkan backend
+    // requires SPIRV-Headers at configure time, which the NDK does not ship. CPU-variant backends
+    // (DOTPROD/I8MM) are ON by default in jni/CMakeLists.txt — that is the 0.2.1 engine cut.
+    // GpuOffloadPlanner still gates offload per-SoC (Adreno only) when Vulkan IS compiled in.
     val enableVulkan = project.findProperty("quenderin.vulkan")?.toString() == "true"
 
     defaultConfig {
         applicationId = "ai.quenderin.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
         // Compile-time mirror of "will this APK load libquenderin_llama.so?" — UI/Settings read it.
@@ -80,11 +80,9 @@ android {
 
     packaging {
         jniLibs {
-            // Retained for 0.2.1's CPU-variant dispatch: ggml's runtime pick
-            // (ggml_backend_load_all_from_path) filesystem-scans nativeLibraryDir, which sees nothing
-            // when variant .so files exist only as APK entries. v0.2.0 ships a single baseline .so
-            // (variants OFF — see jni/CMakeLists.txt SHIP NOTE), so the scan currently finds just that
-            // one lib; kept true so restoring variants in 0.2.1 needs no packaging change.
+            // Required for CPU-variant dispatch: ggml_backend_load_all_from_path filesystem-scans
+            // nativeLibraryDir, which sees nothing when variant .so files exist only as APK entries
+            // (bug journal 2026-07-02: 0 devices until useLegacyPackaging=true).
             useLegacyPackaging = true
         }
     }

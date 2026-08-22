@@ -66,9 +66,19 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
 if the build breaks, diff against `jni/llama.cpp/include/llama.h` at your pinned commit
 and adjust (same discipline as the iOS adapter, which was checked against `llama.h`).
 
+### CPU-variant backends (0.2.1 default)
+
+`jni/CMakeLists.txt` builds ggml's Android CPU variant set (`android_armv8.0` … `armv9.2`, DOTPROD/I8MM)
+as dlopen-able plugins. The JNI loads them from `applicationInfo.nativeLibraryDir` and ggml picks the
+best match for the live CPU. **Packaging:** `useLegacyPackaging = true` is required — AGP otherwise
+leaves the `.so` files inside the APK and the scan finds zero devices.
+
+Affinity (`ggml_threadpool_new`) is resolved at runtime from the CPU backend registry, not linked into
+`libquenderin_llama.so` (link-time was an undefined-symbol with `GGML_BACKEND_DL`).
+
 ### Optional — GPU offload (Vulkan)
-CPU is the default and is stable everywhere. To build the **Vulkan** backend, configure the
-native build with `-DQUENDERIN_VULKAN=ON` (the flag is in `jni/CMakeLists.txt`):
+CPU-variant backends are the default win. Vulkan stays opt-in because the vendored llama.cpp Vulkan
+backend requires SPIRV-Headers at configure time (not in the NDK). To build it:
 ```kotlin
 // android/app/build.gradle.kts → externalNativeBuild { cmake { ... } }
 arguments += "-DQUENDERIN_VULKAN=ON"

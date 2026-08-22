@@ -17,7 +17,6 @@
 #include "llama.h"
 #include "ggml-backend.h"     // ggml_backend_load_all_from_path — runtime CPU-variant pick (DOTPROD/I8MM)
 #include "ggml.h"             // ggml_threadpool_params (cpumask + strict_cpu)
-#include "ggml-cpu.h"         // ggml_threadpool_new / free
 #include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
 #include <cstdio>
 #include <cstring>
@@ -27,6 +26,36 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 namespace {
+
+// ggml_threadpool_new/free are GGML_BACKEND_API: with GGML_BACKEND_DL they live ONLY inside the
+// dlopened CPU plugin (libggml-cpu-android_armv*.so), not in libggml.so. Linking them from this
+// JNI .so is an ld.lld undefined-symbol (the 0.2.0 ship-note). Resolve them the same way
+// llama-bench does: ggml_backend_reg_get_proc_address on the registered CPU backend, AFTER
+// ggml_backend_load_all_from_path. Null pointers → skip affinity (soft-fail, same as today).
+using threadpool_new_fn  = ggml_threadpool_t (*)(struct ggml_threadpool_params *);
+using threadpool_free_fn = void (*)(ggml_threadpool_t);
+threadpool_new_fn  g_threadpool_new  = nullptr;
+threadpool_free_fn g_threadpool_free = nullptr;
+
+void resolve_cpu_threadpool_api() {
+    ggml_backend_dev_t cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+    if (!cpu_dev) {
+        LOGE("affinity: no CPU backend registered — pinned threadpool unavailable");
+        return;
+    }
+    ggml_backend_reg_t cpu_reg = ggml_backend_dev_backend_reg(cpu_dev);
+    g_threadpool_new  = reinterpret_cast<threadpool_new_fn>(
+        ggml_backend_reg_get_proc_address(cpu_reg, "ggml_threadpool_new"));
+    g_threadpool_free = reinterpret_cast<threadpool_free_fn>(
+        ggml_backend_reg_get_proc_address(cpu_reg, "ggml_threadpool_free"));
+    if (!g_threadpool_new || !g_threadpool_free) {
+        LOGE("affinity: CPU backend did not export ggml_threadpool_new/free");
+        g_threadpool_new = nullptr;
+        g_threadpool_free = nullptr;
+        return;
+    }
+    LOGI("affinity: threadpool API resolved via CPU backend registry");
+}
 
 // Route llama.cpp/ggml's own logs (model metadata, tensor loading, decode diagnostics) into Android
 // logcat under LOG_TAG — otherwise they go to stderr and are INVISIBLE on-device, which is exactly
@@ -47,6 +76,8 @@ struct LlamaHandle {
     // Pinned ggml threadpool (big-core affinity). Freed in nativeFree; null when affinity setup
     // was skipped (sysfs missing, threadpool API failed, or n_threads <= 0).
     ggml_threadpool_t threadpool = nullptr;
+    // The n_ctx actually used after q8_0→F16 fallback (may be smaller than the Kotlin request).
+    uint32_t nCtx = 0;
     // The exact tokens resident in the KV cache (prior prompt + reply) — lets the next chat turn
     // decode only the new suffix instead of re-prefilling the whole history (mirrors KVCacheReuse).
     // Empty on a fresh handle (each load); reset implicitly because nativeFree deletes the handle.
@@ -61,7 +92,7 @@ struct LlamaHandle {
 // context. Returns the pool (caller owns + frees) or null on any soft failure (affinity is an
 // optimization — never block model load over it). Twin of Kotlin ThreadPlanner.bestCoreIndices.
 ggml_threadpool_t pin_threads(llama_context* ctx, int n_threads) {
-    if (!ctx || n_threads <= 0) return nullptr;
+    if (!ctx || n_threads <= 0 || !g_threadpool_new) return nullptr;
 
     struct Core { int id; long freq; };
     std::vector<Core> cores;
@@ -97,7 +128,7 @@ ggml_threadpool_t pin_threads(llama_context* ctx, int n_threads) {
         LOGI("affinity: no cpufreq sysfs — using default (unpinned) threadpool of %d", n_threads);
     }
 
-    ggml_threadpool_t tp = ggml_threadpool_new(&tpp);
+    ggml_threadpool_t tp = g_threadpool_new(&tpp);
     if (!tp) {
         LOGE("affinity: ggml_threadpool_new failed — decode will use the auto pool");
         return nullptr;
@@ -363,6 +394,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
             LOGI("backends: %zu device(s) after fallback load_all", ggml_backend_dev_count());
         }
         llama_backend_init();
+        resolve_cpu_threadpool_api();
     });
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
@@ -454,7 +486,12 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     const int pin_n = threads > 0 ? (int) threads : (int) cp.n_threads;
     ggml_threadpool_t tp = pin_threads(ctx, pin_n > 0 ? pin_n : 1);
 
-    auto* h = new LlamaHandle{model, ctx, sampler, tp};
+    auto* h = new LlamaHandle{};
+    h->model = model;
+    h->ctx = ctx;
+    h->sampler = sampler;
+    h->threadpool = tp;
+    h->nCtx = cp.n_ctx;
     LOGI("nativeLoad: OK, handle=%p n_ctx=%u affinity=%s", (void*) h, cp.n_ctx, tp ? "on" : "off");
     return reinterpret_cast<jlong>(h);
 }
@@ -565,9 +602,17 @@ Java_ai_quenderin_core_LlamaEngine_nativeFree(JNIEnv* /*env*/, jobject /*thiz*/,
         if (h->threadpool) llama_detach_threadpool(h->ctx);
         llama_free(h->ctx);
     }
-    if (h->threadpool) ggml_threadpool_free(h->threadpool);
+    if (h->threadpool && g_threadpool_free) g_threadpool_free(h->threadpool);
     if (h->model)   llama_model_free(h->model);
     delete h;
+}
+
+// The n_ctx the context was actually created with (after q8_0→F16 shrink). Kotlin must
+// publish THIS as loadedContextTokens, not the value it requested before the fallback.
+JNIEXPORT jint JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeLoadedNCtx(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
+    LlamaHandle* h = as_handle(handle);
+    return h ? (jint) h->nCtx : 0;
 }
 
 // Did the most recent generate() stop because it hit maxTokens? ChatModel reads this for "Continue".

@@ -64,8 +64,15 @@ cmake --build llama.cpp/build-android --target llama -j"$(sysctl -n hw.ncpu 2>/d
 echo "    built $(ls llama.cpp/build-android/bin/libllama.so)"
 
 echo "==> 3/5  Compile-check the JNI bridge against real llama.cpp ($ABI)"
+# Twin of scripts/check-jni-syntax.sh: HEAD replaced use_mmap/use_mlock with load_mode.
+JNI_DEFS=()
+if grep -qE 'enum[[:space:]]+llama_load_mode|LLAMA_LOAD_MODE_MMAP' "$WORK/llama.cpp/include/llama.h" 2>/dev/null; then
+  JNI_DEFS+=(-DQUENDERIN_LLAMA_LOAD_MODE=1)
+fi
 "$CLANG" --target="aarch64-linux-android$API" -std=c++17 -c "$HERE/jni/llama_jni.cpp" \
-  -I"$WORK/llama.cpp/include" -I"$WORK/llama.cpp/ggml/include" -o "$WORK/llama_jni.o"
+  -I"$WORK/llama.cpp/include" -I"$WORK/llama.cpp/ggml/include" \
+  ${JNI_DEFS[@]+"${JNI_DEFS[@]}"} \
+  -o "$WORK/llama_jni.o"
 echo "    jni/llama_jni.cpp compiles for Android  (libquenderin_llama.so = it + libllama)"
 
 echo "==> 4/5  Build the native inference smoke test"

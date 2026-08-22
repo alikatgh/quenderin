@@ -243,4 +243,26 @@
     <string name="picker_current">사용 중</string>
     <string name="agent_grant_folder">폴더 허용</string>
     <string name="agent_folder_named">폴더: %1$s</string>
+    <string name="cap_title_calculator">계산기</string>
+    <string name="cap_title_units">단위 변환</string>
+    <string name="cap_title_date">날짜 계산</string>
+    <string name="cap_title_fs_read">파일 읽기</string>
+    <string name="cap_title_fs_list">파일 목록</string>
+    <string name="cap_title_fs_move">파일 이동</string>
+    <string name="cap_title_fs_rename">파일 이름 변경</string>
+    <string name="cap_title_fs_trash">휴지통으로 이동</string>
+    <string name="cap_title_clipboard">클립보드 읽기</string>
+    <string name="cap_title_calendar">오늘 일정 보기</string>
+    <string name="cap_title_status">배터리·저장공간 확인</string>
+    <string name="cap_purpose_calculator">\"12 * (3 + 4)\", \"2^10\", \"sqrt(16)\" 같은 산술.</string>
+    <string name="cap_purpose_units">단위 변환, 예: \"20 km to mi\", \"30 C to F\", \"5 kg to lb\".</string>
+    <string name="cap_purpose_date">날짜 계산: 두 날짜 사이 일수, N일 후, 요일.</string>
+    <string name="cap_purpose_fs_read">첨부한 텍스트 파일을 이름으로 읽습니다. 사용자가 첨부한 파일만.</string>
+    <string name="cap_purpose_fs_list">허용한 작업 폴더의 파일 목록. 입력 없음.</string>
+    <string name="cap_purpose_fs_move">작업 폴더의 하위 폴더로 파일을 옮깁니다. 입력: \"&lt;파일&gt; to &lt;하위폴더&gt;\".</string>
+    <string name="cap_purpose_fs_rename">작업 폴더에서 파일 이름을 바꿉니다. 입력: \"&lt;현재&gt; to &lt;새 이름&gt;\".</string>
+    <string name="cap_purpose_fs_trash">작업 폴더 휴지통으로 파일을 옮깁니다. 입력: \"&lt;파일&gt;\".</string>
+    <string name="cap_purpose_clipboard">클립보드의 텍스트를 읽습니다. 입력 없음.</string>
+    <string name="cap_purpose_calendar">오늘 일정의 제목과 시각. 입력 없음.</string>
+    <string name="cap_purpose_status">이 기기의 배터리와 남은 저장공간. 입력 없음.</string>
 </resources>

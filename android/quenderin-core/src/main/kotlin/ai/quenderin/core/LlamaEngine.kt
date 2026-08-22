@@ -144,7 +144,11 @@ class LlamaEngine(
         handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers, nativeLibDir)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
-        loadedContextTokens = nctx   // the REAL native window, so history is trimmed to it not a fixed 4096 (Q-167)
+        // JNI may shrink n_ctx on the q8_0→F16 KV-cache fallback; publish the window that
+        // actually exists, not the q8-sized request (otherwise ChatModel trims to a window
+        // larger than native and overflows — twin of the Aug-10 llama_jni.cpp n_ctx resize).
+        val actual = nativeLoadedNCtx(handle)
+        loadedContextTokens = if (actual > 0) actual else nctx
     }
 
     override fun unload() = synchronized(lock) {
@@ -227,6 +231,7 @@ class LlamaEngine(
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeLastHitTokenCap(handle: Long): Boolean
+    private external fun nativeLoadedNCtx(handle: Long): Int
     private external fun nativeFree(handle: Long)
 
     /** JNI-friendly callback (a single known method signature `(Ljava/lang/String;)V`). */

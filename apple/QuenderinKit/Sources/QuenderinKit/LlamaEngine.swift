@@ -247,8 +247,14 @@ public actor LlamaEngine: InferenceEngine {
         // mlock is explicitly OFF — wiring multi-GB of weights resident is exactly what gets the app
         // jetsam-killed when the user switches to music/maps. Pin the safe default so it can't regress.
         // (For the paged-MoE path above, mmap isn't just a guard — it IS the streaming mechanism.)
+        // llama.cpp HEAD replaced use_mmap/use_mlock with enum load_mode; Package.swift sets
+        // QUENDERIN_LLAMA_LOAD_MODE when the linked llama.h has LLAMA_LOAD_MODE_MMAP (twin of JNI).
+        #if QUENDERIN_LLAMA_LOAD_MODE
+        modelParams.load_mode = LLAMA_LOAD_MODE_MMAP
+        #else
         modelParams.use_mmap = true
         modelParams.use_mlock = false
+        #endif
 
         guard let m = llama_model_load_from_file(path, modelParams) else {
             throw InferenceError.loadFailed(reason: "llama_model_load_from_file returned null for \(entry.filename)")
@@ -267,7 +273,7 @@ public actor LlamaEngine: InferenceEngine {
         let kvCacheType = KVCachePolicy.recommend(appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB)
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype
         // (footprint-aware M1): a 1B gets a big context, a 7B on the same phone is capped tight.
-        let nctx = ContextWindow.recommend(
+        var nctx = ContextWindow.recommend(
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         ctxParams.n_ctx = UInt32(nctx)
         // NB: in modern llama.cpp a QUANTIZED V-cache requires Flash Attention — with FA auto-on
@@ -294,8 +300,15 @@ public actor LlamaEngine: InferenceEngine {
             // A quantized V-cache needs Flash Attention; on a model where AUTO resolved to
             // disabled, init fails. Retry with f16 KV (more memory, always valid) rather than
             // failing the whole load on exactly the memory-tight devices that picked q8_0.
+            // n_ctx above was sized for Q8_0's cheaper per-token cost; f16 is ~1/0.53 more
+            // expensive, so recompute for .f16 or the retry roughly doubles KV memory (twin
+            // of llama_jni.cpp q8→f16 shrink; Android also publishes the shrunk window via
+            // nativeLoadedNCtx).
             ctxParams.type_k = GGML_TYPE_F16
             ctxParams.type_v = GGML_TYPE_F16
+            nctx = ContextWindow.recommend(
+                appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: .f16)
+            ctxParams.n_ctx = UInt32(nctx)
             ctxOrNil = llama_init_from_model(m, ctxParams)
         }
         guard let ctx = ctxOrNil else {

@@ -243,4 +243,26 @@
     <string name="picker_current">使用中</string>
     <string name="agent_grant_folder">フォルダを許可</string>
     <string name="agent_folder_named">フォルダ: %1$s</string>
+    <string name="cap_title_calculator">電卓</string>
+    <string name="cap_title_units">単位換算</string>
+    <string name="cap_title_date">日付計算</string>
+    <string name="cap_title_fs_read">ファイルを読む</string>
+    <string name="cap_title_fs_list">ファイル一覧</string>
+    <string name="cap_title_fs_move">ファイルを移動</string>
+    <string name="cap_title_fs_rename">ファイル名を変更</string>
+    <string name="cap_title_fs_trash">ゴミ箱へ移動</string>
+    <string name="cap_title_clipboard">クリップボードを読む</string>
+    <string name="cap_title_calendar">今日のカレンダー</string>
+    <string name="cap_title_status">電池と空き容量</string>
+    <string name="cap_purpose_calculator">\"12 * (3 + 4)\"、\"2^10\"、\"sqrt(16)\" などの計算。</string>
+    <string name="cap_purpose_units">単位換算。例: \"20 km to mi\"、\"30 C to F\"、\"5 kg to lb\"。</string>
+    <string name="cap_purpose_date">日付計算: 日数、N日後、曜日。</string>
+    <string name="cap_purpose_fs_read">添付したテキストファイルを名前で読みます。ユーザーが添付したファイルのみ。</string>
+    <string name="cap_purpose_fs_list">許可したワークスペース内のファイル一覧。入力なし。</string>
+    <string name="cap_purpose_fs_move">ワークスペースのサブフォルダへ移動。入力: \"&lt;ファイル&gt; to &lt;サブフォルダ&gt;\"。</string>
+    <string name="cap_purpose_fs_rename">ワークスペース内のファイル名を変更。入力: \"&lt;現在名&gt; to &lt;新名&gt;\"。</string>
+    <string name="cap_purpose_fs_trash">ワークスペースのゴミ箱へ移動。入力: \"&lt;ファイル&gt;\"。</string>
+    <string name="cap_purpose_clipboard">クリップボードのテキストを読みます。入力なし。</string>
+    <string name="cap_purpose_calendar">今日の予定のタイトルと時刻。入力なし。</string>
+    <string name="cap_purpose_status">この端末の電池残量と空き容量。入力なし。</string>
 </resources>

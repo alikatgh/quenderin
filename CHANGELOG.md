@@ -7,6 +7,13 @@
 
 ## Unreleased
 
+### Android 0.2.1 engine cut (DOTPROD/I8MM variants)
+- **CPU-variant backends ON** (`GGML_BACKEND_DL` + `GGML_CPU_ALL_VARIANTS`): JNI resolves `ggml_threadpool_new`/`free` via the CPU backend registry instead of linking them (that link was why variants stayed off in 0.2.0). Runtime pick of `android_armv8.6_1` (i8mm) etc. — the prefill lever (measured 3.5→9.0 tok/s on S23 when variants previously loaded).
+- **`nativeLoadedNCtx`**: Kotlin `loadedContextTokens` is the window llama actually created after a q8_0→F16 KV fallback, not the pre-fallback request.
+- iOS twin: F16 retry recomputes `n_ctx` via `ContextWindow.recommend(..., .f16)`; Swift `load_mode` dual-API matches JNI (`QUENDERIN_LLAMA_LOAD_MODE`).
+- Vulkan stays opt-in (`-Pquenderin.vulkan=true`) — vendored llama.cpp Vulkan needs SPIRV-Headers, which the NDK does not ship.
+- Settings capability titles + purpose strings localized (ru/ko/ja/zh). Android versionName **0.2.1** / versionCode 3.
+
 ### History preview + date-tool RU markers (usability)
 - Conversation list “You:” prefix localizes (Вы/나/…); empty-title packs already shipped.
 - DateCalc accepts Russian triggers (между, через, день недели) on both platforms; RU day-count plurals.

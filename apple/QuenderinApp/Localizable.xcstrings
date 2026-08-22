@@ -1177,6 +1177,34 @@
         }
       }
     },
+    "Calculator": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電卓"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Калькулятор"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计算器"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "ja": {
@@ -1369,6 +1397,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "聊天"
+          }
+        }
+      }
+    },
+    "Check battery & storage": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電池と空き容量"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "배터리·저장공간 확인"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Батарея и память"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看电量与存储"
           }
         }
       }
@@ -1793,6 +1849,62 @@
         }
       }
     },
+    "Convert units": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単位換算"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단위 변환"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод единиц"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单位换算"
+          }
+        }
+      }
+    },
+    "Convert units, e.g. \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\".": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単位換算。例: \"20 km to mi\"、\"30 C to F\"、\"5 kg to lb\"、\"2 hours to minutes\"。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "단위 변환, 예: \"20 km to mi\", \"30 C to F\", \"5 kg to lb\", \"2 hours to minutes\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод единиц, например «20 km to mi», «30 C to F», «5 kg to lb», «2 hours to minutes»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单位换算，例如 \"20 km to mi\"、\"30 C to F\"、\"5 kg to lb\"、\"2 hours to minutes\"。"
+          }
+        }
+      }
+    },
     "Copper": {
       "localizations": {
         "ja": {
@@ -2041,6 +2153,62 @@
           "stringUnit": {
             "state": "translated",
             "value": "深色"
+          }
+        }
+      }
+    },
+    "Date math": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付計算"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "날짜 계산"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Даты"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期计算"
+          }
+        }
+      }
+    },
+    "Date math: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", or \"what day of the week is 2026-12-25\".": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付計算: \"days between 2026-06-08 and 2026-12-25\"、\"2026-06-08 plus 90 days\"、\"what day of the week is 2026-12-25\"。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "날짜 계산: \"days between 2026-06-08 and 2026-12-25\", \"2026-06-08 plus 90 days\", \"what day of the week is 2026-12-25\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Даты: «days between 2026-06-08 and 2026-12-25», «2026-06-08 plus 90 days» или «what day of the week is 2026-12-25»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期计算：\"days between 2026-06-08 and 2026-12-25\"、\"2026-06-08 plus 90 days\"、\"what day of the week is 2026-12-25\"。"
           }
         }
       }
@@ -2713,6 +2881,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "以英语为主——俄语较弱"
+          }
+        }
+      }
+    },
+    "Evaluate arithmetic like \"12 * (3 + 4)\", \"2^10\", or \"sqrt(16)\" (+ - * / ^ %, parentheses, sqrt/abs/floor/ceil, pi/e).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"12 * (3 + 4)\"、\"2^10\"、\"sqrt(16)\" などの計算（+ - * / ^ %、括弧、sqrt/abs/floor/ceil、pi/e）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"12 * (3 + 4)\", \"2^10\", \"sqrt(16)\" 같은 산술 (+ - * / ^ %, 괄호, sqrt/abs/floor/ceil, pi/e)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Арифметика вроде «12 * (3 + 4)», «2^10» или «sqrt(16)» (+ - * / ^ %, скобки, sqrt/abs/floor/ceil, pi/e)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "算术，如 \"12 * (3 + 4)\"、\"2^10\"、\"sqrt(16)\"（+ - * / ^ %、括号、sqrt/abs/floor/ceil、pi/e）。"
           }
         }
       }
@@ -3837,6 +4033,90 @@
         }
       }
     },
+    "List files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル一覧"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 목록"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список файлов"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列出文件"
+          }
+        }
+      }
+    },
+    "List the files in the workspace folder the user granted. Takes no input.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可したワークスペース内のファイル一覧。入力なし。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용한 작업 폴더의 파일 목록. 입력 없음."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список файлов в выданной рабочей папке. Без ввода."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列出用户授予的工作文件夹中的文件。无需输入。"
+          }
+        }
+      }
+    },
+    "List the titles and times of today's calendar events. No input.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の予定のタイトルと時刻。入力なし。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 일정의 제목과 시각. 입력 없음."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заголовки и время сегодняшних событий календаря. Без ввода."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列出今天日程的标题与时间。无需输入。"
+          }
+        }
+      }
+    },
     "Loading downloadable files…": {
       "localizations": {
         "ja": {
@@ -4197,6 +4477,118 @@
           "stringUnit": {
             "state": "translated",
             "value": "等宽"
+          }
+        }
+      }
+    },
+    "Move a file": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 이동"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动文件"
+          }
+        }
+      }
+    },
+    "Move a file into a subfolder of the workspace. Input: \"<file name> to <subfolder name>\".": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースのサブフォルダへ移動。入力: \"<file name> to <subfolder name>\"。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 폴더의 하위 폴더로 파일을 옮깁니다. 입력: \"<file name> to <subfolder name>\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить файл в подпапку рабочей папки. Ввод: «<file name> to <subfolder name>»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将文件移入工作区子文件夹。输入：\"<file name> to <subfolder name>\"。"
+          }
+        }
+      }
+    },
+    "Move a file into the workspace's Trash folder. Input: \"<file name>\".": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースのゴミ箱へ移動。入力: \"<file name>\"。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 폴더 휴지통으로 파일을 옮깁니다. 입력: \"<file name>\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить файл в Корзину рабочей папки. Ввод: «<file name>»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将文件移入工作区废纸篓。输入：\"<file name>\"。"
+          }
+        }
+      }
+    },
+    "Move a file to Trash": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴミ箱へ移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "휴지통으로 이동"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В корзину"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移到废纸篓"
           }
         }
       }
@@ -5433,6 +5825,90 @@
         }
       }
     },
+    "Read a file": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを読む"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 읽기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取文件"
+          }
+        }
+      }
+    },
+    "Read a text file the user has attached, by its name. Only user-attached files are readable.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添付したテキストファイルを名前で読みます。ユーザーが添付したファイルのみ。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "첨부한 텍스트 파일을 이름으로 읽습니다. 사용자가 첨부한 파일만."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать прикреплённый текстовый файл по имени. Только файлы, которые вы приложили."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按名称读取用户附加的文本文件。仅限用户附加的文件。"
+          }
+        }
+      }
+    },
+    "Read the clipboard": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリップボードを読む"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클립보드 읽기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать буфер обмена"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取剪贴板"
+          }
+        }
+      }
+    },
     "Read the full terms": {
       "localizations": {
         "ja": {
@@ -5457,6 +5933,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "阅读完整条款"
+          }
+        }
+      }
+    },
+    "Read the text currently on the clipboard. No input.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリップボードのテキストを読みます。入力なし。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클립보드의 텍스트를 읽습니다. 입력 없음."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать текст из буфера обмена. Без ввода."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取剪贴板中的文本。无需输入。"
           }
         }
       }
@@ -5573,6 +6077,90 @@
         }
       }
     },
+    "Rename a file": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル名を変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 이름 변경"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名文件"
+          }
+        }
+      }
+    },
+    "Rename a file in the workspace. Input: \"<current name> to <new name>\".": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース内のファイル名を変更。入力: \"<current name> to <new name>\"。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 폴더에서 파일 이름을 바꿉니다. 입력: \"<current name> to <new name>\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать файл в рабочей папке. Ввод: «<current name> to <new name>»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名工作区中的文件。输入：\"<current name> to <new name>\"。"
+          }
+        }
+      }
+    },
+    "Repeat the input back. Use to restate something.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力を繰り返す。言い直しに使う。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력을 그대로 반복. 다시 말할 때."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить ввод. Чтобы переформулировать."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原样重复输入。用于复述。"
+          }
+        }
+      }
+    },
     "Report answer": {
       "localizations": {
         "ja": {
@@ -5625,6 +6213,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "举报回复"
+          }
+        }
+      }
+    },
+    "Report the battery level and free storage of this device. No input.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この端末の電池残量と空き容量。入力なし。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기의 배터리와 남은 저장공간. 입력 없음."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровень батареи и свободное место на этом устройстве. Без ввода."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "报告此设备的电量和剩余存储。无需输入。"
           }
         }
       }
@@ -6157,6 +6773,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在搜索 Hugging Face…"
+          }
+        }
+      }
+    },
+    "See today’s calendar": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日のカレンダー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 일정 보기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календарь на сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看今天的日程"
           }
         }
       }
@@ -8233,6 +8877,118 @@
         }
       }
     },
+    "acts in apps": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリ内で動作"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱에서 동작"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "действует в приложениях"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在应用中操作"
+          }
+        }
+      }
+    },
+    "computes only — no side effects": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "計算のみ — 副作用なし"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계산만 — 부작용 없음"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "только вычисляет — без побочных эффектов"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅计算——无副作用"
+          }
+        }
+      }
+    },
+    "irreversible — never autonomous": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可逆 — 自律実行しない"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌릴 수 없음 — 절대 자율 실행 안 함"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "необратимо — никогда автономно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可逆——永不自主"
+          }
+        }
+      }
+    },
+    "makes undoable changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取り消せる変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌릴 수 있는 변경"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "делает обратимые изменения"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可撤销的更改"
+          }
+        }
+      }
+    },
     "on-device · private": {
       "localizations": {
         "ja": {
@@ -8257,6 +9013,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "设备端 · 私密"
+          }
+        }
+      }
+    },
+    "reads what you attach": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添付したものを読む"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "첨부한 것만 읽음"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "читает то, что вы приложили"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取你附加的内容"
           }
         }
       }

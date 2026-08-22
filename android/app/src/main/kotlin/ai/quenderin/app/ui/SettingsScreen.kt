@@ -236,8 +236,8 @@ fun SettingsScreen(
                 var granted by remember { mutableStateOf(consent.isGranted(cap.name)) }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(cap.name, color = MaterialTheme.colorScheme.onSurface)
-                        Caption(cap.purpose)
+                        Text(capabilityTitle(cap.name), color = MaterialTheme.colorScheme.onSurface)
+                        Caption(capabilityPurpose(cap.name, cap.purpose))
                     }
                     Switch(
                         checked = granted,

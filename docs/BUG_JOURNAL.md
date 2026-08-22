@@ -4,6 +4,8 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **`GGML_BACKEND_API` symbols live in the dlopened CPU plugin, not in libggml.** `ggml_threadpool_new`/`free` are marked `GGML_BACKEND_API`; with `GGML_BACKEND_DL` they exist only inside `libggml-cpu-android_armv*.so`. Linking them from the JNI `.so` is an `ld.lld` undefined-symbol (the 0.2.0 ship-note that kept variants OFF). Resolve them after `ggml_backend_load_all_from_path` via `ggml_backend_reg_get_proc_address` on the CPU backend — same pattern as llama-bench. And: AGP keeps `.so`s inside the APK, so ggml's `nativeLibraryDir` scan sees nothing unless `useLegacyPackaging = true`.
+- **A q8_0→F16 KV-cache retry must resize `n_ctx` AND publish the new window.** Sizing `n_ctx` for q8_0's 0.53× per-token cost then retrying F16 at the same token count ~doubles KV memory on the exact tight devices the sizing protects. Shrink via `ContextWindow.recommend(..., .f16)` (iOS) / `n_ctx * 0.53` (JNI). Then `loadedContextTokens` must be the *actual* native window (`nativeLoadedNCtx`), not the Kotlin/Swift request — otherwise ChatModel trims to a window larger than llama and overflows. (Aug-10 JNI shrink; 2026-08-22 iOS + Kotlin publish.)
 - **A file the LOAD path selects by mere existence must never exist until it's complete AND verified.**
   Downloading straight to the final path means any consumer that picks by `fs.existsSync` (no integrity
   check) can read a torn/in-flight/partial file — for a GGUF that's the native-parser RCE surface. Stream
@@ -610,8 +612,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   discards exactly the information the check exists to protect — build an ordered `position -> type` map
   (unnumbered specifiers default to scan order) and compare that. (build_xcstrings.specs, 2026-08-10)
 
-## Chronological log (newest first, 5 lines max)
+## Chronological log
+ (newest first, 5 lines max)
 
+- 2026-08-22 (`android/jni/llama_jni.cpp` pin_threads) — CPU variants stayed OFF: JNI linked `ggml_threadpool_new` (GGML_BACKEND_API, lives in the dlopened plugin) → undefined-symbol with BACKEND_DL. Cause: link-time ggml-cpu. Fix: `get_proc_address` after backend load; variants ON; `nativeLoadedNCtx`; iOS f16 `n_ctx` recompute + `load_mode` dual-API. Lesson: never link GGML_BACKEND_API; publish the window the engine actually created.
 - 2026-08-10 (`android/jni/llama_jni.cpp:428`) — F16 KV-cache fallback kept the Q8_0-sized `n_ctx`, nearly
   doubling actual KV memory on memory-tight devices. Cause: the retry swapped only `type_k`/`type_v` and never
   re-derived `n_ctx`. Fix: scale `n_ctx` by `KVCacheType.Q8_0.relativeCostPerToken` (0.53, matching

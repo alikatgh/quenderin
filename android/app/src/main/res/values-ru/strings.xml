@@ -243,4 +243,26 @@
     <string name="picker_current">Активна</string>
     <string name="agent_grant_folder">Выдать папку</string>
     <string name="agent_folder_named">Папка: %1$s</string>
+    <string name="cap_title_calculator">Калькулятор</string>
+    <string name="cap_title_units">Перевод единиц</string>
+    <string name="cap_title_date">Даты</string>
+    <string name="cap_title_fs_read">Прочитать файл</string>
+    <string name="cap_title_fs_list">Список файлов</string>
+    <string name="cap_title_fs_move">Переместить файл</string>
+    <string name="cap_title_fs_rename">Переименовать файл</string>
+    <string name="cap_title_fs_trash">В корзину</string>
+    <string name="cap_title_clipboard">Прочитать буфер обмена</string>
+    <string name="cap_title_calendar">Календарь на сегодня</string>
+    <string name="cap_title_status">Батарея и память</string>
+    <string name="cap_purpose_calculator">Арифметика вроде «12 * (3 + 4)», «2^10» или «sqrt(16)».</string>
+    <string name="cap_purpose_units">Перевод единиц, например «20 km to mi», «30 C to F», «5 kg to lb».</string>
+    <string name="cap_purpose_date">Даты: сколько дней между датами, плюс N дней, день недели.</string>
+    <string name="cap_purpose_fs_read">Прочитать прикреплённый текстовый файл по имени. Только файлы, которые вы приложили.</string>
+    <string name="cap_purpose_fs_list">Список файлов в выданной рабочей папке. Без ввода.</string>
+    <string name="cap_purpose_fs_move">Переместить файл в подпапку рабочей папки. Ввод: «&lt;файл&gt; to &lt;подпапка&gt;».</string>
+    <string name="cap_purpose_fs_rename">Переименовать файл в рабочей папке. Ввод: «&lt;старое&gt; to &lt;новое&gt;».</string>
+    <string name="cap_purpose_fs_trash">Переместить файл в Корзину рабочей папки. Ввод: «&lt;файл&gt;».</string>
+    <string name="cap_purpose_clipboard">Прочитать текст из буфера обмена. Без ввода.</string>
+    <string name="cap_purpose_calendar">Заголовки и время сегодняшних событий календаря. Без ввода.</string>
+    <string name="cap_purpose_status">Уровень батареи и свободное место на этом устройстве. Без ввода.</string>
 </resources>

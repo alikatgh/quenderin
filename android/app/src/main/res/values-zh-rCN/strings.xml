@@ -243,4 +243,26 @@
     <string name="picker_current">当前</string>
     <string name="agent_grant_folder">授予文件夹</string>
     <string name="agent_folder_named">文件夹：%1$s</string>
+    <string name="cap_title_calculator">计算器</string>
+    <string name="cap_title_units">单位换算</string>
+    <string name="cap_title_date">日期计算</string>
+    <string name="cap_title_fs_read">读取文件</string>
+    <string name="cap_title_fs_list">列出文件</string>
+    <string name="cap_title_fs_move">移动文件</string>
+    <string name="cap_title_fs_rename">重命名文件</string>
+    <string name="cap_title_fs_trash">移到废纸篓</string>
+    <string name="cap_title_clipboard">读取剪贴板</string>
+    <string name="cap_title_calendar">查看今天的日程</string>
+    <string name="cap_title_status">查看电量与存储</string>
+    <string name="cap_purpose_calculator">算术，如 \"12 * (3 + 4)\"、\"2^10\"、\"sqrt(16)\"。</string>
+    <string name="cap_purpose_units">单位换算，例如 \"20 km to mi\"、\"30 C to F\"、\"5 kg to lb\"。</string>
+    <string name="cap_purpose_date">日期计算：两日期间隔、加 N 天、星期几。</string>
+    <string name="cap_purpose_fs_read">按名称读取用户附加的文本文件。仅限用户附加的文件。</string>
+    <string name="cap_purpose_fs_list">列出用户授予的工作文件夹中的文件。无需输入。</string>
+    <string name="cap_purpose_fs_move">将文件移入工作区子文件夹。输入：\"&lt;文件名&gt; to &lt;子文件夹&gt;\"。</string>
+    <string name="cap_purpose_fs_rename">重命名工作区中的文件。输入：\"&lt;当前名&gt; to &lt;新名&gt;\"。</string>
+    <string name="cap_purpose_fs_trash">将文件移入工作区废纸篓。输入：\"&lt;文件名&gt;\"。</string>
+    <string name="cap_purpose_clipboard">读取剪贴板中的文本。无需输入。</string>
+    <string name="cap_purpose_calendar">列出今天日程的标题与时间。无需输入。</string>
+    <string name="cap_purpose_status">报告此设备的电量和剩余存储。无需输入。</string>
 </resources>

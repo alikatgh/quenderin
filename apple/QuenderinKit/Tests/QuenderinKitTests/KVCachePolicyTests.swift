@@ -38,6 +38,18 @@ final class KVCachePolicyTests: XCTestCase {
         }
     }
 
+    func testF16FallbackContextFitsTheSameBudget() {
+        // Hunt example: q8_0 n_ctx must not be reused on the f16 retry (android/jni llama_jni.cpp
+        // Aug-10 + iOS LlamaEngine.loadLocked). Same memory budget → fewer tokens at f16.
+        let budget = 1.8, weights = 0.9
+        let q8 = ContextWindow.recommend(appBudgetGB: budget, modelWeightsGB: weights, kvCacheType: .q8_0)
+        let f16 = ContextWindow.recommend(appBudgetGB: budget, modelWeightsGB: weights, kvCacheType: .f16)
+        XCTAssertGreaterThan(q8, f16)
+        let q8Mem = Double(q8) * KVCacheType.q8_0.relativeCostPerToken
+        let f16Mem = Double(f16) * KVCacheType.f16.relativeCostPerToken
+        XCTAssertEqual(q8Mem, f16Mem, accuracy: 256.0)
+    }
+
     func testContextIsClampedAndQuantized() {
         // Whatever the scaling, n_ctx stays in [256, 8192] and on a 256-token grid.
         for type in [KVCacheType.f16, .q8_0] {

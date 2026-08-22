@@ -61,6 +61,37 @@ if hasXcframework {
     optionalTargets.append(.systemLibrary(name: "llama", path: "Sources/llama"))
 }
 
+// Mirror android/jni/CMakeLists.txt: llama.cpp HEAD replaced use_mmap/use_mlock with
+// enum llama_load_mode. Detect from the header the Swift adapter will actually compile
+// against, then `#if QUENDERIN_LLAMA_LOAD_MODE` in LlamaEngine.swift.
+func llamaHeaderHasLoadMode() -> Bool {
+    var candidates: [String] = []
+    if let dir = llamaDir {
+        candidates.append(dir + "/include/llama.h")
+    }
+    if hasXcframework {
+        let root = packageDir + "/" + xcframeworkRelPath
+        if let enumerator = FileManager.default.enumerator(atPath: root) {
+            while let rel = enumerator.nextObject() as? String {
+                if rel.hasSuffix("llama.h") {
+                    candidates.append(root + "/" + rel)
+                    break
+                }
+            }
+        }
+    }
+    for path in candidates {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
+        if text.contains("LLAMA_LOAD_MODE_MMAP") { return true }
+        if text.range(of: #"enum\s+llama_load_mode"#, options: .regularExpression) != nil { return true }
+    }
+    return false
+}
+
+if (hasXcframework || llamaDir != nil) && llamaHeaderHasLoadMode() {
+    qkSwiftSettings.append(.define("QUENDERIN_LLAMA_LOAD_MODE"))
+}
+
 let package = Package(
     name: "QuenderinKit",
     platforms: [

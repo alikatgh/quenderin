@@ -1,6 +1,6 @@
 # Handoff — pick up here
 
-_Last updated: 2026-08-06 (usability wave)._  
+_Last updated: 2026-08-22 (0.2.1 engine cut: CPU variants + load_mode + f16 n_ctx)._  
 _(Agent memory is machine-local — this file is the cross-machine source of truth.)_
 
 ## TL;DR — **not** “product ready” yet
@@ -45,8 +45,10 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
-2. **Residual English** — some capability purpose strings / onboarding footnotes.
-3. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
+2. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
+3. **On-device pp vs tg bench after 0.2.1 variants** — smoke already prints the split; need a real-phone confirm that i8mm loaded (prefill several× decode).
+
+Capability purpose strings (Settings) localized 2026-08-22 (ru/ko/ja/zh). CPU-variant backends ON (JNI threadpool via registry). iOS `load_mode` dual-API + F16 `n_ctx` recompute. See `docs/ASAP_IMPROVEMENTS.md`.
 
 ### Owner-only (still)
 
