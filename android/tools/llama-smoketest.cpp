@@ -59,6 +59,39 @@ int main(int argc, char** argv) {
     if (!model) { printf("FAIL: model load\n"); return 1; }
     const llama_vocab* vocab = llama_model_get_vocab(model);
 
+    // --ttft mode: `llama-smoketest <model> --ttft cold|warm [nGpuLayers]` — a FRESH PROCESS measures the
+    // first message's time-to-first-token on a fresh context, with or without warmupContext() first.
+    // Only a fresh process is honest here: in-process, an earlier decode has already paged the weights
+    // in and initialized the kernels. scripts/bench_inference.sh runs this both ways and reports both.
+    if (userText == "--ttft") {
+        const bool warm = argc >= 4 && std::string(argv[3]) == "warm";
+        nGpuLayers = argc >= 5 ? atoi(argv[4]) : nGpuLayers;
+        llama_context_params cp = llama_context_default_params();
+        cp.n_ctx = 2048;
+        llama_context* c = llama_init_from_model(model, cp);
+        if (!c) { printf("FAIL: context (ttft)\n"); return 1; }
+        llama_sampler* g = llama_sampler_chain_init(llama_sampler_chain_default_params());
+        llama_sampler_chain_add(g, llama_sampler_init_greedy());
+        double warmupMs = 0;
+        if (warm) {
+            const auto w0 = std::chrono::steady_clock::now();
+            quenderin::warmupContext(c, vocab);
+            warmupMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count();
+        }
+        std::vector<llama_token> tiny = tokenize(vocab, userTurn("Why is the sky blue?"), true);
+        std::vector<llama_token> cache;
+        const auto t0 = std::chrono::steady_clock::now();
+        std::string first = quenderin::generateWithKVReuse(c, vocab, g, tiny, 1, cache, noEmit, noCancel);
+        const double ttftMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        printf("TTFT: %s %zu-tok prompt → first token in %.0f ms (warmup cost %.0f ms, off the critical path)\n",
+               warm ? "warm" : "cold", tiny.size(), ttftMs, warmupMs);
+        llama_sampler_free(g);
+        llama_free(c);
+        llama_model_free(model);
+        llama_backend_free();
+        return first.empty() ? 1 : 0;
+    }
+
     auto makeCtx = [&]() -> llama_context* {
         llama_context_params cp = llama_context_default_params();
         cp.n_ctx = 2048;
@@ -148,9 +181,75 @@ int main(int argc, char** argv) {
         rc = 1;
     }
 
-    llama_sampler_free(smpl);
     llama_free(ctxA);
     llama_free(ctxB);
+
+    // --- Part 3: prefill longer than n_batch must NOT abort the process (and must decode the same as
+    // one big batch). llama.cpp GGML_ASSERTs n_tokens <= n_batch per llama_decode call; the JNI sizes
+    // n_batch to min(512, n_ctx), so a document attachment / restored long chat used to SIGABRT the app.
+    // A tiny n_batch (32) forces the chunked path on the 256+-token bench prompt; n_batch=2048 on a twin
+    // context is the single-call ground truth. Greedy ⇒ byte-identical output is the pass condition. ---
+    {
+        llama_context_params small = llama_context_default_params();
+        small.n_ctx = 2048; small.n_batch = 32; small.n_ubatch = 32;
+        llama_context_params big = llama_context_default_params();
+        big.n_ctx = 2048; big.n_batch = 2048; big.n_ubatch = 512;
+        llama_context* ctxS = llama_init_from_model(model, small);
+        llama_context* ctxL = llama_init_from_model(model, big);
+        if (!ctxS || !ctxL) { printf("FAIL: context (chunked prefill)\n"); return 1; }
+        std::vector<llama_token> cs, cl;
+        std::string outS = quenderin::generateWithKVReuse(ctxS, vocab, smpl, promptTokens, 16, cs, noEmit, noCancel);
+        std::string outL = quenderin::generateWithKVReuse(ctxL, vocab, smpl, promptTokens, 16, cl, noEmit, noCancel);
+        if (outS == outL && !outS.empty()) {
+            printf("PASS: chunked prefill (%zu tok through n_batch=32) matches single-batch decode\n",
+                   promptTokens.size());
+        } else {
+            printf("FAIL: chunked prefill output differs from single-batch\n  chunked: %s\n  single:  %s\n",
+                   outS.c_str(), outL.c_str());
+            rc = 1;
+        }
+        // Middle-out clamp: a prompt far past n_ctx must degrade to a bounded prefill, not rc=1 forever.
+        std::vector<llama_token> huge;
+        for (int i = 0; i < 12; ++i) huge.insert(huge.end(), promptTokens.begin(), promptTokens.end());
+        bool failed = false;
+        std::vector<llama_token> ch;
+        std::string outH = quenderin::generateWithKVReuse(ctxS, vocab, smpl, huge, 16, ch, noEmit, noCancel, &failed);
+        if (!failed && !ch.empty() && ch.size() <= 2048) {
+            printf("PASS: over-length prompt (%zu tok) clamped to %zu and decoded\n", huge.size(), ch.size() - 16);
+        } else {
+            printf("FAIL: over-length prompt (%zu tok) failed=%d cached=%zu\n", huge.size(), (int) failed, ch.size());
+            rc = 1;
+        }
+        llama_free(ctxS);
+        llama_free(ctxL);
+    }
+
+    // --- Part 4: warmup — the first prefill on a fresh context pays weight page-in + kernel init.
+    // Report the 12-token time-to-first-token cold vs after warmupContext(); informational (SLO input
+    // for docs/INFERENCE_SLO.md), never a pass/fail — it depends on the box's load and page cache. ---
+    {
+        std::vector<llama_token> tiny = tokenize(vocab, userTurn("Why is the sky blue?"), true);
+        auto ttft = [&](llama_context* c) {
+            std::vector<llama_token> cache;
+            const auto t0 = std::chrono::steady_clock::now();
+            std::string one = quenderin::generateWithKVReuse(c, vocab, smpl, tiny, 1, cache, noEmit, noCancel);
+            return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        };
+        llama_context* cold = makeCtx();
+        llama_context* warm = makeCtx();
+        if (!cold || !warm) { printf("FAIL: context (warmup)\n"); return 1; }
+        const double coldMs = ttft(cold);
+        const auto w0 = std::chrono::steady_clock::now();
+        quenderin::warmupContext(warm, vocab);
+        const double warmupMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count();
+        const double warmMs = ttft(warm);
+        printf("WARMUP: first-token latency %zu-tok prompt: cold %.0f ms | warmup cost %.0f ms then %.0f ms\n",
+               tiny.size(), coldMs, warmupMs, warmMs);
+        llama_free(cold);
+        llama_free(warm);
+    }
+
+    llama_sampler_free(smpl);
     llama_model_free(model);
     llama_backend_free();
     return rc;

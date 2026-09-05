@@ -46,3 +46,18 @@ The Tier-1 OSS-audit deltas are **in the build**, awaiting physical-device re-me
 **Next measure:** run `android/verify-llama-link.sh` + on-device prefill/decode logcat on S23 (or
 equivalent) and append a row here with prefill tok/s vs decode tok/s. Prefill ≈ decode was the
 smoking gun the variant builds target.
+
+## Inference SLO rows (`scripts/bench_inference.sh`) — 2026-09-05
+
+Vendored pin `android/jni/llama.cpp` @ 0eca4d4 built with the app's flags. Mac M3 Pro (5P+6E, 18 GB), Metal,
+all layers, 5 threads, **load average ≈ 20 during the run** (another workload) — treat as lower bounds.
+First-token = `llama-smoketest --ttft` in a fresh process; "cold" = cold page cache (first run after download),
+"warm" = after the load-time warmup decode. Targets: `docs/INFERENCE_SLO.md`.
+
+| Model | pp512 | tg128 | tg512 | first token, cold page cache | first token, warmed | sky-blue 48-tok decode |
+|-------|------:|------:|------:|-----------------------------:|--------------------:|-----------------------:|
+| Llama 3.2 1B Q4_K_M | 1530 tok/s | 78.8 | 79.7 | 47–54 ms (page cache already warm) | 26–29 ms | 76–82 tok/s |
+| Gemma 3 4B Q4_K_M | 518 tok/s | 27.5 | — | **3694 ms** (first run after download); 153 ms once cached | 114–142 ms | — |
+
+S23 (SM8550, i8mm) rows still pending: binaries are built by `scripts/bench_inference.sh android`; the phone was
+unplugged and at 49 °C when this pass ran (the script refuses to measure above 38 °C).

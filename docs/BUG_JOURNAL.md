@@ -4,6 +4,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **A twin fix is not done until the OTHER twin has it — grep the sibling for the same primitive.** iOS chunked
+  its prefill by `n_batch` and clamped the prompt middle-out (0.2.0(4), App Review crash); the Android shared loop
+  (`llama_generate.h`) kept ONE `llama_decode` for the whole prompt with `n_batch = min(512, n_ctx)` — llama.cpp
+  `GGML_ASSERT(n_tokens_all <= n_batch)` → SIGABRT on any >512-token first message (attachment, restored chat).
+  Reproduced on the Mac build via `android/tools/llama-smoketest.cpp` Part 3 (`scripts/bench_inference.sh mac`).
+  When a fix names a llama.cpp limit, grep both engines for every call to that primitive. (2026-09-05)
+- **The first decode after load is a cliff the user pays — warm the context at load, off the critical path.**
+  mmap'd weights page in and Metal/CPU kernels initialize on the FIRST `llama_decode`; without a warmup that
+  lands inside the user's first time-to-first-token (Gemma 3 4B, Mac Metal, cold page cache: 3.7 s → 0.14 s
+  after `warmupContext`/`warmUpLocked`). Measure it only in a FRESH process (`llama-smoketest --ttft cold|warm`);
+  in-process the earlier decode already paid it. (2026-09-05)
 - **Two screens that answer the same question must read ONE gate.** Onboarding recommended from the
   per-app jetsam/native-heap budget (`IPhoneModelSelector` / `AndroidModelSelector`), but the "Choose a
   model" picker re-gated every row on TOTAL RAM (`MemoryFitness.check(total, total)`) — so one tap after
@@ -626,6 +637,16 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-05 (`android/jni/llama_generate.h` `decodeChunked`/`clampToContext`, `llama-smoketest.cpp` Part 3) — Android
+  prefill of a >n_batch (512) prompt aborted the process (`GGML_ASSERT(n_tokens_all <= cparams.n_batch)`, llama-context.cpp:1748).
+  Cause: one `llama_decode` for the whole un-cached suffix; only iOS had the chunked loop + middle-out clamp. Fix: shared
+  helpers in the header (JNI + smoke test), prompt clamped to `n_ctx − reserve`; Part 3 pins chunked ≡ single-batch.
+  Lesson: a llama.cpp hard limit fixed on one twin must be grepped on the other.
+- 2026-09-05 (`llama_jni.cpp` nativeLoad, `LlamaEngine.swift` `warmUpLocked`) — first message after install paid weight
+  page-in + kernel init inside its time-to-first-token (Gemma 3 4B Metal: 3.7 s cold vs 0.14 s warmed, fresh process).
+  Cause: no warmup decode at load on either engine. Fix: BOS+EOS decode then `llama_memory_clear` at load (twin of
+  llama.cpp `common_init_from_params` warmup); `scripts/bench_inference.sh` measures cold vs warm in fresh processes.
+  Lesson: load runs at launch; put every one-time cost there, never in the user's first turn.
 - 2026-09-05 (`apple/…/IPhoneModelSelector.swift` `storageLimited`, `android/…/AndroidModelSelector.kt`) — same 6 GB
   budget recommended Qwen3 4B one launch, Llama 3.2 1B the next; the headline never said why. Cause: free disk
   had dropped below 2.8 GB and the disk gate silently demoted the pick. Fix: `ModelSelection.storageLimited` =

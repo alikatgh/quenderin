@@ -486,6 +486,16 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     const int pin_n = threads > 0 ? (int) threads : (int) cp.n_threads;
     ggml_threadpool_t tp = pin_threads(ctx, pin_n > 0 ? pin_n : 1);
 
+    // Warm the context ONCE here, off the user's critical path (load runs at launch / model switch),
+    // so the first message doesn't pay weight page-in + kernel init inside its time-to-first-token.
+    // Uses the pinned threadpool above, so the pages land on the cores that will decode.
+    {
+        const auto w0 = std::chrono::steady_clock::now();
+        const int wrc = quenderin::warmupContext(ctx, llama_model_get_vocab(model));
+        LOGI("nativeLoad: warmup rc=%d in %.0f ms", wrc,
+             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count());
+    }
+
     auto* h = new LlamaHandle{};
     h->model = model;
     h->ctx = ctx;

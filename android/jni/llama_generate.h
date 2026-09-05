@@ -12,6 +12,7 @@
 #pragma once
 
 #include "llama.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -129,6 +130,68 @@ inline KVReusePlan kvReusePlan(const std::vector<llama_token>& cached,
     return {true, 0, 0, 0};                          // full reprefill
 }
 
+// Feed `tokens` to llama_decode in n_batch-sized chunks. llama.cpp hard-aborts the PROCESS
+// (GGML_ASSERT(n_tokens_all <= cparams.n_batch) in llama-context.cpp → SIGABRT) when ONE call
+// carries more tokens than the context's n_batch — the JNI sizes n_batch to min(512, n_ctx), so a
+// single-call prefill of a document attachment / restored long chat / long paste killed the app.
+// Chunking is the standard prompt-processing loop; a within-limit prompt is exactly one chunk.
+// Returns the first non-zero llama_decode rc (0 ok, 1 no free KV slot, negative fatal). Twin of
+// LlamaEngine.swift `decode(_:)`.
+inline int decodeChunked(llama_context* ctx, const std::vector<llama_token>& tokens) {
+    const size_t nBatch = std::max<uint32_t>(1, llama_n_batch(ctx));
+    size_t start = 0;
+    while (start < tokens.size()) {
+        const size_t end = std::min(start + nBatch, tokens.size());
+        // llama_batch_get_one only BORROWS the pointer — `tokens` outlives the decode.
+        llama_batch chunk = llama_batch_get_one(const_cast<llama_token*>(tokens.data() + start),
+                                                (int32_t) (end - start));
+        const int rc = llama_decode(ctx, chunk);
+        if (rc != 0) return rc;
+        start = end;
+    }
+    return 0;
+}
+
+// Clamp a prompt to what the context can seat WITH room for the reply. Truncates middle-out: the
+// head keeps the lead-in (system prompt / attachment label), the tail keeps the user's actual question
+// (the prompt ends with it); the dropped middle is what a window this size could never hold anyway.
+// A prompt longer than n_ctx would otherwise return rc=1 from every prefill (a hard "failed" reply),
+// or on older pins abort. Twin of LlamaEngine.swift's promptLimit clamp (App Review crash, 0.2.0(4)).
+inline std::vector<llama_token> clampToContext(const std::vector<llama_token>& raw, llama_context* ctx,
+                                               int maxTokens) {
+    const int nCtx = (int) llama_n_ctx(ctx);
+    const int reserve = std::max(256, std::min(maxTokens, nCtx / 4));
+    const int limit = std::max(16, nCtx - reserve);
+    if ((int) raw.size() <= limit) return raw;
+    const int head = limit / 2;
+    std::vector<llama_token> out(raw.begin(), raw.begin() + head);
+    out.insert(out.end(), raw.end() - (limit - head), raw.end());
+    return out;
+}
+
+// One-off warmup decode right after the context is created: a BOS(+EOS) batch pages the mmap'd
+// weights in and compiles/initializes the backend kernels, then the KV is cleared so the context is
+// exactly as fresh as before. Without it the USER's first message pays that cost inside their
+// time-to-first-token: Gemma 3 4B Q4_K_M, Mac Metal, fresh process with a cold page cache — 3.7 s to
+// the first token; after warmup 0.14 s (docs/INFERENCE_SLO.md). With a warm page cache the gap is
+// ~20 ms, so the win is the first launch / after memory pressure evicts the weights — exactly the
+// moment a user forms their opinion. Cloud services have no such cliff; neither should we. Mirrors
+// llama.cpp common_init_from_params' `params.warmup`. Returns the decode rc (0 ok); failures are
+// harmless — the KV is cleared either way and the real prefill proceeds.
+inline int warmupContext(llama_context* ctx, const llama_vocab* vocab) {
+    std::vector<llama_token> tmp;
+    const llama_token bos = llama_vocab_bos(vocab);
+    const llama_token eos = llama_vocab_eos(vocab);
+    if (bos != LLAMA_TOKEN_NULL) tmp.push_back(bos);
+    if (eos != LLAMA_TOKEN_NULL) tmp.push_back(eos);
+    if (tmp.empty()) tmp.push_back(0);
+    const int rc = decodeChunked(ctx, tmp);
+    llama_memory_clear(llama_get_memory(ctx), true);
+    llama_synchronize(ctx);
+    llama_perf_context_reset(ctx);
+    return rc;
+}
+
 // Decode `newTokens` — reusing the KV from a prior turn when it's a strict-prefix extension — then
 // sample up to `maxTokens`, feeding each sampled token back. Keeps `cached` in STRICT lockstep with the
 // KV: the mirror is assigned only AFTER the prefill decode succeeds, and each sampled token is recorded
@@ -164,7 +227,7 @@ inline KVReusePlan kvReusePlan(const std::vector<llama_token>& cached,
 // Returns the concatenated output. `cached` is updated in place to match the KV on return.
 template <typename Emit, typename Cancelled, typename ThermalPoll = int(*)()>
 std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, llama_sampler* sampler,
-                                const std::vector<llama_token>& newTokens, int maxTokens,
+                                const std::vector<llama_token>& rawTokens, int maxTokens,
                                 std::vector<llama_token>& cached, Emit emit, Cancelled cancelled,
                                 bool* failed = nullptr,
                                 ThermalPoll thermalPoll = []() -> int { return 0; },
@@ -172,7 +235,9 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     std::string out;
     if (failed) *failed = false;
     if (hitTokenCap) *hitTokenCap = false;
-    if (newTokens.empty()) return out;
+    if (rawTokens.empty()) return out;
+    // Clamp BEFORE planning reuse so the mirror always describes what the KV actually holds.
+    const std::vector<llama_token> newTokens = clampToContext(rawTokens, ctx, maxTokens);
 
     const auto perfT0 = std::chrono::steady_clock::now();   // prefill start (perf instrumentation)
 
@@ -199,21 +264,17 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         }
     }
 
-    // Prefill: decode the new (suffix) tokens. Keep `toDecode` alive across the decode —
-    // llama_batch_get_one only borrows its pointer. Assign the mirror only on success.
+    // Prefill: decode the new (suffix) tokens in n_batch chunks (decodeChunked — one oversized call
+    // aborts the process). Keep `toDecode` alive across the decode — llama_batch_get_one only borrows
+    // its pointer. Assign the mirror only on success.
     std::vector<llama_token> toDecode(newTokens.begin() + reuse, newTokens.end());
-    int rc;
-    {
-        llama_batch prefill = llama_batch_get_one(toDecode.data(), (int32_t) toDecode.size());
-        rc = llama_decode(ctx, prefill);
-    }
+    int rc = decodeChunked(ctx, toDecode);
     if (rc == 1 && reuse > 0) {
         // Cache full with the reused prefix in play — drop reuse and reprefill the whole turn fresh.
         llama_memory_clear(llama_get_memory(ctx), true);
         cached.clear();
-        std::vector<llama_token> full = newTokens;
-        llama_batch retry = llama_batch_get_one(full.data(), (int32_t) full.size());
-        rc = llama_decode(ctx, retry);
+        toDecode = newTokens;
+        rc = decodeChunked(ctx, toDecode);
     }
     if (rc != 0) {
         llama_memory_clear(llama_get_memory(ctx), true);

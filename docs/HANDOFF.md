@@ -1,6 +1,6 @@
 # Handoff — pick up here
 
-_Last updated: 2026-09-05 (iOS app-target compile fix + picker ↔ recommendation one-gate parity)._  
+_Last updated: 2026-09-05 (inference SLO pass: Android >n_batch prefill abort fixed, warmup-at-load both engines, `scripts/bench_inference.sh`)._  
 _(Agent memory is machine-local — this file is the cross-machine source of truth.)_
 
 ## TL;DR — **not** “product ready” yet
@@ -43,13 +43,15 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **History You: + DateCalc RU** | Preview prefix + Russian date triggers — shipped. |
 | **iOS app target compiles (Xcode 16.2 / Swift 6)** | `UIDevice` @MainActor + @Sendable `onPreferenceChange` fixed; new CI job `mobile-ios-app` builds the app for the simulator — shipped 2026-09-05. |
 | **Storage-honest recommendation** | When only free disk demoted the pick, onboarding names the model space would unlock (both twins, 5 locales) — shipped 2026-09-05. |
+| **Inference SLO pass** | `docs/INFERENCE_SLO.md` = the cloud-parity contract + measured Mac rows. Fixed: Android shared loop aborted the process on any >512-token prefill (`decodeChunked` + `clampToContext`, reproduced + pinned by smoke Part 3); both engines now warm the context at load (Gemma 3 4B first token 3.7 s → 0.14 s). `scripts/bench_inference.sh mac|android` re-measures. **S23 rows pending** (phone unplugged / 49 °C). **Main CI has been red since 2026-08-22** (JNI check vs upstream HEAD `llama_sampler_init_penalties` drift + npm audit) — owner said CI is not the priority; noted, not fixed — shipped 2026-09-05. |
 | **Picker ↔ recommendation parity** | "Choose a model" now reads the selector's per-app-budget gate (was total RAM → crowned 14B after recommending 4B). Both twins + tests — shipped 2026-09-05. Verified on the iPhone 16 Pro simulator. |
 
 ### Highest-impact remaining product work (agent-doable)
 
 1. **Real vision / photo understanding** — still ⏳ (mmproj / multimodal path). Large engine project.
 2. **Live golden eval with real models** — structural gate exists; token-quality eval needs device/model.
-3. **On-device pp vs tg bench after 0.2.1 variants** — smoke already prints the split; need a real-phone confirm that i8mm loaded (prefill several× decode).
+3. **On-device pp vs tg bench after 0.2.1 variants** — `scripts/bench_inference.sh android` does it end-to-end (needs the phone attached and < 38 °C); prefill must be several× decode if i8mm loaded.
+4. **Per-token UI coalescing** — both chats reparse Markdown + copy the list per token; batch to display frames (`docs/INFERENCE_SLO.md` gap 1).
 
 Capability purpose strings (Settings) localized 2026-08-22 (ru/ko/ja/zh). CPU-variant backends ON (JNI threadpool via registry). iOS `load_mode` dual-API + F16 `n_ctx` recompute. See `docs/ASAP_IMPROVEMENTS.md`.
 

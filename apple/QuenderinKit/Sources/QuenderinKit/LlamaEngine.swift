@@ -320,7 +320,31 @@ public actor LlamaEngine: InferenceEngine {
         context = ctx
         vocab = llama_model_get_vocab(m)
         cachedTokens = []   // fresh context ⇒ empty KV cache
+        warmUpLocked(context: ctx, vocab: llama_model_get_vocab(m))
         return nctx
+    }
+
+    /// One-off warmup decode right after the context is created: a BOS(+EOS) batch pages the mmap'd
+    /// weights in and compiles the Metal pipelines, then the KV is cleared so the context is exactly as
+    /// fresh as before. Without it the USER's first message pays that cost inside its time-to-first-token:
+    /// Gemma 3 4B Q4_K_M, Mac Metal, fresh process, cold page cache — 3.7 s to the first token; after
+    /// warmup 0.14 s (docs/INFERENCE_SLO.md). Load runs at launch / model switch, so this is off the
+    /// critical path; the ~100 ms it costs there is invisible.
+    /// Mirrors llama.cpp's `common_init_from_params` warmup; twin of llama_generate.h `warmupContext`.
+    nonisolated private func warmUpLocked(context: OpaquePointer, vocab: OpaquePointer?) {
+        guard let vocab else { return }
+        var tokens: [llama_token] = []
+        let bos = llama_vocab_bos(vocab)
+        let eos = llama_vocab_eos(vocab)
+        if bos != LLAMA_TOKEN_NULL { tokens.append(bos) }
+        if eos != LLAMA_TOKEN_NULL { tokens.append(eos) }
+        if tokens.isEmpty { tokens.append(0) }
+        _ = tokens.withUnsafeMutableBufferPointer {
+            llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count)))
+        }
+        llama_memory_clear(llama_get_memory(context), true)
+        llama_synchronize(context)
+        llama_perf_context_reset(context)
     }
 
     /// The native unload, under `nativeLock` (synchronous).
