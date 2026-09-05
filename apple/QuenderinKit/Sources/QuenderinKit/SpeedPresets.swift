@@ -37,10 +37,13 @@ public enum SpeedPresets {
         }
     }
 
-    public static func forDevice(totalRAMGB: Double) -> Choice {
+    /// - quality: the device's own recommendation when the caller has a better gate than total RAM —
+    ///   iPhones pass `IPhoneModelSelector`'s pick so the dial's Quality is the model onboarding chose,
+    ///   never a total-RAM band's 14B on an 8 GB phone (2026-09-05 Settings tap-through).
+    public static func forDevice(totalRAMGB: Double, quality: ModelEntry? = nil) -> Choice {
         // Fitness-aware, not the raw band: Quality must never point at a model the memory gate
         // blocks (16 GB → band says 14B, budget says no — the dial would offer a doomed install).
-        let quality = ModelRecommender.bestInstallableModel(forTotalRAMGB: totalRAMGB)
+        let quality = quality ?? ModelRecommender.bestInstallableModel(forTotalRAMGB: totalRAMGB)
         let fastCand: ModelEntry
         let balancedCand: ModelEntry
         switch totalRAMGB {

@@ -22,6 +22,20 @@ public struct ChatView: View {
     /// Streaming auto-follows ONLY while true. Bool + hysteresis only — never continuous
     /// CGFloat scroll metrics (those force a full body rebuild every wheel tick).
     @State private var nearBottom = true
+    /// Global-space bottom edge of the chat viewport and top of the end-of-transcript sentinel (iOS)
+    /// — see `ViewportBottomKey` / `BottomEdgeKey`; `updateNearBottom()` compares them.
+    @State private var viewportBottomY: CGFloat = 0
+    @State private var sentinelTopY: CGFloat = .infinity
+
+    /// How far BELOW the visible bottom the end of the transcript sits (≤ 0 = on screen).
+    /// Hysteresis: enter near < 80, leave far > 220 (no flip-flop at the edge). No verdict until
+    /// both measurements exist.
+    @MainActor private func updateNearBottom() {
+        guard viewportBottomY > 0, sentinelTopY.isFinite else { return }
+        let below = sentinelTopY - viewportBottomY
+        let isNear = nearBottom ? (below < 220) : (below < 80)
+        if isNear != nearBottom { nearBottom = isNear }
+    }
     /// Throttle stream-follow scrollTo so token-by-token follow doesn't fight the wheel.
     @State private var lastStreamFollowAt = Date.distantPast
     @Environment(\.colorScheme) private var scheme
@@ -202,22 +216,30 @@ public struct ChatView: View {
                     GeometryReader { geo in
                         Color.clear.preference(
                             key: BottomEdgeKey.self,
-                            value: geo.frame(in: .named("chatScroll")).minY
+                            value: geo.frame(in: .global).minY
                         )
                     }
                     .frame(height: 1)
                     #endif
                 }
                 #if !os(macOS)
-                .coordinateSpace(name: "chatScroll")
-                .onPreferenceChange(BottomEdgeKey.self) { minY in
-                    // The iOS 18 SDK makes this closure `@Sendable`, so touching the main-actor
-                    // `@State` directly is a Swift 6 compile error — hop back onto the main actor.
-                    Task { @MainActor in
-                        // Hysteresis: enter near < 80, leave far > 220 (avoids flip-flop at edge).
-                        let isNear = nearBottom ? (minY < 220) : (minY < 80)
-                        if isNear != nearBottom { nearBottom = isNear }
-                    }
+                // The viewport's bottom edge, so "near bottom" is measured against where the user
+                // can SEE, not against the scroll view's top. Measured from the top (the old
+                // "chatScroll" minY < 80/220), a two-bubble chat that fits entirely on screen — and
+                // even the EMPTY starter state — counted as "far" (sentinel ~330 pt down), so the
+                // jump-to-latest arrow sat on a screen with nothing to scroll (2026-09-05 tap-through).
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ViewportBottomKey.self, value: geo.frame(in: .global).maxY)
+                })
+                // Both preferences feed ONE evaluation: the viewport's edge can arrive AFTER the
+                // sentinel's first report, and a verdict computed against an unknown (0) viewport
+                // would stick at "far" until the user scrolled. The iOS 18 SDK makes these closures
+                // `@Sendable`, so the main-actor `@State` writes hop back onto the main actor.
+                .onPreferenceChange(ViewportBottomKey.self) { maxY in
+                    Task { @MainActor in viewportBottomY = maxY; updateNearBottom() }
+                }
+                .onPreferenceChange(BottomEdgeKey.self) { topY in
+                    Task { @MainActor in sentinelTopY = topY; updateNearBottom() }
                 }
                 #endif
                 .onAppear {
@@ -287,6 +309,7 @@ public struct ChatView: View {
                     .accessibilityLabel(String(localized: "Demo mode. Replies are canned until a real on-device engine is linked."))
             }
 
+            Divider()
             Text(SupportContact.aiDisclaimer)
                 .font(.caption2)
                 .foregroundStyle(p.onSurfaceVariant)
@@ -424,7 +447,7 @@ public struct ChatView: View {
             .help(String(localized: "Attach a text, PDF, or image (images: vision not available yet)"))
             .accessibilityLabel(String(localized: "Attach a file"))
 
-            TextField(String(localized: "Message — or try a suggestion above"), text: $draft)
+            TextField(String(localized: "Message"), text: $draft)   // the empty state already says "Try one" — a long hint truncated here on every iPhone width
                 .textFieldStyle(.plain)
                 .foregroundStyle(p.onSurface)
                 .submitLabel(.send)
@@ -713,6 +736,11 @@ private struct MacNearBottomObserver: NSViewRepresentable {
 /// iOS only — bottom sentinel preference (macOS uses MacNearBottomObserver).
 private struct BottomEdgeKey: PreferenceKey {
     static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+/// Global-space maxY of the chat ScrollView's frame (its visible bottom edge).
+private struct ViewportBottomKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 #endif

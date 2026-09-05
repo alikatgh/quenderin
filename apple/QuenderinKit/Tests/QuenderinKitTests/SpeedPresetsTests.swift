@@ -53,4 +53,16 @@ final class SpeedPresetsTests: XCTestCase {
         let tiny = SpeedPresets.forDevice(totalRAMGB: 2)       // balanced == quality (llama32-1b-q2)
         XCTAssertEqual(tiny.preset(for: tiny.balanced.id), .quality)
     }
+
+    /// The dial follows the device's own recommendation when given one: on an 8 GB iPhone the
+    /// selector says Qwen3 4B, so Quality is Qwen3 4B and the bands step down from it — never a
+    /// total-RAM band's "Quality: Qwen3 14B — 9.0 GB" (2026-09-05).
+    func testQualityFollowsTheInjectedRecommendation() {
+        let qwen4b = ModelCatalog.entry(id: "qwen3-4b")!
+        let c = SpeedPresets.forDevice(totalRAMGB: 18, quality: qwen4b)   // 18 GB = what the simulator reports
+        XCTAssertEqual(c.quality.id, "qwen3-4b")
+        XCTAssertLessThanOrEqual(c.balanced.ramGB, c.quality.ramGB)
+        XCTAssertLessThanOrEqual(c.fast.ramGB, c.balanced.ramGB)
+        XCTAssertEqual(c.preset(for: "qwen3-4b"), .quality)
+    }
 }

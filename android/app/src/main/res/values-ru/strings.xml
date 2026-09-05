@@ -44,7 +44,7 @@
     <string name="tab_settings">Настройки</string>
     <string name="chat_empty_title">Спросите %1$s о чём угодно</string>
     <string name="chat_empty_body">Работает полностью на вашем телефоне. Ничего из введённого не покидает устройство.</string>
-    <string name="chat_composer_placeholder">Сообщение — или выберите подсказку выше</string>
+    <string name="chat_composer_placeholder">Сообщение</string>
     <string name="chat_day_today">Сегодня</string>
     <string name="chat_send">Отправить сообщение</string>
     <string name="chat_stop">Остановить генерацию</string>

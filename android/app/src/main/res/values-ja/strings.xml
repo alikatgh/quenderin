@@ -44,7 +44,7 @@
     <string name="tab_settings">設定</string>
     <string name="chat_empty_title">%1$sに何でも聞いてください</string>
     <string name="chat_empty_body">すべてスマートフォン上で動作します。入力した内容は端末から出ません。</string>
-    <string name="chat_composer_placeholder">メッセージ — または上の提案を試す</string>
+    <string name="chat_composer_placeholder">メッセージ</string>
     <string name="chat_day_today">今日</string>
     <string name="chat_send">メッセージを送信</string>
     <string name="chat_stop">生成を停止</string>

@@ -186,6 +186,7 @@ public struct AgentView: View {
                 .frame(maxWidth: .infinity)
             }
 
+            Divider()
             Text(SupportContact.aiDisclaimer)
                 .font(.caption2)
                 .foregroundStyle(p.onSurfaceVariant)
@@ -635,9 +636,18 @@ private struct AgentModelBriefingCard: View {
         #else
         let noun = "iPhone"
         #endif
+        #if os(iOS)
+        // The SAME gate onboarding and the picker use — never "your iPhone can run 14B" on 8 GB.
+        let device = DeviceProfiler.current()
+        return AgentModelGuide.briefing(activeModelID: id,
+                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        deviceNoun: noun,
+                                        canLoad: { IPhoneModelSelector.fitness(of: $0, for: device).canLoad })
+        #else
         return AgentModelGuide.briefing(activeModelID: id,
                                         totalRAMGB: HardwareProbe.current().totalRAMGB,
                                         deviceNoun: noun)
+        #endif
     }
 
     var body: some View {
@@ -918,9 +928,18 @@ private struct AgentInfoPanel: View {
         #else
         let noun = "iPhone"
         #endif
+        #if os(iOS)
+        // The SAME gate onboarding and the picker use — never "your iPhone can run 14B" on 8 GB.
+        let device = DeviceProfiler.current()
+        return AgentModelGuide.briefing(activeModelID: id,
+                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        deviceNoun: noun,
+                                        canLoad: { IPhoneModelSelector.fitness(of: $0, for: device).canLoad })
+        #else
         return AgentModelGuide.briefing(activeModelID: id,
                                         totalRAMGB: HardwareProbe.current().totalRAMGB,
                                         deviceNoun: noun)
+        #endif
     }
 
     private var grantedTools: [String] {

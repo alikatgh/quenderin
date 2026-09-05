@@ -29,10 +29,15 @@ object SpeedPresets {
         }
     }
 
-    fun forDevice(totalRamGb: Double): Choice {
+    /**
+     * @param quality the device's own recommendation when the caller has a better gate than total RAM —
+     *   the app passes [AndroidModelSelector]'s pick so the dial's Quality is the model onboarding chose,
+     *   never a total-RAM band's pick the native-heap budget can't hold. Twin of Swift (2026-09-05).
+     */
+    fun forDevice(totalRamGb: Double, quality: ModelEntry? = null): Choice {
         // Fitness-aware, not the raw band: Quality must never point at a model the memory gate
         // blocks (16 GB → band says 14B, budget says no — the dial would offer a doomed install).
-        val quality = ModelRecommender.bestInstallableModel(totalRamGb)
+        val quality = quality ?: ModelRecommender.bestInstallableModel(totalRamGb)
         val fastCand: ModelEntry
         val balancedCand: ModelEntry
         when {

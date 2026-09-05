@@ -44,7 +44,7 @@
     <string name="tab_settings">设置</string>
     <string name="chat_empty_title">向 %1$s 提问任何问题</string>
     <string name="chat_empty_body">完全在你的手机上运行。你输入的任何内容都不会离开设备。</string>
-    <string name="chat_composer_placeholder">消息——或试试上方的建议</string>
+    <string name="chat_composer_placeholder">消息</string>
     <string name="chat_day_today">今天</string>
     <string name="chat_send">发送消息</string>
     <string name="chat_stop">停止生成</string>

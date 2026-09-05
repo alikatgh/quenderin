@@ -46,7 +46,7 @@
     <string name="chat_empty_body">Runs entirely on your phone. Nothing you type leaves the device.</string>
     <string name="chat_try_one">Try one</string>
     <string name="chat_try_starter_a11y">Try: %1$s</string>
-    <string name="chat_composer_placeholder">Message — or try a suggestion above</string>
+    <string name="chat_composer_placeholder">Message</string>
     <string name="chat_thinking">Thinking…</string>
     <string name="chat_thinking_elapsed">Thinking · %1$ds</string>
     <string name="chat_loading_prompt">Loading prompt</string>

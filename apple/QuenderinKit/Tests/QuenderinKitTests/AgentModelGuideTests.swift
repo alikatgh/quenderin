@@ -51,6 +51,25 @@ final class AgentModelGuideTests: XCTestCase {
         XCTAssertEqual(b.upgrade?.aptitude, .excellent)
     }
 
+    /// The iPhone gate: an 8 GB phone (simulator reports the Mac's RAM, real phones a jetsam budget
+    /// well under total RAM) must never be told it "can run Qwen3 14B". The briefing takes the
+    /// device's own fit gate, so the proposal follows the selector, not a total-RAM band.
+    func testBriefingHonorsTheInjectedFitGate() {
+        let d = AppleDeviceDatabase.device(forIdentifier: "iPhone16,1")!
+        let phone = IOSDeviceProfile(
+            deviceName: d.name, identifier: "iPhone16,1", chip: d.chip, totalRAMGB: d.totalRAMGB,
+            appMemoryBudgetGB: AppleDeviceDatabase.estimatedAppMemoryBudgetGB(totalRAMGB: d.totalRAMGB),
+            freeDiskGB: 128, batteryMAh: d.batteryMAh, isKnownDevice: true
+        )
+        // Even with a huge "total RAM" (what the simulator reports), the phone gate decides.
+        let b = AgentModelGuide.briefing(activeModelID: "qwen3-4b", totalRAMGB: 18, deviceNoun: "iPhone",
+                                         canLoad: { IPhoneModelSelector.fitness(of: $0, for: phone).canLoad })
+        XCTAssertFalse(b.upgrade?.modelLabel.contains("14B") ?? false, "14B cannot fit an 8 GB phone's budget")
+        if let up = b.upgrade {
+            XCTAssertTrue(IPhoneModelSelector.fitness(of: ModelCatalog.models.first { $0.label == up.modelLabel }!, for: phone).canLoad)
+        }
+    }
+
     /// Honesty guard: a 16 GB Mac can't safely load the 11 GB 14B, so it must NOT be proposed there.
     func testBriefingDoesNotProposeAModelThatWontFit() {
         let b = AgentModelGuide.briefing(activeModelID: "qwen3-4b", totalRAMGB: 16, deviceNoun: "Mac")

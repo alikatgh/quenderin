@@ -80,7 +80,14 @@ public enum AgentModelGuide {
 
     /// Compose the plain-English briefing for the Agent screen.
     /// - deviceNoun: "Mac" / "iPhone" — the view supplies it so this stays platform-agnostic + testable.
-    public static func briefing(activeModelID: String?, totalRAMGB: Double, deviceNoun: String) -> AgentModelBriefing {
+    /// - canLoad: the device's fit gate. Defaults to the total-RAM `MemoryFitness` check (right for a
+    ///   Mac); iPhones pass `IPhoneModelSelector.fitness(of:for:)` so this briefing can never propose a
+    ///   model the jetsam budget forbids (2026-09-05: "Your iPhone can run Qwen3 14B" on an 8 GB phone).
+    public static func briefing(
+        activeModelID: String?, totalRAMGB: Double, deviceNoun: String,
+        canLoad: ((ModelEntry) -> Bool)? = nil
+    ) -> AgentModelBriefing {
+        let canLoad = canLoad ?? { MemoryFitness.check(model: $0, totalGB: totalRAMGB, freeGB: totalRAMGB).canLoad }
         let active = activeModelID.flatMap { ModelCatalog.entry(id: $0) }
         let activeAptitude = active.map { aptitude(for: $0.id) } ?? .capable
         let gb = Int(totalRAMGB.rounded())
@@ -90,7 +97,7 @@ public enum AgentModelGuide {
         // just the biggest that fits: a bigger Gemma is a WEAKER agent than a smaller Qwen (the whole
         // point), so "the largest model" would recommend exactly the wrong thing.
         let best = ModelCatalog.models
-            .filter { MemoryFitness.check(model: $0, totalGB: totalRAMGB, freeGB: totalRAMGB).canLoad }
+            .filter(canLoad)
             .max { agentRank($0) < agentRank($1) }
         let bestAptitude = best.map { aptitude(for: $0.id) } ?? activeAptitude
 

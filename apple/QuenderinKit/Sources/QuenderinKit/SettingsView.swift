@@ -362,7 +362,13 @@ public struct SettingsView: View {
         Section("Speed") {
                 // The model-speed dial: decode speed scales with model SIZE, so this is the one
                 // control that changes how fast replies FEEL.
+                #if os(iOS)
+                // Quality = the SAME pick onboarding made (jetsam-budget selector), not a total-RAM band.
+                let choice = SpeedPresets.forDevice(totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                                    quality: IPhoneModelSelector.selectForThisDevice().model)
+                #else
                 let choice = SpeedPresets.forDevice(totalRAMGB: HardwareProbe.current().totalRAMGB)
+                #endif
                 let current = choice.preset(for: model.id)
                 let installed = Set(OnboardingModel.defaultModelStorage().installedFilenames())
                 // Optional selection: a non-preset model must show NO selected segment (highlighting

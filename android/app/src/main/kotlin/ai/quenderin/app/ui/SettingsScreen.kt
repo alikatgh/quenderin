@@ -2,6 +2,8 @@ package ai.quenderin.app.ui
 
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
+import ai.quenderin.app.probeDeviceProfile
+import ai.quenderin.core.AndroidModelSelector
 
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileModelStorage
@@ -105,12 +107,12 @@ fun SettingsScreen(
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control
             // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
             // (download if needed → load → swap).
-            val totalRamGb = remember {
-                val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-                val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
-                mi.totalMem / 1_073_741_824.0
+            // Quality = the SAME pick onboarding made (native-heap-budget selector over the shared
+            // device probe), not a total-RAM band — the twin of the iOS Settings dial.
+            val profile = remember { context.probeDeviceProfile() }
+            val choice = remember(profile) {
+                SpeedPresets.forDevice(profile.totalRamGb, quality = AndroidModelSelector.select(profile).model)
             }
-            val choice = remember(totalRamGb) { SpeedPresets.forDevice(totalRamGb) }
             val current = choice.presetFor(model.id)
             val fastLabel = stringResource(R.string.settings_speed_fast)
             val balLabel = stringResource(R.string.settings_speed_balanced)

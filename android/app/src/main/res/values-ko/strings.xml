@@ -44,7 +44,7 @@
     <string name="tab_settings">설정</string>
     <string name="chat_empty_title">%1$s에게 무엇이든 물어보세요</string>
     <string name="chat_empty_body">전부 당신의 휴대폰에서 실행됩니다. 입력한 어떤 것도 기기를 벗어나지 않습니다.</string>
-    <string name="chat_composer_placeholder">메시지 — 또는 위 제안을 사용해 보세요</string>
+    <string name="chat_composer_placeholder">메시지</string>
     <string name="chat_day_today">오늘</string>
     <string name="chat_send">메시지 보내기</string>
     <string name="chat_stop">생성 중지</string>

@@ -52,8 +52,24 @@ struct QuenderinApp: App {
     init() {
         // Pass the device's app-memory budget (jetsam headroom) so the engine sizes n_ctx from it +
         // the chosen model's footprint at load — no KV-cache OOM on memory-tight phones (M1).
-        let engine: InferenceEngine = DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
-        let downloader: ModelDownloader = URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
+        // QA harness (DEBUG builds only): `QUENDERIN_MOCK_UI=1` in the environment swaps BOTH seams for
+        // the same mocks the tests inject, so every screen — onboarding → chat → history → settings →
+        // agent — is walkable on a simulator with no multi-GB download and no llama.cpp. The mock
+        // downloader writes an empty placeholder; the mock engine answers with DemoMockReplies.
+        //   scripts/ios_sim_run.sh --mock            (build + install + launch with the flag)
+        //   SIMCTL_CHILD_QUENDERIN_MOCK_UI=1 xcrun simctl launch <udid> ai.quenderin.Quenderin
+        // Not compiled into Release: the store build always runs the real engine + downloader.
+        #if DEBUG
+        let mockUI = ProcessInfo.processInfo.environment["QUENDERIN_MOCK_UI"] == "1"
+        #else
+        let mockUI = false
+        #endif
+        let engine: InferenceEngine = mockUI
+            ? MockInferenceEngine()
+            : DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
+        let downloader: ModelDownloader = mockUI
+            ? MockModelDownloader()
+            : URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
         // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
         // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy }))
