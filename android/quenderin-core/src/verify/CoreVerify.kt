@@ -542,6 +542,13 @@ fun main() {
     check("DemoMockReplies answers starter math and stays honest about demo mode",
         DemoMockReplies.reply("What is 17% of 240?").contains("40.8") &&
             DemoMockReplies.reply("What is 17% of 240?").lowercase().contains("demo"))
+    check("DemoMockReplies matches only the LAST user turn (system prompt's 'email' must not pick the draft)", run {
+        val sys = ConversationContext.DEFAULT_SYSTEM_PROMPT
+        val hello = sys + "\n\nUser: Hello\nAssistant:"
+        val mixed = sys + "\n\nUser: Draft a short email declining a meeting.\nAssistant: Subject: Need to reschedule\nUser: What is 17% of 240?\nAssistant:"
+        !DemoMockReplies.reply(hello).contains("Subject:") && DemoMockReplies.reply(hello).lowercase().contains("demo") &&
+            DemoMockReplies.reply(mixed).contains("40.8") && DemoMockReplies.lastUserTurn("no markers") == "no markers"
+    })
     check("DemoMockReplies Russian math keeps demo honesty",
         DemoMockReplies.reply("Сколько 17% от 240?").contains("40") &&
             DemoMockReplies.reply("привет").contains("llama"))

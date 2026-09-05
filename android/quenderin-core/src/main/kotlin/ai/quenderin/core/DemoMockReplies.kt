@@ -13,7 +13,10 @@ object DemoMockReplies {
         "Демо-режим: в этой сборке нет native llama.cpp — ответ заготовлен. Подключите движок для реальных ответов (android/INTEGRATION.md)."
 
     fun reply(prompt: String): String {
-        val trimmed = prompt.trim()
+        // Match on the LAST user turn only: the mock engine receives the whole flat transcript, and
+        // the system prompt's "…send email…" used to route every unmatched message ("Hello") into the
+        // canned email draft. Twin of Swift `DemoMockReplies.lastUserTurn` (2026-09-05).
+        val trimmed = lastUserTurn(prompt).trim()
         val lower = trimmed.lowercase()
         val ru = looksRussian(trimmed)
 
@@ -68,6 +71,15 @@ object DemoMockReplies {
             "Demo mode: this build has no native llama.cpp. Replies are canned until you link " +
                 "libquenderin_llama.so (see android/INTEGRATION.md). Your UI and download flow still work."
         }
+    }
+
+    /** The final "User: …" turn of a flat transcript (up to the next "Assistant:" line), or the prompt itself. */
+    fun lastUserTurn(prompt: String): String {
+        val start = prompt.lastIndexOf("User: ")
+        if (start < 0) return prompt
+        val tail = prompt.substring(start + "User: ".length)
+        val end = tail.indexOf("\nAssistant:")
+        return if (end >= 0) tail.substring(0, end) else tail
     }
 
     private fun matchesMath17of240(lower: String): Boolean {

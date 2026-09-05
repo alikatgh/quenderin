@@ -637,6 +637,10 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-05 (`apple/…/DemoMockReplies.swift` `lastUserTurn`, Kotlin twin) — in demo mode "Hello" was answered with a canned
+  email draft ("Subject: Need to reschedule"). Cause: the mock engine passes the WHOLE flat transcript, whose system prompt
+  says "…send email…", so `contains("email")` matched every prompt that missed an earlier branch. Fix: match only the last
+  "User: …" turn; tests + CoreVerify twin. Lesson: keyword-matching on a prompt must first isolate the user's turn.
 - 2026-09-05 (`apple/…/ChatModel.swift` send loop, `android/…/ChatModel.kt` `writeAssistant` call) — every streamed token
   rewrote the transcript: full SwiftUI list diff + whole-reply Markdown re-parse (`MarkdownText` cache keyed by full
   text → zero hits) per token; Android also `sb.toString()` + list copy + main-thread hop per token. At 30–80 tok/s that

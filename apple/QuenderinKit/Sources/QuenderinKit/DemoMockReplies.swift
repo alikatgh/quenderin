@@ -12,7 +12,11 @@ public enum DemoMockReplies: Sendable {
 
     /// Pick a short demo reply for `prompt`. Prefer useful preview for starter-like asks; otherwise honesty.
     public static func reply(for prompt: String) -> String {
-        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Match on the LAST user turn only. The mock engine receives the whole flat transcript —
+        // system prompt included — and that system prompt says "…send email…", so every prompt that
+        // missed an earlier branch fell into the canned EMAIL draft ("Hello" → "Subject: Need to
+        // reschedule", 2026-09-05 live tap-through). Bare prompts (no "User:" marker) pass through.
+        let trimmed = lastUserTurn(in: prompt).trimmingCharacters(in: .whitespacesAndNewlines)
         let lower = trimmed.lowercased()
         let ru = looksRussian(trimmed)
 
@@ -56,6 +60,17 @@ public enum DemoMockReplies: Sendable {
             return "Демо-режим: это сборка без native llama.cpp, ответы заготовлены, пока движок не подключён (см. QuenderinKit INTEGRATION.md). UI, загрузка моделей и история чата уже работают — для настоящих ответов свяжите llama.cpp."
         }
         return "Demo mode: this build has no native llama.cpp. Replies are canned until llama is linked (see QuenderinKit INTEGRATION.md). Your UI and download flow still work."
+    }
+
+    /// The text of the final "User: …" turn of a flat transcript (up to the next "Assistant:" line),
+    /// or the prompt itself when it carries no such marker. Twin of Kotlin `lastUserTurn`.
+    static func lastUserTurn(in prompt: String) -> String {
+        guard let userRange = prompt.range(of: "User: ", options: .backwards) else { return prompt }
+        let tail = prompt[userRange.upperBound...]
+        if let assistant = tail.range(of: "\nAssistant:") {
+            return String(tail[..<assistant.lowerBound])
+        }
+        return String(tail)
     }
 
     private static func matchesMath17of240(_ lower: String) -> Bool {
