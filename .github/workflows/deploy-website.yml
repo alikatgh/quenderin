@@ -36,7 +36,7 @@ jobs:
         with:
           path: website
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # Mirrors the same content to Cloudflare. quenderin.org is served by the WORKER named
   # "quenderin" (Workers custom domain — discovered 2026-07-04 after Pages deploys silently
