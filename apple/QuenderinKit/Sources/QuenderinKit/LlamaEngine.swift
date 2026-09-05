@@ -52,6 +52,10 @@ struct GenerationCancelLedger: Sendable, Equatable {
 /// > signatures if the API has drifted.
 public actor LlamaEngine: InferenceEngine {
 
+    /// Perf line per generation (prefill / decode / worst inter-token gap) — docs/INFERENCE_SLO.md.
+    /// Read it with `log stream --predicate 'subsystem == "org.quenderin" && category == "inference"'`.
+    private static let perfLog = Logger(subsystem: "org.quenderin", category: "inference")
+
     private var loaded: String?
     /// The `n_ctx` the loaded context was actually created with (sized from the device budget in
     /// `loadLocked`), or nil when nothing is loaded. Surfaced via `loadedContextTokens()` so the
@@ -486,6 +490,7 @@ public actor LlamaEngine: InferenceEngine {
         // bail before we start a long feedback loop (Q-005/Q-217). A big prompt can spend
         // seconds here; without this check Stop was completely dead until the first token.
         if cancelled() { continuation.finish(); return }
+        let perfT0 = ContinuousClock.now   // prefill start (perf instrumentation; twin of llama_generate.h)
         var toPrefill = Array(newTokens[reuse...])
         var prefillRC = decode(&toPrefill)
         if prefillRC == 1 && reuse > 0 {
@@ -504,6 +509,12 @@ public actor LlamaEngine: InferenceEngine {
             return
         }
         cachedTokens = newTokens   // the KV cache now holds exactly `newTokens`
+        let perfPrefillDone = ContinuousClock.now
+        let perfPrefillTok = newTokens.count - reuse
+        // Smoothness (docs/INFERENCE_SLO.md): the user feels the WORST inter-token gap, not the average.
+        var perfLastTok = perfPrefillDone
+        var perfMaxGap: Duration = .zero
+        var perfGapsOver250 = 0
 
         // In-flight thermal governor: as a long generation heats the SoC, shed threads so it
         // sustains instead of throttling to a crawl. Sampled every 32 tokens (the read is cheap and
@@ -528,6 +539,13 @@ public actor LlamaEngine: InferenceEngine {
             }
             let next = llama_sampler_sample(sampler, context, -1)
             if llama_vocab_is_eog(vocab, next) { break }   // end-of-generation token
+            do {
+                let now = ContinuousClock.now
+                let gap = now - perfLastTok
+                if gap > perfMaxGap { perfMaxGap = gap }
+                if produced > 0, gap > .milliseconds(250) { perfGapsOver250 += 1 }   // first gap IS the prefill→token hop
+                perfLastTok = now
+            }
 
             let piece = decoder.feed(tokenToBytes(next))
             if !piece.isEmpty {
@@ -574,7 +592,16 @@ public actor LlamaEngine: InferenceEngine {
         } else if !tail.isEmpty {
             continuation.yield(tail)
         }
+        let perfEnd = ContinuousClock.now
+        let prefillMs = Self.ms(perfPrefillDone - perfT0)
+        let decodeMs = Self.ms(perfEnd - perfPrefillDone)
+        Self.perfLog.info("perf: prefill \(perfPrefillTok) tok in \(prefillMs, format: .fixed(precision: 0)) ms (\(prefillMs > 0 ? Double(perfPrefillTok) * 1000 / prefillMs : 0, format: .fixed(precision: 1)) tok/s) | decode \(produced) tok in \(decodeMs, format: .fixed(precision: 0)) ms (\(decodeMs > 0 ? Double(produced) * 1000 / decodeMs : 0, format: .fixed(precision: 1)) tok/s) | max gap \(Self.ms(perfMaxGap), format: .fixed(precision: 0)) ms, \(perfGapsOver250) gaps > 250 ms")
         continuation.finish()
+    }
+
+    nonisolated private static func ms(_ d: Duration) -> Double {
+        let c = d.components
+        return Double(c.seconds) * 1000 + Double(c.attoseconds) / 1e15
     }
 
     /// Two-pass wrapper over `llama_tokenize`.

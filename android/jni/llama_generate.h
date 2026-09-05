@@ -23,7 +23,10 @@
 #include <android/log.h>
 #define QUENDERIN_PERF_LOG(...) __android_log_print(ANDROID_LOG_INFO, "Quenderin", __VA_ARGS__)
 #else
-#define QUENDERIN_PERF_LOG(...) ((void) 0)
+// Off-device (the Mac build of the smoke test / bench harness): same line to stderr, so the
+// inter-token gap numbers below are visible there too. stdout stays clean for the PASS/FAIL grep.
+#include <cstdio>
+#define QUENDERIN_PERF_LOG(...) (fprintf(stderr, __VA_ARGS__), fprintf(stderr, "\n"))
 #endif
 
 namespace quenderin {
@@ -287,6 +290,11 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     const auto perfPrefillDone = std::chrono::steady_clock::now();   // prefill end / decode start
     const int perfPrefillTok = (int) toDecode.size();
     int perfDecodeTok = 0;
+    // Smoothness (docs/INFERENCE_SLO.md): the user feels the WORST inter-token gap, not the average.
+    // Track the max gap between consecutive sampled tokens and how many exceeded the 250 ms SLO.
+    auto perfLastTok = perfPrefillDone;
+    double perfMaxGapMs = 0.0;
+    int perfGapsOver250 = 0;
 
     constexpr int kThermalSampleInterval = 32;   // heat moves slowly; matches iOS's sample cadence
     UTF8StreamDecoder utf8;   // reassemble characters split across BPE pieces (iOS twin)
@@ -300,6 +308,13 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
         llama_token next = llama_sampler_sample(sampler, ctx, -1);
         if (llama_vocab_is_eog(vocab, next)) break;
         perfDecodeTok++;
+        {
+            const auto now = std::chrono::steady_clock::now();
+            const double gap = std::chrono::duration<double, std::milli>(now - perfLastTok).count();
+            if (gap > perfMaxGapMs) perfMaxGapMs = gap;
+            if (perfDecodeTok > 1 && gap > 250.0) perfGapsOver250++;   // the first gap IS the prefill→token hop
+            perfLastTok = now;
+        }
 
         char buf[256];
         int c = llama_token_to_piece(vocab, next, buf, sizeof(buf), 0, true);
@@ -349,9 +364,10 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     const double prefillMs = std::chrono::duration<double, std::milli>(perfPrefillDone - perfT0).count();
     const double decodeMs = std::chrono::duration<double, std::milli>(perfEnd - perfPrefillDone).count();
     QUENDERIN_PERF_LOG(
-        "perf: prefill %d tok in %.0f ms (%.1f tok/s) | decode %d tok in %.0f ms (%.1f tok/s)",
+        "perf: prefill %d tok in %.0f ms (%.1f tok/s) | decode %d tok in %.0f ms (%.1f tok/s) | max gap %.0f ms, %d gaps > 250 ms",
         perfPrefillTok, prefillMs, prefillMs > 0 ? perfPrefillTok * 1000.0 / prefillMs : 0.0,
-        perfDecodeTok, decodeMs, decodeMs > 0 ? perfDecodeTok * 1000.0 / decodeMs : 0.0);
+        perfDecodeTok, decodeMs, decodeMs > 0 ? perfDecodeTok * 1000.0 / decodeMs : 0.0,
+        perfMaxGapMs, perfGapsOver250);
 
     return out;
 }
