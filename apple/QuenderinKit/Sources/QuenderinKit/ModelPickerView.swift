@@ -31,6 +31,38 @@ public struct ModelPickerView: View {
             OnboardingModel.defaultModelStorage().installedFilenames())
     }
 
+    /// The phone path: fitness AND the "recommended" tag come from the same jetsam-budget selector the
+    /// recommendation screen used, so the two screens can never disagree. (They did: total-RAM
+    /// re-gating crowned Qwen3 14B "recommended for this phone" one tap after Qwen3 4B was recommended
+    /// for the same iPhone 16 Pro — 2026-09-05 simulator tap-through.)
+    public init(device: IOSDeviceProfile, currentModelID: String? = nil, onSelect: @escaping (ModelEntry) -> Void) {
+        self.options = ModelCatalog.optionsWithFitness(for: device)
+        self.recommendedID = IPhoneModelSelector.select(for: device).model.id
+        self.currentModelID = currentModelID
+        self.onSelect = onSelect
+        self.installedFilenames = Set(
+            OnboardingModel.defaultModelStorage().installedFilenames())
+    }
+
+    /// The ONE entry point every call site uses. iOS: the live iPhone profile (the selector's numbers);
+    /// elsewhere (Mac — no jetsam budget) the total-RAM band, where `MemoryFitness` is the right gate.
+    /// Pass `preferring:` the onboarding's already-computed profile so the sheet prints exactly the
+    /// numbers the recommendation screen did.
+    public static func forThisDevice(
+        preferring device: IOSDeviceProfile? = nil,
+        currentModelID: String? = nil,
+        onSelect: @escaping (ModelEntry) -> Void
+    ) -> ModelPickerView {
+        if let device {
+            return ModelPickerView(device: device, currentModelID: currentModelID, onSelect: onSelect)
+        }
+        #if os(iOS)
+        return ModelPickerView(device: DeviceProfiler.current(), currentModelID: currentModelID, onSelect: onSelect)
+        #else
+        return ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB, currentModelID: currentModelID, onSelect: onSelect)
+        #endif
+    }
+
     public var body: some View {
         let p = QuenderinPalette.of(scheme)
         // Same information order as the library: what you HAVE (instant switches) first,
@@ -142,10 +174,18 @@ private struct ModelPickerRow: View {
                     Text(split.name)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(palette.onSurface)
-                        .lineLimit(1)
+                        // The NAME wins the row: wrap to a second line before the capability chip
+                        // and the fit badge squeeze it into "Llama 3.2 1B Ultra-L…" (2026-09-05 tap-through).
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .layoutPriority(1)
                     if let tag = split.tag {
                         Text(tag)
                             .font(.caption2)
+                            // A chip never wraps ("Best / Agent, / Big / Down-load") — it keeps its
+                            // width and the (higher-priority) name takes the second line instead.
+                            .lineLimit(1)
+                            .fixedSize()
                             .foregroundStyle(palette.onSurfaceVariant)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)

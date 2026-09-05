@@ -29,6 +29,34 @@
         }
       }
     },
+    "%@ would run here too, but needs ~%@ GB free storage — this device has ~%@ GB. Free up space and you can switch in Settings.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ もこの端末で動作しますが、空き容量が約 %@ GB 必要です — 現在は約 %@ GB です。空き容量を確保すれば、設定から切り替えられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@도 이 기기에서 실행할 수 있지만 여유 저장 공간이 ~%@ GB 필요합니다 — 현재 ~%@ GB입니다. 공간을 확보하면 설정에서 전환할 수 있습니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ тоже запустилась бы здесь, но ей нужно ~%@ ГБ свободного места — на этом устройстве ~%@ ГБ. Освободите место — и переключитесь в Настройках."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 也能在此设备上运行，但需要约 %@ GB 可用存储空间 — 本机目前约 %@ GB。释放空间后即可在“设置”中切换。"
+          }
+        }
+      }
+    },
     "%@ · %@ downloads": {
       "localizations": {
         "ja": {

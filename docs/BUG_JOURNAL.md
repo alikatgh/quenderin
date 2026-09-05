@@ -4,6 +4,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Two screens that answer the same question must read ONE gate.** Onboarding recommended from the
+  per-app jetsam/native-heap budget (`IPhoneModelSelector` / `AndroidModelSelector`), but the "Choose a
+  model" picker re-gated every row on TOTAL RAM (`MemoryFitness.check(total, total)`) — so one tap after
+  "Qwen3 4B, recommended for your iPhone 16 Pro" it crowned Qwen3 14B (~11 GB) "recommended for this
+  phone". Whenever a second surface shows fit/eligibility, derive it from the selector's own arithmetic
+  (`fitness(of:for:)`), never a parallel heuristic; pin the agreement with a test on both twins. (2026-09-05)
+- **`swift test` on the macOS SDK does not compile the iOS app.** `#if canImport(UIKit)` branches and
+  iOS-SDK-only isolation (`UIDevice` is `@MainActor` in the iOS 18 SDK; `onPreferenceChange` closures are
+  `@Sendable`) are invisible to the package tests, so `main` was green while `xcodebuild` of the Quenderin
+  app target failed under Xcode 16.2 / Swift 6. The app target needs its own CI compile gate
+  (`mobile-ios-app` in ci.yml: xcodegen + simulator build). (2026-09-05)
 - **`GGML_BACKEND_API` symbols live in the dlopened CPU plugin, not in libggml.** `ggml_threadpool_new`/`free` are marked `GGML_BACKEND_API`; with `GGML_BACKEND_DL` they exist only inside `libggml-cpu-android_armv*.so`. Linking them from the JNI `.so` is an `ld.lld` undefined-symbol (the 0.2.0 ship-note that kept variants OFF). Resolve them after `ggml_backend_load_all_from_path` via `ggml_backend_reg_get_proc_address` on the CPU backend — same pattern as llama-bench. And: AGP keeps `.so`s inside the APK, so ggml's `nativeLibraryDir` scan sees nothing unless `useLegacyPackaging = true`.
 - **A q8_0→F16 KV-cache retry must resize `n_ctx` AND publish the new window.** Sizing `n_ctx` for q8_0's 0.53× per-token cost then retrying F16 at the same token count ~doubles KV memory on the exact tight devices the sizing protects. Shrink via `ContextWindow.recommend(..., .f16)` (iOS) / `n_ctx * 0.53` (JNI). Then `loadedContextTokens` must be the *actual* native window (`nativeLoadedNCtx`), not the Kotlin/Swift request — otherwise ChatModel trims to a window larger than llama and overflows. (Aug-10 JNI shrink; 2026-08-22 iOS + Kotlin publish.)
 - **A file the LOAD path selects by mere existence must never exist until it's complete AND verified.**
@@ -615,6 +626,21 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-05 (`apple/…/IPhoneModelSelector.swift` `storageLimited`, `android/…/AndroidModelSelector.kt`) — same 6 GB
+  budget recommended Qwen3 4B one launch, Llama 3.2 1B the next; the headline never said why. Cause: free disk
+  had dropped below 2.8 GB and the disk gate silently demoted the pick. Fix: `ModelSelection.storageLimited` =
+  the pick an unlimited disk would give; onboarding prints "X would run here too but needs ~N GB free" (5 locales).
+  Lesson: when a gate other than the headline's numbers decides the answer, the copy must name that gate.
+- 2026-09-05 (`apple/…/ModelPickerView.swift:27`, `android/…/ModelPickerSheet.kt:61`) — picker crowned Qwen3 14B
+  "recommended for this phone" right after onboarding recommended Qwen3 4B (iPhone 16 Pro sim). Cause: picker
+  gated on total RAM (`MemoryFitness`/`bestInstallableModel`), onboarding on the per-app budget selector. Fix:
+  `IPhoneModelSelector.fitness(of:for:)` / `AndroidModelSelector.fitness()` + `ModelPickerView.forThisDevice` /
+  shared `probeDeviceProfile()`; tests both twins. Lesson: one fit gate per device, every surface reads it.
+- 2026-09-05 (`apple/…/DeviceCapabilities.swift:145`, `ChatView.swift:213`) — iOS app target failed to compile
+  (Xcode 16.2, Swift 6): `UIDevice.current` is `@MainActor`; `onPreferenceChange` closure is `@Sendable`.
+  Cause: `swift test` (macOS SDK) never compiles these branches, so CI stayed green. Fix: `@MainActor`
+  `batteryLevel()` (awaited in `run`), `Task { @MainActor in }` around the `@State` write; new CI job
+  `mobile-ios-app` builds the app for the simulator. Lesson: package tests ≠ app compile gate.
 - 2026-08-22 (`android/jni/llama_jni.cpp` pin_threads) — CPU variants stayed OFF: JNI linked `ggml_threadpool_new` (GGML_BACKEND_API, lives in the dlopened plugin) → undefined-symbol with BACKEND_DL. Cause: link-time ggml-cpu. Fix: `get_proc_address` after backend load; variants ON; `nativeLoadedNCtx`; iOS f16 `n_ctx` recompute + `load_mode` dual-API. Lesson: never link GGML_BACKEND_API; publish the window the engine actually created.
 - 2026-08-10 (`android/jni/llama_jni.cpp:428`) — F16 KV-cache fallback kept the Q8_0-sized `n_ctx`, nearly
   doubling actual KV memory on memory-tight devices. Cause: the retry swapped only `type_k`/`type_v` and never

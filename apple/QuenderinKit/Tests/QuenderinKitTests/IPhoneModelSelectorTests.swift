@@ -87,6 +87,25 @@ final class IPhoneModelSelectorTests: XCTestCase {
     func testDiskConstraintForcesSmaller() {
         let sel = IPhoneModelSelector.select(for: profile(chip: .a17Pro, ram: 8, disk: 1.0))
         XCTAssertEqual(sel.model.id, "llama32-1b-q2", "only the tiniest GGUF fits ~1 GB free")
+        // …and the selection SAYS the phone is full, not weak: what it would run with space.
+        XCTAssertNotNil(sel.storageLimited)
+    }
+
+    /// 2026-09-05: the same 6 GB budget recommended Qwen3 4B one launch and Llama 3.2 1B the next
+    /// (free disk had dropped) and the headline never mentioned storage. `storageLimited` is the
+    /// model the phone WOULD get with space — nil whenever disk didn't change the answer.
+    func testStorageLimitedNamesWhatFreeSpaceWouldUnlock() {
+        let roomy = IPhoneModelSelector.select(for: profile(chip: .a17Pro, ram: 8, disk: 128))
+        XCTAssertNil(roomy.storageLimited, "plenty of disk → storage didn't decide anything")
+
+        let full = IPhoneModelSelector.select(for: profile(chip: .a17Pro, ram: 8, disk: 2.0))
+        XCTAssertEqual(full.model.id, "llama32-1b", "~2 GB free fits only the 0.8 GB download (+0.5 margin)")
+        let limited = try! XCTUnwrap(full.storageLimited)
+        XCTAssertEqual(limited.model.id, roomy.model.id, "names exactly the pick an unlimited disk would give")
+        XCTAssertFalse(limited.viable)
+        XCTAssertTrue(limited.note.contains("free disk"), "gated by disk, not memory or speed: \(limited.note)")
+        // The picker's memory badge still says it FITS — storage is the only thing in the way.
+        XCTAssertTrue(IPhoneModelSelector.fitness(of: limited.model, for: profile(chip: .a17Pro, ram: 8, disk: 2.0)).canLoad)
     }
 
     func testVeryConstrainedDeviceFallsBackToSmallestWithForcedConfidence() {
@@ -151,5 +170,46 @@ final class IPhoneModelSelectorTests: XCTestCase {
                        "default is general-purpose, not a specialized model")
         XCTAssertTrue(sel.alternatives.contains { $0.model.id == "qwen25-coder-7b" && $0.viable },
                       "the coder model is offered when it fits")
+    }
+
+    // MARK: - The picker must agree with the recommendation (2026-09-05 regression)
+
+    /// The "Choose a model" screen used to re-gate on TOTAL RAM (`MemoryFitness.check`), so one tap
+    /// after onboarding recommended Qwen3 4B for an 8 GB iPhone it crowned Qwen3 14B "recommended for
+    /// this phone". Pin: the picker's per-row fitness is the selector's own memory gate.
+    func testPickerFitnessAgreesWithTheRecommendation() {
+        let device = knownProfile("iPhone16,1")   // iPhone 15 Pro, 8 GB — a ~6 GB app budget
+        let sel = IPhoneModelSelector.select(for: device)
+
+        // The recommended model must load by the picker's gate.
+        XCTAssertTrue(IPhoneModelSelector.fitness(of: sel.model, for: device).canLoad)
+        // 14B (~11 GB) can never fit an 8 GB phone's jetsam budget — the exact row the old gate crowned.
+        let big = ModelCatalog.entry(id: "qwen3-14b")!
+        XCTAssertFalse(IPhoneModelSelector.fitness(of: big, for: device).canLoad)
+        // Every alternative the selector rejected FOR MEMORY is blocked by the picker too, and every
+        // viable alternative loads — the two screens reason from one gate.
+        for option in sel.alternatives {
+            let fit = IPhoneModelSelector.fitness(of: option.model, for: device)
+            if option.note.contains("usable budget") {
+                XCTAssertFalse(fit.canLoad, "\(option.model.id) is over budget yet the picker says it fits")
+            } else if option.viable {
+                XCTAssertTrue(fit.canLoad, "\(option.model.id) is viable yet the picker blocks it")
+            }
+        }
+        // The picker shows the whole catalog, and its numbers are the selector's (usable budget, runtime).
+        let options = ModelCatalog.optionsWithFitness(for: device)
+        XCTAssertEqual(options.count, ModelCatalog.models.count)
+        let usable = device.appMemoryBudgetGB * IPhoneModelSelector.memoryHeadroom
+        for option in options {
+            XCTAssertEqual(option.fitness.availableMemoryGB, usable, accuracy: 1e-9)
+            XCTAssertEqual(option.fitness.requiredMemoryGB, IPhoneModelSelector.estimatedRuntimeGB(option.model), accuracy: 1e-9)
+        }
+        // Comfort headroom ⇔ "Fits"; less than that ⇔ "Tight"; over budget ⇔ "Too big".
+        for option in options {
+            let remaining = usable - option.fitness.requiredMemoryGB
+            let expected: MemorySeverity = !option.fitness.canLoad ? .blocked
+                : (remaining >= option.fitness.requiredMemoryGB * IPhoneModelSelector.comfortHeadroomFraction ? .safe : .warning)
+            XCTAssertEqual(option.fitness.severity, expected, option.model.id)
+        }
     }
 }

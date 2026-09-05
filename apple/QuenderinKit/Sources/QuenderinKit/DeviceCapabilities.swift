@@ -131,7 +131,10 @@ public struct CalendarTodayDeviceCapability: Capability {
 /// The status seam — production reads UIDevice/host stats; tests inject numbers.
 public protocol DeviceStatusReader: Sendable {
     /// Battery level 0…1, or nil when unknown (desktops, simulators without battery).
-    func batteryLevel() -> Double?
+    /// Main-actor-isolated: `UIDevice` is `@MainActor` in the iOS 18 SDK, so the production read
+    /// must hop to the main actor (Swift 6 mode refuses it from a nonisolated context — the app
+    /// target failed to compile under Xcode 16.2 while `swift test` on the macOS SDK stayed green).
+    @MainActor func batteryLevel() -> Double?
     /// Free disk bytes on the app's volume, or nil when unknown.
     func freeDiskBytes() -> Int64?
 }
@@ -139,7 +142,7 @@ public protocol DeviceStatusReader: Sendable {
 public struct SystemDeviceStatus: DeviceStatusReader {
     public init() {}
 
-    public func batteryLevel() -> Double? {
+    @MainActor public func batteryLevel() -> Double? {
         #if canImport(UIKit) && !os(tvOS)
         UIDevice.current.isBatteryMonitoringEnabled = true
         let level = UIDevice.current.batteryLevel
@@ -176,7 +179,7 @@ public struct DeviceStatusCapability: Capability {
 
     public func run(_ input: String) async throws -> String {
         var parts: [String] = []
-        if let battery = status.batteryLevel() {
+        if let battery = await status.batteryLevel() {
             parts.append("Battery: \(Int((battery * 100).rounded()))%")
         }
         if let free = status.freeDiskBytes() {

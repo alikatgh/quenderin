@@ -36,6 +36,12 @@ public struct ModelSelection: Sendable, Equatable, Codable {
     public let rationale: String
     public let device: IOSDeviceProfile
     public let alternatives: [ModelOption]
+    /// The general-purpose model this device WOULD get with unlimited free storage, when the actual
+    /// pick was demoted only by free disk — nil when storage didn't change the answer. Lets the
+    /// recommendation screen say "Qwen3 4B would run here too but needs ~2.8 GB free" instead of
+    /// silently handing a nearly-full phone the tiniest model (2026-09-05 simulator tap-through:
+    /// the same 6 GB budget recommended 4B one launch and 1B the next, and the headline never said why).
+    public let storageLimited: ModelOption?
 }
 
 /// World-class on-device model picking for iPhones. A RAM-band heuristic is wrong here:
@@ -114,6 +120,39 @@ public enum IPhoneModelSelector {
         Double(DiskSpace.estimatedDownloadBytes(for: model)) / 1_000_000_000.0
     }
 
+    // MARK: - Per-model fitness (the picker's badge — the SAME gate as the recommendation)
+
+    /// Memory fitness of ONE catalog model against a device's per-app budget — the exact arithmetic
+    /// `select(for:)` gates on (`estimatedRuntimeGB` vs `appMemoryBudgetGB × memoryHeadroom`), exposed
+    /// so the "Choose a model" screen badges every row the way the recommendation screen reasoned.
+    /// Before this the picker re-gated on TOTAL RAM via `MemoryFitness.check`, so one tap after
+    /// "Qwen3 4B — recommended for your iPhone 16 Pro" it crowned Qwen3 14B (needs ~11 GB) as
+    /// "recommended for this phone" — a model the jetsam budget can never hold (2026-09-05).
+    ///
+    /// Memory only: speed and disk are surfaced elsewhere (the recommendation rationale, the disk
+    /// preflight before a download). `.safe` = clears the same comfort headroom the default pick
+    /// needs; `.warning` ("Tight") = loads, but with less than that headroom.
+    public static func fitness(of model: ModelEntry, for device: IOSDeviceProfile) -> MemoryCheckResult {
+        let usableGB = device.appMemoryBudgetGB * memoryHeadroom
+        let required = estimatedRuntimeGB(model)
+        let remaining = usableGB - required
+        guard required <= usableGB else {
+            return MemoryCheckResult(
+                canLoad: false, severity: .blocked,
+                availableMemoryGB: usableGB, requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+                message: String(format: "%@ needs ~%.1f GB, over your ~%.1f GB usable budget.", model.label, required, usableGB)
+            )
+        }
+        let comfortable = remaining >= required * comfortHeadroomFraction
+        return MemoryCheckResult(
+            canLoad: true, severity: comfortable ? .safe : .warning,
+            availableMemoryGB: usableGB, requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+            message: comfortable
+                ? "\(model.label) fits comfortably."
+                : String(format: "%@ fits, but leaves only %.1f GB of headroom.", model.label, remaining)
+        )
+    }
+
     // MARK: - Selection
 
     public static func select(
@@ -175,6 +214,23 @@ public enum IPhoneModelSelector {
             )
         }
 
+        // Storage honesty: what would this phone get with the disk out of the equation? When a bigger
+        // general-purpose model clears memory + speed and only free disk demoted it, name it — the user
+        // can free space and switch later; a silent downgrade to the tiniest model reads as "this phone
+        // is weak" when it's really "this phone is full".
+        let storageLimited: ModelOption? = {
+            guard device.freeDiskGB.isFinite else { return nil }   // already the unlimited pass
+            let unlimited = IOSDeviceProfile(
+                deviceName: device.deviceName, identifier: device.identifier, chip: device.chip,
+                totalRAMGB: device.totalRAMGB, appMemoryBudgetGB: device.appMemoryBudgetGB,
+                freeDiskGB: .infinity, batteryMAh: device.batteryMAh, isKnownDevice: device.isKnownDevice
+            )
+            let ideal = select(for: unlimited, catalog: catalog, minTokensPerSecond: minTokensPerSecond)
+            let actualID = pickIndex.map { options[$0].model.id } ?? ModelCatalog.smallest.id
+            guard ideal.confidence != .unsupported, ideal.model.id != actualID else { return nil }
+            return evaluate(ideal.model)
+        }()
+
         guard let idx = pickIndex else {
             // Nothing cleared the gates — fall back to the smallest model, honestly labeled.
             let sm = ModelCatalog.smallest
@@ -197,7 +253,8 @@ public enum IPhoneModelSelector {
                     ? "\(device.deviceName) is very memory-constrained (~\(fmt(usableGB)) GB usable). Using the smallest model, \(sm.label), so it stays responsive and is never jetsam-killed."
                     : "\(device.deviceName) doesn't have enough memory to run on-device AI (~\(fmt(usableGB)) GB usable; even \(sm.label) needs ~\(fmt(runtime)) GB). On-device inference isn't supported here.",
                 device: device,
-                alternatives: options   // everything considered, for transparency
+                alternatives: options,   // everything considered, for transparency
+                storageLimited: storageLimited
             )
         }
 
@@ -224,7 +281,8 @@ public enum IPhoneModelSelector {
             confidence: comfortable ? .comfortable : .tight,
             rationale: rationale,
             device: device,
-            alternatives: biggerGated + specialized
+            alternatives: biggerGated + specialized,
+            storageLimited: storageLimited
         )
     }
 

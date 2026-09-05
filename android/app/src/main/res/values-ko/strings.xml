@@ -54,6 +54,7 @@
     <string name="chat_generation_error">답변을 생성하지 못했습니다: %1$s</string>
     <string name="chat_generation_error_a11y">생성 오류: %1$s</string>
     <string name="fitness_rationale">%2$s에 맞는 %1$s: %4$s에서 ~%3$s tok/s (%5$s), 네이티브 메모리 예산 ~%7$s GB 중 ~%6$s GB 사용 (~%8$s GB 여유).</string>
+    <string name="fitness_storage_limited">%1$s도 이 기기에서 실행할 수 있지만 여유 저장 공간이 ~%2$s GB 필요합니다 — 현재 ~%3$s GB입니다. 공간을 확보하면 설정에서 전환할 수 있습니다.</string>
     <string name="fitness_speed_comfortably">여유롭게</string>
     <string name="fitness_speed_smoothly">부드럽게</string>
     <string name="fitness_speed_usably">쓸 만하게</string>

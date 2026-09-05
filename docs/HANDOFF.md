@@ -1,6 +1,6 @@
 # Handoff — pick up here
 
-_Last updated: 2026-08-22 (0.2.1 engine cut: CPU variants + load_mode + f16 n_ctx)._  
+_Last updated: 2026-09-05 (iOS app-target compile fix + picker ↔ recommendation one-gate parity)._  
 _(Agent memory is machine-local — this file is the cross-machine source of truth.)_
 
 ## TL;DR — **not** “product ready” yet
@@ -41,6 +41,9 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **Image refusal locale** | Vision-not-yet copy in ru/ko/ja/zh — shipped. |
 | **New chat + halt locale** | History empty title + agent halt banners — shipped. |
 | **History You: + DateCalc RU** | Preview prefix + Russian date triggers — shipped. |
+| **iOS app target compiles (Xcode 16.2 / Swift 6)** | `UIDevice` @MainActor + @Sendable `onPreferenceChange` fixed; new CI job `mobile-ios-app` builds the app for the simulator — shipped 2026-09-05. |
+| **Storage-honest recommendation** | When only free disk demoted the pick, onboarding names the model space would unlock (both twins, 5 locales) — shipped 2026-09-05. |
+| **Picker ↔ recommendation parity** | "Choose a model" now reads the selector's per-app-budget gate (was total RAM → crowned 14B after recommending 4B). Both twins + tests — shipped 2026-09-05. Verified on the iPhone 16 Pro simulator. |
 
 ### Highest-impact remaining product work (agent-doable)
 

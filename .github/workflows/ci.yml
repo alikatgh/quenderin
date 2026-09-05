@@ -104,6 +104,28 @@ jobs:
         working-directory: apple/QuenderinKit
         run: swift test
 
+  # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
+  #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was
+  #    green while the Quenderin app failed to build under Xcode 16.2 / Swift 6 (UIDevice @MainActor,
+  #    @Sendable onPreferenceChange). Mock engine here (no xcframework in CI) — the point is compiling.
+  mobile-ios-app:
+    name: iOS app target builds (simulator)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: apple/QuenderinApp
+        run: xcodegen generate
+      - name: Build the Quenderin app for the iOS Simulator
+        working-directory: apple/QuenderinApp
+        run: |
+          set -o pipefail
+          xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO build | tail -40
+
   mobile-android-core:
     name: Android core (Kotlin) checks
     runs-on: ubuntu-latest

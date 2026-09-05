@@ -3,11 +3,11 @@ package ai.quenderin.app.ui
 import ai.quenderin.app.R
 import androidx.compose.ui.res.stringResource
 import ai.quenderin.core.MemoryCheckResult
-import ai.quenderin.core.MemoryFitness
+import ai.quenderin.app.probeDeviceProfile
+import ai.quenderin.core.AndroidModelSelector
 import ai.quenderin.core.MemorySeverity
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelEntry
-import ai.quenderin.core.ModelRecommender
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,19 +57,15 @@ private val Warn = Color(0xFFE8963A)
 @Composable
 internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> Unit) {
     val context = LocalContext.current
-    // Same memory gate as onboarding — the sheet must never offer a model this phone can't load.
-    val (totalGb, freeGb) = remember {
-        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
-        val gb = 1_073_741_824.0
-        (mi.totalMem / gb) to (mi.availMem / gb)
-    }
+    // The SAME gate as onboarding's recommendation: the selector's per-app native-heap budget, not
+    // total RAM. (Re-gating on total RAM via MemoryFitness let this sheet crown a model the
+    // recommendation screen had just ruled out for the same phone — iOS twin bug, 2026-09-05.)
+    val profile = remember { context.probeDeviceProfile() }
     val options = remember {
-        ModelCatalog.models.map { it to MemoryFitness.check(it, totalGb, freeGb) }
+        ModelCatalog.models.map { it to AndroidModelSelector.fitness(it, profile) }
     }
-    // Fitness-aware: the tag must sit on a row this same sheet can actually install, never on
-    // one it dims and disables (band-vs-budget disagreement, e.g. 14B on 16 GB).
-    val recommendedId = remember { ModelRecommender.bestInstallableModel(totalGb, freeGb).id }
+    // The tag sits on the selector's own pick — the row the recommendation screen showed.
+    val recommendedId = remember { AndroidModelSelector.select(profile).model.id }
 
     val recommended = options.filter { it.first.id == recommendedId }
     val fitting = options.filter { it.first.id != recommendedId && it.second.canLoad }

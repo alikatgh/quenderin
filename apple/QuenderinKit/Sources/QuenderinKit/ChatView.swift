@@ -211,9 +211,13 @@ public struct ChatView: View {
                 #if !os(macOS)
                 .coordinateSpace(name: "chatScroll")
                 .onPreferenceChange(BottomEdgeKey.self) { minY in
-                    // Hysteresis: enter near < 80, leave far > 220 (avoids flip-flop at edge).
-                    let isNear = nearBottom ? (minY < 220) : (minY < 80)
-                    if isNear != nearBottom { nearBottom = isNear }
+                    // The iOS 18 SDK makes this closure `@Sendable`, so touching the main-actor
+                    // `@State` directly is a Swift 6 compile error — hop back onto the main actor.
+                    Task { @MainActor in
+                        // Hysteresis: enter near < 80, leave far > 220 (avoids flip-flop at edge).
+                        let isNear = nearBottom ? (minY < 220) : (minY < 80)
+                        if isNear != nearBottom { nearBottom = isNear }
+                    }
                 }
                 #endif
                 .onAppear {

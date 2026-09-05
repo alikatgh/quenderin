@@ -11,4 +11,14 @@ public extension ModelCatalog {
             (model: model, fitness: MemoryFitness.check(model: model, totalGB: ram, freeGB: ram))
         }
     }
+
+    /// The iPhone twin: every model paired with the SAME per-app-budget fitness the recommendation
+    /// screen used (`IPhoneModelSelector.fitness`), so the picker can never contradict it.
+    static func optionsWithFitness(
+        for device: IOSDeviceProfile
+    ) -> [(model: ModelEntry, fitness: MemoryCheckResult)] {
+        models.map { model in
+            (model: model, fitness: IPhoneModelSelector.fitness(of: model, for: device))
+        }
+    }
 }

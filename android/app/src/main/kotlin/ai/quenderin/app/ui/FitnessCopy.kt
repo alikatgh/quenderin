@@ -2,6 +2,7 @@ package ai.quenderin.app.ui
 
 import ai.quenderin.app.R
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.AndroidModelSelector
 import ai.quenderin.core.ModelSelection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -60,3 +61,18 @@ fun localizedSustainedVerdict(sel: ModelSelection): String = stringResource(
     f0(sel.thermalBattery.throttledLossPercent),
     f0(sel.thermalBattery.activeDrainPercentPerHour),
 )
+
+/**
+ * "Qwen3 4B would run here too, but needs ~2.8 GB free storage — this phone has ~1.9 GB…", localized.
+ * Null when free disk didn't change the pick (twin of the Apple onboarding's storage-honesty line).
+ */
+@Composable
+fun localizedStorageLimited(sel: ModelSelection): String? {
+    val limited = sel.storageLimited ?: return null
+    return stringResource(
+        R.string.fitness_storage_limited,
+        limited.model.label,
+        f1(AndroidModelSelector.estimatedDownloadGb(limited.model) + AndroidModelSelector.DISK_MARGIN_GB),
+        f1(sel.device.freeDiskGb),
+    )
+}

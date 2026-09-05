@@ -29,6 +29,13 @@ data class ModelSelection(
     val rationale: String,
     val device: AndroidDeviceProfile,
     val alternatives: List<ModelOption>,
+    /**
+     * The general-purpose model this device WOULD get with unlimited free storage, when the actual
+     * pick was demoted only by free disk — null when storage didn't change the answer. Twin of Swift
+     * `ModelSelection.storageLimited`: lets onboarding say "Qwen3 4B would run here too but needs
+     * ~2.8 GB free" instead of silently handing a full phone the tiniest model (2026-09-05).
+     */
+    val storageLimited: ModelOption? = null,
 )
 
 /**
@@ -87,6 +94,44 @@ object AndroidModelSelector {
 
     // --- Selection ---
 
+    /**
+     * Memory fitness of ONE catalog model against the device's per-app native-heap budget — the exact
+     * arithmetic [select] gates on (`estimatedRuntimeGb` vs `appMemoryBudgetGb × MEMORY_HEADROOM`),
+     * exposed so the "Choose a model" sheet badges every row the way the recommendation screen
+     * reasoned. Before this the sheet re-gated on TOTAL RAM via [MemoryFitness.check], so it could
+     * crown a model the recommendation had just ruled out. Twin of Swift
+     * `IPhoneModelSelector.fitness(of:for:)` (2026-09-05).
+     *
+     * Memory only: speed and disk are surfaced elsewhere (the rationale, the download preflight).
+     * SAFE = clears the same comfort headroom the default pick needs; WARNING ("Tight") = loads,
+     * but with less than that headroom.
+     */
+    fun fitness(model: ModelEntry, device: AndroidDeviceProfile): MemoryCheckResult {
+        val usableGb = device.appMemoryBudgetGb * MEMORY_HEADROOM
+        val required = estimatedRuntimeGb(model)
+        val remaining = usableGb - required
+        if (required > usableGb) {
+            return MemoryCheckResult(
+                canLoad = false,
+                severity = MemorySeverity.BLOCKED,
+                requiredGB = required,
+                availableGB = usableGb,
+                message = "%s needs ~%.1f GB, over your ~%.1f GB usable budget.".format(model.label, required, usableGb),
+                remainingAfterLoadGB = remaining,
+            )
+        }
+        val comfortable = remaining >= required * COMFORT_HEADROOM_FRACTION
+        return MemoryCheckResult(
+            canLoad = true,
+            severity = if (comfortable) MemorySeverity.SAFE else MemorySeverity.WARNING,
+            requiredGB = required,
+            availableGB = usableGb,
+            message = if (comfortable) "${model.label} fits comfortably."
+                else "%s fits, but leaves only %.1f GB of headroom.".format(model.label, remaining),
+            remainingAfterLoadGB = remaining,
+        )
+    }
+
     fun select(device: AndroidDeviceProfile, catalog: List<ModelEntry> = ModelCatalog.models): ModelSelection {
         val usableGb = device.appMemoryBudgetGb * MEMORY_HEADROOM
 
@@ -124,6 +169,16 @@ object AndroidModelSelector {
             if (!o.viable) null else o.copy(note = "${specializedNotes[id]} · ${o.note}")
         }
 
+        // Storage honesty (twin of Swift): what would this phone get with the disk out of the equation?
+        // If only free disk demoted the pick, name the model space would unlock — "this phone is full",
+        // not "this phone is weak".
+        val storageLimited: ModelOption? = if (!device.freeDiskGb.isFinite()) null else {
+            val ideal = select(device.copy(freeDiskGb = Double.POSITIVE_INFINITY), catalog)
+            val actualId = pickIndex?.let { options[it].model.id } ?: ModelCatalog.smallest.id
+            if (ideal.confidence == SelectionConfidence.UNSUPPORTED || ideal.model.id == actualId) null
+            else evaluate(ideal.model)
+        }
+
         if (pickIndex == null) {
             val sm = ModelCatalog.smallest
             val runtime = estimatedRuntimeGb(sm)
@@ -149,6 +204,7 @@ object AndroidModelSelector {
                 },
                 device = device,
                 alternatives = options,
+                storageLimited = storageLimited,
             )
         }
 
@@ -178,6 +234,7 @@ object AndroidModelSelector {
             rationale = rationale,
             device = device,
             alternatives = biggerGated + specialized,
+            storageLimited = storageLimited,
         )
     }
 }

@@ -79,6 +79,7 @@
     <string name="chat_generation_error">Couldn\'t generate a reply: %1$s</string>
     <string name="chat_generation_error_a11y">Generation error: %1$s</string>
     <string name="fitness_rationale">%1$s for your %2$s: ~%3$s tok/s on the %4$s (%5$s), using ~%6$s GB of your ~%7$s GB native-memory budget (~%8$s GB headroom).</string>
+    <string name="fitness_storage_limited">%1$s would run here too, but needs ~%2$s GB free storage — this phone has ~%3$s GB. Free up space and you can switch in Settings.</string>
     <string name="fitness_speed_comfortably">comfortably</string>
     <string name="fitness_speed_smoothly">smoothly</string>
     <string name="fitness_speed_usably">usably</string>

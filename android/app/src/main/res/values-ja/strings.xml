@@ -54,6 +54,7 @@
     <string name="chat_generation_error">返信を生成できませんでした: %1$s</string>
     <string name="chat_generation_error_a11y">生成エラー: %1$s</string>
     <string name="fitness_rationale">%2$s向けの%1$s：%4$sで~%3$s tok/s（%5$s）、ネイティブメモリ予算~%7$s GBのうち~%6$s GBを使用（~%8$s GBの余裕）。</string>
+    <string name="fitness_storage_limited">%1$s もこの端末で動作しますが、空き容量が約 %2$s GB 必要です — 現在は約 %3$s GB です。空き容量を確保すれば、設定から切り替えられます。</string>
     <string name="fitness_speed_comfortably">余裕をもって</string>
     <string name="fitness_speed_smoothly">スムーズに</string>
     <string name="fitness_speed_usably">実用的に</string>

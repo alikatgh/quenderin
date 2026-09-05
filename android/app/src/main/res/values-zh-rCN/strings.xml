@@ -54,6 +54,7 @@
     <string name="chat_generation_error">无法生成回复：%1$s</string>
     <string name="chat_generation_error_a11y">生成错误：%1$s</string>
     <string name="fitness_rationale">适合你的%2$s的%1$s：在%4$s上约 %3$s tok/s（%5$s），占用原生内存预算 ~%7$s GB 中的 ~%6$s GB（~%8$s GB 余量）。</string>
+    <string name="fitness_storage_limited">%1$s 也能在此设备上运行，但需要约 %2$s GB 可用存储空间 — 本机目前约 %3$s GB。释放空间后即可在“设置”中切换。</string>
     <string name="fitness_speed_comfortably">从容</string>
     <string name="fitness_speed_smoothly">流畅</string>
     <string name="fitness_speed_usably">可用</string>

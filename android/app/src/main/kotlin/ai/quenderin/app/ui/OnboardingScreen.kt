@@ -367,6 +367,16 @@ private fun PhaseContent(
                     textAlign = TextAlign.Center,
                 )
                 selection?.let { sel ->
+                    // Storage honesty: a full phone gets a small model — say why, and that it's fixable.
+                    localizedStorageLimited(sel)?.let { line ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
                         localizedChatVerdict(sel),

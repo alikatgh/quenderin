@@ -49,7 +49,8 @@ public struct OnboardingView: View {
         // user who can't (or won't) take the recommended download picks a smaller model instead.
         .sheet(isPresented: $showPicker) {
             NavigationStack {
-                ModelPickerView(totalRAMGB: HardwareProbe.current().totalRAMGB) { picked in
+                // Same device profile (and therefore the same numbers) the recommendation screen used.
+                ModelPickerView.forThisDevice(preferring: model.selection?.device) { picked in
                     showPicker = false
                     model.beginInstall(picked)
                 }
@@ -95,6 +96,14 @@ public struct OnboardingView: View {
                             .font(.caption.monospacedDigit()).foregroundStyle(p.onSurfaceVariant)
                         Text(sel.rationale)
                             .font(.caption).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
+                        if let limited = sel.storageLimited {
+                            // Storage honesty: a nearly-full phone gets a small model — say WHY, and that
+                            // it's fixable (free space → switch in Settings), not "this phone is weak".
+                            let need = String(format: "%.1f", IPhoneModelSelector.estimatedDownloadGB(limited.model) + IPhoneModelSelector.diskMarginGB)
+                            let free = String(format: "%.1f", sel.device.freeDiskGB)
+                            Text("\(limited.model.label) would run here too, but needs ~\(need) GB free storage — this device has ~\(free) GB. Free up space and you can switch in Settings.")
+                                .font(.caption).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
+                        }
                         Text(sel.thermalBattery.chatVerdict)
                             .font(.caption2).foregroundStyle(p.onSurfaceVariant).multilineTextAlignment(.center)
                     }

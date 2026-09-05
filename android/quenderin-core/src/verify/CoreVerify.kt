@@ -94,6 +94,49 @@ fun main() {
     check("1B safe on a 16 GB device",
         MemoryFitness.check(ModelCatalog.entry("llama32-1b")!!, totalGB = 16.0, freeGB = 12.0).severity == MemorySeverity.SAFE)
 
+    // --- Picker fitness agrees with the recommendation (twin of iOS testPickerFitnessAgreesWithTheRecommendation) ---
+    // The sheet used to re-gate on TOTAL RAM, so it could crown a model onboarding had just ruled out.
+    run {
+        val eight = AndroidDeviceProfile.from("Test 8 GB", "SM8550", totalRamGb = 8.0, freeDiskGb = 128.0)
+        val sel = AndroidModelSelector.select(eight)
+        val usable = eight.appMemoryBudgetGb * AndroidModelSelector.MEMORY_HEADROOM
+        check("Picker fitness: the recommended model loads by the picker's gate",
+            AndroidModelSelector.fitness(sel.model, eight).canLoad)
+        check("Picker fitness: 14B (~11 GB) is blocked on an 8 GB phone's budget",
+            !AndroidModelSelector.fitness(ModelCatalog.entry("qwen3-14b")!!, eight).canLoad)
+        check("Picker fitness: memory-rejected alternatives blocked, viable ones load", sel.alternatives.all { o ->
+            val fit = AndroidModelSelector.fitness(o.model, eight)
+            when {
+                o.note.contains("usable budget") -> !fit.canLoad
+                o.viable -> fit.canLoad
+                else -> true
+            }
+        })
+        // Storage honesty (twin of iOS testStorageLimitedNamesWhatFreeSpaceWouldUnlock): a full phone is
+        // told what free space would unlock; a roomy one gets no such line.
+        val roomy = AndroidModelSelector.select(AndroidDeviceProfile.from("Test 8 GB", "SM8550", totalRamGb = 8.0, freeDiskGb = 128.0))
+        val fullPhone = AndroidDeviceProfile.from("Test 8 GB", "SM8550", totalRamGb = 8.0, freeDiskGb = 2.0)
+        val full = AndroidModelSelector.select(fullPhone)
+        check("storageLimited is null when disk didn't change the pick", roomy.storageLimited == null)
+        check("~2 GB free → the 0.8 GB Llama 3.2 1B, and storageLimited names the roomy pick",
+            full.model.id == "llama32-1b" && full.storageLimited?.model?.id == roomy.model.id &&
+                full.storageLimited?.viable == false && (full.storageLimited?.note ?: "").contains("free disk") &&
+                AndroidModelSelector.fitness(full.storageLimited!!.model, fullPhone).canLoad)
+        check("storageLimited is set on the forced-smallest path too (1 GB free)",
+            AndroidModelSelector.select(AndroidDeviceProfile.from("Test 8 GB", "SM8550", totalRamGb = 8.0, freeDiskGb = 1.0)).storageLimited != null)
+        check("Picker fitness: numbers are the selector's (usable budget, runtime) and Fits/Tight/Too big follow comfort headroom",
+            ModelCatalog.models.all { m ->
+                val fit = AndroidModelSelector.fitness(m, eight)
+                val required = AndroidModelSelector.estimatedRuntimeGb(m)
+                val expected = when {
+                    required > usable -> MemorySeverity.BLOCKED
+                    usable - required >= required * AndroidModelSelector.COMFORT_HEADROOM_FRACTION -> MemorySeverity.SAFE
+                    else -> MemorySeverity.WARNING
+                }
+                Math.abs(fit.availableGB - usable) < 1e-9 && Math.abs(fit.requiredGB - required) < 1e-9 && fit.severity == expected
+            })
+    }
+
     // --- Safety blocklist ---
     check("blocks a Pay action", SafetyBlocklist.isBlocked("Tap Pay to complete"))
     check("blocks Delete + Password", SafetyBlocklist.matches("Delete the file and type the password").containsAll(listOf("delete", "password")))

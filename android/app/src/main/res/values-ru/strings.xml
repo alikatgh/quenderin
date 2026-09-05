@@ -54,6 +54,7 @@
     <string name="chat_generation_error">Не удалось сгенерировать ответ: %1$s</string>
     <string name="chat_generation_error_a11y">Ошибка генерации: %1$s</string>
     <string name="fitness_rationale">%1$s для вашего %2$s: ~%3$s ток/с на %4$s (%5$s), используя ~%6$s ГБ из ~%7$s ГБ бюджета нативной памяти (~%8$s ГБ запаса).</string>
+    <string name="fitness_storage_limited">%1$s тоже запустилась бы здесь, но ей нужно ~%2$s ГБ свободного места — на этом телефоне ~%3$s ГБ. Освободите место — и переключитесь в Настройках.</string>
     <string name="fitness_speed_comfortably">с запасом</string>
     <string name="fitness_speed_smoothly">плавно</string>
     <string name="fitness_speed_usably">приемлемо</string>
