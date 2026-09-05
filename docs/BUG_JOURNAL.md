@@ -15,7 +15,7 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
   lands inside the user's first time-to-first-token (Gemma 3 4B, Mac Metal, cold page cache: 3.7 s → 0.14 s
   after `warmupContext`/`warmUpLocked`). Measure it only in a FRESH process (`llama-smoketest --ttft cold|warm`);
   in-process the earlier decode already paid it. (2026-09-05)
-- **Two screens that answer the same question must read ONE gate.** Onboarding recommended from the
+- **Two screens that answer the same question must read ONE gate** (found FOUR total-RAM re-gates in one tap-through: picker, agent briefing, speed dial ×2 twins — grep every `totalRAMGB`/`totalMem` consumer). Onboarding recommended from the
   per-app jetsam/native-heap budget (`IPhoneModelSelector` / `AndroidModelSelector`), but the "Choose a
   model" picker re-gated every row on TOTAL RAM (`MemoryFitness.check(total, total)`) — so one tap after
   "Qwen3 4B, recommended for your iPhone 16 Pro" it crowned Qwen3 14B (~11 GB) "recommended for this
@@ -637,6 +637,25 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-05 (`apple/…/ChatModel.swift` send loop, `android/…/ChatModel.kt` `writeAssistant` call) — every streamed token
+  rewrote the transcript: full SwiftUI list diff + whole-reply Markdown re-parse (`MarkdownText` cache keyed by full
+  text → zero hits) per token; Android also `sb.toString()` + list copy + main-thread hop per token. At 30–80 tok/s that
+  is the "stall" users see, not the engine. Fix: `StreamFlushGate` twins — first piece immediately, then ≤ 1 write /
+  33 ms, settle always; pinned by tests + CoreVerify (200 pieces in one frame → < 20 writes). Lesson: pace UI writes
+  to frames, never to tokens.
+- 2026-09-05 (`apple/…/AgentModelGuide.swift` `briefing(canLoad:)`, `SpeedPresets.forDevice(quality:)` both twins) — Agent
+  tab said "Your iPhone can run Qwen3 14B", Settings' speed dial said "Quality: Qwen3 14B — 9.0 GB" on an 8 GB phone.
+  Cause: two more surfaces gating on total RAM (`MemoryFitness` / `bestInstallableModel`). Fix: inject the device's
+  own gate (`IPhoneModelSelector.fitness`, `AndroidModelSelector.select`). Tests both twins. Lesson: grep every
+  `HardwareProbe.current().totalRAMGB` / `ActivityManager.totalMem` consumer when you fix one — they travel in packs.
+- 2026-09-05 (`apple/…/ChatView.swift` near-bottom sentinel) — the jump-to-latest arrow showed on an EMPTY chat and on a
+  two-bubble chat that fit on screen. Cause: "near bottom" measured the sentinel's distance from the scroll view's TOP
+  (`minY < 80/220`), so short content counted as far. Fix: measure how far the sentinel sits BELOW the viewport's
+  global bottom edge (`ViewportBottomKey`). Lesson: a "near the end" test needs the viewport's far edge, not the origin.
+- 2026-09-05 (`apple/QuenderinApp/Sources/QuenderinApp.swift` `QUENDERIN_MOCK_UI`) — every screen past onboarding was
+  unverifiable on a simulator without a multi-GB download. Fix: DEBUG-only env switch swaps engine + downloader for the
+  test mocks; `scripts/ios_sim_run.sh --mock` builds/installs/launches with it. Lesson: the seams tests inject should
+  be reachable from a running build too, or the UI behind them never gets looked at.
 - 2026-09-05 (`android/jni/llama_generate.h` `decodeChunked`/`clampToContext`, `llama-smoketest.cpp` Part 3) — Android
   prefill of a >n_batch (512) prompt aborted the process (`GGML_ASSERT(n_tokens_all <= cparams.n_batch)`, llama-context.cpp:1748).
   Cause: one `llama_decode` for the whole un-cached suffix; only iOS had the chunked loop + middle-out clamp. Fix: shared

@@ -203,6 +203,10 @@ class ChatModel(
             lastHitTokenCap = false
             val sb = StringBuilder()
             var tokenCount = 0
+            // Pace transcript writes to display frames (~30 Hz): every write copies the list, re-parses
+            // the reply's Markdown and hops to the main thread — at phone token rates that, not the
+            // engine, is the jank. First piece always lands; the settle write below always lands.
+            val flushGate = StreamFlushGate()
             // Stream into the placeholder so the reply appears token-by-token instead of the UI sitting
             // blank for the whole (multi-second) generation. Mirrors iOS `ChatModel`.
             val reply = engine.completeChat(systemPrompt, history) { piece ->
@@ -218,7 +222,7 @@ class ChatModel(
                 // Drop the write if this generation was superseded (conversation switch/new/reset/restore,
                 // or Stop) — a captured index would otherwise write into the WRONG transcript or throw out
                 // of bounds. Twin of iOS's "look the message up by id each token; if it's gone, stop".
-                writeAssistant(myGen, placeholderIndex, sb.toString())
+                if (flushGate.shouldFlush()) writeAssistant(myGen, placeholderIndex, sb.toString())
             }
             // Settle on the authoritative full text (covers the non-streaming fallback, where onToken never
             // fired and the placeholder is still empty) — with duplicate-paragraph runs collapsed

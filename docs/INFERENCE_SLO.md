@@ -12,7 +12,7 @@ every target here has a harness (`scripts/bench_inference.sh`, the native smoke 
 | **First token after tapping send** (short prompt, model already loaded) | 0.3–1 s | ≤ 0.5 s desktop, ≤ 1.0 s phone — **every** message, including the first after launch | `llama-smoketest --ttft cold\|warm` (fresh process); app: `GenerationPhase.loadingPrompt` → `.writing` |
 | **First token, long prompt** (~1k tokens: attachment / long history) | 1–3 s | ≤ 3 s desktop, ≤ 8 s phone; never a crash | smoke Part 3 (chunked prefill), `REAL: prefill` tok/s |
 | **Streaming speed** | 40–100 tok/s | ≥ 20 tok/s desktop (reading speed ×2), ≥ 10 tok/s phone for the model the selector recommends | `llama-bench tg128`, `REAL: decode` |
-| **Smoothness** — no visible stall once text is flowing | none | no inter-token gap > 250 ms after the first token; UI work per token bounded (coalesced to display frames) | device run with per-token timestamps (todo: signposts) |
+| **Smoothness** — no visible stall once text is flowing | none | no inter-token gap > 250 ms after the first token; UI writes ≤ 30/s (`StreamFlushGate`, both twins) | `StreamFlushGateTests` / CoreVerify; device run with per-token timestamps (todo: signposts) |
 | **Sustained** — a two-minute reply doesn't turn to sludge | none | tg512 ≥ 0.8 × tg128; on phones the thermal governor sheds threads instead of stalling | `llama-bench tg512` vs `tg128`, battery °C before/after |
 | **No cliff on launch** | none | model load + warmup finish before the user has typed; first message pays nothing extra | warmup at load (`warmUpLocked` / `warmupContext`), cold-vs-warm ttft |
 | **Never dies** | n/a | no prompt length, attachment size or context size can abort the process | smoke Part 3 (over-length clamp + chunked prefill), `MemoryFitness` gates |
@@ -34,12 +34,10 @@ in `docs/BENCH_BASELINE.md`.
 
 ## Known gaps still open (engineering, ordered by user impact)
 
-1. **UI per-token cost is unbounded.** Both chats re-run the Markdown parser on the whole reply for every
-   token (`MarkdownText` cache keyed by full text — zero hits while streaming; Android `remember(text)`), copy
-   the message list per token, and post one main-thread hop per token. At 80 tok/s on desktop that is the
-   stall users see, not the engine. Fix: coalesce engine pieces to display frames (~30 Hz) in `ChatModel`
-   on both twins, and render plain text while streaming / parse once at settle. Verify with per-token
-   timestamps on device.
+1. **UI per-token cost** — ✅ paced (2026-09-05): `StreamFlushGate` twins coalesce transcript writes to ≤ 30/s
+   (first piece immediately, settle always), so the list diff + Markdown re-parse run per frame, not per token.
+   Still open: render plain text while streaming and parse Markdown once at settle; verify on device with
+   per-token timestamps.
 2. **Phone measurement.** The S23 rows above are the ones that decide whether the CPU-variant build actually
    loaded (prefill must be several × decode with i8mm). Blocked on the phone being attached and cool.
 3. **Smoothness instrumentation.** Add `os_signpost` / logcat timestamps around prefill and each decode so

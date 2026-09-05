@@ -189,6 +189,10 @@ public final class ChatModel: ObservableObject {
 
         var tokenCount = 0
         var hitDegeneration = false
+        // Pace transcript writes to display frames (~30 Hz): every write is a full list diff plus a
+        // Markdown re-parse of the reply, and at 80 tok/s that — not the engine — is the stall users
+        // see. The first piece always lands; the settle write below always lands (StreamFlushGate).
+        var flushGate = StreamFlushGate()
         do {
             let stream = try await engine.generateChat(system: systemPrompt, history: windowed, options: resolvedOptions)
             for try await token in stream {
@@ -209,7 +213,7 @@ public final class ChatModel: ObservableObject {
                 // message up by id each token: a captured index would crash (out of range) or write
                 // to the wrong message. If it's gone, the user moved on — stop streaming into it.
                 guard let i = messages.firstIndex(where: { $0.id == assistantID }) else { return }
-                messages[i] = assistant
+                if flushGate.shouldFlush() { messages[i] = assistant }
             }
         } catch {
             assistant.text = "⚠️ " + OnboardingModel.describe(error)

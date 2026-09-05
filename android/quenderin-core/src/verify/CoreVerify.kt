@@ -122,6 +122,11 @@ fun main() {
             full.model.id == "llama32-1b" && full.storageLimited?.model?.id == roomy.model.id &&
                 full.storageLimited?.viable == false && (full.storageLimited?.note ?: "").contains("free disk") &&
                 AndroidModelSelector.fitness(full.storageLimited!!.model, fullPhone).canLoad)
+        check("SpeedPresets: Quality follows the injected recommendation and bands step down from it", run {
+            val c = SpeedPresets.forDevice(18.0, quality = ModelCatalog.entry("qwen3-4b")!!)
+            c.quality.id == "qwen3-4b" && c.balanced.ramGB <= c.quality.ramGB && c.fast.ramGB <= c.balanced.ramGB &&
+                c.presetFor("qwen3-4b") == SpeedPreset.QUALITY
+        })
         check("storageLimited is set on the forced-smallest path too (1 GB free)",
             AndroidModelSelector.select(AndroidDeviceProfile.from("Test 8 GB", "SM8550", totalRamGb = 8.0, freeDiskGb = 1.0)).storageLimited != null)
         check("Picker fitness: numbers are the selector's (usable budget, runtime) and Fits/Tight/Too big follow comfort headroom",
@@ -488,6 +493,48 @@ fun main() {
     // placeholder is appended (2), then after it settles to the final text (2). A real streaming
     // engine adds one emit per token in between; the mock (non-streaming fallback) does not.
     check("chat emits user, assistant placeholder, then settle", sizes == listOf(1, 2, 2))
+
+    // --- StreamFlushGate: transcript writes paced to display frames (docs/INFERENCE_SLO.md "Smoothness").
+    //     Twin of StreamFlushGateTests.swift — keep the vectors identical. ---
+    run {
+        val ms = 1_000_000L
+        val g = StreamFlushGate(33 * ms)
+        check("flush gate: first piece always flushes", g.shouldFlush(0L))
+        check("flush gate: within the window is held back", !g.shouldFlush(1 * ms) && !g.shouldFlush(32 * ms))
+        check("flush gate: after the window flushes and re-arms",
+            g.shouldFlush(33 * ms) && !g.shouldFlush(40 * ms) && g.shouldFlush(70 * ms))
+        val g2 = StreamFlushGate(33 * ms)
+        var writes = 0
+        for (i in 0 until 80) if (g2.shouldFlush(i * 1000L * ms / 80)) writes++
+        check("flush gate: 80 tok/s coalesces to ~30 writes/s", writes in 26..32)   // 80 tok/s ÷ 3 tokens per 33 ms window = 27
+    }
+    // A streaming engine: the first piece lands immediately, the settle lands, and a burst of tokens inside
+    // one frame does NOT produce one transcript write per token (the pre-gate behaviour).
+    run {
+        val streaming = object : InferenceEngine {
+            override val loadedModelId: String? = "s"
+            override fun load(model: ModelEntry, filePath: String) {}
+            override fun unload() {}
+            override fun complete(prompt: String): String = "unused"
+            override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String {
+                val parts = List(200) { "t$it " }
+                parts.forEach(onToken)          // 200 pieces well inside one 33 ms frame
+                return parts.joinToString("")
+            }
+        }
+        var emits = 0
+        var firstStreamedText: String? = null
+        val c = ChatModel(streaming).apply {
+            onChange = { snap ->
+                emits++
+                if (firstStreamedText == null && snap.size == 2 && snap[1].text.isNotEmpty()) firstStreamedText = snap[1].text
+            }
+        }
+        val out = c.send("go")
+        check("flush gate: first streamed piece is written immediately", firstStreamedText == "t0 ")
+        check("flush gate: 200 pieces in one frame do not cause 200 writes (got $emits)", emits < 20)
+        check("flush gate: settle writes the full reply", c.messages[1].text == out && out.endsWith("t199 "))
+    }
     // Twin-drift fix: an empty send is a SILENT no-op returning "" (matches iOS ChatModel), not a throw.
     check("chat empty message is a silent no-op (returns \"\", twin of iOS)",
         chat.send("   ") == "" && chat.messages.map { it.role } == listOf(Role.USER, Role.ASSISTANT))
