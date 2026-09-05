@@ -42,6 +42,7 @@ Ship/CI checklists can be green while the **day-one product still feels unfinish
 | **New chat + halt locale** | History empty title + agent halt banners — shipped. |
 | **History You: + DateCalc RU** | Preview prefix + Russian date triggers — shipped. |
 | **iOS app target compiles (Xcode 16.2 / Swift 6)** | `UIDevice` @MainActor + @Sendable `onPreferenceChange` fixed; new CI job `mobile-ios-app` builds the app for the simulator — shipped 2026-09-05. |
+| **Demo replies** | Canned picks match the last user turn only ("Hello" no longer gets the email draft) — both twins, 2026-09-05. |
 | **Mock-UI QA harness** | `scripts/ios_sim_run.sh --mock` (DEBUG env `QUENDERIN_MOCK_UI=1`) walks onboarding → chat → history → settings → agent on a simulator with no model. Chat, Settings, Agent screens visually verified 2026-09-05. |
 | **One fit gate everywhere** | Agent briefing + speed dial (both twins) now follow the device selector (were total-RAM: "can run 14B" on 8 GB). Jump-to-latest arrow no longer shows on short chats; composer placeholder no longer truncates; hairline above the disclaimers. |
 | **Storage-honest recommendation** | When only free disk demoted the pick, onboarding names the model space would unlock (both twins, 5 locales) — shipped 2026-09-05. |

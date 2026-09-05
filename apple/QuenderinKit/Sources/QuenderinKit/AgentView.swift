@@ -639,8 +639,10 @@ private struct AgentModelBriefingCard: View {
         #if os(iOS)
         // The SAME gate onboarding and the picker use — never "your iPhone can run 14B" on 8 GB.
         let device = DeviceProfiler.current()
+        // The device table's RAM (8 GB for an iPhone 16), not the host's — the simulator otherwise
+        // prints the Mac's memory as the phone's.
         return AgentModelGuide.briefing(activeModelID: id,
-                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        totalRAMGB: device.totalRAMGB,
                                         deviceNoun: noun,
                                         canLoad: { IPhoneModelSelector.fitness(of: $0, for: device).canLoad })
         #else
@@ -931,8 +933,10 @@ private struct AgentInfoPanel: View {
         #if os(iOS)
         // The SAME gate onboarding and the picker use — never "your iPhone can run 14B" on 8 GB.
         let device = DeviceProfiler.current()
+        // The device table's RAM (8 GB for an iPhone 16), not the host's — the simulator otherwise
+        // prints the Mac's memory as the phone's.
         return AgentModelGuide.briefing(activeModelID: id,
-                                        totalRAMGB: HardwareProbe.current().totalRAMGB,
+                                        totalRAMGB: device.totalRAMGB,
                                         deviceNoun: noun,
                                         canLoad: { IPhoneModelSelector.fitness(of: $0, for: device).canLoad })
         #else
