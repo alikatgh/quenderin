@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark twin of values/themes.xml: the window background matches Compose's DarkScheme.background
+     (ui/Theme.kt) so the pre-Compose first frame and any unpainted screen are the dark canvas,
+     never a light flash under the dark scheme's light text (2026-09-05). -->
+<resources>
+    <style name="Theme.Quenderin" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF0B0F10</item>
+    </style>
+</resources>

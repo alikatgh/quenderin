@@ -10,6 +10,7 @@ import ai.quenderin.core.GpuOffloadPlanner
 import ai.quenderin.core.InferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
+import ai.quenderin.core.MockModelDownloader
 import ai.quenderin.core.ModelDownloader
 import ai.quenderin.core.ThermalMonitor
 import java.io.File
@@ -31,8 +32,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // QA harness (debug builds only): launching with `--ez quenderin.mock_ui true` swaps BOTH seams
+        // for the same mocks CoreVerify injects, so onboarding → chat → history → settings → agent is
+        // walkable on an emulator with no multi-GB download and no native .so. Twin of the iOS
+        // `QUENDERIN_MOCK_UI` switch (scripts/ios_sim_run.sh --mock):
+        //   adb shell am start -n ai.quenderin.app/.MainActivity --ez quenderin.mock_ui true
+        val mockUi = BuildConfig.DEBUG && intent?.getBooleanExtra("quenderin.mock_ui", false) == true
+
         val engine: InferenceEngine =
-            if (LlamaEngine.NATIVE_AVAILABLE) {
+            if (mockUi) {
+                MockInferenceEngine()
+            } else if (LlamaEngine.NATIVE_AVAILABLE) {
                 // Pass the native-heap budget (THE constraint), not total RAM — the engine sizes
                 // n_ctx from it + the chosen model's footprint at load (footprint-aware M1).
                 val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -61,7 +71,8 @@ class MainActivity : ComponentActivity() {
             }
         // Real, resumable downloader that survives app death (WorkManager + the pure-core
         // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
-        val downloader: ModelDownloader = WorkManagerModelDownloader(applicationContext)
+        val downloader: ModelDownloader =
+            if (mockUi) MockModelDownloader() else WorkManagerModelDownloader(applicationContext)
         // On-device conversation history: transcripts + index under filesDir, never a server.
         val conversations: ConversationPersistence = FileConversationPersistence(File(filesDir, "conversations"))
 

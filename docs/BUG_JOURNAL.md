@@ -637,6 +637,14 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-05 (`android/…/ui/Theme.kt` QuenderinTheme, `res/values{,-night}/themes.xml`) — in dark mode the Welcome and
+  Consent titles were invisible (light text on a light ground). Cause: those screens never painted a background, so the
+  Activity's fixed LIGHT window theme showed under Material's DARK scheme text. Fix: one root `Surface(color =
+  colorScheme.background)` in `QuenderinTheme` + day/night `windowBackground` twins. Lesson: paint the theme ground at
+  the root, never per screen — and QA every screen in BOTH modes (`adb shell cmd uimode night yes|no`).
+- 2026-09-05 (`android/…/MainActivity.kt` `quenderin.mock_ui`, `scripts/android_emu_run.sh`) — Android twin of the iOS
+  mock-UI harness: debug-only intent extra swaps engine + downloader for the CoreVerify mocks so every screen is walkable
+  on the `qa_pixel` emulator with no download. Lesson: same as iOS — tests' seams must be reachable from a running build.
 - 2026-09-05 (`apple/…/DemoMockReplies.swift` `lastUserTurn`, Kotlin twin) — in demo mode "Hello" was answered with a canned
   email draft ("Subject: Need to reschedule"). Cause: the mock engine passes the WHOLE flat transcript, whose system prompt
   says "…send email…", so `contains("email")` matched every prompt that missed an earlier branch. Fix: match only the last

@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- A bare no-action-bar host theme; all real theming is done by Compose
      (ui/Theme.kt, Material 3). Uses the framework Material theme so no extra
-     XML theme dependency is needed. -->
+     XML theme dependency is needed. The window background matches Compose's
+     LightScheme.background so the first frame (before Compose paints) is the
+     same cream, not a white flash; values-night carries the dark twin. -->
 <resources>
-    <style name="Theme.Quenderin" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Quenderin" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFF5F4EF</item>
+    </style>
 </resources>

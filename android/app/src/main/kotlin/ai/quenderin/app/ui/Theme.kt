@@ -5,6 +5,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.Surface
 import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -179,9 +182,14 @@ fun QuenderinTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalQuenderinColors provides if (dark) DarkQuenderinColors else LightQuenderinColors,
     ) {
-        MaterialTheme(
-            colorScheme = if (dark) DarkScheme else LightScheme,
-            content = content,
-        )
+        MaterialTheme(colorScheme = if (dark) DarkScheme else LightScheme) {
+            // ONE ground for every screen. Screens that never painted their own background (Welcome,
+            // Consent) showed the Activity's window background — a fixed LIGHT theme — under the DARK
+            // scheme's light text: "Meet Quenderin" and every section title vanished in dark mode
+            // (2026-09-05 emulator tap-through). Painting the theme background here fixes all of them.
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                content()
+            }
+        }
     }
 }
