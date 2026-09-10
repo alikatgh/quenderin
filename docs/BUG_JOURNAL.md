@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **The llama.cpp API moves under you — CI and the app compile against DIFFERENT refs, so a signature change breaks one silently.**
+  `llama_sampler_init_penalties` gained `n_vocab` as its first arg (4→5) after the vendored xcframework pin; `llama_jni.cpp`
+  still compiled against the pin but NOT against `ggml-org/llama.cpp` HEAD — which is exactly what CI's JNI syntax-check and
+  `android/verify-llama-link.sh` clone, so the on-device Android build was broken too. Detect the shape from the header
+  (`scripts/check-jni-syntax.sh`) and `#ifdef` the call; never assume HEAD ≡ pin. (2026-09-10)
 - **A twin fix is not done until the OTHER twin has it — grep the sibling for the same primitive.** iOS chunked
   its prefill by `n_batch` and clamped the prompt middle-out (0.2.0(4), App Review crash); the Android shared loop
   (`llama_generate.h`) kept ONE `llama_decode` for the whole prompt with `n_batch = min(512, n_ctx)` — llama.cpp
@@ -637,6 +642,17 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-10 (`android/jni/llama_jni.cpp` `init_penalties`, `scripts/check-jni-syntax.sh`) — the JNI bridge stopped compiling
+  against llama.cpp HEAD: `llama_sampler_init_penalties` gained `n_vocab` first (4→5 args). Cause: the vendored pin predates
+  the change while CI + `verify-llama-link.sh` build against HEAD, so CI AND the on-device Android build were broken. Fix:
+  header-detected `QUENDERIN_LLAMA_PENALTIES_VOCAB` + an `#ifdef` shim, verified compiling against BOTH refs (NDK clang,
+  aarch64-linux-android26). Lesson: an upstream signature change is invisible until you compile against both refs.
+- 2026-09-10 (`android/…/ui/OnboardingScreen.kt` `AppRoot`, twin of `apple/…/OnboardingView`) — during onboarding the model
+  picker DISABLED the recommended row: passing the recommendation as `currentModelId` tagged it "Current". iOS passes none,
+  so only Android blocked the user from picking the very model it had just recommended. Fix: pass `currentModelId = ""`;
+  the recommended row keeps its own tag. Lesson: "current" means installed, not recommended — don't conflate them.
+- 2026-09-10 (`android/…/ui/ModelPickerSheet.kt` row name) — long model names ("Qwen3.6 35…") were ellipsized to one line
+  while the chip + badge squeezed them; the name now wraps to two lines (twin of the iOS row). Cosmetic; layout, not a test.
 - 2026-09-05 (`android/…/ui/Theme.kt` QuenderinTheme, `res/values{,-night}/themes.xml`) — in dark mode the Welcome and
   Consent titles were invisible (light text on a light ground). Cause: those screens never painted a background, so the
   Activity's fixed LIGHT window theme showed under Material's DARK scheme text. Fix: one root `Surface(color =

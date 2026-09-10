@@ -57,6 +57,20 @@ void resolve_cpu_threadpool_api() {
     LOGI("affinity: threadpool API resolved via CPU backend registry");
 }
 
+// llama.cpp added n_vocab as the FIRST arg of llama_sampler_init_penalties (5 args) after the
+// vendored pin (4 args). CI + android/verify-llama-link.sh build against ggml-org HEAD, the app
+// against the pin — so this keeps BOTH compiling (detected in scripts/check-jni-syntax.sh, which
+// defines QUENDERIN_LLAMA_PENALTIES_VOCAB for the 5-arg form).
+static inline llama_sampler* init_penalties(const llama_vocab* vocab, int last_n, float repeat,
+                                            float freq, float present) {
+#ifdef QUENDERIN_LLAMA_PENALTIES_VOCAB
+    return llama_sampler_init_penalties(llama_vocab_n_tokens(vocab), last_n, repeat, freq, present);
+#else
+    (void) vocab;
+    return llama_sampler_init_penalties(last_n, repeat, freq, present);
+#endif
+}
+
 // Route llama.cpp/ggml's own logs (model metadata, tensor loading, decode diagnostics) into Android
 // logcat under LOG_TAG — otherwise they go to stderr and are INVISIBLE on-device, which is exactly
 // what made an on-device "chat won't answer" impossible to diagnose. Registered once at backend init.
@@ -472,7 +486,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     constexpr float kRepeatPenalty = 1.1f;
     constexpr int   kRepeatLastN   = 256;
     constexpr int   kChatTopK      = 40;   // sampling-profiles.json chat.top_k
-    llama_sampler_chain_add(sampler, llama_sampler_init_penalties(kRepeatLastN, kRepeatPenalty, 0.0f, 0.0f));
+    llama_sampler_chain_add(sampler, init_penalties(llama_model_get_vocab(model), kRepeatLastN, kRepeatPenalty, 0.0f, 0.0f));
     if (temperature > 0.0f) {
         if (kChatTopK > 0) llama_sampler_chain_add(sampler, llama_sampler_init_top_k(kChatTopK));
         llama_sampler_chain_add(sampler, llama_sampler_init_top_p(top_p, 1));
@@ -545,7 +559,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
         llama_sampler* gs = llama_sampler_init_grammar(vocab, g, "root");   // null if the GBNF won't parse
         if (gs) llama_sampler_chain_add(smpl, gs);
     }
-    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(repeat_last_n, repeat_penalty, 0.0f, 0.0f));
+    llama_sampler_chain_add(smpl, init_penalties(vocab, repeat_last_n, repeat_penalty, 0.0f, 0.0f));
     if (top_k > 0) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(top_k));
     llama_sampler_chain_add(smpl, llama_sampler_init_top_p(top_p, 1));
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(temperature));

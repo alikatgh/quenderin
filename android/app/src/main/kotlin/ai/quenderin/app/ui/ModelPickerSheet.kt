@@ -163,7 +163,9 @@ private fun ModelPickerRow(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
+                        // The NAME wins the row: wrap to a second line before the chip and badge
+                        // squeeze it into "Qwen3.6 35…" (twin of the iOS row, 2026-09-05).
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )

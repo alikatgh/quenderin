@@ -197,7 +197,10 @@ fun AppRoot(
             if (showPicker) {
                 ModalBottomSheet(onDismissRequest = { showPicker = false }) {
                     ModelPickerSheet(
-                        currentModelId = (current as? OnboardingPhase.Recommended)?.model?.id ?: "",
+                        // Nothing is installed yet during onboarding: passing the recommendation as
+                        // "current" tagged it Current and DISABLED its row (iOS passes none). The
+                        // recommended row keeps its own tag; the user may still pick it here.
+                        currentModelId = "",
                         onSelect = { picked ->
                             showPicker = false
                             scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) }

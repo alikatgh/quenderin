@@ -25,6 +25,15 @@ else
   echo "→ llama.cpp legacy use_mmap/use_mlock API"
 fi
 
+# llama_sampler_init_penalties gained n_vocab as its FIRST arg (5 args) after the vendored pin
+# (4 args). Extract the declaration up to its closing paren and look for n_vocab.
+if awk '/llama_sampler_init_penalties\(/{f=1} f{print} f&&/\)/{exit}' "$LLAMA_INCLUDE/llama.h" 2>/dev/null | grep -q 'n_vocab'; then
+  EXTRA_DEFS+=(-DQUENDERIN_LLAMA_PENALTIES_VOCAB=1)
+  echo "→ llama.cpp penalties(n_vocab, ...) API detected"
+else
+  echo "→ llama.cpp legacy penalties(...) API"
+fi
+
 echo "→ syntax-checking android/jni/llama_jni.cpp (target=aarch64-linux-android26)"
 # "${arr[@]+"${arr[@]}"}" is empty-safe under `set -u` when EXTRA_DEFS has no elements.
 "$CLANG" --target=aarch64-linux-android26 -fsyntax-only -std=c++17 -Wall \
