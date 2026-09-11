@@ -19,7 +19,15 @@ class JvmHttpRangeClient(
     private val readTimeoutMs: Int = 60_000,
 ) : HttpRangeClient {
 
-    override fun open(url: String, offsetBytes: Long): RangeResponse {
+    override fun open(url: String, offsetBytes: Long): RangeResponse =
+        openInternal(url, if (offsetBytes > 0) "bytes=$offsetBytes-" else null, expectedStart = offsetBytes)
+
+    override val supportsBoundedRanges: Boolean get() = true
+
+    override fun openRange(url: String, startBytes: Long, endBytes: Long): RangeResponse =
+        openInternal(url, "bytes=$startBytes-$endBytes", expectedStart = startBytes)
+
+    private fun openInternal(url: String, rangeHeader: String?, expectedStart: Long): RangeResponse {
         // Enforce the TLS contract ModelIntegrity documents: a multi-GB model must only ever be
         // fetched over HTTPS. Reject http:// / file:// / anything else BEFORE opening a connection,
         // so a stray catalog/resume URL can't stream weights in cleartext over an attacker-modifiable
@@ -34,7 +42,7 @@ class JvmHttpRangeClient(
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
             requestMethod = "GET"
-            if (offsetBytes > 0) setRequestProperty("Range", "bytes=$offsetBytes-")
+            if (rangeHeader != null) setRequestProperty("Range", rangeHeader)
         }
 
         val code = conn.responseCode
@@ -48,8 +56,8 @@ class JvmHttpRangeClient(
         // start matches what we asked for before appending onto the existing .part file, or the
         // appended bytes end up misaligned (same class of bug already fixed on the TS/desktop twin,
         // docs/BUG_JOURNAL.md H9).
-        val resumed = code == HttpURLConnection.HTTP_PARTIAL && contentRangeStartMatches(conn, offsetBytes)
-        val total = totalBytes(conn, resumed, offsetBytes)
+        val resumed = code == HttpURLConnection.HTTP_PARTIAL && contentRangeStartMatches(conn, expectedStart)
+        val total = totalBytes(conn, resumed, expectedStart)
         val stream = conn.inputStream
         val body = sequence {
             val buffer = ByteArray(chunkSize)
@@ -105,6 +113,23 @@ class JvmFileSink : FileSink {
         file.parentFile?.mkdirs()
         RandomAccessFile(file, "rw").use { raf ->
             raf.seek(raf.length())
+            raf.write(bytes)
+        }
+    }
+
+    override val supportsPositionedWrites: Boolean get() = true
+
+    /** Grow the file to exactly [size] (zero-filled) so offset writes land in-bounds. */
+    override fun preallocate(path: String, size: Long) {
+        val file = File(path)
+        file.parentFile?.mkdirs()
+        RandomAccessFile(file, "rw").use { it.setLength(size) }
+    }
+
+    /** Positioned write — the parallel path writes disjoint ranges from several threads. */
+    override fun writeAt(path: String, offset: Long, bytes: ByteArray) {
+        RandomAccessFile(File(path), "rw").use { raf ->
+            raf.seek(offset)
             raf.write(bytes)
         }
     }

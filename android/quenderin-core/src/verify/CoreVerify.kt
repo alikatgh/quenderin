@@ -38,6 +38,17 @@ private class FakeFileSink : FileSink {
     override fun finalize(tempPath: String, finalPath: String) {
         files[finalPath] = files.remove(tempPath) ?: ByteArray(0)
     }
+
+    // Positioned writes (the parallel path): a pre-sized buffer written at disjoint offsets.
+    override val supportsPositionedWrites: Boolean get() = true
+    override fun preallocate(path: String, size: Long) { files[path] = ByteArray(size.toInt()) }
+    override fun writeAt(path: String, offset: Long, bytes: ByteArray) {
+        val existing = files[path] ?: ByteArray(0)
+        val needed = (offset + bytes.size).toInt()
+        val buf = if (existing.size >= needed) existing else existing.copyOf(needed)
+        bytes.copyInto(buf, offset.toInt())
+        files[path] = buf
+    }
 }
 
 /** In-memory range-aware [HttpRangeClient] for the download-engine checks. */
@@ -45,6 +56,7 @@ private class FakeHttpRangeClient(
     private val full: ByteArray,
     private val supportsResume: Boolean,
     private val chunk: Int = 8,
+    private val boundedRanges: Boolean = false,
 ) : HttpRangeClient {
     var lastOffset: Long = -1
     override fun open(url: String, offsetBytes: Long): RangeResponse {
@@ -53,6 +65,15 @@ private class FakeHttpRangeClient(
         val slice = full.copyOfRange(start, full.size)
         val body = slice.toList().chunked(chunk).map { it.toByteArray() }.asSequence()
         return RangeResponse(totalBytes = full.size.toLong(), resumed = supportsResume && offsetBytes > 0, body = body)
+    }
+
+    override val supportsBoundedRanges: Boolean get() = boundedRanges
+    override fun openRange(url: String, startBytes: Long, endBytes: Long): RangeResponse {
+        val start = startBytes.toInt().coerceIn(0, full.size)
+        val end = endBytes.toInt().coerceIn(0, full.size - 1)
+        val slice = full.copyOfRange(start, end + 1)
+        val body = slice.toList().chunked(chunk).map { it.toByteArray() }.asSequence()
+        return RangeResponse(totalBytes = full.size.toLong(), resumed = true, body = body)
     }
 }
 
@@ -1381,6 +1402,33 @@ fun main() {
                 .download(sampleModel.copy(sha256 = "f".repeat(64))) {}
         }
         result.exceptionOrNull() is DownloadException && sink.files[partFile] == null && sink.files[finalFile] == null
+    })
+    // --- Parallel download path (N ranged connections instead of one stream) ---
+    check("segment plan covers the file exactly with no gaps or overlaps", run {
+        val plan = DownloadSegments.plan(1000, 7)
+        plan.segments.first().start == 0L && plan.segments.last().end == 999L &&
+            plan.segments.zipWithNext().all { (a, b) -> a.end + 1 == b.start } &&
+            plan.segments.sumOf { it.length } == 1000L
+    })
+    check("connection count scales with size, caps, and backs off on cellular", run {
+        DownloadSegments.connectionCount(4_000_000_000, isCellular = false, max = 6) == 6 &&
+            DownloadSegments.connectionCount(4_000_000_000, isCellular = true, max = 6) == 3 &&
+            DownloadSegments.connectionCount(5_000_000, isCellular = false, max = 6) == 1 &&
+            DownloadSegments.connectionCount(70_000_000, isCellular = false, max = 6) == 3
+    })
+    check("a fresh download on a bounded-range client takes the parallel path and assembles byte-exact", run {
+        val big = ModelIntegrity.GGUF_MAGIC + ByteArray(33_000_000) { (it % 7).toByte() }   // >32MB → >1 segment
+        val model = sampleModel.copy(sha256 = ModelIntegrity.sha256Hex(big))
+        val sink = FakeFileSink()
+        val http = FakeHttpRangeClient(big, supportsResume = true, chunk = 1 shl 16, boundedRanges = true)
+        val path = ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(model) {}
+        path == "/models/${model.filename}" && sink.files[path]?.toList() == big.toList()
+    })
+    check("a partial on disk still resumes single-stream even when the client supports ranges", run {
+        val sink = FakeFileSink().apply { files[partFile] = payload.copyOfRange(0, 40) }
+        val http = FakeHttpRangeClient(payload, supportsResume = true, boundedRanges = true)
+        ModelDownloadEngine(http, sink, DownloadStore(), "/models").download(sampleModel) {}
+        http.lastOffset == 40L && sink.files[finalFile]?.toList() == payload.toList()
     })
     // A truncated transfer with NO Content-Length (total=-1) slips past the byte-count completeness
     // check, but the mandatory sha256 catches it (audit MEDIUM + the untested-boundary LOW).

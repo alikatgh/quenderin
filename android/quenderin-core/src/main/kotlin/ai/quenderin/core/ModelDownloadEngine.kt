@@ -1,5 +1,10 @@
 package ai.quenderin.core
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+
 /**
  * The resumable-download *brain*, in pure Kotlin so it unit-tests on the JVM with no
  * Android, no Gradle, and no network. It is the portable twin of the bookkeeping side
@@ -25,6 +30,20 @@ class RangeResponse(
 /** Opens an HTTP GET that asks to resume from [offsetBytes] (an HTTP `Range:` request). */
 interface HttpRangeClient {
     fun open(url: String, offsetBytes: Long): RangeResponse
+
+    /**
+     * True when [openRange] returns a genuinely bounded segment (a 206 whose Content-Range starts
+     * at `startBytes`), not the rest of the file. Default false so an [open]-only client keeps the
+     * single-stream behavior — the engine parallelizes only when this is true.
+     */
+    val supportsBoundedRanges: Boolean get() = false
+
+    /**
+     * Bounded `Range: bytes=startBytes-endBytes` — one segment of a parallel download. Default
+     * falls back to the unbounded resume form so existing clients still compile; the engine then
+     * never takes the parallel path (see [supportsBoundedRanges]).
+     */
+    fun openRange(url: String, startBytes: Long, endBytes: Long): RangeResponse = open(url, startBytes)
 }
 
 /** Append-only file seam — lets the engine resume a half-written file and finalize atomically. */
@@ -41,6 +60,20 @@ interface FileSink {
     fun sha256(path: String): String
     /** Atomically move the finished temp file into its final location. */
     fun finalize(tempPath: String, finalPath: String)
+
+    /**
+     * True when [preallocate] + [writeAt] are implemented — the parallel path needs both (it
+     * writes disjoint byte ranges into one pre-sized file concurrently). Default false.
+     */
+    val supportsPositionedWrites: Boolean get() = false
+
+    /** Grow [path] to exactly [size] bytes (zero-filled) so positioned writes land correctly. */
+    fun preallocate(path: String, size: Long) {}
+
+    /** Write [bytes] at [offset]; the parallel path calls this from several threads on disjoint ranges. */
+    fun writeAt(path: String, offset: Long, bytes: ByteArray) {
+        throw UnsupportedOperationException("positioned writes not supported by this FileSink")
+    }
 }
 
 /** Thrown when a download cannot complete; carries a clear, surfaceable reason. */
@@ -68,6 +101,8 @@ class ModelDownloadEngine(
      *  transfer (the WorkManager worker passes `{ isStopped }`). Default never-cancel keeps the mock
      *  and onboarding callers unchanged. (Audit: chunk loop not cancellable.) */
     private val isCancelled: () -> Boolean = { false },
+    /** True on a metered connection — the parallel path opens fewer connections (money + battery). */
+    private val isCellular: () -> Boolean = { false },
 ) : ModelDownloader {
 
     /** (path, size) of the last file that passed the full integrity gate, so [needsFetch] followed by
@@ -130,6 +165,18 @@ class ModelDownloadEngine(
         )
 
         try {
+            // Parallel path: only for a FRESH download on a client + sink that support bounded ranges
+            // and positioned writes. A partial already on disk keeps the single-stream resume below.
+            if (existing == 0L && http.supportsBoundedRanges && sink.supportsPositionedWrites) {
+                val probe = http.openRange(model.url, 0, 0)   // 1-byte probe, just for the total size
+                probe.body.forEach { /* drain to close the connection */ }
+                if (probe.resumed && probe.totalBytes > 0) {
+                    val downloaded = downloadParallel(model, tempPath, probe.totalBytes, onProgress)
+                    return verifyAndFinalize(model, tempPath, finalPath, downloaded, probe.totalBytes, onProgress)
+                }
+                // total unknown → fall through to the single-stream path below
+            }
+
             val response = http.open(model.url, existing)
 
             // Server couldn't resume (200 not 206) but we had a partial → start over.
@@ -162,44 +209,7 @@ class ModelDownloadEngine(
                 }
             }
 
-            if (total > 0 && downloaded < total) {
-                throw DownloadException(
-                    "incomplete download for ${model.filename}: got $downloaded of $total bytes"
-                )
-            }
-            // When the server sends NO Content-Length (total <= 0) completeness can't be byte-verified —
-            // the mandatory sha256 gate below IS the completeness guarantee (a truncated body won't match
-            // the pinned hash). Every shipped model pins a sha256 (enforced by check_catalog_parity.py),
-            // so a no-Content-Length transfer is never left to the magic-only check. (Audit MEDIUM.)
-
-            // Integrity gate (C3): verify the assembled bytes BEFORE promoting .part → final,
-            // so a MITM / poisoned-mirror / truncated file never becomes the active model. A
-            // failed check discards the partial (it must not be resumed) and fails the download.
-            if (!ModelIntegrity.hasGGUFMagic(sink.head(tempPath, 4))) {
-                sink.truncate(tempPath)
-                throw DownloadException("downloaded file for ${model.filename} is not a valid GGUF (bad magic header)")
-            }
-            val expectedSha = model.sha256
-            if (expectedSha != null) {
-                val actualSha = sink.sha256(tempPath)
-                if (!actualSha.equals(expectedSha, ignoreCase = true)) {
-                    sink.truncate(tempPath)
-                    throw DownloadException(
-                        "checksum mismatch for ${model.filename}: expected $expectedSha, got $actualSha"
-                    )
-                }
-            }
-
-            sink.finalize(tempPath, finalPath)
-            // The bytes at finalPath just passed the gate above — remember so the next
-            // verifiedExistingPath (e.g. the load-failure restore() path) skips the re-hash.
-            lastVerified = finalPath to downloaded
-            store.updateProgress(model.id, bytesDownloaded = downloaded, totalBytes = if (total > 0) total else downloaded)
-            onProgress(1.0)
-            // Mirror iOS: a finished download leaves the resume table (it's no longer in-flight).
-            store.setState(model.id, PersistedDownload.State.COMPLETED)
-            store.remove(model.id)
-            return finalPath
+            return verifyAndFinalize(model, tempPath, finalPath, downloaded, total, onProgress)
         } catch (t: Throwable) {
             // A cooperative cancel is not a failure: keep the .part and leave the row PAUSED so the
             // next launch resumes from here. Don't truncate the final file or mark FAILED.
@@ -215,5 +225,98 @@ class ModelDownloadEngine(
             if (t is DownloadException) throw t
             throw DownloadException("download failed for ${model.filename}: ${t.message}")
         }
+    }
+
+    /**
+     * N concurrent bounded-range GETs into disjoint regions of a pre-sized `.part` file. Uses plain
+     * `java.util.concurrent` (the core is dependency-free — no coroutines). Each segment owns a
+     * private [Range] so the writers never touch the same bytes; the C3 gate runs once, after.
+     */
+    private fun downloadParallel(model: ModelEntry, tempPath: String, total: Long,
+                                 onProgress: (Double) -> Unit): Long {
+        val count = DownloadSegments.connectionCount(total, isCellular = isCellular())
+        val plan = DownloadSegments.plan(total, count)
+        sink.preallocate(tempPath, total)
+
+        val downloaded = AtomicLong(0)
+        val firstError = AtomicReference<Throwable?>(null)
+        val latch = CountDownLatch(plan.segments.size)
+        val executor = Executors.newFixedThreadPool(plan.segments.size)
+        val progressLock = Any()
+        var lastReported = 0.0
+
+        for (segment in plan.segments) {
+            executor.execute {
+                try {
+                    var offset = segment.start
+                    val response = http.openRange(model.url, segment.start, segment.end)
+                    for (chunk in response.body) {
+                        if (isCancelled()) {
+                            throw DownloadCancelledException("download cancelled for ${model.filename}")
+                        }
+                        if (chunk.isEmpty()) continue
+                        sink.writeAt(tempPath, offset, chunk)
+                        offset += chunk.size
+                        val done = downloaded.addAndGet(chunk.size.toLong())
+                        val fraction = (done.toDouble() / total).coerceIn(0.0, 1.0)
+                        synchronized(progressLock) {
+                            if (fraction - lastReported >= progressStep) {
+                                lastReported = fraction
+                                onProgress(fraction)
+                                store.updateProgress(model.id, bytesDownloaded = done, totalBytes = total)
+                            }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    firstError.compareAndSet(null, t)
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await()
+        executor.shutdown()
+        firstError.get()?.let { throw it }
+        return downloaded.get()
+    }
+
+    /**
+     * The C3 integrity gate + atomic promote, shared by the single-stream and parallel paths.
+     * Verifies the assembled bytes BEFORE promoting `.part` → final, so a MITM / poisoned mirror /
+     * truncated file never becomes the active model. When the server sent no Content-Length
+     * (`total <= 0`) the mandatory sha256 gate IS the completeness guarantee.
+     */
+    private fun verifyAndFinalize(model: ModelEntry, tempPath: String, finalPath: String,
+                                  downloaded: Long, total: Long, onProgress: (Double) -> Unit): String {
+        if (total > 0 && downloaded < total) {
+            throw DownloadException(
+                "incomplete download for ${model.filename}: got $downloaded of $total bytes"
+            )
+        }
+        if (!ModelIntegrity.hasGGUFMagic(sink.head(tempPath, 4))) {
+            sink.truncate(tempPath)
+            throw DownloadException("downloaded file for ${model.filename} is not a valid GGUF (bad magic header)")
+        }
+        val expectedSha = model.sha256
+        if (expectedSha != null) {
+            val actualSha = sink.sha256(tempPath)
+            if (!actualSha.equals(expectedSha, ignoreCase = true)) {
+                sink.truncate(tempPath)
+                throw DownloadException(
+                    "checksum mismatch for ${model.filename}: expected $expectedSha, got $actualSha"
+                )
+            }
+        }
+
+        sink.finalize(tempPath, finalPath)
+        // The bytes at finalPath just passed the gate above — remember so the next
+        // verifiedExistingPath (e.g. the load-failure restore() path) skips the re-hash.
+        lastVerified = finalPath to downloaded
+        store.updateProgress(model.id, bytesDownloaded = downloaded, totalBytes = if (total > 0) total else downloaded)
+        onProgress(1.0)
+        // Mirror iOS: a finished download leaves the resume table (it's no longer in-flight).
+        store.setState(model.id, PersistedDownload.State.COMPLETED)
+        store.remove(model.id)
+        return finalPath
     }
 }
