@@ -95,6 +95,32 @@ final class MoEShapeTests: XCTestCase {
                        "missing/stat-failed size (0) must not disable Metal")
     }
 
+    func testPlanIsAllOrNothingByDefault() {
+        // OFF (default) reproduces the historical behavior exactly: fits → all on Metal;
+        // a paged MoE → CPU-only.
+        XCTAssertEqual(GpuOffloadPolicy.plan(fileSizeGB: 9.0, deviceBudgetGB: 11.2, isMoE: false),
+                       GpuOffloadPolicy.OffloadPlan(nGpuLayers: 999, experts: .gpu))
+        XCTAssertEqual(GpuOffloadPolicy.plan(fileSizeGB: 13.2, deviceBudgetGB: 11.2, isMoE: true),
+                       GpuOffloadPolicy.OffloadPlan(nGpuLayers: 0, experts: .cpu))
+    }
+
+    func testExpertOffloadKeepsTheSpineOnMetalForAPagedMoE() {
+        // ON: a MoE over budget keeps its dense spine on Metal; only the routed experts go to CPU.
+        XCTAssertEqual(GpuOffloadPolicy.plan(fileSizeGB: 13.2, deviceBudgetGB: 11.2, isMoE: true,
+                                             expertOffloadEnabled: true),
+                       GpuOffloadPolicy.OffloadPlan(nGpuLayers: 999, experts: .cpu))
+        // A dense model over budget is unaffected — there are no experts to split out.
+        XCTAssertEqual(GpuOffloadPolicy.plan(fileSizeGB: 13.2, deviceBudgetGB: 11.2, isMoE: false,
+                                             expertOffloadEnabled: true),
+                       GpuOffloadPolicy.OffloadPlan(nGpuLayers: 0, experts: .cpu))
+    }
+
+    func testExpertPatternIsLlamaCppCpuMoe() {
+        // Twin of llama.cpp common.h LLM_FFN_EXPS_REGEX — the engine and `--cpu-moe` must agree.
+        XCTAssertEqual(GpuOffloadPolicy.moeExpertTensorPattern,
+                       "\\.ffn_(up|down|gate|gate_up)_(ch|)exps")
+    }
+
     // MARK: curated catalog entry
 
     func testCuratedMoEEntryFitness() {

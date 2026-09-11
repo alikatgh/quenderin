@@ -244,8 +244,33 @@ public actor LlamaEngine: InferenceEngine {
         // set and thrash. Real file size, not the catalog estimate (GpuOffloadPolicy docs).
         let fileSizeBytes = ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.int64Value ?? 0
         let fileSizeGB = Double(fileSizeBytes) / 1_000_000_000.0
-        modelParams.n_gpu_layers = GpuOffloadPolicy.nGpuLayers(
-            fileSizeGB: fileSizeGB, deviceBudgetGB: deviceBudgetGB)
+        // Offload plan. The expert-offload experiment (env QUENDERIN_MOE_EXPERT_CPU=1) keeps a
+        // paged MoE's dense spine on Metal and streams only the routed experts from CPU/mmap
+        // (llama.cpp `--cpu-moe`); OFF reproduces the historical all-or-nothing behavior.
+        let isMoE = MoEShape.detect(entry.filename) != nil
+        let expertOffloadEnabled = ProcessInfo.processInfo.environment["QUENDERIN_MOE_EXPERT_CPU"] == "1"
+        let plan = GpuOffloadPolicy.plan(
+            fileSizeGB: fileSizeGB, deviceBudgetGB: deviceBudgetGB,
+            isMoE: isMoE, expertOffloadEnabled: expertOffloadEnabled)
+        modelParams.n_gpu_layers = plan.nGpuLayers
+        // Expert buffer-type override — a NULL-terminated `llama_model_tensor_buft_override`
+        // array (the C API behind `--cpu-moe`). The pattern string and array must outlive the
+        // load call, so allocate here and release on exit (also on the throw path below).
+        var expertPatternPtr: UnsafeMutablePointer<CChar>?
+        var expertOverrides: UnsafeMutableBufferPointer<llama_model_tensor_buft_override>?
+        if isMoE && plan.experts == .cpu {
+            expertPatternPtr = strdup(GpuOffloadPolicy.moeExpertTensorPattern)
+            let buf = UnsafeMutableBufferPointer<llama_model_tensor_buft_override>.allocate(capacity: 2)
+            buf[0] = llama_model_tensor_buft_override(
+                pattern: UnsafePointer(expertPatternPtr), buft: ggml_backend_cpu_buffer_type())
+            buf[1] = llama_model_tensor_buft_override(pattern: nil, buft: nil)   // terminator
+            expertOverrides = buf
+            modelParams.tensor_buft_overrides = UnsafePointer(buf.baseAddress)
+        }
+        defer {
+            expertOverrides?.deallocate()
+            if let p = expertPatternPtr { free(p) }
+        }
         // Jetsam guard for this project's target class (memory-tight phones under background
         // pressure): mmap keeps the weights pageable (fast cold start, reclaimable by the OS), and
         // mlock is explicitly OFF — wiring multi-GB of weights resident is exactly what gets the app

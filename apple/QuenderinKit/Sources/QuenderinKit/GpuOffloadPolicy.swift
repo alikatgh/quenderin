@@ -33,4 +33,49 @@ public enum GpuOffloadPolicy {
         return fileSizeGB <= deviceBudgetGB ? allLayers : cpuOnly
         #endif
     }
+
+    /// Where a model's routed MoE experts live. `.cpu` streams them from the OS page cache
+    /// (mmap) while the dense spine stays wherever `nGpuLayers` puts it; `.gpu` keeps them
+    /// with the rest of the weights.
+    public enum ExpertPlacement: Sendable, Equatable {
+        case gpu
+        case cpu
+    }
+
+    /// One model's full offload decision.
+    public struct OffloadPlan: Sendable, Equatable {
+        public let nGpuLayers: Int32
+        public let experts: ExpertPlacement
+        public init(nGpuLayers: Int32, experts: ExpertPlacement) {
+            self.nGpuLayers = nGpuLayers
+            self.experts = experts
+        }
+    }
+
+    /// The expert-tensor regex llama.cpp's own `--cpu-moe` uses (`common.h` `LLM_FFN_EXPS_REGEX`).
+    /// Single source of truth so the engine and its tests agree.
+    public static let moeExpertTensorPattern = "\\.ffn_(up|down|gate|gate_up)_(ch|)exps"
+
+    /// The full offload decision, including expert placement.
+    ///
+    /// `expertOffloadEnabled` is the experiment switch (edge0's portable half — llama.cpp's
+    /// `--cpu-moe` semantics). OFF (default) reproduces the historical all-or-nothing behavior:
+    /// a model that doesn't fit the budget runs CPU-only. ON keeps a paged MoE's small dense
+    /// spine on Metal and streams ONLY the routed experts from CPU/mmap, so Metal never has to
+    /// wire the whole file into its working set. A dense model has nothing to split, so it is
+    /// unaffected either way.
+    public static func plan(fileSizeGB: Double, deviceBudgetGB: Double, isMoE: Bool,
+                            expertOffloadEnabled: Bool = false) -> OffloadPlan {
+        #if targetEnvironment(simulator)
+        return OffloadPlan(nGpuLayers: cpuOnly, experts: .cpu)
+        #else
+        if fileSizeGB <= deviceBudgetGB {
+            return OffloadPlan(nGpuLayers: allLayers, experts: .gpu)
+        }
+        if isMoE && expertOffloadEnabled {
+            return OffloadPlan(nGpuLayers: allLayers, experts: .cpu)
+        }
+        return OffloadPlan(nGpuLayers: cpuOnly, experts: .cpu)
+        #endif
+    }
 }
