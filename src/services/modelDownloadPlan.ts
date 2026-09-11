@@ -39,6 +39,54 @@ export function parseContentRangeStart(header: string | null | undefined): numbe
     return m ? Number(m[1]) : null;
 }
 
+/** Parse the TOTAL size out of `Content-Range: bytes <start>-<end>/<total>` (null for `*`/absent). */
+export function parseContentRangeTotal(header: string | null | undefined): number | null {
+    if (!header) return null;
+    const m = header.match(/\/\s*(\d+)\s*$/);
+    return m ? Number(m[1]) : null;
+}
+
+export interface DownloadSegment {
+    index: number;
+    /** Inclusive first byte. */
+    start: number;
+    /** Inclusive last byte. */
+    end: number;
+}
+
+/**
+ * Split `[0, total)` into `segmentCount` disjoint, contiguous segments (the remainder spread over
+ * the first segments). The parallel downloader fetches one segment per connection — a single TCP
+ * stream is capped by `RTT x window`, so N range requests use the pipe against a distant CDN.
+ * Pure, so the arithmetic is unit-tested (a wrong offset corrupts the GGUF the same way H9 does).
+ */
+export function planDownloadSegments(totalBytes: number, segmentCount: number): DownloadSegment[] {
+    if (totalBytes <= 0) return [];
+    const n = Math.max(1, Math.min(segmentCount, totalBytes));
+    const base = Math.floor(totalBytes / n);
+    const remainder = totalBytes % n;
+    const segments: DownloadSegment[] = [];
+    let start = 0;
+    for (let i = 0; i < n; i++) {
+        const len = base + (i < remainder ? 1 : 0);
+        segments.push({ index: i, start, end: start + len - 1 });
+        start += len;
+    }
+    return segments;
+}
+
+/**
+ * How many parallel connections to open — ~1 per 32 MB so a small model isn't fanned out
+ * pointlessly, capped at `max`, and lower on cellular (money + battery).
+ */
+export function downloadConnectionCount(totalBytes: number, isCellular: boolean, max = 6): number {
+    if (totalBytes <= 0) return 1;
+    const perSegment = 32 * (1024 ** 2);
+    const bySize = Math.ceil(totalBytes / perSegment);
+    const ceiling = isCellular ? Math.min(3, max) : max;
+    return Math.max(1, Math.min(ceiling, bySize));
+}
+
 export function planDownloadWrite(input: {
     /** Size of the partial file already on disk (0 if none / fresh download). */
     partialBytes: number;

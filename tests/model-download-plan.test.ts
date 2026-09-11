@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { planDownloadWrite, parseContentRangeStart } from '../src/services/modelDownloadPlan.js';
+import {
+    planDownloadWrite,
+    parseContentRangeStart,
+    parseContentRangeTotal,
+    planDownloadSegments,
+    downloadConnectionCount,
+} from '../src/services/modelDownloadPlan.js';
 
 /**
  * The H9 byte-accounting logic governs bytes that reach node-llama-cpp's GGUF parser (RCE CVEs),
@@ -88,5 +94,46 @@ describe('planDownloadWrite', () => {
         expect(p.action).toBe('resume');
         expect(p.writeOffset).toBe(900);
         expect(p.totalBytes).toBe(0); // unknown → progress guard skips instead of received/900 > 100%
+    });
+});
+
+describe('parseContentRangeTotal', () => {
+    it('reads the total after the slash', () => {
+        expect(parseContentRangeTotal('bytes 0-0/13211155424')).toBe(13211155424);
+        expect(parseContentRangeTotal('bytes 500-999/2000')).toBe(2000);
+    });
+    it('returns null for absent or wildcard totals', () => {
+        expect(parseContentRangeTotal(null)).toBeNull();
+        expect(parseContentRangeTotal('bytes 0-0/*')).toBeNull();
+        expect(parseContentRangeTotal('garbage')).toBeNull();
+    });
+});
+
+describe('planDownloadSegments', () => {
+    it('covers [0, total) exactly with no gaps or overlaps', () => {
+        for (const [total, n] of [[1000, 7], [10, 10], [5, 99], [13211155424, 6]] as const) {
+            const segs = planDownloadSegments(total, n);
+            expect(segs[0].start).toBe(0);
+            expect(segs[segs.length - 1].end).toBe(total - 1);
+            for (let i = 1; i < segs.length; i++) expect(segs[i].start).toBe(segs[i - 1].end + 1);
+            expect(segs.reduce((sum, s) => sum + (s.end - s.start + 1), 0)).toBe(total);
+        }
+    });
+    it('never makes more segments than bytes', () => {
+        expect(planDownloadSegments(3, 10)).toHaveLength(3);
+    });
+    it('returns nothing for a non-positive total', () => {
+        expect(planDownloadSegments(0, 6)).toEqual([]);
+    });
+});
+
+describe('downloadConnectionCount', () => {
+    it('scales with size, caps, and backs off on cellular', () => {
+        const big = 4_000_000_000;
+        expect(downloadConnectionCount(big, false, 6)).toBe(6);
+        expect(downloadConnectionCount(big, true, 6)).toBe(3);
+        expect(downloadConnectionCount(5_000_000, false, 6)).toBe(1);   // small file: no fan-out
+        expect(downloadConnectionCount(70_000_000, false, 6)).toBe(3);
+        expect(downloadConnectionCount(0, false)).toBe(1);
     });
 });

@@ -58,7 +58,9 @@ import { executeToolCalls } from "./tools/handlers.js";
 import { buildNativeChatFunctions } from "./tools/nativeFunctions.js";
 import { getHardwareProfile } from "../utils/hardware.js";
 import { verifyModelIntegrity } from "./modelIntegrity.js";
-import { planDownloadWrite } from "./modelDownloadPlan.js";
+import { planDownloadWrite, planDownloadSegments, downloadConnectionCount, parseContentRangeTotal } from "./modelDownloadPlan.js";
+import type { DownloadSegment } from "./modelDownloadPlan.js";
+import type { FileHandle } from "fs/promises";
 import logger from "../utils/logger.js";
 
 /** Narrow unknown catch to an Error-like shape with optional `code` */
@@ -1059,6 +1061,27 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
             }
 
+            // ─── Parallel ranged download (fresh downloads only) ─────────────
+            // One TCP stream is capped by RTT x window; N concurrent range requests use the pipe.
+            // Returns null (→ single-stream path below) when the server doesn't honor ranges or the
+            // size is unknown, so correctness never depends on the CDN.
+            if (receivedBytes === 0) {
+                const parallelTotal = await this.downloadParallel(url, staging, entry);
+                if (parallelTotal !== null) {
+                    try {
+                        await verifyModelIntegrity(staging, entry.sha256, parallelTotal);
+                    } catch (verifyError) {
+                        try { fs.unlinkSync(staging); } catch { /* ignore */ }
+                        try { fs.unlinkSync(metaPath); } catch { /* ignore */ }
+                        throw verifyError;
+                    }
+                    fs.renameSync(staging, dest);
+                    if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+                    this.isDownloading = false;
+                    return;
+                }
+            }
+
             // Fetch with timeout — prevent hanging on slow/broken connections
             // HTTP proxy support: respect HTTP_PROXY / HTTPS_PROXY env vars
             // (Node.js 18+ native fetch doesn't auto-use proxies, so we log a hint)
@@ -1188,6 +1211,62 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // But do keep the metadata file so we can resume
             this.isDownloading = false;
             throw error;
+        }
+    }
+
+    /**
+     * Fresh-download parallel path: probe range support, then fetch N disjoint segments over
+     * concurrent connections into one pre-sized staging file. Returns the total size on success,
+     * or null to fall back to the single-stream path (no range support / unknown size / too small).
+     */
+    private async downloadParallel(url: string, staging: string, entry: ModelEntry): Promise<number | null> {
+        let total: number | null = null;
+        try {
+            const probe = await fetch(url, { headers: { Range: "bytes=0-0" } });
+            if (probe.status === 206) total = parseContentRangeTotal(probe.headers.get("content-range"));
+            try { await probe.body?.cancel(); } catch { /* ignore */ }
+        } catch {
+            return null;
+        }
+        if (total === null || total <= 0) return null;
+
+        const count = downloadConnectionCount(total, false);
+        if (count <= 1) return null;   // small file: not worth fanning out
+
+        const totalBytes = total;
+        const segments = planDownloadSegments(totalBytes, count);
+        const handle = await fs.promises.open(staging, "w");
+        const state = { received: 0, lastPct: -1 };
+        try {
+            await Promise.all(segments.map(seg => this.fetchSegment(url, seg, handle, totalBytes, state, entry)));
+        } finally {
+            await handle.close();
+        }
+        return totalBytes;
+    }
+
+    /** One `Range:` segment, written at its absolute offset (disjoint → safe concurrently). */
+    private async fetchSegment(
+        url: string, seg: DownloadSegment, handle: FileHandle,
+        total: number, state: { received: number; lastPct: number }, entry: ModelEntry,
+    ): Promise<void> {
+        const res = await fetch(url, { headers: { Range: `bytes=${seg.start}-${seg.end}` } });
+        if (res.status !== 206 || !res.body) throw new Error(`range request failed: ${res.status}`);
+        const reader = res.body.getReader();
+        let position = seg.start;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value && value.length) {
+                await handle.write(value, 0, value.length, position);
+                position += value.length;
+                state.received += value.length;
+                const progress = Math.round((state.received / total) * 100);
+                if (progress !== state.lastPct) {
+                    state.lastPct = progress;
+                    this.emit("model_download_progress", { progress, modelId: entry.id });
+                }
+            }
         }
     }
 
