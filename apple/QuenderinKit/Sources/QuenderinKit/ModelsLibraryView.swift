@@ -489,7 +489,7 @@ final class ModelLibraryController: ObservableObject {
     private let downloadPolicy: () -> DownloadPolicy
 
     init(
-        downloader: ModelDownloader = URLSessionModelDownloader(),
+        downloader: ModelDownloader = ParallelRangeDownloader(),
         modelsDir: URL? = nil,
         networkStatus: (() -> NetworkStatus)? = nil,
         downloadPolicy: (() -> DownloadPolicy)? = nil

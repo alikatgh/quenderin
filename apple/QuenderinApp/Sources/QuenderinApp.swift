@@ -69,7 +69,7 @@ struct QuenderinApp: App {
             : DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = mockUI
             ? MockModelDownloader()
-            : URLSessionModelDownloader() // real GGUF download (parity with Android's WorkManagerModelDownloader)
+            : ParallelRangeDownloader() // real GGUF download — multi-connection ranged (falls back to single-stream)
         // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
         // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
         _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy }))
