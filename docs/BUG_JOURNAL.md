@@ -4,6 +4,12 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **Parse OEM `dumpsys` output by the current-state FIELD, not by keyword — history rows match too.**
+  Samsung's `dumpsys battery` prints a log of recent `ACTION_BATTERY_CHANGED` broadcasts, each containing
+  `temperature:`, after the current-state `  temperature: N` line. `awk '/temperature/{print $2}'` then
+  returns a dozen lines and the arithmetic crashes — which also silently disabled the 38 °C thermal gate
+  (it errored instead of gating). Anchor on the leading-whitespace field (`/^ *temperature:/`) and take the
+  first. Any `dumpsys` parse is device-vendor-dependent; verify on the target OEM. (2026-09-10)
 - **The llama.cpp API moves under you — CI and the app compile against DIFFERENT refs, so a signature change breaks one silently.**
   `llama_sampler_init_penalties` gained `n_vocab` as its first arg (4→5) after the vendored xcframework pin; `llama_jni.cpp`
   still compiled against the pin but NOT against `ggml-org/llama.cpp` HEAD — which is exactly what CI's JNI syntax-check and
@@ -642,6 +648,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-10 (`scripts/bench_inference.sh` device temp parse) — the Android bench harness crashed before
+  running ("syntax error in expression") and never enforced its 38 °C gate. Cause: Samsung's `dumpsys
+  battery` prints a broadcast history whose rows also contain `temperature:`, so `awk '/temperature/{print $2}'`
+  returned many lines. Fix: match the current-state field (`/^ *temperature:/`, first hit) in both the pre-run
+  gate and the post-run report. Lesson: parse vendor `dumpsys` by field, and test the harness on the real OEM.
 - 2026-09-10 (`android/jni/llama_jni.cpp` `init_penalties`, `scripts/check-jni-syntax.sh`) — the JNI bridge stopped compiling
   against llama.cpp HEAD: `llama_sampler_init_penalties` gained `n_vocab` first (4→5 args). Cause: the vendored pin predates
   the change while CI + `verify-llama-link.sh` build against HEAD, so CI AND the on-device Android build were broken. Fix:

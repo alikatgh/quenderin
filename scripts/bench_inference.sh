@@ -88,7 +88,10 @@ android)
   A="$ADB -s $SERIAL"
   # Shared test phone: never disturb whatever is in the foreground, and don't measure a hot SoC —
   # thermal throttling makes every number a lie (docs/MOBILE_PERFORMANCE_101.md).
-  TEMP="$($A shell dumpsys battery | awk '/temperature/{print $2}')"
+  # Current-state line only: some devices' `dumpsys battery` also prints a history of
+  # ACTION_BATTERY_CHANGED broadcasts, each containing "temperature:", so match the
+  # leading-whitespace current-state field and take the first.
+  TEMP="$($A shell dumpsys battery | awk '/^ *temperature:/{print $2; exit}')"
   FG="$($A shell dumpsys activity activities | grep -m1 topResumedActivity | sed 's/.*u0 //; s/ .*//')"
   echo "device $SERIAL  soc=$($A shell getprop ro.soc.model | tr -d '\r')  battery=$((TEMP/10)).$((TEMP%10))°C  foreground=$FG"
   if [ "${TEMP:-0}" -gt 380 ] && [ "${QUENDERIN_BENCH_HOT_OK:-0}" != "1" ]; then
@@ -112,7 +115,7 @@ android)
     done
     $A shell "$ENV ./smoketest-android $N 'Write three sentences about why the sky is blue.' 48 2>/dev/null" \
       | grep -E '^(REAL|PASS|FAIL)' | sed 's/^/  /'
-    echo "  battery after: $(($($A shell dumpsys battery | awk '/temperature/{print $2}')/10))°C"
+    echo "  battery after: $(($($A shell dumpsys battery | awk '/^ *temperature:/{print $2; exit}')/10))°C"
   done
   ;;
 *) echo "usage: $0 mac|android [model.gguf ...]" >&2; exit 2 ;;
