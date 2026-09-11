@@ -61,3 +61,35 @@ First-token = `llama-smoketest --ttft` in a fresh process; "cold" = cold page ca
 
 S23 (SM8550, i8mm) rows still pending: binaries are built by `scripts/bench_inference.sh android`; the phone was
 unplugged and at 49 °C when this pass ran (the script refuses to measure above 38 °C).
+
+## Paged-MoE (35B-A3B) on a memory-tight Mac — 2026-09-11
+
+The catalog's one MoE (`qwen36-35b-a3b`, UD-IQ3_XXS, 12.3 GiB) on the same M3 Pro (18 GB), vendored pin
+@ 0eca4d4, `llama-bench -t 5 -p 512 -n 128,512 -r 3`. Disk was **97 % full (≈2–10 GB free)** — no swap
+headroom — which matters (see the panic note).
+
+| Config | pp512 | tg128 | tg512 |
+|--------|------:|------:|------:|
+| `-ngl 0` (today's `GpuOffloadPolicy` paged-MoE path: full CPU-only) | 13.1 tok/s | 3.0 tok/s | 2.2 tok/s |
+| `-ngl 999 -ncmoe 40` (spine on Metal, experts on CPU — edge0's portable half) | ❌ `failed to decode prompt batch, res = -3` | — | — |
+
+**Two findings, both uncomfortable and both recorded rather than rounded:**
+
+1. **The Metal + CPU-experts offload does not run here.** `-ncmoe` + `-ngl 999` failed the prompt decode
+   (`res = -3`) on the 12.3 GiB model with ~2–10 GB free. The engine change that would use it
+   (`GpuOffloadPolicy.plan` / `LlamaEngine`) is therefore **default-OFF** (`QUENDERIN_MOE_EXPERT_CPU=1`
+   opts in) until a config exists that both loads and wins.
+2. **CPU-only decode is ~3 tok/s, not the 17.3 tok/s** the `MoEShape.swift` comment cites for "a 13 GB
+   35B-A3B on a 16 GB M4". That number does not reproduce on an 18 GB M3 Pro with a nearly-full disk.
+   The original measurement's conditions (free disk / warm page cache / machine) are not recorded —
+   treat **17.3 as unverified** and re-measure on a machine with real free space before trusting any
+   paged-MoE speed claim.
+
+### ⚠️ Watchdog panic — never run an over-RAM model on a full disk
+
+The `-ngl 999` run **panicked the kernel** (`panic-full-2026-09-11-144540.0002.panic`):
+`"watchdog timeout: no checkins from watchdogd in 93 seconds"`. That is a system-freeze watchdog, not a
+GPU fault: a 12.3 GiB model on 18 GB with the disk 97 % full has no swap headroom, so the machine
+thrashed until the watchdog fired and force-restarted. **Free disk (≥ model size) before benchmarking a
+model that doesn't fit comfortable RAM headroom**, and prefer configs that keep the working set under RAM.
+

@@ -5,10 +5,13 @@ import Foundation
 ///
 /// A MoE activates only a fraction of its weights per token (Qwen3.6-35B-A3B: 3B of 35B).
 /// With `use_mmap` and the experts left pageable, the OS page cache streams the routed
-/// experts from disk and only the dense spine + hot experts stay resident — measured
+/// experts from disk and only the dense spine + hot experts stay resident — reported at
 /// 17.3 tok/s for a 13 GB 35B-A3B on a 16 GB M4 with 4–6 GB resident and zero swap
-/// (mmap'd weights are read-only: evictions are free, never swap writes). The dense
-/// heuristics (`ramGB = file × 1.5`, params-capped filters) would call that model
+/// (mmap'd weights are read-only: evictions are free, never swap writes).
+/// ⚠️ That figure did NOT reproduce on an 18 GB M3 Pro with a 97%-full disk (measured ~3 tok/s
+/// decode; the Metal+`-ncmoe` offload variant failed to decode) — see docs/BENCH_BASELINE.md
+/// (2026-09-11). Treat 17.3 as **unverified** until re-measured on a machine with free disk.
+/// The dense heuristics (`ramGB = file × 1.5`, params-capped filters) would call that model
 /// "doesn't fit" — this type is how the search/fitness/engine paths know better.
 public struct MoEShape: Sendable, Equatable {
     /// Total parameters (billions) — what the name advertises ("35B").

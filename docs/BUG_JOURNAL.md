@@ -4,6 +4,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 
 ## Patterns to scan for FIRST
 
+- **An over-RAM model on a near-full disk can watchdog-panic macOS — free disk (≥ model size) before benchmarking.**
+  A 12.3 GiB MoE on an 18 GB Mac with the disk 97 % full has no swap headroom; `llama-bench -ngl 999` thrashed until
+  `watchdogd` stopped checking in and the kernel force-restarted (`watchdog timeout: no checkins from watchdogd in 93
+  seconds`). That's a memory-pressure freeze, not a GPU fault. The same run's `-ngl 999 -ncmoe 40` (spine-Metal +
+  experts-CPU) failed to decode (`res = -3`), so the paged-MoE offload is default-OFF. (2026-09-11)
 - **Parse OEM `dumpsys` output by the current-state FIELD, not by keyword — history rows match too.**
   Samsung's `dumpsys battery` prints a log of recent `ACTION_BATTERY_CHANGED` broadcasts, each containing
   `temperature:`, after the current-state `  temperature: N` line. `awk '/temperature/{print $2}'` then
@@ -648,6 +653,11 @@ Cheap-to-write, cheap-to-read, expensive-to-skip. `grep -i <symptom>` this befor
 ## Chronological log
  (newest first, 5 lines max)
 
+- 2026-09-11 (`docs/BENCH_BASELINE.md`, 35B-A3B IQ3_XXS on an 18 GB M3 Pro) — benchmarking the catalog's only MoE
+  panicked the kernel (`watchdog timeout: no checkins from watchdogd in 93 seconds`). Cause: 12.3 GiB model + disk
+  97 % full = no swap headroom → thrash → system-freeze watchdog (NOT a GPU fault). Fix/lesson: free disk (≥ model
+  size) before an over-RAM benchmark, and record free space with the number. Measured: CPU-only ≈3 tok/s decode (not
+  the 17.3 in `MoEShape.swift`), and `-ngl 999 -ncmoe 40` failed to decode → MoE offload stays default-OFF.
 - 2026-09-10 (`scripts/bench_inference.sh` device temp parse) — the Android bench harness crashed before
   running ("syntax error in expression") and never enforced its 38 °C gate. Cause: Samsung's `dumpsys
   battery` prints a broadcast history whose rows also contain `temperature:`, so `awk '/temperature/{print $2}'`
