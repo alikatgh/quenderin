@@ -34,9 +34,19 @@ in-repo docs; keep this page the index, not the essay.
   transferable idea (an agent run exported as a shareable artifact/walkthrough)
   already ships in Quenderin's agent surface; the rest is IDE-bound and
   deliberately not copied.
+- **edge0** ([Edge0-AI/Edge0](https://github.com/Edge0-AI/Edge0)) — streaming MoE inference
+  (SSD expert offload + trained **prerouter** routing prediction + Recover-LoRA), MLX /
+  Apple Silicon, Apache-2.0, preview tiers (35B-A3B, 8B-A1B). **Not copied:** macOS-only,
+  Python, checkpoint-specific adapters — not a drop-in for our GGUF/llama.cpp stack (no
+  Android). **What we take:** the *prerouter* idea (predict next-layer routing to overlap
+  expert loads with compute) and its validation of SSD expert streaming; llama.cpp already
+  ships the offload half (`--cpu-moe`/`-ncmoe`/`-ot`) but not the prediction. **Revisit when:**
+  edge0 ships a CUDA or mobile backend, or a llama.cpp-compatible path. Detail:
+  [moe-ssd-streaming.md](moe-ssd-streaming.md).
 
 ## Where the research lives
 
 - [docs/research/on-device-llm.md](on-device-llm.md) — verified perf/thermal/energy claims (28 sources, adversarially verified).
+- [docs/research/moe-ssd-streaming.md](moe-ssd-streaming.md) — SSD MoE streaming + the prerouter: what edge0 proves, what llama.cpp already ships, and the offload spike we can run without a fork.
 - [docs/audits/2026-07-02-oss-audit-llamacpp-mobile.md](../audits/2026-07-02-oss-audit-llamacpp-mobile.md) — line-level audit of PocketPal/llama.rn/LLMFarm configs vs ours, ranked action list.
 - [apple/REALITY.md](../../apple/REALITY.md) — the honest "can phones do this" summary that seeds our calibration code.

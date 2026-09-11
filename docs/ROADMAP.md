@@ -130,6 +130,11 @@ nothing leaves the machine."
 - **Backlog burn-down**: 25 quick wins (mostly a11y) in
   [audits/2026-06-27-improvement-backlog.md](audits/2026-06-27-improvement-backlog.md).
 - **Journal + parity discipline** (BUG_JOURNAL.md, parity vectors) — every fix, same commit.
+- **MoE SSD-streaming spike** — measure whether llama.cpp expert buffer-type offload
+  (`tensor_buft_overrides` / `--ncmoe`: dense spine on Metal + experts CPU/mmap-streamed) beats
+  the current all-or-nothing `n_gpu_layers` fallback on a MoE GGUF. The trained *prerouter*
+  (routing lookahead) is a separate upstream research project, not a fork. Gate: needs a MoE
+  model on disk. Detail: [research/moe-ssd-streaming.md](research/moe-ssd-streaming.md).
 
 ## Decision queue (owner input needed — nothing below proceeds without it)
 
