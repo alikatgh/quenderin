@@ -1,6 +1,6 @@
 # macOS 0.2.0 (11) — September 20, 2026
 
-Based on main 5409aa8. Signed archive uploaded successfully to App Store Connect. Native download, real chat, last-window-close, and relaunch checks passed; resubmission is in progress.
+Based on main 5409aa8. Signed archive uploaded successfully to App Store Connect. Submitted September 20 at 03:27 UTC: WAITING_FOR_REVIEW, automatic release after approval. Submission 4b4e279e-2c62-4d60-bd1d-121e10657ad0. Native download, real chat, last-window-close, and relaunch checks passed.
 
 The July 19 rejection reported a failed model download (2.1a) and inability to reopen the single main window (4). The latest source corrects the recommended Gemma download URL and exits after saving when the last window closes.
 
