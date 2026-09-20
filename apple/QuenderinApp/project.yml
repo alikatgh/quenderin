@@ -9,7 +9,7 @@ options:
   bundleIdPrefix: ai.quenderin
   deploymentTarget:
     iOS: "16.0"
-    macOS: "13.0"
+    macOS: "13.3"
 packages:
   QuenderinKit:
     path: ../QuenderinKit
@@ -63,6 +63,14 @@ targets:
   QuenderinMac:
     type: application
     platform: macOS
+    preBuildScripts:
+      - name: Require real inference for distribution
+        script: |
+          if [ "$CONFIGURATION" = "Release" ] && [ ! -d "$SRCROOT/../QuenderinKit/Frameworks/llama.xcframework" ]; then
+            echo "error: Build apple/build-xcframework.sh before archiving; a store release must link real inference."
+            exit 1
+          fi
+        basedOnDependencyAnalysis: false
     sources:
       - Sources
       - PrivacyInfo.xcprivacy

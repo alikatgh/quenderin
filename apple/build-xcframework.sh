@@ -27,23 +27,24 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HERE/QuenderinKit/Frameworks"
 WORK="${1:-/tmp/quenderin-xcframework}"
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
-LLAMA_REF="${LLAMA_REF:-master}"
+LLAMA_REF="${LLAMA_REF:-$(cat "$HERE/llama-revision.txt")}"
 
 mkdir -p "$WORK"; cd "$WORK"
 
 echo "==> 1/3  Fetch llama.cpp ($LLAMA_REF)"
-if [ ! -d llama.cpp ]; then
-  git clone --depth 1 --branch "$LLAMA_REF" "$LLAMA_REPO" 2>/dev/null \
-    || git clone --depth 1 "$LLAMA_REPO"   # fall back to default branch if ref isn't a branch/tag
+if [ ! -d llama.cpp/.git ]; then
+  git clone --filter=blob:none --no-checkout "$LLAMA_REPO"
 fi
 cd llama.cpp
+git fetch --depth 1 origin "$LLAMA_REF"
+git checkout --detach FETCH_HEAD
 echo "    at $(git rev-parse --short HEAD)"
 
 echo "==> 2/3  Build llama.xcframework (device + simulator + macOS, Metal embedded)"
 # llama.cpp ships this; it merges the ggml/llama static libs, writes the module map, and
 # embeds the Metal library into each slice. This is the slow step.
 chmod +x build-xcframework.sh
-./build-xcframework.sh
+./build-xcframework.sh ios-device ios-sim macos
 
 if [ ! -d build-apple/llama.xcframework ]; then
   echo "!! build-apple/llama.xcframework not produced — check the build log above." >&2

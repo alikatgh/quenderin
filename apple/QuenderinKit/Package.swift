@@ -64,7 +64,7 @@ if hasXcframework {
 // Mirror android/jni/CMakeLists.txt: llama.cpp HEAD replaced use_mmap/use_mlock with
 // enum llama_load_mode. Detect from the header the Swift adapter will actually compile
 // against, then `#if QUENDERIN_LLAMA_LOAD_MODE` in LlamaEngine.swift.
-func llamaHeaderHasLoadMode() -> Bool {
+func llamaHeaderContains(_ pattern: String) -> Bool {
     var candidates: [String] = []
     if let dir = llamaDir {
         candidates.append(dir + "/include/llama.h")
@@ -82,14 +82,19 @@ func llamaHeaderHasLoadMode() -> Bool {
     }
     for path in candidates {
         guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
-        if text.contains("LLAMA_LOAD_MODE_MMAP") { return true }
-        if text.range(of: #"enum\s+llama_load_mode"#, options: .regularExpression) != nil { return true }
+        if text.range(of: pattern, options: .regularExpression) != nil { return true }
     }
     return false
 }
 
-if (hasXcframework || llamaDir != nil) && llamaHeaderHasLoadMode() {
+if (hasXcframework || llamaDir != nil) && llamaHeaderContains(#"LLAMA_LOAD_MODE_MMAP|enum\s+llama_load_mode"#) {
     qkSwiftSettings.append(.define("QUENDERIN_LLAMA_LOAD_MODE"))
+}
+
+// Newer llama.cpp releases require the vocabulary size before penalty settings.
+// Detect the linked header so older local development frameworks still compile.
+if (hasXcframework || llamaDir != nil) && llamaHeaderContains(#"llama_sampler_init_penalties\s*\(\s*int32_t\s+n_vocab"#) {
+    qkSwiftSettings.append(.define("QUENDERIN_LLAMA_PENALTIES_VOCAB"))
 }
 
 let package = Package(

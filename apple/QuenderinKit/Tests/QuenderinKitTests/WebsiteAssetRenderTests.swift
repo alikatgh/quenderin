@@ -12,6 +12,40 @@ import SwiftUI
 @MainActor
 final class WebsiteAssetRenderTests: XCTestCase {
 
+    /// Full native Mac layouts with an isolated, fictional conversation store.
+    func testRenderMacStoreAssets() async throws {
+        guard let outDir = ProcessInfo.processInfo.environment["QUENDERIN_STORE_ASSETS"] else {
+            throw XCTSkip("set QUENDERIN_STORE_ASSETS to capture App Store images")
+        }
+        let out = URL(fileURLWithPath: outDir, isDirectory: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let model = try XCTUnwrap(ModelCatalog.entry(id: "qwen3-4b"))
+        let engine = ScriptedInferenceEngine(replies: [])
+        let chat = ChatModel(engine: engine)
+        let conversations = ConversationCoordinator(chat: chat, persistence: InMemoryConversationPersistence())
+        conversations.activeModelID = model.id
+        chat.restore([
+            ChatMessage(role: .user, text: "Write a short haiku about a quiet mountain lake."),
+            ChatMessage(role: .assistant, text: "Silent waters glow,\nmist clings to the pine trees—\npeace in the stillness.")
+        ])
+        conversations.persist()
+        let onboarding = OnboardingModel(downloader: MockModelDownloader(), engine: engine,
+                                        recallActiveModelID: { nil }, rememberActiveModelID: { _ in })
+        let agent = AgentSession(engine: engine, tools: [CalculatorTool(), UnitConverterTool()])
+        try render(MacRootView(onboarding: onboarding, conversations: conversations, agent: agent, model: model)
+            .frame(width: 1440, height: 900), to: out, name: "01-chat")
+        try render(ModelsLibraryView(activeModelID: model.id, onSelectModel: { _ in })
+            .frame(width: 1440, height: 900), to: out, name: "02-model-library")
+        let planner = ScriptedInferenceEngine(replies: [
+            #"{"tool":"units","input":"5 miles to km"}"#,
+            #"{"answer":"5 miles is approximately **8.05 kilometers**."}"#
+        ])
+        let session = AgentSession(engine: planner, tools: [CalculatorTool(), UnitConverterTool()])
+        await session.run(goal: "Convert 5 miles to kilometers")
+        try render(AgentView(session: session).frame(width: 1440, height: 900), to: out, name: "03-agent")
+        try render(WelcomeView(onContinue: {}).frame(width: 1440, height: 900), to: out, name: "04-welcome")
+    }
+
     func testRenderWebsiteAssets() async throws {
         guard let outDir = ProcessInfo.processInfo.environment["QUENDERIN_RENDER_ASSETS"] else {
             throw XCTSkip("set QUENDERIN_RENDER_ASSETS=<output dir> to render website assets")
