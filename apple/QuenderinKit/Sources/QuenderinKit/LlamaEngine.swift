@@ -178,6 +178,9 @@ public actor LlamaEngine: InferenceEngine {
         defer { nativeLock.unlock() }
         guard let model, let tmplC = llama_model_chat_template(model, nil) else { return nil }
         let tmpl = String(cString: tmplC)
+        if let prompt = Gemma4ChatPrompt.make(template: tmpl, system: system, history: history) {
+            return prompt
+        }
 
         // llama_chat_message borrows C strings — strdup them and free after the call.
         var owned: [UnsafeMutablePointer<CChar>] = []
