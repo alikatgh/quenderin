@@ -8,7 +8,7 @@
 <meta name="description" content="Where Quenderin is going: from private on-device chat to local autonomous computer usage — the concrete steps, what must be true first, and what's already shipped." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/roadmap.html" />
+<link rel="canonical" href="https://quenderin.org/roadmap" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -29,7 +29,7 @@
   <p class="legal-updated">The mission, stated plainly: <strong>local autonomous computer usage</strong> — an AI that does real work on <em>your</em> machine, where nothing you do leaves it. "Run LLMs locally" is the foundation, not the destination. Here's the concrete path, stage by stage, with what must be true before each step ships.</p>
 
   <h2>Stage 1 — Private chat, everywhere <span aria-hidden="true">✅ shipped</span></h2>
-  <p>The foundation is live: native apps on <strong>macOS and iOS</strong> (one Swift codebase), <strong>Android</strong> (Kotlin), downloadable previews for <strong>Windows and Linux</strong>, and a <strong>CLI</strong> for programmers (<a href="blog-cli.html">announced today</a>). Under it: a 12-model catalog with RAM-fit gating and SHA-256-verified downloads, a task router that suggests the right installed model per job, repetition-loop and encoding guardrails, and cross-platform logic kept identical by machine-enforced parity tests. Everything measured is published on <a href="reality.html">the reality page</a>; everything broken is in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">the failure-mode ledger</a>.</p>
+  <p>The foundation is live: native apps on <strong>macOS and iOS</strong> (one Swift codebase), <strong>Android</strong> (Kotlin), downloadable previews for <strong>Windows and Linux</strong>, and a <strong>CLI</strong> for programmers (<a href="blog-cli">announced today</a>). Under it: a 12-model catalog with RAM-fit gating and SHA-256-verified downloads, a task router that suggests the right installed model per job, repetition-loop and encoding guardrails, and cross-platform logic kept identical by machine-enforced parity tests. Everything measured is published on <a href="reality">the reality page</a>; everything broken is in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/KNOWN_FAILURE_MODES.md" rel="noopener">the failure-mode ledger</a>.</p>
 
   <h2>Stage 2 — A model that can see your work <span aria-hidden="true">◐ shipping</span></h2>
   <p>Before an AI can act on your computer, it has to perceive what you give it:</p>
@@ -40,7 +40,7 @@
   </ul>
 
   <h2>Stage 3 — The agent grows hands <span aria-hidden="true">◐ well underway</span></h2>
-  <p><strong>The first slice shipped in July 2026</strong> (<a href="blog-agent-hands.html">announcement</a>): grant the agent a workspace folder and it can list, read, move, rename, create, and trash-to-a-visible-folder — proposing a <em>plan</em> you approve once, with per-step undo, a plain-text ledger of everything it did <em>and tried</em>, and structural guarantees: it names files but can never mint paths, nothing overwrites, nothing writes without your per-run yes, and a plan with one blocked step is refused whole.</p>
+  <p><strong>The first slice shipped in July 2026</strong> (<a href="blog-agent-hands">announcement</a>): grant the agent a workspace folder and it can list, read, move, rename, create, and trash-to-a-visible-folder — proposing a <em>plan</em> you approve once, with per-step undo, a plain-text ledger of everything it did <em>and tried</em>, and structural guarantees: it names files but can never mint paths, nothing overwrites, nothing writes without your per-run yes, and a plan with one blocked step is refused whole.</p>
   <p><strong>Since then, on macOS, the hands got much longer</strong> — all on the same consent/undo/ledger spine. The agent can now click and type in <em>any</em> app through the accessibility layer (buttons, menu bar, navigation keys — not just AppleScript-scriptable apps) and run any of your <strong>Apple Shortcuts</strong>, so it reaches most of what you can do on the machine. Longer multi-step tasks stream each step live so you watch and can interrupt (<kbd>Ctrl-C</kbd> stops instantly), and it recovers gracefully when a small local model gets stuck. Three trust features a cloud agent can't match arrived too: <strong>undo a whole task in a later session</strong>, a <strong>per-task audit trail</strong> you can read back, and a real <strong>dry run</strong> that shows exactly what it would do while changing nothing. What remains in Stage 3: more chore classes and deeper app coverage, the polished desktop approval dialog (the CLI already works end-to-end today), and bringing the same reliability guards to the mobile apps.</p>
 
   <h2>Stage 4 — Local autonomous computer usage <span aria-hidden="true">◎ the destination</span></h2>
@@ -51,7 +51,7 @@
   chores you'd actually hand an agent, a local one wins on what matters: <strong>stop it dead
   mid-task, read everything it did and refused, undo the whole task with one click, and no AI
   middleman ever sees your files</strong>. The full argument, including where we lose:
-  <a href="why-local-agent.html">why a local agent beats a cloud one</a>.</p>
+  <a href="why-local-agent">why a local agent beats a cloud one</a>.</p>
 
   <h2>How this stays funded (and free)</h2>
   <p>The chat apps, the model library, and the CLI are free and MIT-licensed — permanently. The plan is open-core: when the autonomy layer (Stages 3–4) matures, that becomes the paid tier for the people who need it, and it funds everything else. No ads, no data sales — there's no data to sell; that's the point.</p>
@@ -59,13 +59,13 @@
   <h2>Help us get there — we're hiring</h2>
   <p>Stage&nbsp;4 needs people. We believe local models are the future of AI, and the only thing
   between here and there is making small, on-device models genuinely capable — a research problem
-  worth a career. We're <a href="research.html">hiring researchers</a> in on-device inference,
-  small-model agentic capability, and honest evaluation. <a href="research.html">Read the bet and the
+  worth a career. We're <a href="research">hiring researchers</a> in on-device inference,
+  small-model agentic capability, and honest evaluation. <a href="research">Read the bet and the
   open roles&nbsp;&rarr;</a></p>
 
   <p class="legal-updated" style="margin-top:2rem">This page changes as reality does — no dates you can screenshot and shame us with later, just order and honesty. Watch progress commit-by-commit <a href="https://github.com/alikatgh/quenderin" rel="noopener">on GitHub</a>.</p>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="blog.html">Blog</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="download.html">Download</a></p>
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="blog">Blog</a> &middot; <a href="changelog">Changelog</a> &middot; <a href="download">Download</a></p>
 </main>
 </body>
 </html>

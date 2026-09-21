@@ -8,7 +8,7 @@
 <meta name="description" content="What changed in Quenderin, in plain language — features, fixes, and the honest reasons behind them. Full detail lives in the open git history." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/changelog.html" />
+<link rel="canonical" href="https://quenderin.org/changelog" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -32,15 +32,15 @@
   <ul>
     <li><strong>Quenderin is on the App Store — free, for iPhone.</strong> The native SwiftUI app is <a href="https://apps.apple.com/app/id6789854363" rel="noopener">live worldwide</a> (175 regions) — fully offline, on-device, our first public store release. The Mac App Store build follows once its review clears.</li>
     <li><strong>v0.2.0 — stores + dual Windows channel.</strong> Version aligned across desktop, Android, and Apple. <strong>Windows:</strong> keep free GitHub <code>.exe</code> installs <em>and</em> ship Microsoft Store (AppX) for branding and no SmartScreen — owner guide in the repo. <strong>macOS:</strong> public product is the native free Mac App Store app only (not Electron). Reliability and file-chore tools landed in the open source: batch organize, multi-file collect for reports, stronger skill memory, GUI self-checks.</li>
-    <li><strong>The local computer-use agent grew up — a private alternative to cloud agents.</strong> On a Mac, <code>quenderin do "&lt;anything&gt;"</code> can now click and type in <em>any</em> app via accessibility (<code>--gui</code>: buttons, menus, navigation), run any of your <strong>Apple Shortcuts</strong>, and create files as well as organise them. What a cloud agent can't offer, and we now do: <strong>undo a whole task even in a new session</strong> (<code>quenderin undo</code>), a <strong>per-task local audit trail</strong> (<code>quenderin history</code>), and a true <strong>dry run</strong> that shows exactly what it would do while touching nothing (<code>--dry-run</code>). It reads for real but never changes anything without your say-so. <code>quenderin capabilities</code> lists the whole toolkit. <a href="why-local-agent.html">Why local beats the cloud here</a>.</li>
+    <li><strong>The local computer-use agent grew up — a private alternative to cloud agents.</strong> On a Mac, <code>quenderin do "&lt;anything&gt;"</code> can now click and type in <em>any</em> app via accessibility (<code>--gui</code>: buttons, menus, navigation), run any of your <strong>Apple Shortcuts</strong>, and create files as well as organise them. What a cloud agent can't offer, and we now do: <strong>undo a whole task even in a new session</strong> (<code>quenderin undo</code>), a <strong>per-task local audit trail</strong> (<code>quenderin history</code>), and a true <strong>dry run</strong> that shows exactly what it would do while touching nothing (<code>--dry-run</code>). It reads for real but never changes anything without your say-so. <code>quenderin capabilities</code> lists the whole toolkit. <a href="why-local-agent">Why local beats the cloud here</a>.</li>
     <li><strong>Reliable on a small local model.</strong> A weak on-device model can get stuck repeating itself or emit malformed output; the agent now recovers from both — nudging once, then stopping cleanly rather than looping forever — and streams each step live so you watch it work and can stop it the instant something looks wrong.</li>
-    <li><strong>The agent operates your computer — locally.</strong> Grant a workspace folder and the agent can list, move, rename, and trash-to-a-visible-folder — proposing a <em>plan</em> you approve once, with per-step undo and a plain-text ledger of everything it did and tried. Nothing overwrites, nothing deletes, nothing leaves the machine. <a href="blog-agent-hands.html">The announcement</a>.</li>
+    <li><strong>The agent operates your computer — locally.</strong> Grant a workspace folder and the agent can list, move, rename, and trash-to-a-visible-folder — proposing a <em>plan</em> you approve once, with per-step undo and a plain-text ledger of everything it did and tried. Nothing overwrites, nothing deletes, nothing leaves the machine. <a href="blog-agent-hands">The announcement</a>.</li>
     <li><strong>Attach documents in chat.</strong> Drop a text file or (on Mac/iOS) a PDF into the composer and ask about it — follow-ups keep it in context. Binary files are refused with a reason, never mangled.</li>
     <li><strong>One safety blocklist everywhere.</strong> The actions the agent must never take autonomously are now a single canonical list, enforced identical across all platforms by CI.</li>
-    <li><strong>The CLI.</strong> <code>quenderin chat</code> — a streaming terminal REPL plus a pipe mode (<code>git diff | quenderin chat -p "review this"</code>) that makes code review private by construction. <a href="blog-cli.html">The announcement</a> includes the two bugs we hit shipping it.</li>
-    <li><strong>Windows &amp; Linux downloads.</strong> First public desktop preview (v0.1.0): installer and portable <code>.exe</code>, AppImage, <code>.deb</code> — built in public by CI, linked on <a href="download.html">the download page</a>.</li>
+    <li><strong>The CLI.</strong> <code>quenderin chat</code> — a streaming terminal REPL plus a pipe mode (<code>git diff | quenderin chat -p "review this"</code>) that makes code review private by construction. <a href="blog-cli">The announcement</a> includes the two bugs we hit shipping it.</li>
+    <li><strong>Windows &amp; Linux downloads.</strong> First public desktop preview (v0.1.0): installer and portable <code>.exe</code>, AppImage, <code>.deb</code> — built in public by CI, linked on <a href="download">the download page</a>.</li>
     <li><strong>The consent gate.</strong> Every platform now asks for one explicit agreement before first use: AI output is your call to verify, not advice to follow.</li>
-    <li><strong>The roadmap went public.</strong> Where this is all going, stage by stage: <a href="roadmap.html">quenderin.org/roadmap</a>.</li>
+    <li><strong>The roadmap went public.</strong> Where this is all going, stage by stage: <a href="roadmap">quenderin.org/roadmap</a>.</li>
     <li><strong>Gemma 4 12B joins the library.</strong> Google's newest open model (Apache 2.0, 7.4&nbsp;GB download) — the strongest multilingual option we ship. Recommended automatically on 16&nbsp;GB machines.</li>
     <li><strong>About is a page now.</strong> Clicking the elf opens a proper About screen instead of a popup menu; help, changelog, and privacy land on their quenderin.org pages.</li>
     <li><strong>Daily-use fixes.</strong> Conversation switching is instant again (a long-press gesture was eating clicks — removed). Chat bubbles come in four artwork-derived colors. Sheets close when you click outside them; no more hunting for Done.</li>
@@ -57,9 +57,9 @@
   </ul>
 
   <h2>Earlier</h2>
-  <p>The foundation: on-device inference via llama.cpp on macOS, iOS, and Android; the shared model catalog with RAM-fit gating and SHA-256 download verification; the tool-using agent with its hard safety blocklist; onboarding; and the measured performance numbers on the <a href="reality.html">reality page</a>.</p>
+  <p>The foundation: on-device inference via llama.cpp on macOS, iOS, and Android; the shared model catalog with RAM-fit gating and SHA-256 download verification; the tool-using agent with its hard safety blocklist; onboarding; and the measured performance numbers on the <a href="reality">reality page</a>.</p>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help.html">Get help</a> &middot; <a href="https://github.com/alikatgh/quenderin" rel="noopener">Source on GitHub</a></p>
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help">Get help</a> &middot; <a href="https://github.com/alikatgh/quenderin" rel="noopener">Source on GitHub</a></p>
 </main>
 </body>
 </html>

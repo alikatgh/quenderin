@@ -8,7 +8,7 @@
 <meta name="description" content="The Quenderin blog: how it is built, what we decided, and why — from the people who read the stack traces." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/blog.html" />
+<link rel="canonical" href="https://quenderin.org/blog" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -28,52 +28,52 @@
   <h1>Blog</h1>
   <p class="legal-updated">Notes from building an AI that runs on your own machine &mdash; how it works, what we decided, and what broke on the way. The unabridged version is <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">the git history</a>; the disasters live in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener">the bug journal</a>.</p>
 
-  <h2><a href="blog-android-beta.html">Quenderin for Android is in closed beta &mdash; how to get in</a></h2>
+  <h2><a href="blog-android-beta">Quenderin for Android is in closed beta &mdash; how to get in</a></h2>
   <p class="legal-updated">20 July 2026 &middot; Android</p>
   <p>The native Android app is in Google&rsquo;s closed-testing track. Two steps to join &mdash; the testers
   group, then the Play opt-in &mdash; plus an honest look at what the Android build is, what isn&rsquo;t there
-  yet, and why Google makes you join a group first. <a href="blog-android-beta.html">Read it &rarr;</a></p>
+  yet, and why Google makes you join a group first. <a href="blog-android-beta">Read it &rarr;</a></p>
 
-  <h2><a href="blog-model-integrity.html">Never trust a model file until it&rsquo;s verified</a></h2>
+  <h2><a href="blog-model-integrity">Never trust a model file until it&rsquo;s verified</a></h2>
   <p class="legal-updated">20 July 2026 &middot; engineering</p>
   <p>A model is multi-gigabyte untrusted bytes going into a native C++ parser. The gate between
   &ldquo;downloaded&rdquo; and &ldquo;loaded&rdquo; &mdash; HTTP status before the first byte, GGUF magic, SHA-256 &mdash;
   the App Store rejection that proved we needed it, and why a pinned hash still rots.
-  <a href="blog-model-integrity.html">Read it &rarr;</a></p>
+  <a href="blog-model-integrity">Read it &rarr;</a></p>
 
-  <h2><a href="blog-ggml-abort.html">The crash that only happened after you&rsquo;d used it</a></h2>
+  <h2><a href="blog-ggml-abort">The crash that only happened after you&rsquo;d used it</a></h2>
   <p class="legal-updated">20 July 2026 &middot; engineering</p>
   <p>A <code>SIGABRT</code> on every &#8984;Q, but only after the first message &mdash; 11 byte-identical crash
   reports in a day. llama.cpp&rsquo;s Metal backend asserting inside C++ static destructors at process exit,
-  and a one-line fix (<code>_exit(0)</code>) with a real cost. <a href="blog-ggml-abort.html">Read it &rarr;</a></p>
+  and a one-line fix (<code>_exit(0)</code>) with a real cost. <a href="blog-ggml-abort">Read it &rarr;</a></p>
 
-  <h2><a href="blog-setup.html">Probe, download, offline &mdash; how setup actually works</a></h2>
+  <h2><a href="blog-setup">Probe, download, offline &mdash; how setup actually works</a></h2>
   <p class="legal-updated">20 July 2026</p>
   <p>&ldquo;One download, then it&rsquo;s yours&rdquo; &mdash; but a promise isn&rsquo;t an explanation. What actually
   happens in each of the three steps, why it&rsquo;s built that way, and where each one can bite you.
-  Every piece maps to code you can read. <a href="blog-setup.html">Read it &rarr;</a></p>
+  Every piece maps to code you can read. <a href="blog-setup">Read it &rarr;</a></p>
 
-  <h2><a href="blog-computer-use.html">A computer-use agent that never leaves your Mac</a></h2>
+  <h2><a href="blog-computer-use">A computer-use agent that never leaves your Mac</a></h2>
   <p class="legal-updated">6 July 2026</p>
   <p>The agent now drives most of your Mac — files, scriptable apps, your Apple Shortcuts, and any
   GUI via accessibility — entirely on-device. A private alternative to cloud agents like Cowork:
   it asks before every change, logs it per task, rehearses with <code>--dry-run</code>, and can
-  undo the whole thing even in a new session. <a href="blog-computer-use.html">Read it →</a></p>
+  undo the whole thing even in a new session. <a href="blog-computer-use">Read it →</a></p>
 
-  <h2><a href="blog-agent-hands.html">The agent grows hands — locally</a></h2>
+  <h2><a href="blog-agent-hands">The agent grows hands — locally</a></h2>
   <p class="legal-updated">5 July 2026</p>
   <p>Grant a folder, state the goal, approve the plan, undo anything. Quenderin's agent now
   organizes files — the first real slice of local autonomous computer usage, with every
-  safety property enforced by architecture, not model behavior. <a href="blog-agent-hands.html">Read it →</a></p>
+  safety property enforced by architecture, not model behavior. <a href="blog-agent-hands">Read it →</a></p>
 
-  <h2><a href="blog-cli.html">The terminal gets a seat</a></h2>
+  <h2><a href="blog-cli">The terminal gets a seat</a></h2>
   <p class="legal-updated">4 July 2026</p>
   <p><code>quenderin chat</code> brings the local models to the command line — a streaming
   REPL plus a pipe mode that turns <code>git diff | quenderin chat -p "review this"</code>
   into code review that never leaves your machine. Includes the two bugs we hit shipping
-  it, because that's how we do release notes. <a href="blog-cli.html">Read it →</a></p>
+  it, because that's how we do release notes. <a href="blog-cli">Read it →</a></p>
 
-  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="changelog.html">Changelog</a> &middot; <a href="roadmap.html">Roadmap</a></p>
+  <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="changelog">Changelog</a> &middot; <a href="roadmap">Roadmap</a></p>
 </main>
 </body>
 </html>
