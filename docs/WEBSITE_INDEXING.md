@@ -12,3 +12,12 @@ internal HTML links. No app, download artifact, or backend changes are included.
 Previous production Worker version (rollback):
 `0b50a219-9e95-4d57-9a81-a782e8eada9f`.
 Deploy the apex with `npx wrangler@4 deploy --config wrangler.site.jsonc`.
+
+## Production verification — September 21, 2026
+
+Approved release `a0c028c` was fast-forwarded to `main` and deployed to the apex
+Worker, version `2e14ca3d-c967-4e7c-8069-aadc0526d971`.
+All 20 live sitemap URLs return 200 without redirects, are indexable, and have
+exact self-canonical tags; the served sitemap matches the release byte for byte.
+Google accepted the resubmitted sitemap. Validation of the five reported
+canonical alternates started September 21. Reindexing is not yet confirmed.
