@@ -178,6 +178,9 @@ public actor LlamaEngine: InferenceEngine {
         defer { nativeLock.unlock() }
         guard let model, let tmplC = llama_model_chat_template(model, nil) else { return nil }
         let tmpl = String(cString: tmplC)
+        if let prompt = Gemma4ChatPrompt.make(template: tmpl, system: system, history: history) {
+            return prompt
+        }
 
         // llama_chat_message borrows C strings — strdup them and free after the call.
         var owned: [UnsafeMutablePointer<CChar>] = []
@@ -445,8 +448,13 @@ public actor LlamaEngine: InferenceEngine {
                 llama_sampler_chain_add(sampler, grammarSampler)
             }
         }
+        #if QUENDERIN_LLAMA_PENALTIES_VOCAB
+        llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
+            llama_vocab_n_tokens(vocab), Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
+        #else
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
             Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
+        #endif
         // Top-k (opt-in, 0 = off) BEFORE top-p — the standard llama.cpp order, and the agent decode
         // uses it to match Qwen3's `top_k=20` recipe. It runs AFTER the grammar mask, so it only
         // trims already-legal tokens (the free `input` string's tail); it can never starve the JSON.

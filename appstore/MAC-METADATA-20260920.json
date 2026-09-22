@@ -1,0 +1,7 @@
+{
+  "description": "Quenderin is an AI assistant that runs locally on your Mac. Download a model once, then chat offline without an account or an AI cloud subscription.\n\n\u2022 On-device conversations \u2014 your model generates replies on your Mac.\n\u2022 Model library \u2014 choose from 13 open models, with download sizes and memory-fit guidance, or search for compatible GGUF models.\n\u2022 Native Mac workspace \u2014 keep separate conversations, search your chats, and use keyboard shortcuts.\n\u2022 Built-in tools \u2014 ask the local agent to calculate, convert units, and work with dates. Optional device tools require permission.\n\u2022 English, Russian, Korean, Japanese, and Simplified Chinese interfaces.\n\nInternet access is needed for model downloads and online model search. Models are large; download time and response speed depend on your connection, storage, memory, and hardware. Once a model is installed, local chat works offline.\n\nAI-generated responses can be inaccurate or objectionable. Review important information before relying on it.",
+  "promotionalText": "Private AI chat on your Mac. Download an open model, then talk offline. A native workspace for conversations, model management, and useful local tools.",
+  "keywords": "ai,chat,llm,offline,private,on-device,assistant,local,llama,gguf,no cloud,agent,privacy",
+  "marketingUrl": "https://quenderin.org",
+  "supportUrl": "https://quenderin.org/help"
+}
