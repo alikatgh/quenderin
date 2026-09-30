@@ -266,4 +266,24 @@
     <string name="cap_purpose_clipboard">クリップボードのテキストを読みます。入力なし。</string>
     <string name="cap_purpose_calendar">今日の予定のタイトルと時刻。入力なし。</string>
     <string name="cap_purpose_status">この端末の電池残量と空き容量。入力なし。</string>
+
+    <!-- Model-release discovery -->
+    <string name="releases_title">最新モデルのリリース</string>
+    <string name="releases_explanation">新しいGGUFを探せます。ファイルサイズはダウンロード量の目安です。新しいアーキテクチャは、推奨前に互換性の確認が必要です。</string>
+    <string name="releases_all_sizes">すべてのサイズ</string>
+    <string name="releases_saved">保存済みの一覧</string>
+    <string name="releases_live">オンラインで確認済み</string>
+    <string name="releases_partial">" · 一部の結果"</string>
+    <string name="releases_refresh_failed">" · 更新できません"</string>
+    <string name="releases_no_match">このダウンロード量に収まるリリースはありません。上限を増やしてください。</string>
+    <string name="releases_meta">%1$.1f GB · %2$s · 公開日 %3$s</string>
+    <string name="releases_available">アプリで利用可能 · メモリ適合の推定</string>
+    <string name="releases_too_large">アプリで利用可能 · このデバイスには大きすぎます</string>
+    <string name="releases_choose">%1$s を選択</string>
+    <string name="releases_untested">このアプリでの互換性は未確認です</string>
+    <string name="releases_model_card">モデルカードとライセンス ↗</string>
+    <string name="releases_show_less">表示を減らす</string>
+    <string name="releases_show_all">全 %1$d 件を表示</string>
+    <string name="releases_unavailable">リリース一覧を取得できません。インストール済みモデルと標準のモデル一覧は引き続き利用できます。</string>
+    <string name="releases_refresh">更新</string>
 </resources>

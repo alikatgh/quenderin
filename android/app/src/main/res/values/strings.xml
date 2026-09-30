@@ -272,8 +272,8 @@
     <string name="releases_all_sizes">All sizes</string>
     <string name="releases_saved">Saved snapshot</string>
     <string name="releases_live">Checked online</string>
-    <string name="releases_partial"> · partial results</string>
-    <string name="releases_refresh_failed"> · refresh unavailable</string>
+    <string name="releases_partial">" · partial results"</string>
+    <string name="releases_refresh_failed">" · refresh unavailable"</string>
     <string name="releases_no_match">No releases within this download size. Try a larger limit.</string>
     <string name="releases_meta">%1$.1f GB · %2$s · released %3$s</string>
     <string name="releases_available">Available in this app · estimated memory fit</string>

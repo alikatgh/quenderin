@@ -266,4 +266,24 @@
     <string name="cap_purpose_clipboard">读取剪贴板中的文本。无需输入。</string>
     <string name="cap_purpose_calendar">列出今天日程的标题与时间。无需输入。</string>
     <string name="cap_purpose_status">报告此设备的电量和剩余存储。无需输入。</string>
+
+    <!-- Model-release discovery -->
+    <string name="releases_title">最新模型发布</string>
+    <string name="releases_explanation">探索新的 GGUF 模型。文件大小是下载量估计；新架构需要经过兼容性检查才能成为推荐模型。</string>
+    <string name="releases_all_sizes">全部大小</string>
+    <string name="releases_saved">已保存的列表</string>
+    <string name="releases_live">已在线检查</string>
+    <string name="releases_partial">" · 部分结果"</string>
+    <string name="releases_refresh_failed">" · 无法刷新"</string>
+    <string name="releases_no_match">没有符合此下载大小的发布。请尝试更大的上限。</string>
+    <string name="releases_meta">%1$.1f GB · %2$s · 发布于 %3$s</string>
+    <string name="releases_available">应用中可用 · 预计内存适合</string>
+    <string name="releases_too_large">应用中可用 · 对此设备过大</string>
+    <string name="releases_choose">选择 %1$s</string>
+    <string name="releases_untested">尚未在此应用中测试兼容性</string>
+    <string name="releases_model_card">模型卡和许可证 ↗</string>
+    <string name="releases_show_less">显示更少</string>
+    <string name="releases_show_all">显示全部 %1$d 个发布</string>
+    <string name="releases_unavailable">发布列表不可用。已安装的模型和内置模型列表仍可使用。</string>
+    <string name="releases_refresh">刷新</string>
 </resources>

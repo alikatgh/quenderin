@@ -78,11 +78,13 @@ struct LatestModelsView: View {
                     releaseRow(release, palette: p)
                 }
                 if filtered.count > 3 {
-                    Button(showAll ? "Show fewer" : "Show all \(filtered.count) releases") { showAll.toggle() }
-                        .font(.callout)
+                    Button { showAll.toggle() } label: {
+                        if showAll { Text("Show fewer") }
+                        else { Text("Show all \(filtered.count) releases") }
+                    }.font(.callout)
                 }
             } else {
-                Text("The release list is unavailable. Your installed and built-in models are ready below.")
+                Text("The release list is unavailable. Your installed and built-in models remain available.")
                     .font(.caption).foregroundStyle(p.onSurfaceVariant)
             }
         }
@@ -95,9 +97,9 @@ struct LatestModelsView: View {
     private func status(_ snapshot: ModelReleaseSnapshot) -> String {
         let date = ModelReleaseFeed.date(snapshot.feed.checkedAt)
             .map { $0.formatted(date: .abbreviated, time: .shortened) } ?? snapshot.feed.checkedAt
-        let source = snapshot.saved ? "Saved snapshot" : "Checked online"
-        let partial = snapshot.feed.partial ? " · partial results" : ""
-        let failure = snapshot.refreshFailed ? " · refresh unavailable" : ""
+        let source = snapshot.saved ? String(localized: "Saved snapshot") : String(localized: "Checked online")
+        let partial = snapshot.feed.partial ? String(localized: " · partial results") : ""
+        let failure = snapshot.refreshFailed ? String(localized: " · refresh unavailable") : ""
         return "\(source) · \(date)\(partial)\(failure)"
     }
 
@@ -106,12 +108,13 @@ struct LatestModelsView: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(release.name).font(.callout.weight(.semibold)).foregroundStyle(p.onSurface)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(String(format: "%.1f GB · %@ · released %@", release.downloadGB,
-                        release.quantization, String(release.createdAt.prefix(10))))
+            let date = ModelReleaseFeed.date(release.createdAt)
+                .map { $0.formatted(date: .abbreviated, time: .omitted) } ?? String(release.createdAt.prefix(10))
+            Text("\(release.downloadGB, specifier: "%.1f") GB · \(release.quantization) · released \(date)")
                 .font(.caption.monospacedDigit()).foregroundStyle(p.onSurfaceVariant)
             if let entry = release.catalogEntry() {
                 let fitness = fitness(entry)
-                Text(fitness.canLoad ? "Available in this app · estimated memory fit" : "Available in this app · too large for this device")
+                Text(LocalizedStringKey(fitness.canLoad ? "Available in this app · estimated memory fit" : "Available in this app · too large for this device"))
                     .font(.caption2).foregroundStyle(fitness.canLoad ? p.statusText : .orange)
                 Button("Choose \(entry.label)") { onSelect(entry) }
                     .buttonStyle(.bordered).controlSize(.small).disabled(!fitness.canLoad)

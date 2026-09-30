@@ -85,9 +85,9 @@ public struct ModelsLibraryView: View {
                     .foregroundStyle(p.onSurfaceVariant)
 
                 // Open Hub + local filter live on the Search rail/tab — not buried under this grid.
-                Text(deviceNoun == "Mac"
+                Text(LocalizedStringKey(deviceNoun == "Mac"
                      ? "Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place."
-                     : "Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs.")
+                     : "Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 4)
@@ -221,7 +221,7 @@ public struct ModelsLibraryView: View {
                 .help("Why this one?")
                 .accessibilityLabel("Why is this recommended?")
                 .popover(isPresented: $showRecommendedHint, arrowEdge: .bottom) {
-                    Text(hint)
+                    Text(LocalizedStringKey(hint))
                         .font(.callout)
                         .padding(14)
                         .frame(width: 300, alignment: .leading)
