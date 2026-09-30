@@ -1,6 +1,6 @@
 # Quenderin marketing website
 
-A static marketing site with a landing page, downloads, blog, changelog, and support pages. **No build step or third-party runtime requests.** HTML, CSS, vanilla JS, and a self-hosted font.
+A marketing site with static HTML, CSS, vanilla JS, and a self-hosted font. The model tables and calculator data are generated from the shared app manifest. Browsers request only first-party resources; a small Worker reads public Hugging Face metadata for the latest-release feed.
 
 ```
 website/
@@ -67,8 +67,10 @@ python3 -m http.server 8080
 
 ## Publish the website
 
-The production domain **quenderin.org** is served by the assets-only Cloudflare
-Worker configured in `wrangler.site.jsonc`. The GitHub workflow also maintains
+The production domain **quenderin.org** is served by the Cloudflare
+Worker configured in `wrangler.site.jsonc`. Static pages use the assets binding;
+`/api/model-releases` refreshes public metadata hourly on demand, independently of deployment.
+The GitHub workflow also maintains
 GitHub Pages and the Cloudflare Pages preview when its configured secret is present.
 
 ```bash
@@ -79,6 +81,17 @@ npx wrangler deploy --config wrangler.site.jsonc
 workflow publishes the remote default branch. Push the intended website changes
 before using that part of the script. A local preview or pushed task branch is
 not production deployment evidence; check the live launch story and download links.
+
+## Current model catalog
+
+Run `npm run gen:website-catalog` after exporting the shared manifest. Never edit
+generated table rows or calculator values by hand. `npm run check:website-catalog`
+checks the homepage, models page, SEO list and calculator payload. Both CI and
+deployment enforce catalog parity. See `docs/MODEL_CATALOG_FRESHNESS.md`.
+
+`npm run refresh:model-releases` updates the saved offline/static-preview snapshot.
+The production feed refreshes itself; no credentials, visitor headers or prompts
+are sent upstream. New metadata never changes installed app recommendations.
 
 ## Editing
 

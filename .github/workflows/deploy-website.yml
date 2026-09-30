@@ -27,6 +27,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Generate the website catalog from the app manifest
+        run: python3 scripts/check_catalog_parity.py && python3 scripts/generate_website_catalog.py
       - uses: actions/configure-pages@v6
         with:
           # Self-enable Pages on first run — the manual Settings→Pages step was never
@@ -52,6 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: env.CF_TOKEN_SET == 'true'
+      - name: Generate the website catalog from the app manifest
+        if: env.CF_TOKEN_SET == 'true'
+        run: python3 scripts/check_catalog_parity.py && python3 scripts/generate_website_catalog.py
       - name: Deploy quenderin.org (the Worker)
         if: env.CF_TOKEN_SET == 'true'
         run: npx --yes wrangler deploy --config wrangler.site.jsonc

@@ -204,6 +204,10 @@ jobs:
         run: python3 scripts/check_catalog_parity.py
       - name: FEATURES.md model table is a rendering of the catalog (no doc drift)
         run: python3 scripts/generate_features_models.py --check
+      - name: Website tables and calculator match the app catalog
+        run: python3 scripts/generate_website_catalog.py --check
+      - name: Model discovery, freshness and fallback tests
+        run: node --test scripts/tests/model-releases.test.mjs
       - name: Agent-logic parity suites cover the same vectors (iOS + Android + Desktop)
         run: python3 scripts/check_agent_parity.py
       - name: Model-router parity suites cover the same vectors (iOS + Android)

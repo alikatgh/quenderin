@@ -14,6 +14,12 @@
 
 ## Unreleased
 
+- **Current website model catalog:** the homepage and model guide now render the
+  complete shared app catalog, with consistent RAM estimates and calculator data.
+  Added hourly discovery of recent original-model GGUF releases, download-size
+  filters, verified file metadata and a dated offline fallback. Newly discovered
+  files stay separate from app recommendations until device validation.
+
 ### Responsive prompt processing (Apple + Android)
 - Check Stop between bounded llama.cpp prompt batches (maximum 512 tokens), including
   the final batch. Cancelled prefills clear the native KV cache and its token mirror.

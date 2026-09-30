@@ -419,6 +419,26 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .model-spec-table .model-fam { margin-right: 0.5rem; vertical-align: middle; }
 .model-spec-table .badge { margin-left: 0.5rem; }
 .model-spec-table tr.recommended td:first-child { font-weight: 600; }
+.model-spec-table a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.model-spec-table a:hover { text-decoration-color: var(--brand); }
+.catalog-heading { margin: 2.5rem 0 1rem; font-size: 1.25rem; }
+.release-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.release-toolbar label { display: flex; align-items: center; gap: .75rem; font-size: .85rem; }
+.release-toolbar select { max-width: 100%; padding: .65rem .85rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-md); font: inherit; }
+.release-status { color: var(--text-secondary); font-size: .8rem; }
+.release-models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block-start: 1px solid var(--border); }
+.release-model { min-width: 0; padding: 1.25rem 1.25rem 1.25rem 0; border-block-end: 1px solid var(--border); }
+.release-model h3 { margin: 0 0 .65rem; font-size: 1.05rem; overflow-wrap: anywhere; }
+.release-model h3 a { color: var(--text); text-decoration: none; }
+.release-model h3 a:hover { color: var(--brand); }
+.release-model p { margin: .25rem 0; font-size: .8rem; }
+.release-spec { font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
+.release-date, .release-source { color: var(--text-secondary); overflow-wrap: anywhere; }
+.catalog-caveat { margin-top: 1rem; color: var(--text-secondary); font-size: .85rem; max-width: 75ch; }
+[data-release-more] { margin-top: 1rem; }
+[data-release-more][hidden] { display: none; }
+@media (max-width: 800px) { .release-models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 500px) { .release-models { grid-template-columns: 1fr; } .release-model { padding-inline-end: 0; } .release-toolbar label { width: 100%; flex-wrap: wrap; } }
 
 /* ===================================================================
    Dark mode — toggled via [data-theme-mode="dark"] on <html>
