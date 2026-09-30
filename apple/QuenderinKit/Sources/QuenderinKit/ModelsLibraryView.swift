@@ -24,7 +24,7 @@ public struct ModelsLibraryView: View {
     /// The page's information order: what you HAVE, what you SHOULD get, what you COULD get,
     /// what you CAN'T — each its own captioned section, never one undifferentiated dump.
     private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry]) {
-        let recommendedID = ModelRecommender.bestInstallableModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB).id
+        let recommendedID = recommendedModelID
         var mine: [ModelEntry] = [], recommended: [ModelEntry] = []
         var available: [ModelEntry] = [], blocked: [ModelEntry] = []
         for entry in ModelCatalog.models {
@@ -33,7 +33,7 @@ public struct ModelsLibraryView: View {
                 mine.append(entry)   // downloading = arriving — it belongs with "yours"
             } else if entry.id == recommendedID {
                 recommended.append(entry)
-            } else if MemoryFitness.check(for: entry).canLoad {
+            } else if fitness(entry).canLoad {
                 available.append(entry)
             } else {
                 blocked.append(entry)
@@ -66,13 +66,14 @@ public struct ModelsLibraryView: View {
                 }
                 if !groups.recommended.isEmpty {
                     sectionHeader("Recommended", color: p.primary, palette: p,
-                                  hint: "The largest model that loads comfortably in this \(deviceNoun)'s \(Int(HardwareProbe.current().totalRAMGB)) GB of memory — the best answers it can run without slowdowns. Picked by the same live check that grades every card's fit badge.")
+                                  hint: "A starting point from this app's catalog. iPhone selection accounts for the app's memory budget and estimated speed; Mac selection accounts for memory fit. Task suggestions use the models you have installed. Fit and speed are estimates, not device benchmarks.")
                     grid(groups.recommended, palette: p)
                 }
                 if !groups.available.isEmpty {
                     sectionHeader("Available to download", color: p.onSurfaceVariant, palette: p)
                     grid(groups.available, palette: p)
                 }
+                LatestModelsView(onSelect: onSelectModel)
                 if !groups.blocked.isEmpty {
                     // Can't-run models sink to the bottom, dimmed by their own cards' fit state.
                     sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant, palette: p)
@@ -84,7 +85,9 @@ public struct ModelsLibraryView: View {
                     .foregroundStyle(p.onSurfaceVariant)
 
                 // Open Hub + local filter live on the Search rail/tab — not buried under this grid.
-                Text("Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.")
+                Text(deviceNoun == "Mac"
+                     ? "Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place."
+                     : "Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs.")
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 4)
@@ -163,14 +166,14 @@ public struct ModelsLibraryView: View {
 
     @ViewBuilder
     private func grid(_ entries: [ModelEntry], palette p: QuenderinPalette) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 14, alignment: .top)],
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: deviceNoun == "Mac" ? 380 : 280), spacing: 14, alignment: .top)],
                   alignment: .leading, spacing: 14) {
             ForEach(entries) { entry in
                 LibraryRow(
                     entry: entry,
                     state: library.state(of: entry),
                     isActive: entry.id == activeModelID,
-                    fitness: MemoryFitness.check(for: entry),
+                    fitness: fitness(entry),
                     palette: p,
                     onDownload: { library.download(entry) },
                     onCancel: { library.cancel(entry) },
@@ -181,6 +184,22 @@ public struct ModelsLibraryView: View {
                 )
             }
         }
+    }
+
+    private var recommendedModelID: String {
+        #if os(iOS)
+        IPhoneModelSelector.selectForThisDevice().model.id
+        #else
+        ModelRecommender.bestInstallableModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB).id
+        #endif
+    }
+
+    private func fitness(_ model: ModelEntry) -> MemoryCheckResult {
+        #if os(iOS)
+        IPhoneModelSelector.fitness(of: model, for: DeviceProfiler.current())
+        #else
+        MemoryFitness.check(for: model)
+        #endif
     }
 
     @State private var showRecommendedHint = false

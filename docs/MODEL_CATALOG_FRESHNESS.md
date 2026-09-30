@@ -40,10 +40,35 @@ binding. `workers/model-releases.mjs` reads public Hugging Face API metadata:
 
 The feed refreshes on the first visit after cache expiry. Upstream fetches also use
 Cloudflare's one-hour cache. No cron, secret, new database or store update is required.
-Only the website uses the feed; offline apps continue using their embedded catalog.
+The Mac, iPhone and Android model screens also read the feed, at most once per hour
+while opened (explicit Refresh bypasses that interval). No background polling or
+weights download is started. Failed refreshes retain the original timestamp and
+last good results, with a one-minute retry backoff. A bundled snapshot is generated
+from the same source as the website; app-private atomic storage preserves later
+successful responses for offline relaunches. Older server responses cannot roll it back.
 Only fixed public API URLs are requested: no visitor cookies, headers, identifiers,
 conversations or user-selected URLs are forwarded. User-supplied query parameters
 cannot select upstream destinations or create arbitrary cache keys.
+
+## Native compatibility and selection
+
+Native clients bound metadata to 1 MiB / 60 rows, validate schema, repository IDs,
+release dates, standalone filenames, sizes, revision and SHA-256, and discard
+invalid/duplicate rows. Model-card URLs are constructed from validated repository
+IDs rather than trusting URLs in the response.
+
+“Compatibility not tested in this app” appears on newly discovered files. They link
+to their model cards/licenses, with no automatic install or default promotion.
+An exact checksum match to a built-in ModelEntry can use the existing install flow,
+gated by the same platform memory selector. File size is never called a RAM fit.
+Installed models, active selection, task routing and user-controlled downloads
+continue through their existing paths. All three native apps already share llama.cpp;
+this increment adds no new inference runtime or model-weight dependency.
+
+The Apple library uses the same chip/per-app memory selector as the iPhone picker;
+the previous library used total desktop RAM on phones. Speed/fit remain estimates
+until real-device measurements. See `docs/INFERENCE_SLO.md` for prompt cancellation
+and latency release gates.
 
 ## Updating curated recommendations
 

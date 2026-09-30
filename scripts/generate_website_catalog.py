@@ -87,7 +87,10 @@ def main() -> int:
         raise ValueError('Recommendation refers to a missing model')
     output = {'version': data['version'], 'catalogSha256': hashlib.sha256(raw).hexdigest(),
               'models': models, 'recommendation': rec}
-    targets = {ROOT / 'website/data/model-catalog.json': json.dumps(output, indent=2) + '\n'}
+    seed = json.dumps(releases, indent=2) + '\n'
+    targets = {ROOT / 'website/data/model-catalog.json': json.dumps(output, indent=2) + '\n',
+               ROOT / 'apple/QuenderinKit/Sources/QuenderinKit/Resources/model-releases.json': seed,
+               ROOT / 'android/app/src/main/assets/model-releases.json': seed}
     for name in ['index.html', 'models.html']:
         path = ROOT / 'website' / name
         text = path.read_text()
@@ -109,6 +112,7 @@ def main() -> int:
         if not path.exists() or path.read_text() != content:
             stale.append(str(path.relative_to(ROOT)))
             if not check:
+                path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
     if check and stale:
         print('Stale website catalog: ' + ', '.join(stale) + '. Run npm run gen:website-catalog.')

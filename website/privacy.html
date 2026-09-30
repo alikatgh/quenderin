@@ -51,10 +51,11 @@
     <li>We operate <strong>no servers</strong> that receive your content. There are no accounts, no sign-in, and no cloud sync.</li>
     <li>We collect <strong>no usage analytics, no telemetry, and no crash data</strong> from the app.</li>
   </ul>
-  <p>For app-store disclosures, our "data collected" is <strong>None</strong>. The app's only network activity is fetching model files:</p>
+  <p>For app-store disclosures, our "data collected" is <strong>None</strong>. Model discovery and downloads use these network requests:</p>
   <ul>
     <li><strong>Model downloads.</strong> Model files are downloaded from a public model host (Hugging Face, <code>huggingface.co</code>) over a standard request; that host may log the request per its <a href="https://huggingface.co/privacy" rel="noopener">own policy</a>. We do not receive that data.</li>
     <li><strong>Model-catalog search (optional).</strong> If you search for a model to download, the search term you type is sent to Hugging Face&rsquo;s public model index to find matching files. Nothing else is attached to that request &mdash; no conversation content, no account, and no identifiers beyond what any web request carries (such as an IP address). Search terms are used only to return catalog results and are never stored by us.</li>
+    <li><strong>Latest release metadata.</strong> In app versions with the latest-releases view, opening model selection checks a small public catalog at <code>quenderin.org/api/model-releases</code>. It sends no conversations, files, account, device profile, or search terms. Standard request information, such as an IP address, is processed by our hosting provider for routing and security. Results are saved on your device for offline browsing; this request never downloads model weights or changes your selected model.</li>
   </ul>
 
   <h2>3. This website</h2>

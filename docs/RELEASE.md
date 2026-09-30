@@ -52,8 +52,10 @@ device — the JNI keep rules R8 needs are already in `app/proguard-rules.pro`.
 
 ### 4. Play Console (your account)
 - Create the app → upload the `.aab` to **internal testing** first (install on your S23, smoke-test).
-- **Data safety form:** "No data collected / No data shared" — accurate; the only egress is the
-  user-initiated HuggingFace model GET. Declare the **`dataSync`** foreground-service type.
+- **Data safety form:** review against the public privacy policy. Network activity includes
+  user-selected Hugging Face downloads, optional model search, and public release metadata
+  from quenderin.org when model selection is opened. These requests carry no chats or files.
+  Declare the **`dataSync`** foreground-service type used for model downloads.
 - **Content rating (IARC):** file **Mature 17+** — an unrestricted local LLM can emit mature text.
 - **Privacy policy URL:** `https://quenderin.org/privacy` (already hosted + in-app).
 - Promote internal → production when the smoke-test passes.

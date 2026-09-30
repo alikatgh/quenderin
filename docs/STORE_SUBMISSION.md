@@ -21,8 +21,9 @@ reachable privacy-policy URL.
 For the App Store's EULA requirement, opt into **Apple's Standard EULA** in App Store Connect →
 App Information (one click — no custom terms file needed). Play does not require a separate terms
 page. The policy is short because the app collects nothing: on-device inference, no account, no
-analytics/telemetry; the only network call is the user-initiated Hugging Face model download (no
-user data sent — there are no servers).
+analytics/telemetry. Network activity includes user-selected Hugging Face model downloads,
+optional model search, and public release metadata from quenderin.org when model selection is
+opened. None of these sends conversations, files, accounts or device profiles.
 
 ### Content safety (Generative-AI policy) — IMPLEMENTED in code ✅
 
@@ -110,7 +111,6 @@ AI-generated, (b) give users a **way to report/flag** objectionable output, and 
       no account, no data collected**, your choice of 11 open models.
 - [ ] Privacy policy + terms URLs (section 0) linked in both listings and in-app.
 
-> Accuracy note for both privacy forms: "we collect nothing" is correct — there is no backend.
-> The only egress is the user-initiated model download straight from Hugging Face. Describe it
-> plainly rather than over-claiming "no network," which the agent/computer-use features and the
-> download would contradict.
+> Accuracy note for both privacy forms: use the live public privacy policy at
+> https://quenderin.org/privacy. Inference and conversations remain local. Downloads, optional
+> model search and public release metadata are network requests; do not claim "no network."

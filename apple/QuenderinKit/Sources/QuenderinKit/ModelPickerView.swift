@@ -74,7 +74,7 @@ public struct ModelPickerView: View {
         let blocked = options.filter { !installedIDs.contains($0.model.id) && !$0.fitness.canLoad }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("All of these run fully on your \(deviceNoun) — a one-time download, then it's yours offline.")
+                Text("Choose a built-in model that fits your \(deviceNoun). Download once, then chat offline.")
                     .font(.caption)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.horizontal, 4)
@@ -109,6 +109,7 @@ public struct ModelPickerView: View {
                     sectionHeader("Available to download", color: p.onSurfaceVariant)
                     rows(fitting, palette: p)
                 }
+                LatestModelsView(onSelect: onSelect)
                 if !blocked.isEmpty {
                     // Ineligible models sink to the BOTTOM: the sheet opens on choices, not warnings.
                     sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant)

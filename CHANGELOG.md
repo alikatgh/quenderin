@@ -14,6 +14,14 @@
 
 ## Unreleased
 
+- **Mac, iPhone and Android model discovery:** model selection now includes recent
+  releases from the website's hourly feed, compact-download filters, model cards,
+  compatibility labels and a saved snapshot that survives offline relaunches.
+  Refreshing metadata never changes the active model or starts a weights download.
+  Only checksum matches from the built-in catalog expose the existing install flow.
+- The Apple model library now uses the iPhone selector's per-app memory budget for
+  fit badges and recommendations, and adapts its grid to phone widths.
+
 - **Current website model catalog:** the homepage and model guide now render the
   complete shared app catalog, with consistent RAM estimates and calculator data.
   Added hourly discovery of recent original-model GGUF releases, download-size
