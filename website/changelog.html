@@ -14,7 +14,7 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-2" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -28,9 +28,16 @@
   <h1>What's new</h1>
   <p class="legal-updated">Plain-language notes, newest first. Every line here maps to real commits in the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">open git history</a> — that's the unabridged version.</p>
 
+  <h2>30 September 2026 &middot; Mac + iPhone</h2>
+  <ul>
+    <li><strong>Both native Apple apps are available.</strong> Get Quenderin free on the App Store for <a href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener">Mac</a> or <a href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener">iPhone</a>. No account or subscription; model inference runs on your device after setup. <a href="blog-apple-launch.html">Read the launch story</a>.</li>
+    <li><strong>A clearer start.</strong> The website now leads with the store downloads, real app icons, and the path from installation to an offline reply. The download page distinguishes the Apple apps, Windows and Linux previews, and Android closed beta.</li>
+    <li><strong>The homepage phone is repaired.</strong> Its rounded frame stays connected as it tilts. On mobile, the introduction and download links appear before the screenshot.</li>
+  </ul>
+
   <h2>July 2026</h2>
   <ul>
-    <li><strong>Quenderin is on the App Store — free, for iPhone.</strong> The native SwiftUI app is <a href="https://apps.apple.com/app/id6789854363" rel="noopener">live worldwide</a> (175 regions) — fully offline, on-device, our first public store release. The Mac App Store build follows once its review clears.</li>
+    <li><strong>Quenderin is on the App Store — free, for iPhone.</strong> The native SwiftUI app is <a href="https://apps.apple.com/app/id6789854363" rel="noopener">live worldwide</a> (175 regions) — fully offline, on-device, our first public store release. The Mac app is also available now; see the September update above.</li>
     <li><strong>v0.2.0 — stores + dual Windows channel.</strong> Version aligned across desktop, Android, and Apple. <strong>Windows:</strong> keep free GitHub <code>.exe</code> installs <em>and</em> ship Microsoft Store (AppX) for branding and no SmartScreen — owner guide in the repo. <strong>macOS:</strong> public product is the native free Mac App Store app only (not Electron). Reliability and file-chore tools landed in the open source: batch organize, multi-file collect for reports, stronger skill memory, GUI self-checks.</li>
     <li><strong>The local computer-use agent grew up — a private alternative to cloud agents.</strong> On a Mac, <code>quenderin do "&lt;anything&gt;"</code> can now click and type in <em>any</em> app via accessibility (<code>--gui</code>: buttons, menus, navigation), run any of your <strong>Apple Shortcuts</strong>, and create files as well as organise them. What a cloud agent can't offer, and we now do: <strong>undo a whole task even in a new session</strong> (<code>quenderin undo</code>), a <strong>per-task local audit trail</strong> (<code>quenderin history</code>), and a true <strong>dry run</strong> that shows exactly what it would do while touching nothing (<code>--dry-run</code>). It reads for real but never changes anything without your say-so. <code>quenderin capabilities</code> lists the whole toolkit. <a href="why-local-agent.html">Why local beats the cloud here</a>.</li>
     <li><strong>Reliable on a small local model.</strong> A weak on-device model can get stuck repeating itself or emit malformed output; the agent now recovers from both — nudging once, then stopping cleanly rather than looping forever — and streams each step live so you watch it work and can stop it the instant something looks wrong.</li>

@@ -305,6 +305,10 @@ public actor LlamaEngine: InferenceEngine {
         var nctx = ContextWindow.recommend(
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         ctxParams.n_ctx = UInt32(nctx)
+        // Bound the logical and physical prefill batches, as on Android. Native calls
+        // can then return to the Stop check every 512 tokens, instead of 2048.
+        ctxParams.n_batch = UInt32(min(PromptBatchDecoder.maximumBatchTokens, nctx))
+        ctxParams.n_ubatch = ctxParams.n_batch
         // NB: in modern llama.cpp a QUANTIZED V-cache requires Flash Attention — with FA auto-on
         // this works wherever the model supports FA; the init-failure fallback below covers the
         // models where AUTO resolves to disabled. (The old "q8_0 is safe without FA" note was wrong
@@ -338,6 +342,8 @@ public actor LlamaEngine: InferenceEngine {
             nctx = ContextWindow.recommend(
                 appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: .f16)
             ctxParams.n_ctx = UInt32(nctx)
+            ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
+            ctxParams.n_ubatch = ctxParams.n_batch
             ctxOrNil = llama_init_from_model(m, ctxParams)
         }
         guard let ctx = ctxOrNil else {
@@ -463,26 +469,19 @@ public actor LlamaEngine: InferenceEngine {
         // `llama_batch_get_one` only BORROWS the token pointer, so the batch must be built AND
         // consumed while that storage is alive — hence withUnsafeMutableBufferPointer.
         //
-        // Returns the raw llama_decode rc (0 = ok, 1 = no free KV slot — cache full, recoverable,
-        // negative = fatal) — NOT collapsed to Bool, so callers can distinguish a graceful
-        // context-limit stop from a genuine failure, mirroring llama_generate.h's contract.
-        func decode(_ toks: inout [llama_token]) -> Int32 {
-            // llama.cpp also hard-aborts if ONE llama_decode call carries more tokens than
-            // n_batch (2048 default — we never raise it), so a long prefill is fed in
-            // n_batch-sized chunks: the standard prompt-processing loop. A within-limit prompt
-            // is exactly one chunk ≡ the old single-call behavior, same borrowed-pointer rule.
-            let nBatch = max(1, Int(llama_n_batch(context)))
-            var start = 0
-            while start < toks.count {
-                let end = min(start + nBatch, toks.count)
-                var chunk = Array(toks[start..<end])
-                let rc = chunk.withUnsafeMutableBufferPointer {
-                    llama_decode(context, llama_batch_get_one($0.baseAddress, Int32($0.count)))
+        // Preserve native return codes while representing user cancellation separately.
+        // Borrow each range directly from the prompt storage; no per-batch token copy.
+        func decode(_ toks: inout [llama_token]) -> PromptBatchDecoder.Result {
+            PromptBatchDecoder.decode(
+                tokenCount: toks.count,
+                batchSize: Int(llama_n_batch(context)),
+                isCancelled: cancelled
+            ) { range in
+                toks.withUnsafeMutableBufferPointer { buffer in
+                    llama_decode(context, llama_batch_get_one(
+                        buffer.baseAddress!.advanced(by: range.lowerBound), Int32(range.count)))
                 }
-                if rc != 0 { return rc }
-                start = end
             }
-            return 0
         }
 
         // Reuse the KV cache from the prior turn: decode only the tokens NOT already cached, so
@@ -510,28 +509,33 @@ public actor LlamaEngine: InferenceEngine {
                 reuse = 0
             }
         }
-        // A Stop during prefill (before the first token) must land too — the native prefill
-        // decode is a single non-interruptible call, so check cancelState right around it and
-        // bail before we start a long feedback loop (Q-005/Q-217). A big prompt can spend
-        // seconds here; without this check Stop was completely dead until the first token.
-        if cancelled() { continuation.finish(); return }
-        let perfT0 = ContinuousClock.now   // prefill start (perf instrumentation; twin of llama_generate.h)
+        // A Metal decode is synchronous: honor Stop between bounded native batches.
+        // Do not use llama.cpp's abort callback as a GPU promise: upstream documents
+        // that callback as CPU-only. Cancellation must clear BOTH the partial KV and
+        // its mirror, including when Stop arrives just after the final batch.
+        let perfT0 = ContinuousClock.now
         var toPrefill = Array(newTokens[reuse...])
-        var prefillRC = decode(&toPrefill)
-        if prefillRC == 1 && reuse > 0 {
-            // Cache full with the reused prefix in play — drop reuse and reprefill the whole
-            // turn fresh (mirrors llama_generate.h).
+        var prefillResult = decode(&toPrefill)
+        if prefillResult == .decoded(1) && reuse > 0 {
             llama_memory_clear(mem, true)
             cachedTokens = []
             toPrefill = newTokens
             reuse = 0
-            prefillRC = decode(&toPrefill)
+            prefillResult = decode(&toPrefill)
         }
-        if prefillRC != 0 {
-            llama_memory_clear(llama_get_memory(context), true)
+        switch prefillResult {
+        case .cancelled:
+            llama_memory_clear(mem, true)
+            cachedTokens = []
+            continuation.finish()
+            return
+        case .decoded(let code) where code != 0:
+            llama_memory_clear(mem, true)
             cachedTokens = []
             continuation.finish(throwing: InferenceError.generationFailed(reason: "llama_decode failed"))
             return
+        case .decoded:
+            break
         }
         cachedTokens = newTokens   // the KV cache now holds exactly `newTokens`
         let perfPrefillDone = ContinuousClock.now
@@ -586,7 +590,12 @@ public actor LlamaEngine: InferenceEngine {
             produced += 1
 
             var one = [next]                               // feed the token back (alive during decode)
-            let feedbackRC = decode(&one)
+            let feedbackResult = decode(&one)
+            guard case .decoded(let feedbackRC) = feedbackResult else {
+                llama_memory_clear(mem, true)
+                cachedTokens = []
+                break
+            }
             if feedbackRC != 0 {
                 // Code 1 mid-stream = context filled while generating THIS reply — graceful stop,
                 // not a failure (mirrors llama_generate.h:126-132); the KV is full but VALID, so

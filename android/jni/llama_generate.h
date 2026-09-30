@@ -12,6 +12,7 @@
 #pragma once
 
 #include "llama.h"
+#include "prompt_batch_decoder.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -133,26 +134,17 @@ inline KVReusePlan kvReusePlan(const std::vector<llama_token>& cached,
     return {true, 0, 0, 0};                          // full reprefill
 }
 
-// Feed `tokens` to llama_decode in n_batch-sized chunks. llama.cpp hard-aborts the PROCESS
-// (GGML_ASSERT(n_tokens_all <= cparams.n_batch) in llama-context.cpp → SIGABRT) when ONE call
-// carries more tokens than the context's n_batch — the JNI sizes n_batch to min(512, n_ctx), so a
-// single-call prefill of a document attachment / restored long chat / long paste killed the app.
-// Chunking is the standard prompt-processing loop; a within-limit prompt is exactly one chunk.
-// Returns the first non-zero llama_decode rc (0 ok, 1 no free KV slot, negative fatal). Twin of
-// LlamaEngine.swift `decode(_:)`.
-inline int decodeChunked(llama_context* ctx, const std::vector<llama_token>& tokens) {
-    const size_t nBatch = std::max<uint32_t>(1, llama_n_batch(ctx));
-    size_t start = 0;
-    while (start < tokens.size()) {
-        const size_t end = std::min(start + nBatch, tokens.size());
-        // llama_batch_get_one only BORROWS the pointer — `tokens` outlives the decode.
-        llama_batch chunk = llama_batch_get_one(const_cast<llama_token*>(tokens.data() + start),
-                                                (int32_t) (end - start));
-        const int rc = llama_decode(ctx, chunk);
-        if (rc != 0) return rc;
-        start = end;
-    }
-    return 0;
+// Feed prompt ranges through the same bounded, cancellable loop exercised by the
+// model-free regression test. A single oversized llama_decode can hard-abort.
+template <typename Cancelled>
+inline PromptBatchResult decodeChunked(llama_context* ctx, const std::vector<llama_token>& tokens,
+                                      Cancelled cancelled) {
+    return decodePromptBatches(tokens.size(), llama_n_batch(ctx), cancelled,
+        [&](size_t start, size_t end) {
+            // llama_batch_get_one borrows storage that remains alive through the decode.
+            return llama_decode(ctx, llama_batch_get_one(
+                const_cast<llama_token*>(tokens.data() + start), (int32_t)(end - start)));
+        });
 }
 
 // Clamp a prompt to what the context can seat WITH room for the reply. Truncates middle-out: the
@@ -188,7 +180,7 @@ inline int warmupContext(llama_context* ctx, const llama_vocab* vocab) {
     if (bos != LLAMA_TOKEN_NULL) tmp.push_back(bos);
     if (eos != LLAMA_TOKEN_NULL) tmp.push_back(eos);
     if (tmp.empty()) tmp.push_back(0);
-    const int rc = decodeChunked(ctx, tmp);
+    const int rc = decodeChunked(ctx, tmp, [] { return false; }).code;
     llama_memory_clear(llama_get_memory(ctx), true);
     llama_synchronize(ctx);
     llama_perf_context_reset(ctx);
@@ -271,18 +263,18 @@ std::string generateWithKVReuse(llama_context* ctx, const llama_vocab* vocab, ll
     // aborts the process). Keep `toDecode` alive across the decode — llama_batch_get_one only borrows
     // its pointer. Assign the mirror only on success.
     std::vector<llama_token> toDecode(newTokens.begin() + reuse, newTokens.end());
-    int rc = decodeChunked(ctx, toDecode);
-    if (rc == 1 && reuse > 0) {
+    auto prefill = decodeChunked(ctx, toDecode, cancelled);
+    if (!prefill.cancelled && prefill.code == 1 && reuse > 0) {
         // Cache full with the reused prefix in play — drop reuse and reprefill the whole turn fresh.
         llama_memory_clear(llama_get_memory(ctx), true);
         cached.clear();
         toDecode = newTokens;
-        rc = decodeChunked(ctx, toDecode);
+        prefill = decodeChunked(ctx, toDecode, cancelled);
     }
-    if (rc != 0) {
+    if (prefill.cancelled || prefill.code != 0) {
         llama_memory_clear(llama_get_memory(ctx), true);
         cached.clear();
-        if (failed) *failed = true;   // genuinely fatal, or even a fresh full reprefill doesn't fit n_ctx
+        if (failed) *failed = !prefill.cancelled;   // genuinely fatal, or even a fresh full reprefill doesn't fit n_ctx
         return out;
     }
     cached = newTokens;   // the KV now holds exactly newTokens

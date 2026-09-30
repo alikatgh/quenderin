@@ -4,8 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
-<title>Quenderin — On-device AI chat, and a local computer-use agent</title>
-<meta name="description" content="Quenderin runs open LLMs fully on your device — private chat on iPhone, free on the App Store, plus a Mac computer-use agent that drives files, apps, and Apple Shortcuts, asking before every change. Nothing leaves the machine." />
+<title>Quenderin — Private, offline AI for Mac and iPhone</title>
+<meta name="description" content="Free on the App Store for Mac and iPhone. Download an open model once, then write, learn, and chat offline. No account, subscription, or telemetry." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/" />
@@ -15,7 +15,7 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-2" />
 <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   /* RTL content alignment (language-picker styling now lives in styles.css) */
@@ -24,19 +24,19 @@
 
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Quenderin" />
-<meta property="og:title" content="Quenderin — On-device AI, and a local computer-use agent" />
-<meta property="og:description" content="Local LLMs on-device — private chat, plus a Mac agent that operates your computer for you (files, apps, Shortcuts). No cloud, no API keys, no telemetry." />
+<meta property="og:title" content="Quenderin — Private, offline AI for Mac and iPhone" />
+<meta property="og:description" content="Free native apps for Mac and iPhone. Download a model once, then chat offline. No account, subscription, or telemetry." />
 <meta property="og:url" content="https://quenderin.org/" />
 <meta property="og:image" content="https://quenderin.org/og-image.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
+<meta property="og:image:alt" content="Quenderin — private AI for Mac and iPhone. Available on the App Store." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Quenderin — On-device AI, and a local computer-use agent" />
-<meta name="twitter:description" content="Local LLMs on-device — private chat, plus a Mac agent that operates your computer. No cloud, no API keys, no telemetry." />
+<meta name="twitter:title" content="Quenderin — Private, offline AI for Mac and iPhone" />
+<meta name="twitter:description" content="Free native apps for Mac and iPhone. Download a model once, then chat offline. No account, subscription, or telemetry." />
 <meta name="twitter:image" content="https://quenderin.org/og-image.png" />
-<meta name="twitter:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
+<meta name="twitter:image:alt" content="Quenderin — private AI for Mac and iPhone. Available on the App Store." />
 
 <script type="application/ld+json">
 {
@@ -47,7 +47,9 @@
   "operatingSystem": "iOS, Android, macOS, Linux",
   "description": "Offline, on-device AI assistant powered by local large language models. No internet, API keys, or telemetry.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "url": "https://quenderin.org/"
+  "url": "https://quenderin.org/",
+  "downloadUrl": "https://apps.apple.com/app/id6789854363",
+  "image": "https://quenderin.org/assets/app/icon-ios.png"
 }
 </script>
 <script type="application/ld+json">
@@ -68,7 +70,7 @@
     {
       "@type": "Question",
       "name": "What devices does it run on?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Quenderin is on the App Store for iPhone today, and the desktop app runs on macOS and Linux. The native Android app is in closed beta on Google Play — the same hardware-detection and model-selection engine, rebuilt natively for each platform." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Quenderin is free on the App Store for Mac and iPhone. Windows and Linux previews are available from GitHub, and Android is in closed beta on Google Play." }
     },
     {
       "@type": "Question",
@@ -78,7 +80,7 @@
     {
       "@type": "Question",
       "name": "When can I install it?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The iPhone app is on the App Store now, free. The desktop app runs on macOS and Linux and is open source and runnable from GitHub today. The native Android app is in closed beta on Google Play — you can join the test to run it now." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Install the free native Mac or iPhone app from the App Store today. Windows and Linux previews are available from GitHub. Android is in closed beta." }
     }
   ]
 }
@@ -151,6 +153,7 @@
         <span class="nav-toggle-bar"></span>
       </button>
       <ul class="nav-menu" id="nav-menu">
+        <li><a href="download.html" data-i18n="nav.download">Download</a></li>
         <li><a href="blog.html" data-i18n="nav.blog">Blog</a></li>
         <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
       </ul>
@@ -165,24 +168,22 @@
     <div class="container container-wide">
       <div class="hero-inner">
         <div class="hero-copy reveal">
-          <p class="eyebrow" data-i18n="hero.eyebrow">Open source &middot; every token computed in your hand</p>
-          <h1 data-i18n="hero.title">Run LLMs locally, on your phone or laptop.</h1>
-          <p class="lede" data-i18n-html="hero.lede">
-            Quenderin runs open models &mdash; Llama, Qwen, Gemma &mdash; <strong>fully on your device</strong>.
-            No cloud, no account, no telemetry, and it works offline. On a Mac it can also act on your
-            behalf: files, apps, Apple Shortcuts, asking before each change. Free, and
-            <strong>every line is on GitHub</strong>.
-          </p>
-          <div class="cta-row">
-            <!-- iOS shipped to the App Store 2026-07-20. The OFFICIAL Apple badge (self-hosted,
-                 unmodified per Apple's marketing guidelines) leads — a shipped product shows the
-                 real badge, not a text button. Desktop + GitHub stay text buttons (no official
-                 badge exists for those). -->
-            <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
-              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:52px;width:auto;display:block" />
+          <p class="eyebrow" data-i18n="hero.eyebrow">Available now &middot; macOS + iOS</p>
+          <h1 data-i18n="hero.title">Your AI. On your Mac and iPhone.</h1>
+          <p class="lede" data-i18n-html="hero.lede">Write a first draft, untangle an idea, or ask a question. Quenderin runs open models <strong>on your device</strong>, so your conversations stay with you. Download a model once and keep chatting offline. Free, open source, and no account required.</p>
+          <div class="store-actions">
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store">
+              <span class="store-platform"><img src="icons/mac.svg" width="22" height="22" alt="" /> macOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
             </a>
-            <a class="btn btn-ghost" href="download.html" data-i18n="hero.ctaDownload">Download — Windows &amp; Linux</a>
-            <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View on GitHub</a>
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store">
+              <span class="store-platform"><img src="icons/iphone.svg" width="22" height="22" alt="" /> iOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
+            </a>
+          </div>
+          <div class="hero-secondary">
+            <a href="download.html" data-i18n="hero.ctaDownload">Other platforms</a>
+            <a href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View the source</a>
           </div>
           <ul class="spec-strip" aria-label="Measured facts">
             <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
@@ -193,26 +194,27 @@
         </div>
 
         <div class="hero-visual reveal">
-          <!-- iOS is the headline market — lead the hero with the phone. A CSS 3D device
-               (perspective + titanium frame + dynamic island + glare + brand glow), holding a
-               real portrait screenshot. Pointer parallax (main-inline script) drives --ry/--rx;
-               the float animation drives translateY separately, so they compose without fighting. -->
+          <!-- Real app screenshot in a rounded CSS device. Depth and pointer tilt use
+               separate layers so the screen and frame remain a single solid silhouette. -->
           <figure class="hero-phone-fig">
             <div class="hero-phone">
               <div class="hero-phone__tilt">
                 <div class="hero-phone__body">
+                  <span class="hero-phone__rim hero-phone__rim--1" aria-hidden="true"></span>
+                  <span class="hero-phone__rim hero-phone__rim--2" aria-hidden="true"></span>
+                  <span class="hero-phone__rim hero-phone__rim--3" aria-hidden="true"></span>
                   <div class="hero-phone__frame">
                     <span class="hero-phone__btn" aria-hidden="true"></span>
                     <div class="hero-phone__screen">
                       <img src="assets/app/phone-chat.webp" width="320" height="695" alt="Quenderin running on an iPhone — a private chat answered fully on-device, offline" decoding="async" fetchpriority="high" />
-                      <span class="hero-phone__island" aria-hidden="true"></span>
+
                       <span class="hero-phone__glare" aria-hidden="true"></span>
                     </div>
                   </div>
-                  <span class="hero-phone__side hero-phone__side--l" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--r" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--t" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--b" aria-hidden="true"></span>
+
+
+
+
                 </div>
               </div>
             </div>
@@ -222,6 +224,14 @@
       </div>
     </div>
   </section>
+
+  <div class="container container-wide">
+    <a class="launch-note" href="blog-apple-launch.html">
+      <img src="assets/app/icon-ios.png" width="48" height="48" alt="" />
+      <span><strong data-i18n="launch.title">Quenderin is on Mac and iPhone.</strong><span data-i18n="launch.body">Meet the native apps and get your first offline reply.</span></span>
+      <span class="launch-arrow" aria-hidden="true">&rarr;</span>
+    </a>
+  </div>
 
   <!-- TRUST STRIP -->
   <div class="container container-wide">
@@ -279,7 +289,8 @@
   <section class="section" id="agent">
     <div class="container split">
       <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="agent.eyebrow">The computer-use agent</p>
+        <p class="eyebrow" data-i18n="agent.eyebrow">Advanced &middot; source CLI</p>
+        <p data-i18n="agent.channel">The App Store apps include local tools. The broader computer-control workflow below runs from the source CLI on macOS.</p>
         <h2 data-i18n="agent.title">It can do the task, not just answer it.</h2>
         <p data-i18n-html="agent.body">On a Mac, tell Quenderin a goal and a local model <strong>operates the computer for you</strong> &mdash; organizing files, driving any app, running your Apple Shortcuts. A private alternative to cloud agents like Cowork, governed by a trust loop a datacenter can&rsquo;t offer:</p>
         <ul class="agent-points">
@@ -578,7 +589,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q3">What devices does it run on?</summary>
-          <p data-i18n="faq.a3">The iPhone app is on the App Store, and the desktop app runs on macOS and Linux&mdash;all today. The native Android app is in closed beta right now, and you can join the test to run it. It&rsquo;s the same hardware-detection and model-selection engine, rebuilt natively for each platform.</p>
+          <p data-i18n="faq.a3">Quenderin is free on the App Store for Mac and iPhone. Windows and Linux previews are available from GitHub. The native Android app is in closed beta on Google Play.</p>
         </details>
         <details>
           <summary data-i18n="faq.q4">Do I need a powerful phone?</summary>
@@ -586,7 +597,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q5">When can I install it?</summary>
-          <p data-i18n="faq.a5">The iPhone app is on the App Store today, and the native Android app is in closed beta on Google Play&mdash;join the testers group to run it now. The desktop app is open source and runnable from GitHub on macOS and Linux.</p>
+          <p data-i18n="faq.a5">Install the free native Mac or iPhone app from the App Store today. Visit the download page for Windows and Linux previews or the Android closed beta.</p>
         </details>
       </div>
     </div>
@@ -596,18 +607,17 @@
   <section class="section tint" id="get-started">
     <div class="container">
       <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="gs.eyebrow">Run it today</p>
-        <h2 data-i18n="gs.title">Up and running in four lines.</h2>
-        <p data-i18n="gs.intro">It&rsquo;s open source and runs from GitHub right now &mdash; on macOS or Linux.</p>
+        <p class="eyebrow" data-i18n="gs.eyebrow">Your first offline reply</p>
+        <h2 data-i18n="gs.title">Install. Pick a model. Make it yours.</h2>
+        <p data-i18n="gs.intro">A native app from the App Store. A model that fits your device. No terminal required.</p>
       </header>
-      <div class="codeblock reveal">
-        <pre><code id="gs-cmd">git clone https://github.com/alikatgh/quenderin
-cd quenderin
-npm install
-npm run electron:dev</code></pre>
-        <button class="copy-btn" type="button" data-copy-target="gs-cmd" aria-label="Copy command"><span data-i18n="gs.copy">Copy</span></button>
-      </div>
-      <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>iOS</strong> on the App Store &middot; <strong>macOS</strong> &amp; <strong>Linux</strong> today &middot; <strong>Android</strong> in closed beta</p>
+      <ol class="start-steps reveal">
+        <li><span>01</span><h3 data-i18n="start.install.title">Get the app</h3><p data-i18n="start.install.body">Install Quenderin on your Mac or iPhone. Open it and choose a model that fits your device.</p></li>
+        <li><span>02</span><h3 data-i18n="start.download.title">Download once</h3><p data-i18n="start.download.body">Use Wi-Fi for the model download. Start small; you can explore other models later.</p></li>
+        <li><span>03</span><h3 data-i18n="start.offline.title">Ask something useful</h3><p data-i18n="start.offline.body">Rewrite a paragraph or explain a topic. Once the model is ready, try the same thing in airplane mode.</p></li>
+      </ol>
+      <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>Mac + iPhone</strong> on the App Store &middot; <strong>Windows + Linux</strong> previews &middot; <strong>Android</strong> closed beta</p>
+      <p class="start-more"><a href="download.html" data-i18n="start.more">Downloads and setup details &rarr;</a></p>
     </div>
   </section>
 
@@ -615,14 +625,18 @@ npm run electron:dev</code></pre>
   <section class="cta-band" data-theme="dark" id="waitlist">
     <div class="container reveal cta-inner">
       <h2 data-i18n="cta.title">Bring your AI offline.</h2>
-      <p data-i18n="cta.body">It&rsquo;s free on the App Store for iPhone, and open source you can run from GitHub today &mdash; desktop on macOS and Linux, with the native Android app now in closed beta you can join.</p>
-      <div class="cta-row">
-        <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
-          <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:50px;width:auto;display:block" />
-        </a>
-        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="cta.btn1">Star on GitHub</a>
-      </div>
-      <p class="form-consent" data-i18n-html="cta.consent">No email, no account, no trackers&mdash;just the code. See our <a href="privacy.html">Privacy Policy</a>.</p>
+      <p data-i18n="cta.body">Get the free native app for Mac or iPhone. Choose a model, download it once, and keep your conversations on your device.</p>
+      <div class="store-actions">
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store">
+              <span class="store-platform"><img src="icons/mac.svg" width="22" height="22" alt="" /> macOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
+            </a>
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store">
+              <span class="store-platform"><img src="icons/iphone.svg" width="22" height="22" alt="" /> iOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
+            </a>
+          </div>
+      <p class="form-consent" data-i18n-html="cta.consent">No account, no subscription, no telemetry. See our <a href="privacy.html">Privacy Policy</a>.</p>
     </div>
   </section>
 
@@ -694,12 +708,12 @@ npm run electron:dev</code></pre>
       var r = stage.getBoundingClientRect();
       var px = (e.clientX - r.left) / r.width - 0.5;   // -0.5 … 0.5
       var py = (e.clientY - r.top) / r.height - 0.5;
-      tilt.style.setProperty('--ry', (-19 + px * 18).toFixed(2) + 'deg');
-      tilt.style.setProperty('--rx', (5 - py * 12).toFixed(2) + 'deg');
+      tilt.style.setProperty('--ry', (-16 + px * 10).toFixed(2) + 'deg');
+      tilt.style.setProperty('--rx', (5 - py * 8).toFixed(2) + 'deg');
     });
   });
   stage.addEventListener('pointerleave', function () {
-    tilt.style.setProperty('--ry', '-19deg');
+    tilt.style.setProperty('--ry', '-16deg');
     tilt.style.setProperty('--rx', '5deg');
   });
 })();

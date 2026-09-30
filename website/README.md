@@ -1,8 +1,6 @@
 # Quenderin marketing website
 
-A single-page, static marketing site. **No build step, no dependencies, no
-external requests** (system fonts only) — fitting for a privacy product. Just
-HTML, CSS, and a few lines of vanilla JS.
+A static marketing site with a landing page, downloads, blog, changelog, and support pages. **No build step or third-party runtime requests.** HTML, CSS, vanilla JS, and a self-hosted font.
 
 ```
 website/
@@ -52,40 +50,35 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
-## Put it online — pick one
+## Apple launch materials
 
-### A. GitHub Pages (recommended)
-A ready-made workflow ships at **`website/deploy/github-pages.yml`**. It lives
-here rather than in `.github/workflows/` only because the token that pushed this
-commit lacked GitHub's `workflow` scope — so activate it from your own machine or
-the web UI (both have the scope):
+- Primary launch story: `blog-apple-launch.html` (30 September 2026).
+- Both Apple apps use the same listing: `https://apps.apple.com/app/id6789854363`.
+  Use `?platform=mac` or `?platform=iphone` to send visitors to the right platform.
+- App icons in `assets/app/icon-ios.png` and `icon-mac.png` are exported at 320 px from the native
+  asset catalog, not independently designed website substitutes.
+- Platform glyphs in `icons/` identify the download choices. Keep the official
+  App Store badge unchanged.
+- Landing-page launch and setup copy is localized in all 12 `i18n/*.json` files.
+  Keep English dictionary values aligned with the first-paint HTML.
+- `og-image.svg` and `og-image.png` are the share card; the SVG embeds the actual
+  app icon. The 192/512 PNG icons cover the website manifest.
+- Social captions and release wording are in `docs/APPLE_LAUNCH_MATERIALS.md`.
 
-1. Put it in place — either:
-   - **Web UI:** GitHub → *Add file → Create new file* → name it
-     `.github/workflows/deploy-website.yml`, paste the contents of
-     `website/deploy/github-pages.yml`; or
-   - **Locally:** `git mv website/deploy/github-pages.yml .github/workflows/deploy-website.yml`
-     then commit & push (your local credentials have `workflow` scope).
-2. Repo **Settings → Pages → Source: GitHub Actions** (one-time).
-3. Done — every push touching `website/` publishes to `https://alikatgh.github.io/quenderin/`.
+## Publish the website
 
-### B. Netlify
-New site → connect the repo → set **Base directory** to `website`. `netlify.toml`
-handles the rest. (Or drag-and-drop the `website/` folder into Netlify.)
+The production domain **quenderin.org** is served by the assets-only Cloudflare
+Worker configured in `wrangler.site.jsonc`. The GitHub workflow also maintains
+GitHub Pages and the Cloudflare Pages preview when its configured secret is present.
 
-### C. Vercel
-Import the repo → set **Root Directory** to `website`. `vercel.json` handles the rest.
+```bash
+npx wrangler deploy --config wrangler.site.jsonc
+```
 
-## Configure before launch
-
-- **Waitlist form** — none. The site drives everything through GitHub CTAs
-  ("Star on GitHub" / "View on GitHub" / "Ask on GitHub"), so there's no form
-  endpoint to configure (the old Formspree `<form>` was removed — see Q-642).
-- **Custom domain** — update the `canonical`, Open Graph `og:url`/`og:image`, and
-  `sitemap.xml`/`robots.txt` URLs from `alikatgh.github.io/quenderin` to your domain.
-- **OG image** — `og-image.svg` works on most platforms; some social scrapers
-  prefer PNG. If a preview doesn't render, rasterize it to `og-image.png` (1200×630)
-  and update the two `og:image` / `twitter:image` tags.
+`bash scripts/deploy_website.sh` triggers all configured targets, but its GitHub
+workflow publishes the remote default branch. Push the intended website changes
+before using that part of the script. A local preview or pushed task branch is
+not production deployment evidence; check the live launch story and download links.
 
 ## Editing
 

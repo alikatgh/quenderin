@@ -8,7 +8,7 @@
 <p align="center">Private on-device chat, and a local computer-use agent — a governed, private alternative to cloud agents like Cowork.</p>
 
 <p align="center">
-  <a href="https://apps.apple.com/app/id6789854363"><strong>📱 Download on the App Store</strong></a> — free, on iPhone
+  <a href="https://apps.apple.com/app/id6789854363"><strong>📱 Download on the App Store</strong></a> — free, on Mac and iPhone
 </p>
 
 <p align="center">
