@@ -1,14 +1,18 @@
 # Release & store submission
 
-The one playbook for shipping the native apps. The **code** is software-complete (see
-`docs/SHIP_READINESS.md`); this is the signing + build + console path that needs *your* accounts,
-keystore, and a physical-device sanity check. Nothing here is committed-secret — credentials live in
-gitignored files.
+The signing, build and console path for native app updates. Credentials belong in
+gitignored files or the platform keychain. A debug build is not a signed store release.
 
 > Before you submit, capture real on-device numbers (`docs/DEVICE_VERIFICATION.md`) — the store
 > listing and the default-model copy should reflect measured tok/s, not estimates.
 
-**Current marketing version: 0.2.0** (Android `versionCode` 2 · Apple build 2 · `package.json` 0.2.0).
+**30 September 2026 update:** Mac and iPhone are available on the App Store.
+Android remains in closed testing: the console's latest release is `0.2.0` (code 2).
+Source prepares native **0.3.0**: Android code 3, candidate iOS build 4, and
+candidate Mac build 11. The Android code exceeds the console's latest code 2.
+Verify the highest Apple uploads and raise the candidate counters if needed before
+archiving. Latest-model discovery and bounded prompt cancellation are source
+changes awaiting signed releases; use the update notes in `STORE_LISTING.md`.
 
 | Product | Public channel | Owner guide |
 |---|---|---|
@@ -22,7 +26,10 @@ gitignored files.
 
 ## Android (Google Play)
 
-### 1. Make an upload keystore (once)
+### 1. Reuse the existing upload keystore
+For this published package, use the key registered in Play Console. Generating a
+new key does not authorize an update; a replacement needs Google's upload-key
+reset process. The following command is only for a new app's initial registration:
 ```sh
 keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias quenderin
 # Keep upload.jks + its passwords somewhere safe (a password manager). If you lose it you can ask
@@ -51,12 +58,17 @@ Optional APK-size shrink: flip `isMinifyEnabled = true` in `app/build.gradle.kts
 device — the JNI keep rules R8 needs are already in `app/proguard-rules.pro`.
 
 ### 4. Play Console (your account)
-- Create the app → upload the `.aab` to **internal testing** first (install on your S23, smoke-test).
-- **Data safety form:** "No data collected / No data shared" — accurate; the only egress is the
-  user-initiated HuggingFace model GET. Declare the **`dataSync`** foreground-service type.
+- Open the existing `ai.quenderin.app` record and upload the signed `.aab` to an
+  appropriate testing track first; install and smoke-test it on a physical phone.
+- **Data safety form:** review against the public privacy policy. Network activity includes
+  user-selected Hugging Face downloads, optional model search, and public release metadata
+  from quenderin.org when model selection is opened. These requests carry no chats or files.
+  Declare the **`dataSync`** foreground-service type used for model downloads.
 - **Content rating (IARC):** file **Mature 17+** — an unrestricted local LLM can emit mature text.
 - **Privacy policy URL:** `https://quenderin.org/privacy` (already hosted + in-app).
-- Promote internal → production when the smoke-test passes.
+- Promote only after device validation and the console's production-access gates
+  pass. This account currently needs 12 opted-in closed testers for 14 days; the
+  console shows 7 opted in, so production access is not yet available.
 
 ---
 

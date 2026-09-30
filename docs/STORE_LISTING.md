@@ -3,21 +3,34 @@
 Everything you type into App Store Connect / Play Console, pre-written. The goal: your remaining
 account-side step is **paste + capture screenshots + submit**, not authoring.
 
-> **Accuracy guardrail (App Store 2.3.1 / Play Deceptive Behavior):** the store apps are an *offline
-> chat + a small on-device tool-agent (calculator / unit / date)*. They do **NOT** control the device,
-> other apps, or the screen — that's the separate desktop product. **None of the copy below claims
-> device automation.** Don't add it.
+Use platform-specific copy: iPhone and Android offer local chat and a small
+calculator/unit/date agent. Mac also has optional tools governed by per-tool
+consent and macOS permissions. Screenshots and claims must reflect the submitted build.
+
+## Native 0.3.0 candidate — What's New / release notes
+
+```text
+Explore recent open-model releases right from model selection, with download-size filters and links to model cards. Keep a saved list available offline and refresh it when you're online.
+
+Improved Stop handling while long prompts are processed. On iPhone, model-fit guidance now uses the phone's per-app memory budget.
+
+Your selected model stays under your control. Browsing releases never starts a model download or switches your active model. Chat inference continues to run entirely on your device.
+```
+
+For Android, omit the iPhone sentence. For Mac, omit that sentence and use
+“model selection” for the Mac picker. Upload these notes with the signed, tested
+update; the website launch does not mean this update is already in the stores.
 
 ---
 
 ## Shared facts (both stores)
 - **App name:** Quenderin
-- **Bundle / applicationId:** `ai.quenderin.app`
+- **Identifiers:** Apple `ai.quenderin.Quenderin` (Mac + iPhone); Android `ai.quenderin.app`
 - **Category:** Productivity (primary) · Utilities (secondary)
 - **Age rating:** **17+ / Mature 17+** — the app runs unrestricted open-source LLMs that can produce mature text on direct prompting.
 - **Price:** Free · **No in-app purchases · No ads**
-- **Data collected/shared:** **None.** No account, no analytics, no telemetry, no backend. The only network call is the user-initiated model download from Hugging Face (a public-file GET; transmits no user data).
-- **Privacy policy URL:** `https://quenderin.org/privacy` (hosted on Cloudflare Pages from `website/privacy.html`; `/privacy.html` 307-redirects here)
+- **Privacy behavior:** No account, ads, analytics or chat telemetry. Inference, chats and attached files stay on-device. Model downloads/search use Hugging Face; model selection can fetch public release metadata from quenderin.org. These requests do not include chats, files or device profiles. Network providers receive standard connection information, such as an IP address; review each store's privacy form against the hosted policy.
+- **Privacy policy URL:** `https://quenderin.org/privacy` (served by the marketing site's Cloudflare Worker)
 - **Marketing URL:** `https://quenderin.org`
 - **Support email:** `quenderin@aulenor.com` (same address in-app, on the website, and for content reports)
 
@@ -27,25 +40,32 @@ account-side step is **paste + capture screenshots + submit**, not authoring.
 
 - **App Name (30):** `Quenderin: Offline AI Chat`
 - **Subtitle (30):** `On-device, private LLM`
-- **Promotional Text (170):** `A private AI assistant that runs entirely on your device. Pick from 11 open models, download once, then chat fully offline — no account, no cloud, nothing leaves your phone.`
+- **Promotional Text (170):** `Private AI on your Mac or iPhone. Find a model that fits, download it once, and chat offline. Explore recent releases when you're online. No account or ads.`
 - **Keywords (100):** `offline ai,on-device,private,local llm,chatbot,assistant,no cloud,gguf,llama,gemma,qwen,mistral,phi`
 - **Description:**
 ```
-Quenderin is an AI assistant that runs entirely on your device. No account, no cloud, no tracking — after you download a model once, it works fully offline, and nothing you type ever leaves your phone.
+Quenderin runs AI chat on your Mac or iPhone. Choose a model that fits, download it once, and chat offline. Your conversations and attached files stay on your device.
 
-• Private by design — all inference happens on-device. We have no servers and collect no data.
-• Your choice of model — 11 open models (Llama, Qwen, Gemma, Phi, Mistral, DeepSeek) sized to your hardware.
+• Private by design — all chat inference happens on-device. No account, ads or chat tracking.
+• Your choice of model — built-in choices from Llama, Qwen, Gemma, Phi, Mistral and DeepSeek, with device-aware fit guidance.
+• Explore recent releases — download-size filters and model-card links, with a saved list for offline browsing. New releases are labeled when compatibility hasn't been tested in this app.
 • Works offline — no signal required once your model is downloaded.
 • A handy on-device agent for quick calculator, unit-conversion, and date math.
+
+Model downloads, search and release-list refreshes need an internet connection. Browsing releases never downloads weights or changes your active model automatically.
 
 Responses are generated by the open model you choose and are not filtered; they may be inaccurate or objectionable. For ages 17+.
 ```
 - **App Review notes:**
 ```
-Inference is 100% on-device. On first launch the app downloads one model (~0.4–9 GB) from Hugging Face over Wi-Fi — please be on Wi-Fi for review. No account or login. No data leaves the device. The in-app "agent" performs only local calculator / unit-conversion / date math; it does NOT control the device, other apps, or the screen.
+Chat inference is entirely on-device. No account or login. On first launch, choose and download a model from Hugging Face; please use Wi-Fi and a small model for review. Once installed, chat works offline. Conversations and attached files are not transmitted.
+
+Opening model selection can fetch public release metadata from quenderin.org. That list also works from a bundled or saved snapshot offline. Unknown releases are labeled as untested and link to their model cards; they are not automatically installed or selected. Download size is separate from memory-fit guidance.
+
+On iPhone, the agent offers local calculator, unit-conversion and date tools.
 ```
 - **Age-rating questionnaire:** Unrestricted Web Access → **No**; “Mature/Suggestive Themes” / user-generated AI text → answer so it lands **17+** (the model output is uncurated).
-- **App Privacy (nutrition label):** **Data Not Collected.**
+- **App Privacy (nutrition label):** Review the existing declaration against the public privacy policy and the submitted build's network behavior.
 - **Export compliance:** uses only standard OS crypto (TLS + SHA-256) → exempt. (`ITSAppUsesNonExemptEncryption=false` is already set in `project.yml`.)
 - **EULA:** use Apple’s Standard EULA (App Information → no custom file needed).
 
@@ -55,16 +75,19 @@ Inference is 100% on-device. On first launch the app downloads one model (~0.4�
 - **Short description (80):** `Private, on-device AI chat. Pick a model, download once, then chat offline.`
 - **Full description:**
 ```
-Quenderin is an AI assistant that runs entirely on your device. No account, no cloud, no tracking — download a model once and it works fully offline, with nothing you type ever leaving your phone.
+Quenderin runs AI chat on your Android phone. Choose a model that fits, download it once, and chat offline. Your conversations and attached files stay on your device.
 
-• Private by design — inference runs on-device; we have no servers and collect no data.
-• Your choice of model — 11 open models (Llama, Qwen, Gemma, Phi, Mistral, DeepSeek), matched to your phone.
+• Private by design — all chat inference happens on-device. No account, ads or chat tracking.
+• Your choice of model — built-in choices from Llama, Qwen, Gemma, Phi, Mistral and DeepSeek, with device-aware fit guidance.
+• Explore recent releases — download-size filters and model-card links, with a saved list for offline browsing. New releases are labeled when compatibility hasn't been tested in this app.
 • Works offline once your model is downloaded.
 • A small on-device agent for calculator, unit-conversion, and date math.
 
+Model downloads, search and release-list refreshes need an internet connection. Browsing releases never downloads weights or changes your active model automatically.
+
 Responses come from the open model you choose and are not filtered; they may be inaccurate or objectionable. Rated for ages 17+.
 ```
-- **Data safety form:** No data collected · No data shared · (note in the description: the only network use is downloading your chosen model from Hugging Face on first setup).
+- **Data safety form:** Review the existing answers against the public privacy policy. Network use includes user-selected downloads, optional search and public release metadata; conversations and attached files remain local.
 - **Content rating (IARC):** answer truthfully → **Mature 17+** (unrestricted user-directed AI text).
 - **Target audience:** 18+ (or 16+ with the mature caveat). **Contains ads: No.**
 - **Foreground service:** declare type **dataSync** (App content → Foreground services) — used to keep the model download alive while backgrounded.

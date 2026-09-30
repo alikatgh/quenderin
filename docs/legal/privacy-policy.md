@@ -1,29 +1,27 @@
 # Quenderin — Privacy Policy
 
-_Last updated: [FILL DATE before publishing]_
-_Contact: [FILL SUPPORT EMAIL before publishing]_
+_Last updated: 2026-09-30_
+_Contact: quenderin@aulenor.com_
 
-> **To publish:** fill the date + contact email above, then host this page at a public URL
-> (e.g. GitHub Pages) and paste that URL into App Store Connect, Google Play Console, and the
-> in-app About/Privacy row. Both stores require a reachable privacy-policy URL before review.
+> Public policy: https://quenderin.org/privacy. Keep this source and the hosted policy consistent.
 
 ## The short version
 
-Quenderin runs entirely **on your device**. It has **no account, no servers, and no analytics**.
-We — the developers — **do not collect, receive, store, or have access to any of your data.**
+Quenderin runs AI inference entirely **on your device**. It has **no account or analytics**.
+Your conversations, files and device settings stay on your device.
 
 ## What data we collect
 
-**None.** Quenderin has no backend. There is no sign-up, no login, no telemetry, no crash
+There is no sign-up, no login, no telemetry, no crash
 reporting, no advertising, and no third-party analytics or tracking SDKs. Your conversations and
 any settings stay in the app's private storage on your device and are never transmitted to us or
 to anyone else.
 
-## The only network connection
+## Model discovery and download requests
 
 Quenderin **does not use, integrate, or send data to any third-party AI service** — inference is
-performed by the open-source llama.cpp engine compiled into the app itself. The app's only network
-activity is fetching model files:
+performed by the open-source llama.cpp engine compiled into the app itself. Model discovery and
+downloads use these network requests:
 
 - **Model downloads.** When **you choose to download a model**, the app fetches the model file you
   selected directly from **Hugging Face** (`huggingface.co`), a public model host. This is an
@@ -36,6 +34,11 @@ activity is fetching model files:
   attached to that request — no conversation content, no account, and no identifiers beyond what
   any web request carries. Search terms are used only to return catalog results and are never
   stored by us.
+- **Latest release metadata.** In app versions with the latest-releases view, opening model
+  selection checks a small public catalog at `quenderin.org/api/model-releases`. No conversations,
+  files, account, device profile or search terms are sent. Our hosting provider processes ordinary
+  request information, such as IP addresses, for routing and security. Results are saved on your
+  device for offline browsing; the request never downloads weights or changes your active model.
 
 After a download, all AI inference happens offline on your device; you can use the app with no
 network connection at all.
@@ -65,4 +68,4 @@ means you accept the revised policy.
 
 ## Contact
 
-Questions about this policy: [FILL SUPPORT EMAIL].
+Questions about this policy: quenderin@aulenor.com.

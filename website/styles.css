@@ -115,8 +115,8 @@ em { font-style: normal; }
 .container { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
 .container-wide { max-width: var(--maxw-wide); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.skip-link { position: absolute; left: -999px; top: 0.5rem; z-index: 100; background: var(--brand); color: #fff; padding: 0.5rem 0.85rem; border-radius: var(--r-md); }
-.skip-link:focus { left: 0.5rem; }
+.skip-link { position: fixed; inset-inline-start: 0.5rem; top: -5rem; z-index: 100; background: var(--brand); color: #fff; padding: 0.5rem 0.85rem; border-radius: var(--r-md); }
+.skip-link:focus { top: 0.5rem; }
 
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
   outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px;
@@ -142,7 +142,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 /* ---------- Brand mark ---------- */
 .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 500; }
 .brand-name { letter-spacing: -0.02em; }
-.brand-mark { width: 18px; height: 18px; border-radius: 50%; background: url("favicon-32.png") center/cover no-repeat, linear-gradient(135deg, var(--brand), var(--brand-dark)); flex: none; }
+.brand-mark { width: 32px; height: 32px; border-radius: 22%; background: url("apple-touch-icon.png") center/cover no-repeat; flex: none; }
 
 /* ---------- Header ---------- */
 .site-header {
@@ -419,6 +419,26 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .model-spec-table .model-fam { margin-right: 0.5rem; vertical-align: middle; }
 .model-spec-table .badge { margin-left: 0.5rem; }
 .model-spec-table tr.recommended td:first-child { font-weight: 600; }
+.model-spec-table a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.model-spec-table a:hover { text-decoration-color: var(--brand); }
+.catalog-heading { margin: 2.5rem 0 1rem; font-size: 1.25rem; }
+.release-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.release-toolbar label { display: flex; align-items: center; gap: .75rem; font-size: .85rem; }
+.release-toolbar select { max-width: 100%; padding: .65rem .85rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-md); font: inherit; }
+.release-status { color: var(--text-secondary); font-size: .8rem; }
+.release-models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block-start: 1px solid var(--border); }
+.release-model { min-width: 0; padding: 1.25rem 1.25rem 1.25rem 0; border-block-end: 1px solid var(--border); }
+.release-model h3 { margin: 0 0 .65rem; font-size: 1.05rem; overflow-wrap: anywhere; }
+.release-model h3 a { color: var(--text); text-decoration: none; }
+.release-model h3 a:hover { color: var(--brand); }
+.release-model p { margin: .25rem 0; font-size: .8rem; }
+.release-spec { font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
+.release-date, .release-source { color: var(--text-secondary); overflow-wrap: anywhere; }
+.catalog-caveat { margin-top: 1rem; color: var(--text-secondary); font-size: .85rem; max-width: 75ch; }
+[data-release-more] { margin-top: 1rem; }
+[data-release-more][hidden] { display: none; }
+@media (max-width: 800px) { .release-models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 500px) { .release-models { grid-template-columns: 1fr; } .release-model { padding-inline-end: 0; } .release-toolbar label { width: 100%; flex-wrap: wrap; } }
 
 /* ===================================================================
    Dark mode — toggled via [data-theme-mode="dark"] on <html>
@@ -479,7 +499,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .hero-inner { grid-template-columns: 1fr; }
-  .hero-visual { order: -1; }
+  .hero-visual { order: 0; }
   .steps, .grid { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr; gap: 1.75rem; }
 }
@@ -508,7 +528,7 @@ html.js .reveal.in { opacity: 1; transform: none; }
    =================================================================== */
 
 /* Two-column split: copy + a product visual */
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2.5rem, 6vw, 5.5rem); align-items: center; }
+.split { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(2.5rem, 6vw, 5.5rem); align-items: center; }
 .split-copy .eyebrow { margin-bottom: 1rem; }
 .split-copy h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); }
 .split-copy .checklist { margin-top: 1.75rem; }
@@ -771,21 +791,18 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
    from a third party"). Float lives on .hero-phone (translateY); the 3D tilt lives
    on .hero-phone__tilt via --ry/--rx so pointer parallax and float never collide. */
 .hero-phone-fig { margin: 0; }
-.hero-phone { --pd: 38px; position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
+.hero-phone { position: relative; width: min(300px, 76%); margin-inline: auto; transform-style: preserve-3d; animation: heroPhoneFloat 7s ease-in-out infinite; }
 .hero-phone::before { content: ""; position: absolute; inset: -16% -22%; z-index: 0; background: radial-gradient(closest-side, rgba(82,147,154,0.40), transparent 70%); filter: blur(36px); }
-.hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -27deg)) rotateX(var(--rx, 8deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
-/* Real depth: four rim walls fold back from the front-face edges (preserve-3d), so the
-   phone reads as a solid object with thickness, not a tilted flat card. */
+.hero-phone__tilt { position: relative; z-index: 1; transform: rotateY(var(--ry, -16deg)) rotateX(var(--rx, 5deg)); transition: transform 0.5s var(--ease-out-expo); transform-style: preserve-3d; }
+/* Complete rounded slices preserve the silhouette at every tilt. The old folded
+   rectangles exposed flat flaps at the rounded top and bottom of the device. */
 .hero-phone__body { position: relative; transform-style: preserve-3d; }
-/* Brushed-titanium rim. Mid-grey (NOT near-black) so the depth reads against the
-   dark hero; a 1px bright inner line is the polished chamfer catching light. */
-.hero-phone__side { position: absolute; background: linear-gradient(to bottom, #a6abb1 0%, #696e74 44%, #3c4045 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 -3px 5px rgba(0,0,0,0.45); backface-visibility: hidden; }
-.hero-phone__side--l { top: 6%; height: 88%; left: 0; width: var(--pd); transform-origin: left center; transform: rotateY(90deg); border-radius: 8px 0 0 8px; }
-.hero-phone__side--r { top: 6%; height: 88%; right: 0; width: var(--pd); transform-origin: right center; transform: rotateY(-90deg); border-radius: 0 8px 8px 0; }
-.hero-phone__side--t { left: 7%; width: 86%; top: 0; height: var(--pd); transform-origin: center top; transform: rotateX(-90deg); }
-.hero-phone__side--b { left: 7%; width: 86%; bottom: 0; height: var(--pd); transform-origin: center bottom; transform: rotateX(90deg); }
+.hero-phone__rim { position: absolute; inset: 0; border-radius: 46px; background: #747c82; border: 1px solid #a5adb3; backface-visibility: hidden; }
+.hero-phone__rim--1 { transform: translateZ(-3px); }
+.hero-phone__rim--2 { transform: translateZ(-6px); background: #596167; }
+.hero-phone__rim--3 { transform: translateZ(-9px); background: #3b4247; box-shadow: 20px 35px 55px rgba(0,0,0,0.28); }
 .hero-phone__frame {
-  position: relative; border-radius: 46px; padding: 9px;
+  position: relative; border-radius: 46px; padding: 9px; transform: translateZ(0); backface-visibility: hidden;
   background: linear-gradient(150deg, #4c5359 0%, #262b30 28%, #0d0f11 54%, #17191c 72%, #363b40 100%);
   box-shadow:
     inset 0 1px 1px rgba(255,255,255,0.5),
@@ -801,7 +818,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .hero-phone__caption { margin-top: 1.15rem; text-align: center; font-size: 0.82rem; color: var(--text-muted, #89B3D7); }
 @keyframes heroPhoneFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) { .hero-phone { animation: none; } .hero-phone__tilt { transition: none; } }
-@media (max-width: 860px) { .hero-phone { width: min(236px, 60%); --pd: 26px; } .hero-phone__tilt { --ry: -18deg; --rx: 6deg; } .hero-phone::before { opacity: 0.6; } }
+@media (max-width: 860px) { .hero-phone { width: min(236px, 60%); } .hero-phone__tilt { --ry: -10deg; --rx: 3deg; } .hero-phone::before { opacity: 0.6; } }
 .section-sub { max-width: 560px; margin: 0.6rem auto 0; color: var(--text-muted, #89B3D7); }
 /* Screens carousel — a peek slider (active centered, neighbours peeking) with prev/next
    + dots, instead of dumping four shots in a grid. Native scroll-snap does touch/swipe;
@@ -821,3 +838,59 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .shots-dots button.is-active { background: var(--brand); width: 22px; border-radius: 4px; }
 @media (max-width: 620px) { .shot { flex-basis: 80%; } .shots-btn { display: none; } }
 /* The frames stay dark in both site themes - they hold a dark-UI screenshot. */
+
+/* Apple launch: platform choice, actual app identity, and the first-use path. */
+.store-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.25rem; margin-top: 1.5rem; }
+.store-link { display: inline-flex; flex-direction: column; gap: 0.45rem; color: var(--text); text-decoration: none; }
+.store-platform { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; }
+.store-link > img { display: block; width: 150px; height: 50px; }
+.store-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 6px; border-radius: 8px; }
+.hero-secondary { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1.25rem; font-size: 0.9rem; }
+.hero-secondary a, .start-more a { text-decoration: underline; text-underline-offset: 4px; }
+.launch-note { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 0; border-block: 1px solid var(--border); color: var(--text); }
+.launch-note > img { flex: none; border-radius: 22%; }
+.launch-note strong, .launch-note span span { display: block; }
+.launch-note span span { margin-top: 0.15rem; color: var(--text-secondary); font-size: 0.9rem; }
+.launch-arrow { margin-inline-start: auto; font-size: 1.5rem; }
+.start-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; list-style: none; margin-top: 2.5rem; padding: 0; }
+.start-steps li > span { font-family: var(--font-mono); color: var(--brand); font-size: 0.85rem; }
+.start-steps h3 { margin: 0.6rem 0; font-size: 1.2rem; }
+.start-steps p { color: var(--text-secondary); line-height: 1.7; }
+.start-more { margin-top: 1rem; text-align: center; }
+.cta-band .store-actions { justify-content: center; }
+.cta-band .store-link { color: #fff; }
+.download-apple { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0 2.5rem; }
+.download-app { padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.download-app > img { width: 80px; height: 80px; object-fit: contain; }
+.download-app > img.ios-icon { border-radius: 22%; }
+.legal .download-app h2 { margin: 0.75rem 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.download-app h2 img, .platform-heading img { width: 24px; height: 24px; }
+.platform-heading { display: flex; align-items: center; gap: 0.6rem; }
+.download-app p { font-size: 0.95rem; }
+.download-app .store-link { margin-top: 0.5rem; }
+.blog-launch { display: flex; gap: 1.25rem; margin: 2rem 0; padding: 1.75rem 0; border-block: 1px solid var(--border); }
+.blog-launch > img { width: 72px; height: 72px; flex: none; border-radius: 22%; }
+.legal .blog-launch h2 { margin-top: 0; }
+.article-apps { display: flex; gap: 1rem; align-items: center; margin: 2rem 0; }
+.article-apps img { width: 88px; height: 88px; object-fit: contain; }
+.article-apps img:first-child { border-radius: 22%; }
+@media (max-width: 620px) {
+  .start-steps, .download-apple { grid-template-columns: 1fr; gap: 1.5rem; }
+  .hero-phone { width: min(236px, 72%); }
+  .hero-phone__caption { max-width: 30ch; margin-inline: auto; }
+  .blog-launch { display: block; }
+  .blog-launch > img { margin-bottom: 1rem; }
+}
+
+.split-copy { min-width: 0; }
+
+.hero .store-link { color: #fff; }
+.hero .spec-num { direction: ltr; unicode-bidi: isolate; }
+@media (max-width: 620px) {
+  .hero .spec-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .hero .spec-strip li { display: block; }
+  .hero .spec-num { display: block; margin-bottom: 0.2rem; }
+}
+
+.split-copy > .btn { max-width: 100%; white-space: normal; }
+.download-intro { font-family: var(--font-sans); font-size: 1.05rem; line-height: 1.7; }

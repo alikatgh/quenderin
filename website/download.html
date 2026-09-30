@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Download — Quenderin</title>
-<meta name="description" content="Download Quenderin for Windows and Linux — direct files, no account, no installer tricks. On iPhone, get it free on the App Store; macOS and Android ship as native apps." />
+<meta name="description" content="Get Quenderin free on the App Store for Mac and iPhone. Windows and Linux previews and the Android closed beta are also available." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/download" />
@@ -14,7 +14,7 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -26,9 +26,26 @@
 
 <main class="container legal" id="main">
   <h1>Download Quenderin</h1>
-  <p class="legal-updated">Direct files, straight from the open-source build — every installer below is produced in public by <a href="https://github.com/alikatgh/quenderin/actions/workflows/desktop-release.yml" rel="noopener">a CI run you can inspect</a>. No account, no email, no bundled extras.</p>
+  <p class="legal-updated download-intro">Free native apps for Mac and iPhone. No account or subscription. Install the app, download a model that fits your device, and start chatting offline.</p>
+  <div class="download-apple">
+    <section class="download-app" aria-labelledby="mac-download">
+      <img src="assets/app/icon-mac.png" width="80" height="80" alt="Quenderin Mac app icon" />
+      <h2 id="mac-download"><img src="icons/mac.svg" alt="" /> macOS</h2>
+      <p>The native Mac app, built in SwiftUI. Write, learn, and chat with local models on a bigger screen.</p>
+      <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
+    </section>
+    <section class="download-app" aria-labelledby="ios-download">
+      <img class="ios-icon" src="assets/app/icon-ios.png" width="80" height="80" alt="Quenderin iPhone app icon" />
+      <h2 id="ios-download"><img src="icons/iphone.svg" alt="" /> iOS</h2>
+      <p>Private chat in your pocket. Download a model over Wi-Fi, then take your assistant offline.</p>
+      <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
+    </section>
+  </div>
+  <h2>Your first offline conversation</h2>
+  <ol><li>Open the app and choose a recommended model. Start with a smaller one if you are unsure.</li><li>Download it over Wi-Fi and wait until it is ready. Models are separate from the app and can take several gigabytes.</li><li>Ask it to rewrite a paragraph or explain a topic. After setup, try a reply with the network off.</li></ol>
+  <p>Smaller models need less memory; larger models can give better answers but take more space and time. <a href="reality.html">See the measured trade-offs</a> or <a href="help.html">get setup help</a>. <a href="blog-apple-launch.html">Read the Apple launch story &rarr;</a></p>
 
-  <h2>Windows</h2>
+  <h2 class="platform-heading"><img src="icons/windows.svg" alt="" /> Windows &middot; preview</h2>
   <p><strong>Two channels (same product version):</strong> Microsoft Store (when live — no SmartScreen, store updates) <em>and</em> direct GitHub installers below for portable use and users who prefer no Store account.</p>
   <ul>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-Setup-x64.exe"><strong>Quenderin-Setup-x64.exe</strong></a> — the installer (recommended from GitHub).</li>
@@ -36,7 +53,7 @@
   </ul>
   <p><strong>About the SmartScreen warning on GitHub builds:</strong> preview <code>.exe</code> files may be unsigned, so Windows can show “unrecognized app” — click <em>More info → Run anyway</em>. The file is built in public CI from this open source. The <strong>Microsoft Store</strong> listing is signed by Microsoft and removes that warning — owner playbook: <a href="https://github.com/alikatgh/quenderin/blob/main/docs/MICROSOFT_STORE.md" rel="noopener">docs/MICROSOFT_STORE.md</a>.</p>
 
-  <h2>Linux</h2>
+  <h2 class="platform-heading"><img src="icons/linux.svg" alt="" /> Linux &middot; preview</h2>
   <ul>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-x86_64.AppImage"><strong>Quenderin-x86_64.AppImage</strong></a> — download, <code>chmod +x</code>, run. Works on any distro.</li>
     <li><a href="https://github.com/alikatgh/quenderin/releases/latest/download/Quenderin-amd64.deb">Quenderin-amd64.deb</a> — for Debian and Ubuntu (<code>sudo apt install ./Quenderin-amd64.deb</code>).</li>
@@ -48,15 +65,8 @@
   <p>And on a Mac, <code>quenderin do "&lt;anything&gt;"</code> is a local computer-use agent — a private alternative to cloud agents like Cowork. It can organise a folder (<code>--workspace ~/Downloads</code>), click and type in <strong>any</strong> app via accessibility (<code>--gui</code>), and run any of your <strong>Apple Shortcuts</strong> — but every change is <strong>previewed and approved by you</strong>, logged to a local audit trail (<code>quenderin history</code>, grouped by task), and reversible — even in a new session, an hour later (<code>quenderin undo</code>). Want to look before you leap? <code>--dry-run</code> shows exactly what it would do, touching nothing. See the whole toolkit with <code>quenderin capabilities</code>. Nothing — not your files, not your screen, not your intent — ever leaves the machine.</p>
   <p>It ships with the source today (<code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code> from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a>); an npm package is planned. <a href="blog-cli">Read the announcement →</a> · <a href="why-local-agent">Why a local agent →</a></p>
 
-  <h2>macOS</h2>
-  <p><strong>Mac App Store only</strong> — the public Mac product is the <em>native</em> Swift app (not the Windows/Linux Electron build). Free listing for branding and legitimacy. Submission playbook: <a href="https://github.com/alikatgh/quenderin/blob/main/docs/MAC_APP_STORE.md" rel="noopener">docs/MAC_APP_STORE.md</a>. Until the listing is live, build from source via the <a href="https://github.com/alikatgh/quenderin#getting-started" rel="noopener">GitHub quickstart</a>.</p>
-
-  <h2>iOS</h2>
-  <p><a href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store"><img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:54px;width:auto" /></a></p>
-  <p>Free, on iPhone. The same offline, on-device chat product, built natively in SwiftUI. Nothing leaves the phone.</p>
-
-  <h2>Android</h2>
-  <p>The native Kotlin app for Google&nbsp;Play is in active development. Until it lands, build from source: <a href="https://github.com/alikatgh/quenderin#getting-started" rel="noopener">quickstart on GitHub</a>.</p>
+  <h2 class="platform-heading"><img src="icons/android.svg" alt="" /> Android &middot; closed beta</h2>
+  <p>The native Android app is in closed testing on Google Play. <a href="https://groups.google.com/g/quenderin-testers" rel="noopener">Join the testers group</a> with the Google account you use on your phone, then <a href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">opt in on Google Play</a>. <a href="blog-android-beta.html">Step-by-step beta guide &rarr;</a></p>
 
   <h2>Before you download — use with judgement</h2>
   <p>Quenderin runs open AI models on your own machine, and on-device models are small: they can be <strong>confidently wrong, outdated, or occasionally inappropriate</strong>, and nothing filters them. Nothing Quenderin produces is medical, legal, financial, or safety advice — verify anything that matters with a qualified source. <strong>By downloading or using Quenderin you agree</strong> that the software is provided &ldquo;as is&rdquo; and that, to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce. The app asks for the same agreement on first launch. Full detail: <a href="terms">Terms of Use</a>.</p>
@@ -66,5 +76,6 @@
 
   <p style="margin-top:2.5rem"><a href="./">&larr; Back to Quenderin</a> &middot; <a href="help">Get help</a> &middot; <a href="changelog">What's new</a> &middot; <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener">All releases</a></p>
 </main>
+<script src="main.js" defer></script>
 </body>
 </html>

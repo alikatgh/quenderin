@@ -1,11 +1,40 @@
 # Changelog
 
+## Apple apps available — marketing update (2026-09-30)
+- **Quenderin is free on the App Store for Mac and iPhone:**
+  <https://apps.apple.com/app/id6789854363>. Native SwiftUI apps with on-device inference.
+- Added the Apple launch blog post and website changelog entry, platform-specific store links,
+  real app icons, and an install-to-offline-reply guide. Refreshed download, FAQ, README, and social materials.
+- Repaired the homepage CSS 3D phone: continuous rounded depth, readable screen, and mobile copy first.
+
 ## 0.2.0 — iOS on the App Store (2026-07-20)
 - **Quenderin: Offline AI Chat is live on the App Store** — free, on iPhone, worldwide (175 regions):
   <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
-  our first public store release. (The Mac App Store build follows once its review clears.)
+  our first public store release. The Mac app is also available as of the September website update.
 
-## Unreleased
+## Unreleased — native 0.3.0 candidate
+
+- **Mac, iPhone and Android model discovery:** model selection now includes recent
+  releases from the website's hourly feed, compact-download filters, model cards,
+  compatibility labels and a saved snapshot that survives offline relaunches.
+  Refreshing metadata never changes the active model or starts a weights download.
+  Only checksum matches from the built-in catalog expose the existing install flow.
+- The Apple model library now uses the iPhone selector's per-app memory budget for
+  fit badges and recommendations, and adapts its grid to phone widths.
+
+- **Current website model catalog:** the homepage and model guide now render the
+  complete shared app catalog, with consistent RAM estimates and calculator data.
+  Added hourly discovery of recent original-model GGUF releases, download-size
+  filters, verified file metadata and a dated offline fallback. Newly discovered
+  files stay separate from app recommendations until device validation.
+
+### Responsive prompt processing (Apple + Android)
+- Check Stop between bounded llama.cpp prompt batches (maximum 512 tokens), including
+  the final batch. Cancelled prefills clear the native KV cache and its token mirror.
+- Apple explicitly uses 512-token logical/physical batches, clamped to the loaded
+  context, including the F16 cache fallback. Prompt ranges borrow storage without copies.
+- Added Swift and C++ model-free regression checks. These source changes are not a
+  new store release; GPU latency and answer quality still need device measurements.
 
 ### Android 0.2.1 engine cut (DOTPROD/I8MM variants)
 - **CPU-variant backends ON** (`GGML_BACKEND_DL` + `GGML_CPU_ALL_VARIANTS`): JNI resolves `ggml_threadpool_new`/`free` via the CPU backend registry instead of linking them (that link was why variants stayed off in 0.2.0). Runtime pick of `android_armv8.6_1` (i8mm) etc. — the prefill lever (measured 3.5→9.0 tok/s on S23 when variants previously loaded).

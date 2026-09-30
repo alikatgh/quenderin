@@ -267,4 +267,22 @@
     <string name="cap_purpose_clipboard">Read the text currently on the clipboard. No input.</string>
     <string name="cap_purpose_calendar">List the titles and times of today\'s calendar events. No input.</string>
     <string name="cap_purpose_status">Report the battery level and free storage of this device. No input.</string>
+    <string name="releases_title">Latest model releases</string>
+    <string name="releases_explanation">Explore new GGUFs. File size is a download estimate; new architectures need compatibility checks before becoming a recommendation.</string>
+    <string name="releases_all_sizes">All sizes</string>
+    <string name="releases_saved">Saved snapshot</string>
+    <string name="releases_live">Checked online</string>
+    <string name="releases_partial">" · partial results"</string>
+    <string name="releases_refresh_failed">" · refresh unavailable"</string>
+    <string name="releases_no_match">No releases within this download size. Try a larger limit.</string>
+    <string name="releases_meta">%1$.1f GB · %2$s · released %3$s</string>
+    <string name="releases_available">Available in this app · estimated memory fit</string>
+    <string name="releases_too_large">Available in this app · too large for this device</string>
+    <string name="releases_choose">Choose %1$s</string>
+    <string name="releases_untested">Compatibility not tested in this app</string>
+    <string name="releases_model_card">Model card and license ↗</string>
+    <string name="releases_show_less">Show fewer</string>
+    <string name="releases_show_all">Show all %1$d releases</string>
+    <string name="releases_unavailable">The release list is unavailable. Your installed and built-in models remain available.</string>
+    <string name="releases_refresh">Refresh</string>
 </resources>

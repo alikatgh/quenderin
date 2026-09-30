@@ -1,7 +1,10 @@
 # Store submission checklist (App Store + Play Store)
 
-The apps build, run, and do real on-device inference. Shipping them is the last mile — and it
-**requires your accounts and identity**, which is why it can't be automated from this repo:
+For the current update, reuse the existing Apple and Google Play app records.
+Build, device validation, signing and submission are separate steps; current
+evidence and outstanding work are in `SHIP_READINESS.md`.
+
+The following initial-registration checklist is also useful when reviewing a listing:
 
 - **Apple Developer Program** — $99/yr (required to ship to the App Store / TestFlight).
 - **Google Play Console** — $25 one-time.
@@ -13,23 +16,21 @@ stores — lean into it. The one real prerequisite to create first is the **lega
 
 ## 0. Do this first — legal pages (both stores require them)
 
-A ready-to-publish privacy policy is now drafted at **`docs/legal/privacy-policy.md`** — fill in
-the date + support email, host it (GitHub Pages or any static URL), and paste that URL into App
-Store Connect, Play Console, **and** an in-app About/Privacy row. Both stores reject without a
-reachable privacy-policy URL.
+The privacy policy is published at **https://quenderin.org/privacy**, with source
+in `docs/legal/privacy-policy.md` and `website/privacy.html`. The apps link to it;
+verify the existing store listings use this URL.
 
 For the App Store's EULA requirement, opt into **Apple's Standard EULA** in App Store Connect →
 App Information (one click — no custom terms file needed). Play does not require a separate terms
 page. The policy is short because the app collects nothing: on-device inference, no account, no
-analytics/telemetry; the only network call is the user-initiated Hugging Face model download (no
-user data sent — there are no servers).
+analytics/telemetry. Network activity includes user-selected Hugging Face model downloads,
+optional model search, and public release metadata from quenderin.org when model selection is
+opened. None of these sends conversations, files, accounts or device profiles.
 
 ### Content safety (Generative-AI policy) — IMPLEMENTED in code ✅
 
 - **"Report response"** is wired onto every AI chat message + agent answer (iOS context-menu,
-  Android long-press) and opens a pre-filled `mailto:`. ⚠️ **Change the target email** before
-  publishing — it currently defaults to a personal address: `SupportContact.reportEmail`
-  (QuenderinKit) / `SupportContact.REPORT_EMAIL` (quenderin-core).
+  Android long-press) and opens a pre-filled `mailto:` to `quenderin@aulenor.com`.
 - A **content disclaimer** ("AI-generated on-device · may be inaccurate or objectionable") shows
   beneath both screens.
 - Still **file the 17+ / Mature 17+ age rating** at submission (questionnaire only, no code).
@@ -38,13 +39,13 @@ user data sent — there are no servers).
 
 ## 1. iOS — App Store
 
-**Identifiers:** bundle prefix is `ai.quenderin` (`apple/QuenderinApp/project.yml`); pick the
-full id (e.g. `ai.quenderin.app`) and register it in your Developer account.
+**Identifier:** `ai.quenderin.Quenderin` (`apple/QuenderinApp/project.yml`), shared
+by the existing Mac and iPhone app. Do not create a different bundle ID for an update.
 
 - [ ] Paid Apple Developer Program active; signing Team selected on the app target.
 - [ ] Ship the real engine: run `apple/build-xcframework.sh` so the archive links llama.cpp
       (Metal) — verify a **Release** build/run on a device first (see `DEVICE_VERIFICATION.md`).
-- [ ] App Store Connect → new app record (name, primary language, bundle id, SKU).
+- [ ] App Store Connect → existing Quenderin app record and platform version.
 - [ ] **Privacy "Nutrition Labels" → "Data Not Collected."** True here, and a real
       differentiator — say it loudly in the description. (Caveat for accuracy: the model
       *download* is a network request to Hugging Face; it transmits no user data, so the
@@ -97,8 +98,7 @@ AI-generated, (b) give users a **way to report/flag** objectionable output, and 
       arbitrary output can't corrupt the URL/URI (covered by `SupportContactTests` + `CoreVerify`).
 - [x] **Safety filtering** — `SafetyBlocklist` gates unsafe agent actions on both platforms (the
       agent loop halts with `BLOCKED` on flagged content).
-- [ ] **Before publishing:** change `SupportContact.reportEmail` / `REPORT_EMAIL` from the
-      placeholder to a dedicated, monitored support address (it ships in the app binary).
+- [x] `SupportContact.reportEmail` / `REPORT_EMAIL` use `quenderin@aulenor.com`.
 
 ---
 
@@ -110,7 +110,6 @@ AI-generated, (b) give users a **way to report/flag** objectionable output, and 
       no account, no data collected**, your choice of 11 open models.
 - [ ] Privacy policy + terms URLs (section 0) linked in both listings and in-app.
 
-> Accuracy note for both privacy forms: "we collect nothing" is correct — there is no backend.
-> The only egress is the user-initiated model download straight from Hugging Face. Describe it
-> plainly rather than over-claiming "no network," which the agent/computer-use features and the
-> download would contradict.
+> Accuracy note for both privacy forms: use the live public privacy policy at
+> https://quenderin.org/privacy. Inference and conversations remain local. Downloads, optional
+> model search and public release metadata are network requests; do not claim "no network."

@@ -1,0 +1,10 @@
+# Build and machine metadata are not website content.
+.DS_Store
+**/.DS_Store
+.assetsignore
+README.md
+scripts/**
+deploy/**
+site.config.json
+netlify.toml
+vercel.json

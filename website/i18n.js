@@ -65,6 +65,7 @@
     var md = document.querySelector('meta[name="description"]');
     if (md && dict['meta.description']) md.setAttribute('content', dict['meta.description']);
     var sel = selectEl(); if (sel) sel.value = lang;
+    document.dispatchEvent(new CustomEvent('quenderin:language', { detail: dict }));
     renderDemo(lang);
   }
 

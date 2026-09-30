@@ -1,5 +1,35 @@
 # Ship readiness — native iOS + Android
 
+## Current update — 30 September 2026
+
+Mac and iPhone are publicly available on the App Store. Android's latest console
+release is `0.2.0` (code 2), available in closed testing. Source prepares native
+`0.3.0` (Android code 3; Apple counters pending console verification). Production access remains
+gated by the console's tester requirement.
+
+The new source increment adds hourly model discovery, offline snapshots and
+download-size filters to Mac, iPhone and Android, corrects iPhone memory-fit
+guidance, and bounds prompt processing/cancellation through the existing llama.cpp
+engine. Unknown releases never become automatic recommendations or downloads.
+
+Verification: the real-framework Mac app built and its picker/filter UI was
+checked. All nine [CI jobs](https://github.com/alikatgh/quenderin/actions/runs/36735378379)
+pass: iOS library tests and simulator-SDK app build, Android core/app/JNI,
+catalog parity, both Node versions and coverage. CI app builds use the mock engine;
+the JNI syntax gate uses real llama.cpp headers. The patched root lockfile reports
+zero npm advisories. Website changes are deployed and checked on desktop and at
+390px in English and Arabic.
+
+Still required for this update: linked native release builds on iPhone/Android,
+physical-device inference/cancellation measurements, signed archives and store
+uploads. Reuse the existing store records and Android upload key. Store notes are
+in `STORE_LISTING.md`; build-number/signing steps are in `RELEASE.md`.
+
+## Historical baseline — 4 August 2026
+
+The ledger below records the earlier release; its counts and console items are
+not evidence that the September source changes have shipped.
+
 **One-line truth:** everything that can be done **in software** is done and green. What remains
 for full store / ops polish requires **your accounts, your hardware, and console clicks** — an
 agent cannot mint Facebook page tokens, paste URLs into App Store Connect / Play Console, or hold

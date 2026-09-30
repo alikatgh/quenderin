@@ -339,3 +339,28 @@ makes undoable changes	делает обратимые изменения	되돌
 acts in apps	действует в приложениях	앱에서 동작	アプリ内で動作	在应用中操作
 irreversible — never autonomous	необратимо — никогда автономно	되돌릴 수 없음 — 절대 자율 실행 안 함	不可逆 — 自律実行しない	不可逆——永不自主
 %@ would run here too, but needs ~%@ GB free storage — this device has ~%@ GB. Free up space and you can switch in Settings.	%@ тоже запустилась бы здесь, но ей нужно ~%@ ГБ свободного места — на этом устройстве ~%@ ГБ. Освободите место — и переключитесь в Настройках.	%@도 이 기기에서 실행할 수 있지만 여유 저장 공간이 ~%@ GB 필요합니다 — 현재 ~%@ GB입니다. 공간을 확보하면 설정에서 전환할 수 있습니다.	%@ もこの端末で動作しますが、空き容量が約 %@ GB 必要です — 現在は約 %@ GB です。空き容量を確保すれば、設定から切り替えられます。	%@ 也能在此设备上运行，但需要约 %@ GB 可用存储空间 — 本机目前约 %@ GB。释放空间后即可在“设置”中切换。
+
+# Model-release discovery (native 0.3.0)
+Latest model releases	Новые релизы моделей	최신 모델 릴리스	最新モデルのリリース	最新模型发布
+Explore new GGUFs. File size is a download estimate; new architectures need compatibility checks before becoming a recommendation.	Новые модели GGUF. Размер файла — оценка объёма загрузки. Новые архитектуры нужно проверить на совместимость, прежде чем рекомендовать.	새 GGUF 모델을 살펴보세요. 파일 크기는 다운로드 용량이며, 새 아키텍처는 추천 전에 호환성 확인이 필요합니다.	新しいGGUFを探せます。ファイルサイズはダウンロード量の目安です。新しいアーキテクチャは、推奨前に互換性の確認が必要です。	探索新的 GGUF 模型。文件大小是下载量估计；新架构需要经过兼容性检查才能成为推荐模型。
+All sizes	Все размеры	모든 크기	すべてのサイズ	全部大小
+Saved snapshot	Сохранённый список	저장된 목록	保存済みの一覧	已保存的列表
+Checked online	Проверено онлайн	온라인 확인 완료	オンラインで確認済み	已在线检查
+ · partial results	 · неполные результаты	 · 일부 결과	 · 一部の結果	 · 部分结果
+ · refresh unavailable	 · обновление недоступно	 · 새로고침 불가	 · 更新できません	 · 无法刷新
+No releases within this download size. Try a larger limit.	Нет релизов в пределах этого объёма загрузки. Увеличьте лимит.	이 다운로드 용량에 맞는 릴리스가 없습니다. 한도를 늘려 보세요.	このダウンロード量に収まるリリースはありません。上限を増やしてください。	没有符合此下载大小的发布。请尝试更大的上限。
+%.1f GB · %@ · released %@	%.1f ГБ · %@ · релиз %@	%.1f GB · %@ · 출시 %@	%.1f GB · %@ · 公開日 %@	%.1f GB · %@ · 发布于 %@
+Available in this app · estimated memory fit	Есть в приложении · по оценке, памяти хватает	앱에서 사용 가능 · 메모리 적합성 추정	アプリで利用可能 · メモリ適合の推定	应用中可用 · 预计内存适合
+Available in this app · too large for this device	Есть в приложении · слишком большая для устройства	앱에서 사용 가능 · 이 기기에는 너무 큼	アプリで利用可能 · このデバイスには大きすぎます	应用中可用 · 对此设备过大
+Choose %@	Выбрать %@	%@ 선택	%@ を選択	选择 %@
+Compatibility not tested in this app	Совместимость с приложением не проверена	이 앱에서 호환성을 확인하지 않았습니다	このアプリでの互換性は未確認です	尚未在此应用中测试兼容性
+Model card and license ↗	Описание модели и лицензия ↗	모델 카드 및 라이선스 ↗	モデルカードとライセンス ↗	模型卡和许可证 ↗
+Show fewer	Показать меньше	간략히 보기	表示を減らす	显示更少
+Show all %lld releases	Показать все (%lld)	릴리스 %lld개 모두 보기	全 %lld 件を表示	显示全部 %lld 个发布
+The release list is unavailable. Your installed and built-in models remain available.	Список релизов недоступен. Установленные модели и встроенный каталог по-прежнему доступны.	릴리스 목록을 사용할 수 없습니다. 설치된 모델과 기본 모델 목록은 계속 이용할 수 있습니다.	リリース一覧を取得できません。インストール済みモデルと標準のモデル一覧は引き続き利用できます。	发布列表不可用。已安装的模型和内置模型列表仍可使用。
+Refresh	Обновить	새로고침	更新	刷新
+Maximum download	Максимальный объём загрузки	최대 다운로드 용량	ダウンロード量の上限	最大下载量
+Choose a built-in model that fits your %@. Download once, then chat offline.	Выберите модель из каталога, подходящую для %@. Загрузите один раз, затем общайтесь офлайн.	%@에 맞는 기본 모델을 선택하세요. 한 번 다운로드하면 오프라인으로 대화할 수 있습니다.	%@ に合う標準のモデルを選んでください。一度ダウンロードすれば、オフラインでチャットできます。	选择适合 %@ 的内置模型。下载一次，即可离线聊天。
+A starting point from this app's catalog. iPhone selection accounts for the app's memory budget and estimated speed; Mac selection accounts for memory fit. Task suggestions use the models you have installed. Fit and speed are estimates, not device benchmarks.	Начальный вариант из каталога приложения. На iPhone учитываются лимит памяти приложения и оценка скорости; на Mac — объём памяти. Для задач предлагаются установленные модели. Память и скорость — оценки, а не результаты тестов на устройстве.	앱의 모델 목록에서 고른 시작점입니다. iPhone은 앱의 메모리 한도와 예상 속도를, Mac은 메모리 적합성을 고려합니다. 작업 제안에는 설치된 모델을 사용합니다. 적합성과 속도는 추정치이며 기기 벤치마크 결과가 아닙니다.	アプリのモデル一覧から選んだ開始候補です。iPhoneではアプリのメモリ上限と推定速度、Macではメモリ適合性を考慮します。タスクの提案にはインストール済みモデルを使います。適合性と速度は推定であり、デバイスでの測定結果ではありません。	这是应用模型列表中的起点。iPhone 选择会考虑应用的内存预算和预计速度；Mac 选择会考虑内存是否合适。任务建议使用已安装的模型。内存适合程度和速度均为估计值，并非设备实测结果。
+Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs.	Нужной модели нет в списке? Откройте вкладку «Поиск», чтобы найти открытые модели GGUF на Hugging Face.	목록에 없는 모델을 찾으시나요? 검색 탭에서 Hugging Face의 공개 GGUF 모델을 살펴보세요.	一覧にないモデルを探していますか？検索タブで Hugging Face の公開GGUFモデルを探せます。	想找未列出的模型？使用搜索标签页探索 Hugging Face 上的开放 GGUF 模型。
+Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.	Нужной модели нет в списке? Используйте «Поиск» в боковой панели (⌘F): установленные модели, каталог и открытые GGUF на Hugging Face в одном месте.	목록에 없는 모델을 찾으시나요? 사이드바 검색(⌘F)에서 설치된 모델, 기본 목록, Hugging Face의 공개 GGUF를 한곳에서 찾으세요.	一覧にないモデルを探していますか？サイドバーの検索（⌘F）で、インストール済みモデル、標準一覧、Hugging Face の公開GGUFをまとめて探せます。	想找未列出的模型？使用边栏搜索（⌘F），在同一处查看已安装模型、内置列表和 Hugging Face 上的开放 GGUF。

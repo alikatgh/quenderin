@@ -103,6 +103,7 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
                     ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
             }
+            LatestModelsSection(onSelect = onSelect)
             if (blocked.isNotEmpty()) {
                 // Ineligible models sink to the BOTTOM: the sheet opens on choices, not warnings.
                 SectionHeader(stringResource(R.string.picker_too_big_section), MaterialTheme.colorScheme.onSurfaceVariant)
