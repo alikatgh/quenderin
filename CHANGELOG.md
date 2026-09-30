@@ -12,7 +12,7 @@
   <https://apps.apple.com/app/id6789854363>. The native SwiftUI app, fully offline and on-device —
   our first public store release. The Mac app is also available as of the September website update.
 
-## Unreleased
+## Unreleased — native 0.3.0 candidate
 
 - **Mac, iPhone and Android model discovery:** model selection now includes recent
   releases from the website's hourly feed, compact-download filters, model cards,

@@ -8,9 +8,10 @@ gitignored files or the platform keychain. A debug build is not a signed store r
 
 **30 September 2026 update:** Mac and iPhone are available on the App Store.
 Android remains in closed testing: the console's latest release is `0.2.0` (code 2).
-Source currently carries Android `0.2.1` (code 3), iOS `0.2.0` (build 3), and
-Mac `0.2.0` (build 10). Verify the highest Apple uploads before assigning the next
-build numbers. Latest-model discovery and bounded prompt cancellation are source
+Source prepares native **0.3.0**: Android code 3, candidate iOS build 4, and
+candidate Mac build 11. The Android code exceeds the console's latest code 2.
+Verify the highest Apple uploads and raise the candidate counters if needed before
+archiving. Latest-model discovery and bounded prompt cancellation are source
 changes awaiting signed releases; use the update notes in `STORE_LISTING.md`.
 
 | Product | Public channel | Owner guide |

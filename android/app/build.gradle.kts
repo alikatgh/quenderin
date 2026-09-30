@@ -45,7 +45,7 @@ android {
         minSdk = 28
         targetSdk = 35
         versionCode = 3
-        versionName = "0.2.1"
+        versionName = "0.3.0"
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
         // Compile-time mirror of "will this APK load libquenderin_llama.so?" — UI/Settings read it.

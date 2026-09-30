@@ -7,7 +7,7 @@ Use platform-specific copy: iPhone and Android offer local chat and a small
 calculator/unit/date agent. Mac also has optional tools governed by per-tool
 consent and macOS permissions. Screenshots and claims must reflect the submitted build.
 
-## Next update — What's New / release notes
+## Native 0.3.0 candidate — What's New / release notes
 
 ```text
 Explore recent open-model releases right from model selection, with download-size filters and links to model cards. Keep a saved list available offline and refresh it when you're online.
