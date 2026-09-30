@@ -115,8 +115,8 @@ em { font-style: normal; }
 .container { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
 .container-wide { max-width: var(--maxw-wide); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.skip-link { position: absolute; left: -999px; top: 0.5rem; z-index: 100; background: var(--brand); color: #fff; padding: 0.5rem 0.85rem; border-radius: var(--r-md); }
-.skip-link:focus { left: 0.5rem; }
+.skip-link { position: fixed; inset-inline-start: 0.5rem; top: -5rem; z-index: 100; background: var(--brand); color: #fff; padding: 0.5rem 0.85rem; border-radius: var(--r-md); }
+.skip-link:focus { top: 0.5rem; }
 
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
   outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px;
@@ -865,6 +865,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visib
 .split-copy { min-width: 0; }
 
 .hero .store-link { color: #fff; }
+.hero .spec-num { direction: ltr; unicode-bidi: isolate; }
 @media (max-width: 620px) {
   .hero .spec-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .hero .spec-strip li { display: block; }
