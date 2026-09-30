@@ -66,7 +66,7 @@
     {
       "@type": "Question",
       "name": "Is my data sent anywhere?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it is open source, you can verify this yourself." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Your chats and files stay on your device. Model downloads, optional catalog search, and release metadata use network requests; inference works offline. There are no analytics, accounts, or telemetry." }
     },
     {
       "@type": "Question",
@@ -189,7 +189,7 @@
           <ul class="spec-strip" aria-label="Measured facts">
             <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
             <li><span class="spec-num">0.4&ndash;4.7&nbsp;GB</span> <span data-i18n="hero.spec2">one download</span></li>
-            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">network calls after setup</span></li>
+            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">cloud inference calls</span></li>
             <li><span class="spec-num">MIT</span> <span data-i18n="hero.spec4">every line public</span></li>
           </ul>
         </div>
@@ -411,7 +411,7 @@
       <div class="bento" id="feat-acc">
         <article class="cell span-2 reveal acc">
           <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><span data-i18n="feat.offline.t">Truly offline</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.offline.b">After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
+          <p data-i18n="feat.offline.b">Once your model is installed, chat works without an internet connection. Model discovery and downloads need a connection.</p>
           <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Airplane mode &middot; still answering</span></span></div>
           <div class="acc-panel" id="feat-more-offline" role="region" aria-label="More about Truly offline"><div class="acc-inner">
             <p data-i18n="feat.offline.m">The model is a file on your disk, and answering is just your own CPU and GPU doing math through llama.cpp &mdash; there is no service on the other end. Try it: turn on Airplane Mode and ask anything. The only network request Quenderin ever makes is the one-time model download.</p>
@@ -619,7 +619,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q2">Is my data sent anywhere?</summary>
-          <p data-i18n="faq.a2">No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it&rsquo;s open source, you can verify this yourself.</p>
+          <p data-i18n="faq.a2">Your chats and files stay on your device. Model downloads, optional catalog search, and release metadata use network requests; inference works offline. There are no analytics, accounts, or telemetry.</p>
         </details>
         <details>
           <summary data-i18n="faq.q3">What devices does it run on?</summary>
