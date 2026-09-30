@@ -112,7 +112,7 @@
   "step": [
     { "@type": "HowToStep", "position": 1, "name": "Probe", "text": "Quenderin reads your hardware and recommends the largest model your device can run well." },
     { "@type": "HowToStep", "position": 2, "name": "Download", "text": "Pull the model once over Wi-Fi; it resumes in the background if interrupted." },
-    { "@type": "HowToStep", "position": 3, "name": "Go offline", "text": "Everything runs locally from then on — no signal needed." }
+    { "@type": "HowToStep", "position": 3, "name": "Go offline", "text": "Once your model is ready, chat works without a signal." }
   ]
 }
 </script>
@@ -272,7 +272,7 @@
         <ol class="steplist">
           <li><span class="step-num">01</span><div><h3 data-i18n="how.s1t">Probe</h3><p data-i18n="how.s1b">Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
           <li><span class="step-num">02</span><div><h3 data-i18n="how.s2t">Download</h3><p data-i18n="how.s2b">Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
-          <li><span class="step-num">03</span><div><h3 data-i18n="how.s3t">Go offline</h3><p data-i18n="how.s3b">Everything runs locally from then on. A clear check tells you it&rsquo;s safe before you leave the grid.</p></div></li>
+          <li><span class="step-num">03</span><div><h3 data-i18n="how.s3t">Go offline</h3><p data-i18n="how.s3b">Once your model is ready, chat works without a signal.</p></div></li>
         </ol>
         <a class="btn btn-ghost" href="blog-setup" data-i18n="how.cta">Behind the scenes: how each step really works &mdash; and where it bites &rarr;</a>
       </div>
@@ -402,7 +402,7 @@
     <div class="container">
       <header class="section-head reveal">
         <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
-        <h2 data-i18n="feat.title">Everything runs on-device &mdash; nothing phones home.</h2>
+        <h2 data-i18n="feat.title">Private AI, running on your device.</h2>
       </header>
       <!-- Each cell is an accordion item (WAI-ARIA APG pattern: heading > button + labelled
            region). Click anywhere on the card to expand its longer story; one open at a time.
@@ -420,7 +420,7 @@
         <article class="cell reveal acc">
           <div class="bignum">$0</div>
           <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><span data-i18n="feat.free.t">Free, structurally</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.free.b">Not a promotion &mdash; there is no server to pay for. It runs on hardware you already own.</p>
+          <p data-i18n="feat.free.b">No subscriptions, no per-token billing. It runs on hardware you already own.</p>
           <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about Free, structurally"><div class="acc-inner">
             <p data-i18n="feat.free.m">No API meter, no token quota, no trial that expires &mdash; because there is no server farm computing on your behalf. Your machine does the work, and the MIT-licensed code can&rsquo;t be taken away from you. Free stays free structurally, not promotionally.</p>
           </div></div>
@@ -517,7 +517,7 @@
         <p class="eyebrow" data-i18n="priv.eyebrow">Privacy</p>
         <h2 data-i18n="priv.title">Your data never had to leave. So it doesn&rsquo;t.</h2>
         <ul class="checklist">
-          <li data-i18n="priv.c1">No cloud calls after the model is downloaded</li>
+          <li data-i18n="priv.c1">No cloud inference calls</li>
           <li data-i18n="priv.c2">No API keys, no sign-in, no account</li>
           <li data-i18n="priv.c3">No analytics, no tracking, no telemetry</li>
           <li data-i18n="priv.c4">Conversations stored only on your device</li>
@@ -527,12 +527,13 @@
       </div>
       <div class="split-visual reveal">
         <div class="netpanel" aria-hidden="true">
-          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar">Network activity &middot; on-device</span></div>
+          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar">Illustration &middot; model network requests</span></div>
           <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok" data-i18n="priv.net.once">once, Wi-Fi</span></div>
           <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
           <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
           <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x" data-i18n="priv.net.noacct">no account</span></div>
-          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot">0 B sent since launch &middot; nothing left your device</span></div>
+          <div class="netrow"><span class="verb">GET</span><span class="ok">/api/model-releases</span><span class="tag-ok" data-i18n="priv.net.refresh">when browsing models</span></div>
+          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot">Chat and attached files stay on-device</span></div>
         </div>
       </div>
     </div>
@@ -606,7 +607,7 @@
       <div class="split-copy reveal">
         <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
         <h2 data-i18n="faq.title">Questions, answered.</h2>
-        <p data-i18n="faq.intro">It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here&rsquo;s the rest.</p>
+        <p data-i18n="faq.intro">Your conversations stay on your device. Here are the details.</p>
         <div class="faq-cta">
           <p data-i18n="faq.cta.q">Still have a question?</p>
           <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener" data-i18n="faq.cta.link">Ask on GitHub</a>
