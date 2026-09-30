@@ -8,7 +8,7 @@
 <meta name="description" content="A SIGABRT on every Cmd-Q, but only after the first message — 11 byte-identical crash reports in a day. The cause was llama.cpp's Metal backend asserting inside C++ static destructors at process exit, and the fix is one line: _exit(0). What it costs, and how it should really be fixed." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/blog-ggml-abort.html" />
+<link rel="canonical" href="https://quenderin.org/blog-ggml-abort" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -22,15 +22,15 @@
   <div class="container container-wide post-header">
     <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
     <nav class="post-nav" aria-label="Blog">
-      <a href="blog.html">← Blog</a>
-      <a href="download.html">Download</a>
+      <a href="blog">← Blog</a>
+      <a href="download">Download</a>
       <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
     </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
-  <p class="post-kicker"><a href="blog.html">Blog</a> · engineering</p>
+  <p class="post-kicker"><a href="blog">Blog</a> · engineering</p>
   <h1>The crash that only happened after you&rsquo;d used it</h1>
   <p class="legal-updated">20 July 2026 · ggml, Metal, and <code>_exit(0)</code></p>
 
@@ -116,8 +116,8 @@
   is refuse to run the code that would crash.</p>
 
   <nav class="post-foot" aria-label="More from the blog">
-    <a href="blog.html">← All posts</a>
-    <a href="blog-model-integrity.html">Next: never trust a model file until it&rsquo;s verified →</a>
+    <a href="blog">← All posts</a>
+    <a href="blog-model-integrity">Next: never trust a model file until it&rsquo;s verified →</a>
   </nav>
 </main>
 <script src="post.js" defer></script>

@@ -8,7 +8,7 @@
 <meta name="description" content="The homepage says one download, then it's yours. Here is what actually happens in those three steps — how Quenderin guesses what your device can run, verifies the model it pulls, and what you trade away by running it on your own CPU. With the catch on each, honestly." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/blog-setup.html" />
+<link rel="canonical" href="https://quenderin.org/blog-setup" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -22,15 +22,15 @@
   <div class="container container-wide post-header">
     <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
     <nav class="post-nav" aria-label="Blog">
-      <a href="blog.html">← Blog</a>
-      <a href="download.html">Download</a>
+      <a href="blog">← Blog</a>
+      <a href="download">Download</a>
       <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
     </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
-  <p class="post-kicker"><a href="blog.html">Blog</a> · behind the scenes</p>
+  <p class="post-kicker"><a href="blog">Blog</a> · behind the scenes</p>
   <h1>Probe, download, offline — how setup actually works</h1>
   <p class="legal-updated">20 July 2026</p>
 
@@ -66,7 +66,7 @@
   part of first-run — from 0.4 GB for the ultra-light build to ~13 GB for the big mixture-of-experts one.
   The mirror can rate-limit you, and a pinned URL rots the day a repository is renamed. We shipped a dead
   one once; Apple's reviewer hit it before we did, and the fix (plus a CI check so it can't recur) is in
-  <a href="changelog.html">the changelog</a>. After this one time, it never happens again — the model is
+  <a href="changelog">the changelog</a>. After this one time, it never happens again — the model is
   a file on your disk.</p>
 
   <h2>3 · Go offline — the model on your CPU, and the ceiling that comes with it</h2>
@@ -87,12 +87,12 @@
   <h2>None of this is a claim you have to take on faith</h2>
   <p>The probe (the memory-fitness math and the model picker), the download integrity gate, and the engine
   are all open source — read them, or read the measured numbers instead of our adjectives on
-  <a href="reality.html">the real-numbers page</a>. Where it's all going, stage by stage:
-  <a href="roadmap.html">the roadmap</a>. Or just <a href="download.html">get it</a>.</p>
+  <a href="reality">the real-numbers page</a>. Where it's all going, stage by stage:
+  <a href="roadmap">the roadmap</a>. Or just <a href="download">get it</a>.</p>
 
   <nav class="post-foot" aria-label="More from the blog">
-    <a href="blog.html">← All posts</a>
-    <a href="blog-computer-use.html">Next: a computer-use agent that never leaves your Mac →</a>
+    <a href="blog">← All posts</a>
+    <a href="blog-computer-use">Next: a computer-use agent that never leaves your Mac →</a>
   </nav>
 </main>
 <script src="post.js" defer></script>

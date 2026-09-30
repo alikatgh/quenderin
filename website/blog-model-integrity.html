@@ -8,7 +8,7 @@
 <meta name="description" content="A model is multi-gigabyte untrusted bytes, streamed from a public mirror into a native C++ parser. Here's the gate that stands between 'downloaded' and 'loaded' — HTTP status before the first byte, GGUF magic, SHA-256 — the App Store rejection that proved we needed it, and why a pinned hash still isn't enough." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://quenderin.org/blog-model-integrity.html" />
+<link rel="canonical" href="https://quenderin.org/blog-model-integrity" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
@@ -22,15 +22,15 @@
   <div class="container container-wide post-header">
     <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
     <nav class="post-nav" aria-label="Blog">
-      <a href="blog.html">← Blog</a>
-      <a href="download.html">Download</a>
+      <a href="blog">← Blog</a>
+      <a href="download">Download</a>
       <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
     </nav>
   </div>
 </header>
 
 <main class="container legal" id="main">
-  <p class="post-kicker"><a href="blog.html">Blog</a> · engineering</p>
+  <p class="post-kicker"><a href="blog">Blog</a> · engineering</p>
   <h1>Never trust a model file until it&rsquo;s verified</h1>
   <p class="legal-updated">20 July 2026 · the gate between &ldquo;downloaded&rdquo; and &ldquo;loaded&rdquo;</p>
 
@@ -92,7 +92,7 @@
 
   <p>Same download, three fixes: the status check above (so a server error reads as a server error), a real
   URL with a real pinned hash, and a human-readable message for the integrity errors that <em>are</em> real.
-  The whole story, including the resubmission, is in <a href="changelog.html">the changelog</a>.</p>
+  The whole story, including the resubmission, is in <a href="changelog">the changelog</a>.</p>
 
   <h2>The limitation: a pinned hash rots</h2>
   <p>A SHA-256 pin is a promise about a specific sequence of bytes, and it&rsquo;s only as true as the day it
@@ -126,8 +126,8 @@
   trip, which is a bargain compared to the alternative.</p>
 
   <nav class="post-foot" aria-label="More from the blog">
-    <a href="blog.html">← All posts</a>
-    <a href="blog-setup.html">Related: probe, download, offline — how setup works →</a>
+    <a href="blog">← All posts</a>
+    <a href="blog-setup">Related: probe, download, offline — how setup works →</a>
   </nav>
 </main>
 <script src="post.js" defer></script>
