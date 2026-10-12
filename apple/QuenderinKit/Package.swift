@@ -98,6 +98,9 @@ if hasXcframework && !(prismRuntime && llamaDir != nil) {
         // Let the dynamic loader find libllama + its sibling libggml*.dylib at runtime.
         "-Xlinker", "-rpath", "-Xlinker", "\(dir)/build/bin",
     ]))
+    // The adapter calls these C APIs directly; macOS does not re-export them
+    // through libllama's transitive dependencies.
+    qkLinkerSettings += [.linkedLibrary("ggml-base"), .linkedLibrary("ggml-cpu")]
     optionalTargets.append(.systemLibrary(name: "llama", path: "Sources/llama"))
 }
 

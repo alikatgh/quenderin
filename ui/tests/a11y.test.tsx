@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
 import { RetryState } from '../src/components/RetryState.js';
 import { ModelManagerSection } from '../src/components/settings/ModelManagerSection.js';
@@ -28,6 +28,9 @@ function mockFetchJson(routes: Record<string, unknown>) {
         return new Response(JSON.stringify(hit[1]), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }));
 }
+
+// Vitest globals are disabled, so Testing Library cannot register auto-cleanup.
+afterEach(cleanup);
 
 beforeEach(() => {
     vi.unstubAllGlobals();

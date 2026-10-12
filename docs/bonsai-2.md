@@ -116,12 +116,16 @@ python3 scripts/check_catalog_parity.py
 node --test scripts/tests/model-releases.test.mjs
 ```
 
-The current integration needs a full pinned-runtime build, signed native release
-artifacts, and an actual model load/generation check before a runtime-readiness
-claim. Physical-phone testing was waived for this change. Local full builds and
-the 5.95 GB model download were blocked by disk capacity during implementation.
-Blog publication, source publication, native binaries and store availability are
-separate release states.
+Hosted CI run [38201154541](https://github.com/alikatgh/quenderin/actions/runs/38201154541)
+built the pinned Prism CPU runtime, downloaded and SHA-256 verified the exact
+catalog artifact, and loaded it to generate `hello` on 12 October 2026. This is a
+bounded runtime check, not a Quenderin performance benchmark. The actual Prism
+Android APK build and unit tests also passed in the preceding CI run. Desktop
+packaged execution and Apple source-linked tests remain release gates; signed
+native/store artifacts have not been published. Physical-phone testing was
+waived for this change. Local full builds and the 5.95 GB model download were
+blocked by disk capacity, so those checks run on hosted runners. Blog publication,
+source publication, native binaries and store availability are separate states.
 
 Audit status on 12 October 2026: the required root `npm audit --audit-level=high`
 gate passes after scoped transitive dependency fixes, with no high or critical
