@@ -121,7 +121,9 @@ jobs:
       - name: Compile and test the actual Swift adapter
         run: |
           QUENDERIN_RUNTIME=prism QUENDERIN_LLAMA_DIR="$RUNNER_TEMP/prism-llama" \
-            swift test --package-path apple/QuenderinKit
+            swift test --package-path apple/QuenderinKit \
+              -Xcc "-I$RUNNER_TEMP/prism-llama/include" \
+              -Xcc "-I$RUNNER_TEMP/prism-llama/ggml/include"
 
   prism-inference:
     name: Bonsai pinned model (CPU load and generation)
@@ -135,7 +137,7 @@ jobs:
         run: |
           cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
             -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=OFF
-          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-cli --parallel 4
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion --parallel 4
       - name: Fetch and verify the exact catalog artifact
         run: |
           curl --fail --location --retry 2 --max-time 600 \
@@ -144,7 +146,7 @@ jobs:
           echo "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3  $RUNNER_TEMP/bonsai.gguf" | sha256sum --check
       - name: Load ternary weights and generate a bounded answer
         run: |
-          timeout 1200 "$RUNNER_TEMP/prism-llama/build/bin/llama-cli" \
+          timeout 1200 "$RUNNER_TEMP/prism-llama/build/bin/llama-completion" \
             -m "$RUNNER_TEMP/bonsai.gguf" -ngl 0 -c 512 -n 64 -t 4 \
             --no-conversation --no-display-prompt --temp 0 \
             -p $'<|im_start|>user\nReply with the single word hello.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n' \

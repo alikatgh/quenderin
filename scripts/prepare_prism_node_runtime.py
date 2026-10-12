@@ -97,7 +97,7 @@ def prepare(package: Path) -> dict:
     if stamp.exists() or stamp.is_symlink():
         # A repeated invocation only verifies; it never reapplies or overwrites.
         return verify(package)
-    for path in (source, info, backup):
+    for path in (source, backup):
         if path.exists() or path.is_symlink():
             raise ValueError(f"Existing path is preserved; use a fresh package installation: {path}")
     compatibility = load_patch()
@@ -113,9 +113,8 @@ def prepare(package: Path) -> dict:
             handle.write(before)
     for path, _before, after in plan:
         path.write_bytes(after)
-    with info.open("x") as handle:
-        json.dump(source_info(), handle, indent=2)
-        handle.write("\n")
+    # The official npm package ships stock source metadata even without a
+    # checkout. Its exact preimage is preserved and changed by the same plan.
     provenance.update(nodeLlamaCppVersion=compatibility["packageVersion"],
                       compatibilityPatchSha256=digest(PATCH_PATH.read_bytes()))
     with stamp.open("x") as handle:

@@ -41,7 +41,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             package = self.package(Path(directory))
             plan = prism_node.patch_plan(package, prism_node.load_patch())
-            self.assertEqual(len(plan), 3)
+            self.assertEqual(len(plan), 4)
             model = plan[0][2].decode()
             self.assertNotIn("model_params.use_mmap", model)
             self.assertNotIn("model_params.use_direct_io", model)
@@ -51,6 +51,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
             self.assertIn("llama_sampler_init_penalties(\n                llama_vocab_n_tokens(model->vocab),", sampler)
             self.assertIn("llama_sampler_init_dry(\n                model->vocab,\n                strength,", sampler)
             self.assertIn("quenderin-prism-node-runtime.json", plan[2][2].decode())
+            self.assertEqual(json.loads(plan[3][2]), prism_node.source_info())
             for path, before, _after in plan:
                 self.assertEqual(path.read_bytes(), before)
 
@@ -96,8 +97,8 @@ class PrismNodeRuntimeTests(unittest.TestCase):
                 fetch.assert_not_called()
             self.assertEqual(target.read_bytes(), original)
 
-    def test_existing_runtime_metadata_and_backups_are_preserved(self):
-        for index in range(3):
+    def test_existing_runtime_and_backups_are_preserved(self):
+        for index in (0, 2):
             with self.subTest(path_index=index), tempfile.TemporaryDirectory() as directory:
                 package = self.package(Path(directory))
                 existing = prism_node.paths(package)[index]
@@ -109,6 +110,34 @@ class PrismNodeRuntimeTests(unittest.TestCase):
                         prism_node.prepare(package)
                     fetch.assert_not_called()
                 self.assertEqual(marker.read_text(), "preserve me")
+
+    def test_official_fresh_install_metadata_is_accepted_and_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = self.package(Path(directory))
+            _source, info, backup, _stamp = prism_node.paths(package)
+            official = (FIXTURES / "llama.cpp.info.json").read_bytes()
+            self.assertEqual(info.read_bytes(), official)
+            with patch.object(prism_node.runtime, "fetch", side_effect=self.fetch), \
+                    patch.object(prism_node.runtime, "verify", side_effect=lambda source: self.provenance()):
+                prism_node.prepare(package)
+            self.assertEqual((backup / info.name).read_bytes(), official)
+            self.assertEqual(json.loads(info.read_text()), prism_node.source_info())
+
+    def test_changed_metadata_is_preserved_without_any_partial_edits(self):
+        for changed in (b'{"tag":"user-custom","llamaCppGithubRepo":"user/llama.cpp"}\n',
+                        b'{"tag":"b10068","llamaCppGithubRepo":"ggml-org/llama.cpp"}\n'):
+            with self.subTest(metadata=changed), tempfile.TemporaryDirectory() as directory:
+                package = self.package(Path(directory))
+                source, info, backup, _stamp = prism_node.paths(package)
+                info.write_bytes(changed)
+                before = {str(p): p.read_bytes() for p in package.rglob("*") if p.is_file()}
+                with patch.object(prism_node.runtime, "fetch") as fetch:
+                    with self.assertRaisesRegex(ValueError, "preimage"):
+                        prism_node.prepare(package)
+                    fetch.assert_not_called()
+                self.assertEqual(before, {str(p): p.read_bytes() for p in package.rglob("*") if p.is_file()})
+                self.assertFalse(source.exists())
+                self.assertFalse(backup.exists())
 
     def test_prepare_preserves_originals_and_repeat_only_verifies(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -124,7 +153,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
                 self.assertTrue(source.is_dir())
                 self.assertEqual(json.loads(info.read_text()), {
                     "tag": prism_node.runtime.LOCK["revision"], "llamaCppGithubRepo": "PrismML-Eng/llama.cpp"})
-                for name in ("AddonModel.cpp", "AddonSampler.cpp", "cloneLlamaCppRepo.js"):
+                for name in ("AddonModel.cpp", "AddonSampler.cpp", "cloneLlamaCppRepo.js", "llama.cpp.info.json"):
                     self.assertEqual((backup / name).read_bytes(), (FIXTURES / name).read_bytes())
                 changed = package / "llama/addon/AddonSampler.cpp"
                 changed.write_bytes(changed.read_bytes() + b"// later user edit\n")

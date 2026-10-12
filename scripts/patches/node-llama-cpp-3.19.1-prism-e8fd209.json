@@ -49,6 +49,17 @@
           "after": "export async function getClonedLlamaCppRepoReleaseInfo() {\n    const cloned = await isLlamaCppRepoCloned(false);\n    const prismStampPath = path.join(path.dirname(llamaCppDirectory), \"quenderin-prism-node-runtime.json\");\n    if (!cloned && (await fs.pathExists(llamaCppDirectory) ||\n        !(await fs.pathExists(prismStampPath)) ||\n        await isLockfileActive({ resourcePath: llamaCppDirectory })))\n        return null;\n    if (!(await fs.pathExists(llamaCppDirectoryInfoFilePath)))\n        return null;\n    try {\n        const clonedLlamaCppRepoTagJson = await fs.readJson(llamaCppDirectoryInfoFilePath);\n        if (!cloned) {\n            // Packaged Quenderin retains verified build metadata, not a source checkout.\n            const prism = await fs.readJson(prismStampPath);\n            if (prism.version !== 1 ||\n                prism.repository !== \"https://github.com/PrismML-Eng/llama.cpp.git\" ||\n                prism.revision !== \"e8fd209c975c80aa7fb36a8423571ff3b1b7e955\" ||\n                prism.nodeLlamaCppVersion !== \"3.19.1\" ||\n                clonedLlamaCppRepoTagJson.llamaCppGithubRepo !== \"PrismML-Eng/llama.cpp\" ||\n                clonedLlamaCppRepoTagJson.tag !== prism.revision)\n                return null;\n        }\n        return clonedLlamaCppRepoTagJson;\n    }\n    catch (err) {\n        console.error(getConsoleLogPrefix() + \"Failed to read llama.cpp tag file\", err);\n        return null;\n    }\n}\n"
         }
       ]
+    },
+    {
+      "path": "llama/llama.cpp.info.json",
+      "beforeSha256": "5a595c2755f8ea626db67969675369900ec03e74c5c3424a7b3a1e92c42bcb23",
+      "afterSha256": "a1fd28c4f8bd2ad589ec557b121f8fd077eda8d50cf975fcdf7bfb081a5f6106",
+      "replacements": [
+        {
+          "before": "{\n    \"tag\": \"b10068\",\n    \"llamaCppGithubRepo\": \"ggml-org/llama.cpp\"\n}\n",
+          "after": "{\n  \"tag\": \"e8fd209c975c80aa7fb36a8423571ff3b1b7e955\",\n  \"llamaCppGithubRepo\": \"PrismML-Eng/llama.cpp\"\n}\n"
+        }
+      ]
     }
   ]
 }

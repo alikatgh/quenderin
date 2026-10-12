@@ -43,7 +43,7 @@
   <h1>Experimental Bonsai 2 27B integration</h1>
   <p class="legal-updated"><time datetime="2026-10-12">12 October 2026</time> &middot; Quenderin</p>
 
-  <p>Quenderin’s source model library now includes Ternary Bonsai 2 27B from PrismML. It is a manual option for compatible builds of the native Apple and Android apps and the desktop runtime. This post records experimental source integration; distribution through store builds is a separate release.</p>
+  <p>Quenderin’s source model library now includes Ternary Bonsai 2 27B from PrismML. It is a manual option for compatible builds of the native Apple and Android apps and the desktop runtime. The <a href="https://github.com/alikatgh/quenderin/pull/161" rel="noopener">integration pull request</a> includes the source changes and build instructions. Distribution through store builds is a separate release.</p>
 
   <h2>The model</h2>
   <p>Bonsai 2 27B is based on Qwen3.8 27B and is published under Apache 2.0. Its ternary weights use three values, &minus;1, 0, and +1, with shared scaling factors. The PTQ1_0 language-model file is 5.946&nbsp;GB, roughly 6&nbsp;GB to download. PrismML reports a footprint about nine times smaller than the FP16 baseline. See the <a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf" rel="noopener">official model card</a> and <a href="https://prismml.com/news/bonsai-2-27b" rel="noopener">PrismML’s announcement</a> for the format and evaluation details.</p>

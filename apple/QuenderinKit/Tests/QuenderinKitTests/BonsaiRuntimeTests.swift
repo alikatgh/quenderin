@@ -65,7 +65,7 @@ final class BonsaiRuntimeTests: XCTestCase {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("bonsai-rejected-\(UUID().uuidString)")
         let destination = directory.appendingPathComponent(bonsai.filename)
         let downloaders: [any ModelDownloader] = [URLSessionModelDownloader(), ParallelRangeDownloader(),
-            BackgroundModelDownloader(store: DownloadStore())]
+            BackgroundModelDownloader(store: DownloadStore(fileURL: directory.appendingPathComponent("downloads.json")))]
         for downloader in downloaders {
             do {
                 for try await _ in downloader.download(from: bonsai.downloadURL!, to: destination) {}

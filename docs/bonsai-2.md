@@ -31,6 +31,16 @@ present. `QUENDERIN_RUNTIME=standard` selects the existing standard framework.
 An explicit Prism source build uses `QUENDERIN_LLAMA_DIR` and takes precedence
 over framework selection; source verification must pass first.
 
+For source-linked `swift test`, pass the C include paths to every compiler
+invocation, including SwiftPM's generated test-discovery targets:
+
+```sh
+QUENDERIN_RUNTIME=prism QUENDERIN_LLAMA_DIR=/absolute/new/prism-source \
+  swift test --package-path apple/QuenderinKit \
+    -Xcc -I/absolute/new/prism-source/include \
+    -Xcc -I/absolute/new/prism-source/ggml/include
+```
+
 ## Android
 
 Prepare a new checkout, then point the existing app build at it:
@@ -72,7 +82,11 @@ On Windows, use the installed Python launcher (`py -3`) in place of `python3`.
 The helper fetches the exact pinned runtime into the package's **new**
 `llama/llama.cpp` checkout, then writes the official Node source metadata from
 the verified repository/revision. It refuses an existing source checkout,
-metadata, or backup directory; use a new build workspace if any exists. A
+or backup directory; use a new build workspace if either exists. The official
+3.19.1 package's stock `llama.cpp.info.json` is accepted only at its exact
+published SHA-256 preimage, preserved in the backup, and patched to the verified
+Prism pin. Changed, custom or symlinked metadata is rejected before fetching or
+changing any file. A
 repeated successful preparation verifies the same files without overwriting
 them. Do not use `source download`: that upstream command removes an existing
 checkout. A direct-I/O and memory-lock combination with mmap disabled is
@@ -108,6 +122,11 @@ claim. Physical-phone testing was waived for this change. Local full builds and
 the 5.95 GB model download were blocked by disk capacity during implementation.
 Blog publication, source publication, native binaries and store availability are
 separate release states.
+
+Audit status on 12 October 2026: the required root `npm audit --audit-level=high`
+gate passes after scoped transitive dependency fixes, with no high or critical
+findings. Moderate Electron build-tool findings and pre-existing findings in the
+separate UI build dependency tree remain; this is not a full security clearance.
 
 Sources: [official model card](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf),
 [Prism fork](https://github.com/PrismML-Eng/llama.cpp/tree/e8fd209c975c80aa7fb36a8423571ff3b1b7e955).
