@@ -18,10 +18,12 @@ if [ "${CI_XCODEBUILD_EXIT_CODE:-1}" != "0" ]; then
   echo "Archive action failed; no runtime readiness claim." >&2
   exit 1
 fi
-: "${CI_ARCHIVE_PATH:?Xcode Cloud archive path is required}"
+: "${CI_APP_STORE_SIGNED_APP_PATH:?Xcode Cloud App Store signed export path is required}"
 case "${CI_PRODUCT_PLATFORM:-}" in
   iOS) PLATFORM=ios ;;
   macOS) PLATFORM=macos ;;
   *) echo "Unsupported archive platform: ${CI_PRODUCT_PLATFORM:-missing}" >&2; exit 1 ;;
 esac
-python3 "$ROOT/scripts/verify_prism_apple_runtime.py" verify-archive --archive "$CI_ARCHIVE_PATH" --platform "$PLATFORM"
+# Xcode Cloud may create an ad-hoc intermediate archive, then apply managed
+# distribution signing during export. Inspect the actual App Store payload.
+python3 "$ROOT/scripts/verify_prism_apple_runtime.py" verify-distribution --distribution "$CI_APP_STORE_SIGNED_APP_PATH" --platform "$PLATFORM"

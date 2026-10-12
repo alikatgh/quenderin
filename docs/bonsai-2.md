@@ -24,9 +24,13 @@ distribution. The post-clone hook builds the pinned iOS device and universal Mac
 framework before package resolution. Later hooks validate the checkout through
 `CI_PRIMARY_REPOSITORY_PATH` and reject missing release inputs.
 
-The release profile forbids stock or mock fallback. Archive verification checks
+The release profile forbids stock or mock fallback. The final Cloud hook verifies
+the App Store signed export at `CI_APP_STORE_SIGNED_APP_PATH` (one iOS IPA, macOS
+PKG, or app), because Cloud's intermediate archive may use ad-hoc signing. It checks
 the embedded runtime, model catalog, version/build, team signature and native
-ternary capability on Mac. Mach-O section identity survives Xcode signing and
+ternary capability on Mac. Package extraction rejects unsafe paths, ambiguity and
+oversized payloads, uses fresh scratch, and never runs an installer. The separate
+`verify-archive` command still requires a signed archive. Mach-O section identity survives Xcode signing and
 thinning; source framework files also have complete SHA-256 digests. Runtime
 deployment minima are iOS 16.4 and macOS 13.3. Version 0.3.0 uses candidate build
 12; the actual Xcode Cloud counter must be at least 12 before starting a build.

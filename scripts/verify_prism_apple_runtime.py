@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Fail-closed Prism framework and signed Apple archive checks; never downloads a model."""
+"""Fail-closed Prism framework and signed Apple distribution checks; never downloads a model."""
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
+import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import plistlib
 import re
+import shutil
+import stat
 import struct
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 FRAMEWORK = ROOT / "apple/QuenderinKit/Frameworks/prism-llama.xcframework"
@@ -21,6 +28,11 @@ STAMP = "quenderin-apple-runtime.json"
 RELEASE_MARKER = ".quenderin-prism-release"
 PROBE = {"PQ2_0": {"type": 142, "block": 128, "size": 34},
          "PTQ1_0": {"type": 143, "block": 128, "size": 28}}
+# No model belongs in an App Store export. Bound package work independently of
+# compressed metadata, and reserve space rather than exhausting the Cloud disk.
+MAX_EXPORT_BYTES = 2 * 1024 ** 3
+MAX_EXPORT_ENTRIES = 100_000
+EXPORT_DISK_RESERVE = 64 * 1024 ** 2
 
 
 def require(condition: bool, reason: str) -> None:
@@ -302,12 +314,258 @@ def verify_app(app: Path, target: str, stamp: dict, root: Path = ROOT, signed: b
             "architectures": sorted(payload), "runtimeRevision": stamp["revision"]}
 
 
+def export_member(name: str) -> PurePosixPath:
+    require(name and len(name.encode("utf-8")) <= 4096 and "\\" not in name and "\x00" not in name,
+            "Unsafe export member name")
+    path = PurePosixPath(name)
+    require(not path.is_absolute() and ".." not in path.parts and len(path.parts) <= 32,
+            "Export member escapes extraction directory or exceeds the depth limit")
+    return path
+
+
+def validate_export_app(app: Path) -> None:
+    require(app.is_dir() and not app.is_symlink(), "Export app must be a real directory")
+    total, count = 0, 0
+    for path in app.rglob("*"):
+        count += 1
+        require(count <= MAX_EXPORT_ENTRIES, "Too many export entries")
+        mode = path.lstat().st_mode
+        if stat.S_ISLNK(mode):
+            require(path.resolve().is_relative_to(app.resolve()), "Export symlink escapes app")
+        else:
+            require(stat.S_ISREG(mode) or stat.S_ISDIR(mode), "Unsafe export file type")
+            total += path.stat().st_size if stat.S_ISREG(mode) else 0
+            require(total <= MAX_EXPORT_BYTES, "Export exceeds the unpacked size limit")
+
+
+def extract_entry(destination: Path, path: PurePosixPath, mode: int, size: int,
+                  source, links: list) -> None:
+    """Write only fresh regular files; create validated symlinks after all files.
+
+    Deferring links prevents an archive member from redirecting any later write.
+    Never invoke an installer, restore ownership, or apply setuid permission bits.
+    """
+    require(0 <= size <= MAX_EXPORT_BYTES, "Export entry exceeds the size limit")
+    output = destination.joinpath(*path.parts)
+    kind = stat.S_IFMT(mode)
+    require(shutil.disk_usage(destination).free >= size + EXPORT_DISK_RESERVE,
+            "Insufficient scratch space for signed export verification")
+    if kind == stat.S_IFDIR:
+        require(size == 0, "Export directory has unexpected data")
+        output.mkdir(parents=True, exist_ok=True)
+        return
+    require(kind in (stat.S_IFREG, stat.S_IFLNK), "Unsafe export file type")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if kind == stat.S_IFLNK:
+        require(size <= 4096, "Export symlink target is too long")
+        target = source.read(size)
+        require(len(target) == size, "Truncated export symlink")
+        target = target.decode("utf-8")
+        require(target and not target.startswith("/") and "\\" not in target and "\x00" not in target
+                and (output.parent / target).resolve().is_relative_to(destination.resolve()),
+                "Export symlink escapes extraction directory")
+        links.append((output, target))
+        return
+    with output.open("xb") as sink:
+        remaining = size
+        while remaining:
+            chunk = source.read(min(remaining, 1024 * 1024))
+            require(chunk, "Truncated export file")
+            sink.write(chunk)
+            remaining -= len(chunk)
+    output.chmod(mode & 0o777)
+
+
+def finish_export_links(links: list) -> None:
+    for path, target in links:
+        require(not path.exists() and not path.is_symlink(), "Duplicate export path")
+        path.symlink_to(target)
+
+
+def extract_ipa(package: Path, destination: Path) -> Path:
+    # ZipFile reads the central directory eagerly. Bound that read before opening
+    # it; this app's <2 GB package never needs a ZIP64 or split-volume container.
+    with package.open("rb") as source:
+        source.seek(max(0, package.stat().st_size - 65_557))
+        tail = source.read()
+    end = tail.rfind(b"PK\x05\x06")
+    require(end >= 0 and len(tail) - end >= 22, "Missing IPA ZIP directory")
+    _, disk, directory_disk, disk_entries, entries, directory_size, directory_offset, comment = struct.unpack_from(
+        "<4s4H2IH", tail, end)
+    require(disk == directory_disk == 0 and disk_entries == entries < 65_535 and entries <= MAX_EXPORT_ENTRIES
+            and directory_size <= 16 * 1024 ** 2 and directory_offset + directory_size <= package.stat().st_size
+            and end + 22 + comment == len(tail), "Unsupported or oversized IPA ZIP directory")
+    with zipfile.ZipFile(package) as archive:
+        entries = archive.infolist()
+        require(len(entries) <= MAX_EXPORT_ENTRIES, "Too many export entries")
+        require(sum(e.file_size for e in entries) <= MAX_EXPORT_BYTES, "Export exceeds the unpacked size limit")
+        seen, links = set(), []
+        for entry in entries:
+            path = export_member(entry.filename)
+            key = str(path).casefold()
+            require(key not in seen and not entry.flag_bits & 1, "Duplicate or encrypted export entry")
+            seen.add(key)
+            mode = entry.external_attr >> 16
+            kind = stat.S_IFMT(mode)
+            require(kind in (0, stat.S_IFREG, stat.S_IFDIR, stat.S_IFLNK), "Unsafe export file type")
+            require(path.parts and path.parts[0] in ("Payload", "SwiftSupport", "Symbols", "BCSymbolMaps", "Signatures")
+                    or len(path.parts) == 1, "Unexpected IPA top-level directory")
+            if not path.parts or path.parts[0] != "Payload":
+                # Auxiliary Swift/symbol/framework-signature files are not part
+                # of the signed app. Their names, types and sizes remain bounded.
+                require(kind != stat.S_IFLNK, "Unexpected auxiliary export symlink")
+                continue
+            mode = mode if kind else (stat.S_IFDIR | 0o755 if entry.is_dir() else stat.S_IFREG | 0o644)
+            with archive.open(entry) as source:
+                extract_entry(destination, path, mode, entry.file_size, source, links)
+        finish_export_links(links)
+    apps = list((destination / "Payload").glob("*.app"))
+    require(len(apps) == 1, "Expected exactly one app in IPA Payload")
+    return apps[0]
+
+
+def pkg_payload(package: Path) -> tuple:
+    """Locate the single component Payload without expanding the XAR container.
+
+    Xcode's App Store product package stores a gzip CPIO Payload verbatim in XAR.
+    Inspect bounded metadata and read only that range; never execute package scripts.
+    """
+    with package.open("rb") as source:
+        header = source.read(28)
+        require(len(header) == 28, "Truncated PKG header")
+        magic, header_size, version, compressed, plain, _ = struct.unpack(">4sHHQQI", header)
+        require(magic == b"xar!" and version == 1 and 28 <= header_size <= 4096,
+                "Unsupported PKG container")
+        require(0 < compressed <= 8 * 1024 ** 2 and 0 < plain <= 8 * 1024 ** 2,
+                "PKG table of contents exceeds the size limit")
+        source.seek(header_size)
+        inflater = zlib.decompressobj()
+        xml = inflater.decompress(source.read(compressed), plain + 1)
+        require(inflater.eof and not inflater.unused_data and len(xml) == plain,
+                "Invalid PKG table of contents")
+        require(b"<!DOCTYPE" not in xml and b"<!ENTITY" not in xml, "Unsafe PKG XML declaration")
+        toc = ET.fromstring(xml)
+        heap, payloads, seen = header_size + compressed, [], set()
+
+        def visit(node, parent=PurePosixPath("."), depth=0):
+            require(depth < 16 and len(seen) < MAX_EXPORT_ENTRIES, "PKG metadata exceeds the entry limit")
+            names = [n.text for n in node.findall("name")]
+            require(names and all(n == names[0] for n in names) and names[0]
+                    and "/" not in names[0], "Unsafe PKG member name")
+            path = parent / export_member(names[0])
+            key = str(path).casefold()
+            require(key not in seen, "Duplicate PKG member")
+            seen.add(key)
+            kind = node.findtext("type")
+            require(kind in ("file", "directory"), "Unsafe PKG member type")
+            if kind == "file":
+                data = node.find("data")
+                require(data is not None, "Missing PKG member data")
+                offset, length, size = (int(data.findtext(k)) for k in ("offset", "length", "size"))
+                require(0 <= offset and 0 <= length <= MAX_EXPORT_BYTES and 0 <= size <= MAX_EXPORT_BYTES
+                        and heap + offset + length <= package.stat().st_size, "PKG member exceeds container bounds")
+                if path.name == "Payload":
+                    encoding = data.find("encoding")
+                    require(len(path.parts) in (1, 2) and (len(path.parts) == 1 or path.parent.suffix == ".pkg")
+                            and encoding is not None and encoding.get("style") == "application/octet-stream"
+                            and size == length, "Unsupported PKG Payload layout")
+                    payloads.append((heap + offset, length))
+            else:
+                for child in node.findall("file"):
+                    visit(child, path, depth + 1)
+
+        require(toc.tag == "xar" and toc.find("toc") is not None, "Missing PKG table of contents")
+        for node in toc.findall("./toc/file"):
+            visit(node)
+        require(len(payloads) == 1, "Expected exactly one PKG component Payload")
+        return payloads[0]
+
+
+class PackageRange(io.RawIOBase):
+    def __init__(self, source, offset: int, length: int):
+        self.source, self.remaining = source, length
+        source.seek(offset)
+
+    def read(self, size=-1):
+        size = self.remaining if size < 0 else min(size, self.remaining)
+        data = self.source.read(size)
+        self.remaining -= len(data)
+        return data
+
+
+def extract_pkg(package: Path, destination: Path) -> Path:
+    offset, length = pkg_payload(package)
+    seen, links, total = set(), [], 0
+    with package.open("rb") as container:
+        source = PackageRange(container, offset, length)
+        require(source.read(2) == b"\x1f\x8b", "Unsupported PKG Payload compression; expected Xcode gzip CPIO")
+        source = PackageRange(container, offset, length)
+        with gzip.GzipFile(fileobj=source) as payload:
+            for _ in range(MAX_EXPORT_ENTRIES):
+                header = payload.read(76)
+                require(len(header) == 76 and header[:6] == b"070707", "Unsupported/truncated PKG CPIO header")
+                mode, name_size, size = (int(header[a:b], 8) for a, b in ((18, 24), (59, 65), (65, 76)))
+                require(0 < name_size <= 4096, "Invalid PKG CPIO member name length")
+                name = payload.read(name_size)
+                require(len(name) == name_size and name[-1:] == b"\x00", "Truncated PKG CPIO member name")
+                name = name[:-1].decode("utf-8")
+                if name == "TRAILER!!!":
+                    trailer = payload.read(1025)
+                    require(size == 0 and len(trailer) <= 1024 and not trailer.strip(b"\x00"),
+                            "Invalid PKG CPIO trailer")
+                    break
+                path = export_member(name)
+                key = str(path).casefold()
+                require(key not in seen, "Duplicate export path")
+                seen.add(key)
+                total += size
+                require(total <= MAX_EXPORT_BYTES, "Export exceeds the unpacked size limit")
+                extract_entry(destination, path, mode, size, payload, links)
+            else:
+                raise ValueError("Too many export entries")
+    finish_export_links(links)
+    # Both supported install-location conventions are explicit; do not search
+    # arbitrary package paths for something that happens to resemble an app.
+    apps = list(destination.glob("*.app")) + list((destination / "Applications").glob("*.app"))
+    require(len(apps) == 1, "Expected exactly one exported PKG app")
+    return apps[0]
+
+
+def verify_distribution(export: Path, target: str, stamp: dict, root: Path = ROOT,
+                        source_framework: Path = FRAMEWORK) -> dict:
+    require(target in ("ios", "macos"), "Only iOS device/macOS distributions are supported")
+    require(export.exists() and not export.is_symlink(), "App Store signed export is missing or is a symlink")
+    if export.is_dir() and export.suffix != ".app":
+        candidates = [p for p in export.iterdir() if p.suffix.lower() in (".app", ".ipa", ".pkg")]
+        require(len(candidates) == 1, "Expected exactly one app/package in App Store signed export directory")
+        export = candidates[0]
+        require(not export.is_symlink(), "App Store signed export is a symlink")
+    if export.is_dir() and export.suffix == ".app":
+        validate_export_app(export)
+        return verify_app(export, target, stamp, root, signed=True, source_framework=source_framework)
+    require(export.is_file() and export.suffix.lower() == (".ipa" if target == "ios" else ".pkg"),
+            "Wrong package type for App Store signed export platform")
+    require(export.stat().st_size <= MAX_EXPORT_BYTES, "Export package exceeds the size limit")
+    if target == "macos":
+        # Require pkgutil's successful trust check. Cloud managed signing uses
+        # "issued by Apple (Development)" wording even for its App Store export.
+        signature = run("pkgutil", "--check-signature", str(export))
+        leaves = re.findall(r"(?m)^[ \t]*1\.[ \t]+([^\r\n]+)$", signature)
+        require(len(leaves) == 1 and re.fullmatch(r"3rd Party Mac Developer Installer: .+ \(9M2B2P4KSA\)", leaves[0].strip()),
+                "App Store PKG must have a trusted installer signature for team 9M2B2P4KSA")
+    with tempfile.TemporaryDirectory(prefix="quenderin-app-store-") as scratch:
+        app = (extract_ipa if target == "ios" else extract_pkg)(export, Path(scratch))
+        validate_export_app(app)
+        return verify_app(app, target, stamp, root, signed=True, source_framework=source_framework)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("seal", "verify-framework", "activate", "verify-build", "verify-archive"))
+    parser.add_argument("command", choices=("seal", "verify-framework", "activate", "verify-build", "verify-archive", "verify-distribution"))
     parser.add_argument("--framework", type=Path, default=FRAMEWORK)
     parser.add_argument("--app", type=Path)
     parser.add_argument("--archive", type=Path)
+    parser.add_argument("--distribution", type=Path)
     parser.add_argument("--platform", choices=("iphoneos", "macosx", "ios", "macos"))
     args = parser.parse_args()
     try:
@@ -322,10 +580,13 @@ def main() -> None:
                 marker = ROOT / "apple/QuenderinKit" / RELEASE_MARKER
                 require(not marker.exists() and not marker.is_symlink(), "Preserve existing release profile marker")
                 marker.write_text("prism\n")
-            elif args.command in ("verify-build", "verify-archive"):
+            elif args.command in ("verify-build", "verify-archive", "verify-distribution"):
                 release_profile()
                 target = {"iphoneos": "ios", "macosx": "macos"}.get(args.platform, args.platform)
-                if args.command == "verify-archive":
+                if args.command == "verify-distribution":
+                    require(args.distribution is not None, "--distribution is required")
+                    result = verify_distribution(args.distribution, target, stamp, source_framework=args.framework)
+                elif args.command == "verify-archive":
                     require(args.archive is not None, "--archive is required")
                     apps = list((args.archive / "Products/Applications").glob("*.app"))
                     require(len(apps) == 1, "Expected exactly one archived app")
@@ -339,10 +600,11 @@ def main() -> None:
                     # executable/runtime only in ci_post_xcodebuild.
                     embed_evidence(app, target, stamp)
                     result = {"embeddedReleaseEvidence": str(app), "runtimeRevision": stamp["revision"]}
-                else:
+                elif args.command == "verify-archive":
                     result = verify_app(app, target, stamp, signed=True, source_framework=args.framework)
         print(json.dumps(result, sort_keys=True))
-    except (ValueError, OSError, KeyError, TypeError, StopIteration, struct.error, subprocess.CalledProcessError) as error:
+    except (ValueError, OSError, KeyError, TypeError, StopIteration, struct.error, subprocess.CalledProcessError,
+            ET.ParseError, zipfile.BadZipFile, zlib.error, EOFError, RuntimeError) as error:
         parser.exit(1, f"Apple Prism runtime rejected: {error}\n")
 
 

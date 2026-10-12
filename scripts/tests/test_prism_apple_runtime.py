@@ -1,15 +1,21 @@
 """Small generated Mach-O fixtures verify guards without downloading/building a runtime."""
 import importlib.util
+import gzip
+import io
 import json
 import os
 from pathlib import Path
 import plistlib
 import shutil
+import stat
 import struct
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 
 SPEC = importlib.util.spec_from_file_location("apple_prism", Path(__file__).resolve().parents[1] / "verify_prism_apple_runtime.py")
 prism = importlib.util.module_from_spec(SPEC)
@@ -34,6 +40,37 @@ def fat(target, **kwargs):
     arm, intel = thin("arm64", target, **kwargs), thin("x86_64", target, **kwargs)
     offset = 8 + 2 * 20
     return struct.pack(">II", 0xCAFEBABE, 2) + struct.pack(">IIIII", 0x0100000C, 0, offset, len(arm), 0) + struct.pack(">IIIII", 0x01000007, 0, offset + len(arm), len(intel), 0) + arm + intel
+
+
+def cpio_fixture(entries):
+    data = bytearray()
+    for inode, (name, mode, content) in enumerate(entries + [("TRAILER!!!", 0, b"")]):
+        name = name.encode() + b"\0"
+        fields = ("070707", f"{0:06o}", f"{inode:06o}", f"{mode:06o}", f"{0:06o}",
+                  f"{0:06o}", f"{1:06o}", f"{0:06o}", f"{0:011o}", f"{len(name):06o}", f"{len(content):011o}")
+        data.extend("".join(fields).encode() + name + content)
+    return gzip.compress(bytes(data))
+
+
+def pkg_fixture(path, entries, second_payload=False):
+    payload = cpio_fixture(entries)
+    xar = ET.Element("xar")
+    toc = ET.SubElement(xar, "toc")
+    for name in (["Quenderin.pkg", "Other.pkg"] if second_payload else ["Quenderin.pkg"]):
+        component = ET.SubElement(toc, "file")
+        ET.SubElement(component, "name").text = name
+        ET.SubElement(component, "type").text = "directory"
+        file = ET.SubElement(component, "file")
+        ET.SubElement(file, "name").text = "Payload"
+        ET.SubElement(file, "type").text = "file"
+        data = ET.SubElement(file, "data")
+        for key, value in (("offset", 0), ("length", len(payload)), ("size", len(payload))):
+            ET.SubElement(data, key).text = str(value)
+        ET.SubElement(data, "encoding", style="application/octet-stream")
+    xml = ET.tostring(xar)
+    compressed = zlib.compress(xml)
+    path.write_bytes(struct.pack(">4sHHQQI", b"xar!", 28, 1, len(compressed), len(xml), 0) + compressed + payload)
+    return path
 
 
 class ApplePrismTests(unittest.TestCase):
@@ -86,7 +123,27 @@ class ApplePrismTests(unittest.TestCase):
             return "@rpath/llama.framework/llama"
         if args[:2] == ("codesign", "-d"):
             return "Authority=Apple Distribution\nTeamIdentifier=9M2B2P4KSA"
+        if args[:2] == ("pkgutil", "--check-signature"):
+            return ("Status: signed by a developer certificate issued by Apple (Development)\nCertificate Chain:\n"
+                    "    1. 3rd Party Mac Developer Installer: Fixture (9M2B2P4KSA)\n"
+                    "    2. Apple Worldwide Developer Relations Certification Authority\n    3. Apple Root CA")
         return ""
+
+    def ipa(self, app, extra=()):
+        path = self.root / "Quenderin.ipa"
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+            for file in sorted(app.rglob("*")):
+                if file.is_file():
+                    package.write(file, "Payload/Quenderin.app/" + file.relative_to(app).as_posix())
+            for name, data in extra:
+                package.writestr(name, data)
+        return path
+
+    def packaged_app(self, target):
+        stamp = self.seal()
+        app, contents, native = self.app(target)
+        prism.embed_evidence(app, target, stamp, self.root)
+        return stamp, app, contents, native
 
     def test_seal_requires_positive_native_probe_and_verified_artifact(self):
         with patch.object(prism, "native_probe", side_effect=ValueError("stock native types")):
@@ -217,6 +274,224 @@ class ApplePrismTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 prism.verify_app(app, "ios", stamp, self.root, signed=True)
 
+    def test_signed_ipa_export_uses_strict_app_checks_and_cleans_scratch(self):
+        stamp, app, contents, native = self.packaged_app("ios")
+        (native / "llama").write_bytes(thin("arm64", 2, signed=True))
+        package = self.ipa(app, [("Signatures/", b""), ("Signatures/prism-llama.xcframework-ios.signature", b"framework-signature")])
+        export = self.root / "appstoreexport"
+        export.mkdir()
+        package = package.rename(export / package.name)
+        digest = prism.sha(package)
+        (export / "ExportOptions.plist").write_bytes(plistlib.dumps({"method": "app-store-connect"}))
+        with patch.object(prism, "run", side_effect=self.tool), patch.object(prism, "verify_app", wraps=prism.verify_app) as verify:
+            result = prism.verify_distribution(export, "ios", stamp, self.root, self.framework)
+            self.assertEqual(result["build"], "12")
+            self.assertTrue(verify.call_args.kwargs["signed"])
+            extracted = verify.call_args.args[0]
+        self.assertFalse(extracted.exists())
+        self.assertEqual(prism.sha(package), digest)
+        self.assertTrue(app.is_dir())
+
+    def test_signed_mac_pkg_export_preserves_internal_framework_links_and_probes_export(self):
+        stamp, app, contents, native = self.packaged_app("macos")
+        (native / "Versions/Current").symlink_to("A")
+        (native / "llama").symlink_to("Versions/Current/llama")
+        entries = [(".", stat.S_IFDIR | 0o755, b""), ("Quenderin.app", stat.S_IFDIR | 0o755, b"")]
+        for path in sorted(app.rglob("*")):
+            mode = path.lstat().st_mode
+            data = os.readlink(path).encode() if path.is_symlink() else (path.read_bytes() if path.is_file() else b"")
+            entries.append(("./Quenderin.app/" + path.relative_to(app).as_posix(), mode, data))
+        package = pkg_fixture(self.root / "Quenderin.pkg", entries)
+        digest = prism.sha(package)
+        with patch.object(prism, "run", side_effect=self.tool) as tool, patch.object(prism, "native_probe", return_value=prism.PROBE) as probe:
+            result = prism.verify_distribution(package, "macos", stamp, self.root, self.framework)
+            self.assertEqual(tool.call_args_list[0].args, ("pkgutil", "--check-signature", str(package)))
+            self.assertEqual(result["architectures"], ["arm64", "x86_64"])
+            extracted_framework = probe.call_args.args[0]
+            self.assertNotEqual(extracted_framework, native)
+            self.assertEqual(probe.call_args.args[1], self.framework / "macos-arm64_x86_64/llama.framework/Headers")
+        self.assertFalse(extracted_framework.exists())
+        self.assertEqual(prism.sha(package), digest)
+        self.assertTrue((native / "llama").is_symlink())
+
+    def test_cli_distribution_and_legacy_archive_both_keep_signed_release_checks(self):
+        stamp, app, _, _ = self.packaged_app("ios")
+        package = self.ipa(app)
+        archive = self.root / "Quenderin.xcarchive"
+        archived_app = archive / "Products/Applications/Quenderin.app"
+        archived_app.parent.mkdir(parents=True)
+        shutil.copytree(app, archived_app)
+        for command, flag, path in (("verify-distribution", "--distribution", package),
+                                    ("verify-archive", "--archive", archive)):
+            with self.subTest(command=command), patch.object(prism, "verify_framework", return_value=stamp) as framework, \
+                    patch.object(prism, "release_profile") as profile, patch.object(prism, "run", side_effect=self.tool), \
+                    patch.object(prism, "verify_app", wraps=prism.verify_app) as verify, patch("sys.stdout", new_callable=io.StringIO) as output, \
+                    patch("sys.argv", ["verify_prism_apple_runtime.py", command, flag, str(path), "--platform", "ios", "--framework", str(self.framework)]):
+                prism.main()
+                self.assertEqual(json.loads(output.getvalue())["runtimeRevision"], self.lock["revision"])
+                framework.assert_called_once_with(self.framework)
+                profile.assert_called_once_with()
+                self.assertTrue(verify.call_args.kwargs["signed"])
+                self.assertEqual(verify.call_args.kwargs["source_framework"], self.framework)
+
+    def test_distribution_rejects_missing_ambiguous_wrong_platform_and_symlink_inputs(self):
+        stamp, app, _, _ = self.packaged_app("ios")
+        with self.assertRaisesRegex(ValueError, "missing"):
+            prism.verify_distribution(self.root / "missing", "ios", stamp)
+        package = self.ipa(app)
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            prism.verify_distribution(self.root, "ios", stamp)
+        with self.assertRaisesRegex(ValueError, "package type"):
+            prism.verify_distribution(package, "macos", stamp)
+        link = self.root / "linked.ipa"
+        link.symlink_to(package)
+        with self.assertRaisesRegex(ValueError, "symlink"):
+            prism.verify_distribution(link, "ios", stamp)
+
+    def test_distribution_accepts_direct_app_but_rejects_external_links(self):
+        stamp, app, _, _ = self.packaged_app("ios")
+        with patch.object(prism, "run", side_effect=self.tool):
+            self.assertEqual(prism.verify_distribution(app, "ios", stamp, self.root)["platform"], "ios")
+        (app / "outside").symlink_to(self.root / "shared")
+        with self.assertRaisesRegex(ValueError, "symlink escapes"):
+            prism.verify_distribution(app, "ios", stamp, self.root)
+
+    def test_ipa_rejects_traversal_duplicate_external_link_and_size_or_space_overrun(self):
+        stamp, app, _, _ = self.packaged_app("ios")
+        for name in ("../escaped", "/escaped", "Payload\\escaped"):
+            with self.subTest(name=name):
+                package = self.ipa(app, [(name, b"unsafe")])
+                with self.assertRaisesRegex(ValueError, "[Uu]nsafe|escapes"):
+                    prism.verify_distribution(package, "ios", stamp)
+        package = self.ipa(app, [("./Payload/Quenderin.app/Info.plist", b"duplicate")])
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            prism.verify_distribution(package, "ios", stamp)
+        package = self.ipa(app)
+        with zipfile.ZipFile(package, "a") as archive:
+            link = zipfile.ZipInfo("Payload/Quenderin.app/link")
+            link.create_system = 3
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(link, "../../../escaped")
+        with self.assertRaisesRegex(ValueError, "symlink escapes"):
+            prism.verify_distribution(package, "ios", stamp)
+        package = self.ipa(app)
+        with zipfile.ZipFile(package, "a") as archive:
+            link = zipfile.ZipInfo("Signatures/framework.signature")
+            link.create_system = 3
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(link, "../Payload/Quenderin.app/Info.plist")
+        with self.assertRaisesRegex(ValueError, "auxiliary export symlink"):
+            prism.verify_distribution(package, "ios", stamp)
+        package = self.ipa(app)
+        with patch.object(prism, "MAX_EXPORT_BYTES", 32):
+            with self.assertRaisesRegex(ValueError, "size limit"):
+                prism.verify_distribution(package, "ios", stamp)
+        with patch.object(prism.shutil, "disk_usage", return_value=shutil._ntuple_diskusage(100, 100, 0)):
+            with self.assertRaisesRegex(ValueError, "scratch space"):
+                prism.verify_distribution(package, "ios", stamp)
+        self.assertFalse((self.root / "escaped").exists())
+
+    def test_ipa_requires_one_payload_app_and_rejects_adhoc_wrong_team_and_tamper(self):
+        stamp, app, _, native = self.packaged_app("ios")
+        package = self.ipa(app)
+        digest, scratch = prism.sha(package), []
+        temporary_directory = tempfile.TemporaryDirectory
+
+        def record_scratch(**kwargs):
+            result = temporary_directory(**kwargs)
+            scratch.append(Path(result.name))
+            return result
+
+        with patch.object(prism.tempfile, "TemporaryDirectory", side_effect=record_scratch), patch.object(prism, "run", side_effect=lambda *a: "Signature=adhoc\nTeamIdentifier=9M2B2P4KSA" if a[:2] == ("codesign", "-d") else self.tool(*a)):
+            with self.assertRaisesRegex(ValueError, "signature"):
+                prism.verify_distribution(package, "ios", stamp, self.root)
+        self.assertTrue(scratch)
+        self.assertTrue(all(not path.exists() for path in scratch))
+        self.assertEqual(prism.sha(package), digest)
+        with patch.object(prism, "run", side_effect=lambda *a: "TeamIdentifier=WRONGTEAM" if a[:2] == ("codesign", "-d") else self.tool(*a)):
+            with self.assertRaisesRegex(ValueError, "signature"):
+                prism.verify_distribution(package, "ios", stamp, self.root)
+        (native / "llama").write_bytes(thin("arm64", 2, code=b"wrong-payload"))
+        package = self.ipa(app)
+        with self.assertRaisesRegex(ValueError, "binary payload"):
+            prism.verify_distribution(package, "ios", stamp, self.root)
+        for extra in ([], [("Payload/Other.app/Info.plist", b"other")]):
+            with zipfile.ZipFile(package, "w") as archive:
+                if extra:
+                    archive.writestr("Payload/Quenderin.app/Info.plist", b"app")
+                    archive.writestr(*extra[0])
+                else:
+                    archive.writestr("Info.plist", b"no-payload-app")
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                prism.verify_distribution(package, "ios", stamp)
+
+    def test_ipa_rejects_oversized_central_directory_before_loading_it(self):
+        stamp, app, _, _ = self.packaged_app("ios")
+        package = self.ipa(app)
+        data = bytearray(package.read_bytes())
+        end = data.rfind(b"PK\x05\x06")
+        struct.pack_into("<I", data, end + 12, 17 * 1024 ** 2)
+        package.write_bytes(data)
+        with patch.object(prism.zipfile, "ZipFile", side_effect=AssertionError("must not load metadata")):
+            with self.assertRaisesRegex(ValueError, "oversized IPA ZIP directory"):
+                prism.verify_distribution(package, "ios", stamp)
+
+    @patch.object(prism, "run")
+    def test_pkg_rejects_multiple_payloads_traversal_external_links_and_special_files(self, tool):
+        tool.side_effect = self.tool
+        stamp = self.seal()
+        package = self.root / "Quenderin.pkg"
+        pkg_fixture(package, [], second_payload=True)
+        with self.assertRaisesRegex(ValueError, "exactly one PKG"):
+            prism.verify_distribution(package, "macos", stamp)
+        for name, mode, data, reason in (("../escaped", stat.S_IFREG | 0o644, b"unsafe", "escapes"),
+                                         ("Quenderin.app/link", stat.S_IFLNK | 0o777, b"../../escaped", "symlink escapes"),
+                                         ("Quenderin.app/device", stat.S_IFCHR | 0o600, b"", "file type")):
+            with self.subTest(name=name):
+                pkg_fixture(package, [(name, mode, data)])
+                with self.assertRaisesRegex(ValueError, reason):
+                    prism.verify_distribution(package, "macos", stamp)
+        self.assertFalse((self.root / "escaped").exists())
+        pkg_fixture(package, [("Quenderin.app", stat.S_IFDIR | 0o755, b""), ("Other.app", stat.S_IFDIR | 0o755, b"")])
+        with self.assertRaisesRegex(ValueError, "exactly one exported PKG app"):
+            prism.verify_distribution(package, "macos", stamp)
+
+    def test_pkg_rejects_unsigned_untrusted_and_wrong_installer_before_extraction(self):
+        package = pkg_fixture(self.root / "Quenderin.pkg", [])
+        digest = prism.sha(package)
+        trusted = self.tool("pkgutil", "--check-signature", str(package))
+        for status in ("Status: no signature", "Status: signed by untrusted certificate"):
+            with self.subTest(status=status), patch.object(prism.subprocess, "check_output", side_effect=subprocess.CalledProcessError(
+                    1, ["pkgutil", "--check-signature", str(package)], output=status)), \
+                    patch.object(prism.tempfile, "TemporaryDirectory", side_effect=AssertionError("must not allocate extraction scratch")), \
+                    patch.object(prism, "extract_pkg", side_effect=AssertionError("must not extract untrusted package")):
+                with self.assertRaisesRegex(ValueError, "Native command failed.*pkgutil"):
+                    prism.verify_distribution(package, "macos", {})
+        for signature in (trusted.replace("(9M2B2P4KSA)", "(WRONGTEAM)") + "\n    4. Unrelated (9M2B2P4KSA)",
+                          trusted.replace("3rd Party Mac Developer Installer:", "Developer ID Installer:"),
+                          trusted + "\n    1. 3rd Party Mac Developer Installer: Other (WRONGTEAM)"):
+            with self.subTest(signature=signature), patch.object(prism.subprocess, "check_output", return_value=signature), \
+                    patch.object(prism.tempfile, "TemporaryDirectory", side_effect=AssertionError("must not allocate extraction scratch")), \
+                    patch.object(prism, "extract_pkg", side_effect=AssertionError("must not extract wrong installer package")):
+                with self.assertRaisesRegex(ValueError, "trusted installer signature"):
+                    prism.verify_distribution(package, "macos", {})
+        self.assertEqual(prism.sha(package), digest)
+
+    def test_pkg_rejects_truncated_out_of_bounds_and_oversized_metadata(self):
+        package = pkg_fixture(self.root / "Quenderin.pkg", [])
+        original = package.read_bytes()
+        package.write_bytes(original[:-4])
+        with self.assertRaisesRegex(ValueError, "bounds"):
+            prism.pkg_payload(package)
+        header = list(struct.unpack(">4sHHQQI", original[:28]))
+        header[4] = 9 * 1024 ** 2
+        package.write_bytes(struct.pack(">4sHHQQI", *header) + original[28:])
+        with self.assertRaisesRegex(ValueError, "size limit"):
+            prism.pkg_payload(package)
+        package.write_bytes(b"not-a-package")
+        with self.assertRaisesRegex(ValueError, "Truncated"):
+            prism.pkg_payload(package)
+
     def test_cloud_pre_clone_rejects_missing_explicit_profile_before_mutation(self):
         script = prism.ROOT / "apple/QuenderinApp/ci_scripts/ci_post_clone.sh"
         env = os.environ | {"CI": "TRUE", "QUENDERIN_RUNTIME": "standard", "CI_PRIMARY_REPOSITORY_PATH": str(prism.ROOT)}
@@ -250,16 +525,25 @@ class ApplePrismTests(unittest.TestCase):
         (self.root / "apple/QuenderinKit/.quenderin-prism-release").write_text("prism\n")
         env = os.environ | {"CI": "TRUE", "QUENDERIN_RUNTIME": "prism", "QUENDERIN_LLAMA_DIR": "",
                             "CI_PRIMARY_REPOSITORY_PATH": str(self.root), "CI_XCODEBUILD_ACTION": "archive",
-                            "CI_XCODEBUILD_EXIT_CODE": "0", "CI_PRODUCT_PLATFORM": "iOS", "CI_ARCHIVE_PATH": str(self.root / "fixture.xcarchive")}
+                            "CI_XCODEBUILD_EXIT_CODE": "0", "CI_PRODUCT_PLATFORM": "iOS", "CI_ARCHIVE_PATH": str(self.root / "adhoc.xcarchive"),
+                            "CI_APP_STORE_SIGNED_APP_PATH": str(self.root / "signed export")}
         clone = subprocess.run(["bash", str(isolated / "ci_post_clone.sh")], cwd=isolated,
                                env=env | {"QUENDERIN_RUNTIME": "standard"}, capture_output=True, text=True)
         self.assertNotEqual(clone.returncode, 0)
         self.assertIn("explicit QUENDERIN_RUNTIME=prism", clone.stderr)
-        for name, command in (("ci_pre_xcodebuild.sh", "verify-framework"), ("ci_post_xcodebuild.sh", "verify-archive")):
+        for name, command in (("ci_pre_xcodebuild.sh", "verify-framework"), ("ci_post_xcodebuild.sh", "verify-distribution")):
             with self.subTest(hook=name):
                 result = subprocess.run(["bash", str(isolated / name)], cwd=isolated, env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("REPOSITORY_VERIFIER " + command, result.stdout)
+                if command == "verify-distribution":
+                    self.assertIn("--distribution " + env["CI_APP_STORE_SIGNED_APP_PATH"], result.stdout)
+                    self.assertNotIn(env["CI_ARCHIVE_PATH"], result.stdout)
+        missing_export = subprocess.run(["bash", str(isolated / "ci_post_xcodebuild.sh")], cwd=isolated,
+                                        env=env | {"CI_APP_STORE_SIGNED_APP_PATH": ""}, capture_output=True, text=True)
+        self.assertNotEqual(missing_export.returncode, 0)
+        self.assertIn("CI_APP_STORE_SIGNED_APP_PATH", missing_export.stderr)
+        self.assertNotIn("REPOSITORY_VERIFIER", missing_export.stdout)
 
 
 if __name__ == "__main__":
