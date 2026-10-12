@@ -119,13 +119,29 @@ node --test scripts/tests/model-releases.test.mjs
 Hosted CI run [38201154541](https://github.com/alikatgh/quenderin/actions/runs/38201154541)
 built the pinned Prism CPU runtime, downloaded and SHA-256 verified the exact
 catalog artifact, and loaded it to generate `hello` on 12 October 2026. This is a
-bounded runtime check, not a Quenderin performance benchmark. The actual Prism
-Android APK build and unit tests also passed in the preceding CI run. Desktop
-packaged execution and Apple source-linked tests remain release gates; signed
-native/store artifacts have not been published. Physical-phone testing was
-waived for this change. Local full builds and the 5.95 GB model download were
-blocked by disk capacity, so those checks run on hosted runners. Blog publication,
-source publication, native binaries and store availability are separate states.
+bounded runtime check, not a Quenderin performance benchmark. Both Windows and
+Linux packaged Electron apps passed the native addon probe, and the actual Prism
+Android APK build and unit tests passed. Run
+[38201651569](https://github.com/alikatgh/quenderin/actions/runs/38201651569)
+also passed 553 tests against the source-linked Prism Swift adapter (nine skipped,
+zero failures). The desktop release additionally requires full-model generation
+through the packaged addon. Signed native/store artifacts have not been published.
+Physical-phone testing was waived for this change. Local full builds and the
+5.95 GB model download were blocked by disk capacity, so those checks run on
+hosted runners. Blog publication, source publication, native binaries and store
+availability are separate states.
+
+Desktop installers are uploaded directly to a draft GitHub Release after their
+checks. Publication requires both platform builds, exact tag/source provenance,
+and all four expected installer assets. Existing assets are never overwritten.
+This path avoids metered Actions artifact storage; standard public-repository
+runners and GitHub Release distribution use the existing included service. See
+[Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+and [Release limits](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
+Partial uploads can resume only when an existing installer's size and SHA-256
+match the local build. An incomplete asset, missing digest, or different rebuild
+stops publication. Keep that draft and its files; use a new version for a changed
+build instead of replacing assets or moving the old tag.
 
 Audit status on 12 October 2026: the required root `npm audit --audit-level=high`
 gate passes after scoped transitive dependency fixes, with no high or critical

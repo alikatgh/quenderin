@@ -20,8 +20,38 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Test release provenance and failure gates
+        run: node --test scripts/tests/desktop-release.test.mjs
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Prepare the exact-source draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: node scripts/desktop_release.mjs prepare
+
   build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -29,13 +59,17 @@ jobs:
           - os: windows-latest
             args: --win nsis portable --x64
             unpacked: win-unpacked
+            platform: windows
           - os: ubuntu-latest
             args: --linux AppImage deb --x64
             unpacked: linux-unpacked
+            platform: linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -63,37 +97,38 @@ jobs:
         run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Probe the shipped Prism addon inside the packaged ASAR
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
-      - uses: actions/upload-artifact@v4
-        with:
-          name: desktop-${{ matrix.os }}
-          path: |
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-          if-no-files-found: error
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v8
-        with:
-          path: assets
-          merge-multiple: true
-      - name: Determine release tag
-        id: tag
+      - name: Generate with the exact Bonsai model through the packaged addon
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Create or update the release
+          python3 - <<'PY'
+          import os
+          import shutil
+          required = 7 * 1024 ** 3
+          available = shutil.disk_usage(os.environ["RUNNER_TEMP"]).free
+          if available < required:
+              raise SystemExit(f"Bonsai verification requires 7 GiB free; available: {available} bytes")
+          PY
+          curl --fail --location --retry 2 --max-time 600 \
+            'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true' \
+            --output "$RUNNER_TEMP/bonsai.gguf"
+          echo "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3  $RUNNER_TEMP/bonsai.gguf" | sha256sum --check
+          node scripts/verify_prism_desktop_generation.mjs release/${{ matrix.unpacked }}/resources "$RUNNER_TEMP/bonsai.gguf"
+      - name: Upload only this platform's installers to the verified draft
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          gh release view "$TAG" >/dev/null 2>&1 \
-            || gh release create "$TAG" --title "Quenderin $TAG" --generate-notes
-          gh release upload "$TAG" assets/* --clobber
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/desktop_release.mjs upload ${{ matrix.platform }}
+
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Publish only after both builds and all four installers are verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node scripts/desktop_release.mjs publish
