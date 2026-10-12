@@ -5,3 +5,4 @@
 DerivedData/
 .DS_Store
 Frameworks/*.xcframework
+.quenderin-prism-release

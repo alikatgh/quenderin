@@ -1,0 +1,524 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1E76FE449DF2FD724B5EB3A1 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */; };
+		2ED093ACEAED4F7CE4E68E6F /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */; };
+		3C871302967180AB28472B0E /* QuenderinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */; };
+		46216EEC7820E605F781DB50 /* QuenderinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */; };
+		571E041657DAC2B10E5CA170 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */; };
+		9092454E89A6E893F0FB8733 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */; };
+		A0B6DAC70BB34EF2EFF259BE /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */; };
+		A64FB63493D11F2FF78D9FBB /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6C32B87E528EBFB412D97093 /* QuenderinKit */; };
+		A9997FAF8890E7C7C71F0E48 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */; };
+		B086FC3FDC0071AB26DAB654 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */; };
+		C369320368902B82B0383179 /* QuenderinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B752046D965F4890531FAA42 /* QuenderinKit */; };
+		E36297B48F03067B6AE0A9C4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		23F2880FBD01EDA75C1DFA64 /* Quenderin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Quenderin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuenderinApp.swift; sourceTree = "<group>"; };
+		776F87933FBE5A6B4B594B6D /* QuenderinKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QuenderinKit; path = ../QuenderinKit; sourceTree = SOURCE_ROOT; };
+		9509EC27BB6513AF7851224B /* Quenderin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Quenderin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		87CF496C6BF678423B117D0F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C369320368902B82B0383179 /* QuenderinKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E4415BBFCD1E86B355EE12E1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A64FB63493D11F2FF78D9FBB /* QuenderinKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8BDEEAF0C3D8A89BAE4EB730 = {
+			isa = PBXGroup;
+			children = (
+				AA491B5E9EBEAD7678946AA0 /* Assets.xcassets */,
+				43DAD759D30A6C923A18A4A1 /* InfoPlist.xcstrings */,
+				A9C5ED782BC40AA5687BBAD4 /* Localizable.xcstrings */,
+				485B2C30E32089BFA353B62E /* PrivacyInfo.xcprivacy */,
+				CC43F3B1D0959AA5530AD963 /* Packages */,
+				C0A548173C3975A12610A484 /* Sources */,
+				BB19E1C245F149A9F239BF67 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BB19E1C245F149A9F239BF67 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9509EC27BB6513AF7851224B /* Quenderin.app */,
+				23F2880FBD01EDA75C1DFA64 /* Quenderin.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C0A548173C3975A12610A484 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				6229D7659FD5D40AA560CD67 /* QuenderinApp.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		CC43F3B1D0959AA5530AD963 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				776F87933FBE5A6B4B594B6D /* QuenderinKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A52871FB608DDDF164C01C3 /* Quenderin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42CF4243EC908362F37BB877 /* Build configuration list for PBXNativeTarget "Quenderin" */;
+			buildPhases = (
+				90DF36144C4185B78A800595 /* Sources */,
+				9563337BBC9523B160C5590E /* Resources */,
+				87CF496C6BF678423B117D0F /* Frameworks */,
+				9A8DC6A75A81D0273CFF6412 /* Verify and embed pinned Prism release evidence */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Quenderin;
+			packageProductDependencies = (
+				B752046D965F4890531FAA42 /* QuenderinKit */,
+			);
+			productName = Quenderin;
+			productReference = 9509EC27BB6513AF7851224B /* Quenderin.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A399545E742DE3FAB8AD8526 /* QuenderinMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3B2AFFEAFDF7EB84B3ECC48B /* Build configuration list for PBXNativeTarget "QuenderinMac" */;
+			buildPhases = (
+				5F92AC51603043A2C10E6379 /* Sources */,
+				163FAFF52E3BDD3C7B5AE1EF /* Resources */,
+				E4415BBFCD1E86B355EE12E1 /* Frameworks */,
+				ECD965086DA640442B9EA70A /* Verify and embed pinned Prism release evidence */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = QuenderinMac;
+			packageProductDependencies = (
+				6C32B87E528EBFB412D97093 /* QuenderinKit */,
+			);
+			productName = QuenderinMac;
+			productReference = 23F2880FBD01EDA75C1DFA64 /* Quenderin.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		309E42284A28D48655E68211 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5A52871FB608DDDF164C01C3 = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+					};
+					A399545E742DE3FAB8AD8526 = {
+						DevelopmentTeam = 9M2B2P4KSA;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E90AF58AE5BA581A57806314 /* Build configuration list for PBXProject "Quenderin" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8BDEEAF0C3D8A89BAE4EB730;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				CA1F94846C95011FBFAE8765 /* XCLocalSwiftPackageReference "../QuenderinKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BB19E1C245F149A9F239BF67 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5A52871FB608DDDF164C01C3 /* Quenderin */,
+				A399545E742DE3FAB8AD8526 /* QuenderinMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		163FAFF52E3BDD3C7B5AE1EF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				571E041657DAC2B10E5CA170 /* Assets.xcassets in Resources */,
+				A0B6DAC70BB34EF2EFF259BE /* InfoPlist.xcstrings in Resources */,
+				1E76FE449DF2FD724B5EB3A1 /* Localizable.xcstrings in Resources */,
+				E36297B48F03067B6AE0A9C4 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9563337BBC9523B160C5590E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B086FC3FDC0071AB26DAB654 /* Assets.xcassets in Resources */,
+				2ED093ACEAED4F7CE4E68E6F /* InfoPlist.xcstrings in Resources */,
+				9092454E89A6E893F0FB8733 /* Localizable.xcstrings in Resources */,
+				A9997FAF8890E7C7C71F0E48 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9A8DC6A75A81D0273CFF6412 /* Verify and embed pinned Prism release evidence */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Verify and embed pinned Prism release evidence";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$CONFIGURATION\" = \"Release\" ]; then\n  python3 \"$SRCROOT/../../scripts/verify_prism_apple_runtime.py\" verify-build --app \"$TARGET_BUILD_DIR/$WRAPPER_NAME\" --platform \"$PLATFORM_NAME\"\nfi\n";
+		};
+		ECD965086DA640442B9EA70A /* Verify and embed pinned Prism release evidence */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Verify and embed pinned Prism release evidence";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$CONFIGURATION\" = \"Release\" ]; then\n  python3 \"$SRCROOT/../../scripts/verify_prism_apple_runtime.py\" verify-build --app \"$TARGET_BUILD_DIR/$WRAPPER_NAME\" --platform \"$PLATFORM_NAME\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5F92AC51603043A2C10E6379 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				46216EEC7820E605F781DB50 /* QuenderinApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		90DF36144C4185B78A800595 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3C871302967180AB28472B0E /* QuenderinApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1A77854D250FDDFC703D8258 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		2591E5F9A09B55E74FDC254C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		50D95AF7D76C245585EC0608 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		5FCB7103ED2700BEEE004CEB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		70E480EAF615B088FDA2A002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Quenderin-macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = "Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
+				PRODUCT_NAME = Quenderin;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		EA569F3194055EB08F53610C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Quenderin-macOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = 9M2B2P4KSA;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = "Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.quenderin.Quenderin;
+				PRODUCT_NAME = Quenderin;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3B2AFFEAFDF7EB84B3ECC48B /* Build configuration list for PBXNativeTarget "QuenderinMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				70E480EAF615B088FDA2A002 /* Debug */,
+				EA569F3194055EB08F53610C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		42CF4243EC908362F37BB877 /* Build configuration list for PBXNativeTarget "Quenderin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2591E5F9A09B55E74FDC254C /* Debug */,
+				50D95AF7D76C245585EC0608 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E90AF58AE5BA581A57806314 /* Build configuration list for PBXProject "Quenderin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A77854D250FDDFC703D8258 /* Debug */,
+				5FCB7103ED2700BEEE004CEB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		CA1F94846C95011FBFAE8765 /* XCLocalSwiftPackageReference "../QuenderinKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../QuenderinKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6C32B87E528EBFB412D97093 /* QuenderinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuenderinKit;
+		};
+		B752046D965F4890531FAA42 /* QuenderinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuenderinKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 309E42284A28D48655E68211 /* Project object */;
+}

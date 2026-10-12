@@ -17,6 +17,22 @@ compressed file fitting on disk does not prove RAM fit.
 
 ## Apple
 
+App Store archives use the committed XcodeGen project and shared `Quenderin`
+(iOS) and `QuenderinMac` schemes. Configure Xcode Cloud with the explicit
+`QUENDERIN_RUNTIME=prism` environment variable and Archive actions for App Store
+distribution. The post-clone hook builds the pinned iOS device and universal Mac
+framework before package resolution. Later hooks validate the checkout through
+`CI_PRIMARY_REPOSITORY_PATH` and reject missing release inputs.
+
+The release profile forbids stock or mock fallback. Archive verification checks
+the embedded runtime, model catalog, version/build, team signature and native
+ternary capability on Mac. Mach-O section identity survives Xcode signing and
+thinning; source framework files also have complete SHA-256 digests. Runtime
+deployment minima are iOS 16.4 and macOS 13.3. Version 0.3.0 uses candidate build
+12; the actual Xcode Cloud counter must be at least 12 before starting a build.
+Both store drafts exist with automatic release after approval. Signed archives,
+submission and public availability remain separate release gates.
+
 After checking disk headroom with session-storage, build in a **new** work path:
 
 ```sh
@@ -122,6 +138,7 @@ Run the normal catalog and model suites plus:
 ```sh
 python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py
 python3 -m unittest discover -s scripts/tests -p test_prism_node_runtime.py
+python3 -m unittest discover -s scripts/tests -p test_prism_apple_runtime.py
 python3 scripts/check_catalog_parity.py
 node --test scripts/tests/model-releases.test.mjs
 ```

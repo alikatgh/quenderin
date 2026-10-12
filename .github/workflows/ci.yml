@@ -315,6 +315,7 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_prism_node_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_prism_apple_runtime.py
           node --test scripts/tests/prism-node-loader.test.mjs scripts/tests/desktop-release.test.mjs
       - name: FEATURES.md model table is a rendering of the catalog (no doc drift)
         run: python3 scripts/generate_features_models.py --check

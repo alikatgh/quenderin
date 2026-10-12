@@ -8,8 +8,8 @@ name: Quenderin
 options:
   bundleIdPrefix: ai.quenderin
   deploymentTarget:
-    iOS: "16.0"
-    macOS: "13.0"
+    iOS: "16.4"
+    macOS: "13.3"
 packages:
   QuenderinKit:
     path: ../QuenderinKit
@@ -28,12 +28,20 @@ targets:
     dependencies:
       - package: QuenderinKit
         product: QuenderinKit
+    postBuildScripts:
+      - name: Verify and embed pinned Prism release evidence
+        script: |
+          if [ "$CONFIGURATION" = "Release" ]; then
+            python3 "$SRCROOT/../../scripts/verify_prism_apple_runtime.py" verify-build --app "$TARGET_BUILD_DIR/$WRAPPER_NAME" --platform "$PLATFORM_NAME"
+          fi
+        basedOnDependencyAnalysis: false
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         MARKETING_VERSION: "0.3.0"
         # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 4
+        CURRENT_PROJECT_VERSION: 12
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
         # iPhone-only for the first release: the iPad layout is untested, and
@@ -45,7 +53,7 @@ targets:
       properties:
         CFBundleDisplayName: Quenderin
         CFBundleShortVersionString: "0.3.0"
-        CFBundleVersion: "4"
+        CFBundleVersion: "12"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -64,6 +72,7 @@ targets:
   QuenderinMac:
     type: application
     platform: macOS
+    productName: Quenderin
     sources:
       - Sources
       - PrivacyInfo.xcprivacy
@@ -74,16 +83,24 @@ targets:
     dependencies:
       - package: QuenderinKit
         product: QuenderinKit
+    postBuildScripts:
+      - name: Verify and embed pinned Prism release evidence
+        script: |
+          if [ "$CONFIGURATION" = "Release" ]; then
+            python3 "$SRCROOT/../../scripts/verify_prism_apple_runtime.py" verify-build --app "$TARGET_BUILD_DIR/$WRAPPER_NAME" --platform "$PLATFORM_NAME"
+          fi
+        basedOnDependencyAnalysis: false
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         # Universal purchase with the iOS app: same bundle id on both platforms.
         PRODUCT_BUNDLE_IDENTIFIER: ai.quenderin.Quenderin
         PRODUCT_NAME: Quenderin
         ENABLE_HARDENED_RUNTIME: YES
         MARKETING_VERSION: "0.3.0"
         # Candidate counter: verify the highest App Store Connect upload before archiving.
-        CURRENT_PROJECT_VERSION: 11
+        CURRENT_PROJECT_VERSION: 12
         DEVELOPMENT_TEAM: 9M2B2P4KSA
         CODE_SIGN_STYLE: Automatic
     info:
@@ -91,7 +108,7 @@ targets:
       properties:
         CFBundleDisplayName: Quenderin
         CFBundleShortVersionString: "0.3.0"
-        CFBundleVersion: "11"
+        CFBundleVersion: "12"
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false
@@ -117,3 +134,23 @@ targets:
         # Apple Events; sandbox denies them outright (-600) without this. Gated twice
         # at runtime: the in-app per-tool consent AND macOS's Automation prompt.
         com.apple.security.automation.apple-events: true
+
+# Committed shared schemes make fresh-checkout Xcode Cloud discovery independent
+# of local Xcode user state. Release archive actions enforce the Prism profile.
+schemes:
+  Quenderin:
+    build:
+      targets:
+        Quenderin: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  QuenderinMac:
+    build:
+      targets:
+        QuenderinMac: all
+    run:
+      config: Debug
+    archive:
+      config: Release

@@ -35,14 +35,21 @@ let llamaDir = ProcessInfo.processInfo.environment["QUENDERIN_LLAMA_DIR"]
 // (`Frameworks/*.xcframework` is git-ignored — it's a large binary; ship via LFS/CI.)
 let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 let prismFrameworkPath = "Frameworks/prism-llama.xcframework"
+// ci_post_clone persists this profile before Xcode resolves the package. Xcode's
+// package subprocess must not silently become a stock/mock build if it loses the
+// workflow environment. The archive guard separately requires the explicit env.
+let prismRelease = FileManager.default.fileExists(atPath: packageDir + "/.quenderin-prism-release")
 let runtimeName = ProcessInfo.processInfo.environment["QUENDERIN_RUNTIME"]
-    ?? (FileManager.default.fileExists(atPath: packageDir + "/" + prismFrameworkPath) ? "prism" : "standard")
+    ?? (prismRelease || FileManager.default.fileExists(atPath: packageDir + "/" + prismFrameworkPath) ? "prism" : "standard")
 guard ["standard", "prism"].contains(runtimeName) else {
     fatalError("QUENDERIN_RUNTIME must be standard or prism")
 }
 let prismRuntime = runtimeName == "prism"
 let xcframeworkRelPath = prismRuntime ? prismFrameworkPath : "Frameworks/llama.xcframework"
 let hasXcframework = FileManager.default.fileExists(atPath: packageDir + "/" + xcframeworkRelPath)
+if prismRelease && (!prismRuntime || llamaDir != nil) {
+    fatalError("Release profile requires the verified Prism xcframework; stock/source fallback is disabled")
+}
 
 // A feature flag alone cannot turn a stock binary into a ternary/Hadamard runtime.
 // Source builds are verified by the same pinned-source tool used by Android;
@@ -70,6 +77,13 @@ if prismRuntime {
               stamp["revision"] as? String == lock["revision"] as? String else {
             fatalError("Prism framework provenance is missing or does not match the pinned runtime")
         }
+        let verifier = Process()
+        verifier.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        verifier.arguments = ["python3", root.appendingPathComponent("scripts/verify_prism_apple_runtime.py").path,
+                              "verify-framework", "--framework", packageDir + "/" + xcframeworkRelPath]
+        do { try verifier.run(); verifier.waitUntilExit() }
+        catch { fatalError("Unable to verify Prism framework: \(error)") }
+        guard verifier.terminationStatus == 0 else { fatalError("Prism framework verification failed") }
     } else {
         fatalError("Build the Prism framework or provide QUENDERIN_LLAMA_DIR; stock fallback is disabled for this profile")
     }
@@ -142,8 +156,9 @@ if (hasXcframework || llamaDir != nil), let header = selectedLlamaHeader() {
 let package = Package(
     name: "QuenderinKit",
     platforms: [
-        .iOS(.v16),
-        .macOS(.v13),
+        // Pinned upstream xcframework deployment minima.
+        .iOS("16.4"),
+        .macOS("13.3"),
     ],
     products: [
         .library(name: "QuenderinKit", targets: ["QuenderinKit"]),
@@ -156,6 +171,7 @@ let package = Package(
             swiftSettings: qkSwiftSettings,
             linkerSettings: qkLinkerSettings
         ),
-        .testTarget(name: "QuenderinKitTests", dependencies: ["QuenderinKit"]),
+        .testTarget(name: "QuenderinKitTests", dependencies: [.target(name: "QuenderinKit")] + qkDependencies,
+                    swiftSettings: qkSwiftSettings, linkerSettings: qkLinkerSettings),
     ] + optionalTargets
 )
