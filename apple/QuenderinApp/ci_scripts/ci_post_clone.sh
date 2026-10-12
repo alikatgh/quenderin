@@ -29,20 +29,49 @@ curl --fail --location --connect-timeout 20 --max-time 120 --max-filesize 500000
   https://github.com/yonaskolb/XcodeGen/releases/download/2.45.4/xcodegen.zip \
   --output "$TOOLS/xcodegen.zip"
 python3 - "$TOOLS" <<'PY'
-import hashlib, pathlib, sys, zipfile
+import hashlib, pathlib, shutil, stat, sys, zipfile
 root = pathlib.Path(sys.argv[1])
 asset = root / 'xcodegen.zip'
 if asset.stat().st_size != 4319508 or hashlib.sha256(asset.read_bytes()).hexdigest() != '090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef':
     raise SystemExit('XcodeGen release asset checksum/size mismatch')
 with zipfile.ZipFile(asset) as archive:
-    files = [p for p in archive.namelist() if p.endswith('/bin/xcodegen') or p == 'bin/xcodegen']
-    if len(files) != 1:
-        raise SystemExit('Unexpected XcodeGen release layout')
-    binary = root / 'xcodegen'
-    binary.write_bytes(archive.read(files[0]))
-    binary.chmod(0o755)
+    entries = archive.infolist()
+    seen = set()
+    if sum(entry.file_size for entry in entries) > 20000000:
+        raise SystemExit('Unexpected XcodeGen uncompressed size')
+    for entry in entries:
+        rel = pathlib.PurePosixPath(entry.filename)
+        mode = entry.external_attr >> 16
+        if (rel.is_absolute() or not rel.parts or rel.parts[0] != 'xcodegen'
+                or '..' in rel.parts or '\\' in entry.filename
+                or rel in seen or not (stat.S_ISREG(mode) or stat.S_ISDIR(mode))):
+            raise SystemExit('Unsafe or unexpected XcodeGen release member')
+        seen.add(rel)
+        target = root.joinpath(*rel.parts)
+        if target.exists() or target.is_symlink():
+            raise SystemExit('Preserve existing XcodeGen bundle path')
+    # Keep bin/ and share/ together: XcodeGen locates SettingPresets relative
+    # to its executable. Extracting only the binary silently drops defaults.
+    for entry in entries:
+        target = root.joinpath(*pathlib.PurePosixPath(entry.filename).parts)
+        if entry.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(entry) as source, target.open('xb') as destination:
+                shutil.copyfileobj(source, destination)
+            target.chmod((entry.external_attr >> 16) & 0o777)
+    bundle = root / 'xcodegen'
+    for name in ('base.yml', 'Configs/debug.yml', 'Configs/release.yml',
+                 'Platforms/iOS.yml', 'Platforms/macOS.yml',
+                 'Product_Platform/application_iOS.yml', 'Product_Platform/application_macOS.yml'):
+        preset = bundle / 'share/xcodegen/SettingPresets' / name
+        if not preset.is_file() or preset.stat().st_size == 0:
+            raise SystemExit('XcodeGen bundle is missing required setting presets')
+    if not (bundle / 'bin/xcodegen').is_file():
+        raise SystemExit('XcodeGen bundle is missing its executable')
 PY
-export PATH="$TOOLS:$PATH"
+export PATH="$TOOLS/xcodegen/bin:$PATH"
 test "$(xcodegen --version)" = "Version: 2.45.4"
 if ! command -v cmake >/dev/null; then
   command -v brew >/dev/null || { echo "Missing CMake and Homebrew." >&2; exit 1; }
