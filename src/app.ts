@@ -15,6 +15,7 @@ import { AgentService } from './services/agent.service.js';
 import { LlmService } from './services/llm.service.js';
 import { SessionService } from './services/session.service.js';
 import { MODEL_CATALOG, modelPath as getModelPath, getBestInstallableModel } from './constants.js';
+import { getModelRuntimeCompatibility, requiresPrismRuntime, type RuntimeModelDescriptor } from './services/modelRuntime.js';
 import { DEFAULT_PRESETS } from './services/presets.js';
 import { AVAILABLE_TOOLS } from './services/tools/registry.js';
 import { getHardwareProfile } from './utils/hardware.js';
@@ -215,6 +216,8 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
 
     if (llmService) {
+        const checkRuntime = (entry: RuntimeModelDescriptor) =>
+            llmService.checkModelRuntime?.(entry) ?? Promise.resolve(getModelRuntimeCompatibility(entry));
         app.get('/api/models/catalog', async (_req, res) => {
             const catalog = await Promise.all(MODEL_CATALOG.map(async (m) => {
                 const filePath = getModelPath(m.id);
@@ -223,13 +226,19 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 if (isDownloaded) {
                     try { fileSizeBytes = (await fs.stat(filePath)).size; } catch { /* non-fatal */ }
                 }
-                return { ...m, isDownloaded, fileSizeBytes };
+                const runtime = await checkRuntime(m);
+                return {
+                    ...m, isDownloaded, fileSizeBytes,
+                    runtimeCompatible: runtime.canLoad,
+                    runtimeMessage: runtime.message,
+                    runtimeRequirement: runtime.runtimeRequirement,
+                };
             }));
             // activeModelId lets the Model Manager render the Active badge + Use buttons (r9 H1).
             res.json({ catalog, activeModelId: llmService.getActiveModelId() });
         });
 
-        app.post('/api/models/download', (req, res) => {
+        app.post('/api/models/download', async (req, res) => {
             const modelId = req.body?.modelId as string | undefined;
             // Reject an unknown id instead of silently downloading the fallback model (L5; mirrors DELETE).
             if (modelId !== undefined && !MODEL_CATALOG.some(m => m.id === modelId)) {
@@ -239,6 +248,19 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             const hw = getHardwareProfile();
             const fallbackModelId = getBestInstallableModel(hw.totalRamGb);
             const requestedModelId = modelId ?? fallbackModelId;
+            const entry = MODEL_CATALOG.find(m => m.id === requestedModelId)!;
+            const runtime = await checkRuntime(entry);
+            if (!runtime.canLoad) {
+                res.status(409).json({ error: runtime.message, code: 'MODEL_RUNTIME_UNSUPPORTED' });
+                return;
+            }
+            if (requiresPrismRuntime(entry)) {
+                const memory = await llmService.checkModelMemory?.(entry);
+                if (memory && !memory.canLoad) {
+                    res.status(409).json({ error: memory.message, code: 'MODEL_MEMORY_UNSAFE' });
+                    return;
+                }
+            }
             llmService.downloadModel(requestedModelId).catch(e => logger.error("Background model download failed:", e));
             res.json({ message: "Model download initiated.", modelId: requestedModelId });
         });
@@ -249,6 +271,17 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
             if (!modelId || !MODEL_CATALOG.some(m => m.id === modelId)) {
                 return res.status(400).json({ error: 'Unknown or missing modelId' });
             }
+            const entry = MODEL_CATALOG.find(m => m.id === modelId)!;
+            const runtime = await checkRuntime(entry);
+            if (!runtime.canLoad) {
+                return res.status(409).json({ error: runtime.message, code: 'MODEL_RUNTIME_UNSUPPORTED' });
+            }
+            if (requiresPrismRuntime(entry)) {
+                const memory = await llmService.checkModelMemory?.(entry);
+                if (memory && !memory.canLoad) {
+                    return res.status(409).json({ error: memory.message, code: 'MODEL_MEMORY_UNSAFE' });
+                }
+            }
             const filePath = getModelPath(modelId);
             if (!fsSync.existsSync(filePath)) {
                 return res.status(404).json({ error: 'Model file not found on disk. Download it first.' });
@@ -258,6 +291,10 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
                 res.json({ message: 'Model switched.', modelId, activeModel: llmService.getActiveModelLabel() });
             } catch (err) {
                 logger.error('Failed to switch model:', err);
+                const code = (err as NodeJS.ErrnoException).code;
+                if (code === 'MODEL_RUNTIME_UNSUPPORTED' || code === 'MODEL_MEMORY_UNSAFE') {
+                    return res.status(409).json({ error: (err as Error).message, code });
+                }
                 res.status(500).json({ error: 'Failed to switch model.' });
             }
         });

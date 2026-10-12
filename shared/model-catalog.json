@@ -14,6 +14,19 @@
       "languages": "Russian, English, Chinese + 100 more"
     },
     {
+      "id": "bonsai2-27b",
+      "label": "Bonsai 2 27B (Experimental)",
+      "filename": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "ramGb": 7.0,
+      "sizeLabel": "5.95 GB download",
+      "paramsBillions": 27.36,
+      "quantization": "PTQ1_0",
+      "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true",
+      "sha256": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3",
+      "languages": "See model card",
+      "downloadBytes": 5946648928
+    },
+    {
       "id": "qwen3-14b",
       "label": "Qwen3 14B (Best Quality)",
       "filename": "qwen3-14b.Q4_K_M.gguf",

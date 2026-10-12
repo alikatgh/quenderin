@@ -14,6 +14,7 @@ public enum DiskSpace {
     /// Principled download-size estimate: params × bits-per-weight ÷ 8.
     /// (8B Q4_K_M ≈ 4.5 GB, 1B Q2_K ≈ 0.33 GB — close to the catalog labels.)
     public static func estimatedDownloadBytes(for model: ModelEntry) -> Int64 {
+        if let bytes = model.downloadBytes, bytes > 0 { return bytes }
         let bits = Quantization.info(id: model.quantization)?.bitsPerWeight ?? 4.5
         return Int64(model.paramsBillions * 1_000_000_000.0 * bits / 8.0)
     }

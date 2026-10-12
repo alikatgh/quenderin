@@ -88,7 +88,8 @@ class ModelManager(
 
     /** Make an installed model the active one. No-op returning false if it isn't installed. */
     fun setActive(id: String): Boolean {
-        if (!isInstalled(id)) return false
+        val entry = ModelCatalog.entry(id) ?: return false
+        if (!ModelRuntimeSupport.supports(entry) || !isInstalled(id)) return false
         activeModelId = id
         return true
     }

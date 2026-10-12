@@ -28,7 +28,14 @@ val hasReleaseSigning = keystoreProperties.containsKey("storeFile")
 // This mirrors iOS Package.swift's xcframework auto-detection — same "clean by default,
 // real when the native checkout is present" contract. Add it with:
 //   git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
-val nativeLlama = file("../jni/llama.cpp").exists()
+val runtimeName = providers.gradleProperty("quenderin.runtime").orElse("standard").get()
+require(runtimeName in listOf("standard", "prism")) { "quenderin.runtime must be standard or prism" }
+val llamaSource = providers.gradleProperty("quenderin.llamaDir").orNull?.let { file(it) }
+    ?: file("../jni/llama.cpp")
+val nativeLlama = llamaSource.resolve("include/llama.h").isFile
+require(runtimeName != "prism" || nativeLlama) {
+    "Prepare the pinned Prism checkout and pass -Pquenderin.llamaDir=/absolute/path"
+}
 
 android {
     namespace = "ai.quenderin.app"
@@ -58,6 +65,8 @@ android {
                     // Always pass the flag: jni/CMakeLists defaults the option to ON, so
                     // omitting it on -Pquenderin.vulkan=false silently built Vulkan anyway.
                     arguments += "-DQUENDERIN_VULKAN=${if (enableVulkan) "ON" else "OFF"}"
+                    arguments += "-DLLAMA_DIR=${llamaSource.absolutePath}"
+                    arguments += "-DQUENDERIN_PRISM_RUNTIME=${if (runtimeName == "prism") "ON" else "OFF"}"
                 }
             }
         }

@@ -104,7 +104,7 @@ fun main() {
         listOf(0.5, 2.0, 3.5, 8.0, 18.0, 64.0).all { ModelCatalog.entry(ModelRecommender.recommendedModelId(it)) != null })
 
     // --- Catalog integrity ---
-    check("13 models across families", ModelCatalog.models.size == 13)
+    check("14 models across families", ModelCatalog.models.size == 14)
     check("smallest is the ultra-light", ModelCatalog.smallest.id == "llama32-1b-q2")
     check("every model uses a known quant", ModelCatalog.models.all { Quantization.info(it.quantization) != null })
     check("catalog spans 6 families", listOf("qwen3-14b", "deepseek-r1-7b", "gemma3-4b", "phi4-mini", "mistral-7b", "llama3-8b").all { ModelCatalog.entry(it) != null })
@@ -155,6 +155,7 @@ fun main() {
                 val fit = AndroidModelSelector.fitness(m, eight)
                 val required = AndroidModelSelector.estimatedRuntimeGb(m)
                 val expected = when {
+                    !ModelRuntimeSupport.supports(m) -> MemorySeverity.BLOCKED
                     required > usable -> MemorySeverity.BLOCKED
                     usable - required >= required * AndroidModelSelector.COMFORT_HEADROOM_FRACTION -> MemorySeverity.SAFE
                     else -> MemorySeverity.WARNING
@@ -358,7 +359,7 @@ fun main() {
     })
     check("a failed model switch restores the previously-working model (H1)", run {
         val a = ModelCatalog.models[0]
-        val b = ModelCatalog.models.first { it.id != a.id }
+        val b = ModelCatalog.entry("qwen3-14b")!!
         // Engine that loads anything except b, which throws — exercises failed-switch recovery.
         val engine = object : InferenceEngine {
             override var loadedModelId: String? = null

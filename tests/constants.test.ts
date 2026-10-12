@@ -33,7 +33,7 @@ describe('MODEL_CATALOG', () => {
     it('all models have valid quantization labels', () => {
         for (const m of MODEL_CATALOG) {
             // Q4_K_M / Q2_K …, plus i-quants and Unsloth dynamic ("UD-IQ3_XXS").
-            expect(m.quantization).toMatch(/^(UD-)?I?Q\d/);
+            expect(m.quantization).toMatch(/^(?:(UD-)?I?Q\d|PTQ1_0$)/);
         }
     });
 
@@ -55,6 +55,21 @@ describe('MODEL_CATALOG', () => {
         expect(moe).toBeDefined();
         expect(moe.ramGb).toBeLessThan(6);
         expect(moe.sizeLabel).toContain('13.2');
+    });
+
+    it('keeps the default and smallest entries while pinning the experimental Bonsai artifact', () => {
+        expect(MODEL_CATALOG[0].id).toBe('qwen36-35b-a3b');
+        expect(MODEL_CATALOG.at(-1)!.id).toBe('llama32-1b-q2');
+        const bonsai = MODEL_CATALOG[1];
+        expect(bonsai).toMatchObject({
+            id: 'bonsai2-27b', label: 'Bonsai 2 27B (Experimental)',
+            quantization: 'PTQ1_0', paramsBillions: 27.36, ramGb: 7,
+            sizeLabel: '5.95 GB download', downloadBytes: 5946648928,
+            languages: 'See model card',
+            sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
+        });
+        expect(bonsai.url).toContain('/resolve/b072e1d3b35a0a630cece372c2127528e0994386/');
+        expect(MODEL_CATALOG[2].id).toBe('qwen3-14b');
     });
 });
 

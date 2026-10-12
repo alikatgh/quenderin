@@ -34,15 +34,55 @@ let llamaDir = ProcessInfo.processInfo.environment["QUENDERIN_LLAMA_DIR"]
 //   cp -R build-apple/llama.xcframework apple/QuenderinKit/Frameworks/
 // (`Frameworks/*.xcframework` is git-ignored — it's a large binary; ship via LFS/CI.)
 let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
-let xcframeworkRelPath = "Frameworks/llama.xcframework"
+let prismFrameworkPath = "Frameworks/prism-llama.xcframework"
+let runtimeName = ProcessInfo.processInfo.environment["QUENDERIN_RUNTIME"]
+    ?? (FileManager.default.fileExists(atPath: packageDir + "/" + prismFrameworkPath) ? "prism" : "standard")
+guard ["standard", "prism"].contains(runtimeName) else {
+    fatalError("QUENDERIN_RUNTIME must be standard or prism")
+}
+let prismRuntime = runtimeName == "prism"
+let xcframeworkRelPath = prismRuntime ? prismFrameworkPath : "Frameworks/llama.xcframework"
 let hasXcframework = FileManager.default.fileExists(atPath: packageDir + "/" + xcframeworkRelPath)
+
+// A feature flag alone cannot turn a stock binary into a ternary/Hadamard runtime.
+// Source builds are verified by the same pinned-source tool used by Android;
+// framework builds carry provenance written only after that source was built.
+if prismRuntime {
+    let root = URL(fileURLWithPath: packageDir).deletingLastPathComponent().deletingLastPathComponent()
+    let lockURL = root.appendingPathComponent("shared/prism-runtime.json")
+    guard let lockData = try? Data(contentsOf: lockURL),
+          let lock = try? JSONSerialization.jsonObject(with: lockData) as? [String: Any] else {
+        fatalError("Missing Prism runtime lock")
+    }
+    if let dir = llamaDir {
+        let verifier = Process()
+        verifier.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        verifier.arguments = ["python3", root.appendingPathComponent("scripts/prepare_prism_runtime.py").path,
+                              "verify", "--source", dir]
+        do { try verifier.run(); verifier.waitUntilExit() }
+        catch { fatalError("Unable to verify Prism source: \(error)") }
+        guard verifier.terminationStatus == 0 else { fatalError("Prism source verification failed") }
+    } else if hasXcframework {
+        let stampPath = packageDir + "/" + xcframeworkRelPath + "/quenderin-prism-runtime.json"
+        guard let data = FileManager.default.contents(atPath: stampPath),
+              let stamp = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              stamp["repository"] as? String == lock["repository"] as? String,
+              stamp["revision"] as? String == lock["revision"] as? String else {
+            fatalError("Prism framework provenance is missing or does not match the pinned runtime")
+        }
+    } else {
+        fatalError("Build the Prism framework or provide QUENDERIN_LLAMA_DIR; stock fallback is disabled for this profile")
+    }
+}
 
 var qkDependencies: [Target.Dependency] = []
 var qkSwiftSettings: [SwiftSetting] = []
 var qkLinkerSettings: [LinkerSetting] = []
 var optionalTargets: [Target] = []
 
-if hasXcframework {
+if prismRuntime { qkSwiftSettings.append(.define("QUENDERIN_PRISM_LLAMA")) }
+
+if hasXcframework && !(prismRuntime && llamaDir != nil) {
     // Route A — prebuilt xcframework: device/simulator/macOS, Metal GPU included.
     qkDependencies.append("llama")
     optionalTargets.append(.binaryTarget(name: "llama", path: xcframeworkRelPath))
@@ -64,12 +104,12 @@ if hasXcframework {
 // Mirror android/jni/CMakeLists.txt: llama.cpp HEAD replaced use_mmap/use_mlock with
 // enum llama_load_mode. Detect from the header the Swift adapter will actually compile
 // against, then `#if QUENDERIN_LLAMA_LOAD_MODE` in LlamaEngine.swift.
-func llamaHeaderHasLoadMode() -> Bool {
+func selectedLlamaHeader() -> String? {
     var candidates: [String] = []
     if let dir = llamaDir {
         candidates.append(dir + "/include/llama.h")
     }
-    if hasXcframework {
+    if hasXcframework && !(prismRuntime && llamaDir != nil) {
         let root = packageDir + "/" + xcframeworkRelPath
         if let enumerator = FileManager.default.enumerator(atPath: root) {
             while let rel = enumerator.nextObject() as? String {
@@ -82,14 +122,18 @@ func llamaHeaderHasLoadMode() -> Bool {
     }
     for path in candidates {
         guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { continue }
-        if text.contains("LLAMA_LOAD_MODE_MMAP") { return true }
-        if text.range(of: #"enum\s+llama_load_mode"#, options: .regularExpression) != nil { return true }
+        return text
     }
-    return false
+    return nil
 }
 
-if (hasXcframework || llamaDir != nil) && llamaHeaderHasLoadMode() {
-    qkSwiftSettings.append(.define("QUENDERIN_LLAMA_LOAD_MODE"))
+if (hasXcframework || llamaDir != nil), let header = selectedLlamaHeader() {
+    if header.contains("LLAMA_LOAD_MODE_MMAP") || header.range(of: #"enum\s+llama_load_mode"#, options: .regularExpression) != nil {
+        qkSwiftSettings.append(.define("QUENDERIN_LLAMA_LOAD_MODE"))
+    }
+    if header.range(of: #"llama_sampler_init_penalties\([^)]*n_vocab"#, options: .regularExpression) != nil {
+        qkSwiftSettings.append(.define("QUENDERIN_LLAMA_PENALTIES_VOCAB"))
+    }
 }
 
 let package = Package(

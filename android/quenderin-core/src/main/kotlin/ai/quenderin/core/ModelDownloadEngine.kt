@@ -129,6 +129,7 @@ class ModelDownloadEngine(
     override fun needsFetch(model: ModelEntry): Boolean = verifiedExistingPath(model) == null
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        if (!ModelRuntimeSupport.supports(model)) throw DownloadException(ModelRuntimeSupport.UNAVAILABLE_MESSAGE)
         val finalPath = "$destinationDir/${model.filename}"
         val tempPath = "$finalPath.part"
 

@@ -28,9 +28,12 @@ jobs:
         include:
           - os: windows-latest
             args: --win nsis portable --x64
+            unpacked: win-unpacked
           - os: ubuntu-latest
             args: --linux AppImage deb --x64
+            unpacked: linux-unpacked
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
@@ -50,8 +53,16 @@ jobs:
           npm test
       - name: Build backend + dashboard UI
         run: npm run build
+      - name: Prepare and compile the pinned Prism desktop runtime
+        run: |
+          python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
+          node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --noUsageExample
+          python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
+          node scripts/verify_prism_node_runtime.mjs
       - name: Package
         run: npx electron-builder ${{ matrix.args }} --publish never
+      - name: Probe the shipped Prism addon inside the packaged ASAR
+        run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.os }}

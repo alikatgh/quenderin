@@ -16,6 +16,8 @@ public struct QuantizationInfo: Sendable, Hashable, Codable {
 
 public enum Quantization {
     public static let all: [QuantizationInfo] = [
+        .init(id: "PTQ1_0", bitsPerWeight: 1.75, quality: "Experimental", summary: "Prism ternary quantization; requires the Prism runtime", recommended: false),
+        .init(id: "PQ2_0", bitsPerWeight: 2.13, quality: "Experimental", summary: "Prism quantization; requires the Prism runtime", recommended: false),
         .init(id: "Q2_K",   bitsPerWeight: 2.625, quality: "Low",       summary: "Extreme compression, noticeable quality loss", recommended: false),
         .init(id: "UD-IQ3_XXS", bitsPerWeight: 3.02, quality: "Fair",   summary: "Unsloth dynamic 3-bit — keeps critical layers higher-precision", recommended: false),
         .init(id: "Q3_K_M", bitsPerWeight: 3.5,   quality: "Fair",      summary: "Moderate compression",                         recommended: false),
@@ -45,6 +47,8 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
     /// Expected GGUF file SHA-256 (lowercase hex) for post-download integrity
     /// verification. Optional — when nil, only the GGUF magic header is checked.
     public let sha256: String?
+    /// Exact artifact size when verified upstream; takes precedence over weight-size estimates.
+    public let downloadBytes: Int64?
     /// Which human languages the model speaks WELL — honest and explicit about Russian
     /// (первые пользователи русскоязычные): "no Russian" is stated, not omitted. Family-level
     /// truth, not marketing. Optional: sideloaded/HF models don't carry it.
@@ -58,7 +62,7 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
     /// (`languagesLabel` decodes from `languages`; optional, so entries persisted by older
     /// builds — SideloadedModels JSON — still decode.)
     private enum CodingKeys: String, CodingKey {
-        case id, label, filename, sizeLabel, paramsBillions, quantization, sha256
+        case id, label, filename, sizeLabel, paramsBillions, quantization, sha256, downloadBytes
         case ramGB = "ramGb"
         case urlString = "url"
         case languagesLabel = "languages"
@@ -66,7 +70,7 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
 
     public init(id: String, label: String, filename: String, ramGB: Double, sizeLabel: String,
                 paramsBillions: Double, quantization: String, urlString: String,
-                sha256: String?, languagesLabel: String? = nil) {
+                sha256: String?, languagesLabel: String? = nil, downloadBytes: Int64? = nil) {
         self.id = id
         self.label = label
         self.filename = filename
@@ -76,6 +80,7 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
         self.quantization = quantization
         self.urlString = urlString
         self.sha256 = sha256
+        self.downloadBytes = downloadBytes
         self.languagesLabel = languagesLabel
     }
 }
@@ -98,6 +103,20 @@ public enum ModelCatalog {
             urlString: "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true",
             sha256: "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe",
             languagesLabel: "Russian, English, Chinese + 100 more"
+        ),
+        // Opt-in only: this hybrid ternary model needs a verified Prism runtime and a real RAM gate.
+        ModelEntry(
+            id: "bonsai2-27b",
+            label: "Bonsai 2 27B (Experimental)",
+            filename: "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+            ramGB: 7.0,
+            sizeLabel: "5.95 GB download",
+            paramsBillions: 27.36,
+            quantization: "PTQ1_0",
+            urlString: "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true",
+            sha256: "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3",
+            languagesLabel: "See model card",
+            downloadBytes: 5_946_648_928
         ),
         ModelEntry(
             id: "qwen3-14b",

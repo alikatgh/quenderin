@@ -379,6 +379,24 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
 
 extern "C" {
 
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsBonsai(JNIEnv* /*env*/, jclass /*clazz*/) {
+#if defined(QUENDERIN_PRISM_LLAMA) && QUENDERIN_PRISM_LLAMA
+    // Never probe custom numeric enum values in an older library. Enumerate its valid type range.
+    bool hasPTQ1 = false;
+    bool hasPQ2 = false;
+    for (int i = 0; i < GGML_TYPE_COUNT; ++i) {
+        const char* name = ggml_type_name(static_cast<ggml_type>(i));
+        if (!name) continue;
+        if (std::strcmp(name, "ptq1_0") == 0 || std::strcmp(name, "PTQ1_0") == 0) hasPTQ1 = true;
+        if (std::strcmp(name, "pq2_0") == 0 || std::strcmp(name, "PQ2_0") == 0) hasPQ2 = true;
+    }
+    return hasPTQ1 && hasPQ2 ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,

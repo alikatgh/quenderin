@@ -4,6 +4,8 @@ import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadStore
 import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.JvmHttpRangeClient
+import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.core.ModelRuntimeSupport
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelDownloadEngine
 import ai.quenderin.core.PersistedDownload
@@ -42,6 +44,14 @@ class ModelDownloadWorker(
             ?: return@withContext Result.failure(errorData("missing model id"))
         val model = ModelCatalog.entry(modelId)
             ?: return@withContext Result.failure(errorData("unknown model id: $modelId"))
+
+        if (!ModelRuntimeSupport.supports(model)) {
+            return@withContext Result.failure(errorData(ModelRuntimeSupport.UNAVAILABLE_MESSAGE))
+        }
+        if (ModelRuntimeSupport.requiresPrism(model)) {
+            val fitness = AndroidModelSelector.fitness(model, applicationContext.probeDeviceProfile())
+            if (!fitness.canLoad) return@withContext Result.failure(errorData(fitness.message))
+        }
 
         // Promote to a foreground service so a large GGUF keeps downloading while the app is away.
         setForeground(foregroundInfo(0.0, model.label))

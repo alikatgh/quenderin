@@ -30,13 +30,21 @@ public enum MemoryFitness {
         totalGB: Double,
         freeGB: Double,
         budgetHard: Double = defaultBudgetHard,
-        budgetWarning: Double = defaultBudgetWarning
+        budgetWarning: Double = defaultBudgetWarning,
+        prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai
     ) -> MemoryCheckResult {
-        let overhead = model.paramsBillions <= 3 ? overheadBase : overheadLarge
-        let required = model.ramGB * overhead
+        let overhead = model.paramsBillions <= 3 && !ModelRuntimeSupport.isBonsai(model) ? overheadBase : overheadLarge
+        let required = ModelRuntimeSupport.memoryFootprintGB(model) * overhead
         let remaining = freeGB - required
         let usageAfterLoad = (totalGB - freeGB + required) / totalGB
 
+        if ModelRuntimeSupport.requiresPrism(model), !prismRuntimeAvailable {
+            return MemoryCheckResult(
+                canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
+                requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+                message: ModelRuntimeSupport.unavailableMessage
+            )
+        }
         if usageAfterLoad > budgetHard {
             return MemoryCheckResult(
                 canLoad: false,

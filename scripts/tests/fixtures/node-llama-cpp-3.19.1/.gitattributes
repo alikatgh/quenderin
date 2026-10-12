@@ -1,0 +1,3 @@
+# Exact official bytes are SHA-256 patch preimages, including on Windows.
+*.cpp -text
+*.js -text

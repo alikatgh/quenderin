@@ -16,6 +16,7 @@ object DiskSpace {
 
     /** Principled download-size estimate: params × bits-per-weight ÷ 8. */
     fun estimatedDownloadBytes(model: ModelEntry): Long {
+        model.downloadBytes?.takeIf { it > 0L }?.let { return it }
         val bits = Quantization.info(model.quantization)?.bitsPerWeight ?: 4.5
         return (model.paramsBillions * 1_000_000_000.0 * bits / 8.0).toLong()
     }

@@ -60,8 +60,7 @@ def parse_desktop_models(text: str) -> list[dict]:
             m = re.search(rf"{key}:\s*'([^']*)'", entry)
             return m.group(1) if m else None
 
-        models.append(
-            {
+        model = {
                 "id": s("id"),
                 "label": s("label"),
                 "filename": s("filename"),
@@ -79,7 +78,10 @@ def parse_desktop_models(text: str) -> list[dict]:
                 # Optional in the schema so sideloaded entries decode without it.
                 "languages": s_opt("languages"),
             }
-        )
+        download_bytes = re.search(r"downloadBytes:\s*([\d]+)", entry)
+        if download_bytes:
+            model["downloadBytes"] = int(download_bytes.group(1))
+        models.append(model)
     if not models:
         raise SystemExit("FATAL: parsed 0 models from the desktop catalog")
     return models

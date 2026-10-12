@@ -95,6 +95,14 @@ public actor LlamaEngine: InferenceEngine {
     public func loadedContextTokens() async -> Int? { loadedNCtx }
 
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
+        // Before file IO, cancellation, or releasing the current working model.
+        guard ModelRuntimeSupport.supports(entry) else {
+            throw InferenceError.loadFailed(reason: ModelRuntimeSupport.unavailableMessage)
+        }
+        if ModelRuntimeSupport.requiresPrism(entry) {
+            let fitness = MemoryFitness.check(model: entry, totalGB: deviceBudgetGB, freeGB: deviceBudgetGB)
+            guard fitness.canLoad else { throw InferenceError.loadFailed(reason: fitness.message) }
+        }
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw InferenceError.modelFileMissing(path: fileURL.path)
         }
@@ -304,6 +312,7 @@ public actor LlamaEngine: InferenceEngine {
         // (footprint-aware M1): a 1B gets a big context, a 7B on the same phone is capped tight.
         var nctx = ContextWindow.recommend(
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
+        if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -341,6 +350,7 @@ public actor LlamaEngine: InferenceEngine {
             ctxParams.type_v = GGML_TYPE_F16
             nctx = ContextWindow.recommend(
                 appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: .f16)
+            if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
             ctxParams.n_ctx = UInt32(nctx)
             ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
             ctxParams.n_ubatch = ctxParams.n_batch
@@ -451,8 +461,13 @@ public actor LlamaEngine: InferenceEngine {
                 llama_sampler_chain_add(sampler, grammarSampler)
             }
         }
+        #if QUENDERIN_LLAMA_PENALTIES_VOCAB
+        llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
+            llama_vocab_n_tokens(vocab), Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
+        #else
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
             Int32(options.repeatLastN), Float(options.repeatPenalty), 0, 0))
+        #endif
         // Top-k (opt-in, 0 = off) BEFORE top-p — the standard llama.cpp order, and the agent decode
         // uses it to match Qwen3's `top_k=20` recipe. It runs AFTER the grammar mask, so it only
         // trims already-legal tokens (the free `input` string's tail); it can never starve the JSON.

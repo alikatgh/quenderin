@@ -133,7 +133,7 @@ public final class ModelManager {
     /// Make an installed model the active one. No-op returning false if it isn't installed.
     @discardableResult
     public func setActive(_ id: String) -> Bool {
-        guard isInstalled(id) else { return false }
+        guard let entry = ModelCatalog.entry(id: id), ModelRuntimeSupport.supports(entry), isInstalled(id) else { return false }
         activeModelID = id
         return true
     }

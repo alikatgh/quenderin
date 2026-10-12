@@ -17,6 +17,8 @@ data class QuantizationInfo(
 
 object Quantization {
     val all: List<QuantizationInfo> = listOf(
+        QuantizationInfo("PTQ1_0", 1.75, "Experimental", false),
+        QuantizationInfo("PQ2_0", 2.13, "Experimental", false),
         QuantizationInfo("Q2_K", 2.625, "Low", false),
         QuantizationInfo("UD-IQ3_XXS", 3.02, "Fair", false),
         QuantizationInfo("Q3_K_M", 3.5, "Fair", false),
@@ -45,6 +47,8 @@ data class ModelEntry(
     /** Which human languages the model speaks WELL — honest about Russian ("no Russian" is
      *  stated, not omitted; первые пользователи русскоязычные). Null for sideloaded models. */
     val languagesLabel: String? = null,
+    /** Exact artifact size when verified upstream, overriding weight-size estimates. */
+    val downloadBytes: Long? = null,
 )
 
 /** Multi-family catalog, sorted best → smallest. Mirrors MODEL_CATALOG. */
@@ -54,6 +58,8 @@ object ModelCatalog {
         // hot experts, mmap streams the rest) — not the 13.2 GB file. MemoryFitness hides it on
         // ordinary phones; it exists for the 16 GB+ tablets/laptops the catalog also serves.
         ModelEntry("qwen36-35b-a3b", "Qwen3.6 35B MoE (Best Agent, Big Download)", "qwen3.6-35b-a3b.UD-IQ3_XXS.gguf", 5.5, "13.2 GB download", 35.0, "UD-IQ3_XXS", "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true", "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe", languagesLabel = "Russian, English, Chinese + 100 more"),
+        // Opt-in only: requires verified Prism runtime support and a real memory budget.
+        ModelEntry("bonsai2-27b", "Bonsai 2 27B (Experimental)", "Ternary-Bonsai-2-27B-PTQ1_0.gguf", 7.0, "5.95 GB download", 27.36, "PTQ1_0", "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true", "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3", languagesLabel = "See model card", downloadBytes = 5_946_648_928L),
         ModelEntry("qwen3-14b", "Qwen3 14B (Best Quality)", "qwen3-14b.Q4_K_M.gguf", 11.0, "9.0 GB download", 14.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true", "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0", languagesLabel = "Russian, English, Chinese + 100 more"),
         ModelEntry("gemma4-12b", "Gemma 4 12B (Multilingual)", "gemma-4-12b-it.Q4_K_M.gguf", 9.0, "7.1 GB download", 12.0, "Q4_K_M", "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-Q4_K_M.gguf?download=true", "0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42", languagesLabel = "Russian, English + 140 more"),
         ModelEntry("qwen25-coder-7b", "Qwen2.5 Coder 7B (Coding)", "qwen2.5-coder-7b-instruct.Q4_K_M.gguf", 6.5, "4.7 GB download", 7.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true", "509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c", languagesLabel = "Russian, English, Chinese + 25 more"),

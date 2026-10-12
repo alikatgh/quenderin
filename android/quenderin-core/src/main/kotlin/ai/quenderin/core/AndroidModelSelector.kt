@@ -80,6 +80,10 @@ object AndroidModelSelector {
     }
 
     fun estimatedRuntimeGb(model: ModelEntry, contextTokens: Int = REFERENCE_CONTEXT_TOKENS): Double {
+        if (ModelRuntimeSupport.isBonsai(model)) {
+            // Hybrid cache/state is not a dense 27B KV cache; keep conservative RAM and bounded context.
+            return ModelRuntimeSupport.memoryFootprintGb(model) * MemoryFitness.OVERHEAD_LARGE
+        }
         val w = weightsGb(model)
         val activations = w * 0.10
         val kvCache = contextTokens / 4096.0 * (0.10 + 0.03 * model.paramsBillions)
@@ -90,7 +94,7 @@ object AndroidModelSelector {
     fun estimatedTokensPerSecond(model: ModelEntry, soc: AndroidSoc): Double =
         75.0 / (model.paramsBillions + 1.7) * soc.inferenceScore
 
-    fun estimatedDownloadGb(model: ModelEntry): Double = weightsGb(model)
+    fun estimatedDownloadGb(model: ModelEntry): Double = DiskSpace.estimatedDownloadBytes(model) / 1_000_000_000.0
 
     // --- Selection ---
 
@@ -106,10 +110,15 @@ object AndroidModelSelector {
      * SAFE = clears the same comfort headroom the default pick needs; WARNING ("Tight") = loads,
      * but with less than that headroom.
      */
-    fun fitness(model: ModelEntry, device: AndroidDeviceProfile): MemoryCheckResult {
+    fun fitness(model: ModelEntry, device: AndroidDeviceProfile,
+                prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai): MemoryCheckResult {
         val usableGb = device.appMemoryBudgetGb * MEMORY_HEADROOM
         val required = estimatedRuntimeGb(model)
         val remaining = usableGb - required
+        if (ModelRuntimeSupport.requiresPrism(model) && !prismRuntimeAvailable) {
+            return MemoryCheckResult(false, MemorySeverity.BLOCKED, required, usableGb,
+                ModelRuntimeSupport.UNAVAILABLE_MESSAGE, remaining)
+        }
         if (required > usableGb) {
             return MemoryCheckResult(
                 canLoad = false,
@@ -139,11 +148,13 @@ object AndroidModelSelector {
             val runtime = estimatedRuntimeGb(model)
             val tokS = estimatedTokensPerSecond(model, device.soc)
             val download = estimatedDownloadGb(model)
+            val runtimeSupported = ModelRuntimeSupport.supports(model)
             val fitsMemory = runtime <= usableGb
             val fastEnough = tokS >= MIN_TOKENS_PER_SECOND
             val fitsDisk = device.freeDiskGb >= download + DISK_MARGIN_GB
-            val viable = fitsMemory && fastEnough && fitsDisk
+            val viable = runtimeSupported && fitsMemory && fastEnough && fitsDisk
             val note = when {
+                !runtimeSupported -> ModelRuntimeSupport.UNAVAILABLE_MESSAGE
                 !fitsMemory -> "needs ~%.1f GB, over your ~%.1f GB usable budget".format(runtime, usableGb)
                 !fastEnough -> "~%.0f tok/s on the %s — too slow".format(tokS, device.soc.displayName)
                 !fitsDisk -> "needs ~%.1f GB free disk".format(download + DISK_MARGIN_GB)

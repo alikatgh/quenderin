@@ -2,6 +2,7 @@ import path from 'path';
 import os from 'os';
 import { availableMemBytes } from './utils/memory.js';
 import { getHardwareProfile } from './utils/hardware.js';
+import { getModelRuntimeCompatibility, type NodeLlamaRuntime } from './services/modelRuntime.js';
 
 export const MODELS_DIR = path.join(os.homedir(), '.quenderin', 'models');
 
@@ -62,6 +63,19 @@ export const MODEL_CATALOG = [
         url: 'https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true',
         sha256: '9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe',
         languages: 'Russian, English, Chinese + 100 more',
+    },
+    {
+        id: 'bonsai2-27b',
+        label: 'Bonsai 2 27B (Experimental)',
+        filename: 'Ternary-Bonsai-2-27B-PTQ1_0.gguf',
+        ramGb: 7.0,
+        sizeLabel: '5.95 GB download',
+        downloadBytes: 5946648928,
+        paramsBillions: 27.36,
+        quantization: 'PTQ1_0',
+        url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true',
+        sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
+        languages: 'See model card',
     },
     {
         id: 'qwen3-14b',
@@ -261,7 +275,7 @@ export function modelPath(id: string): string {
 }
 
 /** Check memory fitness for a specific model — uses hardware-adaptive budget */
-export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
+export function checkMemoryForModel(entry: ModelEntry, runtime?: NodeLlamaRuntime): MemoryCheckResult {
     const hw = getHardwareProfile();
     const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
@@ -270,6 +284,19 @@ export function checkMemoryForModel(entry: ModelEntry): MemoryCheckResult {
     const required = entry.ramGb * overhead;
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;
+
+    // Runtime support is independent of available RAM and cannot be relaxed by a RAM override.
+    const compatibility = getModelRuntimeCompatibility(entry, runtime);
+    if (!compatibility.canLoad) {
+        return {
+            canLoad: false,
+            severity: 'blocked',
+            availableMemoryGB: freeGb,
+            requiredMemoryGB: required,
+            remainingAfterLoadGB: remaining,
+            message: compatibility.message,
+        };
+    }
 
     // Use hardware-specific budget — Pi gets 92% (let it swap) vs desktop 85%
     if (usageAfterLoad > hw.memoryBudgetHard) {

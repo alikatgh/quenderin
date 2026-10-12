@@ -49,7 +49,7 @@ import fs from "fs";
 import { availableMemBytes } from "../utils/memory.js";
 import { EventEmitter } from "events";
 import { ILlmProvider, GenerationMeta, GenerationOptions } from "../types/index.js";
-import { MODEL_CATALOG, modelPath, checkMemoryForModel, gpuOffloadFits, type ModelEntry } from "../constants.js";
+import { MODEL_CATALOG, modelPath, checkMemoryForModel, gpuOffloadFits, type ModelEntry, type MemoryCheckResult } from "../constants.js";
 import { stripControlTokens, stripControlTokensWithOptions } from "../utils/stripControlTokens.js";
 import { getPresetById, type Preset } from "./presets.js";
 import { buildToolPrompt, maxToolCallsPerResponse } from "./tools/registry.js";
@@ -62,10 +62,35 @@ import { planDownloadWrite, planDownloadSegments, downloadConnectionCount, parse
 import type { DownloadSegment } from "./modelDownloadPlan.js";
 import type { FileHandle } from "fs/promises";
 import logger from "../utils/logger.js";
+import {
+    getModelRuntimeCompatibility, isPrismRuntime, modelRuntimeError, requiresPrismRuntime,
+    type ModelRuntimeCompatibility, type NodeLlamaRuntime, type RuntimeModelDescriptor,
+} from './modelRuntime.js';
 
 /** Narrow unknown catch to an Error-like shape with optional `code` */
 function errCode(e: unknown): string | undefined {
     return e instanceof Error ? (e as NodeJS.ErrnoException).code : undefined;
+}
+
+/** Check the compiled type table as well as the addon's source metadata. The pinned
+ * node-llama-cpp wrappers return undefined for IDs beyond the stock type table. */
+function hasPrismTensorTypes(runtime: NodeLlamaRuntime & {
+    _bindings?: {
+        getBlockSizeForGgmlType?: (type: number) => unknown;
+        getTypeSizeForGgmlType?: (type: number) => unknown;
+    };
+}): boolean {
+    try {
+        const bindings = runtime._bindings;
+        if (typeof bindings?.getBlockSizeForGgmlType !== 'function'
+            || typeof bindings.getTypeSizeForGgmlType !== 'function') return false;
+        return bindings.getBlockSizeForGgmlType(142) === 128
+            && bindings.getTypeSizeForGgmlType(142) === 34
+            && bindings.getBlockSizeForGgmlType(143) === 128
+            && bindings.getTypeSizeForGgmlType(143) === 28;
+    } catch {
+        return false;
+    }
 }
 
 /** Error carrying a structured `code` plus optional model hints for action_required events. */
@@ -131,24 +156,28 @@ function resolveContextForSituation(
  * Graceful degradation strategy:
  * 1. Try each downloaded model smallest-first against the RAM budget.
  * 2. If memory safety is on but nothing passes the budget, STILL return the
- *    smallest downloaded model with `degraded: true` so the caller can load it
+ *    smallest downloaded standard model with `degraded: true` so the caller can load it
  *    with a minimal context instead of blocking the entire app.
- * 3. Return null only when literally no model file exists on disk.
+ * 3. Prism models must always pass the RAM gate; return null if no eligible file exists.
  */
-function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; path: string; degraded: boolean } | null {
+function selectBestModel(memorySafetyEnabled: boolean, runtime?: NodeLlamaRuntime): { entry: ModelEntry; path: string; degraded: boolean } | null {
     // Prefer responsiveness first (smallest -> largest) to avoid long blocking TTFT on CPU-only hosts.
     const prioritized = [...MODEL_CATALOG].sort((a, b) => a.paramsBillions - b.paramsBillions);
     let smallestDownloaded: { entry: ModelEntry; path: string } | null = null;
 
     for (const entry of prioritized) {
+        // An unsupported model must never enter the low-memory fallback either.
+        if (!getModelRuntimeCompatibility(entry, runtime).canLoad) continue;
         const filePath = modelPath(entry.id);
         // Must exist on disk
         if (!fs.existsSync(filePath)) continue;
+        const prismRequired = requiresPrismRuntime(entry);
+        if (prismRequired && !checkMemoryForModel(entry, runtime).canLoad) continue;
         // Track the smallest downloaded model as a last-resort fallback
-        if (!smallestDownloaded) smallestDownloaded = { entry, path: filePath };
+        if (!prismRequired && !smallestDownloaded) smallestDownloaded = { entry, path: filePath };
         // If safety is on, check it fits
-        if (memorySafetyEnabled) {
-            const memCheck = checkMemoryForModel(entry);
+        if (memorySafetyEnabled && !prismRequired) {
+            const memCheck = checkMemoryForModel(entry, runtime);
             if (!memCheck.canLoad) continue;
         }
         return { entry, path: filePath, degraded: false };
@@ -167,23 +196,25 @@ function selectBestModel(memorySafetyEnabled: boolean): { entry: ModelEntry; pat
  */
 function selectPinnedOrBestModel(
     activeModelId: string,
-    memorySafetyEnabled: boolean
+    memorySafetyEnabled: boolean,
+    runtime?: NodeLlamaRuntime,
 ): { entry: ModelEntry; path: string; degraded: boolean } | null {
     const pinned = MODEL_CATALOG.find((m) => m.id === activeModelId);
-    if (pinned) {
+    if (pinned && getModelRuntimeCompatibility(pinned, runtime).canLoad) {
         const filePath = modelPath(pinned.id);
         if (fs.existsSync(filePath)) {
-            if (!memorySafetyEnabled) {
+            const prismRequired = requiresPrismRuntime(pinned);
+            if (!memorySafetyEnabled && !prismRequired) {
                 return { entry: pinned, path: filePath, degraded: false };
             }
-            const memCheck = checkMemoryForModel(pinned);
+            const memCheck = checkMemoryForModel(pinned, runtime);
             if (memCheck.canLoad) {
                 return { entry: pinned, path: filePath, degraded: false };
             }
-            return { entry: pinned, path: filePath, degraded: true };
+            if (!prismRequired) return { entry: pinned, path: filePath, degraded: true };
         }
     }
-    return selectBestModel(memorySafetyEnabled);
+    return selectBestModel(memorySafetyEnabled, runtime);
 }
 
 export class LlmService extends EventEmitter implements ILlmProvider {
@@ -195,6 +226,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     /** The engine handle from getLlama() — retained ONLY so shutdown() can dispose the
      *  Metal/GPU device before exit (see shutdown's doc comment). */
     private llamaEngine: { dispose(): Promise<void> } | null = null;
+    /** Probe only an existing addon; never download/build native code from a model request. */
+    private prismRuntimeProbe: Promise<NodeLlamaRuntime | undefined> | null = null;
     private isGeneratingChat: boolean = false;
     /** Q-292: cancel handle for the CURRENT chat generation. Non-null only while `generalChat`
      *  is streaming; `requestChatCancel()` aborts it so a user "stop" ends the native decode within
@@ -563,6 +596,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (!entry) {
             throw new Error(`Unknown model id: ${modelId}`);
         }
+        await this.assertModelRuntime(entry);
         const filePath = modelPath(modelId);
         if (!fs.existsSync(filePath)) {
             const err = new Error('MODEL_MISSING');
@@ -599,6 +633,73 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         };
     }
 
+    private getPrismRuntime(): Promise<NodeLlamaRuntime | undefined> {
+        if (!this.prismRuntimeProbe) {
+            this.prismRuntimeProbe = (async () => {
+                if (!_llamaBindings) return undefined;
+                try {
+                    // dryRun does not initialize a backend or allocate model memory. It implies
+                    // build:'never'; disabling prebuilts prevents a silent stock-runtime fallback.
+                    const probe = await _llamaBindings.getLlama({
+                        dryRun: true,
+                        build: 'never',
+                        // The shipped Prism addon is built with --gpu false. Resolve that
+                        // exact CPU build even when GPU addons/prebuilts are also installed.
+                        gpu: false,
+                        usePrebuiltBinaries: false,
+                        skipDownload: true,
+                        progressLogs: false,
+                        logLevel: _llamaBindings.LlamaLogLevel.disabled,
+                    });
+                    if (!isPrismRuntime(probe) || !hasPrismTensorTypes(probe)) return undefined;
+                    return { buildType: probe.buildType, llamaCppRelease: { ...probe.llamaCppRelease } };
+                } catch {
+                    return undefined;
+                }
+            })();
+        }
+        return this.prismRuntimeProbe;
+    }
+
+    public async checkModelRuntime(entry: RuntimeModelDescriptor): Promise<ModelRuntimeCompatibility> {
+        const runtime = requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined;
+        return getModelRuntimeCompatibility(entry, runtime);
+    }
+
+    public async checkModelMemory(entry: ModelEntry): Promise<MemoryCheckResult> {
+        const runtime = requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined;
+        return checkMemoryForModel(entry, runtime);
+    }
+
+    private assertPrismMemory(entry: ModelEntry, runtime?: NodeLlamaRuntime): void {
+        if (!requiresPrismRuntime(entry)) return;
+        const memory = checkMemoryForModel(entry, runtime);
+        if (!memory.canLoad) {
+            this.emit('action_required', {
+                code: 'MODEL_MEMORY_UNSAFE',
+                title: 'Insufficient Memory for Experimental Model',
+                message: memory.message,
+            });
+            const error = new Error(memory.message) as NodeJS.ErrnoException;
+            error.code = 'MODEL_MEMORY_UNSAFE';
+            throw error;
+        }
+    }
+
+    private async assertModelRuntime(entry: ModelEntry): Promise<void> {
+        const runtime = requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined;
+        const compatibility = getModelRuntimeCompatibility(entry, runtime);
+        if (!compatibility.canLoad) {
+            this.emit('action_required', {
+                code: 'MODEL_RUNTIME_UNSUPPORTED',
+                title: 'Experimental Runtime Required',
+                message: compatibility.message,
+            });
+            throw modelRuntimeError(compatibility);
+        }
+        this.assertPrismMemory(entry, runtime);
+    }
+
     public async getModelAndContext() {
         this.touchActivity();
 
@@ -624,23 +725,29 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             let model: LlamaModel | undefined;
             let context: LlamaContext | undefined;
             try {
+                const needsPrism = MODEL_CATALOG.some(entry =>
+                    requiresPrismRuntime(entry) && fs.existsSync(modelPath(entry.id)));
+                const runtime = needsPrism ? await this.getPrismRuntime() : undefined;
                 // Use pinned activeModelId when its file exists; otherwise auto-select
                 const selected = selectPinnedOrBestModel(
                     this.activeModelId,
-                    this.currentSettings.memorySafetyEnabled
+                    this.currentSettings.memorySafetyEnabled,
+                    runtime,
                 );
 
                 if (!selected) {
                     // No model file exists on disk at all — ask user to download one
                     const freeRamGb = availableMemBytes() / (1024 ** 3);
                     const totalRamGb = os.totalmem() / (1024 ** 3);
-                    const fittingModels = MODEL_CATALOG.filter(m => {
+                    const compatibleModels = MODEL_CATALOG.filter(m => getModelRuntimeCompatibility(m, runtime).canLoad
+                        && (!requiresPrismRuntime(m) || checkMemoryForModel(m, runtime).canLoad));
+                    const fittingModels = compatibleModels.filter(m => {
                         const used = totalRamGb - freeRamGb;
                         return (m.ramGb + used) <= totalRamGb * 0.85;
                     });
                     const err = new Error("MODEL_MISSING") as TaggedError;
                     err.code = "MODEL_MISSING";
-                    err.fittingModels = fittingModels.length > 0 ? fittingModels : MODEL_CATALOG;
+                    err.fittingModels = fittingModels.length > 0 ? fittingModels : compatibleModels;
                     throw err;
                 }
 
@@ -708,7 +815,34 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 let llama: any;
                 const gpuMode = HW.tryGpuOffload ? "auto" : false;
                 let resolvedGpuBackend = gpuMode === false ? 'cpu' : 'gpu';
-                try {
+                if (requiresPrismRuntime(selected.entry)) {
+                    // Use the exact addon whose capability was probed. A rebuild/replacement
+                    // between probe and load must fail before its GGUF parser sees the file.
+                    llama = await getLlamaFn({
+                        build: 'never',
+                        gpu: false,
+                        usePrebuiltBinaries: false,
+                        skipDownload: true,
+                        progressLogs: false,
+                        logLevel: LogLevel.disabled,
+                    });
+                    const compatibility = getModelRuntimeCompatibility(selected.entry, llama);
+                    if (!compatibility.canLoad || !hasPrismTensorTypes(llama)) {
+                        await llama.dispose();
+                        throw modelRuntimeError(compatibility.canLoad ? {
+                            canLoad: false,
+                            message: 'The installed Prism desktop addon is missing the required PQ2_0/PTQ1_0 native tensor types. Rebuild the pinned Prism runtime before selecting this model.',
+                        } : compatibility);
+                    }
+                    // Recheck current RAM after backend initialization, before allocating weights.
+                    try {
+                        this.assertPrismMemory(selected.entry, llama);
+                    } catch (error) {
+                        await llama.dispose();
+                        throw error;
+                    }
+                    resolvedGpuBackend = llama.gpu === false ? 'cpu' : String(llama.gpu ?? 'gpu');
+                } else try {
                     llama = await Promise.race([
                         getLlamaFn({ logLevel: LogLevel.disabled, gpu: gpuMode }),
                         new Promise((_, reject) => setTimeout(() => {
@@ -753,7 +887,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     try { return fs.statSync(selected.path).size / 1e9; } catch { return 0; }
                 })();
                 const fitsGpu = gpuOffloadFits(fileSizeGb, os.totalmem() / (1024 ** 3));
-                if (HW.tryGpuOffload && fitsGpu) {
+                const tryModelGpuOffload = HW.tryGpuOffload && !requiresPrismRuntime(selected.entry);
+                if (tryModelGpuOffload && fitsGpu) {
                     try {
                         model = await loadWithGpu("max");
                         logger.log('[LLM] Model loaded with GPU offload (max layers)');
@@ -762,14 +897,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         model = await loadWithGpu(0);
                         logger.log('[LLM] Model loaded in CPU-only mode');
                     }
-                } else if (HW.tryGpuOffload) {
+                } else if (tryModelGpuOffload) {
                     // GPU exists, but the weights exceed the safe offload budget.
                     model = await loadWithGpu(0);
                     logger.log(`[LLM] Model loaded in CPU-only mode (${fileSizeGb.toFixed(1)} GB weights exceed GPU offload budget — OS page cache streams them)`);
                 } else {
-                    // Embedded / headless ARM — skip GPU entirely
+                    // Embedded/headless ARM or the deterministic CPU Prism addon.
                     model = await loadWithGpu(0);
-                    logger.log('[LLM] Model loaded in CPU-only mode (embedded hardware)');
+                    logger.log(`[LLM] Model loaded in CPU-only mode (${requiresPrismRuntime(selected.entry) ? 'Prism runtime' : 'embedded hardware'})`);
                 }
 
                 // Thread count: limit to cpuCores-1 on low-core devices to avoid
@@ -956,6 +1091,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async downloadModel(modelId?: string): Promise<void> {
+        const entry = MODEL_CATALOG.find(m => m.id === (modelId ?? MODEL_CATALOG[0].id)) ?? MODEL_CATALOG[0];
+        await this.assertModelRuntime(entry);
         if (this.isDownloading) {
             // Q-408: only ONE download runs at a time (a single slot). Don't THROW here — the common
             // case is a benign double-trigger (double-click / auto + manual) that callers shouldn't have
@@ -966,7 +1103,6 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         }
         this.isDownloading = true;
 
-        const entry = MODEL_CATALOG.find(m => m.id === (modelId ?? MODEL_CATALOG[0].id)) ?? MODEL_CATALOG[0];
         const url = entry.url;
         const dest = modelPath(entry.id);
         const dir = path.dirname(dest);
@@ -1012,8 +1148,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // Estimate required space: model file + 500MB buffer for OS/other ops
         let diskLowMessage: string | null = null;
         try {
-            const estimatedSizeGb = entry.ramGb; // rough: download size ≈ RAM footprint for GGUF
-            const estimatedBytes = estimatedSizeGb * (1024 ** 3);
+            const estimatedBytes = 'downloadBytes' in entry
+                ? entry.downloadBytes : entry.ramGb * (1024 ** 3);
             const bufferBytes = 500 * (1024 ** 2); // 500 MB buffer
             const { availableMemBytes: getAvail } = await import('../utils/memory.js');
             // Use free memory as a proxy for whether the system has headroom

@@ -60,6 +60,7 @@ class OnboardingModel(
     /** The most recent recommendation — where a CANCELLED download returns (a change of mind is
      *  not a failure). Kept by the phase setter so both start() paths feed it. */
     private var lastRecommended: OnboardingPhase.Recommended? = null
+    private var lastDeviceProfile: DeviceProfile? = null
 
     /** Serializes [acceptAndPrepare] (Q-336, twin of Swift `isInstalling`): a concurrent accept —
      *  double-tap, or a model-picker switch overlapping an in-flight download/load — would race
@@ -115,6 +116,7 @@ class OnboardingModel(
     fun start(probe: () -> DeviceProfile) {
         phase = OnboardingPhase.Probing
         val device = probe()
+        lastDeviceProfile = device
         // Fitness-aware, not just the RAM band: the band can pick a model the memory gate then
         // blocks (a 12–16 GB device band-picks the 14B → over the 85% budget), which used to land
         // first-run straight on Failed. Offer the largest model that actually loads instead.
@@ -158,6 +160,19 @@ class OnboardingModel(
             isInstalling = true
         }
         try {
+            if (!ModelRuntimeSupport.supports(model)) {
+                phase = OnboardingPhase.Failed(ModelRuntimeSupport.UNAVAILABLE_MESSAGE)
+                return
+            }
+            if (ModelRuntimeSupport.requiresPrism(model)) {
+                val fitness = selection?.device?.let { AndroidModelSelector.fitness(model, it) }
+                    ?: lastDeviceProfile?.let { MemoryFitness.check(model, it.totalRamGB, it.freeRamGB) }
+                if (fitness == null || !fitness.canLoad) {
+                    phase = OnboardingPhase.Failed(fitness?.message
+                        ?: "Check this device's memory budget before downloading an experimental Prism model.")
+                    return
+                }
+            }
             // Preflights guard the DOWNLOAD, not the load: a model already integrity-verified on
             // disk needs no network and no free space, so gating it was a spurious block — on
             // cellular, a Settings switch to an on-disk model failed with "connect to Wi-Fi"

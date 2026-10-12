@@ -127,6 +127,11 @@ class LlamaEngine(
     }
 
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
+        check(ModelRuntimeSupport.supports(model)) { ModelRuntimeSupport.UNAVAILABLE_MESSAGE }
+        if (ModelRuntimeSupport.requiresPrism(model)) {
+            val fitness = MemoryFitness.check(model, deviceBudgetGb, deviceBudgetGb)
+            check(fitness.canLoad) { fitness.message }
+        }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
@@ -140,7 +145,9 @@ class LlamaEngine(
         // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
-        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType)
+        val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType).let {
+            if (ModelRuntimeSupport.isBonsai(model)) minOf(it, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS) else it
+        }
         handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers, nativeLibDir)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
@@ -249,6 +256,14 @@ class LlamaEngine(
          * throws [UnsatisfiedLinkError], which we swallow so the class stays usable and
          * the seam degrades to a clear error rather than a crash.
          */
+        @JvmStatic
+        private external fun nativeSupportsBonsai(): Boolean
+
+        /** An old library can load successfully while lacking this symbol. That is unsupported. */
+        val supportsBonsaiRuntime: Boolean by lazy {
+            NATIVE_AVAILABLE && runCatching { nativeSupportsBonsai() }.getOrDefault(false)
+        }
+
         val NATIVE_AVAILABLE: Boolean = try {
             System.loadLibrary("quenderin_llama")
             true

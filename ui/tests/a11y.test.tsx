@@ -71,6 +71,27 @@ describe('a11y: ModelManagerSection', () => {
         await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
         await expectNoAxeViolations(container);
     });
+
+    it('explains an unsupported runtime and disables download/use while keeping delete available', async () => {
+        const runtimeMessage = 'Install the pinned Prism llama.cpp runtime to use this model.';
+        mockFetchJson({
+            '/api/models/catalog': {
+                activeModelId: 'standard',
+                catalog: [
+                    { id: 'bonsai-new', label: 'Bonsai download', ramGb: 7, sizeLabel: '5.95 GB download', paramsBillions: 27.36, quantization: 'PTQ1_0', isDownloaded: false, fileSizeBytes: 0, runtimeCompatible: false, runtimeMessage },
+                    { id: 'bonsai-existing', label: 'Bonsai installed', ramGb: 7, sizeLabel: '5.95 GB download', paramsBillions: 27.36, quantization: 'PTQ1_0', isDownloaded: true, fileSizeBytes: 5946648928, runtimeCompatible: false, runtimeMessage },
+                ],
+            },
+        });
+        const { container } = render(<ModelManagerSection />);
+        await waitFor(() => expect(screen.getByText('Bonsai installed')).toBeTruthy());
+        expect((screen.getByRole('button', { name: 'Download' }) as HTMLButtonElement).disabled).toBe(true);
+        expect((screen.getByRole('button', { name: 'Use' }) as HTMLButtonElement).disabled).toBe(true);
+        expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(false);
+        expect(screen.getAllByText(runtimeMessage)).toHaveLength(2);
+        expect(screen.queryByText('Ready')).toBeNull();
+        await expectNoAxeViolations(container);
+    });
 });
 
 describe('a11y: NotesSection', () => {

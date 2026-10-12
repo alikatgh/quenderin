@@ -97,6 +97,11 @@ files:
   - "!node_modules/**/{test,tests,__tests__,example,examples,.github,.nyc_output,coverage}/**"
   - "!node_modules/**/*.{map,d.ts,markdown}"
   - "!node_modules/**/*.md"
+  # The compiled Prism addon and build metadata ship; its new build-only source
+  # checkout and preserved patch originals do not belong in an installer.
+  - "!node_modules/node-llama-cpp/llama/llama.cpp"
+  - "!node_modules/node-llama-cpp/llama/llama.cpp/**"
+  - "!node_modules/node-llama-cpp/llama/quenderin-prism-node-originals/**"
 # Enable the asar archive (audit HIGH #9): app source ships as a single read-only archive instead
 # of loose, trivially-modifiable files. Native addons (*.node) and the modules that load them can't
 # run from inside an asar, so unpack them — the **/*.node catch-all plus the known native packages.

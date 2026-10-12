@@ -179,6 +179,19 @@ public final class OnboardingModel: ObservableObject {
     /// whose new model fails to load, the previously-working model is restored (H1).
     public func install(_ model: ModelEntry) async {
         guard !isInstalling else { return }   // serialize: a concurrent install would race phase + engine.load
+        guard ModelRuntimeSupport.supports(model) else {
+            phase = .failed(ModelRuntimeSupport.unavailableMessage)
+            return
+        }
+        if ModelRuntimeSupport.requiresPrism(model) {
+            let fitness: MemoryCheckResult
+            if let profile = deviceProfile ?? Self.liveProfile() {
+                fitness = IPhoneModelSelector.fitness(of: model, for: profile)
+            } else {
+                fitness = MemoryFitness.check(for: model)
+            }
+            guard fitness.canLoad else { phase = .failed(fitness.message); return }
+        }
         isInstalling = true
         defer { isInstalling = false }
 

@@ -15,9 +15,9 @@ final class ModelPickerTests: XCTestCase {
         XCTAssertTrue(fitness["llama32-1b-q2"]!.canLoad, "the ultra-light model must load on 2 GB")
     }
 
-    func testHighRAMAllowsEveryModel() {
+    func testHighRAMAllowsEverySupportedModel() {
         let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 64)
-        XCTAssertEqual(options.count, 13)
-        XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad })
+        XCTAssertEqual(options.count, 14)
+        XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad == ModelRuntimeSupport.supports($0.model) })
     }
 }

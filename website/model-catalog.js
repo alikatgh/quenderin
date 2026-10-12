@@ -5,7 +5,12 @@ export function startingModel(catalog, ram) {
   var band = p.ramBands.find(b => ram < b.max);
   var id = band ? band.id : p.defaultId;
   function required(m) { return m.ramGb * (m.paramsBillions <= 3 ? p.smallOverhead : p.largeOverhead); }
-  function fits(m) { return required(m) <= ram * p.hardBudget; }
+  // The public calculator describes ordinary builds. Experimental custom-runtime
+  // models remain manual choices in a compatible app, never a RAM-only recommendation.
+  function fits(m) {
+    return !/bonsai|PTQ1_0|PQ2_0/i.test(m.id + ' ' + m.quantization)
+      && required(m) <= ram * p.hardBudget;
+  }
   var model = catalog.models.find(m => m.id === id);
   if (!model || !fits(model)) {
     model = catalog.models.filter(fits).sort((a, b) => b.ramGb - a.ramGb)[0];

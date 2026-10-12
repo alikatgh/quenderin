@@ -34,7 +34,7 @@ def policy(text: str) -> dict:
 
 def family(model: dict) -> str:
     mid = model['id']
-    return next((f for f in ['qwen', 'deepseek', 'gemma', 'phi', 'mistral', 'llama'] if mid.startswith(f)), 'llama')
+    return next((f for f in ['qwen', 'deepseek', 'gemma', 'phi', 'mistral', 'llama'] if mid.startswith(f)), '')
 
 
 def rows(models: list[dict]) -> str:
@@ -45,6 +45,8 @@ def rows(models: list[dict]) -> str:
         # Present a use case, not an absolute quality leaderboard.
         role = {'Best Quality': 'Desktop chat', 'Best Agent, Big Download': 'Agent tasks · fast SSD',
                 'Low RAM': 'Low memory', 'Light': 'Lightweight chat'}.get(role, role)
+        if m['id'] == 'bonsai2-27b':
+            role = 'Experimental · Prism runtime'
         roles = {'Everyday': 'everyday', 'Agent tasks · fast SSD': 'agent', 'Desktop chat': 'desktop',
                  'Multilingual': 'multilingual', 'Reasoning': 'reasoning', 'All-Rounder': 'allrounder',
                  'Coding': 'coding', 'Efficient': 'efficient', 'Balanced': 'balanced',
@@ -56,7 +58,8 @@ def rows(models: list[dict]) -> str:
         url = m['url'].split('/resolve/', 1)[0]
         h = html.escape
         note = ' resident*' if m['id'] == 'qwen36-35b-a3b' else ''
-        result.append(f'<tr data-model-id="{h(m["id"])}"><td><span class="model-fam fam-{family(m)}" aria-hidden="true"></span>'
+        icon = f'<span class="model-fam fam-{family(m)}" aria-hidden="true"></span>' if family(m) else ''
+        result.append(f'<tr data-model-id="{h(m["id"])}"><td>{icon}'
                       f'<a href="{h(url)}" rel="noopener">{h(name)}</a></td><td{role_attr}>{h(role)}</td>'
                       f'<td>{h(m["sizeLabel"].replace(" download", ""))}</td><td>~{m["ramGb"]:g} GB{note}</td>'
                       f'<td>{h(m["quantization"])}</td></tr>')

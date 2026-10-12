@@ -104,6 +104,91 @@ jobs:
         working-directory: apple/QuenderinKit
         run: swift test
 
+  prism-apple-core:
+    name: Apple core (pinned Prism runtime)
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare verified Prism source
+        run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the real host runtime
+        run: |
+          cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGGML_METAL=ON \
+            -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TOOLS=OFF
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama --parallel 3
+      - name: Compile and test the actual Swift adapter
+        run: |
+          QUENDERIN_RUNTIME=prism QUENDERIN_LLAMA_DIR="$RUNNER_TEMP/prism-llama" \
+            swift test --package-path apple/QuenderinKit
+
+  prism-inference:
+    name: Bonsai pinned model (CPU load and generation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare verified Prism source
+        run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the pinned CPU runtime
+        run: |
+          cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
+            -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=OFF
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-cli --parallel 4
+      - name: Fetch and verify the exact catalog artifact
+        run: |
+          curl --fail --location --retry 2 --max-time 600 \
+            'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true' \
+            --output "$RUNNER_TEMP/bonsai.gguf"
+          echo "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3  $RUNNER_TEMP/bonsai.gguf" | sha256sum --check
+      - name: Load ternary weights and generate a bounded answer
+        run: |
+          timeout 1200 "$RUNNER_TEMP/prism-llama/build/bin/llama-cli" \
+            -m "$RUNNER_TEMP/bonsai.gguf" -ngl 0 -c 512 -n 64 -t 4 \
+            --no-conversation --no-display-prompt --temp 0 \
+            -p $'<|im_start|>user\nReply with the single word hello.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n' \
+            > "$RUNNER_TEMP/bonsai-answer.log"
+          cat "$RUNNER_TEMP/bonsai-answer.log"
+          grep -qi hello "$RUNNER_TEMP/bonsai-answer.log"
+
+  prism-desktop:
+    name: Desktop Prism addon (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: --linux
+            unpacked: linux-unpacked
+          - os: windows-latest
+            target: --win
+            unpacked: win-unpacked
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Prepare verified Prism source and versioned addon patch
+        run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
+      - name: Compile the actual desktop addon (bounded CPU backend)
+        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --noUsageExample
+      - name: Verify source and probe the built addon
+        run: |
+          python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
+          node scripts/verify_prism_node_runtime.mjs
+      - name: Build and package the desktop application
+        run: |
+          npm run build
+          npx --no-install electron-builder --dir ${{ matrix.target }} --x64 --publish never
+      - name: Probe the addon inside the actual packaged ASAR
+        run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
+
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was
   #    green while the Quenderin app failed to build under Xcode 16.2 / Swift 6 (UIDevice @MainActor,
@@ -155,9 +240,7 @@ jobs:
           curl --fail --silent --show-error --location \
             https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar -o /tmp/org-json.jar
           echo "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed  /tmp/org-json.jar" | sha256sum -c -
-          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelCatalog.kt \
-            android/quenderin-core/src/main/kotlin/ai/quenderin/core/MemoryFitness.kt \
-            android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelReleases.kt \
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/app/src/main/kotlin/ai/quenderin/app/ModelReleaseJSON.kt \
             android/quenderin-core/src/verify/ModelReleasesVerify.kt \
             -classpath /tmp/org-json.jar -include-runtime -d /tmp/model-releases.jar
@@ -166,6 +249,7 @@ jobs:
   mobile-android-app:
     name: Android app (assembleDebug)
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     # Builds the real :app module — Compose UI + AndroidManifest merge. The kotlinc-core job
     # above cannot catch app-module breakage (missing imports, bad @Composable, manifest errors);
     # only a full Gradle build does (see BUG_JOURNAL.md, 2026-06-15). Verified locally on JDK 21.
@@ -183,9 +267,14 @@ jobs:
           # packages used by this app so SDK setup can reach the compile gate.
           packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
           log-accepted-android-sdk-licenses: false
-      - name: Build the debug APK
+      - name: Prepare verified Prism source
+        run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the debug APK with the actual Prism JNI runtime
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon --console=plain
+        run: ./gradlew :app:assembleDebug --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama"
+      - name: Run native runtime and memory guard unit tests
+        working-directory: android
+        run: ./gradlew :quenderin-core:test --no-daemon --console=plain
 
   mobile-android-jni:
     name: Android JNI (C++ syntax-check)
@@ -220,6 +309,11 @@ jobs:
           git diff --exit-code shared/model-catalog.json
       - name: All three platform catalogs agree (ids, params, quant, sha256)
         run: python3 scripts/check_catalog_parity.py
+      - name: Prism source provenance and preservation gates
+        run: |
+          python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_prism_node_runtime.py
+          node --test scripts/tests/prism-node-loader.test.mjs
       - name: FEATURES.md model table is a rendering of the catalog (no doc drift)
         run: python3 scripts/generate_features_models.py --check
       - name: Website tables and calculator match the app catalog

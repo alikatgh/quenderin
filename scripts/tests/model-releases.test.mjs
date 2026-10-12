@@ -101,3 +101,16 @@ test('calculator applies app memory headroom, including a blocked RAM-band pick'
   assert.equal(startingModel(data, 0), null);
   for (const ram of [1, 2, 3, 4, 8, 16, 32]) assert.ok(startingModel(data, ram).requiredGb <= ram * data.recommendation.hardBudget);
 });
+
+test('RAM-only calculator never recommends an experimental custom runtime', () => {
+  const catalog = {
+    models: [
+      { id: 'bonsai2-27b', quantization: 'PTQ1_0', ramGb: 7, paramsBillions: 27.36 },
+      { id: 'small', quantization: 'Q4_K_M', ramGb: 2, paramsBillions: 3 },
+    ],
+    recommendation: { ramBands: [], defaultId: 'bonsai2-27b', hardBudget: .85,
+      smallOverhead: 1.15, largeOverhead: 1.3 },
+  };
+  assert.equal(startingModel(catalog, 16).model.id, 'small');
+  assert.equal(startingModel({ ...catalog, models: catalog.models.slice(0, 1) }, 32), null);
+});

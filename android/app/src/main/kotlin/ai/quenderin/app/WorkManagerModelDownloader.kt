@@ -4,6 +4,8 @@ import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadException
 import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.ModelDownloader
+import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.core.ModelRuntimeSupport
 import ai.quenderin.core.ModelEntry
 import android.content.Context
 import java.io.File
@@ -57,6 +59,11 @@ class WorkManagerModelDownloader(
     override fun needsFetch(model: ModelEntry): Boolean = verifiedExistingFile(model) == null
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        if (!ModelRuntimeSupport.supports(model)) throw DownloadException(ModelRuntimeSupport.UNAVAILABLE_MESSAGE)
+        if (ModelRuntimeSupport.requiresPrism(model)) {
+            val fitness = AndroidModelSelector.fitness(model, context.probeDeviceProfile())
+            if (!fitness.canLoad) throw DownloadException(fitness.message)
+        }
         // Already fully on disk and integrity-verified → hand it back without waking WorkManager.
         // This is what makes the cold-launch restore work OFFLINE: the CONNECTED constraint below
         // would otherwise park the work at ENQUEUED until the network returns, hanging a "load the

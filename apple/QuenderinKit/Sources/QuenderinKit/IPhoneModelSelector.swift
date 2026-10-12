@@ -99,6 +99,11 @@ public enum IPhoneModelSelector {
         _ model: ModelEntry,
         contextTokens: Int = referenceContextTokens
     ) -> Double {
+        if ModelRuntimeSupport.isBonsai(model) {
+            // Hybrid KV/state has not been measured here. Budget conservatively at bounded context;
+            // the 27B dense-cache formula is not a model of this architecture.
+            return ModelRuntimeSupport.memoryFootprintGB(model) * MemoryFitness.overheadLarge
+        }
         let w = weightsGB(model)
         let activations = w * 0.10
         let kvCache = Double(contextTokens) / 4096.0 * (0.10 + 0.03 * model.paramsBillions)
@@ -132,10 +137,18 @@ public enum IPhoneModelSelector {
     /// Memory only: speed and disk are surfaced elsewhere (the recommendation rationale, the disk
     /// preflight before a download). `.safe` = clears the same comfort headroom the default pick
     /// needs; `.warning` ("Tight") = loads, but with less than that headroom.
-    public static func fitness(of model: ModelEntry, for device: IOSDeviceProfile) -> MemoryCheckResult {
+    public static func fitness(of model: ModelEntry, for device: IOSDeviceProfile,
+                               prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai) -> MemoryCheckResult {
         let usableGB = device.appMemoryBudgetGB * memoryHeadroom
         let required = estimatedRuntimeGB(model)
         let remaining = usableGB - required
+        if ModelRuntimeSupport.requiresPrism(model), !prismRuntimeAvailable {
+            return MemoryCheckResult(
+                canLoad: false, severity: .blocked,
+                availableMemoryGB: usableGB, requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+                message: ModelRuntimeSupport.unavailableMessage
+            )
+        }
         guard required <= usableGB else {
             return MemoryCheckResult(
                 canLoad: false, severity: .blocked,
@@ -166,12 +179,15 @@ public enum IPhoneModelSelector {
             let runtime = estimatedRuntimeGB(model)
             let tokS = estimatedTokensPerSecond(model, chip: device.chip)
             let download = estimatedDownloadGB(model)
+            let runtimeSupported = ModelRuntimeSupport.supports(model)
             let fitsMemory = runtime <= usableGB
             let fastEnough = tokS >= minTokensPerSecond
             let fitsDisk = device.freeDiskGB >= download + diskMarginGB
-            let viable = fitsMemory && fastEnough && fitsDisk
+            let viable = runtimeSupported && fitsMemory && fastEnough && fitsDisk
             let note: String
-            if !fitsMemory {
+            if !runtimeSupported {
+                note = ModelRuntimeSupport.unavailableMessage
+            } else if !fitsMemory {
                 note = String(format: "needs ~%.1f GB, over your ~%.1f GB usable budget", runtime, usableGB)
             } else if !fastEnough {
                 note = String(format: "~%.0f tok/s on the %@ — too slow", tokS, device.chip.displayName)

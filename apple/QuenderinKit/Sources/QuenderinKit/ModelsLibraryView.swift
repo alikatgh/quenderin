@@ -110,6 +110,8 @@ public struct ModelsLibraryView: View {
                             importMessage = "\(name) isn't in the catalog yet, so Quenderin can't load it. Custom models are on the roadmap — nothing was copied."
                         case .invalid(let name):
                             importMessage = "\(name) doesn't look like a valid GGUF file — nothing was imported."
+                        case .unavailable(let reason):
+                            importMessage = reason
                         }
                     }
                 }
@@ -439,6 +441,7 @@ final class ModelLibraryController: ObservableObject {
         case installed(String)      // catalog label — file matched a known model
         case notInCatalog(String)   // filename — we don't quietly hoard disk with unloadable files
         case invalid(String)        // filename — failed the GGUF magic check
+        case unavailable(String)    // runtime or app-memory budget rejected before file IO
     }
 
     var activeDownloadCount: Int {
@@ -461,20 +464,28 @@ final class ModelLibraryController: ObservableObject {
     /// AND after the copy; a bad copy is deleted, never listed.
     func importGGUF(at url: URL) async -> ImportResult {
         let name = url.lastPathComponent
+        // Recognize unknown/sideloaded Prism filenames as well as curated entries before checksum IO.
+        if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: url) {
+            return .unavailable(reason)
+        }
         guard let entry = ModelCatalog.models.first(where: { $0.filename == name }) else {
             return .notInCatalog(name)
         }
+        if let reason = experimentalModelBlockReason(entry) { return .unavailable(reason) }
         // The file matched a catalog entry — hold it to that entry's pinned SHA-256 (Q-010),
         // not just the GGUF magic. A tampered or mismatched-quant file with the right NAME must
         // not be trusted as the catalog model. verify() falls back to magic-only when the entry
         // pins no checksum, so an unpinned catalog model still imports.
-        guard (try? ModelIntegrity.verify(fileURL: url, expectedSHA256: entry.sha256)) != nil else {
+        do {
+            try verifyImportedFile(url, entry.sha256)
+        } catch {
             return .invalid(name)
         }
         states[entry.id] = .downloading(0)
         let destination = modelsDir.appendingPathComponent(entry.filename)
         let dir = modelsDir
         let expectedSHA = entry.sha256
+        let verifyImportedFile = self.verifyImportedFile
         let copied: Bool = await Task.detached(priority: .userInitiated) {
             do {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -482,7 +493,7 @@ final class ModelLibraryController: ObservableObject {
                     try FileManager.default.removeItem(at: destination)
                 }
                 try FileManager.default.copyItem(at: url, to: destination)
-                try ModelIntegrity.verify(fileURL: destination, expectedSHA256: expectedSHA)
+                try verifyImportedFile(destination, expectedSHA)
                 return true
             } catch {
                 try? FileManager.default.removeItem(at: destination)
@@ -506,13 +517,18 @@ final class ModelLibraryController: ObservableObject {
     /// for tests; live by default via a captured monitor so the gate bites on-device with no wiring.
     private let networkStatus: () -> NetworkStatus
     private let downloadPolicy: () -> DownloadPolicy
+    private let verifyImportedFile: @Sendable (URL, String?) throws -> Void
 
     init(
         downloader: ModelDownloader = ParallelRangeDownloader(),
         modelsDir: URL? = nil,
         networkStatus: (() -> NetworkStatus)? = nil,
-        downloadPolicy: (() -> DownloadPolicy)? = nil
+        downloadPolicy: (() -> DownloadPolicy)? = nil,
+        verifyImportedFile: @escaping @Sendable (URL, String?) throws -> Void = {
+            try ModelIntegrity.verify(fileURL: $0, expectedSHA256: $1)
+        }
     ) {
+        self.verifyImportedFile = verifyImportedFile
         self.downloader = downloader
         self.modelsDir = modelsDir ?? OnboardingModel.defaultModelsDir()
         // Legacy search dirs only for the production default — an injected test dir stays isolated.
@@ -600,8 +616,24 @@ final class ModelLibraryController: ObservableObject {
         }
     }
 
+    /// The same runtime and actual app-memory gates apply to both local imports and downloads.
+    private func experimentalModelBlockReason(_ entry: ModelEntry) -> String? {
+        guard ModelRuntimeSupport.supports(entry) else { return ModelRuntimeSupport.unavailableMessage }
+        guard ModelRuntimeSupport.requiresPrism(entry) else { return nil }
+        #if os(iOS)
+        let fitness = IPhoneModelSelector.fitness(of: entry, for: DeviceProfiler.current())
+        #else
+        let fitness = MemoryFitness.check(for: entry)
+        #endif
+        return fitness.canLoad ? nil : fitness.message
+    }
+
     func download(_ entry: ModelEntry) {
         guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        if let reason = experimentalModelBlockReason(entry) {
+            states[entry.id] = .failed(reason)
+            return
+        }
         // Network gate (Q-271): twin of OnboardingModel — refuse a multi-GB cellular pull under a
         // Wi-Fi-only policy on the LIVE path, not just in the checklist. Race-free (positive .cellular
         // only, so a warming-up monitor never blocks Wi-Fi). Surfaces the reason on the card.

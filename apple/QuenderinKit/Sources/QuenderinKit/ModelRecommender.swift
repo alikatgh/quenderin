@@ -41,7 +41,7 @@ public enum ModelRecommender {
         let banded = recommendedModel(forTotalRAMGB: ram)
         if MemoryFitness.check(model: banded, totalGB: ram, freeGB: ram).canLoad { return banded }
         let fitting = ModelCatalog.models
-            .filter { MemoryFitness.check(model: $0, totalGB: ram, freeGB: ram).canLoad }
+            .filter { !ModelRuntimeSupport.requiresPrism($0) && MemoryFitness.check(model: $0, totalGB: ram, freeGB: ram).canLoad }
             .max { $0.ramGB < $1.ramGB }
         return fitting ?? ModelCatalog.smallest
     }

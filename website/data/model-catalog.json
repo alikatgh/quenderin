@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "catalogSha256": "77a551e9b3ddcff7c67425d9f195fb07d6c6f67106530a493eff268ca17c9154",
+  "catalogSha256": "08672277c322687070bdcb7d50ffa5874d49df198af4c8733c97eef636fb47cd",
   "models": [
     {
       "id": "qwen36-35b-a3b",
@@ -13,6 +13,19 @@
       "url": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true",
       "sha256": "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe",
       "languages": "Russian, English, Chinese + 100 more"
+    },
+    {
+      "id": "bonsai2-27b",
+      "label": "Bonsai 2 27B (Experimental)",
+      "filename": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "ramGb": 7.0,
+      "sizeLabel": "5.95 GB download",
+      "paramsBillions": 27.36,
+      "quantization": "PTQ1_0",
+      "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true",
+      "sha256": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3",
+      "languages": "See model card",
+      "downloadBytes": 5946648928
     },
     {
       "id": "qwen3-14b",

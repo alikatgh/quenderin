@@ -17,6 +17,9 @@ GGML_INCLUDE="${GGML_INCLUDE:-$LLAMA_INCLUDE}"
 # llama.cpp replaced use_mmap/use_mlock with enum load_mode — detect from headers so the dual
 # path in llama_jni.cpp compiles against both the vendored pin and ggml-org HEAD (CI).
 EXTRA_DEFS=()
+if [ "${QUENDERIN_PRISM_LLAMA:-0}" = "1" ]; then
+  EXTRA_DEFS+=(-DQUENDERIN_PRISM_LLAMA=1)
+fi
 # Match the enum (not llama_load_model_from_file — "llama_load_mode" is a prefix of that name).
 if grep -qE 'enum[[:space:]]+llama_load_mode|LLAMA_LOAD_MODE_MMAP' "$LLAMA_INCLUDE/llama.h" 2>/dev/null; then
   EXTRA_DEFS+=(-DQUENDERIN_LLAMA_LOAD_MODE=1)
