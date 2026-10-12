@@ -22,7 +22,9 @@ def verify(source: Path) -> dict:
         raise ValueError("Prism runtime revision does not match shared/prism-runtime.json")
     if git(source, "status", "--porcelain", "--untracked-files=no"):
         raise ValueError("Prism runtime has modified tracked source files")
-    if git(source, "remote", "get-url", "origin").removesuffix(".git") != LOCK["repository"].removesuffix(".git"):
+    # get-url expands insteadOf transport rules (including Xcode Cloud's mirror).
+    # Validate the checkout's declared origin instead; multiple URLs fail closed.
+    if git(source, "config", "--local", "--get-all", "remote.origin.url").removesuffix(".git") != LOCK["repository"].removesuffix(".git"):
         raise ValueError("Prism runtime origin does not match the pinned repository")
     header = (source / "ggml/include/ggml.h").read_text()
     loader = (source / "src/llama-model.cpp").read_text()

@@ -18,7 +18,7 @@ if [ "${CI:-}" != "TRUE" ] || [ "${QUENDERIN_RUNTIME:-}" != "prism" ] || [ -n "$
   echo "Cloud archives require CI=TRUE and explicit QUENDERIN_RUNTIME=prism, without a local source override." >&2
   exit 1
 fi
-export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1
+export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
 TOOLS="$ROOT/.quenderin-cloud-tools"
 if [ -e "$TOOLS" ] || [ -L "$TOOLS" ]; then
   echo "Preserve existing Cloud tool path; use a fresh checkout." >&2; exit 1

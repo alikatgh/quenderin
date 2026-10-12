@@ -1,6 +1,8 @@
 """Small failure tests for source provenance; never fetches or builds a runtime."""
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -18,7 +20,7 @@ class PrismRuntimeTests(unittest.TestCase):
         (root / "src/llama-model.cpp").write_text('get_key("prism.hadamard.version")')
 
     def git(self, source, *args):
-        return {"rev-parse": prism.LOCK["revision"], "status": "", "remote": prism.LOCK["repository"]}[args[0]]
+        return {"rev-parse": prism.LOCK["revision"], "status": "", "config": prism.LOCK["repository"]}[args[0]]
 
     def test_exact_pin_and_source_features_required(self):
         with tempfile.TemporaryDirectory() as path:
@@ -31,12 +33,46 @@ class PrismRuntimeTests(unittest.TestCase):
                     prism.verify(root)
 
     def test_wrong_revision_and_dirty_source_rejected(self):
-        for bad_field in ("rev-parse", "status", "remote"):
+        for bad_field in ("rev-parse", "status", "config"):
             def git(source, *args):
                 return "wrong" if args[0] == bad_field else self.git(source, *args)
             with patch.object(prism, "git", side_effect=git):
                 with self.assertRaises(ValueError):
                     prism.verify(Path("/unused"))
+
+    def rewritten_origin(self, root, declared, replacement, prefix):
+        self.source(root)
+        subprocess.run(["git", "init", "--quiet", str(root)], check=True, capture_output=True)
+        prism.git(root, "config", "--local", "remote.origin.url", declared)
+        prism.git(root, "config", "--local", f"url.{replacement}.insteadOf", prefix)
+        actual_git = prism.git
+
+        def pinned_head(source, *args):
+            # The fixture has no real Prism commit; every origin/config/status
+            # query uses Git itself, and the existing test covers commit mismatch.
+            if args == ("rev-parse", "HEAD"):
+                return prism.LOCK["revision"]
+            return actual_git(source, *args)
+
+        return pinned_head
+
+    def test_declared_origin_survives_git_transport_rewrite(self):
+        with tempfile.TemporaryDirectory() as path, patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_COUNT": "0"}):
+            root = Path(path)
+            pinned_head = self.rewritten_origin(root, prism.LOCK["repository"], "http://cloud-mirror.invalid/github/", "https://github.com/")
+            self.assertEqual(prism.git(root, "remote", "get-url", "origin"), "http://cloud-mirror.invalid/github/PrismML-Eng/llama.cpp.git")
+            with patch.object(prism, "git", side_effect=pinned_head):
+                self.assertEqual(prism.verify(root)["revision"], prism.LOCK["revision"])
+
+    def test_wrong_declared_origin_cannot_be_hidden_by_git_transport_rewrite(self):
+        with tempfile.TemporaryDirectory() as path, patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_COUNT": "0"}):
+            root = Path(path)
+            wrong = "https://untrusted.invalid/llama.cpp.git"
+            pinned_head = self.rewritten_origin(root, wrong, prism.LOCK["repository"], wrong)
+            self.assertEqual(prism.git(root, "remote", "get-url", "origin"), prism.LOCK["repository"])
+            with patch.object(prism, "git", side_effect=pinned_head):
+                with self.assertRaisesRegex(ValueError, "origin"):
+                    prism.verify(root)
 
     def test_fetch_does_not_replace_existing_user_path(self):
         with tempfile.TemporaryDirectory() as path:
