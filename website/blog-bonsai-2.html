@@ -4,14 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
-<title>Experimental Bonsai 2 27B integration — Quenderin blog</title>
-<meta name="description" content="Bonsai 2 27B joins Quenderin’s source model library as an experimental manual option, with a custom runtime requirement and device memory checks." />
+<title>Bonsai 2 27B in Quenderin — Quenderin blog</title>
+<meta name="description" content="Quenderin 0.2.1 brings PrismML’s compressed Bonsai 2 27B model to Windows and Linux as an experimental manual option, with runtime and memory checks." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/blog-bonsai-2" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Quenderin" />
-<meta property="og:title" content="Experimental Bonsai 2 27B integration" />
+<meta property="og:title" content="Bonsai 2 27B in Quenderin" />
 <meta property="og:description" content="A compressed Qwen3.8-based model, a roughly 6 GB download, and the runtime and memory requirements for choosing it in Quenderin." />
 <meta property="og:url" content="https://quenderin.org/blog-bonsai-2" />
 <meta property="og:image" content="https://quenderin.org/og-image.png" />
@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Experimental Bonsai 2 27B integration","description":"Bonsai 2 27B joins Quenderin’s source model library as an experimental manual option, with a custom runtime requirement and device memory checks.","datePublished":"2026-10-12","dateModified":"2026-10-12","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-bonsai-2"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Bonsai 2 27B in Quenderin","description":"Quenderin 0.2.1 brings PrismML’s compressed Bonsai 2 27B model to Windows and Linux as an experimental manual option, with runtime and memory checks.","datePublished":"2026-10-12","dateModified":"2026-10-12","author":{"@type":"Organization","name":"Quenderin"},"image":"https://quenderin.org/og-image.png","mainEntityOfPage":"https://quenderin.org/blog-bonsai-2"}</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -39,11 +39,12 @@
 </header>
 
 <main class="container legal" id="main">
-  <p class="eyebrow">Experimental source integration</p>
-  <h1>Experimental Bonsai 2 27B integration</h1>
+  <p class="eyebrow">Experimental model release</p>
+  <h1>Bonsai 2 27B in Quenderin</h1>
   <p class="legal-updated"><time datetime="2026-10-12">12 October 2026</time> &middot; Quenderin</p>
 
-  <p>Quenderin’s source model library now includes Ternary Bonsai 2 27B from PrismML. It is a manual option for compatible builds of the native Apple and Android apps and the desktop runtime. The <a href="https://github.com/alikatgh/quenderin/pull/161" rel="noopener">integration pull request</a> includes the source changes and build instructions. Distribution through store builds is a separate release.</p>
+  <p>Quenderin 0.2.1 adds Ternary Bonsai 2 27B from PrismML as an experimental manual model option on Windows and Linux. The <a href="https://github.com/alikatgh/quenderin/releases/tag/v0.2.1" rel="noopener">desktop installers</a> include the pinned Prism llama.cpp CPU runtime required to run its packed ternary weights. The model downloads separately.</p>
+  <p>The native Apple and Android integrations are included in the <a href="https://github.com/alikatgh/quenderin/pull/161" rel="noopener">source pull request</a>, with build instructions. Distribution through native store builds is a separate release.</p>
 
   <h2>The model</h2>
   <p>Bonsai 2 27B is based on Qwen3.8 27B and is published under Apache 2.0. Its ternary weights use three values, &minus;1, 0, and +1, with shared scaling factors. The PTQ1_0 language-model file is 5.946&nbsp;GB, roughly 6&nbsp;GB to download. PrismML reports a footprint about nine times smaller than the FP16 baseline. See the <a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf" rel="noopener">official model card</a> and <a href="https://prismml.com/news/bonsai-2-27b" rel="noopener">PrismML’s announcement</a> for the format and evaluation details.</p>
@@ -54,7 +55,9 @@
 
   <h2>Download size and memory are different</h2>
   <p>The roughly 6&nbsp;GB file describes the language weights. Running them also needs context, caches, and working buffers. A phone’s total RAM is different from the memory available to an app, so a 6&nbsp;GB download does not mean a 6&nbsp;GB phone can run it. Quenderin still applies its device memory checks; a longer conversation can need more memory.</p>
-  <p>The smaller file makes this model worth integrating, but it does not establish its speed, sustained performance, or answer quality inside Quenderin. Device-specific performance remains experimental. We will record measured Quenderin results separately from the model publisher’s benchmarks.</p>
+  <h2>What we checked</h2>
+  <p>The Windows and Linux release checks execute the native runtime from the packaged app. The Linux check also verifies the exact model file’s SHA-256, loads it through the packaged runtime, and generates a text response using a 512-token context. Physical-phone testing was skipped for this release.</p>
+  <p>Device-specific speed, sustained performance, and answer quality remain experimental. We will record measured Quenderin results separately from the model publisher’s benchmarks.</p>
 
   <p style="margin-top:2.5rem"><a href="blog">&larr; More from the blog</a> &middot; <a href="changelog#2026-10-12">Integration notes</a> &middot; <a href="models">Model catalog</a></p>
 </main>

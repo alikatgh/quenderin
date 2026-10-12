@@ -30,11 +30,12 @@
 
   <h2 id="2026-10-12">12 October 2026 &middot; Experimental model integration</h2>
   <ul>
+    <li><strong>Windows and Linux release.</strong> <a href="https://github.com/alikatgh/quenderin/releases/tag/v0.2.1" rel="noopener">Quenderin 0.2.1 installers</a> include the pinned Prism CPU runtime. Both platforms pass packaged-runtime checks; Linux also passes generation with the exact SHA-verified Bonsai model.</li>
     <li><strong>Bonsai 2 27B in the model library.</strong> Added source integration for PrismML’s compressed Qwen3.8-based model on native Apple, Android, and desktop. The PTQ1_0 language-model file is 5.946&nbsp;GB. Installation and loading require a compatible build with PrismML’s custom runtime.</li>
     <li><strong>Manual selection.</strong> Bonsai is an experimental option you choose in the model library. Existing defaults stay the same, and this addition does not start a download.</li>
     <li><strong>Memory requirements still apply.</strong> The file size is not a device RAM requirement: the app also needs room for context, caches, and working buffers.</li>
   </ul>
-  <p>This entry records source integration; store distribution is a separate release. <a href="blog-bonsai-2">Read about the model and requirements</a>.</p>
+  <p>Native Apple and Android store distribution is a separate release. <a href="blog-bonsai-2">Read about the model and requirements</a>.</p>
 
   <h2>30 September 2026 &middot; Mac + iPhone</h2>
   <ul>

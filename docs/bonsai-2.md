@@ -68,7 +68,7 @@ toolchain must already be available (MSVC Build Tools on Windows).
 
 ```sh
 python3 scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
-node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --noUsageExample
+node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
 python3 scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
 ```
 
@@ -106,6 +106,16 @@ leaves Bonsai blocked with a runtime message. Electron release packaging must
 carry that custom addon; a stock prebuilt does not establish support.
 
 ## Verification and release status
+
+[Desktop release v0.2.1](https://github.com/alikatgh/quenderin/releases/tag/v0.2.1)
+publishes Windows and Linux installers from commit
+`156b150f0f48ec0fdc17c7cb94124d755d18be6f`.
+[Release run 38204274341](https://github.com/alikatgh/quenderin/actions/runs/38204274341)
+passed packaged native-addon checks on both platforms and exact-model generation
+through the packaged Linux runtime, which returned `hello` with a 512-token
+context. All four installer assets passed upload/provenance checks before
+publication. [CI 38204269190](https://github.com/alikatgh/quenderin/actions/runs/38204269190)
+also passed all jobs on that source revision. Native store updates remain separate.
 
 Run the normal catalog and model suites plus:
 
