@@ -34,6 +34,15 @@ oversized payloads, uses fresh scratch, and never runs an installer. The separat
 thinning; source framework files also have complete SHA-256 digests. Runtime
 deployment minima are iOS 16.4 and macOS 13.3. Version 0.3.0 uses candidate build
 12; the actual Xcode Cloud counter must be at least 12 before starting a build.
+
+On 12 October 2026, Xcode Cloud build 15 from
+`9bab8d8aa67f2ecfdeb93b7a88cc4aed59592568` passed both App Store archive actions,
+signed-export verification and App Store Connect preparation. The iOS export is
+arm64; macOS is universal arm64/x86_64. Both contain the pinned Prism revision.
+The exact iOS and macOS **0.3.0 (15)** builds were then submitted to App Review
+and show **Waiting for Review**, with automatic release after approval and
+immediate rollout enabled. Approval and public availability are still pending.
+The existing public Apple apps remain 0.2.0 until that release completes.
 Both store drafts exist with automatic release after approval. Signed archives,
 submission and public availability remain separate release gates.
 
@@ -156,7 +165,8 @@ Android APK build and unit tests passed. Run
 [38201651569](https://github.com/alikatgh/quenderin/actions/runs/38201651569)
 also passed 553 tests against the source-linked Prism Swift adapter (nine skipped,
 zero failures). The desktop release additionally requires full-model generation
-through the packaged addon. Signed native/store artifacts have not been published.
+through the packaged addon. Signed Apple 0.3.0 (15) artifacts have now been
+uploaded and submitted as recorded above; public Apple availability is pending.
 Physical-phone testing was waived for this change. Local full builds and the
 5.95 GB model download were blocked by disk capacity, so those checks run on
 hosted runners. Blog publication, source publication, native binaries and store
