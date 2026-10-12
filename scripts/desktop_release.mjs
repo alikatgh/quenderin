@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 
 export const INSTALLERS = {
   windows: ['Quenderin-Setup-x64.exe', 'Quenderin-Portable-x64.exe'],
-  linux: ['Quenderin-x64.AppImage', 'Quenderin-x64.deb'],
+  linux: ['Quenderin-x86_64.AppImage', 'Quenderin-amd64.deb'],
 };
 const MAX_ASSET_BYTES = 2 ** 31;
 

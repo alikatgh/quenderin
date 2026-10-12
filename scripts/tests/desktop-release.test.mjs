@@ -63,13 +63,39 @@ function fixture(options = {}) {
   }
   const client = desktopRelease({
     repository: 'fixture/repo', sha, tag, run,
-    stat: () => ({isFile: () => true, size: state.fileSize ?? 100}),
+    stat: file => {
+      if (state.localFiles && !state.localFiles.includes(file.replaceAll('\\', '/')))
+        throw new Error('ENOENT: ' + file);
+      return {isFile: () => true, size: state.fileSize ?? 100};
+    },
     digest: () => assetDigest,
   });
   const mutations = () => calls.filter(x => x.command === 'gh' &&
     (x.args.includes('--method') || ['create', 'upload', 'edit'].includes(x.args[1])));
   return {state, calls, client, mutations};
 }
+
+test('installer lookup matches electron-builder artifact templates and target architecture names', () => {
+  const config = readFileSync(new URL('../../electron-builder.yaml', import.meta.url), 'utf8');
+  const sections = new Map([...config.matchAll(/^(\w+):[^\n]*\n((?:[ \t]+[^\n]*(?:\n|$)|\n)*)/gm)]
+    .map(([, name, body]) => [name, body]));
+  function artifact(target, arch) {
+    const template = /^\s+artifactName:\s*"([^"]+)"\s*$/m.exec(sections.get(target) ?? '')?.[1];
+    assert(template, 'Missing artifactName for ' + target);
+    return template.replaceAll('${arch}', arch);
+  }
+  // The x64 CLI target expands to Linux format-specific aliases, while Windows keeps x64.
+  const expected = {
+    windows: [artifact('nsis', 'x64'), artifact('portable', 'x64')],
+    linux: [artifact('appImage', 'x86_64'), artifact('deb', 'amd64')],
+  };
+  assert.deepEqual(INSTALLERS, expected);
+  const localFiles = Object.values(expected).flat().map(name => 'release/' + name);
+  const f = fixture({commit: sha, localFiles, release: {tag_name: tag, draft: true, assets: []}});
+  f.client.upload('linux');
+  const upload = f.mutations().find(x => x.args[1] === 'upload');
+  assert.deepEqual(upload.args.filter(file => file.startsWith('release/')), expected.linux.map(name => 'release/' + name));
+});
 
 test('new release creates the exact tag and stays draft until all installers pass', () => {
   const f = fixture();

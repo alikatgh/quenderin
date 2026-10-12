@@ -1,7 +1,7 @@
 {
   "name": "quenderin-poc",
   "description": "An offline autonomous agent control",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "Quenderin Team <quenderin@aulenor.com>",
   "bin": {
     "quenderin": "./dist/src/index.js"
