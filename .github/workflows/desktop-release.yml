@@ -56,7 +56,7 @@ jobs:
       - name: Prepare and compile the pinned Prism desktop runtime
         run: |
           python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
-          node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --noUsageExample
+          node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
       - name: Package

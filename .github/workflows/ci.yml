@@ -177,7 +177,7 @@ jobs:
       - name: Prepare verified Prism source and versioned addon patch
         run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
       - name: Compile the actual desktop addon (bounded CPU backend)
-        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --noUsageExample
+        run: node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
       - name: Verify source and probe the built addon
         run: |
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
