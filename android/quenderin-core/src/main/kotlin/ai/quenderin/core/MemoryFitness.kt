@@ -27,11 +27,15 @@ object MemoryFitness {
         budgetHard: Double = DEFAULT_BUDGET_HARD,
         budgetWarning: Double = DEFAULT_BUDGET_WARNING,
         prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai,
+        museRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsMuse,
     ): MemoryCheckResult {
-        val overhead = if (model.paramsBillions <= 3.0 && !ModelRuntimeSupport.isBonsai(model)) OVERHEAD_BASE else OVERHEAD_LARGE
+        val overhead = if (model.paramsBillions <= 3.0 && !ModelRuntimeSupport.requiresMemoryGate(model)) OVERHEAD_BASE else OVERHEAD_LARGE
         val required = ModelRuntimeSupport.memoryFootprintGb(model) * overhead
         val usageAfterLoad = (totalGB - freeGB + required) / totalGB
         return when {
+            ModelRuntimeSupport.isMuse(model) && !museRuntimeAvailable -> MemoryCheckResult(
+                false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.MUSE_UNAVAILABLE_MESSAGE,
+            )
             ModelRuntimeSupport.requiresPrism(model) && !prismRuntimeAvailable -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.UNAVAILABLE_MESSAGE,
             )

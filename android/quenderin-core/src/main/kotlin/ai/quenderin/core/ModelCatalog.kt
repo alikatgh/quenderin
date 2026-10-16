@@ -31,7 +31,15 @@ object Quantization {
     fun info(id: String): QuantizationInfo? = all.firstOrNull { it.id == id }
 }
 
-/** A downloadable model "module" — a GGUF the device pulls down to become useful. */
+/** One immutable, independently verified shard of a split GGUF model. */
+data class ModelArtifact(
+    val filename: String,
+    val url: String,
+    val sha256: String,
+    val downloadBytes: Long,
+)
+
+/** A downloadable model "module" — one GGUF or a complete split GGUF set. */
 data class ModelEntry(
     val id: String,
     val label: String,
@@ -49,6 +57,9 @@ data class ModelEntry(
     val languagesLabel: String? = null,
     /** Exact artifact size when verified upstream, overriding weight-size estimates. */
     val downloadBytes: Long? = null,
+    /** Empty preserves the single-file contract; otherwise legacy file fields identify shard one
+     * and downloadBytes is the sum of ALL shards. */
+    val artifacts: List<ModelArtifact> = emptyList(),
 )
 
 /** Multi-family catalog, sorted best → smallest. Mirrors MODEL_CATALOG. */
@@ -60,6 +71,10 @@ object ModelCatalog {
         ModelEntry("qwen36-35b-a3b", "Qwen3.6 35B MoE (Best Agent, Big Download)", "qwen3.6-35b-a3b.UD-IQ3_XXS.gguf", 5.5, "13.2 GB download", 35.0, "UD-IQ3_XXS", "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf?download=true", "9c964e657212fea1f24905dd7b0a89b82fd807d19fab0b41da14251b07b88fbe", languagesLabel = "Russian, English, Chinese + 100 more"),
         // Opt-in only: requires verified Prism runtime support and a real memory budget.
         ModelEntry("bonsai2-27b", "Bonsai 2 27B (Experimental)", "Ternary-Bonsai-2-27B-PTQ1_0.gguf", 7.0, "5.95 GB download", 27.36, "PTQ1_0", "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true", "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3", languagesLabel = "See model card", downloadBytes = 5_946_648_928L),
+        ModelEntry("bonsai2-9b", "Bonsai 2 9B (Experimental)", "Ternary-Bonsai-2-9B-PTQ1_0.gguf", 4.0, "2.00 GB download", 8.95, "PTQ1_0", "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/resolve/5b2abb02362efbed46bbe204014b02837778b2c2/Ternary-Bonsai-2-9B-PTQ1_0.gguf?download=true", "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b", languagesLabel = "See model card", downloadBytes = 1_997_486_976L),
+        ModelEntry("bonsai2-4b", "Bonsai 2 4B (Experimental)", "Ternary-Bonsai-2-4B-PTQ1_0.gguf", 2.5, "0.95 GB download", 4.21, "PTQ1_0", "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/8d6557168168f91ea6697a4a49ed2ef622b53adb/Ternary-Bonsai-2-4B-PTQ1_0.gguf?download=true", "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60", languagesLabel = "See model card", downloadBytes = 949_549_920L),
+        ModelEntry("bonsai2-2b", "Bonsai 2 2B (Experimental)", "Ternary-Bonsai-2-2B-PTQ1_0.gguf", 1.5, "0.43 GB download", 1.88, "PTQ1_0", "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf?download=true", "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa", languagesLabel = "See model card", downloadBytes = 429_183_456L),
+        ModelEntry("muse-spark-open-q2-k", "Muse Spark Open Q2_K (Experimental, text only)", "Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", 330.0, "304.08 GB download · 22 files", 816.0, "Q2_K", "https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF/resolve/ada96652107984f184027153a77ec250d67ed271/Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", "b2eb6f55ee80b4e444fb1bde4dc89d1181fb9d159758307bf91a4118cce8b267", languagesLabel = "See model card", downloadBytes = 304080474208L, artifacts = MuseModelArtifacts.parts),
         ModelEntry("qwen3-14b", "Qwen3 14B (Best Quality)", "qwen3-14b.Q4_K_M.gguf", 11.0, "9.0 GB download", 14.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf?download=true", "500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0", languagesLabel = "Russian, English, Chinese + 100 more"),
         ModelEntry("gemma4-12b", "Gemma 4 12B (Multilingual)", "gemma-4-12b-it.Q4_K_M.gguf", 9.0, "7.1 GB download", 12.0, "Q4_K_M", "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-Q4_K_M.gguf?download=true", "0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42", languagesLabel = "Russian, English + 140 more"),
         ModelEntry("qwen25-coder-7b", "Qwen2.5 Coder 7B (Coding)", "qwen2.5-coder-7b-instruct.Q4_K_M.gguf", 6.5, "4.7 GB download", 7.0, "Q4_K_M", "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true", "509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c", languagesLabel = "Russian, English, Chinese + 25 more"),

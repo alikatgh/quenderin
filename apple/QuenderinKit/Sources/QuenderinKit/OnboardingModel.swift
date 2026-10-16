@@ -114,7 +114,7 @@ public final class OnboardingModel: ObservableObject {
            // and the app silently falls back to a curated recommendation (the file left orphaned on disk).
            let remembered = ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
            // Unified dir OR a pre-unification App Support install (legacyModelsDirs).
-           Self.resolveModelFile(filename: remembered.filename, primary: modelsDir) != nil {
+           Self.resolveModelFile(model: remembered, primary: modelsDir) != nil {
             await install(remembered)
             if case .ready = phase { return }
         }
@@ -172,7 +172,9 @@ public final class OnboardingModel: ObservableObject {
     /// Will this model's download fit on the volume that holds our models? Exposed for the UI so
     /// "not enough space" shows BEFORE a doomed multi-GB download starts, not at 95%.
     public func storageCheck(for model: ModelEntry) -> StorageCheckResult {
-        DiskSpace.check(model: model, availableBytes: availableDiskBytes(modelsDir))
+        let remaining = ModelArtifactSet.isMultipart(model)
+            ? try? ModelArtifactSet.estimatedRemainingDownloadBytes(model, in: modelsDir) : nil
+        return DiskSpace.check(model: model, availableBytes: availableDiskBytes(modelsDir), remainingDownloadBytes: remaining)
     }
 
     /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH
@@ -180,10 +182,10 @@ public final class OnboardingModel: ObservableObject {
     public func install(_ model: ModelEntry) async {
         guard !isInstalling else { return }   // serialize: a concurrent install would race phase + engine.load
         guard ModelRuntimeSupport.supports(model) else {
-            phase = .failed(ModelRuntimeSupport.unavailableMessage)
+            phase = .failed(ModelRuntimeSupport.unavailableReason(for: model))
             return
         }
-        if ModelRuntimeSupport.requiresPrism(model) {
+        if ModelRuntimeSupport.requiresPrism(model) || ModelRuntimeSupport.isMuse(model) {
             let fitness: MemoryCheckResult
             if let profile = deviceProfile ?? Self.liveProfile() {
                 fitness = IPhoneModelSelector.fitness(of: model, for: profile)
@@ -197,10 +199,35 @@ public final class OnboardingModel: ObservableObject {
 
         // The model we fall back to if this one fails to load — `nil` on first-run onboarding.
         let previousID = await engine.loadedModelID()
+        var destination: URL
+        if ModelArtifactSet.isMultipart(model) {
+            do {
+                _ = try ModelArtifactSet.validate(model)
+                if let existing = Self.resolveModelFile(model: model, primary: modelsDir) {
+                    destination = existing
+                } else {
+                    let storage = storageCheck(for: model)
+                    guard storage.hasRoom else { phase = .failed(storage.message); return }
+                    if networkStatus() == .cellular, !downloadPolicy().allows(.cellular) {
+                        phase = .failed(downloadPolicy().reason(for: .cellular) ?? "Connect to Wi-Fi to download this model.")
+                        return
+                    }
+                    phase = .downloading(model, progress: 0)
+                    destination = try await ModelArtifactInstaller.install(model, in: modelsDir, downloader: downloader, availableDiskBytes: availableDiskBytes) {
+                        self.phase = .downloading(model, progress: $0)
+                    }
+                }
+                try Task.checkCancellation()
+            } catch {
+                if error is CancellationError || Task.isCancelled { await start() }
+                else { phase = .failed(Self.describe(error)) }
+                return
+            }
+        } else {
         // Prefer a pre-existing file in the unified dir OR a legacy App Support install so we
         // don't re-download multi-GB models after the path unification (KNOWN_FAILURE_MODES).
         // New downloads always write to modelsDir (the shared ~/.quenderin/models).
-        var destination = Self.resolveModelFile(filename: model.filename, primary: modelsDir)
+        destination = Self.resolveModelFile(filename: model.filename, primary: modelsDir)
             ?? modelsDir.appendingPathComponent(model.filename)
 
         // A file already at `destination` might be a fully-verified completed download — or it might
@@ -291,6 +318,8 @@ public final class OnboardingModel: ObservableObject {
             }
         }
 
+        }
+
         phase = .loading(model)
         // Interrupt any in-flight generation BEFORE load frees the context — a running decode
         // otherwise keeps the GPU busy right as we switch models (Android does this; Q-223).
@@ -321,7 +350,7 @@ public final class OnboardingModel: ObservableObject {
     /// Best-effort reload of a previously-working model after a failed switch (its file is still on
     /// disk). Returns true on success.
     private func restore(_ model: ModelEntry) async -> Bool {
-        guard let destination = Self.resolveModelFile(filename: model.filename, primary: modelsDir) else {
+        guard let destination = Self.resolveModelFile(model: model, primary: modelsDir) else {
             return false
         }
         do { try await engine.load(model: model, at: destination); return true }
@@ -379,6 +408,15 @@ public final class OnboardingModel: ObservableObject {
     /// FileManager storage that lists the unified dir + any legacy App Support installs.
     static func defaultModelStorage() -> FileManagerModelStorage {
         FileManagerModelStorage(directory: defaultModelsDir(), extraSearchDirs: legacyModelsDirs())
+    }
+
+    /// Resolve a size-complete colocated candidate. The engine verifies hashes in the background before loading.
+    static func resolveModelFile(model: ModelEntry, primary: URL? = nil) -> URL? {
+        guard ModelArtifactSet.isMultipart(model) else {
+            return resolveModelFile(filename: model.filename, primary: primary)
+        }
+        let storage = FileManagerModelStorage(directory: primary ?? defaultModelsDir(), extraSearchDirs: legacyModelsDirs())
+        return storage.candidateFirstFiles(for: model).first
     }
 
     /// First existing file URL for `filename` across primary + legacy dirs (load path).

@@ -4,6 +4,9 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.attribute.FileTime
 
 /**
  * Real [HttpRangeClient] / [FileSink] on plain JVM APIs (`HttpURLConnection`, `RandomAccessFile`)
@@ -146,7 +149,10 @@ class JvmFileSink : FileSink {
     }
 
     // Streamed in constant memory via the shared ModelIntegrity helper (the canonical impl).
-    override fun sha256(path: String): String = ModelIntegrity.sha256Hex(File(path))
+    override fun sha256(path: String): String = sha256(path) { false }
+
+    override fun sha256(path: String, isCancelled: () -> Boolean): String =
+        VerifiedFileHashes.sha256(File(path), isCancelled)
 
     override fun finalize(tempPath: String, finalPath: String) {
         val temp = File(tempPath)
@@ -165,5 +171,39 @@ class JvmFileSink : FileSink {
                 throw e
             }
         }
+    }
+}
+
+/** Process-local receipt for bytes already hashed on a background worker. Every identity field
+ * is required; unsupported filesystems simply rehash. ctime/inode catches same-size replacements
+ * and edits even if the old mtime is restored. No receipt survives an app restart. */
+private object VerifiedFileHashes {
+    private data class Identity(val path: String, val device: Any, val inode: Any, val size: Long,
+                                val modified: FileTime, val changed: FileTime)
+    private val receipts = object : LinkedHashMap<Identity, String>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Identity, String>?): Boolean = size > 256
+    }
+
+    private fun identity(file: File): Identity? = runCatching {
+        val canonical = file.canonicalFile
+        val attrs = Files.readAttributes(canonical.toPath(), "unix:dev,ino,size,lastModifiedTime,ctime", LinkOption.NOFOLLOW_LINKS)
+        Identity(canonical.path, requireNotNull(attrs["dev"]), requireNotNull(attrs["ino"]),
+            (attrs["size"] as Number).toLong(), attrs["lastModifiedTime"] as FileTime, attrs["ctime"] as FileTime)
+    }.getOrNull()
+
+    fun sha256(file: File, isCancelled: () -> Boolean): String {
+        if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+        val before = identity(file)
+        if (before != null) synchronized(receipts) { receipts[before] }?.let {
+            if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+            return it
+        }
+        val digest = ModelIntegrity.sha256Hex(file, isCancelled)
+        val after = identity(file)
+        if (before != null && after != null && before != after) {
+            throw ModelIntegrityException("Model file changed during verification.")
+        }
+        if (before != null && before == after) synchronized(receipts) { receipts[before] = digest }
+        return digest
     }
 }

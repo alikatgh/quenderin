@@ -136,8 +136,14 @@ jobs:
       - name: Build the pinned CPU runtime
         run: |
           cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
-            -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=OFF
-          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion --parallel 4
+            -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=ON
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs --parallel 4
+      - name: Exercise Muse with tiny generated tensors (no Muse weight download)
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" --arch muse-spark
+      - name: Verify the native Muse text prompt
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror android/jni/tests/muse_chat_test.cpp -o "$RUNNER_TEMP/muse-chat-test"
+          "$RUNNER_TEMP/muse-chat-test"
       - name: Fetch and verify the exact catalog artifact
         run: |
           curl --fail --location --retry 2 --max-time 600 \
@@ -236,6 +242,12 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
           java -jar /tmp/qcore.jar
+      - name: Verify multipart installation and Muse response framing with small fixtures
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/test/kotlin/ai/quenderin/core/ModelArtifactChecks.kt \
+            android/quenderin-core/src/verify/ModelArtifactsVerify.kt -include-runtime -d "$RUNNER_TEMP/model-artifacts.jar"
+          java -jar "$RUNNER_TEMP/model-artifacts.jar"
       - name: Verify native discovery snapshot and Android offline catalog
         run: |
           python3 scripts/generate_website_catalog.py --check
@@ -267,13 +279,15 @@ jobs:
         with:
           # This pinned action defaults to the retired `tools` package. Request only
           # packages used by this app so SDK setup can reach the compile gate.
-          packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0 ndk;26.3.11579264 cmake;3.22.1'
           log-accepted-android-sdk-licenses: false
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
-      - name: Build the debug APK with the actual Prism JNI runtime
+      - name: Build the debug APK and release bundle with the actual Prism JNI runtime
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama"
+        # The bundle is unsigned without the existing upload key. Compilation is
+        # a release check, not evidence of signing or Play submission.
+        run: ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama"
       - name: Run native runtime and memory guard unit tests
         working-directory: android
         run: ./gradlew :quenderin-core:test --no-daemon --console=plain
@@ -310,7 +324,10 @@ jobs:
           python3 scripts/export_catalog.py
           git diff --exit-code shared/model-catalog.json
       - name: All three platform catalogs agree (ids, params, quant, sha256)
-        run: python3 scripts/check_catalog_parity.py
+        run: |
+          python3 scripts/check_catalog_parity.py
+          python3 scripts/generate_muse_artifacts.py --check
+          python3 -m unittest discover -s scripts/tests -p test_catalog_parity.py
       - name: Prism source provenance and preservation gates
         run: |
           python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py

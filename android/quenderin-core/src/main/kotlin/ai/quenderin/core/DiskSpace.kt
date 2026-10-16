@@ -16,14 +16,20 @@ object DiskSpace {
 
     /** Principled download-size estimate: params × bits-per-weight ÷ 8. */
     fun estimatedDownloadBytes(model: ModelEntry): Long {
+        ModelArtifacts.validate(model)
         model.downloadBytes?.takeIf { it > 0L }?.let { return it }
         val bits = Quantization.info(model.quantization)?.bitsPerWeight ?: 4.5
         return (model.paramsBillions * 1_000_000_000.0 * bits / 8.0).toLong()
     }
 
     /** 300 MB margin covers OS overhead + KV cache spill. */
-    fun check(model: ModelEntry, availableBytes: Long, marginBytes: Long = 300L * 1024 * 1024): StorageCheckResult {
-        val required = estimatedDownloadBytes(model) + marginBytes
+    fun check(model: ModelEntry, availableBytes: Long, marginBytes: Long = 300L * 1024 * 1024,
+              remainingDownloadBytes: Long? = null): StorageCheckResult {
+        require(marginBytes >= 0L) { "Invalid disk margin" }
+        val estimate = estimatedDownloadBytes(model)
+        val download = remainingDownloadBytes ?: estimate
+        require(download in 0L..estimate) { "Invalid remaining download size" }
+        val required = if (download > Long.MAX_VALUE - marginBytes) Long.MAX_VALUE else download + marginBytes
         val hasRoom = availableBytes >= required
         val message = if (hasRoom) {
             "${model.label}: needs ~${gb(required)} GB, ${gb(availableBytes)} GB free."

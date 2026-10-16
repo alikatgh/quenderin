@@ -35,6 +35,48 @@ final class BonsaiRuntimeTests: XCTestCase {
         XCTAssertFalse(IPhoneModelSelector.fitness(of: bonsai, for: phone(budget: 20), prismRuntimeAvailable: false).canLoad)
     }
 
+    func testSmallerPinnedArtifactsKeepIndependentRuntimeAndMemoryGates() throws {
+        let expected: [(String, Int64, String, String, Double)] = [
+            ("bonsai2-2b", 429_183_456, "683f7be2629342a50987627b40881e54761a2430", "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa", 1.95),
+            ("bonsai2-4b", 949_549_920, "8d6557168168f91ea6697a4a49ed2ef622b53adb", "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60", 3.25),
+            ("bonsai2-9b", 1_997_486_976, "5b2abb02362efbed46bbe204014b02837778b2c2", "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b", 5.2),
+        ]
+        for (id, bytes, revision, sha, required) in expected {
+            let model = try XCTUnwrap(ModelCatalog.entry(id: id))
+            XCTAssertEqual(model.sha256, sha)
+            XCTAssertEqual(model.downloadBytes, bytes)
+            XCTAssertEqual(DiskSpace.estimatedDownloadBytes(for: model), bytes)
+            XCTAssertTrue(model.urlString.contains("/resolve/\(revision)/\(model.filename)?download=true"))
+            XCTAssertTrue(model.label.contains("(Experimental)"))
+            XCTAssertTrue(ModelRuntimeSupport.requiresPrism(model))
+            XCTAssertFalse(IPhoneModelSelector.defaultPreferenceIDs.contains(id))
+            XCTAssertFalse(MemoryFitness.check(model: model, totalGB: 64, freeGB: 64, prismRuntimeAvailable: false).canLoad)
+            XCTAssertEqual(MemoryFitness.check(model: model, totalGB: 64, freeGB: 64, prismRuntimeAvailable: true).requiredMemoryGB, required, accuracy: 1e-9)
+            XCTAssertFalse(IPhoneModelSelector.fitness(of: model, for: phone(budget: required), prismRuntimeAvailable: true).canLoad)
+            XCTAssertTrue(IPhoneModelSelector.fitness(of: model, for: phone(budget: required * 2), prismRuntimeAvailable: true).canLoad)
+        }
+        XCTAssertEqual(ModelRuntimeSupport.bonsaiMaxContextTokens, 4096)
+        for ram in [1.0, 2.0, 4.0, 8.0, 16.0, 64.0] {
+            XCTAssertFalse(ModelRecommender.recommendedModelID(forTotalRAMGB: ram).contains("bonsai"))
+            XCTAssertFalse(ModelRecommender.bestInstallableModel(forTotalRAMGB: ram).id.contains("bonsai"))
+        }
+    }
+
+    func testSmallBonsaiIdentityWithoutPinnedIntegrityKeepsImportedFloor() throws {
+        let pinned = try XCTUnwrap(ModelCatalog.entry(id: "bonsai2-2b"))
+        let imported = ModelEntry(id: pinned.id, label: pinned.label, filename: pinned.filename,
+            ramGB: 0.1, sizeLabel: pinned.sizeLabel, paramsBillions: pinned.paramsBillions,
+            quantization: pinned.quantization, urlString: pinned.urlString, sha256: nil,
+            downloadBytes: pinned.downloadBytes)
+        XCTAssertEqual(ModelRuntimeSupport.memoryFootprintGB(imported), 7, accuracy: 1e-9)
+        XCTAssertEqual(MemoryFitness.check(model: imported, totalGB: 64, freeGB: 64, prismRuntimeAvailable: true).requiredMemoryGB, 9.1, accuracy: 1e-9)
+        let understated = ModelEntry(id: pinned.id, label: pinned.label, filename: pinned.filename,
+            ramGB: 0.1, sizeLabel: pinned.sizeLabel, paramsBillions: pinned.paramsBillions,
+            quantization: pinned.quantization, urlString: pinned.urlString, sha256: pinned.sha256,
+            downloadBytes: pinned.downloadBytes)
+        XCTAssertEqual(ModelRuntimeSupport.memoryFootprintGB(understated), 1.5, accuracy: 1e-9)
+    }
+
     func testSideloadedIdentityAndCustomQuantCannotBypassRuntimeGate() {
         let quantOnly = ModelEntry(id: "hf:unknown", label: "Custom", filename: "custom.gguf", ramGB: 1,
                                    sizeLabel: "1 GB", paramsBillions: 1, quantization: "pq2_0",

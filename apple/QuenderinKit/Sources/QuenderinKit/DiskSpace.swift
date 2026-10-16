@@ -36,9 +36,12 @@ public enum DiskSpace {
     public static func check(
         model: ModelEntry,
         availableBytes: Int64,
-        marginBytes: Int64 = 300 * 1024 * 1024
+        marginBytes: Int64 = 300 * 1024 * 1024,
+        remainingDownloadBytes: Int64? = nil
     ) -> StorageCheckResult {
-        let required = estimatedDownloadBytes(for: model) + marginBytes
+        let bytes = max(0, remainingDownloadBytes ?? estimatedDownloadBytes(for: model))
+        let (sum, overflow) = bytes.addingReportingOverflow(max(0, marginBytes))
+        let required = overflow ? Int64.max : sum
         let hasRoom = availableBytes >= required
         let message = hasRoom
             ? "\(model.label): needs ~\(gb(required)) GB, \(gb(availableBytes)) GB free."

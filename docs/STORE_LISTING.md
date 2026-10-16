@@ -7,7 +7,26 @@ Use platform-specific copy: iPhone and Android offer local chat and a small
 calculator/unit/date agent. Mac also has optional tools governed by per-tool
 consent and macOS permissions. Screenshots and claims must reflect the submitted build.
 
-## Native 0.3.0 candidate — What's New / release notes
+## Native 0.4.0 candidate — What's New / release notes
+
+Use with the corresponding signed 0.4.0 build after its release checks pass.
+The source update alone does not establish store availability.
+
+```text
+Added experimental Bonsai 2 2B, 4B and 9B choices, with model-specific memory checks and pinned downloads.
+
+Added experimental native text support for Muse Spark Open, including complete multipart verification, resumable installation and final-answer filtering. Muse requires a high-memory machine and is unavailable on ordinary phones. It is never selected automatically.
+
+Improved model compatibility checks and recent-release discovery. Your model selection and conversations remain under your control.
+```
+
+For iPhone and Android, lead with the smaller Bonsai choices. Do not imply that
+the Muse catalog entry fits the phone. App Review should use an ordinary small
+model; Muse's 304 GB download is optional, and tools, vision/audio and distributed
+execution are not enabled for it. This task does not include device or full-model
+validation; release evidence belongs in `RELEASE.md`.
+
+## Native 0.3.0 — previous release notes
 
 ```text
 Explore recent open-model releases right from model selection, with download-size filters and links to model cards. Keep a saved list available offline and refresh it when you're online.

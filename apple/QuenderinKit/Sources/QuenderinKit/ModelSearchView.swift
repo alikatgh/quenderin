@@ -411,7 +411,8 @@ private struct QuantRow: View {
     /// session isn't in its state map, so fall back to a direct file-existence check → shows "Use", not "Get".
     private var state: ModelLibraryController.ModelState {
         let live = library.state(of: candidate)
-        if case .notInstalled = live {
+        if case .notInstalled = live, !ModelArtifactSet.isMultipart(candidate),
+           !ModelArtifactSet.looksLikeSplitFilename(candidate.filename) {
             let path = OnboardingModel.defaultModelsDir().appendingPathComponent(candidate.filename).path
             if FileManager.default.fileExists(atPath: path) { return .installed }
         }
@@ -452,6 +453,13 @@ private struct QuantRow: View {
                 .disabled(!fitness.canLoad)
                 .help(fitness.canLoad ? "Download and verify this model" : "Too big to load on this \(deviceNoun) — it would run out of memory")
                 .accessibilityLabel("Get \(candidate.quantization)")
+            case .verifying:
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying files").font(.caption2)
+                    Button { onCancel(candidate) } label: { Image(systemName: "xmark.circle") }
+                        .buttonStyle(.plain).accessibilityLabel("Cancel verification")
+                }
             case .downloading(let fraction):
                 HStack(spacing: 6) {
                     ProgressView(value: fraction).frame(width: 70)

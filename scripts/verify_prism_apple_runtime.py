@@ -6,6 +6,7 @@ import argparse
 import gzip
 import hashlib
 import io
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -27,7 +28,10 @@ FRAMEWORK = ROOT / "apple/QuenderinKit/Frameworks/prism-llama.xcframework"
 STAMP = "quenderin-apple-runtime.json"
 RELEASE_MARKER = ".quenderin-prism-release"
 PROBE = {"PQ2_0": {"type": 142, "block": 128, "size": 34},
-         "PTQ1_0": {"type": 143, "block": 128, "size": 28}}
+         "PTQ1_0": {"type": 143, "block": 128, "size": 28}, "MuseSparkABI": 1}
+SOURCE_SPEC = importlib.util.spec_from_file_location("quenderin_prism_source", Path(__file__).with_name("prepare_prism_runtime.py"))
+source_runtime = importlib.util.module_from_spec(SOURCE_SPEC)
+SOURCE_SPEC.loader.exec_module(source_runtime)
 # No model belongs in an App Store export. Bound package work independently of
 # compressed metadata, and reserve space rather than exhausting the Cloud disk.
 MAX_EXPORT_BYTES = 2 * 1024 ** 3
@@ -176,6 +180,14 @@ def slices(framework: Path) -> list:
         header = directory / lib["LibraryPath"] / "Headers/ggml.h"
         require(all(t in header.read_text() for t in ("GGML_TYPE_PTQ1_0", "GGML_TYPE_PQ2_0")),
                 "Prism headers missing from a framework slice")
+        llama_header = header.with_name("llama.h")
+        require(llama_header.is_file() and "quenderin_muse_spark_runtime_abi" in llama_header.read_text(),
+                "Muse capability header missing from a framework slice")
+        # Inspect every architecture without executing an iOS/device binary.
+        for arch in payload:
+            symbols = run("xcrun", "nm", "-arch", arch, "-gU", str(binary))
+            require(re.search(r"\b_quenderin_muse_spark_runtime_abi$", symbols, re.M) is not None,
+                    f"Muse runtime capability symbol missing from {identifier}/{arch}")
         result.append({"id": identifier, "platform": lib["SupportedPlatform"],
                        "variant": lib.get("SupportedPlatformVariant"), "libraryPath": lib["LibraryPath"],
                        "binaryPath": lib["BinaryPath"], "payload": payload})
@@ -198,6 +210,7 @@ def native_probe(framework: Path, headers: Path | None = None) -> dict:
         source.write_text('''#include <stdio.h>
 #include <string.h>
 #include "ggml.h"
+#include "llama.h"
 int main(void) {
     const int ids[] = {142, 143};
     const char *names[] = {"pq2_0", "ptq1_0"};
@@ -210,14 +223,18 @@ int main(void) {
             return 1;
         }
     }
-    puts("Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 verified");
+    if (quenderin_muse_spark_runtime_abi() != 1) {
+        fputs("Muse Spark runtime ABI mismatch\\n", stderr);
+        return 1;
+    }
+    puts("Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 verified");
     return 0;
 }
 ''')
         run("xcrun", "--sdk", "macosx", "clang", "-arch", platform.machine(), "-I", str(headers),
             str(source), "-F", str(framework.parent), "-framework", "llama", "-Wl,-rpath," + str(framework.parent),
             "-o", str(executable))
-        require(run(str(executable)) == "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 verified", "Native Prism probe failed")
+        require(run(str(executable)) == "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 verified", "Native Prism/Muse probe failed")
     return PROBE
 
 
@@ -225,8 +242,9 @@ def verify_framework(framework: Path, root: Path = ROOT) -> dict:
     lock = json.loads((root / "shared/prism-runtime.json").read_text())
     provenance = json.loads((framework / "quenderin-prism-runtime.json").read_text())
     stamp = json.loads((framework / STAMP).read_text())
-    require(stamp.get("version") == 1 and all(stamp.get(k) == lock[k] == provenance.get(k)
-            for k in ("repository", "revision")), "Framework provenance differs from pinned runtime")
+    identity = source_runtime.provenance(root, lock)
+    require(stamp.get("version") == 1 and all(stamp.get(k) == identity[k] == provenance.get(k)
+            for k in source_runtime.IDENTITY_FIELDS), "Framework provenance differs from pinned runtime/source patch")
     require(stamp.get("nativeProbe") == PROBE, "Positive native Prism capability proof is missing")
     catalog(root, lock)
     require(stamp.get("catalogSha256") == sha(root / "shared/model-catalog.json")
@@ -241,11 +259,12 @@ def seal(framework: Path, root: Path = ROOT) -> dict:
     require(not (framework / STAMP).exists(), "Preserve existing verification stamp; use a fresh artifact")
     lock = json.loads((root / "shared/prism-runtime.json").read_text())
     provenance = json.loads((framework / "quenderin-prism-runtime.json").read_text())
-    require(all(provenance.get(k) == lock[k] for k in ("repository", "revision")), "Unverified Prism source provenance")
+    identity = source_runtime.provenance(root, lock)
+    require(all(provenance.get(k) == identity[k] for k in source_runtime.IDENTITY_FIELDS), "Unverified Prism/Muse source provenance")
     catalog(root, lock)
     libraries = slices(framework)
     mac = next(s for s in libraries if s["platform"] == "macos")
-    stamp = {"version": 1, "repository": lock["repository"], "revision": lock["revision"],
+    stamp = {**identity,
              "catalogSha256": sha(root / "shared/model-catalog.json"),
              "nativeCatalogSha256": sha(root / "apple/QuenderinKit/Sources/QuenderinKit/ModelCatalog.swift"),
              "nativeProbe": native_probe(framework / mac["id"] / mac["libraryPath"]),

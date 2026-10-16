@@ -35,6 +35,47 @@ class BonsaiRuntimeTest {
         assertFalse(AndroidModelSelector.fitness(bonsai, device(20.0), prismRuntimeAvailable = false).canLoad)
     }
 
+    @Test fun smallerPinnedArtifactsKeepIndependentRuntimeAndMemoryGates() {
+        data class Expected(val id: String, val bytes: Long, val revision: String, val sha: String, val required: Double)
+        val expected = listOf(
+            Expected("bonsai2-2b", 429_183_456L, "683f7be2629342a50987627b40881e54761a2430", "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa", 1.95),
+            Expected("bonsai2-4b", 949_549_920L, "8d6557168168f91ea6697a4a49ed2ef622b53adb", "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60", 3.25),
+            Expected("bonsai2-9b", 1_997_486_976L, "5b2abb02362efbed46bbe204014b02837778b2c2", "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b", 5.2),
+        )
+        for (item in expected) {
+            val model = ModelCatalog.entry(item.id)!!
+            assertEquals(item.sha, model.sha256)
+            assertEquals(item.bytes, model.downloadBytes)
+            assertEquals(item.bytes, DiskSpace.estimatedDownloadBytes(model))
+            assertTrue(model.url.contains("/resolve/${item.revision}/${model.filename}?download=true"))
+            assertTrue(model.label.contains("(Experimental)"))
+            assertTrue(ModelRuntimeSupport.requiresPrism(model))
+            assertFalse(AndroidModelSelector.defaultPreferenceIds.contains(model.id))
+            assertFalse(MemoryFitness.check(model, 64.0, 64.0, prismRuntimeAvailable = false).canLoad)
+            assertEquals(item.required, MemoryFitness.check(model, 64.0, 64.0, prismRuntimeAvailable = true).requiredGB, 1e-9)
+            assertFalse(AndroidModelSelector.fitness(model, device(item.required), prismRuntimeAvailable = true).canLoad)
+            assertTrue(AndroidModelSelector.fitness(model, device(item.required * 2), prismRuntimeAvailable = true).canLoad)
+        }
+        assertEquals(4096, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
+        for (ram in listOf(1.0, 2.0, 4.0, 8.0, 16.0, 64.0)) {
+            assertFalse(ModelRecommender.recommendedModelId(ram).contains("bonsai"))
+            assertFalse(ModelRecommender.bestInstallableModel(ram).id.contains("bonsai"))
+        }
+    }
+
+    @Test fun smallerFloorsRequirePinnedIntegrityAndCannotUnderstateCatalogRam() {
+        val pinned = ModelCatalog.entry("bonsai2-2b")!!
+        val understated = pinned.copy(ramGB = 0.1)
+        assertEquals(1.5, ModelRuntimeSupport.memoryFootprintGb(understated), 1e-9)
+        for (imported in listOf(
+            understated.copy(sha256 = null), understated.copy(downloadBytes = 1L),
+            understated.copy(url = "https://example.com/custom.gguf"), understated.copy(paramsBillions = 27.0),
+        )) {
+            assertEquals(7.0, ModelRuntimeSupport.memoryFootprintGb(imported), 1e-9)
+            assertEquals(9.1, MemoryFitness.check(imported, 64.0, 64.0, prismRuntimeAvailable = true).requiredGB, 1e-9)
+        }
+    }
+
     @Test fun sideloadedIdentityOrCustomQuantizationRequiresPrism() {
         assertTrue(ModelRuntimeSupport.requiresPrism(bonsai.copy(id = "hf:copy", filename = "custom.gguf", quantization = "Q4_K_M")))
         val unknown = bonsai.copy(id = "custom", label = "Custom", filename = "custom.gguf",

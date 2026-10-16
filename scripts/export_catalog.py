@@ -81,6 +81,11 @@ def parse_desktop_models(text: str) -> list[dict]:
         download_bytes = re.search(r"downloadBytes:\s*([\d]+)", entry)
         if download_bytes:
             model["downloadBytes"] = int(download_bytes.group(1))
+        if "artifacts: MUSE_SPARK_ARTIFACTS" in entry:
+            manifest = json.loads((ROOT / "shared/muse-spark-artifacts.json").read_text())
+            if model["id"] != manifest["modelId"]:
+                raise SystemExit("FATAL: Muse artifact list attached to a different model")
+            model["artifacts"] = manifest["artifacts"]
         models.append(model)
     if not models:
         raise SystemExit("FATAL: parsed 0 models from the desktop catalog")

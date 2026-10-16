@@ -1,30 +1,31 @@
-# Android integration — from mock to on-device llama.cpp
+# Android integration — native 0.4.0 with Bonsai and Muse
 
-This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. It explains the two
-states the app ships in and how to cross the on-device cliff.
+This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. Native 0.4.0 uses
+the locked Prism runtime plus the verified Muse source patch. A stock llama.cpp
+checkout does not provide the Bonsai/Muse runtime capabilities.
 
-## What's proven vs. what's the cliff
+The source declares `versionCode = 4`, `versionName = "0.4.0"`, and compile/target
+API 36. Build with AGP 8.10.1, Kotlin/Compose compiler 2.2.21, and the checked-in
+Gradle 8.11.1 wrapper. The SDK
+packages used by the build are `platforms;android-36`, `build-tools;35.0.0`,
+`ndk;26.3.11579264`, and `cmake;3.22.1`; Java source/bytecode targets remain 17.
+The wrapper verifies its distribution against Gradle's published SHA-256.
+
+## Verification boundaries
 
 | Layer | State | How it's verified |
 |-------|-------|-------------------|
-| `quenderin-core` (Kotlin brain) | **Done, tested** | `kotlinc` + `src/verify/CoreVerify.kt` → 139 checks; JUnit `CoreTest` for `./gradlew test` |
-| `LlamaEngine` Kotlin adapter | **Done** — fails cleanly off-device | Part of the 139 checks (reports unavailable, throws a clear "not linked" error) |
-| `jni/llama_jni.cpp` (C++ bridge) | **Written; one-command verify ready** | `android/verify-llama-link.sh` builds llama.cpp for Android + compile-checks it |
-| `app/` Compose UI | **Written, not compiled here** | Needs the Android SDK + AGP — build in Android Studio |
-| Real inference on a device | **✅ PROVEN (2026-06-14)** | `android/verify-llama-link.sh` ran it on a booted arm64 emulator — coherent output, ~102 tok/s |
+| `quenderin-core` (Kotlin brain) | Portable source and fixture tests | `kotlinc` verification and `:quenderin-core:test` |
+| Prism/Muse source identity | Build-time gate | `prepare_prism_runtime.py verify` and CMake's provenance check |
+| `jni/llama_jni.cpp` and Compose app | Hosted compilation gate | CI builds `assembleDebug` and `bundleRelease` with the prepared Prism source |
+| Signed Google Play update | Separate release step | Requires the package's registered upload key and Play Console acceptance |
+| Android 16 behavior and real inference | Device validation still required | No current physical-device evidence is implied by compilation or fixtures |
 
-> **One-command verification (`android/verify-llama-link.sh`):** the Android twin of the
-> **proven** `apple/verify-llama-link.sh`. It builds llama.cpp for Android (NDK), compiles
-> `jni/llama_jni.cpp` against it, builds `tools/llama-smoketest.cpp` (a C++ mirror of the
-> verified iOS Swift smoke test), and runs inference on a booted emulator/device via adb.
->
-> ✅ **PROVEN END-TO-END (2026-06-14, NDK r26d):** `libllama.so` built for Android arm64-v8a,
-> `jni/llama_jni.cpp` compiled against it, and the smoke test **ran on a booted arm64
-> emulator** — coherent output ("the sky is blue because…"), **~102 tok/s decode (CPU)**. The
-> real-inference **APK** (`./gradlew :app:assembleDebug` with `jni/llama.cpp` present) installs
-> and the running app loads `libquenderin_llama.so` (`nativeloader: …ok`), so the app uses the
-> real engine. Matches the iOS twin (Mac Metal + simulated iPhone). Physical-phone tok/s/
-> battery/thermals are the only thing left to measure.
+The historical 2026-06-14 smoke test used NDK r26d and an arm64 emulator with an
+older runtime, reporting coherent output and about 102 tok/s. It does not verify
+0.4.0, Bonsai, Muse, Android 16, or physical-phone performance. The legacy
+`verify-llama-link.sh` path is a device smoke-test helper, not the 0.4.0 source
+preparation or release-build procedure.
 
 The app **boots on `MockInferenceEngine`** when `jni/llama.cpp` is absent so onboarding → chat
 runs in Android Studio without NDK. `MainActivity` switches to real `LlamaEngine` automatically
@@ -33,32 +34,45 @@ checkout exists). **Demo mode is labeled in chat + Settings** and mock replies s
 canned. **Release/bundle builds fail** without `jni/llama.cpp` unless you pass
 `-Pquenderin.allowMockRelease=true` (intentional demo APK only).
 
-## Step 1 — open + run on the mock
+## Debug builds without a native checkout
 
-1. Install the Android SDK (already at `~/Library/Android/sdk`) + NDK (installed).
-2. Open `android/` in Android Studio (Giraffe+). It will create the Gradle wrapper.
-3. Run `app` on an emulator or device. It probes RAM, recommends a model, "downloads"
-   (mock), and opens chat on the canned engine. This proves the UI + the shared brain.
+Open `android/` in an Android Studio version compatible with AGP 8.10.1, or run
+`./gradlew :app:assembleDebug`. Without a native checkout this compiles the demo
+engine; it cannot establish native inference support. The Gradle wrapper is
+already checked in. Building does not require an emulator or model weights.
 
-## Step 2 — link llama.cpp (cross the cliff)
+## Prepare and compile the pinned native runtime
 
 llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift adapter).
 
-1. Add llama.cpp pinned to a known commit:
+1. From the repository root, prepare the runtime at a new or matching destination:
    ```sh
-   # v0.2.0 release pin (2026-07-11): tag b9190 — the LAST tag before ggml-vulkan
-   # started requiring the SPIRV-Headers host package (2026-05-17, #22009).
-   git clone --depth 1 --branch b9190 https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
+   python3 scripts/prepare_prism_runtime.py fetch --destination "$PWD/android/jni/llama.cpp"
+   python3 scripts/prepare_prism_runtime.py verify --source "$PWD/android/jni/llama.cpp"
    ```
-   The checkout is **gitignored** — do NOT park it in /tmp and symlink (a reboot wiped
-   exactly that on 2026-07-11 and cost a re-derivation of the whole pin).
-   Release builds also need `ninja` on PATH for the Vulkan shader-gen host tool:
-   `export PATH=$HOME/Library/Android/sdk/cmake/3.22.1/bin:$PATH` (harmless when Vulkan is off).
-2. In `app/build.gradle.kts`, **uncomment** the `ndk { abiFilters … }` and the
-   `externalNativeBuild { cmake { … } }` blocks. (`jni/CMakeLists.txt` does
-   `add_subdirectory` on the checkout and links `quenderin_llama` → `llama`.)
-3. Rebuild. Gradle invokes CMake/NDK, produces `libquenderin_llama.so` per ABI, and
-   `LlamaEngine.NATIVE_AVAILABLE` flips `true` — the app now uses real inference.
+   This downloads source only. The lock is `shared/prism-runtime.json`; the helper
+   verifies the base revision, applies the locked Muse patch, and verifies its
+   files. It refuses to replace a mismatched existing checkout. Choose a separate
+   destination if `android/jni/llama.cpp` already contains other work and pass that
+   absolute path below. The example checkout is gitignored.
+2. Build the app and run the JVM unit tests with an explicit runtime selection:
+   ```sh
+   cd android
+   ./gradlew :app:assembleDebug :app:bundleRelease :quenderin-core:test \
+     --no-daemon --console=plain \
+     -Pquenderin.runtime=prism -Pquenderin.llamaDir="$PWD/jni/llama.cpp"
+   ```
+   Gradle enables CMake/NDK automatically and builds arm64-v8a JNI plus the CPU
+   backend variants. CMake rejects missing or altered Prism/Muse provenance.
+   No model weights are downloaded by these build tasks.
+3. The bundle is `app/build/outputs/bundle/release/app-release.aab`. Without
+   `android/keystore.properties` it is **unsigned**. Reuse the registered upload
+   key for a signed Google Play update; do not create a replacement key as a
+   workaround. See `docs/RELEASE.md` for the signing and console steps.
+
+CI uses the same explicit Prism selection and compiles an unsigned release
+bundle. A passing job proves compilation of that revision, not signing, upload,
+submission, installation, or inference with the real model weights.
 
 ### Keep the C API in sync
 `llama_jni.cpp` targets the post-2024 llama.cpp API (`llama_model_load_from_file`,
@@ -96,17 +110,22 @@ mobile **decode is memory-bandwidth bound** — GPU offload mainly speeds **pref
 time-to-first-token), not steady tok/s. Background + measured rationale: `docs/NPU_NEURAL_ENGINE.md`.
 A/B it on your device with `QUENDERIN_VULKAN=1 ./verify-llama-link.sh` (see `docs/DEVICE_VERIFICATION.md`).
 
-## Step 3 — get a model onto the device
+## Downloads and Android 16 validation
 
-`MockModelDownloader` returns a fake path. The real downloader (next milestone) is a
-`WorkManager` foreground job with a Wi-Fi/disk-space preflight (port of the iOS
-`BackgroundModelDownloader`). Until then, push a GGUF manually for a device smoke test:
-```sh
-adb push qwen3-4b.Q4_K_M.gguf /sdcard/Android/data/ai.quenderin.app/files/
-```
-and point `load(model, filePath)` at it.
+The native app uses a WorkManager `dataSync` foreground worker with disk/memory
+preflights, resumable transfers, artifact verification, and persisted progress.
+Muse is a multipart installation; all required shards must verify before loading.
+The demo-only `MockModelDownloader` does not download weights.
 
-## Step 4 — measure (the real proof)
+The API 36 source audit found existing Compose Scaffold/system-bar/IME inset
+handling and no edge-to-edge opt-out or legacy `onBackPressed` interception.
+Android 16 job quotas also apply to long-running foreground WorkManager jobs;
+large background downloads can pause when quota is exhausted. Physical-device
+checks must still establish download stop/resume behavior, keyboard and system
+bar layout, predictive back, and lifecycle recovery. These checks were not run
+for the build-only 0.4.0 preparation.
+
+## Measure on a physical phone before promotion
 
 On a physical device, capture tok/s, time-to-first-token, peak RAM, and battery for the
 recommended model. That's the number that tells us whether the "50-year-old, off-grid,

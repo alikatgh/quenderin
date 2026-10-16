@@ -124,7 +124,9 @@ fun AppRoot(
             downloader,
             recallActiveModelID = { prefs.getString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, null) },
             rememberActiveModelID = { id -> prefs.edit().putString(OnboardingModel.ACTIVE_MODEL_PREFS_KEY, id).apply() },
-            activeModelFileExists = { File(modelsDir, it.filename).isFile },
+            activeModelFileExists = { model ->
+                ai.quenderin.core.ModelArtifacts.filenames(model).all { File(modelsDir, it).isFile }
+            },
             // Q-583 (P0): wire the LIVE network status from ConnectivityManager so the core's cellular
             // gate (Q-271 twin) actually bites — it defaults to WIFI, so without this the gate was dead.
             // Read at download time (not captured once) so a Wi-Fi→cellular switch is seen. Policy is the
@@ -190,7 +192,9 @@ fun AppRoot(
                 onChoose = { showPicker = true },
                 onCancel = { model -> (downloader as? WorkManagerModelDownloader)?.cancel(model) },
                 storageCheck = { model ->
-                    DiskSpace.check(model, availableBytes = android.os.StatFs(context.filesDir.path).availableBytes)
+                    DiskSpace.check(model, availableBytes = android.os.StatFs(context.filesDir.path).availableBytes,
+                        remainingDownloadBytes = ai.quenderin.core.ModelArtifacts.estimatedRemainingDownloadBytes(
+                            model, File(context.filesDir, "models").absolutePath))
                 },
             )
             // The recommendation is a default, not a cage: the full catalog one tap away.

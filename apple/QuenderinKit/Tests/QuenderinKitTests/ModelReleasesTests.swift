@@ -85,7 +85,12 @@ final class ModelReleasesTests: XCTestCase, @unchecked Sendable {
         feed["models"] = rows
         let decoded = try ModelReleaseFeed.decode(JSONSerialization.data(withJSONObject: feed))
         XCTAssertEqual(decoded.models.first { $0.id == rows[0]["id"] as? String }?.catalogEntry()?.id, known.id)
-        XCTAssertNil(decoded.models.first { $0.id == rows[1]["id"] as? String }?.catalogEntry())
+        let unknown = try changed(seed()) { json in
+            var rows = json["models"] as! [[String: Any]]
+            rows[0]["sha256"] = String(repeating: "a", count: 64)
+            json["models"] = rows
+        }
+        XCTAssertNil(try ModelReleaseFeed.decode(unknown).models.first { $0.sha256 == String(repeating: "a", count: 64) }?.catalogEntry())
     }
 
     func testOfflineRefreshKeepsTheLastGoodFileAndTimestamp() async throws {
@@ -103,7 +108,8 @@ final class ModelReleasesTests: XCTestCase, @unchecked Sendable {
 
     func testRefreshIsSavedForOfflineRelaunchAndThrottled() async throws {
         let data = try seed()
-        let liveData = try changed(data) { $0["checkedAt"] = "2026-09-30T13:00:00Z" }
+        let nextDate = ModelReleaseFeed.date(try ModelReleaseFeed.decode(data).checkedAt)!.addingTimeInterval(3600)
+        let liveData = try changed(data) { $0["checkedAt"] = ISO8601DateFormatter().string(from: nextDate) }
         let live = try ModelReleaseFeed.decode(liveData)
         let provider = ReleaseFixtureProvider(live)
         let cache = try cacheURL()

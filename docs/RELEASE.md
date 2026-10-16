@@ -3,16 +3,42 @@
 The signing, build and console path for native app updates. Credentials belong in
 gitignored files or the platform keychain. A debug build is not a signed store release.
 
-> Before you submit, capture real on-device numbers (`docs/DEVICE_VERIFICATION.md`) — the store
-> listing and the default-model copy should reflect measured tok/s, not estimates.
+## Verified release memory — 16 October 2026
 
-**30 September 2026 update:** Mac and iPhone are available on the App Store.
-Android remains in closed testing: the console's latest release is `0.2.0` (code 2).
-Source prepares native **0.3.0**: Android code 3, candidate iOS build 4, and
-candidate Mac build 11. The Android code exceeds the console's latest code 2.
-Verify the highest Apple uploads and raise the candidate counters if needed before
-archiving. Latest-model discovery and bounded prompt cancellation are source
-changes awaiting signed releases; use the update notes in `STORE_LISTING.md`.
+This is the reusable project release record, recovered from the repository's
+July release history and the live store consoles. Refresh dated state before
+reusing it; build success, signing, submission and availability are separate.
+
+- Apple app **6789854363**, bundle `ai.quenderin.Quenderin`, signing team
+  `9M2B2P4KSA`. Both iOS and macOS **0.3.0 (15)** are Ready for Distribution.
+- Xcode Cloud team `f68608a6-96f8-4330-b123-b99c104eec71`, product
+  `4F96019F-D3C2-4ECE-AA57-12D901AC24A3`, existing workflow **Bonsai2AppStore**.
+  Latest successful build is 15. The native 0.4.0 candidate starts at build 16;
+  verify Cloud's counter before starting it. The included 25-hour plan showed
+  3h 13m used / 21h 47m available, resetting October 28. No paid upgrade is needed.
+- [Play Console](https://play.google.com/console/u/0/developers/6289191549337108258/app/4976280765138921912/releases/overview):
+  developer `6289191549337108258`, app `4976280765138921912`, package
+  **ai.quenderin.app**. Highest observed bundle is **2 (0.2.0)**, active on
+  Closed testing → Alpha, track `4700414835984777148`. Candidate 0.4.0 uses code 4.
+- Android's established build loads **`android/keystore.properties`** (root of
+  the Gradle project). That file and its referenced private upload key are
+  machine-local and gitignored. Git history confirms the July signed release;
+  it does **not** contain the private key. No repository signing secrets were
+  configured when checked on 16 October.
+- [Registered upload certificate](https://play.google.com/console/u/0/developers/6289191549337108258/app/4976280765138921912/keymanagement)
+  SHA-256: `8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D`.
+  Match this **upload** fingerprint before signing; Play's app-signing certificate
+  is different. The matching private key was not found on this Mac after checking
+  project/standard signing paths, available session records and keychain metadata.
+  Do not claim that recovering the public fingerprint recovered the private key.
+- App Store Connect displayed an updated Paid Applications Schedule requiring
+  Account Holder acceptance before updates. Review its current state before
+  submission; never silently accept a new legal agreement.
+
+The October 16 task explicitly excludes local model downloads, simulators and
+physical-device runs. Host fixture checks and hosted compilation are permitted;
+actual Muse inference and native UI/device behavior remain unverified. Do not
+present old screenshot or inference evidence as validation of the 0.4.0 candidate.
 
 | Product | Public channel | Owner guide |
 |---|---|---|
@@ -27,14 +53,11 @@ changes awaiting signed releases; use the update notes in `STORE_LISTING.md`.
 ## Android (Google Play)
 
 ### 1. Reuse the existing upload keystore
-For this published package, use the key registered in Play Console. Generating a
-new key does not authorize an update; a replacement needs Google's upload-key
-reset process. The following command is only for a new app's initial registration:
-```sh
-keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias quenderin
-# Keep upload.jks + its passwords somewhere safe (a password manager). If you lose it you can ask
-# Google to reset the UPLOAD key (Play App Signing holds the real signing key), but don't rely on that.
-```
+Use the existing private upload key matching the fingerprint above. A new key
+cannot sign an update until Google's separate upload-key reset process completes.
+Do not generate a replacement as a workaround for a missing local configuration.
+Inspect public certificate metadata with `keytool -list -v -keystore /path/to/key`;
+enter passwords interactively, never in committed commands or task output.
 
 ### 2. Point the build at it — WITHOUT committing secrets
 Create `android/keystore.properties` (already gitignored — `keystore.properties`, `*.jks`, `*.keystore`):
@@ -48,18 +71,30 @@ keyPassword=••••••
 release still *builds* (unsigned) — so CI and contributors are never blocked.
 
 ### 3. Build the release bundle
-Add the real-inference native lib first (otherwise it ships the mock):
+Use the pinned, patched Prism runtime, including the compiled Muse ABI. A stock
+checkout or mock engine is not this release. First check disk headroom; hosted CI
+is preferable when this Mac cannot fit native build output.
+
 ```sh
-git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp   # once
+python3 scripts/prepare_prism_runtime.py fetch --destination /absolute/new/prism-source
 cd android
-./gradlew :app:bundleRelease        # → app/build/outputs/bundle/release/app-release.aab
+./gradlew :app:bundleRelease --no-daemon --console=plain \
+  -Pquenderin.runtime=prism -Pquenderin.llamaDir=/absolute/new/prism-source
 ```
-Optional APK-size shrink: flip `isMinifyEnabled = true` in `app/build.gradle.kts` and test on a
-device — the JNI keep rules R8 needs are already in `app/proguard-rules.pro`.
+
+Output: `android/app/build/outputs/bundle/release/app-release.aab`. Without the
+existing signing properties this is **unsigned**. Check with `jarsigner -verify`
+and `keytool -printcert -jarfile` and match the registered upload fingerprint.
+The CI Android job compiles the release bundle and actual native runtime without
+credentials; this does not upload a Play release. API 36, AGP 8.10.1 and Gradle 8.11.1
+are the 0.4.0 build configuration. Keep the existing 16 KB native linker alignment.
+[Current target API requirements](https://support.google.com/googleplay/android-developer/answer/11926878)
+require API 36 for updates after 31 August 2026.
 
 ### 4. Play Console (your account)
 - Open the existing `ai.quenderin.app` record and upload the signed `.aab` to an
-  appropriate testing track first; install and smoke-test it on a physical phone.
+  existing Alpha track. For this task, do not launch a device or simulator;
+  report that runtime validation has not been performed.
 - **Data safety form:** review against the public privacy policy. Network activity includes
   user-selected Hugging Face downloads, optional model search, and public release metadata
   from quenderin.org when model selection is opened. These requests carry no chats or files.
@@ -67,39 +102,40 @@ device — the JNI keep rules R8 needs are already in `app/proguard-rules.pro`.
 - **Content rating (IARC):** file **Mature 17+** — an unrestricted local LLM can emit mature text.
 - **Privacy policy URL:** `https://quenderin.org/privacy` (already hosted + in-app).
 - Promote only after device validation and the console's production-access gates
-  pass. This account currently needs 12 opted-in closed testers for 14 days; the
-  console shows 7 opted in, so production access is not yet available.
+  pass. The September record of 7 opted-in testers is historical, not current
+  proof of production eligibility; check the current Dashboard before promotion.
 
 ---
 
 ## iOS (App Store)
 
-### 1. Build the real-inference framework + project
+### 1. Prepare the committed project
+
 ```sh
-apple/build-xcframework.sh                       # ~20–60 min first run → llama.xcframework
-cd apple/QuenderinApp && xcodegen generate        # project.yml → Quenderin.xcodeproj
-open Quenderin.xcodeproj
+xcodegen generate --spec apple/QuenderinApp/project.yml
+python3 scripts/generate_muse_artifacts.py --check
+python3 scripts/check_catalog_parity.py
 ```
 
-### 2. Sign + archive (your Apple Developer account)
-- Target → *Signing & Capabilities* → pick your Team (automatic signing is fine).
-- **GUI:** *Product → Archive* → *Distribute App → App Store Connect*.
-- **CLI / CI (reproducible):** fill `YOUR_TEAM_ID` in `apple/QuenderinApp/ExportOptions.plist`, then:
-  ```sh
-  cd apple/QuenderinApp
-  xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Release \
-    -archivePath build/Quenderin.xcarchive archive
-  xcodebuild -exportArchive -archivePath build/Quenderin.xcarchive \
-    -exportOptionsPlist ExportOptions.plist -exportPath build/export
-  # upload: xcrun altool / notarytool, or Transporter, with an App Store Connect API key
-  ```
-Signing certs/profiles stay in your keychain — nothing secret lives in this repo (the Team ID isn't a secret).
+Commit both `project.yml` and the generated Xcode project when versions change.
+Cloud regenerates and rejects project drift.
+
+### 2. Use the existing Xcode Cloud workflow
+Open [Quenderin Xcode Cloud](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/groups).
+Reuse **Bonsai2AppStore**, explicit `QUENDERIN_RUNTIME=prism`, and its iOS
+`Quenderin` / macOS `QuenderinMac` App Store Archive actions. Select the reviewed
+pushed commit and record its full SHA. The post-clone hook builds the pinned
+framework before package resolution; post-build hooks verify the signed exports,
+source patch, compiled capability, catalog, versions and distribution-team signature.
+A green build and completed App Store Connect preparation are required before
+selecting that exact build in each platform's version. TestFlight distribution
+is optional. For each submission select **Automatically release this version**.
 
 ### 3. App Store Connect (your account)
 - **Privacy policy URL:** `https://quenderin.org/privacy` (paste into App Information).
 - **Apple Standard EULA:** opt in (App Information → one click; "Submit for Review" stays grey otherwise).
 - **Age rating:** **17+** (mature local-LLM output).
-- **App Review notes (Guideline 4.2):** state the 0.4–9 GB model download range, "be on Wi-Fi," and
+- **App Review notes (Guideline 4.2):** explain the ordinary device-sized models and optional large models, "be on Wi-Fi," and
   that onboarding *is* the first-use experience by design (it's not an empty app).
 - **App privacy:** "Data Not Collected."
 

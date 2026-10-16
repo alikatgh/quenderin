@@ -4,7 +4,9 @@ A marketing site with static HTML, CSS, vanilla JS, and a self-hosted font. The 
 
 ```
 website/
-├── index.html          # the landing page
+├── index.html          # short introduction and downloads
+├── simple-home.css     # layout for the short homepage
+├── tell-me-more.html   # full overview, screenshots, and generated model catalog
 ├── styles.css          # design system + all sections
 ├── main.js             # mobile nav, scroll reveal, theme toggle, footer year
 ├── gradient.js         # Stripe-style WebGL mesh gradient (reduced-motion aware)
@@ -86,7 +88,7 @@ not production deployment evidence; check the live launch story and download lin
 
 Run `npm run gen:website-catalog` after exporting the shared manifest. Never edit
 generated table rows or calculator values by hand. `npm run check:website-catalog`
-checks the homepage, models page, SEO list and calculator payload. Both CI and
+checks the full overview, models page, SEO list and calculator payload. Both CI and
 deployment enforce catalog parity. See `docs/MODEL_CATALOG_FRESHNESS.md`.
 
 `npm run refresh:model-releases` updates the saved offline/static-preview snapshot.
@@ -95,7 +97,10 @@ are sent upstream. New metadata never changes installed app recommendations.
 
 ## Editing
 
-All copy lives in `index.html`; all styling in `styles.css` (CSS variables at the
-top control the palette). The design follows the project rule set: hairline
+The short homepage is `index.html`; its “Tell me more” link opens the full overview
+in `tell-me-more.html`. Keep English HTML and `i18n/en.json` in sync, and update all
+12 language dictionaries for new copy. Shared styling is in `styles.css` (CSS
+variables at the top control the palette); `simple-home.css` only styles the short
+homepage. The design follows the project rule set: hairline
 borders (no shadows), interactive states change color only (never geometry),
 hierarchy via weight + size, tabular numbers, monospace for specs.

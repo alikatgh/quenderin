@@ -160,16 +160,20 @@ class OnboardingModel(
             isInstalling = true
         }
         try {
-            if (!ModelRuntimeSupport.supports(model)) {
-                phase = OnboardingPhase.Failed(ModelRuntimeSupport.UNAVAILABLE_MESSAGE)
+            try { ModelArtifacts.validate(model) } catch (t: IllegalArgumentException) {
+                phase = OnboardingPhase.Failed(t.message ?: "Invalid model artifacts.")
                 return
             }
-            if (ModelRuntimeSupport.requiresPrism(model)) {
+            if (!ModelRuntimeSupport.supports(model)) {
+                phase = OnboardingPhase.Failed(ModelRuntimeSupport.unavailableMessage(model))
+                return
+            }
+            if (ModelRuntimeSupport.requiresMemoryGate(model)) {
                 val fitness = selection?.device?.let { AndroidModelSelector.fitness(model, it) }
                     ?: lastDeviceProfile?.let { MemoryFitness.check(model, it.totalRamGB, it.freeRamGB) }
                 if (fitness == null || !fitness.canLoad) {
                     phase = OnboardingPhase.Failed(fitness?.message
-                        ?: "Check this device's memory budget before downloading an experimental Prism model.")
+                        ?: "Check this device's memory budget before downloading this experimental model.")
                     return
                 }
             }
@@ -185,7 +189,8 @@ class OnboardingModel(
                 // Swift install()'s storageCheck; previously Android only checked in the UI layer).
                 val freeBytes = availableDiskBytes()
                 if (freeBytes != null) {
-                    val storage = DiskSpace.check(model, freeBytes)
+                    val storage = DiskSpace.check(model, freeBytes,
+                        remainingDownloadBytes = downloader.remainingDownloadBytes(model))
                     if (!storage.hasRoom) {
                         phase = OnboardingPhase.Failed(storage.message)
                         return

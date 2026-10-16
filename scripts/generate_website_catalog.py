@@ -45,7 +45,7 @@ def rows(models: list[dict]) -> str:
         # Present a use case, not an absolute quality leaderboard.
         role = {'Best Quality': 'Desktop chat', 'Best Agent, Big Download': 'Agent tasks · fast SSD',
                 'Low RAM': 'Low memory', 'Light': 'Lightweight chat'}.get(role, role)
-        if m['id'] == 'bonsai2-27b':
+        if m['id'].startswith('bonsai2-'):
             role = 'Experimental · Prism runtime'
         roles = {'Everyday': 'everyday', 'Agent tasks · fast SSD': 'agent', 'Desktop chat': 'desktop',
                  'Multilingual': 'multilingual', 'Reasoning': 'reasoning', 'All-Rounder': 'allrounder',
@@ -94,7 +94,7 @@ def main() -> int:
     targets = {ROOT / 'website/data/model-catalog.json': json.dumps(output, indent=2) + '\n',
                ROOT / 'apple/QuenderinKit/Sources/QuenderinKit/Resources/model-releases.json': seed,
                ROOT / 'android/app/src/main/assets/model-releases.json': seed}
-    for name in ['index.html', 'models.html']:
+    for name in ['tell-me-more.html', 'models.html']:
         path = ROOT / 'website' / name
         text = path.read_text()
         start, rest = text.split(BEGIN, 1)

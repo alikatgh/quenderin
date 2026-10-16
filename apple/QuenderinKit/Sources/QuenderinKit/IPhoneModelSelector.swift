@@ -99,7 +99,7 @@ public enum IPhoneModelSelector {
         _ model: ModelEntry,
         contextTokens: Int = referenceContextTokens
     ) -> Double {
-        if ModelRuntimeSupport.isBonsai(model) {
+        if ModelRuntimeSupport.isBonsai(model) || ModelRuntimeSupport.isMuse(model) {
             // Hybrid KV/state has not been measured here. Budget conservatively at bounded context;
             // the 27B dense-cache formula is not a model of this architecture.
             return ModelRuntimeSupport.memoryFootprintGB(model) * MemoryFitness.overheadLarge
@@ -138,10 +138,16 @@ public enum IPhoneModelSelector {
     /// preflight before a download). `.safe` = clears the same comfort headroom the default pick
     /// needs; `.warning` ("Tight") = loads, but with less than that headroom.
     public static func fitness(of model: ModelEntry, for device: IOSDeviceProfile,
-                               prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai) -> MemoryCheckResult {
+                               prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai,
+                               museRuntimeAvailable: Bool = ModelRuntimeSupport.supportsMuse) -> MemoryCheckResult {
         let usableGB = device.appMemoryBudgetGB * memoryHeadroom
         let required = estimatedRuntimeGB(model)
         let remaining = usableGB - required
+        if ModelRuntimeSupport.isMuse(model), !museRuntimeAvailable {
+            return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: usableGB,
+                                     requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+                                     message: ModelRuntimeSupport.museUnavailableMessage)
+        }
         if ModelRuntimeSupport.requiresPrism(model), !prismRuntimeAvailable {
             return MemoryCheckResult(
                 canLoad: false, severity: .blocked,

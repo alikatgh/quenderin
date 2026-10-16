@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Implementing Muse Spark Open in Quenderin — Quenderin blog</title>
+<meta name="description" content="How Quenderin adds Muse architecture support, verifies a 22-part model, handles private reasoning, and where the engineering needs to improve." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-muse-engineering" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="Implementing Muse Spark Open in Quenderin" />
+<meta property="og:description" content="How Quenderin adds Muse architecture support, verifies a 22-part model, handles private reasoning, and where the engineering needs to improve." />
+<meta property="og:url" content="https://quenderin.org/blog-muse-engineering" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-10-16" />
+<meta property="article:modified_time" content="2026-10-16" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Implementing Muse Spark Open in Quenderin", "description": "How Quenderin adds Muse architecture support, verifies a 22-part model, handles private reasoning, and where the engineering needs to improve.", "datePublished": "2026-10-16", "dateModified": "2026-10-16", "author": {"@type": "Organization", "name": "Quenderin"}, "image": "https://quenderin.org/og-image.png", "mainEntityOfPage": "https://quenderin.org/blog-muse-engineering"}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog">← Blog</a>
+      <a href="models">Model library</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="eyebrow">Engineering · release candidate</p>
+  <h1>Implementing Muse Spark Open in Quenderin</h1>
+  <p class="legal-updated"><time datetime="2026-10-16">16 October 2026</time> &middot; Quenderin</p>
+
+  <p>Adding Muse Spark Open to Quenderin requires changes below the model picker. The native apps need an engine that understands its architecture, an installer that treats many files as one model, and a chat adapter that understands which generated text belongs in the answer. This post describes that implementation for Android, iOS, and native macOS, and the work needed to turn it into a well-measured integration.</p>
+  <p><strong>Status:</strong> this is experimental release-candidate engineering. Source integration is separate from a signed store update and from successful inference with the full model. No Muse weights were downloaded onto the development computer, and no simulator or physical device was run during this work. We have no Muse throughput, quality, or hardware measurements to report.</p>
+
+  <h2>Why a new catalog row was insufficient</h2>
+  <p>Quenderin already uses llama.cpp, but a GGUF file is only a container. Its tensors still need a matching architecture implementation. Our pinned Prism fork provides the packed ternary formats used by Bonsai; its revision predates upstream Muse support. Switching the catalog URL could not teach that binary to construct Muse’s computation graph.</p>
+  <p>We retain the pinned Prism base and backport the text-model portion of <a href="https://github.com/ggml-org/llama.cpp/pull/30616" rel="noopener">upstream Muse support</a>. The patch covers architecture and tensor registration, hyperparameter loading, the model graph, the required mixture-of-experts behavior, and vocabulary termination. Vision and audio are separate work. Keeping the change explicit also preserves the Bonsai integration that motivated the Prism runtime.</p>
+  <p>The preparation script checks the exact base revision and file hashes before applying the patch. It checks the resulting source again afterward. A changed source tree must fail verification rather than silently build a different engine. The native bridge also calls a small compiled capability function, <code>quenderin_muse_spark_runtime_abi()</code>. An older Prism binary with the same base revision does not acquire Muse support merely because the catalog now contains it.</p>
+
+  <h2>One model, twenty-two verified files</h2>
+  <p>The selected <a href="https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF" rel="noopener">Q2_K GGUF distribution</a> is about 304 GB. Our pinned manifest records 22 parts totaling <strong>304,080,474,208 bytes</strong>. Each part has its own filename, exact byte count, immutable repository revision, and SHA-256 checksum. The first part is only about 13 MB, so checking that one file exists would be a particularly misleading definition of “installed.”</p>
+  <p>We extend model entries with an ordered artifact list. Existing single-file entries keep their existing representation. For a multipart entry, the installer validates the manifest, checks the remaining disk requirement, and downloads parts sequentially with progress measured across the whole set. Completed, verified parts can be reused after an interruption. A missing or corrupt part prevents the set from becoming ready.</p>
+  <p>Readiness, storage accounting, removal, and model loading must all agree on the same set. The engine receives the first shard’s path only after the complete manifest passes verification; llama.cpp then resolves the neighboring shards. Import paths also reject an isolated split-model file. Otherwise a tiny metadata shard could slip through the ordinary small-model checks.</p>
+
+  <h2>Hardware checks stay separate from engine support</h2>
+  <p>Muse’s 42B active parameters describe computation per token; its full model has 816B parameters. The inactive experts still require storage. The GGUF publisher describes the Q2_K variant as fitting 512 GB of unified memory. Supporting its format does not make it a practical phone model.</p>
+  <p>Quenderin starts with a conservative 330 GB memory estimate, applies its large-model headroom multiplier, and retains the device memory checks. The initial context cap is 4,096 tokens. These are protective engineering choices, not measured guarantees. The integration does not pool memory across Macs, connect to a remote inference server, or implement distributed execution. Muse stays out of automatic recommendations and requires an explicit compatible selection.</p>
+
+  <h2>A chat protocol, not just a text template</h2>
+  <p>Muse separates message headers and bodies, and can generate private reasoning before its answer. The native adapters construct its text conversation format, including explicit roles and the assistant prefix. Reserved control sequences in message content are escaped so a pasted token cannot create an extra protocol message. We request low reasoning with the model’s reasoning-strength setting.</p>
+  <p>The response filter begins in the header state because generation follows an unfinished assistant prefix. It emits only the user-facing answer channel. Private reasoning and commentary remain hidden. An end-of-message marker may lead to another assistant message; an end-of-turn marker ends the answer. Partial markers remain buffered across streaming chunks, and malformed or unknown headers stop the parser. Header and token buffers are bounded.</p>
+  <p>This distinction matters for tools. Quenderin’s existing structured-output grammar expects JSON directly, while Muse can emit a channel header first. Applying that grammar unchanged would constrain the wrong part of the stream. The initial integration therefore rejects unsupported raw, tool, and grammar-constrained Muse requests with a clear error. Native text chat is the supported path. The Electron/CLI adapter remains unavailable for Muse until it gains the same installation and protocol guarantees.</p>
+
+  <h2>What can be checked without the model</h2>
+  <p>Small local fixtures exercise manifest validation, complete-set readiness, memory gates, and protocol parsing without downloading weights. Streaming tests can split a marker at every character boundary, insert an unknown recipient, or interrupt a private channel. Installer tests can simulate a missing shard, a wrong hash, a short response, cancellation, or insufficient disk space. Source-provenance checks reject an incorrect base or a partially applied runtime patch.</p>
+  <p>Those checks establish specific software properties. They do not prove that the complete 304 GB model loads, that the backported graph matches reference outputs, or that generation is fast enough to use. Native compilation, signed-artifact checks, and full-model inference are distinct gates. The <a href="changelog">changelog</a> records release state; this article makes no store-availability claim.</p>
+
+  <h2>How we should improve it</h2>
+  <ol>
+    <li><strong>Establish numerical correctness first.</strong> Compare small deterministic Muse graph fixtures against the upstream implementation, then measure the full model on suitable hardware. Record the exact runtime and artifact revisions with every result.</li>
+    <li><strong>Replace estimates with measurements.</strong> Measure load-time peaks, resident memory, prompt processing, generation speed, and cancellation latency. Use those results to tune context and offload decisions instead of treating file size as working memory.</li>
+    <li><strong>Exercise long-download recovery.</strong> Test process termination and network changes between every install stage. Android now makes retained-file verification cancellable and bounds progress updates. A fresh installation can still be hashed again when loading because the temporary-file verification receipt does not follow the final rename. Safely carrying that receipt forward would avoid another full read. Improve this and restart behavior before adding bounded parallel downloads.</li>
+    <li><strong>Add a Muse-aware tool adapter.</strong> Parse and validate tool recipients and arguments explicitly, apply grammar constraints at the correct channel boundary, and preserve Quenderin’s existing permission checks. Test hostile or malformed tool output before enabling the path.</li>
+    <li><strong>Expand input support deliberately.</strong> Vision and audio need their own verified projector artifacts, preprocessing, memory accounting, UI behavior, and evaluation. A text-model load is not evidence of multimodal support.</li>
+    <li><strong>Reduce the maintenance burden.</strong> Follow upstream convergence with the Prism formats, keep the backport small, and retire it when one verified runtime supports both families. Add the same multipart and chat contracts to the Electron/CLI adapter before enabling Muse there.</li>
+  </ol>
+  <p>The current implementation gives us explicit places to enforce compatibility, completeness, memory fit, and response handling. The next improvement should be evidence at those boundaries: reproducible tests and hardware measurements, followed by carefully expanded functionality.</p>
+  <p>Muse uses the publisher’s <a href="https://huggingface.co/meta-models/Muse-Spark-Open-816B-A42B" rel="noopener">Muse Model License</a>. See <a href="blog-bonsai-small-muse-spark">the companion model-library update</a> for the smaller Bonsai additions.</p>
+</main>
+</body>
+</html>

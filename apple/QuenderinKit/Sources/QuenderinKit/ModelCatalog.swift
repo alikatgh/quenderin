@@ -32,6 +32,21 @@ public enum Quantization {
     }
 }
 
+/// One immutable, hash-pinned part of a split GGUF model. All parts share a directory.
+public struct ModelArtifact: Sendable, Hashable, Codable {
+    public let filename: String
+    public let url: String
+    public let sha256: String
+    public let downloadBytes: Int64
+
+    public init(filename: String, url: String, sha256: String, downloadBytes: Int64) {
+        self.filename = filename
+        self.url = url
+        self.sha256 = sha256
+        self.downloadBytes = downloadBytes
+    }
+}
+
 /// A downloadable model "module" — the unit a device pulls down to become useful.
 /// Mirrors an entry of `MODEL_CATALOG`.
 public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
@@ -49,6 +64,8 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
     public let sha256: String?
     /// Exact artifact size when verified upstream; takes precedence over weight-size estimates.
     public let downloadBytes: Int64?
+    /// Nil/empty preserves legacy single-file downloads. Nonempty is the complete ordered set.
+    public let artifacts: [ModelArtifact]?
     /// Which human languages the model speaks WELL — honest and explicit about Russian
     /// (первые пользователи русскоязычные): "no Russian" is stated, not omitted. Family-level
     /// truth, not marketing. Optional: sideloaded/HF models don't carry it.
@@ -62,7 +79,7 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
     /// (`languagesLabel` decodes from `languages`; optional, so entries persisted by older
     /// builds — SideloadedModels JSON — still decode.)
     private enum CodingKeys: String, CodingKey {
-        case id, label, filename, sizeLabel, paramsBillions, quantization, sha256, downloadBytes
+        case id, label, filename, sizeLabel, paramsBillions, quantization, sha256, downloadBytes, artifacts
         case ramGB = "ramGb"
         case urlString = "url"
         case languagesLabel = "languages"
@@ -70,7 +87,8 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
 
     public init(id: String, label: String, filename: String, ramGB: Double, sizeLabel: String,
                 paramsBillions: Double, quantization: String, urlString: String,
-                sha256: String?, languagesLabel: String? = nil, downloadBytes: Int64? = nil) {
+                sha256: String?, languagesLabel: String? = nil, downloadBytes: Int64? = nil,
+                artifacts: [ModelArtifact]? = nil) {
         self.id = id
         self.label = label
         self.filename = filename
@@ -81,6 +99,7 @@ public struct ModelEntry: Sendable, Hashable, Identifiable, Codable {
         self.urlString = urlString
         self.sha256 = sha256
         self.downloadBytes = downloadBytes
+        self.artifacts = artifacts
         self.languagesLabel = languagesLabel
     }
 }
@@ -119,6 +138,46 @@ public enum ModelCatalog {
             downloadBytes: 5_946_648_928
         ),
         ModelEntry(
+            id: "bonsai2-9b",
+            label: "Bonsai 2 9B (Experimental)",
+            filename: "Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+            ramGB: 4.0,
+            sizeLabel: "2.00 GB download",
+            paramsBillions: 8.95,
+            quantization: "PTQ1_0",
+            urlString: "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/resolve/5b2abb02362efbed46bbe204014b02837778b2c2/Ternary-Bonsai-2-9B-PTQ1_0.gguf?download=true",
+            sha256: "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+            languagesLabel: "See model card",
+            downloadBytes: 1_997_486_976
+        ),
+        ModelEntry(
+            id: "bonsai2-4b",
+            label: "Bonsai 2 4B (Experimental)",
+            filename: "Ternary-Bonsai-2-4B-PTQ1_0.gguf",
+            ramGB: 2.5,
+            sizeLabel: "0.95 GB download",
+            paramsBillions: 4.21,
+            quantization: "PTQ1_0",
+            urlString: "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/8d6557168168f91ea6697a4a49ed2ef622b53adb/Ternary-Bonsai-2-4B-PTQ1_0.gguf?download=true",
+            sha256: "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60",
+            languagesLabel: "See model card",
+            downloadBytes: 949_549_920
+        ),
+        ModelEntry(
+            id: "bonsai2-2b",
+            label: "Bonsai 2 2B (Experimental)",
+            filename: "Ternary-Bonsai-2-2B-PTQ1_0.gguf",
+            ramGB: 1.5,
+            sizeLabel: "0.43 GB download",
+            paramsBillions: 1.88,
+            quantization: "PTQ1_0",
+            urlString: "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf?download=true",
+            sha256: "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+            languagesLabel: "See model card",
+            downloadBytes: 429_183_456
+        ),
+        ModelEntry(
+        .init(id: "muse-spark-open-q2-k", label: "Muse Spark Open Q2_K (Experimental, text only)", filename: "Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", ramGB: 330.0, sizeLabel: "304.08 GB download · 22 files", paramsBillions: 816, quantization: "Q2_K", urlString: "https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF/resolve/ada96652107984f184027153a77ec250d67ed271/Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", sha256: "b2eb6f55ee80b4e444fb1bde4dc89d1181fb9d159758307bf91a4118cce8b267", languagesLabel: "See model card", downloadBytes: 304080474208, artifacts: MuseModelArtifacts.parts),
             id: "qwen3-14b",
             label: "Qwen3 14B (Best Quality)",
             filename: "qwen3-14b.Q4_K_M.gguf",

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
+<title>Bonsai 2 for smaller devices, and Muse Spark Open — Quenderin blog</title>
+<meta name="description" content="Three smaller Bonsai 2 options in the next Quenderin update, with separate memory checks and a clear compatibility note for Muse Spark Open." />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://quenderin.org/blog-bonsai-small-muse-spark" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Quenderin" />
+<meta property="og:title" content="Bonsai 2 for smaller devices, and Muse Spark Open" />
+<meta property="og:description" content="Three smaller Bonsai 2 options in the next Quenderin update, with separate memory checks and a clear compatibility note for Muse Spark Open." />
+<meta property="og:url" content="https://quenderin.org/blog-bonsai-small-muse-spark" />
+<meta property="og:image" content="https://quenderin.org/og-image.png" />
+<meta property="article:published_time" content="2026-10-16" />
+<meta property="article:modified_time" content="2026-10-16" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Bonsai 2 for smaller devices, and Muse Spark Open", "description": "Three smaller Bonsai 2 options in the next Quenderin update, with separate memory checks and a clear compatibility note for Muse Spark Open.", "datePublished": "2026-10-16", "dateModified": "2026-10-16", "author": {"@type": "Organization", "name": "Quenderin"}, "image": "https://quenderin.org/og-image.png", "mainEntityOfPage": "https://quenderin.org/blog-bonsai-small-muse-spark"}</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="legal-header">
+  <div class="container container-wide post-header">
+    <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+    <nav class="post-nav" aria-label="Blog">
+      <a href="blog">← Blog</a>
+      <a href="models">Model library</a>
+      <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container legal" id="main">
+  <p class="eyebrow">Model library update · in development</p>
+  <h1>Bonsai 2 for smaller devices, and Muse Spark Open</h1>
+  <p class="legal-updated"><time datetime="2026-10-16">16 October 2026</time> &middot; Quenderin</p>
+
+  <p>We have added PrismML’s Bonsai 2 2B, 4B, and 9B to the source catalogs used by Quenderin for Android, iPhone, and Mac. They join the existing 27B option as experimental models you can select manually in a build with the compatible Prism runtime. This is preparation for an app update; it does not mean new binaries have reached the stores.</p>
+
+  <h2>Three smaller downloads</h2>
+  <p>The new models are based on Qwen3.5 and published under Apache 2.0. Quenderin uses their PTQ1_0 language weights:</p>
+  <ul>
+    <li><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Bonsai 2 2B</a>: 0.43 GB.</li>
+    <li><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Bonsai 2 4B</a>: 0.95 GB.</li>
+    <li><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Bonsai 2 9B</a>: 2.00 GB.</li>
+  </ul>
+  <p>Each download is pinned to an exact publisher revision and SHA-256 checksum. These sizes cover the language-model file, not a vision projector. Image understanding is not enabled by this update. See <a href="https://prismml.com/news/bonsai-2-family" rel="noopener">PrismML’s announcement</a> for its evaluations and supported runtimes.</p>
+
+  <h2>Choosing a model that fits</h2>
+  <p>The smaller models now have separate memory estimates instead of inheriting the 27B model’s requirement. The app still reserves working-memory headroom and checks the memory available to it. Download size alone does not establish whether a model will run well on your phone or computer.</p>
+  <p>Bonsai requires Prism’s custom runtime. Builds without that runtime show the requirement and disable selection in the latest-releases list. Compatible builds retain the 4,096-token context cap. Existing default recommendations and your selected model stay the same; viewing or refreshing the library never starts a model download.</p>
+
+  <h2>Where Muse Spark Open fits</h2>
+  <p>Meta’s <a href="https://dev.meta.ai/docs/muse-spark-open" rel="noopener">Muse Spark Open</a> is a separate class of model: 816B total parameters, 42B active per token, and a context window of 1,048,576 tokens. The active parameter count describes how much computation is used per token; it does not reduce the stored model to 42B parameters.</p>
+  <p>The native release candidate adds experimental Muse text-chat support through a verified runtime backport, a 22-part pinned installer, and a Muse-specific chat adapter. The Q2_K download is about 304 GB; normal phones do not meet the memory requirement. A compatible build and the full hardware checks are required before selection. This work does not add distributed execution, a remote inference connection, vision/audio input, or Muse tool calling. Read <a href="blog-muse-engineering">the engineering post</a> for the implementation, current verification limits, and planned improvements.</p>
+
+  <h2>What this update verifies</h2>
+  <p>This update checks publisher metadata, catalog consistency, memory rules, runtime gates, and release-feed behavior. No model weights were downloaded for this work, and no simulator or physical device was used. Inference quality, device performance, signed builds, and store distribution remain separate verification and release steps.</p>
+  <p><a href="changelog">Changelog</a> &middot; <a href="blog-bonsai-2">Earlier Bonsai 2 27B integration</a> &middot; <a href="models">Model library</a></p>
+</main>
+</body>
+</html>

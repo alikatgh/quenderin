@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)
+
+- Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android,
+  iOS/macOS, and the shared desktop catalog. PTQ1_0 downloads are pinned to
+  immutable publisher revisions, exact sizes, and SHA-256 checksums.
+- Use size-specific conservative memory estimates for the verified small Bonsai
+  files; preserve runtime checks, headroom, the 4,096-token cap, and existing defaults.
+- Include PrismML in latest-release discovery and bundled offline metadata.
+  The native release list checks runtime compatibility as well as memory fit.
+- Add experimental native Muse Spark Open text-chat integration: a verified text
+  architecture backport onto the pinned Prism runtime and a compiled capability
+  probe. Older runtimes cannot enable it from catalog metadata alone.
+- Treat its 22 Q2_K GGUF shards as one pinned 304.08 GB installation, with exact
+  per-file sizes/checksums, complete-set validation, bounded sequential transfers,
+  cancellation and verified-part reuse. Isolated or renamed split imports fail closed.
+- Add the Muse prompt adapter and bounded final-channel streaming parser. Private
+  reasoning stays hidden; unsupported raw, tool and grammar requests are rejected.
+  Require conservative memory headroom and cap context at 4,096 tokens; ordinary
+  phones cannot fit this model. No distributed or remote execution is introduced.
+- Keep Muse out of automatic recommendations. Electron/CLI Muse installation stays
+  unavailable until its multipart and chat adapters are implemented.
+- Add an engineering post explaining the implementation, verification boundaries,
+  and improvements: graph correctness, measured memory/performance, recovery,
+  structured tools, multimodal inputs and upstream maintenance.
+- No model weights were downloaded onto the development computer and no simulator
+  or device was launched. Signed builds, full Muse inference and store publication
+  are separate gates; this unreleased entry does not claim they have passed.
+
 ## Apple apps available — marketing update (2026-09-30)
 - **Quenderin is free on the App Store for Mac and iPhone:**
   <https://apps.apple.com/app/id6789854363>. Native SwiftUI apps with on-device inference.

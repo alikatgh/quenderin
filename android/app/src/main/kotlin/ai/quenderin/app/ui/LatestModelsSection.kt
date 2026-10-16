@@ -5,8 +5,10 @@ import ai.quenderin.app.modelReleaseRepository
 import ai.quenderin.app.probeDeviceProfile
 import ai.quenderin.core.AndroidModelSelector
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelReleaseRepository
 import ai.quenderin.core.ModelReleaseSnapshot
+import ai.quenderin.core.ModelRuntimeSupport
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -98,9 +100,10 @@ internal fun LatestModelsSection(onSelect: (ModelEntry) -> Unit) {
                     val entry = release.catalogEntry()
                     if (entry != null) {
                         val fitness = AndroidModelSelector.fitness(entry, profile)
-                        Text(stringResource(if (fitness.canLoad) R.string.releases_available else R.string.releases_too_large),
+                        val supported = ModelRuntimeSupport.supports(entry)
+                        Text(stringResource(if (!supported) R.string.releases_runtime_required else if (fitness.canLoad) R.string.releases_available else R.string.releases_too_large),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(onClick = { onSelect(entry) }, enabled = fitness.canLoad) {
+                        TextButton(onClick = { onSelect(entry) }, enabled = supported && fitness.canLoad) {
                             Text(stringResource(R.string.releases_choose, entry.label))
                         }
                     } else {
@@ -120,6 +123,27 @@ internal fun LatestModelsSection(onSelect: (ModelEntry) -> Unit) {
         if (refreshing) CircularProgressIndicator(modifier = Modifier.padding(8.dp))
         TextButton(onClick = { scope.launch { refresh(force = true) } }, enabled = !refreshing) {
             Text(stringResource(R.string.releases_refresh))
+        }
+        val muse = ModelCatalog.models.firstOrNull { ModelRuntimeSupport.isMuse(it) }
+        if (muse != null) {
+            val fitness = AndroidModelSelector.fitness(muse, profile)
+            val supported = ModelRuntimeSupport.supports(muse)
+            Text(muse.label, style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.releases_muse_requirements, muse.artifacts.size, muse.sizeLabel,
+                fitness.requiredGB), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(fitness.message, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { onSelect(muse) }, enabled = supported && fitness.canLoad) {
+                Text(stringResource(R.string.releases_choose, muse.label))
+            }
+        } else {
+            Text("Muse Spark Open", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.releases_muse_limit), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TextButton(onClick = { uri.openUri("https://dev.meta.ai/docs/muse-spark-open") }) {
+            Text(stringResource(R.string.releases_muse_link))
         }
     }
 }

@@ -29,7 +29,7 @@ object ModelRecommender {
         val banded = recommendedModel(totalRamGb)
         if (MemoryFitness.check(banded, totalRamGb, freeRamGb).canLoad) return banded
         return ModelCatalog.models
-            .filter { !ModelRuntimeSupport.requiresPrism(it) && MemoryFitness.check(it, totalRamGb, freeRamGb).canLoad }
+            .filter { !ModelRuntimeSupport.requiresMemoryGate(it) && MemoryFitness.check(it, totalRamGb, freeRamGb).canLoad }
             .maxByOrNull { it.ramGB }
             ?: ModelCatalog.smallest
     }

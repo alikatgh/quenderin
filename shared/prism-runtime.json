@@ -3,9 +3,19 @@
   "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
   "revision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
   "branch": "prism",
-  "requiredTypes": ["GGML_TYPE_PTQ1_0", "GGML_TYPE_PQ2_0"],
+  "requiredTypes": [
+    "GGML_TYPE_PTQ1_0",
+    "GGML_TYPE_PQ2_0"
+  ],
   "modelId": "bonsai2-27b",
   "modelRevision": "b072e1d3b35a0a630cece372c2127528e0994386",
   "downloadBytes": 5946648928,
-  "sha256": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3"
+  "sha256": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3",
+  "sourcePatch": {
+    "id": "muse-spark-open-v1",
+    "path": "scripts/patches/muse-spark-prism-e8fd209.json",
+    "sha256": "7ee83edc8f3247f911102c747ee8b98857446ff5c574c2dfd2f3c0b006d1bda5",
+    "upstreamRevision": "ba3c05f71da85cd0439e84ba42b0478b24d5db16",
+    "museSparkABI": 1
+  }
 }

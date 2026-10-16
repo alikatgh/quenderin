@@ -17,7 +17,9 @@
 #include "llama.h"
 #include "ggml-backend.h"     // ggml_backend_load_all_from_path — runtime CPU-variant pick (DOTPROD/I8MM)
 #include "ggml.h"             // ggml_threadpool_params (cpumask + strict_cpu)
+#include "gguf.h"
 #include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
+#include "muse_chat.h"
 #include <cstdio>
 #include <cstring>
 
@@ -98,6 +100,7 @@ struct LlamaHandle {
     std::vector<llama_token> cached;
     // Set true by the last generate() when it stopped at maxTokens (not EOG/cancel). Chat "Continue".
     bool hitTokenCap = false;
+    bool muse = false;
 };
 
 // Pin decode workers to the N fastest cores (by cpuinfo_max_freq) so the scheduler can't park a
@@ -209,7 +212,8 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
     h->hitTokenCap = false;
 
-    std::vector<llama_token> newTokens = tokenize(vocab, prompt, true);
+    // The Muse adapter already writes its explicit begin_of_text token.
+    std::vector<llama_token> newTokens = tokenize(vocab, prompt, !h->muse);
     LOGI("generate: prompt_bytes=%zu tokens=%zu max_tokens=%d cached=%zu", prompt.size(), newTokens.size(), max_tokens, h->cached.size());
     if (newTokens.empty()) return std::string();
 
@@ -330,6 +334,13 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
     }
     if (msgs.empty()) return std::string();
 
+    char architecture[64] = {};
+    if (llama_model_meta_val_str(model, "general.architecture", architecture, sizeof(architecture)) > 0
+        && std::strcmp(architecture, "muse-spark") == 0) {
+        templated = true;
+        return quenderin::museChatPrompt(msgs);
+    }
+
     const char* tmpl = llama_model_chat_template(model, nullptr);
     if (tmpl) {
         std::vector<llama_chat_message> cm;
@@ -380,6 +391,15 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsMuse(JNIEnv* /*env*/, jclass /*clazz*/) {
+#if defined(QUENDERIN_MUSE_LLAMA) && QUENDERIN_MUSE_LLAMA
+    return quenderin_muse_spark_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeSupportsBonsai(JNIEnv* /*env*/, jclass /*clazz*/) {
 #if defined(QUENDERIN_PRISM_LLAMA) && QUENDERIN_PRISM_LLAMA
     // Never probe custom numeric enum values in an older library. Enumerate its valid type range.
@@ -401,7 +421,8 @@ JNIEXPORT jlong JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
                                               jstring model_path, jint context_tokens, jint threads,
                                               jint kv_cache_quant, jfloat temperature, jfloat top_p,
-                                              jint gpu_layers, jstring native_lib_dir) {
+                                              jint gpu_layers, jstring native_lib_dir,
+                                              jboolean verified_muse) {
     // The app's nativeLibraryDir, where Gradle unpacked the ggml CPU-variant backends
     // (libggml-cpu-android_armv*.so). Loaded once; ggml scores them against the live CPU and
     // registers the best (e.g. armv8.6 DOTPROD+I8MM on an S23) — the fast matmul kernels a single
@@ -431,6 +452,28 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
     if (!path) return 0;   // OOM (H4)
+    // Inspect metadata before allocating tensors. A renamed metadata-only shard
+    // must not bypass Kotlin's manifest, capability, or memory checks.
+    gguf_init_params metadata_params = {};
+    metadata_params.no_alloc = true;
+    gguf_context* metadata = gguf_init_from_file(path, metadata_params);
+    if (!metadata) {
+        env->ReleaseStringUTFChars(model_path, path);
+        return 0;
+    }
+    const int64_t architecture_key = gguf_find_key(metadata, "general.architecture");
+    const bool is_muse = architecture_key >= 0
+        && gguf_get_kv_type(metadata, architecture_key) == GGUF_TYPE_STRING
+        && std::strcmp(gguf_get_val_str(metadata, architecture_key), "muse-spark") == 0;
+    const bool split_model = gguf_find_key(metadata, "split.count") >= 0;
+    gguf_free(metadata);
+    if (is_muse != (verified_muse == JNI_TRUE) || (split_model && verified_muse != JNI_TRUE)) {
+        LOGE("model requires a verified Muse manifest before loading");
+        env->ReleaseStringUTFChars(model_path, path);
+        jclass error = env->FindClass("java/lang/IllegalStateException");
+        if (error) env->ThrowNew(error, "Split models require the verified Muse catalog entry and full artifact set.");
+        return 0;
+    }
     LOGI("nativeLoad: path=%s n_ctx=%d threads=%d gpu_layers=%d kv_quant=%d", path, context_tokens, threads, gpu_layers, kv_cache_quant);
 
     llama_model_params mp = llama_model_default_params();
@@ -530,6 +573,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
 
     auto* h = new LlamaHandle{};
     h->model = model;
+    h->muse = is_muse;
     h->ctx = ctx;
     h->sampler = sampler;
     h->threadpool = tp;

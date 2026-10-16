@@ -1,5 +1,45 @@
 # Bonsai 2 27B integration
 
+## 16 October 2026: smaller models and Muse Spark integration
+
+The source catalogs now also include experimental manual choices for Bonsai 2
+2B, 4B, and 9B. Their PTQ1_0 artifacts pin immutable publisher revisions and
+SHA-256 hashes in all three catalogs and the shared manifest. Exact download
+sizes are 429,183,456 / 949,549,920 / 1,997,486,976 bytes. Conservative footprint
+estimates are 1.5 / 2.5 / 4 GB before the existing 1.3 overhead multiplier and
+device headroom gate; these are not measured allocations. Only matching pinned
+artifacts receive those smaller floors; unknown imported Bonsai retains the
+7 GB floor. Defaults, runtime capability checks, and the 4,096-token cap remain.
+
+Inspection of the existing Prism pin found the required Qwen3.5 2B/4B/9B,
+PTQ1_0, Hadamard, and tied-embedding paths. This is source compatibility evidence,
+not proof of loading or generation. The local Android vendored checkout is stock
+(`0eca4d490e591d4e93058d07540cf47278a72577`); a release must still use the explicitly
+selected, verified Prism source described below. No runtime pin was changed.
+
+Muse is now a separate experimental native text integration in this candidate:
+`shared/muse-spark-artifacts.json` pins all 22 Q2_K shards;
+`shared/prism-runtime.json` pins the source patch and compiled capability ABI.
+Native multipart installers, memory checks and final-channel parsers accompany it.
+The exact 304,080,474,208-byte artifact is not a phone-sized model. Tools, audio,
+vision, distributed execution and the Electron/CLI adapter remain unsupported.
+See `website/blog-muse-engineering.html` for implementation and improvement work.
+No full Muse load, inference benchmark or store update is established by source checks.
+
+Verification is tracked per layer. Catalog parity now covers 18 models, including
+Muse's 22 immutable artifacts. Source-provenance, compiled-capability verifier,
+release-feed, native prompt and model-free multipart/channel tests are included.
+Swift host checks cover both receipt invalidation and cancellation; Kotlin fixtures
+cover aggregate progress, retained-file integrity and final-channel output. The
+independent review's raw-generation and large-file cancellation findings are
+release gates. Hosted builds must compile the actual patched C++ runtime and
+native adapters. No full Muse inference or device/UI validation was performed.
+
+Sources: [PrismML announcement](https://prismml.com/news/bonsai-2-family),
+[official Muse GGUF](https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF).
+
+## Existing 27B integration
+
 The `bonsai2-27b` catalog entry is an experimental manual choice. It pins PrismML's
 PTQ1_0 language weights to a Hugging Face revision and SHA-256, with an exact
 5,946,648,928-byte download. The separate vision projector is not integrated.
@@ -32,19 +72,15 @@ ternary capability on Mac. Package extraction rejects unsafe paths, ambiguity an
 oversized payloads, uses fresh scratch, and never runs an installer. The separate
 `verify-archive` command still requires a signed archive. Mach-O section identity survives Xcode signing and
 thinning; source framework files also have complete SHA-256 digests. Runtime
-deployment minima are iOS 16.4 and macOS 13.3. Version 0.3.0 uses candidate build
-12; the actual Xcode Cloud counter must be at least 12 before starting a build.
+deployment minima are iOS 16.4 and macOS 13.3. The 0.4.0 candidate uses build 16;
+refresh Cloud's counter before starting it.
 
 On 12 October 2026, Xcode Cloud build 15 from
-`9bab8d8aa67f2ecfdeb93b7a88cc4aed59592568` passed both App Store archive actions,
-signed-export verification and App Store Connect preparation. The iOS export is
-arm64; macOS is universal arm64/x86_64. Both contain the pinned Prism revision.
-The exact iOS and macOS **0.3.0 (15)** builds were then submitted to App Review
-and show **Waiting for Review**, with automatic release after approval and
-immediate rollout enabled. Approval and public availability are still pending.
-The existing public Apple apps remain 0.2.0 until that release completes.
-Both store drafts exist with automatic release after approval. Signed archives,
-submission and public availability remain separate release gates.
+`9bab8d8aa67f2ecfdeb93b7a88cc4aed59592568` passed both App Store archive actions
+and signed-export verification. On 16 October, both iOS and macOS 0.3.0 (15) were
+verified **Ready for Distribution**. This does not establish distribution of the
+new 0.4.0 candidate. See [RELEASE.md](RELEASE.md) for live console identifiers,
+recovered signing procedure and the new release's remaining gates.
 
 After checking disk headroom with session-storage, build in a **new** work path:
 

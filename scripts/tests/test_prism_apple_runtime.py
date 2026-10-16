@@ -85,12 +85,17 @@ class ApplePrismTests(unittest.TestCase):
         self.framework = self.root / "prism-llama.xcframework"
         self.framework.mkdir()
         self.lock = json.loads((self.root / "shared/prism-runtime.json").read_text())
-        (self.framework / "quenderin-prism-runtime.json").write_text(json.dumps({k: self.lock[k] for k in ("repository", "revision")}))
+        patch_path = self.root / self.lock["sourcePatch"]["path"]
+        patch_path.parent.mkdir(parents=True)
+        shutil.copyfile(prism.ROOT / self.lock["sourcePatch"]["path"], patch_path)
+        self.identity = prism.source_runtime.provenance(self.root, self.lock)
+        (self.framework / "quenderin-prism-runtime.json").write_text(json.dumps(self.identity))
         libs = []
         for identifier, target in (("ios-arm64", 2), ("macos-arm64_x86_64", 1)):
             native = self.framework / identifier / "llama.framework"
             (native / "Headers").mkdir(parents=True)
             (native / "Headers/ggml.h").write_text("GGML_TYPE_PQ2_0 GGML_TYPE_PTQ1_0")
+            (native / "Headers/llama.h").write_text("int quenderin_muse_spark_runtime_abi(void);")
             binary_rel = "llama.framework/Versions/A/llama" if target == 1 else "llama.framework/llama"
             binary = self.framework / identifier / binary_rel
             binary.parent.mkdir(parents=True, exist_ok=True)
@@ -99,6 +104,11 @@ class ApplePrismTests(unittest.TestCase):
                          "SupportedArchitectures": ["arm64", "x86_64"] if target == 1 else ["arm64"],
                          "SupportedPlatform": "macos" if target == 1 else "ios"})
         (self.framework / "Info.plist").write_bytes(plistlib.dumps({"AvailableLibraries": libs}))
+        actual_run = prism.run
+        native_tools = patch.object(prism, "run", side_effect=lambda *args:
+                                    self.tool(*args) if args[:2] == ("xcrun", "nm") else actual_run(*args))
+        native_tools.start()
+        self.addCleanup(native_tools.stop)
 
     def seal(self):
         with patch.object(prism, "native_probe", return_value=prism.PROBE):
@@ -119,6 +129,8 @@ class ApplePrismTests(unittest.TestCase):
         return app, contents, native
 
     def tool(self, *args):
+        if args[:2] == ("xcrun", "nm"):
+            return "0000000000000100 T _quenderin_muse_spark_runtime_abi"
         if args[:3] == ("xcrun", "otool", "-L"):
             return "@rpath/llama.framework/llama"
         if args[:2] == ("codesign", "-d"):
@@ -164,6 +176,41 @@ class ApplePrismTests(unittest.TestCase):
         self.assertEqual(prism.macho_payload(binary), expected)
         binary.write_bytes(fat(1, signed=True, code=b"tampered-prism-code"))
         self.assertNotEqual(prism.macho_payload(binary), expected)
+
+    def test_same_base_revision_without_muse_patch_identity_is_rejected(self):
+        provenance = self.framework / "quenderin-prism-runtime.json"
+        provenance.write_text(json.dumps({k: self.lock[k] for k in ("repository", "revision")}))
+        with self.assertRaisesRegex(ValueError, "source provenance"):
+            self.seal()
+        self.assertFalse((self.framework / prism.STAMP).exists())
+        provenance.write_text(json.dumps(self.identity))
+        self.seal()
+        changed = dict(self.identity, sourcePatchSha256="0" * 64)
+        provenance.write_text(json.dumps(changed))
+        with self.assertRaisesRegex(ValueError, "provenance"):
+            prism.verify_framework(self.framework, self.root)
+
+    def test_each_native_slice_must_export_muse_capability(self):
+        with patch.object(prism, "run", return_value=""):
+            with self.assertRaisesRegex(ValueError, "capability symbol"):
+                prism.slices(self.framework)
+
+    def test_probe_cannot_accept_old_ternary_only_success(self):
+        native = self.framework / "macos-arm64_x86_64/llama.framework"
+        calls = []
+
+        def old_runtime(*args):
+            calls.append(args)
+            if args[:2] == ("xcrun", "--sdk"):
+                source = Path(args[args.index("-F") - 1]).read_text()
+                self.assertIn("quenderin_muse_spark_runtime_abi() != 1", source)
+                return ""
+            return "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 verified"
+
+        with patch.object(prism, "run", side_effect=old_runtime):
+            with self.assertRaisesRegex(ValueError, "Prism/Muse probe failed"):
+                prism.native_probe(native)
+        self.assertEqual(len(calls), 2)
 
     def test_slice_rejects_platform_mismatch_and_missing_device(self):
         info = plistlib.loads((self.framework / "Info.plist").read_bytes())
@@ -231,6 +278,7 @@ class ApplePrismTests(unittest.TestCase):
             # Xcode strips public headers from an embedded framework. The native
             # probe must link the archived dylib while using the verified headers.
             (native / "Headers/ggml.h").unlink()
+            (native / "Headers/llama.h").unlink()
             (native / "Headers").rmdir()
             (native / "Versions/A/llama").write_bytes(fat(1, signed=True))
             with patch.object(prism, "native_probe", return_value=prism.PROBE) as probe:
@@ -517,7 +565,7 @@ class ApplePrismTests(unittest.TestCase):
         source = prism.ROOT / "apple/QuenderinApp/ci_scripts"
         for script in source.glob("ci_*.sh"):
             shutil.copyfile(script, isolated / script.name)
-        (self.root / "scripts").mkdir()
+        (self.root / "scripts").mkdir(exist_ok=True)
         (self.root / "apple/QuenderinApp").mkdir()
         (self.root / "apple/QuenderinKit/Package.swift").write_text("// fixture package")
         (self.root / "apple/QuenderinApp/project.yml").write_text("name: Fixture")

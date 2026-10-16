@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Blog — Quenderin</title>
-<meta name="description" content="The Quenderin blog: how it is built, what we decided, and why — from the people who read the stack traces." />
+<meta name="description" content="Notes on Quenderin development, website updates, and how the software works." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/blog" />
@@ -26,11 +26,23 @@
 
 <main class="container legal" id="main">
   <h1>Blog</h1>
-  <p class="legal-updated">Notes from building an AI that runs on your own machine &mdash; how it works, what we decided, and what broke on the way. The unabridged version is <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">the git history</a>; the disasters live in <a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener">the bug journal</a>.</p>
+  <p class="legal-updated">Notes on Quenderin development and updates to this website. Technical changes are recorded in the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> and <a href="https://github.com/alikatgh/quenderin/blob/main/docs/BUG_JOURNAL.md" rel="noopener">bug journal</a>.</p>
+
+  <h2><a href="blog-muse-engineering">Implementing Muse Spark Open in Quenderin</a></h2>
+  <p class="legal-updated"><time datetime="2026-10-16">16 October 2026</time> &middot; Engineering · release candidate</p>
+  <p>The runtime backport, a verified 22-part installation, Muse’s response channels, and the measurements and adapters still needed. <a href="blog-muse-engineering">Read the engineering post &rarr;</a></p>
+
+  <h2><a href="blog-bonsai-small-muse-spark">Bonsai 2 for smaller devices, and Muse Spark Open</a></h2>
+  <p class="legal-updated"><time datetime="2026-10-16">16 October 2026</time> &middot; Model update in development</p>
+  <p>Bonsai 2 2B, 4B, and 9B join the native source catalogs with separate memory checks. Muse Spark Open gains an experimental native text-chat integration with substantial hardware requirements. <a href="blog-bonsai-small-muse-spark">Read about the update &rarr;</a></p>
 
   <h2><a href="blog-bonsai-2">Bonsai 2 27B in Quenderin</a></h2>
   <p class="legal-updated"><time datetime="2026-10-12">12 October 2026</time> &middot; Models</p>
   <p>Quenderin 0.2.1 brings PrismML’s compressed Qwen3.8-based model to Windows and Linux as an experimental manual option. The roughly 6&nbsp;GB download still needs additional working memory. <a href="blog-bonsai-2">Read about the release &rarr;</a></p>
+
+  <h2><a href="blog-clearer-language">We’ve rewritten the website copy</a></h2>
+  <p class="legal-updated"><time datetime="2026-10-08">8 October 2026</time> &middot; Website</p>
+  <p>We’re sorry for the salesy, sometimes jokey copy we were using. We’ve rewritten the homepage and shared wording to describe the app, its requirements, and its limits more clearly. <a href="blog-clearer-language">Read the note &rarr;</a></p>
 
   <article class="blog-launch">
     <img src="assets/app/icon-ios.png" width="72" height="72" alt="Quenderin app icon" />

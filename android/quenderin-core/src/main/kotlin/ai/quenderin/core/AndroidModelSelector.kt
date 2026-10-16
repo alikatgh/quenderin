@@ -80,7 +80,7 @@ object AndroidModelSelector {
     }
 
     fun estimatedRuntimeGb(model: ModelEntry, contextTokens: Int = REFERENCE_CONTEXT_TOKENS): Double {
-        if (ModelRuntimeSupport.isBonsai(model)) {
+        if (ModelRuntimeSupport.requiresMemoryGate(model)) {
             // Hybrid cache/state is not a dense 27B KV cache; keep conservative RAM and bounded context.
             return ModelRuntimeSupport.memoryFootprintGb(model) * MemoryFitness.OVERHEAD_LARGE
         }
@@ -111,10 +111,15 @@ object AndroidModelSelector {
      * but with less than that headroom.
      */
     fun fitness(model: ModelEntry, device: AndroidDeviceProfile,
-                prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai): MemoryCheckResult {
+                prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai,
+                museRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsMuse): MemoryCheckResult {
         val usableGb = device.appMemoryBudgetGb * MEMORY_HEADROOM
         val required = estimatedRuntimeGb(model)
         val remaining = usableGb - required
+        if (ModelRuntimeSupport.isMuse(model) && !museRuntimeAvailable) {
+            return MemoryCheckResult(false, MemorySeverity.BLOCKED, required, usableGb,
+                ModelRuntimeSupport.MUSE_UNAVAILABLE_MESSAGE, remaining)
+        }
         if (ModelRuntimeSupport.requiresPrism(model) && !prismRuntimeAvailable) {
             return MemoryCheckResult(false, MemorySeverity.BLOCKED, required, usableGb,
                 ModelRuntimeSupport.UNAVAILABLE_MESSAGE, remaining)
@@ -154,7 +159,7 @@ object AndroidModelSelector {
             val fitsDisk = device.freeDiskGb >= download + DISK_MARGIN_GB
             val viable = runtimeSupported && fitsMemory && fastEnough && fitsDisk
             val note = when {
-                !runtimeSupported -> ModelRuntimeSupport.UNAVAILABLE_MESSAGE
+                !runtimeSupported -> ModelRuntimeSupport.unavailableMessage(model)
                 !fitsMemory -> "needs ~%.1f GB, over your ~%.1f GB usable budget".format(runtime, usableGb)
                 !fastEnough -> "~%.0f tok/s on the %s — too slow".format(tokS, device.soc.displayName)
                 !fitsDisk -> "needs ~%.1f GB free disk".format(download + DISK_MARGIN_GB)

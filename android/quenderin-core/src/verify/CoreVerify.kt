@@ -104,7 +104,7 @@ fun main() {
         listOf(0.5, 2.0, 3.5, 8.0, 18.0, 64.0).all { ModelCatalog.entry(ModelRecommender.recommendedModelId(it)) != null })
 
     // --- Catalog integrity ---
-    check("14 models across families", ModelCatalog.models.size == 14)
+    check("18 models across families", ModelCatalog.models.size == 18)
     check("smallest is the ultra-light", ModelCatalog.smallest.id == "llama32-1b-q2")
     check("every model uses a known quant", ModelCatalog.models.all { Quantization.info(it.quantization) != null })
     check("catalog spans 6 families", listOf("qwen3-14b", "deepseek-r1-7b", "gemma3-4b", "phi4-mini", "mistral-7b", "llama3-8b").all { ModelCatalog.entry(it) != null })
@@ -358,7 +358,7 @@ fun main() {
         tight.phase is OnboardingPhase.Failed
     })
     check("a failed model switch restores the previously-working model (H1)", run {
-        val a = ModelCatalog.models[0]
+        val a = ModelCatalog.entry("qwen3-4b")!!
         val b = ModelCatalog.entry("qwen3-14b")!!
         // Engine that loads anything except b, which throws — exercises failed-switch recovery.
         val engine = object : InferenceEngine {
@@ -1453,10 +1453,9 @@ fun main() {
     check("download aborts on cancel, preserving the .part and marking PAUSED for resume", run {
         val sink = FakeFileSink()
         val store = DownloadStore()
-        var checks = 0
         val engine = ModelDownloadEngine(
             FakeHttpRangeClient(payload, supportsResume = true), sink, store, "/models",
-            isCancelled = { checks++ >= 2 } // let two chunks land, then cancel
+            isCancelled = { sink.existingSize(partFile) >= 16L } // let two actual chunks land, then cancel
         )
         val result = runCatching { engine.download(sampleModel) {} }
         val part = sink.files[partFile]

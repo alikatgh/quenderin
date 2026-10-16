@@ -23,16 +23,25 @@ public actor DownloadCoordinator {
     /// (no other writer holds it); `false` if a download to the same file is already in flight —
     /// the caller must NOT write, or it would corrupt the shared partial/destination.
     public func claim(_ filename: String) -> Bool {
-        claimed.insert(filename).inserted
+        claimed.insert(filename.lowercased()).inserted
     }
+
+    /// Claim the entire set atomically, avoiding two split installers holding different parts.
+    public func claim(_ filenames: [String]) -> Bool {
+        guard filenames.allSatisfy({ !claimed.contains($0.lowercased()) }) else { return false }
+        claimed.formUnion(filenames.map { $0.lowercased() })
+        return true
+    }
+
+    public func release(_ filenames: [String]) { claimed.subtract(filenames.map { $0.lowercased() }) }
 
     /// Release a previously-claimed filename. Idempotent — safe to call in a `defer` on every path.
     public func release(_ filename: String) {
-        claimed.remove(filename)
+        claimed.remove(filename.lowercased())
     }
 
     /// Whether a download to `filename` is currently in flight (test/inspection aid).
     public func isClaimed(_ filename: String) -> Bool {
-        claimed.contains(filename)
+        claimed.contains(filename.lowercased())
     }
 }

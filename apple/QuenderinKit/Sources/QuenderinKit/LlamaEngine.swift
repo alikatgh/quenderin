@@ -57,6 +57,7 @@ public actor LlamaEngine: InferenceEngine {
     private static let perfLog = Logger(subsystem: "org.quenderin", category: "inference")
 
     private var loaded: String?
+    private var loadedMuse = false
     /// The `n_ctx` the loaded context was actually created with (sized from the device budget in
     /// `loadLocked`), or nil when nothing is loaded. Surfaced via `loadedContextTokens()` so the
     /// chat layer trims history to the REAL native window, not a hardcoded 4096 (Q-167 twin).
@@ -97,9 +98,9 @@ public actor LlamaEngine: InferenceEngine {
     public func load(model entry: ModelEntry, at fileURL: URL) async throws {
         // Before file IO, cancellation, or releasing the current working model.
         guard ModelRuntimeSupport.supports(entry) else {
-            throw InferenceError.loadFailed(reason: ModelRuntimeSupport.unavailableMessage)
+            throw InferenceError.loadFailed(reason: ModelRuntimeSupport.unavailableReason(for: entry))
         }
-        if ModelRuntimeSupport.requiresPrism(entry) {
+        if ModelRuntimeSupport.requiresPrism(entry) || ModelRuntimeSupport.isMuse(entry) {
             let fitness = MemoryFitness.check(model: entry, totalGB: deviceBudgetGB, freeGB: deviceBudgetGB)
             guard fitness.canLoad else { throw InferenceError.loadFailed(reason: fitness.message) }
         }
@@ -107,11 +108,19 @@ public actor LlamaEngine: InferenceEngine {
             throw InferenceError.modelFileMissing(path: fileURL.path)
         }
         #if canImport(llama)
+        // Inspect actual metadata before native allocation: renamed Muse/split imports fail closed.
+        let metadata = try await ModelArtifactSet.inBackground { try GGUFModelMetadata.read(from: fileURL) }
+        try metadata.validateForLoad(entry)
+        #endif
+        // llama.cpp loads a split model through its first shard; verify every sibling first.
+        try await ModelArtifactSet.verifyInBackground(entry, firstFile: fileURL)
+        #if canImport(llama)
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
         loaded = nil                              // nothing loaded until the new model succeeds
         loadedNCtx = nil
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
+        loadedMuse = ModelRuntimeSupport.isMuse(entry)
         #else
         throw InferenceError.loadFailed(
             reason: "llama.cpp is not linked into QuenderinKit yet. Add a `llama` module dependency (see the wiring notes in LlamaEngine.swift), or use MockInferenceEngine in the meantime."
@@ -126,6 +135,7 @@ public actor LlamaEngine: InferenceEngine {
         #endif
         loaded = nil
         loadedNCtx = nil
+        loadedMuse = false
     }
 
     /// Best-effort: interrupt an in-flight `generate` (e.g. a stop button). The switch path
@@ -138,7 +148,15 @@ public actor LlamaEngine: InferenceEngine {
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .raw, hasGrammar: options.gbnfGrammar != nil)
+        return try await startGeneration(prompt: prompt, options: options)
+    }
+
+    /// Called only after the public API selected and constructed the appropriate framing.
+    private func startGeneration(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .chat, hasGrammar: options.gbnfGrammar != nil)
         #if canImport(llama)
+        let muse = loadedMuse
         // Mint THIS generation's id — never reset a shared flag (S2): the old `= false` here
         // erased a Stop aimed at the still-running previous decode, and the old onTermination's
         // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
@@ -148,7 +166,7 @@ public actor LlamaEngine: InferenceEngine {
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
             DispatchQueue.global(qos: .userInitiated).async {
-                self.runGeneration(gen: myGen, prompt: prompt, options: options, into: continuation)
+                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, into: continuation)
             }
             continuation.onTermination = { _ in self.cancelState.withLock { $0.cancel(upTo: myGen) } }
         }
@@ -165,9 +183,10 @@ public actor LlamaEngine: InferenceEngine {
     public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
         #if canImport(llama)
-        let prompt = buildChatPrompt(system: system, history: history)
-            ?? flatTranscriptPrompt(system: system, history: history)   // model exposes no template
-        return try await generate(prompt: prompt, options: options)
+        let prompt = loadedMuse ? MuseChatPrompt.build(system: system, history: history)
+            : (buildChatPrompt(system: system, history: history)
+            ?? flatTranscriptPrompt(system: system, history: history))   // model exposes no template
+        return try await startGeneration(prompt: prompt, options: options)
         #else
         throw InferenceError.loadFailed(reason: "llama.cpp not linked; use MockInferenceEngine.")
         #endif
@@ -250,7 +269,8 @@ public actor LlamaEngine: InferenceEngine {
         // (file > budget, e.g. a 13 GB 35B-A3B on 16 GB) runs CPU-only so the OS page cache
         // streams the routed experts — Metal would wire the whole file into the GPU working
         // set and thrash. Real file size, not the catalog estimate (GpuOffloadPolicy docs).
-        let fileSizeBytes = ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.int64Value ?? 0
+        let fileSizeBytes = ModelArtifactSet.isMultipart(entry) ? (entry.downloadBytes ?? Int64.max)
+            : (((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.int64Value ?? 0)
         let fileSizeGB = Double(fileSizeBytes) / 1_000_000_000.0
         // Offload plan. The expert-offload experiment (env QUENDERIN_MOE_EXPERT_CPU=1) keeps a
         // paged MoE's dense spine on Metal and streams only the routed experts from CPU/mmap
@@ -313,6 +333,7 @@ public actor LlamaEngine: InferenceEngine {
         var nctx = ContextWindow.recommend(
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+        if ModelRuntimeSupport.isMuse(entry) { nctx = min(nctx, ModelRuntimeSupport.museMaxContextTokens) }
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -411,6 +432,7 @@ public actor LlamaEngine: InferenceEngine {
         gen myGen: UInt64,
         prompt: String,
         options: GenerationOptions,
+        muse: Bool,
         into continuation: AsyncThrowingStream<String, Error>.Continuation
     ) {
         // This generation answers ONLY for its own id — a cancel aimed at an older run, or a
@@ -425,7 +447,7 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         // 1) Prompt → tokens.
-        let rawTokens = tokenize(text: prompt, addBOS: true)
+        let rawTokens = tokenize(text: prompt, addBOS: !muse)
         guard !rawTokens.isEmpty else {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "tokenizer produced no tokens"))
             return
@@ -571,6 +593,7 @@ public actor LlamaEngine: InferenceEngine {
         // Watches for a stop sequence (e.g. "</think>") that may span tokens; inert when none set,
         // so a plain generation is byte-for-byte unchanged. (Revives the dead stopSequences field.)
         var stopScanner = StopSequenceScanner(stops: options.stopSequences)
+        var museFilter = MuseFinalChannelFilter()
         var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
                                       // piece has been yielded, INCLUDING the current token's (checked
                                       // below only after this token's own yield, same ordering as the
@@ -591,7 +614,8 @@ public actor LlamaEngine: InferenceEngine {
                 perfLastTok = now
             }
 
-            let piece = decoder.feed(tokenToBytes(next))
+            let decodedPiece = decoder.feed(tokenToBytes(next))
+            let piece = muse ? museFilter.feed(decodedPiece) : decodedPiece
             if !piece.isEmpty {
                 if stopScanner.isActive {
                     let (emit, stop) = stopScanner.feed(piece)
@@ -602,6 +626,7 @@ public actor LlamaEngine: InferenceEngine {
                     yieldedAnyText = true
                 }
             }
+            if muse && museFilter.isStopped { break }
             produced += 1
 
             var one = [next]                               // feed the token back (alive during decode)
@@ -630,7 +655,8 @@ public actor LlamaEngine: InferenceEngine {
             }
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
-        let tail = decoder.flush()                          // any held bytes (end-of-stream mid-character)
+        let decodedTail = decoder.flush()
+        let tail = muse ? (museFilter.feed(decodedTail) + museFilter.finish()) : decodedTail                          // any held bytes (end-of-stream mid-character)
         if stopScanner.isActive {
             if !tail.isEmpty {
                 let (emit, _) = stopScanner.feed(tail)      // a stop sequence may complete on the tail

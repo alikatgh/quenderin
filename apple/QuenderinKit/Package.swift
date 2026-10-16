@@ -73,8 +73,13 @@ if prismRuntime {
         let stampPath = packageDir + "/" + xcframeworkRelPath + "/quenderin-prism-runtime.json"
         guard let data = FileManager.default.contents(atPath: stampPath),
               let stamp = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let sourcePatch = lock["sourcePatch"] as? [String: Any],
               stamp["repository"] as? String == lock["repository"] as? String,
-              stamp["revision"] as? String == lock["revision"] as? String else {
+              stamp["revision"] as? String == lock["revision"] as? String,
+              stamp["sourcePatchId"] as? String == sourcePatch["id"] as? String,
+              stamp["sourcePatchSha256"] as? String == sourcePatch["sha256"] as? String,
+              stamp["museSparkABI"] as? Int == 1,
+              sourcePatch["museSparkABI"] as? Int == 1 else {
             fatalError("Prism framework provenance is missing or does not match the pinned runtime")
         }
         let verifier = Process()
@@ -94,7 +99,11 @@ var qkSwiftSettings: [SwiftSetting] = []
 var qkLinkerSettings: [LinkerSetting] = []
 var optionalTargets: [Target] = []
 
-if prismRuntime { qkSwiftSettings.append(.define("QUENDERIN_PRISM_LLAMA")) }
+if prismRuntime {
+    qkSwiftSettings.append(.define("QUENDERIN_PRISM_LLAMA"))
+    // Reaching this point requires the exact Muse source patch or sealed framework.
+    qkSwiftSettings.append(.define("QUENDERIN_MUSE_LLAMA"))
+}
 
 if hasXcframework && !(prismRuntime && llamaDir != nil) {
     // Route A — prebuilt xcframework: device/simulator/macOS, Metal GPU included.

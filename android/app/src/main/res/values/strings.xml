@@ -285,4 +285,12 @@
     <string name="releases_show_all">Show all %1$d releases</string>
     <string name="releases_unavailable">The release list is unavailable. Your installed and built-in models remain available.</string>
     <string name="releases_refresh">Refresh</string>
+    <string name="releases_runtime_required">Requires a compatible Prism runtime</string>
+    <string name="releases_muse_limit">Not supported by this app’s local engine. Meta’s 816B model requires a separate runtime and hundreds of gigabytes of memory; 42B active parameters do not describe its storage needs.</string>
+    <string name="releases_muse_link">Muse Spark setup and license ↗</string>
+    <string name="releases_muse_requirements">Experimental text chat · %1$d GGUF shards · %2$s. Needs roughly %3$.0f GB of memory and a compatible runtime; phones cannot run this model. Context is limited to 4,096 tokens.</string>
+    <string name="profile_split_gguf">GGUF · %1$d shards</string>
+    <string name="profile_muse_reasoning">Muse Spark uses low reasoning strength. Private reasoning is kept out of replies. Agent and tool modes are unavailable.</string>
+    <string name="download_verification_title">Checking %1$s</string>
+    <string name="download_verification_progress">%1$d of %2$d files</string>
 </resources>

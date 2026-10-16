@@ -87,6 +87,23 @@ struct LatestModelsView: View {
                 Text("The release list is unavailable. Your installed and built-in models remain available.")
                     .font(.caption).foregroundStyle(p.onSurfaceVariant)
             }
+            if let muse = ModelCatalog.entry(id: "muse-spark-open-q2-k") {
+                let fit = fitness(muse)
+                let supported = ModelRuntimeSupport.supports(muse)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(muse.label).font(.callout.weight(.semibold)).foregroundStyle(p.onSurface)
+                    Text("\(muse.sizeLabel) across \(muse.artifacts?.count ?? 0) files. Experimental local support; 42B active parameters do not describe its storage or memory requirements.")
+                        .font(.caption).foregroundStyle(p.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(supported ? fit.message : ModelRuntimeSupport.museUnavailableMessage)
+                        .font(.caption2).foregroundStyle(supported && fit.canLoad ? p.statusText : .orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Choose \(muse.label)") { onSelect(muse) }
+                        .buttonStyle(.bordered).controlSize(.small).disabled(!supported || !fit.canLoad)
+                    Link("Muse Spark setup and license ↗", destination: URL(string: "https://dev.meta.ai/docs/muse-spark-open")!)
+                        .font(.caption).foregroundStyle(p.primary)
+                }.padding(.top, 8)
+            }
         }
         .padding(14)
         .background(p.surfaceVariant.opacity(0.4), in: RoundedRectangle(cornerRadius: 14))
@@ -114,10 +131,11 @@ struct LatestModelsView: View {
                 .font(.caption.monospacedDigit()).foregroundStyle(p.onSurfaceVariant)
             if let entry = release.catalogEntry() {
                 let fitness = fitness(entry)
-                Text(LocalizedStringKey(fitness.canLoad ? "Available in this app · estimated memory fit" : "Available in this app · too large for this device"))
-                    .font(.caption2).foregroundStyle(fitness.canLoad ? p.statusText : .orange)
+                let supported = ModelRuntimeSupport.supports(entry)
+                Text(LocalizedStringKey(!supported ? (ModelRuntimeSupport.isMuse(entry) ? "Requires a compatible Muse runtime" : "Requires a compatible Prism runtime") : fitness.canLoad ? "Available in this app · estimated memory fit" : "Available in this app · too large for this device"))
+                    .font(.caption2).foregroundStyle(supported && fitness.canLoad ? p.statusText : .orange)
                 Button("Choose \(entry.label)") { onSelect(entry) }
-                    .buttonStyle(.bordered).controlSize(.small).disabled(!fitness.canLoad)
+                    .buttonStyle(.bordered).controlSize(.small).disabled(!supported || !fitness.canLoad)
             } else {
                 Text("Compatibility not tested in this app")
                     .font(.caption2).foregroundStyle(p.onSurfaceVariant)

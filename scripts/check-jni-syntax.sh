@@ -19,6 +19,9 @@ GGML_INCLUDE="${GGML_INCLUDE:-$LLAMA_INCLUDE}"
 EXTRA_DEFS=()
 if [ "${QUENDERIN_PRISM_LLAMA:-0}" = "1" ]; then
   EXTRA_DEFS+=(-DQUENDERIN_PRISM_LLAMA=1)
+  if grep -q 'quenderin_muse_spark_runtime_abi' "$LLAMA_INCLUDE/llama.h"; then
+    EXTRA_DEFS+=(-DQUENDERIN_MUSE_LLAMA=1)
+  fi
 fi
 # Match the enum (not llama_load_model_from_file — "llama_load_mode" is a prefix of that name).
 if grep -qE 'enum[[:space:]]+llama_load_mode|LLAMA_LOAD_MODE_MMAP' "$LLAMA_INCLUDE/llama.h" 2>/dev/null; then

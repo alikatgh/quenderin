@@ -38,6 +38,13 @@ export function getModelRuntimeCompatibility(
     entry: RuntimeModelDescriptor,
     runtime?: NodeLlamaRuntime,
 ): ModelRuntimeCompatibility {
+    if (/muse[-_ ]?spark/i.test(`${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''}`)) {
+        return {
+            canLoad: false,
+            runtimeRequirement: 'Muse native text adapter',
+            message: 'Muse Spark Open requires the native multipart installer and text-chat adapter. This Electron/CLI build cannot install or run Muse.',
+        };
+    }
     if (!requiresPrismRuntime(entry)) {
         return { canLoad: true, message: 'Supported by the standard desktop runtime.' };
     }

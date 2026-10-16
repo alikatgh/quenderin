@@ -29,7 +29,7 @@ public struct ModelsLibraryView: View {
         var available: [ModelEntry] = [], blocked: [ModelEntry] = []
         for entry in ModelCatalog.models {
             let state = library.state(of: entry)
-            if state == .installed || { if case .downloading = state { return true }; return false }() {
+            if state == .installed || state == .verifying || { if case .downloading = state { return true }; return false }() {
                 mine.append(entry)   // downloading = arriving — it belongs with "yours"
             } else if entry.id == recommendedID {
                 recommended.append(entry)
@@ -333,6 +333,13 @@ private struct LibraryRow: View {
                     .fixedSize()
                     .accessibilityLabel("Actions for \(entry.label)")
                 }
+            case .verifying:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying files").font(.caption)
+                    Button { onCancel() } label: { Image(systemName: "xmark.circle") }
+                        .buttonStyle(.plain).accessibilityLabel("Cancel verification")
+                }
             case .downloading(let fraction):
                 HStack(spacing: 8) {
                     ProgressView(value: fraction).frame(width: 90)
@@ -348,6 +355,9 @@ private struct LibraryRow: View {
                     Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
                         .buttonStyle(.bordered)
                         .tint(.orange)
+                    if sizeOnDisk > 0, !isActive {
+                        Button("Delete…", role: .destructive) { onDelete() }
+                    }
                     if let reason {   // Q-271: say WHY (e.g. blocked on cellular), don't just offer a bare Retry
                         Text(reason)
                             .font(.caption2)
@@ -389,6 +399,9 @@ private struct LibraryRow: View {
                 }
             case .notInstalled, .failed:
                 Button("Download") { onDownload() }
+                if sizeOnDisk > 0, !isActive { Button("Delete…", role: .destructive) { onDelete() } }
+            case .verifying:
+                Button("Cancel verification") { onCancel() }
             case .downloading:
                 Button("Cancel download") { onCancel() }
             }
@@ -431,6 +444,7 @@ final class ModelLibraryController: ObservableObject {
         case notInstalled
         case downloading(Double)
         case installed
+        case verifying
         /// Optional reason shown to the user — the network gate (Q-271) fills it ("on cellular…"),
         /// a transport failure leaves it nil (the generic Retry affordance is enough).
         case failed(String?)
@@ -468,10 +482,15 @@ final class ModelLibraryController: ObservableObject {
         if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: url) {
             return .unavailable(reason)
         }
-        guard let entry = ModelCatalog.models.first(where: { $0.filename == name }) else {
+        guard let entry = ModelCatalog.models.first(where: { ModelArtifactSet.filenames($0).contains(name) }) else {
             return .notInCatalog(name)
         }
         if let reason = experimentalModelBlockReason(entry) { return .unavailable(reason) }
+        // Split imports require a complete colocated set; copying a metadata-only first shard
+        // must never create an apparently usable model. The download installer handles sets.
+        if ModelArtifactSet.isMultipart(entry) {
+            return .unavailable("This model contains multiple files. Use Download to install and verify the complete set.")
+        }
         // The file matched a catalog entry — hold it to that entry's pinned SHA-256 (Q-010),
         // not just the GGUF magic. A tampered or mismatched-quant file with the right NAME must
         // not be trusted as the catalog model. verify() falls back to magic-only when the entry
@@ -506,6 +525,7 @@ final class ModelLibraryController: ObservableObject {
 
     @Published private(set) var states: [String: ModelState] = [:]
     private var tasks: [String: Task<Void, Never>] = [:]
+    private var verificationTasks: [String: Task<Void, Never>] = [:]
     private let downloader: ModelDownloader
     private let modelsDir: URL
     /// The library's eyes: primary dir + (for the production default) the legacy App Support dir —
@@ -551,16 +571,36 @@ final class ModelLibraryController: ObservableObject {
     }
 
     func refresh() {
-        let installed = Set(storage.installedFilenames())
-        for entry in ModelCatalog.models where tasks[entry.id] == nil {
-            states[entry.id] = installed.contains(entry.filename) ? .installed : .notInstalled
-        }
-        // Searched (sideloaded) models aren't in the compiled catalog — reflect the ones whose file is
-        // on disk so a downloaded open-catalog model shows as installed (and "Use", not "Download")
-        // after a relaunch, instead of vanishing from the library.
-        for entry in SideloadedModels.shared.all where tasks[entry.id] == nil {
-            if installed.contains(entry.filename) { states[entry.id] = .installed }
-            else if states[entry.id] == nil { states[entry.id] = .notInstalled }
+        for entry in ModelCatalog.models + SideloadedModels.shared.all
+        where tasks[entry.id] == nil && verificationTasks[entry.id] == nil {
+            if storage.isComplete(entry) {
+                states[entry.id] = .installed
+                continue
+            }
+            guard ModelArtifactSet.isMultipart(entry), ModelRuntimeSupport.supports(entry) else {
+                states[entry.id] = .notInstalled
+                continue
+            }
+            let candidates = storage.candidateFirstFiles(for: entry)
+            guard !candidates.isEmpty else { states[entry.id] = .notInstalled; continue }
+            states[entry.id] = .verifying
+            verificationTasks[entry.id] = Task { [weak self] in
+                guard let self else { return }
+                var lastError: Error?
+                for first in candidates {
+                    do {
+                        try await ModelArtifactSet.verifyInBackground(entry, firstFile: first)
+                        try Task.checkCancellation()
+                        self.states[entry.id] = .installed
+                        self.verificationTasks[entry.id] = nil
+                        return
+                    } catch { lastError = error }
+                    if Task.isCancelled { break }
+                }
+                self.states[entry.id] = Task.isCancelled ? .notInstalled
+                    : .failed(lastError.map { OnboardingModel.describe($0) })
+                self.verificationTasks[entry.id] = nil
+            }
         }
     }
 
@@ -618,8 +658,8 @@ final class ModelLibraryController: ObservableObject {
 
     /// The same runtime and actual app-memory gates apply to both local imports and downloads.
     private func experimentalModelBlockReason(_ entry: ModelEntry) -> String? {
-        guard ModelRuntimeSupport.supports(entry) else { return ModelRuntimeSupport.unavailableMessage }
-        guard ModelRuntimeSupport.requiresPrism(entry) else { return nil }
+        guard ModelRuntimeSupport.supports(entry) else { return ModelRuntimeSupport.unavailableReason(for: entry) }
+        guard ModelRuntimeSupport.requiresPrism(entry) || ModelRuntimeSupport.isMuse(entry) else { return nil }
         #if os(iOS)
         let fitness = IPhoneModelSelector.fitness(of: entry, for: DeviceProfiler.current())
         #else
@@ -629,7 +669,7 @@ final class ModelLibraryController: ObservableObject {
     }
 
     func download(_ entry: ModelEntry) {
-        guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        guard tasks[entry.id] == nil, verificationTasks[entry.id] == nil, let url = entry.downloadURL else { return }
         if let reason = experimentalModelBlockReason(entry) {
             states[entry.id] = .failed(reason)
             return
@@ -639,6 +679,28 @@ final class ModelLibraryController: ObservableObject {
         // only, so a warming-up monitor never blocks Wi-Fi). Surfaces the reason on the card.
         if networkStatus() == .cellular, !downloadPolicy().allows(.cellular) {
             states[entry.id] = .failed(downloadPolicy().reason(for: .cellular))
+            return
+        }
+        if ModelArtifactSet.isMultipart(entry) {
+            do { _ = try ModelArtifactSet.validate(entry) }
+            catch { states[entry.id] = .failed(error.localizedDescription); return }
+            let remaining = try? ModelArtifactSet.estimatedRemainingDownloadBytes(entry, in: modelsDir)
+            let disk = DiskSpace.check(model: entry, availableBytes: DiskSpace.availableBytes(at: modelsDir), remainingDownloadBytes: remaining)
+            guard disk.hasRoom else { states[entry.id] = .failed(disk.message); return }
+            states[entry.id] = .downloading(0)
+            tasks[entry.id] = Task { [weak self] in
+                guard let self else { return }
+                do {
+                    _ = try await ModelArtifactInstaller.install(entry, in: self.modelsDir, downloader: self.downloader) {
+                        self.states[entry.id] = .downloading($0)
+                    }
+                    try Task.checkCancellation()
+                    self.states[entry.id] = .installed
+                } catch {
+                    self.states[entry.id] = Task.isCancelled ? .notInstalled : .failed(error.localizedDescription)
+                }
+                self.tasks[entry.id] = nil
+            }
             return
         }
         states[entry.id] = .downloading(0)
@@ -684,7 +746,7 @@ final class ModelLibraryController: ObservableObject {
     /// Bytes this model occupies on disk (0 when not installed) — searched across primary +
     /// legacy dirs, like the load path.
     func sizeOnDisk(_ entry: ModelEntry) -> Int64 {
-        storage.sizeBytes(of: entry.filename)
+        ModelArtifactSet.filenames(entry).reduce(0) { $0 + storage.sizeBytes(of: $1) }
     }
 
     /// Delete an installed model file. The ACTIVE model is protected — the UI never offers
@@ -692,7 +754,7 @@ final class ModelLibraryController: ObservableObject {
     /// dir — a legacy-dir install must actually disappear, not just from the primary dir.
     func delete(_ entry: ModelEntry, activeModelID: String) {
         guard entry.id != activeModelID else { return }
-        storage.delete(entry.filename)
+        for filename in ModelArtifactSet.filenames(entry) { storage.delete(filename) }
         SideloadedModels.shared.remove(id: entry.id)   // forget a searched model too (no-op for catalog ids)
         states[entry.id] = nil                          // drop its state row so it leaves "yours"
         refresh()
@@ -700,7 +762,8 @@ final class ModelLibraryController: ObservableObject {
 
     func cancel(_ entry: ModelEntry) {
         tasks[entry.id]?.cancel()
-        tasks[entry.id] = nil
+        verificationTasks[entry.id]?.cancel()
+        // Keep the task until it unwinds; a rapid retry must not race the cancelled writer.
         states[entry.id] = .notInstalled
     }
 

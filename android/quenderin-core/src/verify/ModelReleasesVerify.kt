@@ -23,7 +23,7 @@ fun main(args: Array<String>) {
     check(ModelReleaseJSON.decode(ModelReleaseJSON.encode(feed)) == feed)
     val known = ModelCatalog.models.first()
     check(first.copy(sha256 = known.sha256!!.uppercase()).catalogEntry() == known)
-    check(first.catalogEntry() == null)
+    check(first.copy(sha256 = "a".repeat(64)).catalogEntry() == null)
 
     var disk: ModelReleaseFeed? = feed
     var saves = 0
@@ -41,7 +41,7 @@ fun main(args: Array<String>) {
     check(after.feed == feed && after.saved && after.refreshFailed && disk == feed && saves == 0)
 
     var calls = 0
-    val live = feed.copy(checkedAt = "2026-09-30T13:00:00Z")
+    val live = feed.copy(checkedAt = ModelReleaseFeed.instant(feed.checkedAt)!!.plusSeconds(3600).toString())
     val repository = ModelReleaseRepository(cache, feed) { calls++; live }
     check(!repository.refresh(now = 1).saved)
     repository.refresh(now = 30_001)
@@ -52,7 +52,7 @@ fun main(args: Array<String>) {
     val rollback = ModelReleaseRepository(cache, feed) { feed }
     check(rollback.refresh(now = 1).refreshFailed && disk == live)
     failWrite = true
-    val newer = live.copy(checkedAt = "2026-09-30T14:00:00Z")
+    val newer = live.copy(checkedAt = ModelReleaseFeed.instant(live.checkedAt)!!.plusSeconds(3600).toString())
     check(ModelReleaseRepository(cache, feed) { newer }.refresh(now = 1).feed == newer && disk == live)
     println("Android model releases: validation, checksum, cache, outage and rollback checks passed")
 }

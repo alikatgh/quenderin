@@ -1,4 +1,5 @@
 import path from 'path';
+import { MUSE_SPARK_ARTIFACTS } from './museModelArtifacts.js';
 import os from 'os';
 import { availableMemBytes } from './utils/memory.js';
 import { getHardwareProfile } from './utils/hardware.js';
@@ -48,6 +49,7 @@ export const MODEL_RECOMMENDATIONS = [
  * ramGb = estimated peak RAM footprint including context overhead.
  */
 export const MODEL_CATALOG = [
+
     // Paged MoE: only ~3B of 35B params run per token, so with mmap the OS page cache
     // streams the experts from disk — ramGb is the RESIDENT set (dense spine + hot
     // experts), NOT the 13.2 GB file. Needs a fast SSD; when the file exceeds what the
@@ -76,6 +78,59 @@ export const MODEL_CATALOG = [
         url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true',
         sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
         languages: 'See model card',
+    },
+    {
+        id: 'bonsai2-9b',
+        label: 'Bonsai 2 9B (Experimental)',
+        filename: 'Ternary-Bonsai-2-9B-PTQ1_0.gguf',
+        ramGb: 4.0,
+        sizeLabel: '2.00 GB download',
+        downloadBytes: 1997486976,
+        paramsBillions: 8.95,
+        quantization: 'PTQ1_0',
+        url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/resolve/5b2abb02362efbed46bbe204014b02837778b2c2/Ternary-Bonsai-2-9B-PTQ1_0.gguf?download=true',
+        sha256: '3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b',
+        languages: 'See model card',
+    },
+    {
+        id: 'bonsai2-4b',
+        label: 'Bonsai 2 4B (Experimental)',
+        filename: 'Ternary-Bonsai-2-4B-PTQ1_0.gguf',
+        ramGb: 2.5,
+        sizeLabel: '0.95 GB download',
+        downloadBytes: 949549920,
+        paramsBillions: 4.21,
+        quantization: 'PTQ1_0',
+        url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/8d6557168168f91ea6697a4a49ed2ef622b53adb/Ternary-Bonsai-2-4B-PTQ1_0.gguf?download=true',
+        sha256: '56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60',
+        languages: 'See model card',
+    },
+    {
+        id: 'bonsai2-2b',
+        label: 'Bonsai 2 2B (Experimental)',
+        filename: 'Ternary-Bonsai-2-2B-PTQ1_0.gguf',
+        ramGb: 1.5,
+        sizeLabel: '0.43 GB download',
+        downloadBytes: 429183456,
+        paramsBillions: 1.88,
+        quantization: 'PTQ1_0',
+        url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf?download=true',
+        sha256: '36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa',
+        languages: 'See model card',
+    },
+    {
+        id: 'muse-spark-open-q2-k',
+        label: 'Muse Spark Open Q2_K (Experimental, text only)',
+        filename: 'Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf',
+        ramGb: 330.0,
+        sizeLabel: '304.08 GB download · 22 files',
+        downloadBytes: 304080474208,
+        paramsBillions: 816,
+        quantization: 'Q2_K',
+        url: 'https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF/resolve/ada96652107984f184027153a77ec250d67ed271/Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf',
+        sha256: 'b2eb6f55ee80b4e444fb1bde4dc89d1181fb9d159758307bf91a4118cce8b267',
+        languages: 'See model card',
+        artifacts: MUSE_SPARK_ARTIFACTS,
     },
     {
         id: 'qwen3-14b',
@@ -280,8 +335,18 @@ export function checkMemoryForModel(entry: ModelEntry, runtime?: NodeLlamaRuntim
     const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
     // Smaller models need proportionally less overhead (KV cache is smaller)
-    const overhead = entry.paramsBillions <= 3 ? MODEL_OVERHEAD_MULTIPLIER_BASE : MODEL_OVERHEAD_MULTIPLIER_LARGE;
-    const required = entry.ramGb * overhead;
+    const isBonsai = /bonsai/i.test(`${entry.id} ${entry.label} ${entry.filename} ${entry.url}`);
+    const overhead = entry.paramsBillions <= 3 && !isBonsai ? MODEL_OVERHEAD_MULTIPLIER_BASE : MODEL_OVERHEAD_MULTIPLIER_LARGE;
+    // Smaller Bonsai floors apply only to the pinned catalog artifact. An imported model's
+    // name or claimed RAM cannot inherit the small-model budget from its id alone.
+    const pinnedBonsai = isBonsai ? MODEL_CATALOG.find(model => model.id === entry.id
+        && model.filename === entry.filename && model.url === entry.url
+        && model.sha256 === entry.sha256 && model.quantization === entry.quantization
+        && model.paramsBillions === entry.paramsBillions
+        && ('downloadBytes' in model ? model.downloadBytes : undefined)
+            === ('downloadBytes' in entry ? entry.downloadBytes : undefined)) : undefined;
+    const footprint = isBonsai ? Math.max(pinnedBonsai?.ramGb ?? 7, entry.ramGb) : entry.ramGb;
+    const required = footprint * overhead;
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;
 

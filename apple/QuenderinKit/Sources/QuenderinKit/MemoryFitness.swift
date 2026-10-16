@@ -31,13 +31,19 @@ public enum MemoryFitness {
         freeGB: Double,
         budgetHard: Double = defaultBudgetHard,
         budgetWarning: Double = defaultBudgetWarning,
-        prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai
+        prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai,
+        museRuntimeAvailable: Bool = ModelRuntimeSupport.supportsMuse
     ) -> MemoryCheckResult {
         let overhead = model.paramsBillions <= 3 && !ModelRuntimeSupport.isBonsai(model) ? overheadBase : overheadLarge
         let required = ModelRuntimeSupport.memoryFootprintGB(model) * overhead
         let remaining = freeGB - required
         let usageAfterLoad = (totalGB - freeGB + required) / totalGB
 
+        if ModelRuntimeSupport.isMuse(model), !museRuntimeAvailable {
+            return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
+                                     requiredMemoryGB: required, remainingAfterLoadGB: remaining,
+                                     message: ModelRuntimeSupport.museUnavailableMessage)
+        }
         if ModelRuntimeSupport.requiresPrism(model), !prismRuntimeAvailable {
             return MemoryCheckResult(
                 canLoad: false, severity: .blocked, availableMemoryGB: freeGB,

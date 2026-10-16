@@ -29,6 +29,7 @@ public enum ModelIntegrity {
         defer { try? handle.close() }
         var hasher = SHA256()
         while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            try Task.checkCancellation()
             hasher.update(data: chunk)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
@@ -39,6 +40,7 @@ public enum ModelIntegrity {
     /// `expectedSHA256` is nil/empty only the magic header is checked (still rejects HTML
     /// error pages and truncated files).
     public static func verify(fileURL: URL, expectedSHA256: String?) throws {
+        let identityBeforeHash = ModelArtifactReceipts.Identity.read(fileURL)
         let head = try readHead(fileURL, 4)
         guard hasGGUFMagic(head) else {
             throw ModelIntegrityError.notGGUF(foundMagic: head.map { String(format: "%02x", $0) }.joined())
@@ -47,6 +49,12 @@ public enum ModelIntegrity {
             let actual = try sha256Hex(of: fileURL)
             guard actual.caseInsensitiveCompare(expected) == .orderedSame else {
                 throw ModelIntegrityError.checksumMismatch(expected: expected, actual: actual)
+            }
+            // The transport has already hashed this file. Reuse that proof during set
+            // installation instead of reading hundreds of GB a second time.
+            if let before = identityBeforeHash, let after = ModelArtifactReceipts.Identity.read(fileURL), before == after {
+                let part = ModelArtifact(filename: fileURL.lastPathComponent, url: "", sha256: actual, downloadBytes: after.size)
+                ModelArtifactReceipts.shared.record(part, at: fileURL, identity: after)
             }
         }
     }

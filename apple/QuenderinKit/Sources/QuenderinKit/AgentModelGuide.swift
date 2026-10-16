@@ -97,7 +97,7 @@ public enum AgentModelGuide {
         // just the biggest that fits: a bigger Gemma is a WEAKER agent than a smaller Qwen (the whole
         // point), so "the largest model" would recommend exactly the wrong thing.
         let best = ModelCatalog.models
-            .filter { !ModelRuntimeSupport.requiresPrism($0) }
+            .filter { !ModelRuntimeSupport.requiresPrism($0) && !ModelRuntimeSupport.isMuse($0) }
             .filter(canLoad)
             .max { agentRank($0) < agentRank($1) }
         let bestAptitude = best.map { aptitude(for: $0.id) } ?? activeAptitude

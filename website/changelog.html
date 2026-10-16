@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>What's new — Quenderin changelog</title>
-<meta name="description" content="What changed in Quenderin, in plain language — features, fixes, and the honest reasons behind them. Full detail lives in the open git history." />
+<meta name="description" content="Updates to Quenderin and its website, including features, fixes, and changes to the documentation." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/changelog" />
@@ -26,17 +26,37 @@
 
 <main class="container legal" id="main">
   <h1>What's new</h1>
-  <p class="legal-updated">Plain-language notes, newest first. Every line here maps to real commits in the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">open git history</a> — that's the unabridged version.</p>
+  <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
+
+  <h2 id="2026-10-16">16 October 2026 &middot; Native model update in development</h2>
+  <ul>
+    <li><strong>Bonsai 2 2B, 4B, and 9B.</strong> Added experimental manual choices to the Android, iPhone, and Mac source catalogs, with pinned PTQ1_0 files of 0.43, 0.95, and 2.00 GB.</li>
+    <li><strong>Separate memory estimates.</strong> The smaller models no longer inherit the 27B model’s memory floor. Runtime checks, memory headroom, and the 4,096-token context cap remain in place.</li>
+    <li><strong>Latest releases.</strong> PrismML releases appear in the discovery feed. Catalog entries require both runtime support and memory fit before selection.</li>
+    <li><strong>Muse Spark Open native integration.</strong> Added an experimental text-runtime backport, compiled capability checks, a verified 22-part installer, and final-answer channel filtering. The approximately 304 GB model requires a high-memory machine; it stays out of automatic recommendations.</li>
+    <li><strong>Clear capability limits.</strong> Muse tools, structured-output grammar, vision/audio, distributed execution, and the Electron/CLI adapter remain unavailable. See <a href="blog-muse-engineering">the engineering post and improvement plan</a>.</li>
+  </ul>
+  <p>No weights were downloaded and no simulator or device was run for this update. New signed binaries and store availability are not yet verified. <a href="blog-bonsai-small-muse-spark">Read the blog post</a>.</p>
 
   <h2 id="2026-10-12">12 October 2026 &middot; Experimental model integration</h2>
   <ul>
     <li><strong>Windows and Linux release.</strong> <a href="https://github.com/alikatgh/quenderin/releases/tag/v0.2.1" rel="noopener">Quenderin 0.2.1 installers</a> include the pinned Prism CPU runtime. Both platforms pass packaged-runtime checks; Linux also passes generation with the exact SHA-verified Bonsai model.</li>
-    <li><strong>iPhone and Mac updates submitted.</strong> Native version 0.3.0 (15), including the Prism runtime, is waiting for Apple review on both platforms. Both updates will release automatically after approval. Signed exports passed runtime, catalog, and signature checks in Xcode Cloud.</li>
+    <li><strong>iPhone and Mac updates available.</strong> Native version 0.3.0 (15), including the Prism runtime, is now available on both platforms, verified in App Store Connect on 16 October. Signed exports passed runtime, catalog, and signature checks in Xcode Cloud.</li>
     <li><strong>Bonsai 2 27B in the model library.</strong> Added source integration for PrismML’s compressed Qwen3.8-based model on native Apple, Android, and desktop. The PTQ1_0 language-model file is 5.946&nbsp;GB. Installation and loading require a compatible build with PrismML’s custom runtime.</li>
     <li><strong>Manual selection.</strong> Bonsai is an experimental option you choose in the model library. Existing defaults stay the same, and this addition does not start a download.</li>
     <li><strong>Memory requirements still apply.</strong> The file size is not a device RAM requirement: the app also needs room for context, caches, and working buffers.</li>
   </ul>
-  <p>Bonsai will be available in the iPhone and Mac updates after Apple approval; the current 0.2.0 App Store apps do not include it. Android store distribution remains separate. <a href="blog-bonsai-2">Read about the model and requirements</a>.</p>
+  <p>The iPhone and Mac 0.3.0 App Store apps include Bonsai 2 27B. Android store distribution remains separate. <a href="blog-bonsai-2">Read about the model and requirements</a>.</p>
+
+  <h2 id="2026-10-08">8 October 2026 &middot; Website copy</h2>
+  <p>We’re sorry for the copy we were using. It was too salesy, sometimes jokey, and overstated what the software could do.</p>
+  <ul>
+    <li><strong>A shorter homepage.</strong> The homepage now has a brief introduction and download links. The full page, including screenshots, the model catalog, and explanations, is available under <a href="tell-me-more">Tell me more</a>.</li>
+    <li><strong>Rewritten homepage and shared wording.</strong> Replaced sales slogans with descriptions of local chat, setup, model requirements, and limitations.</li>
+    <li><strong>More precise capability descriptions.</strong> Clarified which features belong to the apps or source CLI, what supported undo can reverse, and which model-related requests use the internet.</li>
+    <li><strong>Updated translations.</strong> Applied the revised wording across all 12 website language dictionaries.</li>
+  </ul>
+  <p>This is a website update, not an app release. <a href="blog-clearer-language">Read our note about the copy changes</a>.</p>
 
   <h2>30 September 2026 &middot; Mac + iPhone</h2>
   <ul>

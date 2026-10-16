@@ -45,6 +45,7 @@ class LlamaEngine(
 
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
+    private var loadedMuse = false
 
     /**
      * Per-send chat decode cap from [ChatTier] (tiny models get 256, full 512). Null → [maxTokens].
@@ -127,13 +128,16 @@ class LlamaEngine(
     }
 
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
-        check(ModelRuntimeSupport.supports(model)) { ModelRuntimeSupport.UNAVAILABLE_MESSAGE }
-        if (ModelRuntimeSupport.requiresPrism(model)) {
+        ModelArtifacts.validate(model)
+        check(ModelRuntimeSupport.supports(model)) { ModelRuntimeSupport.unavailableMessage(model) }
+        if (ModelRuntimeSupport.requiresMemoryGate(model)) {
             val fitness = MemoryFitness.check(model, deviceBudgetGb, deviceBudgetGb)
             check(fitness.canLoad) { fitness.message }
         }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
-        if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null }
+        cancelRequested = false
+        if (model.artifacts.isNotEmpty()) ModelArtifacts.requireComplete(model, filePath) { cancelRequested }
+        if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null; loadedMuse = false; loadedContextTokens = null }
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
         val base = if (threads > 0) threads
         else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
@@ -146,11 +150,17 @@ class LlamaEngine(
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
         val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType).let {
-            if (ModelRuntimeSupport.isBonsai(model)) minOf(it, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS) else it
+            when {
+                ModelRuntimeSupport.isMuse(model) -> minOf(it, ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS)
+                ModelRuntimeSupport.isBonsai(model) -> minOf(it, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
+                else -> it
+            }
         }
-        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers, nativeLibDir)
+        handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers,
+            nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model))
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
+        loadedMuse = ModelRuntimeSupport.isMuse(model)
         // JNI may shrink n_ctx on the q8_0→F16 KV-cache fallback; publish the window that
         // actually exists, not the q8-sized request (otherwise ChatModel trims to a window
         // larger than native and overflows — twin of the Aug-10 llama_jni.cpp n_ctx resize).
@@ -164,11 +174,13 @@ class LlamaEngine(
             handle = 0L
         }
         loadedModelId = null
+        loadedMuse = false
         loadedContextTokens = null
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {
         ensureReady()
+        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -180,6 +192,7 @@ class LlamaEngine(
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
     ): String = synchronized(lock) {
         ensureReady()
+        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
     }
@@ -189,6 +202,7 @@ class LlamaEngine(
      *  per-call token cap; the grammar decode is a separate call. */
     override fun completeThinking(prompt: String, maxTokens: Int): String = synchronized(lock) {
         ensureReady()
+        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -199,6 +213,7 @@ class LlamaEngine(
      */
     override fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
+        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
@@ -223,7 +238,15 @@ class LlamaEngine(
                 }
             }
             val cap = chatMaxTokensOverride ?: maxTokens
-            nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { onToken(it) })
+            if (loadedMuse) {
+                val filter = MuseOutputFilter(onToken)
+                val wire = try {
+                    nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
+                } finally { filter.finish() }
+                MuseOutputFilter.finalText(wire)
+            } else {
+                nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { onToken(it) })
+            }
         }
 
     private fun ensureReady() {
@@ -232,7 +255,7 @@ class LlamaEngine(
     }
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
-    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String): Long
+    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean): Long
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
@@ -250,6 +273,7 @@ class LlamaEngine(
         const val UNAVAILABLE_MSG: String =
             "Native llama.cpp is not linked: build jni/ for this ABI (see android/INTEGRATION.md). " +
                 "Use MockInferenceEngine until then."
+        const val MUSE_CHAT_ONLY_MESSAGE = "Muse Spark currently supports text chat only. Agent reasoning, raw completion and grammar-constrained tools are unavailable for this experimental model."
 
         /**
          * Attempts to load `libquenderin_llama.so` once. On the JVM / off-device this
@@ -258,10 +282,15 @@ class LlamaEngine(
          */
         @JvmStatic
         private external fun nativeSupportsBonsai(): Boolean
+        @JvmStatic
+        private external fun nativeSupportsMuse(): Boolean
 
         /** An old library can load successfully while lacking this symbol. That is unsupported. */
         val supportsBonsaiRuntime: Boolean by lazy {
             NATIVE_AVAILABLE && runCatching { nativeSupportsBonsai() }.getOrDefault(false)
+        }
+        val supportsMuseRuntime: Boolean by lazy {
+            NATIVE_AVAILABLE && runCatching { nativeSupportsMuse() }.getOrDefault(false)
         }
 
         val NATIVE_AVAILABLE: Boolean = try {

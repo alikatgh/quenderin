@@ -28,6 +28,38 @@ test('only standalone text weights are selected; no projector or split-file frag
   assert.equal(chooseQuant(model.siblings).quantization, 'Q4_K_M');
 });
 
+test('Prism ternary releases are discoverable without enabling arbitrary downloads', () => {
+  const prism = { ...model, id: 'prism-ml/Ternary-Bonsai-2-2B-gguf',
+    tags: ['gguf', 'conversational', 'license:apache-2.0', 'base_model:quantized:Qwen/Qwen3.5-2B'],
+    siblings: [{ rfilename: 'mmproj-Q8_0.gguf' },
+      { rfilename: 'Ternary-Bonsai-2-2B-PTQ1_0.gguf' }] };
+  assert.equal(candidate(prism, 'prism-ml').file.quantization, 'PTQ1_0');
+  assert.equal(candidate(prism, 'prism-ml').base, prism.id);
+  assert.equal(chooseQuant([{ rfilename: 'Muse-Spark-Open-Q2_K-00001-of-00022.gguf' }]), null);
+});
+
+test('Prism feed requests metadata only and retains pinned artifact identity', async () => {
+  const prism = { ...model, id: 'prism-ml/Ternary-Bonsai-2-2B-gguf',
+    tags: ['gguf', 'conversational', 'license:apache-2.0'],
+    siblings: [{ rfilename: 'Ternary-Bonsai-2-2B-PTQ1_0.gguf' }] };
+  const seen = [];
+  const data = await discoverReleases(async url => {
+    seen.push(url);
+    if (url.includes('author=prism-ml')) return Response.json([prism]);
+    if (url.includes('author=')) return Response.json([]);
+    if (url.includes('?blobs=')) return Response.json({ sha: revision, siblings: [{
+      rfilename: prism.siblings[0].rfilename, lfs: { sha256: hash, size: 429183456 } }] });
+    return Response.json({ createdAt: '2026-10-15T00:00:00Z' });
+  }, new Date('2026-10-16T00:00:00Z'));
+  assert.equal(data.models[0].sha256, hash);
+  assert.equal(data.models[0].revision, revision);
+  assert.equal(data.models[0].downloadBytes, 429183456);
+  assert.equal(data.models[0].name, 'Ternary-Bonsai-2-2B');
+  assert.equal(data.models[0].createdAt, '2026-10-15T00:00:00Z');
+  assert.ok(seen.every(url => url.startsWith('https://huggingface.co/api/models')));
+  assert.ok(seen.length <= 47);
+});
+
 test('discovery uses original release date, deduplicates mirrors and requires file hash/size', async () => {
   const seen = [];
   const data = await discoverReleases(async (url, options) => {

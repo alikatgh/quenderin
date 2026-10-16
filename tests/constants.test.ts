@@ -69,7 +69,19 @@ describe('MODEL_CATALOG', () => {
             sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
         });
         expect(bonsai.url).toContain('/resolve/b072e1d3b35a0a630cece372c2127528e0994386/');
-        expect(MODEL_CATALOG[2].id).toBe('qwen3-14b');
+        expect(MODEL_CATALOG[5].id).toBe('qwen3-14b');
+    });
+
+    it.each([
+        ['bonsai2-2b', 1.88, 1.5, 429183456, '683f7be2629342a50987627b40881e54761a2430', '36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa'],
+        ['bonsai2-4b', 4.21, 2.5, 949549920, '8d6557168168f91ea6697a4a49ed2ef622b53adb', '56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60'],
+        ['bonsai2-9b', 8.95, 4, 1997486976, '5b2abb02362efbed46bbe204014b02837778b2c2', '3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b'],
+    ])('pins the smaller manual experimental artifact %s', (id, paramsBillions, ramGb, downloadBytes, revision, sha256) => {
+        const entry = MODEL_CATALOG.find(model => model.id === id)!;
+        expect(entry).toMatchObject({ paramsBillions, ramGb, downloadBytes, sha256, quantization: 'PTQ1_0' });
+        expect(entry.label).toContain('(Experimental)');
+        expect(entry.url).toContain(`/resolve/${revision}/${entry.filename}?download=true`);
+        expect(entry.ramGb).toBeGreaterThan(Number(downloadBytes) / 1e9);
     });
 });
 

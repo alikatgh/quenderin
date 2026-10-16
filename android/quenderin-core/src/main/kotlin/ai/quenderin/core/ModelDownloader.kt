@@ -19,8 +19,13 @@ interface ModelDownloader {
      * preflights (disk space, cellular policy) ONLY when a fetch is real, so a model already on
      * disk is never spuriously Wi-Fi-blocked (twin of the Swift install() `if !fileExists` block).
      * Default true (assume a fetch is needed) fails safe — the gates run — and keeps mocks unchanged.
+     * A split-model adapter may return false for a complete structural candidate only when its
+     * subsequent download() verifies offline and rejects drift without starting any network fetch.
      */
     fun needsFetch(model: ModelEntry): Boolean = true
+
+    /** Full-model disk estimate by default; resumable split downloaders credit retained bytes. */
+    fun remainingDownloadBytes(model: ModelEntry): Long = DiskSpace.estimatedDownloadBytes(model)
 }
 
 /** Canned downloader for previews, tests, and bringing up the app before the real one. */

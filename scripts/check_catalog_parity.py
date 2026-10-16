@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """Verify the model catalog is identical across all three platforms.
 
-The same 11 models are hand-maintained in three places:
+The same models are hand-maintained in three places:
   - desktop : src/constants.ts                                  (MODEL_CATALOG)
   - iOS     : apple/QuenderinKit/Sources/QuenderinKit/ModelCatalog.swift
   - Android : android/quenderin-core/src/main/kotlin/ai/quenderin/core/ModelCatalog.kt
 
 Edit one and forget the others, and the platforms recommend DIFFERENT models for the
 same hardware — silently breaking the cross-platform "download → ready" promise. This
-script is the guardrail: it parses each catalog and asserts the set of ids and each
-model's (paramsBillions, quantization) match. Run it in CI / before a release.
+script is the guardrail: catalog membership, parameters, quantization, SHA-256, RAM
+estimate, filename, immutable artifact URL and exact download bytes must match.
+Run it in CI / before a release.
 
-What it does NOT catch: label/filename/url/ramGB drift (those don't change the
-recommendation), and the recommendation thresholds themselves (pinned by each
-platform's own recommender tests). Catalog membership + params + quant is the invariant
-that, together with those tests, guarantees consistent picks.
+Labels and recommendation thresholds are covered by each platform's own tests.
 
 Usage:  python3 scripts/check_catalog_parity.py     # exit 0 = in sync, 1 = drift
 """
@@ -24,7 +22,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -46,8 +44,17 @@ MARKERS = {
     "Android": "val models",
 }
 
-# A model entry: id -> (paramsBillions: float, quantization: str, sha256: Optional[str])
-Catalog = dict[str, tuple[float, str, Optional[str]]]
+class CatalogEntry(NamedTuple):
+    params: float
+    quantization: str
+    sha256: Optional[str]
+    ram_gb: float
+    filename: str
+    url: str
+    download_bytes: Optional[int]
+
+
+Catalog = dict[str, CatalogEntry]
 
 
 def parse_named(text: str) -> Catalog:
@@ -67,7 +74,17 @@ def parse_named(text: str) -> Catalog:
         # Hex is case-insensitive; accept mixed/upper-case and normalize, so a hand-pasted
         # uppercase hash is never read as missing (which would mask drift / trip the integrity gate).
         sm = re.search(r"""sha256:\s*['"]([0-9a-fA-F]{64})['"]""", block)
-        catalog[idm.group(1)] = (float(pm.group(1)), qm.group(1), sm.group(1).lower() if sm else None)
+        rm = re.search(r"""ramG[bB]:\s*([\d.]+)""", block)
+        fm = re.search(r"""filename:\s*['"]([^'"]+)['"]""", block)
+        um = re.search(r"""(?:url|urlString):\s*['"]([^'"]+)['"]""", block)
+        bm = re.search(r"""downloadBytes:\s*([\d_]+)""", block)
+        if not (rm and fm and um):
+            raise ValueError(f"Incomplete artifact metadata for {idm.group(1)}")
+        catalog[idm.group(1)] = CatalogEntry(
+            float(pm.group(1)), qm.group(1), sm.group(1).lower() if sm else None,
+            float(rm.group(1)), fm.group(1), um.group(1),
+            int(bm.group(1).replace("_", "")) if bm else None,
+        )
     return catalog
 
 
@@ -75,12 +92,15 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*[\d.]+\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"[^"]*"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*[\d_]+L?)?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*([\d.]+)\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"([^"]*)"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*([\d_]+)L?)?(?:,\s*artifacts\s*=\s*MuseModelArtifacts\.parts)?\s*\)""",
         text,
     ):
-        mid, params, quant = m.group(1), float(m.group(2)), m.group(3)
         # Normalize hex case so an uppercase Kotlin literal still matches the (lowercase) manifest.
-        catalog[mid] = (params, quant, m.group(4).lower() if m.group(4) else None)
+        catalog[m.group(1)] = CatalogEntry(
+            float(m.group(4)), m.group(5), m.group(7).lower() if m.group(7) else None,
+            float(m.group(3)), m.group(2), m.group(6),
+            int(m.group(8).replace("_", "")) if m.group(8) else None,
+        )
     return catalog
 
 
@@ -103,7 +123,12 @@ def load_canonical() -> Catalog:
     if not CANONICAL.exists():
         sys.exit(f"FATAL: {CANONICAL} not found — run: python3 scripts/export_catalog.py")
     data = json.loads(CANONICAL.read_text(encoding="utf-8"))
-    catalog = {m["id"]: (float(m["paramsBillions"]), m["quantization"], (m.get("sha256") or "").lower() or None) for m in data.get("models", [])}
+    catalog = {
+        m["id"]: CatalogEntry(
+            float(m["paramsBillions"]), m["quantization"], (m.get("sha256") or "").lower() or None,
+            float(m["ramGb"]), m["filename"], m["url"], m.get("downloadBytes"),
+        ) for m in data.get("models", [])
+    }
     if not catalog:
         sys.exit(f"FATAL: {CANONICAL} has no models")
     return catalog
@@ -116,7 +141,7 @@ def check_sha256_pinned(canonical: Catalog) -> bool:
     poisoned-mirror / TLS-MITM case the gate exists to stop. Fail the build here so the magic-only
     branch is only ever a corruption sniff, never the sole defense against a substituted file.
     Run `scripts/refresh_model_hashes.py` to pin a missing hash."""
-    missing = sorted(mid for mid, (_p, _q, sha) in canonical.items() if not sha)
+    missing = sorted(mid for mid, entry in canonical.items() if not entry.sha256)
     if not missing:
         print(f"  ok   integrity: all {len(canonical)} models pin a sha256")
         return True
@@ -124,6 +149,19 @@ def check_sha256_pinned(canonical: Catalog) -> bool:
     for mid in missing:
         print(f"        '{mid}' → integrity would fall back to a forgeable magic-only check")
     return False
+
+
+def check_bonsai_artifacts(canonical: Catalog) -> bool:
+    """Experimental Bonsai artifacts must keep an immutable revision and exact disk budget."""
+    invalid = sorted(mid for mid, entry in canonical.items() if "bonsai" in mid.lower() and (
+        not re.search(r"/resolve/[0-9a-f]{40}/" + re.escape(entry.filename) + r"(?:\?|$)", entry.url)
+        or not isinstance(entry.download_bytes, int) or entry.download_bytes <= 0
+    ))
+    if invalid:
+        print(f"  FAIL Bonsai artifact revision/byte count: {', '.join(invalid)}")
+        return False
+    print("  ok   Bonsai artifacts: immutable revisions and exact download bytes")
+    return True
 
 
 def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
@@ -143,14 +181,37 @@ def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
     for mid in sorted(extra):
         print(f"        extra '{mid}' (in {name}, not the manifest)")
     for mid, (ref, got) in sorted(mismatched.items()):
-        print(f"        '{mid}' params/quant differ: manifest={ref} {name}={got}")
+        print(f"        '{mid}' metadata differs: manifest={ref} {name}={got}")
     return False
+
+
+def check_muse_artifacts() -> bool:
+    """Check every shard and its actual reference, not just the first-file identity."""
+    import generate_muse_artifacts
+    expected = json.loads((ROOT / "shared/muse-spark-artifacts.json").read_text())
+    canonical = json.loads(CANONICAL.read_text())["models"]
+    matches = [m for m in canonical if m["id"] == expected["modelId"]]
+    try:
+        assert len(matches) == 1 and matches[0].get("artifacts") == expected["artifacts"]
+        for name, path in SOURCES.items():
+            text = path.read_text().split('"muse-spark-open-q2-k"' if name != "desktop" else "'muse-spark-open-q2-k'", 1)[1]
+            text = text.split("\n    {", 1)[0] if name == "desktop" else text.split("\n", 1)[0]
+            assert ("artifacts: MUSE_SPARK_ARTIFACTS" if name == "desktop" else
+                    "artifacts: MuseModelArtifacts.parts" if name == "iOS" else
+                    "artifacts = MuseModelArtifacts.parts") in text
+        for path, content in generate_muse_artifacts.outputs().items():
+            assert path.read_text() == content
+    except (AssertionError, IndexError, OSError) as error:
+        print(f"  FAIL Muse artifact references/metadata: {error}")
+        return False
+    print("  ok   Muse artifacts: all 22 parts and native references match")
+    return True
 
 
 def main() -> int:
     canonical = load_canonical()
     print(f"Catalog parity — canonical: shared/model-catalog.json ({len(canonical)} models)\n")
-    ok = check_sha256_pinned(canonical)
+    ok = check_sha256_pinned(canonical) and check_bonsai_artifacts(canonical) and check_muse_artifacts()
     for name, path in SOURCES.items():
         ok = compare(name, load(name, path), canonical) and ok
 

@@ -1,16 +1,20 @@
 // Public model metadata only. No request headers, visitor data, prompts or credentials
 // are forwarded to Hugging Face. Discovery is separate from the trusted app catalog.
-export const PUBLISHERS = ['unsloth', 'Qwen', 'bartowski', 'ggml-org'];
+export const PUBLISHERS = ['unsloth', 'Qwen', 'bartowski', 'ggml-org', 'prism-ml'];
 const ALLOWED_TASKS = new Set(['text-generation', 'image-text-to-text']);
 const MODEL_AUTHORS = new Set(['Qwen', 'google', 'meta-llama', 'microsoft', 'mistralai',
-  'deepseek-ai', 'LiquidAI', 'openbmb', 'nvidia', 'NVIDIA', 'openai']);
+  'deepseek-ai', 'LiquidAI', 'openbmb', 'nvidia', 'NVIDIA', 'openai', 'prism-ml']);
 const EXCLUDED = /(?:diffusion|embedding|rerank|base(?:[-_.]|$)|image-edit|image-generation|livet[r]?anslate|tts|speech|audio|mtp(?:[-_.]|$))/i;
+// Publisher announcement dates, not the earlier private repository/base-model dates.
+// https://prismml.com/news/bonsai-2-family (15 October 2026)
+const ANNOUNCED_RELEASES = new Map(['2B', '4B', '9B'].map(size =>
+  [`prism-ml/Ternary-Bonsai-2-${size}-gguf`, '2026-10-15T00:00:00Z']));
 
 export function chooseQuant(siblings = []) {
   const files = siblings.filter(f => typeof f.rfilename === 'string'
     && /\.gguf$/i.test(f.rfilename)
     && !/(?:mmproj|imatrix|mtp|000\d+-of-)/i.test(f.rfilename));
-  for (const quant of ['Q4_K_M', 'UD-Q4_K_XL', 'UD-Q4_K_M', 'Q4_0']) {
+  for (const quant of ['PTQ1_0', 'Q4_K_M', 'UD-Q4_K_XL', 'UD-Q4_K_M', 'Q4_0']) {
     const file = files.find(f => f.rfilename.toUpperCase().endsWith('-' + quant + '.GGUF')
       || f.rfilename.toUpperCase().endsWith('.' + quant + '.GGUF'));
     if (file) return { ...file, quantization: quant };
@@ -29,7 +33,8 @@ export function candidate(model, publisher) {
   if (!Number.isFinite(created) || created > Date.now() + 86400000) return null;
   const file = chooseQuant(model.siblings);
   if (!file) return null;
-  const base = tags.find(t => typeof t === 'string' && t.startsWith('base_model:quantized:'))?.slice(21)
+  // Bonsai is a distinct trained model, not just another quant of its Qwen base.
+  const base = publisher === 'prism-ml' ? id : tags.find(t => typeof t === 'string' && t.startsWith('base_model:quantized:'))?.slice(21)
     || tags.find(t => typeof t === 'string' && /^base_model:[^:]+\//.test(t))?.slice(11) || id;
   if (!/^[\w.-]+\/[\w.-]+$/.test(base) || !MODEL_AUTHORS.has(base.split('/')[0]) || EXCLUDED.test(base)) return null;
   return { id, base, createdAt: model.createdAt, file, tags };
@@ -77,8 +82,9 @@ export async function discoverReleases(fetcher = fetch, now = new Date()) {
     if (!Number.isFinite(bytes) || bytes < 200000000 || bytes > 24000000000
         || !/^[a-f0-9]{64}$/i.test(sha || '') || !/^[a-f0-9]{40}$/i.test(revision || '')
         || !Number.isFinite(Date.parse(base.createdAt)) || Date.parse(base.createdAt) > now.getTime() + 86400000) return null;
-    return { id: m.id, name: m.base.split('/')[1], baseModel: m.base,
-      sourceUrl: 'https://huggingface.co/' + m.id, createdAt: base.createdAt, ggufPublishedAt: m.createdAt,
+    const name = m.id.startsWith('prism-ml/') ? m.id.split('/')[1].replace(/-gguf$/i, '') : m.base.split('/')[1];
+    return { id: m.id, name, baseModel: m.base,
+      sourceUrl: 'https://huggingface.co/' + m.id, createdAt: ANNOUNCED_RELEASES.get(m.id) || base.createdAt, ggufPublishedAt: m.createdAt,
       quantization: m.file.quantization, downloadBytes: bytes, sha256: sha.toLowerCase(), revision,
       filename: m.file.rfilename, license: m.tags.find(t => t.startsWith('license:'))?.slice(8) || 'see model card',
       status: 'discovered' };

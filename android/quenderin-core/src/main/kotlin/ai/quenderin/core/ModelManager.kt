@@ -58,16 +58,16 @@ class FileModelStorage(private val directory: java.io.File) : ModelStorage {
 class ModelManager(
     private val storage: ModelStorage,
     initialActiveModelId: String? = null,
+    private val catalog: List<ModelEntry> = ModelCatalog.models,
 ) {
     var activeModelId: String? = initialActiveModelId
         private set
 
     /** Installed catalog models — active first, then largest first, then by id for stability. */
     fun installed(): List<InstalledModel> {
-        val present = storage.installedFilenames().toSet()
-        return ModelCatalog.models
-            .filter { present.contains(it.filename) }
-            .map { InstalledModel(it, storage.sizeBytes(it.filename), it.id == activeModelId) }
+        return catalog
+            .filter { isInstalled(it.id) }
+            .map { InstalledModel(it, ModelArtifacts.filenames(it).sumOf(storage::sizeBytes), it.id == activeModelId) }
             .sortedWith(
                 compareByDescending<InstalledModel> { it.isActive }
                     .thenByDescending { it.sizeBytes }
@@ -75,20 +75,31 @@ class ModelManager(
             )
     }
 
+    /** Structural storage state for Settings, never a load-ready or integrity claim. The download
+     * and engine gates independently verify all shard hashes on their background execution path. */
     fun isInstalled(id: String): Boolean {
-        val entry = ModelCatalog.entry(id) ?: return false
-        return storage.installedFilenames().contains(entry.filename)
+        val entry = catalog.firstOrNull { it.id == id } ?: return false
+        if (runCatching { ModelArtifacts.validate(entry) }.isFailure) return false
+        val present = storage.installedFilenames().toSet()
+        if (entry.artifacts.isEmpty()) return present.contains(entry.filename)
+        return entry.artifacts.all { part ->
+            present.contains(part.filename) && storage.sizeBytes(part.filename) == part.downloadBytes
+        }
     }
 
-    /** Total bytes used by all installed models. */
-    val totalBytesUsed: Long get() = installed().sumOf { it.sizeBytes }
+    /** Bytes used by catalog shards and retained partial downloads, including incomplete sets. */
+    val totalBytesUsed: Long get() = catalog.sumOf(::bytesForModel)
 
     /** Bytes freeable without touching the active model. */
-    val reclaimableBytes: Long get() = installed().filter { !it.isActive }.sumOf { it.sizeBytes }
+    val reclaimableBytes: Long get() = catalog.filter { it.id != activeModelId }.sumOf(::bytesForModel)
+
+    private fun bytesForModel(model: ModelEntry): Long = ModelArtifacts.filenames(model).sumOf {
+        storage.sizeBytes(it) + storage.sizeBytes("$it.part")
+    }
 
     /** Make an installed model the active one. No-op returning false if it isn't installed. */
     fun setActive(id: String): Boolean {
-        val entry = ModelCatalog.entry(id) ?: return false
+        val entry = catalog.firstOrNull { it.id == id } ?: return false
         if (!ModelRuntimeSupport.supports(entry) || !isInstalled(id)) return false
         activeModelId = id
         return true
@@ -96,13 +107,15 @@ class ModelManager(
 
     /**
      * Delete a model's file to reclaim space; returns bytes reclaimed. Deleting the active model
-     * clears [activeModelId] (the app must load another). 0 if it isn't installed.
+     * clears [activeModelId] (the app must load another). Also reclaims incomplete shard sets.
      */
     fun delete(id: String): Long {
-        val entry = ModelCatalog.entry(id) ?: return 0L
-        if (!isInstalled(id)) return 0L
-        val freed = storage.sizeBytes(entry.filename)
-        storage.delete(entry.filename)
+        val entry = catalog.firstOrNull { it.id == id } ?: return 0L
+        val freed = bytesForModel(entry)
+        ModelArtifacts.filenames(entry).forEach {
+            storage.delete(it)
+            storage.delete("$it.part")
+        }
         if (activeModelId == id) activeModelId = null
         return freed
     }
