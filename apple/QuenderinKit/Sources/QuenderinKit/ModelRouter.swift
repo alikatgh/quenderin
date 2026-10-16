@@ -178,12 +178,13 @@ public enum ModelRouter {
         freeRAMGB: Double,
         languageCode: String? = nil
     ) -> RouteDecision? {
-        guard !installed.isEmpty else { return nil }
+        let eligible = installed.filter { !ModelRuntimeSupport.isMuse($0) }
+        guard !eligible.isEmpty else { return nil }
         let task = classify(prompt)
-        let loadable = installed.filter {
+        let loadable = eligible.filter {
             MemoryFitness.check(model: $0, totalGB: totalRAMGB, freeGB: freeRAMGB).canLoad
         }
-        let pool = loadable.isEmpty ? installed : loadable
+        let pool = loadable.isEmpty ? eligible : loadable
 
         for family in preferredFamilies(for: task) {
             let candidates = pool.filter { $0.id.hasPrefix(family) }

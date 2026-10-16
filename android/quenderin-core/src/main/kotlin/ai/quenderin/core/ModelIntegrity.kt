@@ -25,16 +25,18 @@ object ModelIntegrity {
 
     /** Streaming lowercase-hex SHA-256 of [file] (constant memory) — the production path for
      *  model files; twin of desktop `sha256File` and iOS `sha256Hex(of:)`. */
-    fun sha256Hex(file: File): String {
+    fun sha256Hex(file: File, isCancelled: () -> Boolean = { false }): String {
         val md = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buf = ByteArray(1 shl 16)
             while (true) {
+                if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
                 val n = input.read(buf)
                 if (n < 0) break
                 md.update(buf, 0, n)
             }
         }
+        if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 

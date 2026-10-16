@@ -12,6 +12,26 @@ if(NOT DEFINED LLAMA_DIR)
     set(LLAMA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp")
 endif()
 
+# Enabling Bonsai requires the actual pinned fork, including its Hadamard loader.
+# A stock build remains usable for all existing catalog entries.
+option(QUENDERIN_PRISM_RUNTIME "Build the pinned Prism Bonsai runtime" OFF)
+if(QUENDERIN_PRISM_RUNTIME)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prepare_prism_runtime.py"
+                verify --source "${LLAMA_DIR}"
+        RESULT_VARIABLE _PRISM_VERIFY_RESULT
+        OUTPUT_VARIABLE _PRISM_PROVENANCE
+        ERROR_VARIABLE _PRISM_VERIFY_ERROR)
+    if(NOT _PRISM_VERIFY_RESULT EQUAL 0)
+        message(FATAL_ERROR "Pinned Prism runtime verification failed: ${_PRISM_VERIFY_ERROR}")
+    endif()
+    string(JSON _MUSE_RUNTIME_ABI ERROR_VARIABLE _MUSE_ABI_ERROR GET "${_PRISM_PROVENANCE}" museSparkABI)
+    if(_MUSE_ABI_ERROR OR NOT _MUSE_RUNTIME_ABI EQUAL 1)
+        message(FATAL_ERROR "Pinned Muse source-patch verification is missing")
+    endif()
+endif()
+
 # Mobile-friendly llama.cpp options (no host tools/tests).
 set(LLAMA_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -63,6 +83,9 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size
 add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 
 add_library(quenderin_llama SHARED llama_jni.cpp)
+if(QUENDERIN_PRISM_RUNTIME)
+    target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_PRISM_LLAMA=1 QUENDERIN_MUSE_LLAMA=1)
+endif()
 # ggml/include for ggml-backend.h (runtime CPU-variant pick) + ggml-cpu.h (pinned threadpool).
 target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)
 # llama.cpp replaced use_mmap/use_mlock with load_mode — detect so llama_jni.cpp can compile against
@@ -75,6 +98,9 @@ if(EXISTS "${LLAMA_DIR}/include/llama.h")
         message(STATUS "quenderin: llama.cpp load_mode API detected")
     else()
         message(STATUS "quenderin: llama.cpp legacy use_mmap/use_mlock API")
+    endif()
+    if(_QUENDERIN_LLAMA_H MATCHES "llama_sampler_init_penalties\\([^)]*n_vocab")
+        target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_LLAMA_PENALTIES_VOCAB=1)
     endif()
 endif()
 # Do NOT link ggml-cpu: with BACKEND_DL the CPU kernels are separate libggml-cpu-android_armv*.so

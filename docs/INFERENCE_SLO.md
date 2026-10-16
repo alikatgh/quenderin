@@ -57,3 +57,38 @@ scripts/bench_inference.sh android             # attached phone; refuses above 3
 
 Append new rows to `docs/BENCH_BASELINE.md` and re-grade the table above. A target that regresses is a bug:
 journal it (`docs/BUG_JOURNAL.md`) with the number.
+
+## Bounded prompt processing — 30 September 2026
+
+The Swift and Android generation adapters now check cancellation before and after
+**each** prompt batch, including the final batch. Apple sets `n_batch` and
+`n_ubatch` to at most 512 tokens, matching the Android load path, and clamps them
+again after an F16 KV-cache retry. A stopped partial prefill clears the native
+cache and the token mirror; Stop does not become a generation-failure banner.
+Swift borrows token ranges directly instead of allocating a copy per batch.
+
+This uses the existing llama.cpp batch API. Its [public header](https://github.com/ggml-org/llama.cpp/blob/master/include/llama.h)
+distinguishes logical and physical batches and documents the abort callback as
+CPU-only. The Metal path therefore stops **between** native calls; it does not
+claim immediate GPU interruption, faster tokens, or measured latency gains.
+
+Targeted regression checks cover Stop before/during/final batch, native failure,
+remainder handling, native batch limits, and empty input. Run the Swift test in
+QuenderinKit with `swift test --filter PromptBatchDecoderTests`; the small C++
+loop check is:
+
+```bash
+clang++ -std=c++17 -Wall -Wextra -Werror android/tools/prompt-batch-test.cpp -o /tmp/quenderin-prompt-batch-test
+/tmp/quenderin-prompt-batch-test
+```
+
+Before store submission: compile each linked native target, then use the existing
+benchmark harness on a cool device to compare long-prompt Stop latency, TTFT,
+peak memory, and multi-turn output against the same model and baseline. The
+model-free checks establish loop behavior, not live engine performance.
+
+Validation on this change: the six Swift batch tests passed in an isolated
+package using the actual helper and XCTest file; the C++ regression executable
+passed; the full Apple library built with its local llama.xcframework; and the
+Android smoke source passed `clang++ -fsyntax-only` against the vendored headers.
+No iOS/Android device latency benchmark or store build was run.

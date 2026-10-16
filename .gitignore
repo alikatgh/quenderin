@@ -70,3 +70,7 @@ quenderin.json
 # TypeScript incremental build cache — regenerated on every build, must not be tracked
 tsconfig.tsbuildinfo
 **/tsconfig.tsbuildinfo
+
+# Fresh-checkout Xcode Cloud scratch; generated tools/runtime are never source.
+/.quenderin-cloud-tools/
+/.quenderin-cloud-prism-work/

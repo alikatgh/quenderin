@@ -104,7 +104,7 @@ fun main() {
         listOf(0.5, 2.0, 3.5, 8.0, 18.0, 64.0).all { ModelCatalog.entry(ModelRecommender.recommendedModelId(it)) != null })
 
     // --- Catalog integrity ---
-    check("13 models across families", ModelCatalog.models.size == 13)
+    check("18 models across families", ModelCatalog.models.size == 18)
     check("smallest is the ultra-light", ModelCatalog.smallest.id == "llama32-1b-q2")
     check("every model uses a known quant", ModelCatalog.models.all { Quantization.info(it.quantization) != null })
     check("catalog spans 6 families", listOf("qwen3-14b", "deepseek-r1-7b", "gemma3-4b", "phi4-mini", "mistral-7b", "llama3-8b").all { ModelCatalog.entry(it) != null })
@@ -155,6 +155,7 @@ fun main() {
                 val fit = AndroidModelSelector.fitness(m, eight)
                 val required = AndroidModelSelector.estimatedRuntimeGb(m)
                 val expected = when {
+                    !ModelRuntimeSupport.supports(m) -> MemorySeverity.BLOCKED
                     required > usable -> MemorySeverity.BLOCKED
                     usable - required >= required * AndroidModelSelector.COMFORT_HEADROOM_FRACTION -> MemorySeverity.SAFE
                     else -> MemorySeverity.WARNING
@@ -351,14 +352,49 @@ fun main() {
     onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))
     check("onboarding reaches Ready", onboarding.phase is OnboardingPhase.Ready)
     check("onboarding streamed Downloading progress", phases.any { it is OnboardingPhase.Downloading })
+    check("onboarding distinguishes retained-file verification from transfer progress", run {
+        val observed = mutableListOf<OnboardingPhase>()
+        val stages = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String =
+                error("The stage-aware flow must be used")
+            override fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String {
+                onProgress(ModelDownloadProgress.Verifying(0, 22))
+                onProgress(ModelDownloadProgress.Verifying(17, 22))
+                onProgress(ModelDownloadProgress.Verifying(22, 22))
+                onProgress(ModelDownloadProgress.Downloading(0.75))
+                return "/tmp/staged-model.gguf"
+            }
+        }
+        val staged = OnboardingModel(MockInferenceEngine(), stages, onChange = { observed += it })
+        staged.acceptAndPrepare(ModelCatalog.smallest)
+        observed.filterIsInstance<OnboardingPhase.Verifying>().map { it.checkedFiles } == listOf(0, 17, 22) &&
+            observed.filterIsInstance<OnboardingPhase.Verifying>().all { it.totalFiles == 22 } &&
+            observed.filterIsInstance<OnboardingPhase.Downloading>().map { it.fraction } == listOf(0.0, 0.75) &&
+            observed.last() is OnboardingPhase.Ready
+    })
+    check("cancelling verification returns to the model recommendation", run {
+        val verifying = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String =
+                error("The stage-aware flow must be used")
+            override fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String {
+                onProgress(ModelDownloadProgress.Verifying(3, 22))
+                throw DownloadCancelledException("Verification cancelled")
+            }
+        }
+        val cancelled = OnboardingModel(MockInferenceEngine(), verifying)
+        cancelled.start { DeviceProfile(totalRamGB = 8.0, freeRamGB = 8.0) }
+        val recommendation = cancelled.phase
+        cancelled.acceptAndPrepare(ModelCatalog.smallest)
+        cancelled.phase == recommendation
+    })
     check("onboarding fails cleanly when even the recommended model can't fit", run {
         val tight = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
         tight.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }
         tight.phase is OnboardingPhase.Failed
     })
     check("a failed model switch restores the previously-working model (H1)", run {
-        val a = ModelCatalog.models[0]
-        val b = ModelCatalog.models.first { it.id != a.id }
+        val a = ModelCatalog.entry("qwen3-4b")!!
+        val b = ModelCatalog.entry("qwen3-14b")!!
         // Engine that loads anything except b, which throws — exercises failed-switch recovery.
         val engine = object : InferenceEngine {
             override var loadedModelId: String? = null
@@ -1452,10 +1488,9 @@ fun main() {
     check("download aborts on cancel, preserving the .part and marking PAUSED for resume", run {
         val sink = FakeFileSink()
         val store = DownloadStore()
-        var checks = 0
         val engine = ModelDownloadEngine(
             FakeHttpRangeClient(payload, supportsResume = true), sink, store, "/models",
-            isCancelled = { checks++ >= 2 } // let two chunks land, then cancel
+            isCancelled = { sink.existingSize(partFile) >= 16L } // let two actual chunks land, then cancel
         )
         val result = runCatching { engine.download(sampleModel) {} }
         val part = sink.files[partFile]

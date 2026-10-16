@@ -23,17 +23,19 @@ public struct ModelsLibraryView: View {
 
     /// The page's information order: what you HAVE, what you SHOULD get, what you COULD get,
     /// what you CAN'T — each its own captioned section, never one undifferentiated dump.
-    private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry]) {
-        let recommendedID = ModelRecommender.bestInstallableModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB).id
+    private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry], unavailable: [ModelEntry]) {
+        let recommendedID = recommendedModelID
         var mine: [ModelEntry] = [], recommended: [ModelEntry] = []
-        var available: [ModelEntry] = [], blocked: [ModelEntry] = []
+        var available: [ModelEntry] = [], blocked: [ModelEntry] = [], unavailable: [ModelEntry] = []
         for entry in ModelCatalog.models {
             let state = library.state(of: entry)
-            if state == .installed || { if case .downloading = state { return true }; return false }() {
+            if state == .installed || state == .verifying || { if case .downloading = state { return true }; return false }() {
                 mine.append(entry)   // downloading = arriving — it belongs with "yours"
+            } else if !ModelRuntimeSupport.supports(entry) {
+                unavailable.append(entry)
             } else if entry.id == recommendedID {
                 recommended.append(entry)
-            } else if MemoryFitness.check(for: entry).canLoad {
+            } else if fitness(entry).canLoad {
                 available.append(entry)
             } else {
                 blocked.append(entry)
@@ -50,7 +52,7 @@ public struct ModelsLibraryView: View {
             if (a.id == activeModelID) != (b.id == activeModelID) { return a.id == activeModelID }
             return a.paramsBillions > b.paramsBillions
         }
-        return (mine, recommended, available, blocked)
+        return (mine, recommended, available, blocked, unavailable)
     }
 
     public var body: some View {
@@ -66,25 +68,32 @@ public struct ModelsLibraryView: View {
                 }
                 if !groups.recommended.isEmpty {
                     sectionHeader("Recommended", color: p.primary, palette: p,
-                                  hint: "The largest model that loads comfortably in this \(deviceNoun)'s \(Int(HardwareProbe.current().totalRAMGB)) GB of memory — the best answers it can run without slowdowns. Picked by the same live check that grades every card's fit badge.")
+                                  hint: "A starting point from this app's catalog. iPhone selection accounts for the app's memory budget and estimated speed; Mac selection accounts for memory fit. Task suggestions use the models you have installed. Fit and speed are estimates, not device benchmarks.")
                     grid(groups.recommended, palette: p)
                 }
                 if !groups.available.isEmpty {
                     sectionHeader("Available to download", color: p.onSurfaceVariant, palette: p)
                     grid(groups.available, palette: p)
                 }
+                LatestModelsView(onSelect: onSelectModel)
                 if !groups.blocked.isEmpty {
                     // Can't-run models sink to the bottom, dimmed by their own cards' fit state.
                     sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant, palette: p)
                     grid(groups.blocked, palette: p)
                 }
+                if !groups.unavailable.isEmpty {
+                    sectionHeader("Unavailable in this build", color: p.onSurfaceVariant, palette: p)
+                    grid(groups.unavailable, palette: p)
+                }
 
-                Text("Installed is not the same as loadable: models load one at a time, and RAM decides which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
+                Text("Installed is not the same as loadable: models load one at a time, and memory and engine compatibility determine which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
 
                 // Open Hub + local filter live on the Search rail/tab — not buried under this grid.
-                Text("Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.")
+                Text(LocalizedStringKey(deviceNoun == "Mac"
+                     ? "Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place."
+                     : "Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 4)
@@ -107,6 +116,8 @@ public struct ModelsLibraryView: View {
                             importMessage = "\(name) isn't in the catalog yet, so Quenderin can't load it. Custom models are on the roadmap — nothing was copied."
                         case .invalid(let name):
                             importMessage = "\(name) doesn't look like a valid GGUF file — nothing was imported."
+                        case .unavailable(let reason):
+                            importMessage = reason
                         }
                     }
                 }
@@ -163,14 +174,14 @@ public struct ModelsLibraryView: View {
 
     @ViewBuilder
     private func grid(_ entries: [ModelEntry], palette p: QuenderinPalette) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 14, alignment: .top)],
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: deviceNoun == "Mac" ? 380 : 280), spacing: 14, alignment: .top)],
                   alignment: .leading, spacing: 14) {
             ForEach(entries) { entry in
                 LibraryRow(
                     entry: entry,
                     state: library.state(of: entry),
                     isActive: entry.id == activeModelID,
-                    fitness: MemoryFitness.check(for: entry),
+                    fitness: fitness(entry),
                     palette: p,
                     onDownload: { library.download(entry) },
                     onCancel: { library.cancel(entry) },
@@ -181,6 +192,22 @@ public struct ModelsLibraryView: View {
                 )
             }
         }
+    }
+
+    private var recommendedModelID: String {
+        #if os(iOS)
+        IPhoneModelSelector.selectForThisDevice().model.id
+        #else
+        ModelRecommender.bestInstallableModel(forTotalRAMGB: HardwareProbe.current().totalRAMGB).id
+        #endif
+    }
+
+    private func fitness(_ model: ModelEntry) -> MemoryCheckResult {
+        #if os(iOS)
+        IPhoneModelSelector.fitness(of: model, for: DeviceProfiler.current())
+        #else
+        MemoryFitness.check(for: model)
+        #endif
     }
 
     @State private var showRecommendedHint = false
@@ -202,7 +229,7 @@ public struct ModelsLibraryView: View {
                 .help("Why this one?")
                 .accessibilityLabel("Why is this recommended?")
                 .popover(isPresented: $showRecommendedHint, arrowEdge: .bottom) {
-                    Text(hint)
+                    Text(LocalizedStringKey(hint))
                         .font(.callout)
                         .padding(14)
                         .frame(width: 300, alignment: .leading)
@@ -254,6 +281,10 @@ private struct LibraryRow: View {
     let sizeOnDisk: Int64
     @State private var hovering = false
 
+    private var runtimeBlockReason: String? {
+        ModelRuntimeSupport.supports(entry) ? nil : ModelRuntimeSupport.unavailableReason(for: entry)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             ModelAvatar(size: 40, modelID: entry.id)
@@ -263,7 +294,7 @@ private struct LibraryRow: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(palette.onSurface)
                         .lineLimit(1)
-                    FitDot(fitness: fitness, palette: palette)
+                    FitDot(fitness: fitness, runtimeUnavailable: runtimeBlockReason != nil, palette: palette)
                 }
                 Text(modelBlurb(entry.id))
                     .font(.caption)
@@ -274,6 +305,12 @@ private struct LibraryRow: View {
                      : "\(entry.sizeLabel) · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(palette.onSurfaceVariant)
+                if let reason = runtimeBlockReason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 12)
             switch state {
@@ -287,8 +324,8 @@ private struct LibraryRow: View {
                     } else {
                         Button("Use") { onUse() }
                             .buttonStyle(.bordered)
-                            .disabled(!fitness.canLoad)
-                            .help(fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)")
+                            .disabled(!fitness.canLoad || runtimeBlockReason != nil)
+                            .help(runtimeBlockReason ?? (fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)"))
                     }
                     // Manage the file where you SEE the file — not only in Settings → Storage.
                     Menu {
@@ -312,6 +349,13 @@ private struct LibraryRow: View {
                     .fixedSize()
                     .accessibilityLabel("Actions for \(entry.label)")
                 }
+            case .verifying:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying files").font(.caption)
+                    Button { onCancel() } label: { Image(systemName: "xmark.circle") }
+                        .buttonStyle(.plain).accessibilityLabel("Cancel verification")
+                }
             case .downloading(let fraction):
                 HStack(spacing: 8) {
                     ProgressView(value: fraction).frame(width: 90)
@@ -322,11 +366,16 @@ private struct LibraryRow: View {
             case .notInstalled:
                 Button { onDownload() } label: { Label("Download", systemImage: "arrow.down.circle") }
                     .buttonStyle(.bordered)
+                    .disabled(runtimeBlockReason != nil)
             case .failed(let reason):
                 VStack(alignment: .trailing, spacing: 4) {
                     Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
                         .buttonStyle(.bordered)
                         .tint(.orange)
+                        .disabled(runtimeBlockReason != nil)
+                    if sizeOnDisk > 0, !isActive {
+                        Button("Delete…", role: .destructive) { onDelete() }
+                    }
                     if let reason {   // Q-271: say WHY (e.g. blocked on cellular), don't just offer a bare Retry
                         Text(reason)
                             .font(.caption2)
@@ -354,7 +403,7 @@ private struct LibraryRow: View {
             Button("Show details…") { onOpen() }
             switch state {
             case .installed:
-                if !isActive, fitness.canLoad { Button("Use this model") { onUse() } }
+                if !isActive, fitness.canLoad, runtimeBlockReason == nil { Button("Use this model") { onUse() } }
                 #if os(macOS)
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting(
@@ -368,6 +417,10 @@ private struct LibraryRow: View {
                 }
             case .notInstalled, .failed:
                 Button("Download") { onDownload() }
+                    .disabled(runtimeBlockReason != nil)
+                if sizeOnDisk > 0, !isActive { Button("Delete…", role: .destructive) { onDelete() } }
+            case .verifying:
+                Button("Cancel verification") { onCancel() }
             case .downloading:
                 Button("Cancel download") { onCancel() }
             }
@@ -382,17 +435,18 @@ private struct LibraryRow: View {
 /// The picker's status-dot fit language, compact: green Fits · orange Tight · red Too big.
 private struct FitDot: View {
     let fitness: MemoryCheckResult
+    let runtimeUnavailable: Bool
     let palette: QuenderinPalette
 
     var body: some View {
-        let (color, word): (Color, String) = !fitness.canLoad
+        let (color, word): (Color, String) = runtimeUnavailable ? (.red, "Unavailable") : !fitness.canLoad
             ? (.red, "Too big")
             : fitness.severity == .safe ? (palette.status, "Fits") : (Color(hex: 0xE8963A), "Tight")
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(word).font(.caption2).foregroundStyle(palette.onSurfaceVariant)
         }
-        .accessibilityLabel("Memory fit: \(word)")
+        .accessibilityLabel(runtimeUnavailable ? "Unavailable in this build" : "Memory fit: \(word)")
     }
 }
 
@@ -410,6 +464,7 @@ final class ModelLibraryController: ObservableObject {
         case notInstalled
         case downloading(Double)
         case installed
+        case verifying
         /// Optional reason shown to the user — the network gate (Q-271) fills it ("on cellular…"),
         /// a transport failure leaves it nil (the generic Retry affordance is enough).
         case failed(String?)
@@ -420,6 +475,7 @@ final class ModelLibraryController: ObservableObject {
         case installed(String)      // catalog label — file matched a known model
         case notInCatalog(String)   // filename — we don't quietly hoard disk with unloadable files
         case invalid(String)        // filename — failed the GGUF magic check
+        case unavailable(String)    // runtime or app-memory budget rejected before file IO
     }
 
     var activeDownloadCount: Int {
@@ -442,20 +498,33 @@ final class ModelLibraryController: ObservableObject {
     /// AND after the copy; a bad copy is deleted, never listed.
     func importGGUF(at url: URL) async -> ImportResult {
         let name = url.lastPathComponent
-        guard let entry = ModelCatalog.models.first(where: { $0.filename == name }) else {
+        // Recognize unknown/sideloaded Prism filenames as well as curated entries before checksum IO.
+        if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: url) {
+            return .unavailable(reason)
+        }
+        guard let entry = ModelCatalog.models.first(where: { ModelArtifactSet.filenames($0).contains(name) }) else {
             return .notInCatalog(name)
+        }
+        if let reason = experimentalModelBlockReason(entry) { return .unavailable(reason) }
+        // Split imports require a complete colocated set; copying a metadata-only first shard
+        // must never create an apparently usable model. The download installer handles sets.
+        if ModelArtifactSet.isMultipart(entry) {
+            return .unavailable("This model contains multiple files. Use Download to install and verify the complete set.")
         }
         // The file matched a catalog entry — hold it to that entry's pinned SHA-256 (Q-010),
         // not just the GGUF magic. A tampered or mismatched-quant file with the right NAME must
         // not be trusted as the catalog model. verify() falls back to magic-only when the entry
         // pins no checksum, so an unpinned catalog model still imports.
-        guard (try? ModelIntegrity.verify(fileURL: url, expectedSHA256: entry.sha256)) != nil else {
+        do {
+            try verifyImportedFile(url, entry.sha256)
+        } catch {
             return .invalid(name)
         }
         states[entry.id] = .downloading(0)
         let destination = modelsDir.appendingPathComponent(entry.filename)
         let dir = modelsDir
         let expectedSHA = entry.sha256
+        let verifyImportedFile = self.verifyImportedFile
         let copied: Bool = await Task.detached(priority: .userInitiated) {
             do {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -463,7 +532,7 @@ final class ModelLibraryController: ObservableObject {
                     try FileManager.default.removeItem(at: destination)
                 }
                 try FileManager.default.copyItem(at: url, to: destination)
-                try ModelIntegrity.verify(fileURL: destination, expectedSHA256: expectedSHA)
+                try verifyImportedFile(destination, expectedSHA)
                 return true
             } catch {
                 try? FileManager.default.removeItem(at: destination)
@@ -476,6 +545,7 @@ final class ModelLibraryController: ObservableObject {
 
     @Published private(set) var states: [String: ModelState] = [:]
     private var tasks: [String: Task<Void, Never>] = [:]
+    private var verificationTasks: [String: Task<Void, Never>] = [:]
     private let downloader: ModelDownloader
     private let modelsDir: URL
     /// The library's eyes: primary dir + (for the production default) the legacy App Support dir —
@@ -487,13 +557,18 @@ final class ModelLibraryController: ObservableObject {
     /// for tests; live by default via a captured monitor so the gate bites on-device with no wiring.
     private let networkStatus: () -> NetworkStatus
     private let downloadPolicy: () -> DownloadPolicy
+    private let verifyImportedFile: @Sendable (URL, String?) throws -> Void
 
     init(
         downloader: ModelDownloader = ParallelRangeDownloader(),
         modelsDir: URL? = nil,
         networkStatus: (() -> NetworkStatus)? = nil,
-        downloadPolicy: (() -> DownloadPolicy)? = nil
+        downloadPolicy: (() -> DownloadPolicy)? = nil,
+        verifyImportedFile: @escaping @Sendable (URL, String?) throws -> Void = {
+            try ModelIntegrity.verify(fileURL: $0, expectedSHA256: $1)
+        }
     ) {
+        self.verifyImportedFile = verifyImportedFile
         self.downloader = downloader
         self.modelsDir = modelsDir ?? OnboardingModel.defaultModelsDir()
         // Legacy search dirs only for the production default — an injected test dir stays isolated.
@@ -516,16 +591,36 @@ final class ModelLibraryController: ObservableObject {
     }
 
     func refresh() {
-        let installed = Set(storage.installedFilenames())
-        for entry in ModelCatalog.models where tasks[entry.id] == nil {
-            states[entry.id] = installed.contains(entry.filename) ? .installed : .notInstalled
-        }
-        // Searched (sideloaded) models aren't in the compiled catalog — reflect the ones whose file is
-        // on disk so a downloaded open-catalog model shows as installed (and "Use", not "Download")
-        // after a relaunch, instead of vanishing from the library.
-        for entry in SideloadedModels.shared.all where tasks[entry.id] == nil {
-            if installed.contains(entry.filename) { states[entry.id] = .installed }
-            else if states[entry.id] == nil { states[entry.id] = .notInstalled }
+        for entry in ModelCatalog.models + SideloadedModels.shared.all
+        where tasks[entry.id] == nil && verificationTasks[entry.id] == nil {
+            if storage.isComplete(entry) {
+                states[entry.id] = .installed
+                continue
+            }
+            guard ModelArtifactSet.isMultipart(entry), ModelRuntimeSupport.supports(entry) else {
+                states[entry.id] = .notInstalled
+                continue
+            }
+            let candidates = storage.candidateFirstFiles(for: entry)
+            guard !candidates.isEmpty else { states[entry.id] = .notInstalled; continue }
+            states[entry.id] = .verifying
+            verificationTasks[entry.id] = Task { [weak self] in
+                guard let self else { return }
+                var lastError: Error?
+                for first in candidates {
+                    do {
+                        try await ModelArtifactSet.verifyInBackground(entry, firstFile: first)
+                        try Task.checkCancellation()
+                        self.states[entry.id] = .installed
+                        self.verificationTasks[entry.id] = nil
+                        return
+                    } catch { lastError = error }
+                    if Task.isCancelled { break }
+                }
+                self.states[entry.id] = Task.isCancelled ? .notInstalled
+                    : .failed(lastError.map { OnboardingModel.describe($0) })
+                self.verificationTasks[entry.id] = nil
+            }
         }
     }
 
@@ -581,13 +676,51 @@ final class ModelLibraryController: ObservableObject {
         }
     }
 
+    /// The same runtime and actual app-memory gates apply to both local imports and downloads.
+    private func experimentalModelBlockReason(_ entry: ModelEntry) -> String? {
+        guard ModelRuntimeSupport.supports(entry) else { return ModelRuntimeSupport.unavailableReason(for: entry) }
+        guard ModelRuntimeSupport.requiresPrism(entry) || ModelRuntimeSupport.isMuse(entry) else { return nil }
+        #if os(iOS)
+        let fitness = IPhoneModelSelector.fitness(of: entry, for: DeviceProfiler.current())
+        #else
+        let fitness = MemoryFitness.check(for: entry)
+        #endif
+        return fitness.canLoad ? nil : fitness.message
+    }
+
     func download(_ entry: ModelEntry) {
-        guard tasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        guard tasks[entry.id] == nil, verificationTasks[entry.id] == nil, let url = entry.downloadURL else { return }
+        if let reason = experimentalModelBlockReason(entry) {
+            states[entry.id] = .failed(reason)
+            return
+        }
         // Network gate (Q-271): twin of OnboardingModel — refuse a multi-GB cellular pull under a
         // Wi-Fi-only policy on the LIVE path, not just in the checklist. Race-free (positive .cellular
         // only, so a warming-up monitor never blocks Wi-Fi). Surfaces the reason on the card.
         if networkStatus() == .cellular, !downloadPolicy().allows(.cellular) {
             states[entry.id] = .failed(downloadPolicy().reason(for: .cellular))
+            return
+        }
+        if ModelArtifactSet.isMultipart(entry) {
+            do { _ = try ModelArtifactSet.validate(entry) }
+            catch { states[entry.id] = .failed(error.localizedDescription); return }
+            let remaining = try? ModelArtifactSet.estimatedRemainingDownloadBytes(entry, in: modelsDir)
+            let disk = DiskSpace.check(model: entry, availableBytes: DiskSpace.availableBytes(at: modelsDir), remainingDownloadBytes: remaining)
+            guard disk.hasRoom else { states[entry.id] = .failed(disk.message); return }
+            states[entry.id] = .downloading(0)
+            tasks[entry.id] = Task { [weak self] in
+                guard let self else { return }
+                do {
+                    _ = try await ModelArtifactInstaller.install(entry, in: self.modelsDir, downloader: self.downloader, progress: {
+                        self.states[entry.id] = .downloading($0)
+                    })
+                    try Task.checkCancellation()
+                    self.states[entry.id] = .installed
+                } catch {
+                    self.states[entry.id] = Task.isCancelled ? .notInstalled : .failed(error.localizedDescription)
+                }
+                self.tasks[entry.id] = nil
+            }
             return
         }
         states[entry.id] = .downloading(0)
@@ -633,7 +766,7 @@ final class ModelLibraryController: ObservableObject {
     /// Bytes this model occupies on disk (0 when not installed) — searched across primary +
     /// legacy dirs, like the load path.
     func sizeOnDisk(_ entry: ModelEntry) -> Int64 {
-        storage.sizeBytes(of: entry.filename)
+        ModelArtifactSet.filenames(entry).reduce(0) { $0 + storage.sizeBytes(of: $1) }
     }
 
     /// Delete an installed model file. The ACTIVE model is protected — the UI never offers
@@ -641,7 +774,7 @@ final class ModelLibraryController: ObservableObject {
     /// dir — a legacy-dir install must actually disappear, not just from the primary dir.
     func delete(_ entry: ModelEntry, activeModelID: String) {
         guard entry.id != activeModelID else { return }
-        storage.delete(entry.filename)
+        for filename in ModelArtifactSet.filenames(entry) { storage.delete(filename) }
         SideloadedModels.shared.remove(id: entry.id)   // forget a searched model too (no-op for catalog ids)
         states[entry.id] = nil                          // drop its state row so it leaves "yours"
         refresh()
@@ -649,7 +782,8 @@ final class ModelLibraryController: ObservableObject {
 
     func cancel(_ entry: ModelEntry) {
         tasks[entry.id]?.cancel()
-        tasks[entry.id] = nil
+        verificationTasks[entry.id]?.cancel()
+        // Keep the task until it unwinds; a rapid retry must not race the cancelled writer.
         states[entry.id] = .notInstalled
     }
 

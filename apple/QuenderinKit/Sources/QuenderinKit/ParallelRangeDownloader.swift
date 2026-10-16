@@ -24,6 +24,10 @@ public struct ParallelRangeDownloader: ModelDownloader {
 
     public func download(from url: URL, to destination: URL, expectedSHA256: String?) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
+            if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: destination) {
+                continuation.finish(throwing: DownloadError.transport(reason: reason))
+                return
+            }
             let coordinator = ParallelDownloadCoordinator(
                 sourceURL: url,
                 destination: destination,

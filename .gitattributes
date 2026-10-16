@@ -1,0 +1,3 @@
+# Runtime provenance hashes bind these exact bytes on every host.
+scripts/patches/*.json text eol=lf
+scripts/patches/*.patch text eol=lf

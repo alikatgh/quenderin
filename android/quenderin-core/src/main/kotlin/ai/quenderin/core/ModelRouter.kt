@@ -161,10 +161,11 @@ object ModelRouter {
         freeRamGb: Double,
         languageCode: String? = null,
     ): RouteDecision? {
-        if (installed.isEmpty()) return null
+        val eligible = installed.filter { !ModelRuntimeSupport.isMuse(it) && ModelRuntimeSupport.supports(it) }
+        if (eligible.isEmpty()) return null
         val task = classify(prompt)
-        val loadable = installed.filter { MemoryFitness.check(it, totalRamGb, freeRamGb).canLoad }
-        val pool = loadable.ifEmpty { installed }
+        val loadable = eligible.filter { MemoryFitness.check(it, totalRamGb, freeRamGb).canLoad }
+        val pool = loadable.ifEmpty { eligible }
 
         for (family in preferredFamilies(task)) {
             val best = pool.filter { it.id.startsWith(family) }.maxByOrNull { it.paramsBillions }

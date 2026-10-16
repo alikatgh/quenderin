@@ -34,6 +34,15 @@
 
   function selectEl() { return document.querySelector('.lang-select'); }
 
+  // Carry the selected language through the short homepage / full overview journey.
+  function updateLanguageLinks(lang) {
+    document.querySelectorAll('a[data-language-link]').forEach(function (link) {
+      var url = new URL(link.getAttribute('href'), location.href);
+      url.searchParams.set('lang', lang);
+      link.setAttribute('href', url.pathname + url.search + url.hash);
+    });
+  }
+
   function available() {
     var sel = selectEl(), set = { en: 1 };
     if (sel) { for (var i = 0; i < sel.options.length; i++) set[sel.options[i].value] = 1; }
@@ -65,6 +74,8 @@
     var md = document.querySelector('meta[name="description"]');
     if (md && dict['meta.description']) md.setAttribute('content', dict['meta.description']);
     var sel = selectEl(); if (sel) sel.value = lang;
+    updateLanguageLinks(lang);
+    document.dispatchEvent(new CustomEvent('quenderin:language', { detail: dict }));
     renderDemo(lang);
   }
 
@@ -83,6 +94,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     var sel = selectEl();
     var cur = pick();
+    updateLanguageLinks(cur);
     if (sel) {
       sel.value = cur;
       sel.addEventListener('change', function () { setLang(this.value); });

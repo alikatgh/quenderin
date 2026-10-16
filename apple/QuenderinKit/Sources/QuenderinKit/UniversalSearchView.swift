@@ -404,6 +404,12 @@ public struct UniversalSearchView: View {
                   : "Too big for this \(deviceNoun)’s memory")
             .accessibilityLabel("Install \(entry.label)")
 
+        case .verifying:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Verifying files").font(.caption).foregroundStyle(p.onSurfaceVariant)
+                Button("Cancel") { library.cancel(entry) }.buttonStyle(.bordered).controlSize(.small)
+            }
         case .downloading(let fraction):
             HStack(spacing: 10) {
                 ProgressView(value: fraction)

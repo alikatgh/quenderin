@@ -15,9 +15,14 @@ final class ModelPickerTests: XCTestCase {
         XCTAssertTrue(fitness["llama32-1b-q2"]!.canLoad, "the ultra-light model must load on 2 GB")
     }
 
-    func testHighRAMAllowsEveryModel() {
-        let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 64)
-        XCTAssertEqual(options.count, 13)
-        XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad })
+    func testHighRAMAllowsEverySupportedModel() {
+        let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 1024)
+        XCTAssertEqual(options.count, 18)
+        XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad == ModelRuntimeSupport.supports($0.model) })
+    }
+
+    func testMuseDoesNotFitOn64GB() {
+        let fitness = fitnessByID(forTotalRAMGB: 64)
+        XCTAssertFalse(fitness["muse-spark-open-q2-k"]!.canLoad)
     }
 }

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "package": "node-llama-cpp",
+  "packageVersion": "3.19.1",
+  "runtimeRevision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+  "upstream": "https://github.com/withcatai/node-llama-cpp/tree/v3.19.1",
+  "files": [
+    {
+      "path": "llama/addon/AddonModel.cpp",
+      "beforeSha256": "094547002dc83191fe23994f30ef4c527e10483a6556eaf9cf4e2bc3c5fe69ca",
+      "afterSha256": "0691f47be943622a4769c798266d1c506fdd62b7052db61c6e577dbdd18146cc",
+      "replacements": [
+        {
+          "before": "    model_params = llama_model_default_params();",
+          "after": "    model_params = llama_model_default_params();\n    bool useMmap = true;\n    bool useDirectIo = false;\n    bool useMlock = false;"
+        },
+        {
+          "before": "        if (options.Has(\"useMmap\")) {\n            model_params.use_mmap = options.Get(\"useMmap\").As<Napi::Boolean>().Value();\n        }\n\n        if (options.Has(\"useDirectIo\")) {\n            model_params.use_direct_io = options.Get(\"useDirectIo\").As<Napi::Boolean>().Value();\n        }\n\n        if (options.Has(\"useMlock\")) {\n            model_params.use_mlock = options.Get(\"useMlock\").As<Napi::Boolean>().Value();\n        }",
+          "after": "        if (options.Has(\"useMmap\")) {\n            useMmap = options.Get(\"useMmap\").As<Napi::Boolean>().Value();\n        }\n\n        if (options.Has(\"useDirectIo\")) {\n            useDirectIo = options.Get(\"useDirectIo\").As<Napi::Boolean>().Value();\n        }\n\n        if (options.Has(\"useMlock\")) {\n            useMlock = options.Get(\"useMlock\").As<Napi::Boolean>().Value();\n        }"
+        },
+        {
+          "before": "    if (model_params.no_alloc) {\n        model_params.use_mlock = false;\n        model_params.use_mmap = false;\n    }",
+          "after": "    // Prism e8fd209 replaces the independent loading flags with a load mode.\n    if (model_params.no_alloc) {\n        model_params.load_mode = LLAMA_LOAD_MODE_NONE;\n    } else if (useMmap) {\n        model_params.load_mode = useMlock ? LLAMA_LOAD_MODE_MMAP_MLOCK : LLAMA_LOAD_MODE_MMAP;\n    } else if (useDirectIo) {\n        if (useMlock) {\n            Napi::Error::New(info.Env(), \"Prism does not support useDirectIo with useMlock when useMmap is false\")\n                .ThrowAsJavaScriptException();\n            return;\n        }\n        model_params.load_mode = LLAMA_LOAD_MODE_DIRECT_IO;\n    } else {\n        model_params.load_mode = useMlock ? LLAMA_LOAD_MODE_MLOCK : LLAMA_LOAD_MODE_NONE;\n    }"
+        }
+      ]
+    },
+    {
+      "path": "llama/addon/AddonSampler.cpp",
+      "beforeSha256": "b3bfa4c37d540baebb5642d01968ada30bdfb10add36e80e7c7180ee2a33e0e6",
+      "afterSha256": "889463f926f1da3c2ed1dda34ec03d0b5ed604f952dc46bde891b943e9167a36",
+      "replacements": [
+        {
+          "before": "            repeatPenaltySampler = llama_sampler_init_penalties(\n                repeatPenaltyMaxTokens,",
+          "after": "            repeatPenaltySampler = llama_sampler_init_penalties(\n                llama_vocab_n_tokens(model->vocab),\n                repeatPenaltyMaxTokens,"
+        },
+        {
+          "before": "            dryRepeatPenaltySampler = llama_sampler_init_dry(\n                model->vocab,\n                llama_model_n_ctx_train(model->model),",
+          "after": "            dryRepeatPenaltySampler = llama_sampler_init_dry(\n                model->vocab,"
+        }
+      ]
+    },
+    {
+      "path": "dist/bindings/utils/cloneLlamaCppRepo.js",
+      "beforeSha256": "d82d1d67937beb396aef17c3eedcc78832ccba8c8a90992164d8d93dd272836d",
+      "afterSha256": "0018b5c581931f545bb2a8963309a6c4682bee47640b4c05c01e62f90a2b721d",
+      "replacements": [
+        {
+          "before": "export async function getClonedLlamaCppRepoReleaseInfo() {\n    if (!(await isLlamaCppRepoCloned(false)))\n        return null;\n    if (!(await fs.pathExists(llamaCppDirectoryInfoFilePath)))\n        return null;\n    try {\n        const clonedLlamaCppRepoTagJson = await fs.readJson(llamaCppDirectoryInfoFilePath);\n        return clonedLlamaCppRepoTagJson;\n    }\n    catch (err) {\n        console.error(getConsoleLogPrefix() + \"Failed to read llama.cpp tag file\", err);\n        return null;\n    }\n}\n",
+          "after": "export async function getClonedLlamaCppRepoReleaseInfo() {\n    const cloned = await isLlamaCppRepoCloned(false);\n    const prismStampPath = path.join(path.dirname(llamaCppDirectory), \"quenderin-prism-node-runtime.json\");\n    if (!cloned && (await fs.pathExists(llamaCppDirectory) ||\n        !(await fs.pathExists(prismStampPath)) ||\n        await isLockfileActive({ resourcePath: llamaCppDirectory })))\n        return null;\n    if (!(await fs.pathExists(llamaCppDirectoryInfoFilePath)))\n        return null;\n    try {\n        const clonedLlamaCppRepoTagJson = await fs.readJson(llamaCppDirectoryInfoFilePath);\n        if (!cloned) {\n            // Packaged Quenderin retains verified build metadata, not a source checkout.\n            const prism = await fs.readJson(prismStampPath);\n            if (prism.version !== 1 ||\n                prism.repository !== \"https://github.com/PrismML-Eng/llama.cpp.git\" ||\n                prism.revision !== \"e8fd209c975c80aa7fb36a8423571ff3b1b7e955\" ||\n                prism.nodeLlamaCppVersion !== \"3.19.1\" ||\n                clonedLlamaCppRepoTagJson.llamaCppGithubRepo !== \"PrismML-Eng/llama.cpp\" ||\n                clonedLlamaCppRepoTagJson.tag !== prism.revision)\n                return null;\n        }\n        return clonedLlamaCppRepoTagJson;\n    }\n    catch (err) {\n        console.error(getConsoleLogPrefix() + \"Failed to read llama.cpp tag file\", err);\n        return null;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "llama/llama.cpp.info.json",
+      "beforeSha256": "5a595c2755f8ea626db67969675369900ec03e74c5c3424a7b3a1e92c42bcb23",
+      "afterSha256": "a1fd28c4f8bd2ad589ec557b121f8fd077eda8d50cf975fcdf7bfb081a5f6106",
+      "replacements": [
+        {
+          "before": "{\n    \"tag\": \"b10068\",\n    \"llamaCppGithubRepo\": \"ggml-org/llama.cpp\"\n}\n",
+          "after": "{\n  \"tag\": \"e8fd209c975c80aa7fb36a8423571ff3b1b7e955\",\n  \"llamaCppGithubRepo\": \"PrismML-Eng/llama.cpp\"\n}\n"
+        }
+      ]
+    }
+  ]
+}

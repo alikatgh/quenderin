@@ -1,16 +1,40 @@
 {
-  "name": "Quenderin — offline, on-device AI",
+  "name": "Quenderin \u2014 offline, on-device AI",
   "short_name": "Quenderin",
-  "description": "An AI that runs fully on your device. No internet, no API keys, no telemetry.",
+  "description": "Private AI for Mac and iPhone. Download a model once, then chat offline. Free and open source.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#2E7680",
   "background_color": "#0F1B1E",
   "icons": [
-    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "favicon-32.png", "sizes": "32x32", "type": "image/png" },
-    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

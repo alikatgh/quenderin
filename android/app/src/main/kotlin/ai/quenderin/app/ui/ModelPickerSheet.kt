@@ -8,6 +8,7 @@ import ai.quenderin.core.AndroidModelSelector
 import ai.quenderin.core.MemorySeverity
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelEntry
+import ai.quenderin.core.ModelRuntimeSupport
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,7 +70,8 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
 
     val recommended = options.filter { it.first.id == recommendedId }
     val fitting = options.filter { it.first.id != recommendedId && it.second.canLoad }
-    val blocked = options.filter { it.first.id != recommendedId && !it.second.canLoad }
+    val blocked = options.filter { it.first.id != recommendedId && ModelRuntimeSupport.supports(it.first) && !it.second.canLoad }
+    val unavailable = options.filter { !ModelRuntimeSupport.supports(it.first) }
 
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Text(
@@ -103,10 +105,17 @@ internal fun ModelPickerSheet(currentModelId: String, onSelect: (ModelEntry) -> 
                     ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
             }
+            LatestModelsSection(onSelect = onSelect)
             if (blocked.isNotEmpty()) {
                 // Ineligible models sink to the BOTTOM: the sheet opens on choices, not warnings.
                 SectionHeader(stringResource(R.string.picker_too_big_section), MaterialTheme.colorScheme.onSurfaceVariant)
                 blocked.forEach { (entry, fitness) ->
+                    ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
+                }
+            }
+            if (unavailable.isNotEmpty()) {
+                SectionHeader(stringResource(R.string.picker_runtime_unavailable_section), MaterialTheme.colorScheme.onSurfaceVariant)
+                unavailable.forEach { (entry, fitness) ->
                     ModelPickerRow(entry, fitness, isRecommended = false, isCurrent = entry.id == currentModelId) { onSelect(entry) }
                 }
             }
@@ -133,7 +142,8 @@ private fun ModelPickerRow(
     isCurrent: Boolean,
     onClick: () -> Unit,
 ) {
-    val enabled = fitness.canLoad && !isCurrent
+    val runtimeSupported = ModelRuntimeSupport.supports(entry)
+    val enabled = runtimeSupported && fitness.canLoad && !isCurrent
     val (name, tag) = splitLabel(entry.label)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -182,7 +192,9 @@ private fun ModelPickerRow(
                     }
                 }
                 Spacer(Modifier.width(10.dp))
-                if (isCurrent) {
+                if (!runtimeSupported) {
+                    DotBadge(MaterialTheme.colorScheme.error, stringResource(R.string.fit_unavailable), MaterialTheme.colorScheme.error)
+                } else if (isCurrent) {
                     // The model you're already running — status-green, same dot+word language.
                     DotBadge(
                         Quenderin.colors.status,
@@ -205,7 +217,13 @@ private fun ModelPickerRow(
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!fitness.canLoad) MemoryShortfallNote(fitness)
+            if (!runtimeSupported) {
+                Text(ModelRuntimeSupport.unavailableMessage(entry),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (!fitness.canLoad) {
+                MemoryShortfallNote(fitness)
+            }
         }
     }
 }

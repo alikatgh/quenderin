@@ -57,6 +57,10 @@ public struct URLSessionModelDownloader: ModelDownloader {
 
     public func download(from url: URL, to destination: URL, expectedSHA256: String?) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
+            if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: destination) {
+                continuation.finish(throwing: DownloadError.transport(reason: reason))
+                return
+            }
             let delegate = ChunkedDownloadDelegate(sourceURL: url, destination: destination, expectedSHA256: expectedSHA256, continuation: continuation)
             // A dedicated delegate queue serializes the didReceive* callbacks, so the delegate's
             // mutable state is touched on one thread at a time (see its @unchecked Sendable note).

@@ -33,13 +33,20 @@ final class LlamaEngineTests: XCTestCase {
     }
 
     func testLoadFailsCleanlyWhenLlamaNotLinked() async throws {
-        // A real file exists, but without the `llama` module load must fail with a
-        // clear .loadFailed — never a crash. (Once llama.cpp is linked, an empty
-        // .gguf still yields .loadFailed from a null model, so this stays valid.)
+        // Valid metadata reaches the runtime boundary without containing model weights.
+        // Both an absent runtime and a linked runtime with no tensors must return
+        // .loadFailed. Truncated metadata is rejected earlier by the metadata guard.
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("quenderin-dummy.gguf")
-        try Data().write(to: tmp)
+        func integer(_ value: UInt64, _ width: Int) -> Data {
+            Data((0..<width).map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) })
+        }
+        func string(_ value: String) -> Data { integer(UInt64(value.utf8.count), 8) + Data(value.utf8) }
+        var fixture = Data("GGUF".utf8) + integer(3, 4) + integer(0, 8) + integer(1, 8)
+        fixture += string("general.architecture") + integer(8, 4) + string("llama")
+        try fixture.write(to: tmp)
         defer { try? FileManager.default.removeItem(at: tmp) }
+        XCTAssertEqual(try GGUFModelMetadata.read(from: tmp).architecture, "llama")
 
         let engine = LlamaEngine()
         do {

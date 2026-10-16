@@ -26,11 +26,19 @@ object MemoryFitness {
         freeGB: Double,
         budgetHard: Double = DEFAULT_BUDGET_HARD,
         budgetWarning: Double = DEFAULT_BUDGET_WARNING,
+        prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai,
+        museRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsMuse,
     ): MemoryCheckResult {
-        val overhead = if (model.paramsBillions <= 3.0) OVERHEAD_BASE else OVERHEAD_LARGE
-        val required = model.ramGB * overhead
+        val overhead = if (model.paramsBillions <= 3.0 && !ModelRuntimeSupport.requiresMemoryGate(model)) OVERHEAD_BASE else OVERHEAD_LARGE
+        val required = ModelRuntimeSupport.memoryFootprintGb(model) * overhead
         val usageAfterLoad = (totalGB - freeGB + required) / totalGB
         return when {
+            ModelRuntimeSupport.isMuse(model) && !museRuntimeAvailable -> MemoryCheckResult(
+                false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.MUSE_UNAVAILABLE_MESSAGE,
+            )
+            ModelRuntimeSupport.requiresPrism(model) && !prismRuntimeAvailable -> MemoryCheckResult(
+                false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.UNAVAILABLE_MESSAGE,
+            )
             usageAfterLoad > budgetHard -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB,
                 "Loading ${model.label} needs ~${fmt(required)}GB of memory — more than this device can safely spare (${fmt(freeGB)}GB free of ${fmt(totalGB)}GB). Close other apps or choose a smaller model.",

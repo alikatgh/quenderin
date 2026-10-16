@@ -5,8 +5,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
-<title>Quenderin — On-device AI chat, and a local computer-use agent</title>
-<meta name="description" content="Quenderin runs open LLMs fully on your device — private chat on iPhone, free on the App Store, plus a Mac computer-use agent that drives files, apps, and Apple Shortcuts, asking before every change. Nothing leaves the machine." />
+<title>Quenderin — Local AI for Mac and iPhone</title>
+<meta name="description" content="Quenderin is an open-source app for running language models on your device. Chat works offline after downloading a model. Available for Mac and iPhone." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/" />
@@ -16,28 +16,25 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=model-catalog-20260930-2" />
 <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
-<style>
-  /* RTL content alignment (language-picker styling now lives in styles.css) */
-  html[dir="rtl"] .spec-strip,html[dir="rtl"] .trust-list,html[dir="rtl"] .checklist,html[dir="rtl"] .steplist{text-align:right}
-</style>
+
 
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Quenderin" />
-<meta property="og:title" content="Quenderin — On-device AI, and a local computer-use agent" />
-<meta property="og:description" content="Local LLMs on-device — private chat, plus a Mac agent that operates your computer for you (files, apps, Shortcuts). No cloud, no API keys, no telemetry." />
+<meta property="og:title" content="Quenderin — Local AI for Mac and iPhone" />
+<meta property="og:description" content="Quenderin is an open-source app for running language models on your device. Chat works offline after downloading a model. Available for Mac and iPhone." />
 <meta property="og:url" content="https://quenderin.org/" />
 <meta property="og:image" content="https://quenderin.org/og-image.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
+<meta property="og:image:alt" content="Quenderin — private AI for Mac and iPhone. Available on the App Store." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Quenderin — On-device AI, and a local computer-use agent" />
-<meta name="twitter:description" content="Local LLMs on-device — private chat, plus a Mac agent that operates your computer. No cloud, no API keys, no telemetry." />
+<meta name="twitter:title" content="Quenderin — Local AI for Mac and iPhone" />
+<meta name="twitter:description" content="Quenderin is an open-source app for running language models on your device. Chat works offline after downloading a model. Available for Mac and iPhone." />
 <meta name="twitter:image" content="https://quenderin.org/og-image.png" />
-<meta name="twitter:image:alt" content="Quenderin — an AI that runs on your phone, even offline. Local LLMs on-device." />
+<meta name="twitter:image:alt" content="Quenderin — private AI for Mac and iPhone. Available on the App Store." />
 
 <script type="application/ld+json">
 {
@@ -46,44 +43,18 @@
   "name": "Quenderin",
   "applicationCategory": "Productivity",
   "operatingSystem": "iOS, Android, macOS, Linux",
-  "description": "Offline, on-device AI assistant powered by local large language models. No internet, API keys, or telemetry.",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "url": "https://quenderin.org/"
+  "description": "Quenderin is an open-source app for running language models on your device. Chat works offline after downloading a model. Available for Mac and iPhone.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "url": "https://quenderin.org/",
+  "downloadUrl": "https://apps.apple.com/app/id6789854363",
+  "image": "https://quenderin.org/assets/app/icon-ios.png"
 }
 </script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Is it really free?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware — so there are no token costs and no subscription." }
-    },
-    {
-      "@type": "Question",
-      "name": "Is my data sent anywhere?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it is open source, you can verify this yourself." }
-    },
-    {
-      "@type": "Question",
-      "name": "What devices does it run on?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Quenderin is on the App Store for iPhone today, and the desktop app runs on macOS and Linux. The native Android app is in closed beta on Google Play — the same hardware-detection and model-selection engine, rebuilt natively for each platform." }
-    },
-    {
-      "@type": "Question",
-      "name": "Do I need a powerful phone?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs — down to a 0.4 GB ultra-light build." }
-    },
-    {
-      "@type": "Question",
-      "name": "When can I install it?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The iPhone app is on the App Store now, free. The desktop app runs on macOS and Linux and is open source and runnable from GitHub today. The native Android app is in closed beta on Google Play — you can join the test to run it now." }
-    }
-  ]
-}
-</script>
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -102,32 +73,14 @@
   "url": "https://quenderin.org/"
 }
 </script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "HowTo",
-  "name": "How to run Quenderin offline",
-  "step": [
-    { "@type": "HowToStep", "position": 1, "name": "Probe", "text": "Quenderin reads your hardware and recommends the largest model your device can run well." },
-    { "@type": "HowToStep", "position": 2, "name": "Download", "text": "Pull the model once over Wi-Fi; it resumes in the background if interrupted." },
-    { "@type": "HowToStep", "position": 3, "name": "Go offline", "text": "Everything runs locally from then on — no signal needed." }
-  ]
-}
-</script>
-<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+<link rel="stylesheet" href="simple-home.css?v=20261008" />
 </head>
-<body>
+<body class="simple-home">
 <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
-
-<header class="site-header" id="top">
-  <div class="container container-wide header-inner">
-    <a class="brand" href="#top" aria-label="Quenderin home">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">Quenderin</span>
-    </a>
-    <nav class="nav" aria-label="Primary">
-      <div class="lang-picker">
-        <svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
+<header class="simple-header simple-wrap">
+  <a class="brand" href="./" aria-label="Quenderin home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Quenderin</span></a>
+  <div class="simple-controls">
+    <div class="lang-picker"><svg class="lang-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M3 12h18"/><path d="M12 2.8c2.6 2.9 2.6 15.5 0 18.4M12 2.8c-2.6 2.9-2.6 15.5 0 18.4"/></svg>
         <select class="lang-select" aria-label="Language">
         <option value="en">English</option>
         <option value="zh">中文</option>
@@ -148,594 +101,33 @@
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       </button>
-      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
-        <span class="nav-toggle-bar"></span>
-      </button>
-      <ul class="nav-menu" id="nav-menu">
-        <li><a href="blog" data-i18n="nav.blog">Blog</a></li>
-        <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
-      </ul>
-    </nav>
   </div>
 </header>
-
-<main id="main">
-
-  <!-- HERO -->
-  <section class="hero">
-    <div class="container container-wide">
-      <div class="hero-inner">
-        <div class="hero-copy reveal">
-          <p class="eyebrow" data-i18n="hero.eyebrow">Open source &middot; every token computed in your hand</p>
-          <h1 data-i18n="hero.title">Run LLMs locally, on your phone or laptop.</h1>
-          <p class="lede" data-i18n-html="hero.lede">
-            Quenderin runs open models &mdash; Llama, Qwen, Gemma &mdash; <strong>fully on your device</strong>.
-            No cloud, no account, no telemetry, and it works offline. On a Mac it can also act on your
-            behalf: files, apps, Apple Shortcuts, asking before each change. Free, and
-            <strong>every line is on GitHub</strong>.
-          </p>
-          <div class="cta-row">
-            <!-- iOS shipped to the App Store 2026-07-20. The OFFICIAL Apple badge (self-hosted,
-                 unmodified per Apple's marketing guidelines) leads — a shipped product shows the
-                 real badge, not a text button. Desktop + GitHub stay text buttons (no official
-                 badge exists for those). -->
-            <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
-              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:52px;width:auto;display:block" />
+<main class="simple-main simple-wrap" id="main">
+  <h1 data-i18n="simple.title">AI on your device.</h1>
+  <p class="simple-description" data-i18n="simple.body">Quenderin runs language models on your Mac or iPhone. Download a model, then chat offline.</p>
+  <p class="simple-note" data-i18n="simple.note">Free and open source. No account or subscription.</p>
+  <div class="store-actions">
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=mac" rel="noopener" aria-label="Download Quenderin for Mac on the App Store">
+              <span class="store-platform"><img src="icons/mac.svg" width="22" height="22" alt="" /> macOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
             </a>
-            <a class="btn btn-ghost" href="download" data-i18n="hero.ctaDownload">Download — Windows &amp; Linux</a>
-            <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View on GitHub</a>
+            <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store">
+              <span class="store-platform"><img src="icons/iphone.svg" width="22" height="22" alt="" /> iOS</span>
+              <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
+            </a>
           </div>
-          <ul class="spec-strip" aria-label="Measured facts">
-            <li><span class="spec-num">15&nbsp;tok/s</span> <span data-i18n="hero.spec1">iPhone&nbsp;12, measured</span></li>
-            <li><span class="spec-num">0.4&ndash;4.7&nbsp;GB</span> <span data-i18n="hero.spec2">one download</span></li>
-            <li><span class="spec-num">0</span> <span data-i18n="hero.spec3">network calls after setup</span></li>
-            <li><span class="spec-num">MIT</span> <span data-i18n="hero.spec4">every line public</span></li>
-          </ul>
-        </div>
-
-        <div class="hero-visual reveal">
-          <!-- iOS is the headline market — lead the hero with the phone. A CSS 3D device
-               (perspective + titanium frame + dynamic island + glare + brand glow), holding a
-               real portrait screenshot. Pointer parallax (main-inline script) drives --ry/--rx;
-               the float animation drives translateY separately, so they compose without fighting. -->
-          <figure class="hero-phone-fig">
-            <div class="hero-phone">
-              <div class="hero-phone__tilt">
-                <div class="hero-phone__body">
-                  <div class="hero-phone__frame">
-                    <span class="hero-phone__btn" aria-hidden="true"></span>
-                    <div class="hero-phone__screen">
-                      <img src="assets/app/phone-chat.webp" width="320" height="695" alt="Quenderin running on an iPhone — a private chat answered fully on-device, offline" decoding="async" fetchpriority="high" />
-                      <span class="hero-phone__island" aria-hidden="true"></span>
-                      <span class="hero-phone__glare" aria-hidden="true"></span>
-                    </div>
-                  </div>
-                  <span class="hero-phone__side hero-phone__side--l" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--r" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--t" aria-hidden="true"></span>
-                  <span class="hero-phone__side hero-phone__side--b" aria-hidden="true"></span>
-                </div>
-              </div>
-            </div>
-            <figcaption class="hero-phone__caption" data-i18n="hero.shot.caption">A real screenshot &mdash; this exact conversation ran with the network off.</figcaption>
-          </figure>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TRUST STRIP -->
-  <div class="container container-wide">
-    <section class="trust" aria-label="Built on">
-      <p class="trust-label" data-i18n="trust.label">Built on</p>
-      <ul class="trust-list">
-        <li data-i18n="trust.1">Local GGUF models</li>
-        <li>node-llama-cpp / llama.cpp</li>
-        <li data-i18n="trust.3">Apple Silicon &rarr; Raspberry Pi</li>
-        <li data-i18n="trust.4">MIT open source</li>
-      </ul>
-    </section>
+  <div class="simple-links">
+    <a class="simple-more" href="tell-me-more" data-language-link><span data-i18n="simple.more">Tell me more</span><span class="simple-arrow" aria-hidden="true"> →</span></a>
+    <a href="download" data-language-link data-i18n="hero.ctaDownload">Other platforms</a>
   </div>
-
-  <!-- PROBLEM -->
-  <section class="band">
-    <div class="container">
-      <div class="band-inner reveal">
-        <h2 data-i18n="problem.title">The cloud isn&rsquo;t always there. Your AI shouldn&rsquo;t vanish with the signal.</h2>
-        <p data-i18n-html="problem.body">
-          A mainstream assistant is a thin client for a data center: lose the connection and it goes
-          dark; keep it and your words travel to hardware you&rsquo;ll never see. Quenderin is the
-          model itself, living on the device in your hand. It&rsquo;s smaller than the cloud ones and
-          it will sometimes be wrong &mdash; <a href="reality" style="text-decoration:underline">we publish exactly how much smaller</a>.
-          It is also always there, and it is only yours.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOW IT WORKS -->
-  <section class="section tint" id="how">
-    <div class="container split">
-      <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="how.eyebrow">How it works</p>
-        <h2 data-i18n="how.title">One download, then it runs offline.</h2>
-        <ol class="steplist">
-          <li><span class="step-num">01</span><div><h3 data-i18n="how.s1t">Probe</h3><p data-i18n="how.s1b">Quenderin reads your hardware&mdash;RAM, chip, GPU&mdash;and recommends the largest model your device can run well.</p></div></li>
-          <li><span class="step-num">02</span><div><h3 data-i18n="how.s2t">Download</h3><p data-i18n="how.s2b">Pull the model once over Wi-Fi&mdash;0.4 to 4.7&nbsp;GB, your choice. It resumes in the background if you get interrupted.</p></div></li>
-          <li><span class="step-num">03</span><div><h3 data-i18n="how.s3t">Go offline</h3><p data-i18n="how.s3b">Everything runs locally from then on. A clear check tells you it&rsquo;s safe before you leave the grid.</p></div></li>
-        </ol>
-        <a class="btn btn-ghost" href="blog-setup" data-i18n="how.cta">Behind the scenes: how each step really works &mdash; and where it bites &rarr;</a>
-      </div>
-      <div class="split-visual reveal">
-        <figure class="app-window app-window-tall">
-          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title" data-i18n="how.shot.title">Choose a model</span></div>
-          <img src="assets/app/picker.png" width="520" height="820" alt="Quenderin's model picker: a recommended model for this device on top, every other model badged Fits, Tight, or Too big" loading="lazy" decoding="async" />
-          <figcaption class="app-window-caption" data-i18n="how.shot.caption">The picker checks your RAM before offering anything &mdash; models that don&rsquo;t fit are disabled, with the reason.</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <!-- THE COMPUTER-USE AGENT -->
-  <section class="section" id="agent">
-    <div class="container split">
-      <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="agent.eyebrow">The computer-use agent</p>
-        <h2 data-i18n="agent.title">It can do the task, not just answer it.</h2>
-        <p data-i18n-html="agent.body">On a Mac, tell Quenderin a goal and a local model <strong>operates the computer for you</strong> &mdash; organizing files, driving any app, running your Apple Shortcuts. A private alternative to cloud agents like Cowork, governed by a trust loop a datacenter can&rsquo;t offer:</p>
-        <ul class="agent-points">
-          <li data-i18n-html="agent.p1"><strong>Asks before every change.</strong> Nothing that alters anything runs without your yes for that step; app control still asks even on auto-approve.</li>
-          <li data-i18n-html="agent.p2"><strong>Reviewable &amp; reversible.</strong> A per-task local log (<code>quenderin history</code>), and undo a whole task &mdash; even in a new session (<code>quenderin undo</code>).</li>
-          <li data-i18n-html="agent.p3"><strong>Rehearse first.</strong> <code>--dry-run</code> shows exactly what it would do, touching nothing.</li>
-          <li data-i18n-html="agent.p4"><strong>Nothing leaves the machine.</strong> No screen, no files, no intent streamed to a vendor.</li>
-        </ul>
-        <a class="btn btn-ghost" href="why-local-agent" data-i18n="agent.cta">Why local beats the cloud &rarr;</a>
-      </div>
-      <div class="split-visual reveal">
-        <figure class="app-window">
-          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title">quenderin — zsh</span></div>
-          <div class="codeblock"><pre>$ quenderin do "organize my downloads" \
-      --workspace ~/Downloads
-
-  · listed 42 files
-  ● Move "invoice.pdf" into "Finance/"?
-    Allow? [y/N] y
-  ✓ Moved "invoice.pdf" into "Finance/".
-  ● Move "IMG_2291.HEIC" into "Photos/"?
-    Allow? [y/N] y
-  ✓ Moved "IMG_2291.HEIC" into "Photos/".
-  ● Rename "final_v3_FINAL.pdf" → "report-2026.pdf"?
-    Allow? [y/N] y
-  ✓ Renamed → "report-2026.pdf".
-
-  Undo everything this task changed? [y/N] n
-  Later? Run `quenderin undo` to reverse it.</pre></div>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
-
-  <!-- REAL SCREENS -->
-  <section class="section" id="screens">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="screens.eyebrow">Straight from the app</p>
-        <h2 data-i18n="screens.title">Not mockups. These are renders of the real UI.</h2>
-        <p class="section-sub" data-i18n="screens.sub">Every image on this page is generated from the shipping SwiftUI code &mdash; when the app changes, the site re-renders with it.</p>
-      </header>
-      <div class="shots reveal" role="group" aria-roledescription="carousel" aria-label="Screens from the app">
-        <button class="shots-btn shots-prev" type="button" aria-label="Previous screen">&lsaquo;</button>
-        <div class="shots-track" id="shots-track" tabindex="0">
-          <figure class="shot">
-            <img src="assets/app/welcome.png" width="520" height="720" alt="Quenderin's first-launch welcome screen: private by design, works offline, open source" loading="lazy" decoding="async" />
-            <figcaption data-i18n="screens.welcome">First launch &mdash; three promises, then you&rsquo;re in.</figcaption>
-          </figure>
-          <figure class="shot">
-            <img src="assets/app/profile.png" width="520" height="820" alt="The model profile: parameters, download size, memory, quantization — with a plain-language glossary behind one help button" loading="lazy" decoding="async" />
-            <figcaption data-i18n="screens.profile">Every model explained in plain language &mdash; no jargon assumed.</figcaption>
-          </figure>
-          <figure class="shot">
-            <img src="assets/app/picker.png" width="520" height="820" alt="The fitness-aware model picker" loading="lazy" decoding="async" />
-            <figcaption data-i18n="screens.picker">The catalog knows your hardware &mdash; Fits, Tight, or Too big, honestly.</figcaption>
-          </figure>
-          <figure class="shot">
-            <img src="assets/app/agent.png" width="720" height="560" alt="The agent's run log: numbered tool calls (unit converter, calculator) and the final answer" loading="lazy" decoding="async" />
-            <figcaption data-i18n="screens.agent">The agent shows its work &mdash; every tool call in the run log, and it can never touch payments, deletion, or credentials.</figcaption>
-          </figure>
-        </div>
-        <button class="shots-btn shots-next" type="button" aria-label="Next screen">&rsaquo;</button>
-        <div class="shots-dots" id="shots-dots" role="tablist" aria-label="Choose screen"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ANDROID CLOSED BETA — recruitment callout: join group → opt in on Play → install.
-       Placed right after the real-UI screens: value shown, now here's the way in. -->
-  <section class="section" id="android-beta">
-    <div class="container">
-      <div class="beta-card reveal">
-        <div class="beta-card__head">
-          <p class="beta-badge" data-i18n="beta.badge">Android · Closed beta &mdash; open now</p>
-          <h2 data-i18n="beta.title">Get Quenderin on Android.</h2>
-          <p class="beta-sub" data-i18n="beta.sub">The native Android app is in closed testing right now. It takes two steps &mdash; Google runs closed betas through an opt-in group, so you join that first.</p>
-        </div>
-        <ol class="beta-steps">
-          <li>
-            <span class="beta-step-num">1</span>
-            <div>
-              <h3 data-i18n="beta.s1t">Join the testers group</h3>
-              <p data-i18n="beta.s1b">Join with the same Google account your phone uses &mdash; that membership is what makes you a tester. It&rsquo;s auto-approved, no waiting.</p>
-              <a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener" data-i18n="beta.s1cta">Join the group &rarr;</a>
-            </div>
-          </li>
-          <li>
-            <span class="beta-step-num">2</span>
-            <div>
-              <h3 data-i18n="beta.s2t">Opt in on Google Play</h3>
-              <p data-i18n="beta.s2b">Once you&rsquo;re in the group, accept the test and install. If Play can&rsquo;t find it yet, give it a few minutes to reach your account.</p>
-              <a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener" data-i18n="beta.s2cta">Become a tester &rarr;</a>
-            </div>
-          </li>
-        </ol>
-        <p class="beta-foot" data-i18n-html="beta.foot">It&rsquo;s an early build &mdash; expect rough edges, and your feedback shapes what ships. Full walkthrough, and what&rsquo;s different about the Android port, in <a href="blog-android-beta">the beta guide</a>.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
-
-  <!-- FEATURES -->
-  <section class="section" id="features">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
-        <h2 data-i18n="feat.title">Everything runs on-device &mdash; nothing phones home.</h2>
-      </header>
-      <!-- Each cell is an accordion item (WAI-ARIA APG pattern: heading > button + labelled
-           region). Click anywhere on the card to expand its longer story; one open at a time.
-           The expanded copy stays English until translated — missing i18n keys deliberately
-           leave the hard-coded text (see i18n.js). -->
-      <div class="bento" id="feat-acc">
-        <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><span data-i18n="feat.offline.t">Truly offline</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.offline.b">After the one-time download, there are zero network calls. Works at 35,000 feet or three days into a hike.</p>
-          <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Airplane mode &middot; still answering</span></span></div>
-          <div class="acc-panel" id="feat-more-offline" role="region" aria-label="More about Truly offline"><div class="acc-inner">
-            <p data-i18n="feat.offline.m">The model is a file on your disk, and answering is just your own CPU and GPU doing math through llama.cpp &mdash; there is no service on the other end. Try it: turn on Airplane Mode and ask anything. The only network request Quenderin ever makes is the one-time model download.</p>
-          </div></div>
-        </article>
-        <article class="cell reveal acc">
-          <div class="bignum">$0</div>
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><span data-i18n="feat.free.t">Free, structurally</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.free.b">Not a promotion &mdash; there is no server to pay for. It runs on hardware you already own.</p>
-          <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about Free, structurally"><div class="acc-inner">
-            <p data-i18n="feat.free.m">No API meter, no token quota, no trial that expires &mdash; because there is no server farm computing on your behalf. Your machine does the work, and the MIT-licensed code can&rsquo;t be taken away from you. Free stays free structurally, not promotionally.</p>
-          </div></div>
-        </article>
-        <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><span data-i18n="feat.agent.t">Operates your Mac &mdash; locally</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.agent.b">A private alternative to cloud computer-use agents: it drives your files, apps, and Apple Shortcuts, asks before every change, and can undo the whole task&mdash;while never autonomously touching:</p>
-          <div class="cell-visual chips">
-            <span class="chip chip-x" data-i18n="feat.agent.c1">Pay</span><span class="chip chip-x" data-i18n="feat.agent.c2">Delete</span><span class="chip chip-x" data-i18n="feat.agent.c3">Password</span><span class="chip chip-x" data-i18n="feat.agent.c4">Transfer</span>
-          </div>
-          <div class="acc-panel" id="feat-more-agent" role="region" aria-label="More about Operates your Mac"><div class="acc-inner">
-            <p data-i18n="feat.agent.m">Every change is previewed first and waits for your explicit Allow &mdash; dismissing the dialog counts as no. Each action lands in an on-device audit ledger you can read afterwards, and the whole task can be undone in one tap. The blocked verbs aren&rsquo;t a policy promise: they&rsquo;re enforced by an on-device safety blocklist that ships in the open source.</p>
-          </div></div>
-        </article>
-        <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><span data-i18n="feat.priv.t">Private by design</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.priv.b">No accounts, no analytics, no telemetry. Your conversations are yours.</p>
-          <div class="acc-panel" id="feat-more-priv" role="region" aria-label="More about Private by design"><div class="acc-inner">
-            <p data-i18n="feat.priv.m">Conversations are plain files on your own disk &mdash; export them, back them up, or delete them like anything else you own. There is no account to breach and no analytics SDK to leak: the app simply contains no tracking code.</p>
-          </div></div>
-        </article>
-        <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><span data-i18n="feat.hw.t">Hardware-adaptive</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.hw.b">It picks a model that fits&mdash;and warns you before one that doesn&rsquo;t.</p>
-          <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
-          <div class="acc-panel" id="feat-more-hw" role="region" aria-label="More about Hardware-adaptive"><div class="acc-inner">
-            <p data-i18n="feat.hw.m">Quenderin reads your RAM and chip, then tells you honestly which models Fit, which are Tight, and which are Too big &mdash; before you download gigabytes. Context size, GPU offload, and thread count tune themselves to the machine, from a Raspberry Pi to an M-series Mac.</p>
-          </div></div>
-        </article>
-        <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.os.b">MIT licensed. Read every line, audit every claim, build it yourself.</p>
-          <div class="acc-panel" id="feat-more-os" role="region" aria-label="More about Open source"><div class="acc-inner">
-            <p><span data-i18n="feat.os.m">The whole app is public &mdash; the inference wiring, the safety blocklist, the consent gates, the audit ledger. Don&rsquo;t take this page&rsquo;s word for any claim: read the code and check.</span> <a href="https://github.com/alikatgh/quenderin" rel="noopener">github.com/alikatgh/quenderin</a></p>
-          </div></div>
-        </article>
-        <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
-          <p data-i18n="feat.resume.b">The model keeps downloading in the background&mdash;even if you switch apps the night before a trip.</p>
-          <div class="acc-panel" id="feat-more-resume" role="region" aria-label="More about Resumable downloads"><div class="acc-inner">
-            <p data-i18n="feat.resume.m">A dropped connection resumes from the exact byte where it stopped &mdash; quit the app, lose the Wi-Fi, come back tomorrow. And before any model is ever loaded, its SHA-256 checksum is verified, so a corrupted or tampered file is rejected rather than trusted.</p>
-          </div></div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
-
-  <!-- MADE FOR -->
-  <section class="section" id="use-cases">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="uc.eyebrow">Made for</p>
-        <h2 data-i18n="uc.title">When the cloud isn&rsquo;t an option.</h2>
-      </header>
-      <div class="bento">
-        <article class="cell reveal">
-          <h3 data-i18n="uc.1t">Off the grid</h3>
-          <p data-i18n="uc.1b">Planes, trains through tunnels, trails, ships, field work &mdash; anywhere a signal can&rsquo;t follow you, your assistant still does.</p>
-        </article>
-        <article class="cell reveal">
-          <h3 data-i18n="uc.2t">Private by necessity</h3>
-          <p data-i18n="uc.2b">Legal, medical, journalism, research &mdash; work that simply can&rsquo;t be sent to someone else&rsquo;s server. Nothing leaves the device.</p>
-        </article>
-        <article class="cell reveal">
-          <h3 data-i18n="uc.3t">Free for everyone</h3>
-          <p data-i18n="uc.3b">Students, hobbyists, the curious &mdash; a capable assistant with no subscription, no token meter, no account to create.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- OFF-GRID STORY (ink dark section) -->
-  <section class="band" data-theme="dark" id="story">
-    <div class="container">
-      <div class="band-inner reveal">
-        <p class="eyebrow" data-i18n="story.eyebrow">Built for the edge of the map</p>
-        <h2 data-i18n="story.title">You&rsquo;re going off the grid for three days.</h2>
-        <p data-i18n-html="story.body">
-          The night before, on hotel Wi-Fi, you download a model&mdash;and Quenderin keeps the download
-          alive even when you switch apps, then shows a green <strong>&ldquo;ready to go offline&rdquo;</strong>.
-          On the trail, with no bars, you still have a capable assistant in your pocket. That&rsquo;s the
-          whole point: an AI that doesn&rsquo;t need the world to be online.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- PRIVACY -->
-  <section class="section" id="privacy">
-    <div class="container split">
-      <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="priv.eyebrow">Privacy</p>
-        <h2 data-i18n="priv.title">Your data never had to leave. So it doesn&rsquo;t.</h2>
-        <ul class="checklist">
-          <li data-i18n="priv.c1">No cloud calls after the model is downloaded</li>
-          <li data-i18n="priv.c2">No API keys, no sign-in, no account</li>
-          <li data-i18n="priv.c3">No analytics, no tracking, no telemetry</li>
-          <li data-i18n="priv.c4">Conversations stored only on your device</li>
-          <li data-i18n="priv.c5">Open source &mdash; verify all of the above yourself</li>
-        </ul>
-        <p class="learn-more"><a href="privacy" data-i18n="priv.link">Read the full Privacy Policy &rarr;</a></p>
-      </div>
-      <div class="split-visual reveal">
-        <div class="netpanel" aria-hidden="true">
-          <div class="netpanel-bar"><span class="dot dot-live"></span> <span data-i18n="priv.net.bar">Network activity &middot; on-device</span></div>
-          <div class="netrow"><span class="verb">GET</span><span class="ok">llama-3.2-3b.gguf &middot; 2.0 GB</span><span class="tag-ok" data-i18n="priv.net.once">once, Wi-Fi</span></div>
-          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/telemetry</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
-          <div class="netrow"><span class="verb">POST</span><span class="blocked">/v1/analytics</span><span class="tag-x" data-i18n="priv.net.never">never sent</span></div>
-          <div class="netrow"><span class="verb">GET</span><span class="blocked">/account</span><span class="tag-x" data-i18n="priv.net.noacct">no account</span></div>
-          <div class="netpanel-foot"><span class="dot dot-live"></span> <span data-i18n="priv.net.foot">0 B sent since launch &middot; nothing left your device</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MODELS -->
-  <section class="section tint" id="models">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="models.eyebrow">Model catalog</p>
-        <h2 data-i18n="models.title">Bring any model. Right-sized for your hardware.</h2>
-        <p data-i18n-html="models.intro">Quenderin runs on llama.cpp&mdash;so it runs <strong>any GGUF model</strong>: Llama, Qwen, DeepSeek, Mistral, Gemma, Phi. Here&rsquo;s the curated shortlist it recommends from, sized for everything from a Raspberry&nbsp;Pi to an M-series Mac.</p>
-      </header>
-      <div class="table-wrap reveal">
-        <table class="spec-table model-spec-table">
-          <thead>
-            <tr><th scope="col" data-i18n="models.th.model">Model</th><th scope="col" data-i18n="models.th.for">Good for</th><th scope="col" data-i18n="models.th.dl">Download</th><th scope="col" data-i18n="models.th.ram">Min&nbsp;RAM</th><th scope="col" data-i18n="models.th.quant">Quant</th></tr>
-          </thead>
-          <tbody>
-            <tr class="recommended"><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;4B<span class="badge" data-i18n="models.badge">Recommended</span></td><td data-i18n="models.r1">General-purpose, Apache&nbsp;2.0 &mdash; the current go-to</td><td>2.4&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-deepseek" aria-hidden="true"></span>DeepSeek-R1&nbsp;7B</td><td data-i18n="models.r2">Step-by-step reasoning &amp; math</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen2.5&nbsp;Coder&nbsp;7B</td><td data-i18n="models.r3">Code generation &amp; tool use</td><td>4.7&nbsp;GB</td><td>8&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-gemma" aria-hidden="true"></span>Gemma&nbsp;3&nbsp;4B</td><td data-i18n="models.r4">Multilingual, 140+ languages</td><td>2.5&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-phi" aria-hidden="true"></span>Phi-4&nbsp;mini&nbsp;3.8B</td><td data-i18n="models.r5">Efficient, runs well on CPU</td><td>2.3&nbsp;GB</td><td>4&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-mistral" aria-hidden="true"></span>Mistral&nbsp;7B</td><td data-i18n="models.r6">Fast, capable all-rounder</td><td>4.1&nbsp;GB</td><td>6&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-llama" aria-hidden="true"></span>Llama&nbsp;3.2&nbsp;1B</td><td data-i18n="models.r7">Ultra-light &mdash; runs on a Pi</td><td>0.8&nbsp;GB</td><td>1.5&nbsp;GB</td><td>Q4_K_M</td></tr>
-            <tr><td><span class="model-fam fam-qwen" aria-hidden="true"></span>Qwen3&nbsp;14B</td><td data-i18n="models.r8">Best quality for a strong device</td><td>9.0&nbsp;GB</td><td>12&nbsp;GB</td><td>Q4_K_M</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="models-foot" data-i18n-html="models.foot">&plus;&nbsp;<strong>thousands more</strong> from Hugging Face&mdash;any GGUF works. Choosing is optional: Quenderin picks the best fit for your device automatically.</p>
-    </div>
-  </section>
-
-  <!-- FAQ -->
-  <section class="section" id="faq">
-    <div class="container split faq-split">
-      <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
-        <h2 data-i18n="faq.title">Questions, answered.</h2>
-        <p data-i18n="faq.intro">It mostly comes down to one idea: the model runs on your device, so nothing leaves it. Here&rsquo;s the rest.</p>
-        <div class="faq-cta">
-          <p data-i18n="faq.cta.q">Still have a question?</p>
-          <a class="btn btn-ghost" href="https://github.com/alikatgh/quenderin/discussions" rel="noopener" data-i18n="faq.cta.link">Ask on GitHub</a>
-        </div>
-      </div>
-      <div class="faq reveal">
-        <details>
-          <summary data-i18n="faq.q1">Is it really free?</summary>
-          <p data-i18n="faq.a1">Yes. Quenderin is MIT-licensed open source, and inference runs on your own hardware&mdash;so there are no token costs and no subscription.</p>
-        </details>
-        <details>
-          <summary data-i18n="faq.q2">Is my data sent anywhere?</summary>
-          <p data-i18n="faq.a2">No. After the one-time model download, Quenderin makes no network calls. There are no analytics, no accounts, and no telemetry. Because it&rsquo;s open source, you can verify this yourself.</p>
-        </details>
-        <details>
-          <summary data-i18n="faq.q3">What devices does it run on?</summary>
-          <p data-i18n="faq.a3">The iPhone app is on the App Store, and the desktop app runs on macOS and Linux&mdash;all today. The native Android app is in closed beta right now, and you can join the test to run it. It&rsquo;s the same hardware-detection and model-selection engine, rebuilt natively for each platform.</p>
-        </details>
-        <details>
-          <summary data-i18n="faq.q4">Do I need a powerful phone?</summary>
-          <p data-i18n="faq.a4">No. Quenderin scales from a Raspberry Pi to an M-series Mac. It detects what your device can handle and recommends a model that actually runs&mdash;down to a 0.4&nbsp;GB ultra-light build.</p>
-        </details>
-        <details>
-          <summary data-i18n="faq.q5">When can I install it?</summary>
-          <p data-i18n="faq.a5">The iPhone app is on the App Store today, and the native Android app is in closed beta on Google Play&mdash;join the testers group to run it now. The desktop app is open source and runnable from GitHub on macOS and Linux.</p>
-        </details>
-      </div>
-    </div>
-  </section>
-
-  <!-- GET STARTED -->
-  <section class="section tint" id="get-started">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow" data-i18n="gs.eyebrow">Run it today</p>
-        <h2 data-i18n="gs.title">Up and running in four lines.</h2>
-        <p data-i18n="gs.intro">It&rsquo;s open source and runs from GitHub right now &mdash; on macOS or Linux.</p>
-      </header>
-      <div class="codeblock reveal">
-        <pre><code id="gs-cmd">git clone https://github.com/alikatgh/quenderin
-cd quenderin
-npm install
-npm run electron:dev</code></pre>
-        <button class="copy-btn" type="button" data-copy-target="gs-cmd" aria-label="Copy command"><span data-i18n="gs.copy">Copy</span></button>
-      </div>
-      <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>iOS</strong> on the App Store &middot; <strong>macOS</strong> &amp; <strong>Linux</strong> today &middot; <strong>Android</strong> in closed beta</p>
-    </div>
-  </section>
-
-  <!-- CTA — brand gradient, one focused action -->
-  <section class="cta-band" data-theme="dark" id="waitlist">
-    <div class="container reveal cta-inner">
-      <h2 data-i18n="cta.title">Bring your AI offline.</h2>
-      <p data-i18n="cta.body">It&rsquo;s free on the App Store for iPhone, and open source you can run from GitHub today &mdash; desktop on macOS and Linux, with the native Android app now in closed beta you can join.</p>
-      <div class="cta-row">
-        <a class="cta-appstore" href="https://apps.apple.com/app/id6789854363" rel="noopener" aria-label="Download Quenderin on the App Store">
-          <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="120" height="40" style="height:50px;width:auto;display:block" />
-        </a>
-        <a class="btn btn-white" href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="cta.btn1">Star on GitHub</a>
-      </div>
-      <p class="form-consent" data-i18n-html="cta.consent">No email, no account, no trackers&mdash;just the code. See our <a href="privacy">Privacy Policy</a>.</p>
-    </div>
-  </section>
-
 </main>
-
-<footer class="site-footer">
-  <div class="container container-wide footer-inner">
-    <div class="footer-brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">Quenderin</span>
-      <p class="footer-tag" data-i18n="foot.tag">Offline, private, on-device AI.</p>
-      <p class="footer-status"><span class="dot dot-live"></span> <span data-i18n="foot.status">Open source &middot; in active development</span></p>
-    </div>
-    <nav class="footer-cols" aria-label="Footer">
-      <div class="footer-col">
-        <h3 data-i18n="foot.col.product">Product</h3>
-        <a href="how-it-works" data-i18n="nav.how">How it works</a>
-        <a href="features" data-i18n="nav.features">Features</a>
-        <a href="models" data-i18n="nav.models">Models</a>
-        <a href="blog" data-i18n="nav.blog">Blog</a>
-      </div>
-      <div class="footer-col">
-        <h3 data-i18n="foot.col.project">Project</h3>
-        <a href="download" data-i18n="nav.download">Download</a>
-        <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
-        <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
-        <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
-      </div>
-      <div class="footer-col">
-        <h3 data-i18n="foot.col.learn">Learn</h3>
-        <a href="reality" data-i18n="nav.reality">The real numbers</a>
-        <a href="roadmap" data-i18n="nav.roadmap">Roadmap</a>
-        <a href="why-local-agent" data-i18n="nav.whylocal">Why local vs. cloud</a>
-        <a href="research">Research &amp; hiring</a>
-        <a href="privacy" data-i18n="nav.privacy">Privacy</a>
-        <a href="faq" data-i18n="nav.faq">FAQ</a>
-        <a href="help" data-i18n="nav.help">Get help</a>
-        <a href="changelog" data-i18n="nav.changelog">What's new</a>
-      </div>
-    </nav>
-  </div>
-  <div class="container container-wide footer-base">
-    <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
-    <nav class="footer-legal" aria-label="Legal">
-      <a href="privacy" data-i18n="foot.legal.privacy">Privacy</a>
-      <a href="terms" data-i18n="foot.legal.terms">Terms</a>
-      <a href="legal" data-i18n="foot.legal.legal">Legal Notice</a>
-      <a href="accessibility" data-i18n="foot.legal.a11y">Accessibility</a>
-    </nav>
-    <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
-  </div>
+<footer class="simple-footer simple-wrap">
+  <a href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View the source</a>
+  <a href="blog">Blog</a>
+  <a href="privacy" data-i18n="foot.legal.privacy">Privacy</a>
 </footer>
-
-<script>
-/* Hero phone: tilt toward the pointer for a real-3D feel. Sets --ry/--rx on the
-   tilt layer; the float animation owns translateY separately, so they compose.
-   Skipped entirely under reduced-motion and on coarse (touch) pointers. */
-(function () {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (matchMedia('(pointer: coarse)').matches) return;
-  var stage = document.querySelector('.hero-visual');
-  var tilt = stage && stage.querySelector('.hero-phone__tilt');
-  if (!tilt) return;
-  var raf = 0;
-  stage.addEventListener('pointermove', function (e) {
-    if (raf) return;
-    raf = requestAnimationFrame(function () {
-      raf = 0;
-      var r = stage.getBoundingClientRect();
-      var px = (e.clientX - r.left) / r.width - 0.5;   // -0.5 … 0.5
-      var py = (e.clientY - r.top) / r.height - 0.5;
-      tilt.style.setProperty('--ry', (-19 + px * 18).toFixed(2) + 'deg');
-      tilt.style.setProperty('--rx', (5 - py * 12).toFixed(2) + 'deg');
-    });
-  });
-  stage.addEventListener('pointerleave', function () {
-    tilt.style.setProperty('--ry', '-19deg');
-    tilt.style.setProperty('--rx', '5deg');
-  });
-})();
-
-/* Screens carousel: prev/next arrows + dots over a native scroll-snap track. */
-(function () {
-  var track = document.getElementById('shots-track');
-  var dotsWrap = document.getElementById('shots-dots');
-  if (!track || !dotsWrap) return;
-  var shots = [].slice.call(track.querySelectorAll('.shot'));
-  shots.forEach(function (s, i) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', 'Screen ' + (i + 1));
-    b.addEventListener('click', function () { s.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); });
-    dotsWrap.appendChild(b);
-  });
-  var dots = [].slice.call(dotsWrap.children);
-  function step(dir) { track.scrollBy({ left: dir * (shots[0].offsetWidth + 22), behavior: 'smooth' }); }
-  var wrap = track.parentNode;
-  var prev = wrap.querySelector('.shots-prev'), next = wrap.querySelector('.shots-next');
-  if (prev) prev.addEventListener('click', function () { step(-1); });
-  if (next) next.addEventListener('click', function () { step(1); });
-  var active = -1, raf = 0;
-  function update() {
-    var c = track.scrollLeft + track.clientWidth / 2, best = 0, bd = 1e9;
-    shots.forEach(function (s, i) { var m = s.offsetLeft + s.offsetWidth / 2, d = Math.abs(m - c); if (d < bd) { bd = d; best = i; } });
-    if (best !== active) { active = best; dots.forEach(function (d, i) { d.classList.toggle('is-active', i === best); }); }
-  }
-  track.addEventListener('scroll', function () { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; update(); }); });
-  update();
-})();
-</script>
-<script src="main.js" defer></script>
-<script src="i18n.js" defer></script>
+<script src="main.js?v=model-catalog-20260930" defer></script>
+<script src="i18n.js?v=simple-home-20261008" defer></script>
 </body>
 </html>

@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "id": "muse-spark-open-v1",
+  "baseRepository": "https://github.com/PrismML-Eng/llama.cpp.git",
+  "baseRevision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+  "upstreamRepository": "https://github.com/ggml-org/llama.cpp.git",
+  "upstreamRevision": "ba3c05f71da85cd0439e84ba42b0478b24d5db16",
+  "upstreamURL": "https://github.com/ggml-org/llama.cpp/commit/ba3c05f71da85cd0439e84ba42b0478b24d5db16",
+  "capabilitySymbol": "quenderin_muse_spark_runtime_abi",
+  "museSparkABI": 1,
+  "scope": "Text inference only; official Muse Spark core, quantization safeguards and synthetic architecture tests. Vision/audio and common Jinja/parser are excluded.",
+  "files": [
+    {
+      "path": "include/llama.h",
+      "beforeSha256": "50d9375b080df279b9a5d93df9e489f18785b0b9fa98a51045a7c637433e0d9c",
+      "afterSha256": "64a0c3baeb5600153107bddf298f0ba51a774dce88da92b245527e71ba41b8df",
+      "replacements": [
+        {
+          "before": "    LLAMA_API void llama_backend_init(void);\n",
+          "after": "    // Quenderin Muse Spark backport ABI; present only in the verified patched runtime.\n    LLAMA_API int32_t quenderin_muse_spark_runtime_abi(void);\n\n    LLAMA_API void llama_backend_init(void);\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.cpp",
+      "beforeSha256": "956abb337a1f38deb654e6ff2246894091a2bb5714db505ea21e989f7400cac2",
+      "afterSha256": "64264cb270435fc77e130afd7403918f6c8d0cbadb97427898627f6c606c5bca",
+      "replacements": [
+        {
+          "before": "    { LLM_ARCH_MUSE_GLIMMER,     \"muse-glimmer\"     },\n",
+          "after": "    { LLM_ARCH_MUSE_GLIMMER,     \"muse-glimmer\"     },\n    { LLM_ARCH_MUSE_SPARK,       \"muse-spark\"       },\n"
+        },
+        {
+          "before": "    { LLM_KV_MOE_LATENT_SIZE,                        \"%s.moe_latent_size\"                        },\n",
+          "after": "    { LLM_KV_MOE_LATENT_SIZE,                        \"%s.moe_latent_size\"                        },\n    { LLM_KV_POST_NORM_EPS,                          \"%s.post_norm_epsilon\"                      },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_ATTN_GATE,                              \"blk.%d.attn_gate\" },\n",
+          "after": "    { LLM_TENSOR_ATTN_GATE,                              \"blk.%d.attn_gate\" },\n    { LLM_TENSOR_ATTN_RESID_ALPHA,                      \"blk.%d.attn_resid_alpha\" },\n    { LLM_TENSOR_ATTN_RESID_BETA,                       \"blk.%d.attn_resid_beta\" },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_FFN_LATENT_UP,                          \"blk.%d.ffn_latent_up\" },\n",
+          "after": "    { LLM_TENSOR_FFN_LATENT_UP,                          \"blk.%d.ffn_latent_up\" },\n    { LLM_TENSOR_FFN_PRE_EXP_NORM,                      \"blk.%d.ffn_pre_exp_norm\" },\n    { LLM_TENSOR_FFN_POST_EXP_NORM,                     \"blk.%d.ffn_post_exp_norm\" },\n    { LLM_TENSOR_FFN_RESID_ALPHA,                       \"blk.%d.ffn_resid_alpha\" },\n    { LLM_TENSOR_FFN_RESID_BETA,                        \"blk.%d.ffn_resid_beta\" },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_ATTN_GATE,                { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n",
+          "after": "    { LLM_TENSOR_ATTN_GATE,                { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n    { LLM_TENSOR_ATTN_RESID_ALPHA,         { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n    { LLM_TENSOR_ATTN_RESID_BETA,          { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_FFN_LATENT_UP,            { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n",
+          "after": "    { LLM_TENSOR_FFN_LATENT_UP,            { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n    { LLM_TENSOR_FFN_PRE_EXP_NORM,         { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n    { LLM_TENSOR_FFN_POST_EXP_NORM,        { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n    { LLM_TENSOR_FFN_RESID_ALPHA,          { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n    { LLM_TENSOR_FFN_RESID_BETA,           { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL }        },\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.h",
+      "beforeSha256": "ba92edaa99b7d46e6f2d1fd18d2b9bf067932e0ededa38c8b2ed98d1fa7fe64e",
+      "afterSha256": "9c2d12f4efe51237b03d6f64fb6b39236f17daa46a1da50fd6efdc07b0398b93",
+      "replacements": [
+        {
+          "before": "    LLM_ARCH_MUSE_GLIMMER,\n",
+          "after": "    LLM_ARCH_MUSE_GLIMMER,\n    LLM_ARCH_MUSE_SPARK,\n"
+        },
+        {
+          "before": "    LLM_KV_MOE_LATENT_SIZE,\n",
+          "after": "    LLM_KV_MOE_LATENT_SIZE,\n    LLM_KV_POST_NORM_EPS,\n"
+        },
+        {
+          "before": "    LLM_TENSOR_ATTN_GATE,\n",
+          "after": "    LLM_TENSOR_ATTN_GATE,\n    LLM_TENSOR_ATTN_RESID_ALPHA,\n    LLM_TENSOR_ATTN_RESID_BETA,\n"
+        },
+        {
+          "before": "    LLM_TENSOR_FFN_LATENT_UP,\n",
+          "after": "    LLM_TENSOR_FFN_LATENT_UP,\n    LLM_TENSOR_FFN_PRE_EXP_NORM,\n    LLM_TENSOR_FFN_POST_EXP_NORM,\n    LLM_TENSOR_FFN_RESID_ALPHA,\n    LLM_TENSOR_FFN_RESID_BETA,\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-graph.cpp",
+      "beforeSha256": "03b2f05258be1025dd99704f88e2da22f7595f797111996e572ac1b53c16c51a",
+      "afterSha256": "6d82915f45a97ef48538066bbb97b4945a079fe0071b41230a0551d8d99a4135",
+      "replacements": [
+        {
+          "before": "         ggml_tensor * up_exps_s,\n         ggml_tensor * gate_exps_s,\n         ggml_tensor * down_exps_s,\n         ggml_tensor * selected_experts_in) const {\n    return build_moe_ffn(\n        cur,\n        gate_inp,  /* gate_inp_b  */ nullptr,\n",
+          "after": "         ggml_tensor * up_exps_s,\n         ggml_tensor * gate_exps_s,\n         ggml_tensor * down_exps_s,\n         ggml_tensor * selected_experts_in,\n         ggml_tensor * post_exp_norm,\n               float   post_exp_norm_eps) const {\n    return build_moe_ffn(\n        cur,\n        gate_inp,  /* gate_inp_b  */ nullptr,\n"
+        },
+        {
+          "before": "        up_exps_s,\n        gate_exps_s,\n        down_exps_s,\n        selected_experts_in\n    );\n}\n\n",
+          "after": "        up_exps_s,\n        gate_exps_s,\n        down_exps_s,\n        selected_experts_in,\n        post_exp_norm,\n        post_exp_norm_eps\n    );\n}\n\n"
+        },
+        {
+          "before": "         ggml_tensor * up_exps_s,\n         ggml_tensor * gate_exps_s,\n         ggml_tensor * down_exps_s,\n         ggml_tensor * selected_experts_in) const {\n    const int64_t n_embd   = cur->ne[0];\n    const int64_t n_tokens = cur->ne[1];\n    const bool weight_before_ffn = arch == LLM_ARCH_LLAMA4; // for llama4, we apply the sigmoid-ed weights before the FFN\n",
+          "after": "         ggml_tensor * up_exps_s,\n         ggml_tensor * gate_exps_s,\n         ggml_tensor * down_exps_s,\n         ggml_tensor * selected_experts_in,\n         ggml_tensor * post_exp_norm,\n               float   post_exp_norm_eps) const {\n    const int64_t n_embd   = cur->ne[0];\n    const int64_t n_tokens = cur->ne[1];\n    const bool weight_before_ffn = arch == LLM_ARCH_LLAMA4; // for llama4, we apply the sigmoid-ed weights before the FFN\n"
+        },
+        {
+          "before": "        cb(experts, \"ffn_moe_down_biased\", il);\n    }\n\n    if (!weight_before_ffn) {\n        experts = ggml_mul(ctx0, experts, weights);\n        cb(experts, \"ffn_moe_weighted\", il);\n",
+          "after": "        cb(experts, \"ffn_moe_down_biased\", il);\n    }\n\n    // an expert output can be scaled by a norm weight, then normalized, before the router weights apply\n    if (post_exp_norm) {\n        experts = ggml_mul(ctx0, experts, post_exp_norm);\n        experts = ggml_rms_norm(ctx0, experts, post_exp_norm_eps);\n        cb(experts, \"ffn_moe_post_exp_norm\", il);\n    }\n\n    if (!weight_before_ffn) {\n        experts = ggml_mul(ctx0, experts, weights);\n        cb(experts, \"ffn_moe_weighted\", il);\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-graph.h",
+      "beforeSha256": "58d1cece3470b9fc880bbcfc6f969d1cbdab849ddb2469127aae3c45138997dd",
+      "afterSha256": "eff0346937d9dc0d5b9aced8cc5228a301e4bf8b152aa61f35045ee49b01db88",
+      "replacements": [
+        {
+          "before": "             ggml_tensor * up_exps_s = nullptr,\n             ggml_tensor * gate_exps_s = nullptr,\n             ggml_tensor * down_exps_s = nullptr,\n             ggml_tensor * selected_experts_in = nullptr) const;\n\n    ggml_tensor * build_moe_ffn(\n             ggml_tensor * cur,\n",
+          "after": "             ggml_tensor * up_exps_s = nullptr,\n             ggml_tensor * gate_exps_s = nullptr,\n             ggml_tensor * down_exps_s = nullptr,\n             ggml_tensor * selected_experts_in = nullptr,\n             ggml_tensor * post_exp_norm = nullptr,\n                   float   post_exp_norm_eps = 1e-5f) const;\n\n    ggml_tensor * build_moe_ffn(\n             ggml_tensor * cur,\n"
+        },
+        {
+          "before": "             ggml_tensor * up_exps_s = nullptr,\n             ggml_tensor * gate_exps_s = nullptr,\n             ggml_tensor * down_exps_s = nullptr,\n             ggml_tensor * selected_experts_in = nullptr) const;\n\n",
+          "after": "             ggml_tensor * up_exps_s = nullptr,\n             ggml_tensor * gate_exps_s = nullptr,\n             ggml_tensor * down_exps_s = nullptr,\n             ggml_tensor * selected_experts_in = nullptr,\n             ggml_tensor * post_exp_norm = nullptr,\n                   float   post_exp_norm_eps = 1e-5f) const;\n\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-hparams.h",
+      "beforeSha256": "7ee614d509ead135a0e58e0ab94421b9c6f9c5a74728c629e2c822809131996d",
+      "afterSha256": "a31d22a574e13a92aa54a2eb1a2abc9b44a0bd3b390d63d28551118cd4bf5198",
+      "replacements": [
+        {
+          "before": "    float f_norm_rms_eps;\n    float f_norm_group_eps;\n\n    float f_attn_logit_softcapping   = 50.0f;\n    float f_router_logit_softcapping = 30.0f;\n    float f_final_logit_softcapping  = 30.0f;\n",
+          "after": "    float f_norm_rms_eps;\n    float f_norm_group_eps;\n\n    // post norms use their own epsilon\n    std::array<uint32_t, LLAMA_MAX_LAYERS> n_ff_muse_exp_arr{};\n\n    float f_post_norm_eps = 0.0f;\n\n    float f_attn_logit_softcapping   = 50.0f;\n    float f_router_logit_softcapping = 30.0f;\n    float f_final_logit_softcapping  = 30.0f;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model-saver.cpp",
+      "beforeSha256": "6dec1fc297dca89fb6933b638acf593a2e4c1ca02b69dafe00268651fa9ef96d",
+      "afterSha256": "9cc220914143e7d8925f50ce784a1f019f90894e48cdf7dd8e88ea8dfadd7c14",
+      "replacements": [
+        {
+          "before": "    add_kv(LLM_KV_ATTENTION_VALUE_LENGTH,            hparams.n_embd_head_v_full);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_EPS,           hparams.f_norm_eps);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_EPS,           hparams.f_norm_group_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_GROUPS,        hparams.n_norm_groups);\n",
+          "after": "    add_kv(LLM_KV_ATTENTION_VALUE_LENGTH,            hparams.n_embd_head_v_full);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_EPS,           hparams.f_norm_eps);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);\n    add_kv(LLM_KV_POST_NORM_EPS,                     hparams.f_post_norm_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_EPS,           hparams.f_norm_group_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_GROUPS,        hparams.n_norm_groups);\n"
+        },
+        {
+          "before": "    add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH,        hparams.n_ff_exp);\n",
+          "after": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, true);\n    } else {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_exp);\n    }\n    add_kv(LLM_KV_MOE_LATENT_SIZE,                   hparams.moe_latent_size);\n"
+        },
+        {
+          "before": "    // add_kv(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN,  ???);\n",
+          "after": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        // Muse requires an array even when every layer uses the same pattern.\n        add_kv(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, std::vector<uint32_t>(\n                hparams.is_swa_impl.begin(), hparams.is_swa_impl.begin() + hparams.n_layer_all));\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.cpp",
+      "beforeSha256": "60d1df459bdb7e24b53fdb29de47098a750fb728da3b5422dbf1cf0e3be12092",
+      "afterSha256": "f8865341db0798ae8bd653d265686a054a9893e880a1fa658e496febd884a3b0",
+      "replacements": [
+        {
+          "before": "            return new llama_model_olmoe(params);\n        case LLM_ARCH_MUSE_GLIMMER:\n            return new llama_model_muse_glimmer(params);\n        case LLM_ARCH_OPENELM:\n            return new llama_model_openelm(params);\n        case LLM_ARCH_GPTNEOX:\n",
+          "after": "            return new llama_model_olmoe(params);\n        case LLM_ARCH_MUSE_GLIMMER:\n            return new llama_model_muse_glimmer(params);\n        case LLM_ARCH_MUSE_SPARK:\n            return new llama_model_muse_spark(params);\n        case LLM_ARCH_OPENELM:\n            return new llama_model_openelm(params);\n        case LLM_ARCH_GPTNEOX:\n"
+        },
+        {
+          "before": "        case LLM_TYPE_16x3_8B:       return \"16x3.8B\";\n        case LLM_TYPE_10B_128x3_66B: return \"10B+128x3.66B\";\n        case LLM_TYPE_57B_A14B:      return \"57B.A14B\";\n        case LLM_TYPE_17B_16E:       return \"17Bx16E (Scout)\";\n        case LLM_TYPE_17B_128E:      return \"17Bx128E (Maverick)\";\n        case LLM_TYPE_A13B:          return \"A13B\";\n",
+          "after": "        case LLM_TYPE_16x3_8B:       return \"16x3.8B\";\n        case LLM_TYPE_10B_128x3_66B: return \"10B+128x3.66B\";\n        case LLM_TYPE_57B_A14B:      return \"57B.A14B\";\n        case LLM_TYPE_816B_A42B:     return \"816B.A42B\";\n        case LLM_TYPE_17B_16E:       return \"17Bx16E (Scout)\";\n        case LLM_TYPE_17B_128E:      return \"17Bx128E (Maverick)\";\n        case LLM_TYPE_A13B:          return \"A13B\";\n"
+        },
+        {
+          "before": "        case LLM_ARCH_DEEPSEEK32:\n        case LLM_ARCH_DEEPSEEK4:\n        case LLM_ARCH_MUSE_GLIMMER:\n        case LLM_ARCH_PLM:\n        case LLM_ARCH_CHATGLM:\n        case LLM_ARCH_GRANITE:\n",
+          "after": "        case LLM_ARCH_DEEPSEEK32:\n        case LLM_ARCH_DEEPSEEK4:\n        case LLM_ARCH_MUSE_GLIMMER:\n        case LLM_ARCH_MUSE_SPARK:\n        case LLM_ARCH_PLM:\n        case LLM_ARCH_CHATGLM:\n        case LLM_ARCH_GRANITE:\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.h",
+      "beforeSha256": "c0448958504508d45362c20fd2eabcd1240a13389c3d22e8faf9006f7e1a9ec7",
+      "afterSha256": "5e6cecfe050736eed842a3287b314d89e59843ae6f21028a9287fdfbb0a386bf",
+      "replacements": [
+        {
+          "before": "    LLM_TYPE_16x3_8B,\n    LLM_TYPE_10B_128x3_66B,\n    LLM_TYPE_57B_A14B,\n    LLM_TYPE_17B_16E, // llama4 Scout\n    LLM_TYPE_17B_128E, // llama4 Maverick\n    LLM_TYPE_A13B,\n",
+          "after": "    LLM_TYPE_16x3_8B,\n    LLM_TYPE_10B_128x3_66B,\n    LLM_TYPE_57B_A14B,\n    LLM_TYPE_816B_A42B,\n    LLM_TYPE_17B_16E, // llama4 Scout\n    LLM_TYPE_17B_128E, // llama4 Maverick\n    LLM_TYPE_A13B,\n"
+        },
+        {
+          "before": "    struct ggml_tensor * ffn_latent_down = nullptr;\n    struct ggml_tensor * ffn_latent_up   = nullptr;\n\n    // ff shared expert (shexp)\n    struct ggml_tensor * ffn_gate_inp_shexp = nullptr;\n    struct ggml_tensor * ffn_gate_shexp     = nullptr;\n",
+          "after": "    struct ggml_tensor * ffn_latent_down = nullptr;\n    struct ggml_tensor * ffn_latent_up   = nullptr;\n\n    // ff MoE norms around the experts, in latent space\n    struct ggml_tensor * ffn_pre_exp_norm  = nullptr;\n    struct ggml_tensor * ffn_post_exp_norm = nullptr;\n\n    // norm preserving residual coefficients\n    struct ggml_tensor * attn_resid_alpha = nullptr;\n    struct ggml_tensor * attn_resid_beta  = nullptr;\n    struct ggml_tensor * ffn_resid_alpha  = nullptr;\n    struct ggml_tensor * ffn_resid_beta   = nullptr;\n\n    // ff shared expert (shexp)\n    struct ggml_tensor * ffn_gate_inp_shexp = nullptr;\n    struct ggml_tensor * ffn_gate_shexp     = nullptr;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-quant.cpp",
+      "beforeSha256": "1b24384bc66f6bb38996ca9b50d31a804ed790e72977fd37e6fb414fad81f2a3",
+      "afterSha256": "6bc46f021ed4f63d0cd11e061bd5cee32460c0f6bc088e18f101223fc7dcd97e",
+      "replacements": [
+        {
+          "before": "    ATTENTION_QKV,\n    ATTENTION_KV_B,\n    ATTENTION_OUTPUT,\n    FFN_UP,\n    FFN_GATE,\n    FFN_DOWN,\n    OUTPUT,\n    OTHER\n};\n",
+          "after": "    ATTENTION_QKV,\n    ATTENTION_KV_B,\n    ATTENTION_OUTPUT,\n    ATTENTION_GATE,\n    FFN_UP,\n    FFN_GATE,\n    FFN_DOWN,\n    FFN_LATENT,\n    OUTPUT,\n    OTHER\n};\n"
+        },
+        {
+          "before": "    if (tensor_name.find(\"ffn_gate\") != std::string::npos) {\n        return tensor_category::FFN_GATE;\n    }\n    if (tensor_name.find(\"ffn_down\") != std::string::npos) {\n        return tensor_category::FFN_DOWN;\n    }\n",
+          "after": "    if (tensor_name.find(\"ffn_gate\") != std::string::npos) {\n        return tensor_category::FFN_GATE;\n    }\n    if (tensor_name.find(\"ffn_latent\") != std::string::npos) {\n        return tensor_category::FFN_LATENT;\n    }\n    if (tensor_name.find(\"attn_gate.weight\") != std::string::npos) {\n        return tensor_category::ATTENTION_GATE;\n    }\n    if (tensor_name.find(\"ffn_down\") != std::string::npos) {\n        return tensor_category::FFN_DOWN;\n    }\n"
+        },
+        {
+          "before": "    // for arches that share the same tensor between the token embeddings and the output, we quantize the token embeddings\n",
+          "after": "    // bumping to q8_0 is preferred since these tensors are not really big\n    // TODO: nemotron 3 super shares ffn_latent and afmoe, bailingmoe3, dots3note, hy-v4, kimi-k3 and laguna share attn_gate.\n    //       Widening the guard is likely a win there too, but it changes their files, so it wants a perplexity comparison per architecture first.\n    if (arch == LLM_ARCH_MUSE_SPARK &&\n        (category == tensor_category::FFN_LATENT || category == tensor_category::ATTENTION_GATE)) {\n        auto bits_per_weight = [](ggml_type t) {\n            return 8.0 * ggml_type_size(t) / ggml_blck_size(t);\n        };\n        if (ggml_is_quantized(new_type) && bits_per_weight(new_type) < bits_per_weight(GGML_TYPE_Q8_0)) {\n            new_type = GGML_TYPE_Q8_0;\n        }\n    }\n\n    // for arches that share the same tensor between the token embeddings and the output, we quantize the token embeddings\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-vocab.cpp",
+      "beforeSha256": "32b8b7ac4a023bc6367eb7832e56e988ab7373a676ddcca4977665f78932ab88",
+      "afterSha256": "8f7873c922d5934cefb259cbb60aa2293d8ce33a52e348eb006ea5dea84eb95a",
+      "replacements": [
+        {
+          "before": "\n            if (false\n                    || t.first == \"<|eot_id|>\"\n                    || t.first == \"<|im_end|>\"\n                    || t.first == \"<|end|>\"\n                    || t.first == \"<|return|>\" // o200k_harmony\n",
+          "after": "\n            if (false\n                    || t.first == \"<|eot_id|>\"\n                    || t.first == \"<|eot|>\"    // muse-spark\n                    || t.first == \"<|im_end|>\"\n                    || t.first == \"<|end|>\"\n                    || t.first == \"<|return|>\" // o200k_harmony\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama.cpp",
+      "beforeSha256": "9315db4cc7aad1a926dc7e10cc3483d0b7453e55509ae175562a87a066af296e",
+      "afterSha256": "656545558400661e3a8a752c7cfefcab202419529246bf67b4ebc163e8c9630a",
+      "replacements": [
+        {
+          "before": "void llama_backend_init(void) {\n",
+          "after": "int32_t quenderin_muse_spark_runtime_abi(void) {\n    return 1;\n}\n\nvoid llama_backend_init(void) {\n"
+        }
+      ]
+    },
+    {
+      "path": "src/models/models.h",
+      "beforeSha256": "5a9fc8c7cf5e878cc005878f2f4e88aa8ad3daa5869e6b4c7f14f96b205b2cb8",
+      "afterSha256": "753a60c5f52eb74a4d17e192c9cdb249b2a69eb559b7e1b2869cecc34966bed6",
+      "replacements": [
+        {
+          "before": "};\n\n\nstruct llama_model_muse_glimmer : public llama_model_base {\n    llama_model_muse_glimmer(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n",
+          "after": "};\n\n\nstruct llama_model_muse_spark : public llama_model_base {\n    llama_model_muse_spark(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n    void load_arch_tensors(llama_model_loader & ml) override;\n\n    struct graph : public llm_graph_context {\n        graph(const llama_model & model, const llm_graph_params & params);\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n\n\nstruct llama_model_muse_glimmer : public llama_model_base {\n    llama_model_muse_glimmer(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/models/muse-spark.cpp",
+      "beforeSha256": null,
+      "afterSha256": "f1d10157f7ba203eececa0447ea8057069c93c179d0e37301a14ad2bf346118e",
+      "content": "#include \"models.h\"\n\nvoid llama_model_muse_spark::load_arch_hparams(llama_model_loader & ml) {\n    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);\n    ml.get_key(LLM_KV_POST_NORM_EPS,               hparams.f_post_norm_eps);\n    ml.get_key(LLM_KV_ATTENTION_SLIDING_WINDOW,    hparams.n_swa);\n    ml.get_key(LLM_KV_ROPE_FREQ_BASE_SWA,          hparams.rope_freq_base_train_swa);\n    ml.get_key(LLM_KV_FINAL_LOGIT_SOFTCAPPING,     hparams.f_final_logit_softcapping);\n    ml.get_key(LLM_KV_LOGIT_SCALE,                 hparams.f_logit_scale);\n    ml.get_key(LLM_KV_MOE_LATENT_SIZE,             hparams.moe_latent_size);\n    ml.get_key(LLM_KV_EXPERT_WEIGHTS_SCALE,        hparams.expert_weights_scale);\n    ml.get_key(LLM_KV_EXPERT_GATING_FUNC,          hparams.expert_gating_func);\n    ml.get_key(LLM_KV_EXPERT_WEIGHTS_NORM,         hparams.expert_weights_norm);\n    ml.get_key_or_arr(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, hparams.n_layer_all, false);\n\n    hparams.swa_type = LLAMA_SWA_TYPE_STANDARD;\n    ml.get_arr(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, hparams.is_swa_impl);\n\n    switch (hparams.n_layer()) {\n        case 62: type = LLM_TYPE_816B_A42B; break;\n        default: type = LLM_TYPE_UNKNOWN;\n    }\n}\n\nvoid llama_model_muse_spark::load_arch_tensors(llama_model_loader &) {\n    LLAMA_LOAD_LOCALS;\n\n    const int64_t n_embd_moe = hparams.moe_latent_size;\n\n    tok_embd    = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD,  \"weight\"), {n_embd, n_vocab}, 0);\n    output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, \"weight\"), {n_embd}, 0);\n    output      = create_tensor(tn(LLM_TENSOR_OUTPUT,      \"weight\"), {n_embd, n_vocab}, 0);\n\n    for (int i = 0; i < n_layer; ++i) {\n        auto & layer = layers[i];\n        const int64_t n_ff_exp = hparams.n_ff_muse_exp_arr[i];\n\n        // Pre-attention norm. All block norms hold a delta folded at conversion time.\n        layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, \"weight\", i), {n_embd}, 0);\n\n        // Q/K/V/O projections.\n        create_tensor_qkv(layer, i, n_embd, n_embd_head_k * n_head, n_embd_k_gqa, n_embd_v_gqa, 0);\n        layer.wo = create_tensor(tn(LLM_TENSOR_ATTN_OUT, \"weight\", i), {n_embd_head_k * n_head, n_embd}, 0);\n\n        // QK-norm. Weights are synthesized at conversion to absorb the metap scale.\n        layer.attn_q_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, \"weight\", i), {n_embd_head_k}, 0);\n        layer.attn_k_norm = create_tensor(tn(LLM_TENSOR_ATTN_K_NORM, \"weight\", i), {n_embd_head_k}, 0);\n\n        // Attention output gate: sigmoid(gate) * attn_out before o_proj.\n        layer.wqkv_gate = create_tensor(tn(LLM_TENSOR_ATTN_GATE, \"weight\", i), {n_embd, n_embd_head_k * n_head}, 0);\n\n        // Norm preserving residual: alpha scales the stream, beta the branch.\n        layer.attn_resid_alpha = create_tensor(tn(LLM_TENSOR_ATTN_RESID_ALPHA, \"weight\", i), {n_embd}, 0);\n        layer.attn_resid_beta  = create_tensor(tn(LLM_TENSOR_ATTN_RESID_BETA,  \"weight\", i), {n_embd}, 0);\n\n        layer.ffn_norm       = create_tensor(tn(LLM_TENSOR_FFN_NORM,       \"weight\", i), {n_embd}, 0);\n        layer.ffn_post_norm  = create_tensor(tn(LLM_TENSOR_FFN_POST_NORM,  \"weight\", i), {n_embd}, 0);\n        layer.ffn_resid_alpha = create_tensor(tn(LLM_TENSOR_FFN_RESID_ALPHA, \"weight\", i), {n_embd}, 0);\n        layer.ffn_resid_beta  = create_tensor(tn(LLM_TENSOR_FFN_RESID_BETA,  \"weight\", i), {n_embd}, 0);\n\n        // Every layer routes. The router reads the full stream, the experts run\n        // in a latent space entered by ffn_latent_down and left by ffn_latent_up.\n        layer.ffn_gate_inp  = create_tensor(tn(LLM_TENSOR_FFN_GATE_INP,   \"weight\", i), {n_embd, n_expert}, 0);\n        layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_FFN_EXP_PROBS_B, \"bias\", i), {n_expert}, 0);\n\n        layer.ffn_latent_down = create_tensor(tn(LLM_TENSOR_FFN_LATENT_DOWN, \"weight\", i), {n_embd, n_embd_moe}, 0);\n        layer.ffn_latent_up   = create_tensor(tn(LLM_TENSOR_FFN_LATENT_UP,   \"weight\", i), {n_embd_moe, n_embd}, 0);\n\n        layer.ffn_pre_exp_norm  = create_tensor(tn(LLM_TENSOR_FFN_PRE_EXP_NORM,  \"weight\", i), {n_embd_moe}, 0);\n        layer.ffn_post_exp_norm = create_tensor(tn(LLM_TENSOR_FFN_POST_EXP_NORM, \"weight\", i), {n_embd_moe}, 0);\n\n        layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, \"weight\", i), {n_embd_moe, n_ff_exp, n_expert}, 0);\n        layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   \"weight\", i), {n_embd_moe, n_ff_exp, n_expert}, 0);\n        layer.ffn_down_exps = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS, \"weight\", i), {n_ff_exp, n_embd_moe, n_expert}, 0);\n    }\n}\n\nllama_model_muse_spark::graph::graph(const llama_model & model, const llm_graph_params & params)\n    : llm_graph_context(params) {\n    const int64_t n_embd_head = hparams.n_embd_head_v();\n    GGML_ASSERT(n_embd_head == hparams.n_embd_head_k());\n\n    ggml_tensor * cur;\n    ggml_tensor * inpL;\n\n    inpL = build_inp_embd(model.tok_embd);\n    inpL = build_norm(inpL, nullptr, nullptr, LLM_NORM_RMS, -1);\n    cb(inpL, \"embd_norm\", -1);\n\n    ggml_tensor * inp_pos = build_inp_pos();\n    auto * inp_attn = build_attn_inp_kv_iswa();\n    ggml_tensor * inp_out_ids = build_inp_out_ids();\n\n    const float kq_scale = 1.0f / sqrtf(float(n_embd_head));\n\n    for (int il = 0; il < n_layer; ++il) {\n        res->t_layer_inp[il] = inpL;\n\n        const float freq_base_l  = model.get_rope_freq_base (cparams, il);\n        const float freq_scale_l = model.get_rope_freq_scale(cparams, il);\n\n        ggml_tensor * inpSA = inpL;\n\n        // RoPE runs on the SWA layers, NoPE on the global ones.\n        const bool use_rope = hparams.is_swa(il);\n\n        cur = build_norm(inpL, model.layers[il].attn_norm, NULL, LLM_NORM_RMS, il);\n        cb(cur, \"attn_norm\", il);\n\n        {\n            auto [Qcur, Kcur, Vcur] = build_qkv(model.layers[il], cur,\n                    n_embd_head, n_head, n_head_kv, il);\n\n            ggml_tensor * gate = build_lora_mm(model.layers[il].wqkv_gate, cur);\n            cb(gate, \"attn_gate_proj\", il);\n\n            // attn_q_norm carries the metap scale, attn_k_norm is identity.\n            Qcur = build_norm(Qcur, model.layers[il].attn_q_norm, NULL, LLM_NORM_RMS, il);\n            Kcur = build_norm(Kcur, model.layers[il].attn_k_norm, NULL, LLM_NORM_RMS, il);\n            cb(Qcur, \"Qcur_normed\", il);\n            cb(Kcur, \"Kcur_normed\", il);\n\n            if (use_rope) {\n                Qcur = ggml_rope_ext(\n                        ctx0, Qcur, inp_pos, nullptr,\n                        n_rot, rope_type, n_ctx_orig, freq_base_l, freq_scale_l,\n                        ext_factor, attn_factor, beta_fast, beta_slow);\n                cb(Qcur, \"Qcur_rope\", il);\n\n                Kcur = ggml_rope_ext(\n                        ctx0, Kcur, inp_pos, nullptr,\n                        n_rot, rope_type, n_ctx_orig, freq_base_l, freq_scale_l,\n                        ext_factor, attn_factor, beta_fast, beta_slow);\n                cb(Kcur, \"Kcur_rope\", il);\n            }\n\n            cur = build_attn(inp_attn,\n                    NULL, NULL, NULL,\n                    Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);\n            cb(cur, \"attn_out\", il);\n\n            // Weightless norm on the attention output, applied per head.\n            cur = ggml_reshape_3d(ctx0, cur, n_embd_head, n_head, n_tokens);\n            cur = ggml_rms_norm(ctx0, cur, hparams.f_norm_rms_eps);\n            cur = ggml_reshape_2d(ctx0, cur, n_embd_head * n_head, n_tokens);\n            cb(cur, \"attn_o_norm\", il);\n\n            gate = ggml_sigmoid(ctx0, gate);\n            cb(gate, \"attn_gate_sig\", il);\n            cur = ggml_mul(ctx0, cur, gate);\n            cb(cur, \"attn_gated\", il);\n\n            cur = build_lora_mm(model.layers[il].wo, cur, model.layers[il].wo_s);\n            cb(cur, \"attn_o_proj\", il);\n        }\n\n        // Post-attention norm holds no weight.\n        cur = ggml_rms_norm(ctx0, cur, hparams.f_post_norm_eps);\n        cb(cur, \"attn_post_norm\", il);\n\n        if (il == n_layer - 1 && inp_out_ids) {\n            cur   = ggml_get_rows(ctx0,   cur, inp_out_ids);\n            inpSA = ggml_get_rows(ctx0, inpSA, inp_out_ids);\n        }\n\n        ggml_tensor * ffn_inp = ggml_add(ctx0,\n                ggml_mul(ctx0, inpSA, model.layers[il].attn_resid_alpha),\n                ggml_mul(ctx0, cur,   model.layers[il].attn_resid_beta));\n        cb(ffn_inp, \"ffn_inp\", il);\n\n        cur = build_norm(ffn_inp, model.layers[il].ffn_norm, NULL, LLM_NORM_RMS, il);\n        cb(cur, \"ffn_norm\", il);\n\n        // Enter the latent space, run the experts, leave it.\n        ggml_tensor * moe_inp = build_lora_mm(model.layers[il].ffn_latent_down, cur);\n        cb(moe_inp, \"ffn_latent_down\", il);\n\n        moe_inp = build_norm(moe_inp, model.layers[il].ffn_pre_exp_norm, NULL, LLM_NORM_RMS, il);\n        cb(moe_inp, \"ffn_pre_exp_norm\", il);\n\n        // The router reads the full stream, not the latent one.\n        ggml_tensor * router_logits = build_lora_mm(model.layers[il].ffn_gate_inp, cur);\n        cb(router_logits, \"ffn_moe_logits\", il);\n\n        ggml_tensor * moe_out = build_moe_ffn(moe_inp,\n                model.layers[il].ffn_gate_inp,\n                model.layers[il].ffn_up_exps,\n                model.layers[il].ffn_gate_exps,\n                model.layers[il].ffn_down_exps,\n                model.layers[il].ffn_exp_probs_b,\n                n_expert, n_expert_used,\n                LLM_FFN_SILU, hparams.expert_weights_norm, hparams.expert_weights_scale,\n                (llama_expert_gating_func_type) hparams.expert_gating_func,\n                il,\n                router_logits,\n                nullptr, nullptr, nullptr, nullptr, nullptr,\n                model.layers[il].ffn_post_exp_norm, hparams.f_post_norm_eps);\n        cb(moe_out, \"ffn_moe_out\", il);\n\n        cur = build_lora_mm(model.layers[il].ffn_latent_up, moe_out);\n        cb(cur, \"ffn_latent_up\", il);\n\n        // Post-FFN norm scales the input, then normalizes.\n        cur = ggml_mul(ctx0, cur, model.layers[il].ffn_post_norm);\n        cur = ggml_rms_norm(ctx0, cur, hparams.f_post_norm_eps);\n        cb(cur, \"ffn_post_norm\", il);\n\n        cur = ggml_add(ctx0,\n                ggml_mul(ctx0, ffn_inp, model.layers[il].ffn_resid_alpha),\n                ggml_mul(ctx0, cur,     model.layers[il].ffn_resid_beta));\n        cur = build_cvec(cur, il);\n        cb(cur, \"l_out\", il);\n\n        inpL = cur;\n    }\n\n    cur = inpL;\n\n    cur = build_norm(cur, model.output_norm, NULL, LLM_NORM_RMS, -1);\n    cb(cur, \"result_norm\", -1);\n    res->t_embd = cur;\n\n    cur = build_lora_mm(model.output, cur, model.output_s);\n    cur = ggml_scale(ctx0, cur, hparams.f_logit_scale);\n\n    if (hparams.f_final_logit_softcapping) {\n        cur = ggml_scale(ctx0, cur, 1.0f / hparams.f_final_logit_softcapping);\n        cur = ggml_tanh(ctx0, cur);\n        cur = ggml_scale(ctx0, cur, hparams.f_final_logit_softcapping);\n    }\n\n    cb(cur, \"result_output\", -1);\n    res->t_logits = cur;\n\n    ggml_build_forward_expand(gf, cur);\n}\n\nstd::unique_ptr<llm_graph_context> llama_model_muse_spark::build_arch_graph(const llm_graph_params & params) const {\n    return std::make_unique<graph>(*this, params);\n}\n"
+    },
+    {
+      "path": "tests/test-llama-archs.cpp",
+      "beforeSha256": "7d542af7b20f6e43d2b174f1dddf9b9480a3130db36c005c3f17c164c032b44d",
+      "afterSha256": "0302e8ed2b51f36b43e75f95fceaef1e3ed874c5be9c5f28f118e47937db3dae",
+      "replacements": [
+        {
+          "before": "#include \"../src/llama-arch.h\"\n",
+          "after": "#include \"../src/llama-arch.h\"\n#include \"../src/llama-model.h\"\n"
+        },
+        {
+          "before": "    } else if (arch == LLM_ARCH_QWEN3 || arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_AFMOE) {\n",
+          "after": "    } else if (arch == LLM_ARCH_QWEN3 || arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_MUSE_SPARK || arch == LLM_ARCH_AFMOE) {\n"
+        },
+        {
+          "before": "    } else if (arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_AFMOE) {\n",
+          "after": "    } else if (arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_MUSE_SPARK || arch == LLM_ARCH_AFMOE) {\n"
+        },
+        {
+          "before": "            arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_GRANITE_SWA || arch == LLM_ARCH_DOTS3NOTE) {\n",
+          "after": "            arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_MUSE_SPARK || arch == LLM_ARCH_GRANITE_SWA || arch == LLM_ARCH_DOTS3NOTE) {\n"
+        },
+        {
+          "before": "    // MSA requires one indexer head per GQA (KV) head, unlike the DSA archs where the\n",
+          "after": "    if (arch == LLM_ARCH_MUSE_SPARK) {\n        ms.add_kv(LLM_KV_POST_NORM_EPS,           1e-5f);\n        ms.add_kv(LLM_KV_ROPE_FREQ_BASE_SWA,      10000.0f);\n        ms.add_kv(LLM_KV_FINAL_LOGIT_SOFTCAPPING, 30.0f);\n        ms.add_kv(LLM_KV_MOE_LATENT_SIZE,         n_embd/2);\n        ms.add_kv(LLM_KV_EXPERT_WEIGHTS_SCALE,    1.0f);\n        ms.add_kv(LLM_KV_EXPERT_WEIGHTS_NORM,     true);\n    }\n\n    // MSA requires one indexer head per GQA (KV) head, unlike the DSA archs where the\n"
+        },
+        {
+          "before": "        case LLM_ARCH_LAGUNA:\n",
+          "after": "        case LLM_ARCH_LAGUNA:\n        case LLM_ARCH_MUSE_SPARK:\n"
+        },
+        {
+          "before": "        ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);\n",
+          "after": "        if (arch == LLM_ARCH_MUSE_SPARK) {\n            // Exercise distinct per-layer expert widths in the backported graph.\n            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, std::vector<uint32_t>({n_ff, n_ff + 64}));\n        } else {\n            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);\n        }\n"
+        },
+        {
+          "before": "                        logits_cpu = get_logits(model_and_ctx_cpu.first.get(), model_and_ctx_cpu.second.get(), tokens, encode);\n",
+          "after": "                        if (arch == LLM_ARCH_MUSE_SPARK) {\n                            const auto & layers = model_and_ctx_cpu.first->layers;\n                            GGML_ASSERT(layers[0].ffn_gate_exps->ne[1] == 384);\n                            GGML_ASSERT(layers[1].ffn_gate_exps->ne[1] == 448);\n                            GGML_ASSERT(layers[1].ffn_down_exps->ne[0] == 448);\n                        }\n                        logits_cpu = get_logits(model_and_ctx_cpu.first.get(), model_and_ctx_cpu.second.get(), tokens, encode);\n"
+        }
+      ]
+    }
+  ]
+}

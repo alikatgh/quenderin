@@ -17,6 +17,17 @@ public protocol ModelStorage: AnyObject {
     func installedFilenames() -> [String]
     func sizeBytes(of filename: String) -> Int64
     func delete(_ filename: String)
+    func isComplete(_ model: ModelEntry) -> Bool
+}
+
+public extension ModelStorage {
+    func isComplete(_ model: ModelEntry) -> Bool {
+        let names = ModelArtifactSet.filenames(model)
+        let present = Set(installedFilenames())
+        guard !names.isEmpty, names.allSatisfy({ present.contains($0) }) else { return false }
+        guard ModelArtifactSet.isMultipart(model) else { return true }
+        return (try? ModelArtifactSet.validate(model))?.allSatisfy { sizeBytes(of: $0.filename) == $0.downloadBytes } ?? false
+    }
 }
 
 /// In-memory model storage for tests and previews.
@@ -80,6 +91,23 @@ public final class FileManagerModelStorage: ModelStorage {
         }
     }
 
+    public func isComplete(_ model: ModelEntry) -> Bool {
+        guard ModelArtifactSet.isMultipart(model) else { return url(for: model.filename) != nil }
+        return allDirs.contains { directory in
+            ModelArtifactSet.isVerified(model, firstFile: directory.appendingPathComponent(model.filename))
+        }
+    }
+
+    /// Colocated candidates for background verification. Discovery is metadata-only.
+    public func candidateFirstFiles(for model: ModelEntry) -> [URL] {
+        guard ModelArtifactSet.isMultipart(model), let parts = try? ModelArtifactSet.validate(model) else { return [] }
+        return allDirs.filter { directory in
+            parts.allSatisfy { part in
+                ModelArtifactReceipts.Identity.read(directory.appendingPathComponent(part.filename))?.size == part.downloadBytes
+            }
+        }.map { $0.appendingPathComponent(model.filename) }
+    }
+
     /// Resolve a filename to the first existing URL across primary + legacy dirs (load path).
     public func url(for filename: String) -> URL? {
         for dir in allDirs {
@@ -97,19 +125,20 @@ public final class FileManagerModelStorage: ModelStorage {
 /// active model into the engine stays in the app; this owns *what's on disk*, not inference.)
 public final class ModelManager {
     private let storage: ModelStorage
+    private let catalog: [ModelEntry]
     public private(set) var activeModelID: String?
 
-    public init(storage: ModelStorage, activeModelID: String? = nil) {
+    public init(storage: ModelStorage, activeModelID: String? = nil, catalog: [ModelEntry] = ModelCatalog.models) {
         self.storage = storage
+        self.catalog = catalog
         self.activeModelID = activeModelID
     }
 
     /// Installed catalog models — active first, then largest first, then by id for stability.
     public func installed() -> [InstalledModel] {
-        let present = Set(storage.installedFilenames())
-        return ModelCatalog.models
-            .filter { present.contains($0.filename) }
-            .map { InstalledModel(model: $0, sizeBytes: storage.sizeBytes(of: $0.filename), isActive: $0.id == activeModelID) }
+        return catalog
+            .filter { storage.isComplete($0) }
+            .map { InstalledModel(model: $0, sizeBytes: sizeBytes(of: $0), isActive: $0.id == activeModelID) }
             .sorted {
                 if $0.isActive != $1.isActive { return $0.isActive }
                 if $0.sizeBytes != $1.sizeBytes { return $0.sizeBytes > $1.sizeBytes }
@@ -118,22 +147,36 @@ public final class ModelManager {
     }
 
     public func isInstalled(_ id: String) -> Bool {
-        guard let entry = ModelCatalog.entry(id: id) else { return false }
-        return storage.installedFilenames().contains(entry.filename)
+        guard let entry = catalog.first(where: { $0.id == id }) else { return false }
+        return storage.isComplete(entry)
+    }
+
+    private func sizeBytes(of entry: ModelEntry) -> Int64 {
+        ModelArtifactSet.filenames(entry).reduce(0) { total, name in
+            let (sum, overflow) = total.addingReportingOverflow(max(0, storage.sizeBytes(of: name)))
+            return overflow ? Int64.max : sum
+        }
     }
 
     /// Total bytes used by all installed models.
-    public var totalBytesUsed: Int64 { installed().reduce(0) { $0 + $1.sizeBytes } }
+    public var totalBytesUsed: Int64 { storedBytes(for: catalog) }
+
+    private func storedBytes(for models: [ModelEntry]) -> Int64 {
+        Set(models.flatMap { ModelArtifactSet.filenames($0) }).reduce(0) { total, filename in
+            let (sum, overflow) = total.addingReportingOverflow(max(0, storage.sizeBytes(of: filename)))
+            return overflow ? Int64.max : sum
+        }
+    }
 
     /// Bytes freeable without touching the active model.
     public var reclaimableBytes: Int64 {
-        installed().filter { !$0.isActive }.reduce(0) { $0 + $1.sizeBytes }
+        storedBytes(for: catalog.filter { $0.id != activeModelID })
     }
 
     /// Make an installed model the active one. No-op returning false if it isn't installed.
     @discardableResult
     public func setActive(_ id: String) -> Bool {
-        guard isInstalled(id) else { return false }
+        guard let entry = catalog.first(where: { $0.id == id }), ModelRuntimeSupport.supports(entry), isInstalled(id) else { return false }
         activeModelID = id
         return true
     }
@@ -142,9 +185,10 @@ public final class ModelManager {
     /// model clears `activeModelID` (the app must load another). 0 if it isn't installed.
     @discardableResult
     public func delete(_ id: String) -> Int64 {
-        guard let entry = ModelCatalog.entry(id: id), isInstalled(id) else { return 0 }
-        let freed = storage.sizeBytes(of: entry.filename)
-        storage.delete(entry.filename)
+        guard let entry = catalog.first(where: { $0.id == id }) else { return 0 }
+        let freed = sizeBytes(of: entry)
+        guard freed > 0 else { return 0 }
+        for filename in ModelArtifactSet.filenames(entry) { storage.delete(filename) }
         if activeModelID == id { activeModelID = nil }
         return freed
     }

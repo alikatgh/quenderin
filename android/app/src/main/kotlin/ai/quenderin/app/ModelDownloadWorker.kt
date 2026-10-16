@@ -4,8 +4,12 @@ import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadStore
 import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.JvmHttpRangeClient
+import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.core.ModelRuntimeSupport
 import ai.quenderin.core.ModelCatalog
 import ai.quenderin.core.ModelDownloadEngine
+import ai.quenderin.core.ModelArtifacts
+import ai.quenderin.core.DiskSpace
 import ai.quenderin.core.PersistedDownload
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -42,9 +46,29 @@ class ModelDownloadWorker(
             ?: return@withContext Result.failure(errorData("missing model id"))
         val model = ModelCatalog.entry(modelId)
             ?: return@withContext Result.failure(errorData("unknown model id: $modelId"))
+        try { ModelArtifacts.validate(model) } catch (t: IllegalArgumentException) {
+            return@withContext Result.failure(errorData(t.message ?: "Invalid model artifacts"))
+        }
 
-        // Promote to a foreground service so a large GGUF keeps downloading while the app is away.
-        setForeground(foregroundInfo(0.0, model.label))
+        if (!ModelRuntimeSupport.supports(model)) {
+            return@withContext Result.failure(errorData(ModelRuntimeSupport.unavailableMessage(model)))
+        }
+        if (ModelRuntimeSupport.requiresMemoryGate(model)) {
+            val fitness = AndroidModelSelector.fitness(model, applicationContext.probeDeviceProfile())
+            if (!fitness.canLoad) return@withContext Result.failure(errorData(fitness.message))
+        }
+        val modelsDir = applicationContext.filesDir.resolve("models").absolutePath
+        val verifyOnly = inputData.getBoolean(KEY_VERIFY_ONLY, false)
+        if (isStopped) return@withContext Result.retry()
+        // Verification can read hundreds of GB: establish its cancellable foreground job first.
+        setForeground(foregroundInfo(0.0, model.label, if (model.artifacts.isNotEmpty())
+            applicationContext.getString(R.string.download_verification_progress, 0, model.artifacts.size) else null))
+        val remaining = ModelArtifacts.estimatedRemainingDownloadBytes(model, modelsDir)
+        if (!verifyOnly && remaining > 0L) {
+            val storage = DiskSpace.check(model, applicationContext.filesDir.usableSpace,
+                remainingDownloadBytes = remaining)
+            if (!storage.hasRoom) return@withContext Result.failure(errorData(storage.message))
+        }
 
         // DownloadStore's own doc comment promises progress "survives the app being suspended or
         // killed" via a persisted snapshot restored through the constructor (the iOS twin is a
@@ -59,10 +83,17 @@ class ModelDownloadWorker(
             http = JvmHttpRangeClient(),
             sink = JvmFileSink(),
             store = store,
-            destinationDir = applicationContext.filesDir.resolve("models").absolutePath,
+            destinationDir = modelsDir,
             // WorkManager flips isStopped on cancel / constraint loss → abort the chunk loop
             // cooperatively instead of streaming a multi-GB file to /dev/null.
             isCancelled = { isStopped },
+            allowNetwork = !verifyOnly,
+            onVerificationProgress = { checked, total ->
+                setProgressAsync(workDataOf(KEY_PROGRESS to 0.0, KEY_STAGE to "verifying", KEY_VERIFIED_FILES to checked))
+                val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                nm.notify(NOTIFICATION_ID, buildNotification(0.0, model.label,
+                    applicationContext.getString(R.string.download_verification_progress, checked, total)))
+            },
         )
 
         try {
@@ -84,8 +115,8 @@ class ModelDownloadWorker(
         }
     }
 
-    private fun foregroundInfo(fraction: Double, label: String): ForegroundInfo {
-        val notification = buildNotification(fraction, label)
+    private fun foregroundInfo(fraction: Double, label: String, verificationText: String? = null): ForegroundInfo {
+        val notification = buildNotification(fraction, label, verificationText)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -98,15 +129,16 @@ class ModelDownloadWorker(
         nm.notify(NOTIFICATION_ID, buildNotification(fraction, label))
     }
 
-    private fun buildNotification(fraction: Double, label: String): android.app.Notification {
+    private fun buildNotification(fraction: Double, label: String, verificationText: String? = null): android.app.Notification {
         ensureChannel()
         val pct = (fraction * 100).toInt().coerceIn(0, 100)
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Downloading $label")
-            .setContentText("$pct%")
+            .setContentTitle(if (verificationText != null) applicationContext.getString(R.string.download_verification_title, label)
+                else "Downloading $label")
+            .setContentText(verificationText ?: "$pct%")
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
-            .setProgress(100, pct, fraction <= 0.0)
+            .setProgress(100, pct, verificationText != null || fraction <= 0.0)
             .build()
     }
 
@@ -157,6 +189,9 @@ class ModelDownloadWorker(
 
     companion object {
         const val KEY_MODEL_ID = "model_id"
+        const val KEY_VERIFY_ONLY = "verify_only"
+        const val KEY_STAGE = "stage"
+        const val KEY_VERIFIED_FILES = "verified_files"
         const val KEY_PROGRESS = "progress"
         const val KEY_PATH = "path"
         const val KEY_ERROR = "error"

@@ -23,6 +23,8 @@ public struct PreflightChecklist: Sendable, Equatable {
             items.append(networkAllowsDownload
                 ? "Download \(model.label) (~\(sizeGB) GB) while you have Wi-Fi."
                 : "Connect to Wi-Fi, then download \(model.label).")
+        case .verificationRequired:
+            items.append("Verify \(model.label) before going offline.")
         case .incomplete:
             items.append(networkAllowsDownload
                 ? "Finish downloading \(model.label) before you lose Wi-Fi."
@@ -61,13 +63,11 @@ public enum Preflight {
         network: NetworkStatus,
         policy: DownloadPolicy
     ) -> PreflightChecklist {
-        let path = modelsDir.appendingPathComponent(model.filename)
-        let exists = FileManager.default.fileExists(atPath: path.path)
-        let size = ((try? FileManager.default.attributesOfItem(atPath: path.path))?[.size] as? NSNumber)?.int64Value ?? 0
         return PreflightChecklist(
             model: model,
-            storage: DiskSpace.check(model: model, availableBytes: DiskSpace.availableBytes(at: modelsDir)),
-            readiness: OfflineReadinessChecker.evaluate(model: model, fileExists: exists, fileSizeBytes: size),
+            storage: DiskSpace.check(model: model, availableBytes: DiskSpace.availableBytes(at: modelsDir),
+                                     remainingDownloadBytes: ModelArtifactSet.isMultipart(model) ? try? ModelArtifactSet.estimatedRemainingDownloadBytes(model, in: modelsDir) : nil),
+            readiness: OfflineReadinessChecker.evaluate(model: model, in: modelsDir),
             networkAllowsDownload: policy.allows(network)
         )
     }

@@ -13,7 +13,7 @@ data class PersistedDownload(
     val totalBytes: Long = 0,
     val state: State = State.RUNNING,
 ) {
-    enum class State { RUNNING, PAUSED, COMPLETED, FAILED }
+    enum class State { VERIFYING, RUNNING, PAUSED, COMPLETED, FAILED }
 
     val fractionComplete: Double
         get() = if (totalBytes > 0) minOf(1.0, bytesDownloaded.toDouble() / totalBytes) else 0.0
@@ -74,7 +74,7 @@ class DownloadStore(initial: List<PersistedDownload> = emptyList()) {
     /** Downloads mid-flight when the app last died — the resume set. Twin of iOS `resumable()`. */
     fun resumable(): List<PersistedDownload> =
         records.values.filter {
-            it.state == PersistedDownload.State.RUNNING || it.state == PersistedDownload.State.PAUSED
+            it.state == PersistedDownload.State.VERIFYING || it.state == PersistedDownload.State.RUNNING || it.state == PersistedDownload.State.PAUSED
         }
 
     private fun emit() = onChange(all())

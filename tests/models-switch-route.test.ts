@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { AddressInfo } from 'net';
 import { createApp } from '../src/app.js';
 import type { LlmService } from '../src/services/llm.service.js';
@@ -83,6 +83,80 @@ describe('POST /api/models/switch (the one switch path)', () => {
             const body = await res.json();
             expect(body.activeModelId).toBe('qwen3-4b');
             expect(Array.isArray(body.catalog)).toBe(true);
+            const bonsai = body.catalog.find((model: { id: string }) => model.id === 'bonsai2-27b');
+            expect(bonsai.runtimeCompatible).toBe(false);
+            expect(bonsai.runtimeMessage).toContain('Prism llama.cpp');
         });
+    });
+
+    it('rejects an unsupported direct switch before changing the selected model', async () => {
+        const switchModel = vi.fn();
+        await withApp(fakeLlm({ switchModel }), async base => {
+            const res = await post(base, { modelId: 'bonsai2-27b' }, 'secret-token');
+            expect(res.status).toBe(409);
+            expect((await res.json()).code).toBe('MODEL_RUNTIME_UNSUPPORTED');
+        });
+        expect(switchModel).not.toHaveBeenCalled();
+    });
+
+    it('rejects a compatible Prism switch when the mandatory RAM gate fails', async () => {
+        const switchModel = vi.fn();
+        await withApp(fakeLlm({
+            switchModel,
+            checkModelRuntime: async () => ({ canLoad: true, message: 'Pinned Prism addon installed.' }),
+            checkModelMemory: async () => ({ canLoad: false, message: 'Insufficient available memory.' }),
+        }), async base => {
+            const res = await post(base, { modelId: 'bonsai2-27b' }, 'secret-token');
+            expect(res.status).toBe(409);
+            expect((await res.json()).code).toBe('MODEL_MEMORY_UNSAFE');
+        });
+        expect(switchModel).not.toHaveBeenCalled();
+    });
+});
+
+describe('POST /api/models/download runtime compatibility', () => {
+    function download(base: string) {
+        return localRequest(`${base}/api/models/download`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Auth-Token': 'secret-token' },
+            body: JSON.stringify({ modelId: 'bonsai2-27b' }),
+        });
+    }
+
+    it('returns a clear failure instead of claiming an unsupported download started', async () => {
+        const downloadModel = vi.fn();
+        await withApp(fakeLlm({ downloadModel }), async base => {
+            const res = await download(base);
+            expect(res.status).toBe(409);
+            expect((await res.json()).code).toBe('MODEL_RUNTIME_UNSUPPORTED');
+        });
+        expect(downloadModel).not.toHaveBeenCalled();
+    });
+
+    it('permits the request when the service verifies a compatible installed addon', async () => {
+        const downloadModel = vi.fn().mockResolvedValue(undefined);
+        await withApp(fakeLlm({
+            downloadModel,
+            checkModelRuntime: async () => ({ canLoad: true, message: 'Pinned Prism addon installed.' }),
+        }), async base => {
+            const res = await download(base);
+            expect(res.status).toBe(200);
+            expect((await res.json()).modelId).toBe('bonsai2-27b');
+        });
+        expect(downloadModel).toHaveBeenCalledWith('bonsai2-27b');
+    });
+
+    it('does not claim a low-memory Prism download started even when its addon is compatible', async () => {
+        const downloadModel = vi.fn();
+        await withApp(fakeLlm({
+            downloadModel,
+            checkModelRuntime: async () => ({ canLoad: true, message: 'Pinned Prism addon installed.' }),
+            checkModelMemory: async () => ({ canLoad: false, message: 'Insufficient available memory.' }),
+        }), async base => {
+            const res = await download(base);
+            expect(res.status).toBe(409);
+            expect((await res.json()).code).toBe('MODEL_MEMORY_UNSAFE');
+        });
+        expect(downloadModel).not.toHaveBeenCalled();
     });
 });

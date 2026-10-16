@@ -11,11 +11,16 @@ Quenderin ships with a built-in multi-model catalog spanning coding, reasoning, 
 **Available models:**
 
 <!-- BEGIN GENERATED: model-catalog (scripts/generate_features_models.py) -->
-_13 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
+_18 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
 
 | ID | Label | Params | RAM footprint | Download | Quantization |
 |----|-------|--------|---------------|----------|--------------|
 | `qwen36-35b-a3b` | Qwen3.6 35B MoE (Best Agent, Big Download) | 35B | ~5.5 GB | 13.2 GB download | `UD-IQ3_XXS` |
+| `bonsai2-27b` | Bonsai 2 27B (Experimental) | 27.36B | ~7 GB | 5.95 GB download | `PTQ1_0` |
+| `bonsai2-9b` | Bonsai 2 9B (Experimental) | 8.95B | ~4 GB | 2.00 GB download | `PTQ1_0` |
+| `bonsai2-4b` | Bonsai 2 4B (Experimental) | 4.21B | ~2.5 GB | 0.95 GB download | `PTQ1_0` |
+| `bonsai2-2b` | Bonsai 2 2B (Experimental) | 1.88B | ~1.5 GB | 0.43 GB download | `PTQ1_0` |
+| `muse-spark-open-q2-k` | Muse Spark Open Q2_K (Experimental, text only) | 816B | ~330 GB | 304.08 GB download · 22 files | `Q2_K` |
 | `qwen3-14b` | Qwen3 14B (Best Quality) | 14B | ~11 GB | 9.0 GB download | `Q4_K_M` |
 | `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.1 GB download | `Q4_K_M` |
 | `qwen25-coder-7b` | Qwen2.5 Coder 7B (Coding) | 7B | ~6.5 GB | 4.7 GB download | `Q4_K_M` |

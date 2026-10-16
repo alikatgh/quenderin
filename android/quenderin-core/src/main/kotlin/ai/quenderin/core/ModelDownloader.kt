@@ -1,5 +1,11 @@
 package ai.quenderin.core
 
+/** Transfer progress and local integrity work are different stages of preparing a model. */
+sealed interface ModelDownloadProgress {
+    data class Downloading(val fraction: Double) : ModelDownloadProgress
+    data class Verifying(val checkedFiles: Int, val totalFiles: Int) : ModelDownloadProgress
+}
+
 /**
  * The download seam for fetching a GGUF "module" onto the device. The real Android
  * implementation lives in the app module (WorkManager + a resumable foreground
@@ -13,14 +19,23 @@ interface ModelDownloader {
      */
     fun download(model: ModelEntry, onProgress: (Double) -> Unit): String
 
+    /** Stage-aware adapter; existing single-file downloaders keep their fractional contract. */
+    fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String =
+        download(model) { onProgress(ModelDownloadProgress.Downloading(it)) }
+
     /**
      * True when [download] would actually need the network for [model] — i.e. there is NO
      * integrity-verified file already at the destination. Lets the caller run its download-only
      * preflights (disk space, cellular policy) ONLY when a fetch is real, so a model already on
      * disk is never spuriously Wi-Fi-blocked (twin of the Swift install() `if !fileExists` block).
      * Default true (assume a fetch is needed) fails safe — the gates run — and keeps mocks unchanged.
+     * A split-model adapter may return false for a complete structural candidate only when its
+     * subsequent download() verifies offline and rejects drift without starting any network fetch.
      */
     fun needsFetch(model: ModelEntry): Boolean = true
+
+    /** Full-model disk estimate by default; resumable split downloaders credit retained bytes. */
+    fun remainingDownloadBytes(model: ModelEntry): Long = DiskSpace.estimatedDownloadBytes(model)
 }
 
 /** Canned downloader for previews, tests, and bringing up the app before the real one. */

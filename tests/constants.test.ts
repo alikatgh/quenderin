@@ -33,7 +33,7 @@ describe('MODEL_CATALOG', () => {
     it('all models have valid quantization labels', () => {
         for (const m of MODEL_CATALOG) {
             // Q4_K_M / Q2_K …, plus i-quants and Unsloth dynamic ("UD-IQ3_XXS").
-            expect(m.quantization).toMatch(/^(UD-)?I?Q\d/);
+            expect(m.quantization).toMatch(/^(?:(UD-)?I?Q\d|PTQ1_0$)/);
         }
     });
 
@@ -55,6 +55,33 @@ describe('MODEL_CATALOG', () => {
         expect(moe).toBeDefined();
         expect(moe.ramGb).toBeLessThan(6);
         expect(moe.sizeLabel).toContain('13.2');
+    });
+
+    it('keeps the default and smallest entries while pinning the experimental Bonsai artifact', () => {
+        expect(MODEL_CATALOG[0].id).toBe('qwen36-35b-a3b');
+        expect(MODEL_CATALOG.at(-1)!.id).toBe('llama32-1b-q2');
+        const bonsai = MODEL_CATALOG[1];
+        expect(bonsai).toMatchObject({
+            id: 'bonsai2-27b', label: 'Bonsai 2 27B (Experimental)',
+            quantization: 'PTQ1_0', paramsBillions: 27.36, ramGb: 7,
+            sizeLabel: '5.95 GB download', downloadBytes: 5946648928,
+            languages: 'See model card',
+            sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
+        });
+        expect(bonsai.url).toContain('/resolve/b072e1d3b35a0a630cece372c2127528e0994386/');
+        expect(MODEL_CATALOG.find(model => model.id === 'qwen3-14b')).toBeDefined();
+    });
+
+    it.each([
+        ['bonsai2-2b', 1.88, 1.5, 429183456, '683f7be2629342a50987627b40881e54761a2430', '36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa'],
+        ['bonsai2-4b', 4.21, 2.5, 949549920, '8d6557168168f91ea6697a4a49ed2ef622b53adb', '56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60'],
+        ['bonsai2-9b', 8.95, 4, 1997486976, '5b2abb02362efbed46bbe204014b02837778b2c2', '3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b'],
+    ])('pins the smaller manual experimental artifact %s', (id, paramsBillions, ramGb, downloadBytes, revision, sha256) => {
+        const entry = MODEL_CATALOG.find(model => model.id === id)!;
+        expect(entry).toMatchObject({ paramsBillions, ramGb, downloadBytes, sha256, quantization: 'PTQ1_0' });
+        expect(entry.label).toContain('(Experimental)');
+        expect(entry.url).toContain(`/resolve/${revision}/${entry.filename}?download=true`);
+        expect(entry.ramGb).toBeGreaterThan(Number(downloadBytes) / 1e9);
     });
 });
 

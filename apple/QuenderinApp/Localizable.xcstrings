@@ -1,6 +1,90 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    " · partial results": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 一部の結果"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 일부 결과"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · неполные результаты"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 部分结果"
+          }
+        }
+      }
+    },
+    " · refresh unavailable": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 更新できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 새로고침 불가"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · обновление недоступно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 无法刷新"
+          }
+        }
+      }
+    },
+    "%.1f GB · %@ · released %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f GB · %@ · 公開日 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f GB · %@ · 출시 %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f ГБ · %@ · релиз %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f GB · %@ · 发布于 %@"
+          }
+        }
+      }
+    },
     "%@ is running fully on-device.": {
       "localizations": {
         "ja": {
@@ -333,6 +417,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "住在你的%@上的个人 AI——而不是别人的云端。"
+          }
+        }
+      }
+    },
+    "A starting point from this app's catalog. iPhone selection accounts for the app's memory budget and estimated speed; Mac selection accounts for memory fit. Task suggestions use the models you have installed. Fit and speed are estimates, not device benchmarks.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリのモデル一覧から選んだ開始候補です。iPhoneではアプリのメモリ上限と推定速度、Macではメモリ適合性を考慮します。タスクの提案にはインストール済みモデルを使います。適合性と速度は推定であり、デバイスでの測定結果ではありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱의 모델 목록에서 고른 시작점입니다. iPhone은 앱의 메모리 한도와 예상 속도를, Mac은 메모리 적합성을 고려합니다. 작업 제안에는 설치된 모델을 사용합니다. 적합성과 속도는 추정치이며 기기 벤치마크 결과가 아닙니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начальный вариант из каталога приложения. На iPhone учитываются лимит памяти приложения и оценка скорости; на Mac — объём памяти. Для задач предлагаются установленные модели. Память и скорость — оценки, а не результаты тестов на устройстве."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是应用模型列表中的起点。iPhone 选择会考虑应用的内存预算和预计速度；Mac 选择会考虑内存是否合适。任务建议使用已安装的模型。内存适合程度和速度均为估计值，并非设备实测结果。"
           }
         }
       }
@@ -729,6 +841,34 @@
         }
       }
     },
+    "All sizes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのサイズ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 크기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все размеры"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部大小"
+          }
+        }
+      }
+    },
     "Allow %@": {
       "localizations": {
         "ja": {
@@ -1089,6 +1229,62 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动驾驶"
+          }
+        }
+      }
+    },
+    "Available in this app · estimated memory fit": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリで利用可能 · メモリ適合の推定"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱에서 사용 가능 · 메모리 적합성 추정"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть в приложении · по оценке, памяти хватает"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用中可用 · 预计内存适合"
+          }
+        }
+      }
+    },
+    "Available in this app · too large for this device": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリで利用可能 · このデバイスには大きすぎます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱에서 사용 가능 · 이 기기에는 너무 큼"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть в приложении · слишком большая для устройства"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用中可用 · 对此设备过大"
           }
         }
       }
@@ -1457,6 +1653,34 @@
         }
       }
     },
+    "Checked online": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オンラインで確認済み"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "온라인 확인 완료"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверено онлайн"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在线检查"
+          }
+        }
+      }
+    },
     "Checking your device…": {
       "localizations": {
         "ja": {
@@ -1481,6 +1705,62 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在检查你的设备…"
+          }
+        }
+      }
+    },
+    "Choose %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ を選択"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 선택"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 %@"
+          }
+        }
+      }
+    },
+    "Choose a built-in model that fits your %@. Download once, then chat offline.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ に合う標準のモデルを選んでください。一度ダウンロードすれば、オフラインでチャットできます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에 맞는 기본 모델을 선택하세요. 한 번 다운로드하면 오프라인으로 대화할 수 있습니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите модель из каталога, подходящую для %@. Загрузите один раз, затем общайтесь офлайн."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择适合 %@ 的内置模型。下载一次，即可离线聊天。"
           }
         }
       }
@@ -1789,6 +2069,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "紧凑"
+          }
+        }
+      }
+    },
+    "Compatibility not tested in this app": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアプリでの互換性は未確認です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앱에서 호환성을 확인하지 않았습니다"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Совместимость с приложением не проверена"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未在此应用中测试兼容性"
           }
         }
       }
@@ -2997,6 +3305,34 @@
         }
       }
     },
+    "Explore new GGUFs. File size is a download estimate; new architectures need compatibility checks before becoming a recommendation.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいGGUFを探せます。ファイルサイズはダウンロード量の目安です。新しいアーキテクチャは、推奨前に互換性の確認が必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 GGUF 모델을 살펴보세요. 파일 크기는 다운로드 용량이며, 새 아키텍처는 추천 전에 호환성 확인이 필요합니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новые модели GGUF. Размер файла — оценка объёма загрузки. Новые архитектуры нужно проверить на совместимость, прежде чем рекомендовать."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "探索新的 GGUF 模型。文件大小是下载量估计；新架构需要经过兼容性检查才能成为推荐模型。"
+          }
+        }
+      }
+    },
     "Exported from Quenderin (on-device)": {
       "localizations": {
         "ja": {
@@ -3977,6 +4313,34 @@
         }
       }
     },
+    "Latest model releases": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最新モデルのリリース"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신 모델 릴리스"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новые релизы моделей"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最新模型发布"
+          }
+        }
+      }
+    },
     "Let the agent think through each step before it acts. It picks the right tool more often on tricky goals — but it's noticeably slower, because the model reasons on-device first. Off by default; changes apply to your next step.": {
       "localizations": {
         "ja": {
@@ -4229,6 +4593,90 @@
         }
       }
     },
+    "Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一覧にないモデルを探していますか？サイドバーの検索（⌘F）で、インストール済みモデル、標準一覧、Hugging Face の公開GGUFをまとめて探せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목록에 없는 모델을 찾으시나요? 사이드바 검색(⌘F)에서 설치된 모델, 기본 목록, Hugging Face의 공개 GGUF를 한곳에서 찾으세요."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужной модели нет в списке? Используйте «Поиск» в боковой панели (⌘F): установленные модели, каталог и открытые GGUF на Hugging Face в одном месте."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "想找未列出的模型？使用边栏搜索（⌘F），在同一处查看已安装模型、内置列表和 Hugging Face 上的开放 GGUF。"
+          }
+        }
+      }
+    },
+    "Looking for a model that isn’t listed? Use the Search tab to explore open Hugging Face GGUFs.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一覧にないモデルを探していますか？検索タブで Hugging Face の公開GGUFモデルを探せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목록에 없는 모델을 찾으시나요? 검색 탭에서 Hugging Face의 공개 GGUF 모델을 살펴보세요."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужной модели нет в списке? Откройте вкладку «Поиск», чтобы найти открытые модели GGUF на Hugging Face."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "想找未列出的模型？使用搜索标签页探索 Hugging Face 上的开放 GGUF 模型。"
+          }
+        }
+      }
+    },
+    "Maximum download": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダウンロード量の上限"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최대 다운로드 용량"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Максимальный объём загрузки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大下载量"
+          }
+        }
+      }
+    },
     "Meet Quenderin": {
       "localizations": {
         "ja": {
@@ -4393,6 +4841,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "模型"
+          }
+        }
+      }
+    },
+    "Model card and license ↗": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "モデルカードとライセンス ↗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모델 카드 및 라이선스 ↗"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Описание модели и лицензия ↗"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型卡和许可证 ↗"
           }
         }
       }
@@ -4953,6 +5429,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "此仓库中没有可直接运行的 GGUF 文件。"
+          }
+        }
+      }
+    },
+    "No releases within this download size. Try a larger limit.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このダウンロード量に収まるリリースはありません。上限を増やしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 다운로드 용량에 맞는 릴리스가 없습니다. 한도를 늘려 보세요."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет релизов в пределах этого объёма загрузки. Увеличьте лимит."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有符合此下载大小的发布。请尝试更大的上限。"
           }
         }
       }
@@ -6049,6 +6553,34 @@
         }
       }
     },
+    "Refresh": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로고침"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        }
+      }
+    },
     "Remove %@": {
       "localizations": {
         "ja": {
@@ -6637,6 +7169,34 @@
         }
       }
     },
+    "Saved snapshot": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存済みの一覧"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장된 목록"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый список"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存的列表"
+          }
+        }
+      }
+    },
     "Search": {
       "localizations": {
         "ja": {
@@ -7001,6 +7561,34 @@
         }
       }
     },
+    "Show all %lld releases": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全 %lld 件を表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 %lld개 모두 보기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать все (%lld)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示全部 %lld 个发布"
+          }
+        }
+      }
+    },
     "Show details…": {
       "localizations": {
         "ja": {
@@ -7025,6 +7613,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "显示详情…"
+          }
+        }
+      }
+    },
+    "Show fewer": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示を減らす"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "간략히 보기"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать меньше"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示更少"
           }
         }
       }
@@ -7725,6 +8341,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "智能体需要已加载的模型。"
+          }
+        }
+      }
+    },
+    "The release list is unavailable. Your installed and built-in models remain available.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリース一覧を取得できません。インストール済みモデルと標準のモデル一覧は引き続き利用できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "릴리스 목록을 사용할 수 없습니다. 설치된 모델과 기본 모델 목록은 계속 이용할 수 있습니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список релизов недоступен. Установленные модели и встроенный каталог по-прежнему доступны."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布列表不可用。已安装的模型和内置模型列表仍可使用。"
           }
         }
       }

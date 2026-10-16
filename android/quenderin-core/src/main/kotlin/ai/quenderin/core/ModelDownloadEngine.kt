@@ -58,6 +58,13 @@ interface FileSink {
     fun head(path: String, n: Int): ByteArray
     /** Lowercase-hex SHA-256 of the file at [path], streamed in constant memory. */
     fun sha256(path: String): String
+    /** Production sinks poll during streaming hash reads; old test/custom sinks remain compatible. */
+    fun sha256(path: String, isCancelled: () -> Boolean): String {
+        if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+        val digest = sha256(path)
+        if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+        return digest
+    }
     /** Atomically move the finished temp file into its final location. */
     fun finalize(tempPath: String, finalPath: String)
 
@@ -103,6 +110,13 @@ class ModelDownloadEngine(
     private val isCancelled: () -> Boolean = { false },
     /** True on a metered connection — the parallel path opens fewer connections (money + battery). */
     private val isCellular: () -> Boolean = { false },
+    /** Split models use one bounded stream at a time, retaining each verified shard on failure. */
+    private val allowParallel: Boolean = true,
+    /** Monotonic clock seam for bounded aggregate notifications, independent of chunk count. */
+    private val progressClockNanos: () -> Long = System::nanoTime,
+    /** Restore jobs can verify offline, but must never turn missing/corrupt files into HTTP. */
+    private val allowNetwork: Boolean = true,
+    private val onVerificationProgress: (checkedParts: Int, totalParts: Int) -> Unit = { _, _ -> },
 ) : ModelDownloader {
 
     /** (path, size) of the last file that passed the full integrity gate, so [needsFetch] followed by
@@ -115,20 +129,42 @@ class ModelDownloadEngine(
     /** Path of an existing, integrity-verified (magic + pinned SHA-256) download at the final
      *  destination, or null when a real fetch is needed. The C3 gate for reusing leftovers. */
     private fun verifiedExistingPath(model: ModelEntry): String? {
+        ModelArtifacts.validate(model)
         val finalPath = "$destinationDir/${model.filename}"
+        if (model.artifacts.isNotEmpty()) return if (ModelArtifacts.isComplete(model, finalPath, sink, isCancelled)) finalPath else null
         val size = sink.existingSize(finalPath)
         if (size <= 0) return null
+        if (model.downloadBytes != null && size != model.downloadBytes) return null
         if (lastVerified == finalPath to size) return finalPath
         if (!ModelIntegrity.hasGGUFMagic(sink.head(finalPath, 4))) return null
         val expectedSha = model.sha256
-        if (expectedSha != null && !sink.sha256(finalPath).equals(expectedSha, ignoreCase = true)) return null
+        if (expectedSha != null && !sink.sha256(finalPath, isCancelled).equals(expectedSha, ignoreCase = true)) return null
         lastVerified = finalPath to size
         return finalPath
     }
 
-    override fun needsFetch(model: ModelEntry): Boolean = verifiedExistingPath(model) == null
+    override fun needsFetch(model: ModelEntry): Boolean {
+        ModelArtifacts.validate(model)
+        return !ModelRuntimeSupport.supports(model) || verifiedExistingPath(model) == null
+    }
+
+    override fun remainingDownloadBytes(model: ModelEntry): Long =
+        ModelArtifacts.remainingDownloadBytes(model, destinationDir, sink, isCancelled)
 
     override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        ModelArtifacts.validate(model)
+        if (!ModelRuntimeSupport.supports(model)) throw DownloadException(ModelRuntimeSupport.unavailableMessage(model))
+        if (isCancelled()) {
+            store.setState(model.id, PersistedDownload.State.PAUSED)
+            throw DownloadCancelledException("download cancelled for ${model.filename}")
+        }
+        if (model.artifacts.isNotEmpty()) return downloadArtifacts(model, onProgress)
+        return downloadSingle(model, onProgress)
+    }
+
+    /** Parent split metadata/runtime was already checked; a shard is never a standalone model. */
+    private fun downloadSingle(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        if (isCancelled()) throw DownloadCancelledException("download cancelled for ${model.filename}")
         val finalPath = "$destinationDir/${model.filename}"
         val tempPath = "$finalPath.part"
 
@@ -143,6 +179,7 @@ class ModelDownloadEngine(
             onProgress(1.0)
             return it
         }
+        if (!allowNetwork) throw DownloadException("The on-disk model changed. Choose it again on Wi-Fi to download missing files.")
         // Existing bytes failed the gate — don't trust them; discard and fall through to a real
         // download (Swift parity: install() deletes on ANY verify failure, bad magic included).
         if (sink.existingSize(finalPath) > 0) {
@@ -167,7 +204,7 @@ class ModelDownloadEngine(
         try {
             // Parallel path: only for a FRESH download on a client + sink that support bounded ranges
             // and positioned writes. A partial already on disk keeps the single-stream resume below.
-            if (existing == 0L && http.supportsBoundedRanges && sink.supportsPositionedWrites) {
+            if (allowParallel && existing == 0L && http.supportsBoundedRanges && sink.supportsPositionedWrites) {
                 val probe = http.openRange(model.url, 0, 0)   // 1-byte probe, just for the total size
                 probe.body.forEach { /* drain to close the connection */ }
                 if (probe.resumed && probe.totalBytes > 0) {
@@ -185,7 +222,10 @@ class ModelDownloadEngine(
                 existing = 0
             }
 
-            val total = response.totalBytes            // full size (may be -1 when unknown)
+            if (model.downloadBytes != null && response.totalBytes > 0 && response.totalBytes != model.downloadBytes) {
+                throw DownloadException("unexpected download size for ${model.filename}")
+            }
+            val total = model.downloadBytes ?: response.totalBytes
             var downloaded = existing
             var lastReported = if (total > 0) (downloaded.toDouble() / total).coerceIn(0.0, 1.0) else 0.0
 
@@ -197,6 +237,9 @@ class ModelDownloadEngine(
                     throw DownloadCancelledException("download cancelled for ${model.filename}")
                 }
                 if (chunk.isEmpty()) continue
+                if (downloaded > Long.MAX_VALUE - chunk.size || (total > 0 && chunk.size.toLong() > total - downloaded)) {
+                    throw DownloadException("download exceeds expected size for ${model.filename}")
+                }
                 sink.append(tempPath, chunk)
                 downloaded += chunk.size
                 if (total > 0) {
@@ -209,6 +252,7 @@ class ModelDownloadEngine(
                 }
             }
 
+            if (isCancelled()) throw DownloadCancelledException("download cancelled for ${model.filename}")
             return verifyAndFinalize(model, tempPath, finalPath, downloaded, total, onProgress)
         } catch (t: Throwable) {
             // A cooperative cancel is not a failure: keep the .part and leave the row PAUSED so the
@@ -227,6 +271,92 @@ class ModelDownloadEngine(
         }
     }
 
+    /** A single model record tracks aggregate bytes. Each transfer still uses the existing resume
+     * and streamed integrity gate, while previously verified shards remain untouched. */
+    private fun downloadArtifacts(model: ModelEntry, onProgress: (Double) -> Unit): String {
+        val parts = ModelArtifacts.entries(model)
+        val total = requireNotNull(model.downloadBytes)
+        val finalPath = "$destinationDir/${model.filename}"
+        val completed = BooleanArray(parts.size)
+        val bytes = LongArray(parts.size)
+        store.upsert(PersistedDownload(model.id, model.filename, model.url, finalPath,
+            0L, total, PersistedDownload.State.VERIFYING))
+        var lastReportedBytes = -1L
+        var lastReportNanos = progressClockNanos()
+        fun report(force: Boolean = false) {
+            val done = bytes.sum()
+            val now = progressClockNanos()
+            val fractionStep = if (lastReportedBytes < 0L) 1.0 else (done - lastReportedBytes).toDouble() / total
+            if (!force && lastReportedBytes >= 0L && fractionStep < maxOf(progressStep, 0.001) &&
+                now - lastReportNanos < 1_000_000_000L) return
+            lastReportedBytes = done
+            lastReportNanos = now
+            store.updateProgress(model.id, done, total)
+            onProgress((done.toDouble() / total).coerceIn(0.0, if (completed.all { it }) 1.0 else 0.999999))
+        }
+        try {
+            onVerificationProgress(0, parts.size)
+            // Verification is part of the cancellable job, including the streamed hash itself.
+            for ((index, part) in parts.withIndex()) {
+                if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+                val path = "$destinationDir/${part.filename}"
+                val size = sink.existingSize(path)
+                if (size > 0L) {
+                    if (size != part.downloadBytes || !ModelIntegrity.hasGGUFMagic(sink.head(path, 4)) ||
+                        !sink.sha256(path, isCancelled).equals(part.sha256, ignoreCase = true)) {
+                        throw DownloadException("Existing shard ${part.filename} failed integrity verification. It has been preserved.")
+                    }
+                    completed[index] = true
+                    bytes[index] = size
+                } else {
+                    bytes[index] = sink.existingSize("$path.part").coerceIn(0L, requireNotNull(part.downloadBytes))
+                }
+                store.updateProgress(model.id, bytes.sum(), total)
+                onVerificationProgress(index + 1, parts.size)
+            }
+            if (isCancelled()) throw DownloadCancelledException("Model verification cancelled.")
+            if (completed.all { it }) {
+                store.setState(model.id, PersistedDownload.State.COMPLETED)
+                store.remove(model.id)
+                onProgress(1.0)
+                return finalPath
+            }
+            if (!allowNetwork) {
+                throw DownloadException("The on-disk model changed. Choose it again on Wi-Fi to download missing files.")
+            }
+            store.setState(model.id, PersistedDownload.State.RUNNING)
+            report(force = true)
+            for (index in parts.indices) {
+                if (isCancelled()) throw DownloadCancelledException("download cancelled for ${model.filename}")
+                if (completed[index]) continue
+                val part = parts[index]
+                val childStore = DownloadStore()
+                childStore.onChange = { records ->
+                    records.firstOrNull()?.let {
+                        bytes[index] = it.bytesDownloaded.coerceIn(0L, requireNotNull(part.downloadBytes))
+                        report(force = it.state != PersistedDownload.State.RUNNING)
+                    }
+                }
+                ModelDownloadEngine(http, sink, childStore, destinationDir, progressStep = 0.0,
+                    isCancelled = isCancelled, isCellular = isCellular, allowParallel = false)
+                    .downloadSingle(part) { /* childStore reports byte-exact aggregate progress */ }
+                completed[index] = true
+                bytes[index] = requireNotNull(part.downloadBytes)
+                report(force = true)
+            }
+            if (isCancelled()) throw DownloadCancelledException("download cancelled for ${model.filename}")
+            store.setState(model.id, PersistedDownload.State.COMPLETED)
+            store.remove(model.id)
+            onProgress(1.0)
+            return finalPath
+        } catch (t: Throwable) {
+            report(force = true)
+            store.setState(model.id, if (t is DownloadCancelledException) PersistedDownload.State.PAUSED else PersistedDownload.State.FAILED)
+            if (t is DownloadException) throw t
+            throw DownloadException("download failed for ${model.filename}: ${t.message}")
+        }
+    }
+
     /**
      * N concurrent bounded-range GETs into disjoint regions of a pre-sized `.part` file. Uses plain
      * `java.util.concurrent` (the core is dependency-free — no coroutines). Each segment owns a
@@ -235,6 +365,9 @@ class ModelDownloadEngine(
     private fun downloadParallel(model: ModelEntry, tempPath: String, total: Long,
                                  onProgress: (Double) -> Unit): Long {
         val count = DownloadSegments.connectionCount(total, isCellular = isCellular())
+        if (model.downloadBytes != null && total != model.downloadBytes) {
+            throw DownloadException("unexpected download size for ${model.filename}")
+        }
         val plan = DownloadSegments.plan(total, count)
         sink.preallocate(tempPath, total)
 
@@ -293,13 +426,16 @@ class ModelDownloadEngine(
                 "incomplete download for ${model.filename}: got $downloaded of $total bytes"
             )
         }
+        if (model.downloadBytes != null && downloaded != model.downloadBytes) {
+            throw DownloadException("unexpected download size for ${model.filename}")
+        }
         if (!ModelIntegrity.hasGGUFMagic(sink.head(tempPath, 4))) {
             sink.truncate(tempPath)
             throw DownloadException("downloaded file for ${model.filename} is not a valid GGUF (bad magic header)")
         }
         val expectedSha = model.sha256
         if (expectedSha != null) {
-            val actualSha = sink.sha256(tempPath)
+            val actualSha = sink.sha256(tempPath, isCancelled)
             if (!actualSha.equals(expectedSha, ignoreCase = true)) {
                 sink.truncate(tempPath)
                 throw DownloadException(

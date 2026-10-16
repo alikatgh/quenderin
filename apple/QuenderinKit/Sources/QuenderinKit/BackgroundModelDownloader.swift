@@ -61,6 +61,10 @@ public final class BackgroundModelDownloader: NSObject, ModelDownloader, @unchec
 
     public func download(from url: URL, to destination: URL, modelId: String) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
+            if let reason = ModelRuntimeSupport.blockedDownloadReason(from: url, to: destination, modelID: modelId) {
+                continuation.finish(throwing: DownloadError.transport(reason: reason))
+                return
+            }
             do {
                 try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             } catch {

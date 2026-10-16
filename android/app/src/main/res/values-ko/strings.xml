@@ -266,4 +266,24 @@
     <string name="cap_purpose_clipboard">클립보드의 텍스트를 읽습니다. 입력 없음.</string>
     <string name="cap_purpose_calendar">오늘 일정의 제목과 시각. 입력 없음.</string>
     <string name="cap_purpose_status">이 기기의 배터리와 남은 저장공간. 입력 없음.</string>
+
+    <!-- Model-release discovery -->
+    <string name="releases_title">최신 모델 릴리스</string>
+    <string name="releases_explanation">새 GGUF 모델을 살펴보세요. 파일 크기는 다운로드 용량이며, 새 아키텍처는 추천 전에 호환성 확인이 필요합니다.</string>
+    <string name="releases_all_sizes">모든 크기</string>
+    <string name="releases_saved">저장된 목록</string>
+    <string name="releases_live">온라인 확인 완료</string>
+    <string name="releases_partial">" · 일부 결과"</string>
+    <string name="releases_refresh_failed">" · 새로고침 불가"</string>
+    <string name="releases_no_match">이 다운로드 용량에 맞는 릴리스가 없습니다. 한도를 늘려 보세요.</string>
+    <string name="releases_meta">%1$.1f GB · %2$s · 출시 %3$s</string>
+    <string name="releases_available">앱에서 사용 가능 · 메모리 적합성 추정</string>
+    <string name="releases_too_large">앱에서 사용 가능 · 이 기기에는 너무 큼</string>
+    <string name="releases_choose">%1$s 선택</string>
+    <string name="releases_untested">이 앱에서 호환성을 확인하지 않았습니다</string>
+    <string name="releases_model_card">모델 카드 및 라이선스 ↗</string>
+    <string name="releases_show_less">간략히 보기</string>
+    <string name="releases_show_all">릴리스 %1$d개 모두 보기</string>
+    <string name="releases_unavailable">릴리스 목록을 사용할 수 없습니다. 설치된 모델과 기본 모델 목록은 계속 이용할 수 있습니다.</string>
+    <string name="releases_refresh">새로고침</string>
 </resources>

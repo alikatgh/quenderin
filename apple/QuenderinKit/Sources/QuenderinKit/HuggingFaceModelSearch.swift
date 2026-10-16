@@ -222,7 +222,8 @@ public enum HuggingFaceCatalog {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let siblings = obj["siblings"] as? [[String: Any]] else { return [] }
         return siblings.compactMap { s in
-            guard let name = s["rfilename"] as? String, name.lowercased().hasSuffix(".gguf") else { return nil }
+            guard let name = s["rfilename"] as? String, name.lowercased().hasSuffix(".gguf"),
+                  !ModelArtifactSet.looksLikeSplitFilename(name) else { return nil }
             let lfs = s["lfs"] as? [String: Any]
             let size = (lfs?["size"] as? Int) ?? (s["size"] as? Int) ?? 0
             return HFQuant(repo: repo, filename: name, sizeBytes: size, sha256: lfs?["oid"] as? String)

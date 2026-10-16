@@ -18,6 +18,9 @@ interface ModelCatalogEntry {
     quantization: string;
     isDownloaded: boolean;
     fileSizeBytes: number;
+    runtimeCompatible?: boolean;
+    runtimeMessage?: string;
+    runtimeRequirement?: string;
 }
 
 export function ModelManagerSection() {
@@ -150,6 +153,7 @@ export function ModelManagerSection() {
                 ) : modelCatalog.map(m => {
                     const fileSizeGb = m.fileSizeBytes > 0 ? (m.fileSizeBytes / (1024 ** 3)).toFixed(2) : null;
                     const isActing = modelActionId === m.id;
+                    const runtimeBlocked = m.runtimeCompatible === false;
                     // r12: flex-col on phones — the fixed side-by-side layout made the
                     // metadata line overflow INTO the action buttons at 375px.
                     return (
@@ -157,13 +161,13 @@ export function ModelManagerSection() {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">{m.label}</span>
-                                    {m.isDownloaded && m.id === activeModelId ? (
+                                    {!runtimeBlocked && m.isDownloaded && m.id === activeModelId ? (
                                         // Active only makes sense for a model that exists on disk — the server pins
                                         // a default id at boot even when nothing is downloaded yet.
                                         <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">
                                             <CheckCircle2 className="w-2.5 h-2.5" /> Active
                                         </span>
-                                    ) : m.isDownloaded && (
+                                    ) : !runtimeBlocked && m.isDownloaded && (
                                         <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                                             <CheckCircle2 className="w-2.5 h-2.5" /> Ready
                                         </span>
@@ -176,6 +180,12 @@ export function ModelManagerSection() {
                                     {!m.isDownloaded && <span className="text-zinc-400">{m.sizeLabel}</span>}
                                     <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">{m.quantization}</span>
                                 </div>
+                                {runtimeBlocked && (
+                                    <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-1">
+                                        <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                        {m.runtimeMessage || `${m.runtimeRequirement || 'A compatible runtime'} is required to use this model.`}
+                                    </p>
+                                )}
                                 {modelActionError?.id === m.id && (
                                     <p className="mt-1.5 text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1">
                                         <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {modelActionError.message}
@@ -188,7 +198,8 @@ export function ModelManagerSection() {
                                         {m.id !== activeModelId && (
                                             <button
                                                 onClick={() => handleSwitchModel(m.id)}
-                                                disabled={isActing}
+                                                disabled={isActing || runtimeBlocked}
+                                                title={runtimeBlocked ? m.runtimeMessage : undefined}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors disabled:opacity-50"
                                             >
                                                 {isActing && modelActionType === 'switch' ? <span className="animate-spin">⟳</span> : <Zap className="w-3 h-3" />}
@@ -207,7 +218,8 @@ export function ModelManagerSection() {
                                 ) : (
                                     <button
                                         onClick={() => handleDownloadModel(m.id)}
-                                        disabled={isActing}
+                                        disabled={isActing || runtimeBlocked}
+                                        title={runtimeBlocked ? m.runtimeMessage : undefined}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
                                     >
                                         {isActing && modelActionType === 'download' ? <span className="animate-spin">⟳</span> : <Download className="w-3 h-3" />}

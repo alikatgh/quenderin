@@ -39,6 +39,9 @@ export interface ModelOption {
     ramGb: number;
     sizeLabel: string;
     isDownloaded?: boolean;
+    runtimeCompatible?: boolean;
+    runtimeMessage?: string;
+    runtimeRequirement?: string;
 }
 
 export interface RequiredAction {

@@ -89,17 +89,22 @@ internal fun ModelProfileSheet(
                 SpecRow(stringResource(R.string.profile_precision), stringResource(R.string.profile_precision_bits, fmt(quant.bitsPerWeight)))
                 SpecRow(stringResource(R.string.profile_quality), quant.quality)
             }
-            SpecRow(stringResource(R.string.profile_format), "GGUF")
+            SpecRow(stringResource(R.string.profile_format), if (model.artifacts.isEmpty()) "GGUF"
+                else stringResource(R.string.profile_split_gguf, model.artifacts.size))
         }
 
         ProfileCard(stringResource(R.string.profile_reasoning)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
-                    Caption(stringResource(if (deepThinking) R.string.profile_reasoning_on else R.string.profile_reasoning_off))
+            if (ai.quenderin.core.ModelRuntimeSupport.isMuse(model)) {
+                Caption(stringResource(R.string.profile_muse_reasoning))
+            } else {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.model_deep_thinking), color = MaterialTheme.colorScheme.onSurface)
+                        Caption(stringResource(if (deepThinking) R.string.profile_reasoning_on else R.string.profile_reasoning_off))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
                 }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = deepThinking, onCheckedChange = onDeepThinkingChange)
             }
         }
 

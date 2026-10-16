@@ -1,19 +1,19 @@
 // The Android app: Jetpack Compose UI over the pure-Kotlin :quenderin-core brain.
-// Boots on MockInferenceEngine so it runs the moment you open it in Android Studio;
-// the JNI llama.cpp build is opt-in (uncomment externalNativeBuild + ndk once you've
-// added llama.cpp — see android/INTEGRATION.md). Same shape as the iOS app target.
+// Debug builds can use MockInferenceEngine without a native checkout. Native builds
+// automatically enable CMake/NDK for the selected checkout; production 0.4.0 builds
+// use the verified Prism + Muse source described in android/INTEGRATION.md.
 //
 // NOTE: requires the Android SDK + AGP (Android Studio / Gradle) to build — it is NOT
 // compiled by the headless kotlinc check that proves :quenderin-core.
 import java.util.Properties
 
 plugins {
-    id("com.android.application") version "8.5.2"
-    kotlin("android") version "2.0.21"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    id("com.android.application") version "8.10.1"
+    kotlin("android") version "2.2.21"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
 }
 
-// Release signing credentials come from a GITIGNORED keystore.properties at the repo root — never git.
+// Release signing credentials come from GITIGNORED android/keystore.properties — never git.
 // Absent (CI, contributors, debug builds) → release builds unsigned but STILL build. See docs/RELEASE.md.
 //   keystore.properties:  storeFile=/abs/path/upload.jks  storePassword=…  keyAlias=…  keyPassword=…
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -28,11 +28,18 @@ val hasReleaseSigning = keystoreProperties.containsKey("storeFile")
 // This mirrors iOS Package.swift's xcframework auto-detection — same "clean by default,
 // real when the native checkout is present" contract. Add it with:
 //   git submodule add https://github.com/ggml-org/llama.cpp android/jni/llama.cpp
-val nativeLlama = file("../jni/llama.cpp").exists()
+val runtimeName = providers.gradleProperty("quenderin.runtime").orElse("standard").get()
+require(runtimeName in listOf("standard", "prism")) { "quenderin.runtime must be standard or prism" }
+val llamaSource = providers.gradleProperty("quenderin.llamaDir").orNull?.let { file(it) }
+    ?: file("../jni/llama.cpp")
+val nativeLlama = llamaSource.resolve("include/llama.h").isFile
+require(runtimeName != "prism" || nativeLlama) {
+    "Prepare the pinned Prism checkout and pass -Pquenderin.llamaDir=/absolute/path"
+}
 
 android {
     namespace = "ai.quenderin.app"
-    compileSdk = 35
+    compileSdk = 36
 
     // Vulkan stays opt-in (`-Pquenderin.vulkan=true`): the vendored llama.cpp Vulkan backend
     // requires SPIRV-Headers at configure time, which the NDK does not ship. CPU-variant backends
@@ -43,9 +50,9 @@ android {
     defaultConfig {
         applicationId = "ai.quenderin.app"
         minSdk = 28
-        targetSdk = 35
-        versionCode = 3
-        versionName = "0.2.1"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "0.4.0"
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
         // Compile-time mirror of "will this APK load libquenderin_llama.so?" — UI/Settings read it.
@@ -58,6 +65,8 @@ android {
                     // Always pass the flag: jni/CMakeLists defaults the option to ON, so
                     // omitting it on -Pquenderin.vulkan=false silently built Vulkan anyway.
                     arguments += "-DQUENDERIN_VULKAN=${if (enableVulkan) "ON" else "OFF"}"
+                    arguments += "-DLLAMA_DIR=${llamaSource.absolutePath}"
+                    arguments += "-DQUENDERIN_PRISM_RUNTIME=${if (runtimeName == "prism") "ON" else "OFF"}"
                 }
             }
         }

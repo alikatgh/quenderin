@@ -9,6 +9,7 @@ sealed interface OnboardingPhase {
     object Probing : OnboardingPhase
     data class Recommended(val model: ModelEntry, val fitness: MemoryCheckResult) : OnboardingPhase
     data class Downloading(val model: ModelEntry, val fraction: Double) : OnboardingPhase
+    data class Verifying(val model: ModelEntry, val checkedFiles: Int, val totalFiles: Int) : OnboardingPhase
     data class Loading(val model: ModelEntry) : OnboardingPhase
     data class Ready(val model: ModelEntry) : OnboardingPhase
     data class Failed(val reason: String) : OnboardingPhase
@@ -60,6 +61,7 @@ class OnboardingModel(
     /** The most recent recommendation — where a CANCELLED download returns (a change of mind is
      *  not a failure). Kept by the phase setter so both start() paths feed it. */
     private var lastRecommended: OnboardingPhase.Recommended? = null
+    private var lastDeviceProfile: DeviceProfile? = null
 
     /** Serializes [acceptAndPrepare] (Q-336, twin of Swift `isInstalling`): a concurrent accept —
      *  double-tap, or a model-picker switch overlapping an in-flight download/load — would race
@@ -115,6 +117,7 @@ class OnboardingModel(
     fun start(probe: () -> DeviceProfile) {
         phase = OnboardingPhase.Probing
         val device = probe()
+        lastDeviceProfile = device
         // Fitness-aware, not just the RAM band: the band can pick a model the memory gate then
         // blocks (a 12–16 GB device band-picks the 14B → over the 85% budget), which used to land
         // first-run straight on Failed. Offer the largest model that actually loads instead.
@@ -158,6 +161,23 @@ class OnboardingModel(
             isInstalling = true
         }
         try {
+            try { ModelArtifacts.validate(model) } catch (t: IllegalArgumentException) {
+                phase = OnboardingPhase.Failed(t.message ?: "Invalid model artifacts.")
+                return
+            }
+            if (!ModelRuntimeSupport.supports(model)) {
+                phase = OnboardingPhase.Failed(ModelRuntimeSupport.unavailableMessage(model))
+                return
+            }
+            if (ModelRuntimeSupport.requiresMemoryGate(model)) {
+                val fitness = selection?.device?.let { AndroidModelSelector.fitness(model, it) }
+                    ?: lastDeviceProfile?.let { MemoryFitness.check(model, it.totalRamGB, it.freeRamGB) }
+                if (fitness == null || !fitness.canLoad) {
+                    phase = OnboardingPhase.Failed(fitness?.message
+                        ?: "Check this device's memory budget before downloading this experimental model.")
+                    return
+                }
+            }
             // Preflights guard the DOWNLOAD, not the load: a model already integrity-verified on
             // disk needs no network and no free space, so gating it was a spurious block — on
             // cellular, a Settings switch to an on-disk model failed with "connect to Wi-Fi"
@@ -170,7 +190,8 @@ class OnboardingModel(
                 // Swift install()'s storageCheck; previously Android only checked in the UI layer).
                 val freeBytes = availableDiskBytes()
                 if (freeBytes != null) {
-                    val storage = DiskSpace.check(model, freeBytes)
+                    val storage = DiskSpace.check(model, freeBytes,
+                        remainingDownloadBytes = downloader.remainingDownloadBytes(model))
                     if (!storage.hasRoom) {
                         phase = OnboardingPhase.Failed(storage.message)
                         return
@@ -192,8 +213,14 @@ class OnboardingModel(
             val previousId = engine.loadedModelId
 
             val path = try {
-                phase = OnboardingPhase.Downloading(model, 0.0)
-                downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
+                phase = if (model.artifacts.isNotEmpty()) OnboardingPhase.Verifying(model, 0, model.artifacts.size)
+                    else OnboardingPhase.Downloading(model, 0.0)
+                downloader.downloadWithProgress(model) { progress ->
+                    phase = when (progress) {
+                        is ModelDownloadProgress.Downloading -> OnboardingPhase.Downloading(model, progress.fraction)
+                        is ModelDownloadProgress.Verifying -> OnboardingPhase.Verifying(model, progress.checkedFiles, progress.totalFiles)
+                    }
+                }
             } catch (c: DownloadCancelledException) {
                 // User cancel → back to the recommendation screen, not a Failed dead end. The engine
                 // kept the .part, so a retry resumes. (Twin of the Apple install() cancel path.)
