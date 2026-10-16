@@ -352,6 +352,41 @@ fun main() {
     onboarding.acceptAndPrepare(ModelRecommender.recommendedModel(8.0))
     check("onboarding reaches Ready", onboarding.phase is OnboardingPhase.Ready)
     check("onboarding streamed Downloading progress", phases.any { it is OnboardingPhase.Downloading })
+    check("onboarding distinguishes retained-file verification from transfer progress", run {
+        val observed = mutableListOf<OnboardingPhase>()
+        val stages = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String =
+                error("The stage-aware flow must be used")
+            override fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String {
+                onProgress(ModelDownloadProgress.Verifying(0, 22))
+                onProgress(ModelDownloadProgress.Verifying(17, 22))
+                onProgress(ModelDownloadProgress.Verifying(22, 22))
+                onProgress(ModelDownloadProgress.Downloading(0.75))
+                return "/tmp/staged-model.gguf"
+            }
+        }
+        val staged = OnboardingModel(MockInferenceEngine(), stages, onChange = { observed += it })
+        staged.acceptAndPrepare(ModelCatalog.smallest)
+        observed.filterIsInstance<OnboardingPhase.Verifying>().map { it.checkedFiles } == listOf(0, 17, 22) &&
+            observed.filterIsInstance<OnboardingPhase.Verifying>().all { it.totalFiles == 22 } &&
+            observed.filterIsInstance<OnboardingPhase.Downloading>().map { it.fraction } == listOf(0.0, 0.75) &&
+            observed.last() is OnboardingPhase.Ready
+    })
+    check("cancelling verification returns to the model recommendation", run {
+        val verifying = object : ModelDownloader {
+            override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String =
+                error("The stage-aware flow must be used")
+            override fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String {
+                onProgress(ModelDownloadProgress.Verifying(3, 22))
+                throw DownloadCancelledException("Verification cancelled")
+            }
+        }
+        val cancelled = OnboardingModel(MockInferenceEngine(), verifying)
+        cancelled.start { DeviceProfile(totalRamGB = 8.0, freeRamGB = 8.0) }
+        val recommendation = cancelled.phase
+        cancelled.acceptAndPrepare(ModelCatalog.smallest)
+        cancelled.phase == recommendation
+    })
     check("onboarding fails cleanly when even the recommended model can't fit", run {
         val tight = OnboardingModel(MockInferenceEngine(), MockModelDownloader())
         tight.start { DeviceProfile(totalRamGB = 2.0, freeRamGB = 0.2) }

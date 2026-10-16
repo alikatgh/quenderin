@@ -52,8 +52,8 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: Quenderin
-        CFBundleShortVersionString: "0.3.0"
-        CFBundleVersion: "12"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -107,8 +107,8 @@ targets:
       path: Info-macOS.plist
       properties:
         CFBundleDisplayName: Quenderin
-        CFBundleShortVersionString: "0.3.0"
-        CFBundleVersion: "12"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false

@@ -123,6 +123,12 @@ python3 scripts/check_catalog_parity.py
 Commit both `project.yml` and the generated Xcode project when versions change.
 Cloud regenerates and rejects project drift.
 
+Both XcodeGen plist templates must use `$(MARKETING_VERSION)` and
+`$(CURRENT_PROJECT_VERSION)`. Changing the build settings alone does not override
+a hardcoded plist version: Cloud build 17 exported 0.3.0 despite the 0.4.0 build
+setting. The signed-export verifier now requires the version and minimum build
+declared by both targets in `project.yml`, while allowing Cloud's higher counter.
+
 ### 2. Use the existing Xcode Cloud workflow
 Open [Quenderin Xcode Cloud](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/groups).
 Reuse **Bonsai 2 App Store**, explicit `QUENDERIN_RUNTIME=prism`, and its iOS

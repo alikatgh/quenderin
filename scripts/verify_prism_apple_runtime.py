@@ -288,6 +288,15 @@ def embed_evidence(app: Path, target: str, stamp: dict, root: Path = ROOT) -> No
     (resources / "quenderin-model-catalog.json").write_bytes((root / "shared/model-catalog.json").read_bytes())
 
 
+def release_version(root: Path = ROOT) -> tuple[str, int]:
+    spec = (root / "apple/QuenderinApp/project.yml").read_text()
+    versions = re.findall(r'(?m)^[ \t]+MARKETING_VERSION:[ \t]*"([0-9]+\.[0-9]+\.[0-9]+)"[ \t]*$', spec)
+    builds = re.findall(r'(?m)^[ \t]+CURRENT_PROJECT_VERSION:[ \t]*([0-9]+)[ \t]*$', spec)
+    require(len(versions) == len(builds) == 2 and len(set(versions)) == len(set(builds)) == 1,
+            "Both Apple targets must declare matching release versions and build counters")
+    return versions[0], int(builds[0])
+
+
 def verify_app(app: Path, target: str, stamp: dict, root: Path = ROOT, signed: bool = False,
                source_framework: Path = FRAMEWORK) -> dict:
     require(target in ("ios", "macos"), "Only iOS device/macOS archives are supported")
@@ -295,9 +304,10 @@ def verify_app(app: Path, target: str, stamp: dict, root: Path = ROOT, signed: b
     resources = contents / "Resources" if target == "macos" else contents
     info = plistlib.loads((contents / "Info.plist").read_bytes())
     require(info.get("CFBundleIdentifier") == "ai.quenderin.Quenderin", "Wrong archive bundle identifier")
-    require(info.get("CFBundleShortVersionString") == "0.3.0"
-            and str(info.get("CFBundleVersion", "")).isdigit() and int(info["CFBundleVersion"]) >= 12,
-            "Wrong archive version or stale build counter")
+    version, minimum_build = release_version(root)
+    require(info.get("CFBundleShortVersionString") == version
+            and str(info.get("CFBundleVersion", "")).isdigit() and int(info["CFBundleVersion"]) >= minimum_build,
+            f"Wrong archive version or stale build counter; expected {version} with build >= {minimum_build}")
     lib = next(s for s in stamp["slices"] if s["platform"] == target and s["variant"] is None)
     native = contents / "Frameworks/llama.framework"
     binary = native / ("Versions/A/llama" if target == "macos" else "llama")

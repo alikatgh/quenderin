@@ -67,11 +67,13 @@ public struct ModelPickerView: View {
         let p = QuenderinPalette.of(scheme)
         // Same information order as the library: what you HAVE (instant switches) first,
         // then the recommendation, then downloads, then what can't run.
-        let installed = options.filter { installedFilenames.contains($0.model.filename) && $0.fitness.canLoad }
+        let supported = options.filter { ModelRuntimeSupport.supports($0.model) }
+        let unavailable = options.filter { !ModelRuntimeSupport.supports($0.model) }
+        let installed = supported.filter { installedFilenames.contains($0.model.filename) && $0.fitness.canLoad }
         let installedIDs = Set(installed.map(\.model.id))
-        let recommended = options.filter { $0.model.id == recommendedID && !installedIDs.contains($0.model.id) }
-        let fitting = options.filter { !installedIDs.contains($0.model.id) && $0.model.id != recommendedID && $0.fitness.canLoad }
-        let blocked = options.filter { !installedIDs.contains($0.model.id) && !$0.fitness.canLoad }
+        let recommended = supported.filter { $0.model.id == recommendedID && !installedIDs.contains($0.model.id) }
+        let fitting = supported.filter { !installedIDs.contains($0.model.id) && $0.model.id != recommendedID && $0.fitness.canLoad }
+        let blocked = supported.filter { !installedIDs.contains($0.model.id) && !$0.fitness.canLoad }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Choose a built-in model that fits your \(deviceNoun). Download once, then chat offline.")
@@ -115,6 +117,10 @@ public struct ModelPickerView: View {
                     sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant)
                     rows(blocked, palette: p)
                 }
+                if !unavailable.isEmpty {
+                    sectionHeader("Unavailable in this build", color: p.onSurfaceVariant)
+                    rows(unavailable, palette: p)
+                }
             }
             .padding(16)
         }
@@ -155,6 +161,10 @@ private struct ModelPickerRow: View {
     let palette: QuenderinPalette
     let action: () -> Void
 
+    private var runtimeBlockReason: String? {
+        ModelRuntimeSupport.supports(model) ? nil : ModelRuntimeSupport.unavailableReason(for: model)
+    }
+
     /// "Qwen3 14B (Best Quality)" → name "Qwen3 14B" + capability chip "Best Quality" — the
     /// parenthetical reads better as a quiet tag than as half the headline.
     private var split: (name: String, tag: String?) {
@@ -193,7 +203,7 @@ private struct ModelPickerRow: View {
                             .overlay(Capsule().strokeBorder(palette.onSurfaceVariant.opacity(0.3), lineWidth: 1))
                     }
                     Spacer(minLength: 10)
-                    if isCurrent {
+                    if isCurrent, runtimeBlockReason == nil {
                         // The model you're already running — status-green, same dot+word language.
                         HStack(spacing: 5) {
                             Circle().fill(palette.status).frame(width: 7, height: 7)
@@ -201,7 +211,7 @@ private struct ModelPickerRow: View {
                         }
                         .accessibilityHidden(true)
                     } else {
-                        FitBadge(fitness: fitness, palette: palette)
+                        FitBadge(fitness: fitness, runtimeUnavailable: runtimeBlockReason != nil, palette: palette)
                     }
                 }
                 Text(modelBlurb(model.id))
@@ -211,12 +221,18 @@ private struct ModelPickerRow: View {
                     .multilineTextAlignment(.leading)
                 // The line that answers "tap or coffee break": installed switches instantly,
                 // everything else says exactly how big the one-time download is.
-                Text(isInstalled
+                Text(isInstalled && runtimeBlockReason == nil
                      ? "Installed — switches instantly · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM"
-                     : "\(model.sizeLabel) · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM")
+                     : "\(isInstalled ? "Installed" : model.sizeLabel) · \(model.quantization) · needs ~\(String(format: "%.1f", model.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(isInstalled ? palette.statusText : palette.onSurfaceVariant)
-                if !fitness.canLoad {
+                    .foregroundStyle(isInstalled && runtimeBlockReason == nil ? palette.statusText : palette.onSurfaceVariant)
+                if let reason = runtimeBlockReason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if !fitness.canLoad {
                     MemoryShortfallNote(fitness: fitness, palette: palette)
                 }
               }
@@ -232,8 +248,8 @@ private struct ModelPickerRow: View {
             .opacity(fitness.canLoad ? 1 : 0.45)
         }
         .buttonStyle(.plain)
-        .disabled(!fitness.canLoad || isCurrent)
-        .accessibilityLabel("\(model.label), \(isInstalled ? "installed" : "requires download"), \(isCurrent ? "current model" : fitLabel(fitness))\(isRecommended ? ", recommended for this device" : "")")
+        .disabled(runtimeBlockReason != nil || !fitness.canLoad || isCurrent)
+        .accessibilityLabel("\(model.label), \(isInstalled ? "installed" : "requires download"), \(runtimeBlockReason ?? (isCurrent ? "current model" : fitLabel(fitness)))\(isRecommended ? ", recommended for this device" : "")")
     }
 }
 
@@ -269,10 +285,12 @@ private struct MemoryShortfallNote: View {
 /// "on-device · private". Green "Fits", orange "Tight", red "Too big".
 private struct FitBadge: View {
     let fitness: MemoryCheckResult
+    let runtimeUnavailable: Bool
     let palette: QuenderinPalette
 
     var body: some View {
         let (color, text): (Color, String) = {
+            if runtimeUnavailable { return (.red, "Unavailable") }
             if !fitness.canLoad { return (.red, "Too big") }
             switch fitness.severity {
             case .safe: return (palette.status, "Fits")

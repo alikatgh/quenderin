@@ -9,6 +9,7 @@ sealed interface OnboardingPhase {
     object Probing : OnboardingPhase
     data class Recommended(val model: ModelEntry, val fitness: MemoryCheckResult) : OnboardingPhase
     data class Downloading(val model: ModelEntry, val fraction: Double) : OnboardingPhase
+    data class Verifying(val model: ModelEntry, val checkedFiles: Int, val totalFiles: Int) : OnboardingPhase
     data class Loading(val model: ModelEntry) : OnboardingPhase
     data class Ready(val model: ModelEntry) : OnboardingPhase
     data class Failed(val reason: String) : OnboardingPhase
@@ -212,8 +213,14 @@ class OnboardingModel(
             val previousId = engine.loadedModelId
 
             val path = try {
-                phase = OnboardingPhase.Downloading(model, 0.0)
-                downloader.download(model) { frac -> phase = OnboardingPhase.Downloading(model, frac) }
+                phase = if (model.artifacts.isNotEmpty()) OnboardingPhase.Verifying(model, 0, model.artifacts.size)
+                    else OnboardingPhase.Downloading(model, 0.0)
+                downloader.downloadWithProgress(model) { progress ->
+                    phase = when (progress) {
+                        is ModelDownloadProgress.Downloading -> OnboardingPhase.Downloading(model, progress.fraction)
+                        is ModelDownloadProgress.Verifying -> OnboardingPhase.Verifying(model, progress.checkedFiles, progress.totalFiles)
+                    }
+                }
             } catch (c: DownloadCancelledException) {
                 // User cancel → back to the recommendation screen, not a Failed dead end. The engine
                 // kept the .part, so a retry resumes. (Twin of the Apple install() cancel path.)

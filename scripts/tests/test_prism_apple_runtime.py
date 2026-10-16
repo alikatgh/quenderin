@@ -78,8 +78,20 @@ class ApplePrismTests(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory(prefix="apple-prism-test-")
         self.addCleanup(self.scratch.cleanup)
         self.root = Path(self.scratch.name)
-        for rel in ("shared", "apple/QuenderinKit/Sources/QuenderinKit"):
+        for rel in ("shared", "apple/QuenderinKit/Sources/QuenderinKit", "apple/QuenderinApp"):
             (self.root / rel).mkdir(parents=True)
+        (self.root / "apple/QuenderinApp/project.yml").write_text('''targets:
+  Quenderin:
+    settings:
+      base:
+        MARKETING_VERSION: "0.4.0"
+        CURRENT_PROJECT_VERSION: 16
+  QuenderinMac:
+    settings:
+      base:
+        MARKETING_VERSION: "0.4.0"
+        CURRENT_PROJECT_VERSION: 16
+''')
         for rel in ("shared/prism-runtime.json", "shared/model-catalog.json", "apple/QuenderinKit/Sources/QuenderinKit/ModelCatalog.swift"):
             shutil.copyfile(prism.ROOT / rel, self.root / rel)
         self.framework = self.root / "prism-llama.xcframework"
@@ -118,7 +130,7 @@ class ApplePrismTests(unittest.TestCase):
         app = self.root / "Quenderin.app"
         contents = app / "Contents" if target == "macos" else app
         contents.mkdir(parents=True)
-        info = {"CFBundleIdentifier": "ai.quenderin.Quenderin", "CFBundleVersion": "12", "CFBundleShortVersionString": "0.3.0", "CFBundleExecutable": "Quenderin"}
+        info = {"CFBundleIdentifier": "ai.quenderin.Quenderin", "CFBundleVersion": "16", "CFBundleShortVersionString": "0.4.0", "CFBundleExecutable": "Quenderin"}
         (contents / "Info.plist").write_bytes(plistlib.dumps(info))
         identifier = "macos-arm64_x86_64" if target == "macos" else "ios-arm64"
         native = contents / "Frameworks/llama.framework"
@@ -299,6 +311,37 @@ class ApplePrismTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "bundle identifier"):
             prism.verify_app(app, "ios", stamp, self.root)
 
+    def test_archive_version_matches_source_and_accepts_cloud_build_counter(self):
+        stamp = self.seal()
+        for target in ("ios", "macos"):
+            with self.subTest(platform=target):
+                app, contents, _ = self.app(target)
+                info_path = contents / "Info.plist"
+                info = plistlib.loads(info_path.read_bytes())
+                info["CFBundleVersion"] = "17"
+                info_path.write_bytes(plistlib.dumps(info))
+                with patch.object(prism, "run", side_effect=self.tool):
+                    result = prism.verify_app(app, target, stamp, self.root)
+                self.assertEqual((result["version"], result["build"]), ("0.4.0", "17"))
+                for version, build in (("0.3.0", "17"), ("0.5.0", "18"), ("0.4.0", "15")):
+                    info.update(CFBundleShortVersionString=version, CFBundleVersion=build)
+                    info_path.write_bytes(plistlib.dumps(info))
+                    with self.assertRaisesRegex(ValueError, "expected 0.4.0 with build >= 16"):
+                        prism.verify_app(app, target, stamp, self.root, signed=True)
+
+    def test_release_version_follows_source_and_rejects_mismatched_targets(self):
+        spec = self.root / "apple/QuenderinApp/project.yml"
+        original = spec.read_text()
+        spec.write_text(original.replace('"0.4.0"', '"0.5.0"').replace("VERSION: 16", "VERSION: 18"))
+        self.assertEqual(prism.release_version(self.root), ("0.5.0", 18))
+        for drift in (original.replace('"0.4.0"', '"0.5.0"', 1),
+                      original.replace("VERSION: 16", "VERSION: 18", 1),
+                      original.replace("CURRENT_PROJECT_VERSION: 16", "CURRENT_PROJECT_VERSION: invalid", 1)):
+            with self.subTest(spec=drift):
+                spec.write_text(drift)
+                with self.assertRaisesRegex(ValueError, "matching release versions"):
+                    prism.release_version(self.root)
+
     def test_archive_rejects_missing_runtime_wrong_version_adhoc_and_tamper(self):
         stamp = self.seal()
         app, contents, native = self.app("ios")
@@ -306,11 +349,11 @@ class ApplePrismTests(unittest.TestCase):
             prism.verify_app(app, "ios", stamp, self.root)
             info_path = contents / "Info.plist"
             info = plistlib.loads(info_path.read_bytes())
-            info["CFBundleVersion"] = "11"
+            info["CFBundleVersion"] = "15"
             info_path.write_bytes(plistlib.dumps(info))
             with self.assertRaisesRegex(ValueError, "build counter"):
                 prism.verify_app(app, "ios", stamp, self.root, signed=True)
-            info["CFBundleVersion"] = "12"
+            info["CFBundleVersion"] = "16"
             info_path.write_bytes(plistlib.dumps(info))
             with patch.object(prism, "run", side_effect=lambda *a: "Signature=adhoc\nTeamIdentifier=9M2B2P4KSA" if a[:2] == ("codesign", "-d") else self.tool(*a)):
                 with self.assertRaisesRegex(ValueError, "signature"):
@@ -333,7 +376,7 @@ class ApplePrismTests(unittest.TestCase):
         (export / "ExportOptions.plist").write_bytes(plistlib.dumps({"method": "app-store-connect"}))
         with patch.object(prism, "run", side_effect=self.tool), patch.object(prism, "verify_app", wraps=prism.verify_app) as verify:
             result = prism.verify_distribution(export, "ios", stamp, self.root, self.framework)
-            self.assertEqual(result["build"], "12")
+            self.assertEqual(result["build"], "16")
             self.assertTrue(verify.call_args.kwargs["signed"])
             extracted = verify.call_args.args[0]
         self.assertFalse(extracted.exists())
@@ -566,7 +609,7 @@ class ApplePrismTests(unittest.TestCase):
         for script in source.glob("ci_*.sh"):
             shutil.copyfile(script, isolated / script.name)
         (self.root / "scripts").mkdir(exist_ok=True)
-        (self.root / "apple/QuenderinApp").mkdir()
+        (self.root / "apple/QuenderinApp").mkdir(exist_ok=True)
         (self.root / "apple/QuenderinKit/Package.swift").write_text("// fixture package")
         (self.root / "apple/QuenderinApp/project.yml").write_text("name: Fixture")
         (self.root / "scripts/verify_prism_apple_runtime.py").write_text("import sys; print('REPOSITORY_VERIFIER', ' '.join(sys.argv[1:]))")

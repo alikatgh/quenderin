@@ -89,7 +89,7 @@ class ModelDownloadWorker(
             isCancelled = { isStopped },
             allowNetwork = !verifyOnly,
             onVerificationProgress = { checked, total ->
-                setProgressAsync(workDataOf(KEY_PROGRESS to 0.0, KEY_STAGE to "verifying"))
+                setProgressAsync(workDataOf(KEY_PROGRESS to 0.0, KEY_STAGE to "verifying", KEY_VERIFIED_FILES to checked))
                 val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 nm.notify(NOTIFICATION_ID, buildNotification(0.0, model.label,
                     applicationContext.getString(R.string.download_verification_progress, checked, total)))
@@ -191,6 +191,7 @@ class ModelDownloadWorker(
         const val KEY_MODEL_ID = "model_id"
         const val KEY_VERIFY_ONLY = "verify_only"
         const val KEY_STAGE = "stage"
+        const val KEY_VERIFIED_FILES = "verified_files"
         const val KEY_PROGRESS = "progress"
         const val KEY_PATH = "path"
         const val KEY_ERROR = "error"

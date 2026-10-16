@@ -23,14 +23,16 @@ public struct ModelsLibraryView: View {
 
     /// The page's information order: what you HAVE, what you SHOULD get, what you COULD get,
     /// what you CAN'T — each its own captioned section, never one undifferentiated dump.
-    private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry]) {
+    private var grouped: (mine: [ModelEntry], recommended: [ModelEntry], available: [ModelEntry], blocked: [ModelEntry], unavailable: [ModelEntry]) {
         let recommendedID = recommendedModelID
         var mine: [ModelEntry] = [], recommended: [ModelEntry] = []
-        var available: [ModelEntry] = [], blocked: [ModelEntry] = []
+        var available: [ModelEntry] = [], blocked: [ModelEntry] = [], unavailable: [ModelEntry] = []
         for entry in ModelCatalog.models {
             let state = library.state(of: entry)
             if state == .installed || state == .verifying || { if case .downloading = state { return true }; return false }() {
                 mine.append(entry)   // downloading = arriving — it belongs with "yours"
+            } else if !ModelRuntimeSupport.supports(entry) {
+                unavailable.append(entry)
             } else if entry.id == recommendedID {
                 recommended.append(entry)
             } else if fitness(entry).canLoad {
@@ -50,7 +52,7 @@ public struct ModelsLibraryView: View {
             if (a.id == activeModelID) != (b.id == activeModelID) { return a.id == activeModelID }
             return a.paramsBillions > b.paramsBillions
         }
-        return (mine, recommended, available, blocked)
+        return (mine, recommended, available, blocked, unavailable)
     }
 
     public var body: some View {
@@ -79,8 +81,12 @@ public struct ModelsLibraryView: View {
                     sectionHeader("Too big for this \(deviceNoun)", color: p.onSurfaceVariant, palette: p)
                     grid(groups.blocked, palette: p)
                 }
+                if !groups.unavailable.isEmpty {
+                    sectionHeader("Unavailable in this build", color: p.onSurfaceVariant, palette: p)
+                    grid(groups.unavailable, palette: p)
+                }
 
-                Text("Installed is not the same as loadable: models load one at a time, and RAM decides which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
+                Text("Installed is not the same as loadable: models load one at a time, and memory and engine compatibility determine which can run. The fit badges are live for this \(deviceNoun). Click a model for its full profile" + (deviceNoun == "Mac" ? ", or drop a .gguf file here to import it." : "."))
                     .font(.footnote)
                     .foregroundStyle(p.onSurfaceVariant)
 
@@ -275,6 +281,10 @@ private struct LibraryRow: View {
     let sizeOnDisk: Int64
     @State private var hovering = false
 
+    private var runtimeBlockReason: String? {
+        ModelRuntimeSupport.supports(entry) ? nil : ModelRuntimeSupport.unavailableReason(for: entry)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             ModelAvatar(size: 40, modelID: entry.id)
@@ -284,7 +294,7 @@ private struct LibraryRow: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(palette.onSurface)
                         .lineLimit(1)
-                    FitDot(fitness: fitness, palette: palette)
+                    FitDot(fitness: fitness, runtimeUnavailable: runtimeBlockReason != nil, palette: palette)
                 }
                 Text(modelBlurb(entry.id))
                     .font(.caption)
@@ -295,6 +305,12 @@ private struct LibraryRow: View {
                      : "\(entry.sizeLabel) · \(entry.quantization) · needs ~\(String(format: "%.1f", entry.ramGB)) GB RAM")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(palette.onSurfaceVariant)
+                if let reason = runtimeBlockReason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(palette.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 12)
             switch state {
@@ -308,8 +324,8 @@ private struct LibraryRow: View {
                     } else {
                         Button("Use") { onUse() }
                             .buttonStyle(.bordered)
-                            .disabled(!fitness.canLoad)
-                            .help(fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)")
+                            .disabled(!fitness.canLoad || runtimeBlockReason != nil)
+                            .help(runtimeBlockReason ?? (fitness.canLoad ? "Load this model" : "Not enough memory to load on this \(deviceNoun)"))
                     }
                     // Manage the file where you SEE the file — not only in Settings → Storage.
                     Menu {
@@ -350,11 +366,13 @@ private struct LibraryRow: View {
             case .notInstalled:
                 Button { onDownload() } label: { Label("Download", systemImage: "arrow.down.circle") }
                     .buttonStyle(.bordered)
+                    .disabled(runtimeBlockReason != nil)
             case .failed(let reason):
                 VStack(alignment: .trailing, spacing: 4) {
                     Button { onDownload() } label: { Label("Retry", systemImage: "arrow.clockwise") }
                         .buttonStyle(.bordered)
                         .tint(.orange)
+                        .disabled(runtimeBlockReason != nil)
                     if sizeOnDisk > 0, !isActive {
                         Button("Delete…", role: .destructive) { onDelete() }
                     }
@@ -385,7 +403,7 @@ private struct LibraryRow: View {
             Button("Show details…") { onOpen() }
             switch state {
             case .installed:
-                if !isActive, fitness.canLoad { Button("Use this model") { onUse() } }
+                if !isActive, fitness.canLoad, runtimeBlockReason == nil { Button("Use this model") { onUse() } }
                 #if os(macOS)
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting(
@@ -399,6 +417,7 @@ private struct LibraryRow: View {
                 }
             case .notInstalled, .failed:
                 Button("Download") { onDownload() }
+                    .disabled(runtimeBlockReason != nil)
                 if sizeOnDisk > 0, !isActive { Button("Delete…", role: .destructive) { onDelete() } }
             case .verifying:
                 Button("Cancel verification") { onCancel() }
@@ -416,17 +435,18 @@ private struct LibraryRow: View {
 /// The picker's status-dot fit language, compact: green Fits · orange Tight · red Too big.
 private struct FitDot: View {
     let fitness: MemoryCheckResult
+    let runtimeUnavailable: Bool
     let palette: QuenderinPalette
 
     var body: some View {
-        let (color, word): (Color, String) = !fitness.canLoad
+        let (color, word): (Color, String) = runtimeUnavailable ? (.red, "Unavailable") : !fitness.canLoad
             ? (.red, "Too big")
             : fitness.severity == .safe ? (palette.status, "Fits") : (Color(hex: 0xE8963A), "Tight")
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(word).font(.caption2).foregroundStyle(palette.onSurfaceVariant)
         }
-        .accessibilityLabel("Memory fit: \(word)")
+        .accessibilityLabel(runtimeUnavailable ? "Unavailable in this build" : "Memory fit: \(word)")
     }
 }
 

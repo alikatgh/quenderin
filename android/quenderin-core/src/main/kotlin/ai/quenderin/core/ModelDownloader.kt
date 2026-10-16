@@ -1,5 +1,11 @@
 package ai.quenderin.core
 
+/** Transfer progress and local integrity work are different stages of preparing a model. */
+sealed interface ModelDownloadProgress {
+    data class Downloading(val fraction: Double) : ModelDownloadProgress
+    data class Verifying(val checkedFiles: Int, val totalFiles: Int) : ModelDownloadProgress
+}
+
 /**
  * The download seam for fetching a GGUF "module" onto the device. The real Android
  * implementation lives in the app module (WorkManager + a resumable foreground
@@ -12,6 +18,10 @@ interface ModelDownloader {
      * absolute local file path of the finished GGUF. Throws on failure.
      */
     fun download(model: ModelEntry, onProgress: (Double) -> Unit): String
+
+    /** Stage-aware adapter; existing single-file downloaders keep their fractional contract. */
+    fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String =
+        download(model) { onProgress(ModelDownloadProgress.Downloading(it)) }
 
     /**
      * True when [download] would actually need the network for [model] — i.e. there is NO

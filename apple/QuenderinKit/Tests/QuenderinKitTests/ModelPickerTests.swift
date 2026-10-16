@@ -16,8 +16,13 @@ final class ModelPickerTests: XCTestCase {
     }
 
     func testHighRAMAllowsEverySupportedModel() {
-        let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 64)
+        let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 1024)
         XCTAssertEqual(options.count, 18)
         XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad == ModelRuntimeSupport.supports($0.model) })
+    }
+
+    func testMuseDoesNotFitOn64GB() {
+        let fitness = fitnessByID(forTotalRAMGB: 64)
+        XCTAssertFalse(fitness["muse-spark-open-q2-k"]!.canLoad)
     }
 }

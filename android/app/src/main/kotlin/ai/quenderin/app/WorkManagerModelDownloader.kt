@@ -4,6 +4,7 @@ import ai.quenderin.core.DownloadCancelledException
 import ai.quenderin.core.DownloadException
 import ai.quenderin.core.JvmFileSink
 import ai.quenderin.core.ModelDownloader
+import ai.quenderin.core.ModelDownloadProgress
 import ai.quenderin.core.AndroidModelSelector
 import ai.quenderin.core.ModelRuntimeSupport
 import ai.quenderin.core.ModelEntry
@@ -77,7 +78,12 @@ class WorkManagerModelDownloader(
     override fun remainingDownloadBytes(model: ModelEntry): Long =
         ModelArtifacts.estimatedRemainingDownloadBytes(model, File(context.filesDir, "models").absolutePath)
 
-    override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String {
+    override fun download(model: ModelEntry, onProgress: (Double) -> Unit): String =
+        downloadWithProgress(model) { progress ->
+            if (progress is ModelDownloadProgress.Downloading) onProgress(progress.fraction)
+        }
+
+    override fun downloadWithProgress(model: ModelEntry, onProgress: (ModelDownloadProgress) -> Unit): String {
         ModelArtifacts.validate(model)
         if (!ModelRuntimeSupport.supports(model)) throw DownloadException(ModelRuntimeSupport.unavailableMessage(model))
         if (ModelRuntimeSupport.requiresMemoryGate(model)) {
@@ -92,7 +98,7 @@ class WorkManagerModelDownloader(
         // which then falls through to a real (resumable) download.
         if (model.artifacts.isEmpty()) {
             verifiedExistingFile(model)?.let {
-                onProgress(1.0)
+                onProgress(ModelDownloadProgress.Downloading(1.0))
                 return it.absolutePath
             }
         }
@@ -134,7 +140,14 @@ class WorkManagerModelDownloader(
             val info = workManager.getWorkInfosForUniqueWork(uniqueName).get().firstOrNull()
                 ?: throw DownloadException("download work vanished for ${model.id}")
 
-            onProgress(info.progress.getDouble(ModelDownloadWorker.KEY_PROGRESS, 0.0))
+            val progress = info.progress
+            if (progress.getString(ModelDownloadWorker.KEY_STAGE) == "verifying") {
+                val total = model.artifacts.size
+                onProgress(ModelDownloadProgress.Verifying(
+                    progress.getInt(ModelDownloadWorker.KEY_VERIFIED_FILES, 0).coerceIn(0, total), total))
+            } else if (progress.keyValueMap.containsKey(ModelDownloadWorker.KEY_PROGRESS)) {
+                onProgress(ModelDownloadProgress.Downloading(progress.getDouble(ModelDownloadWorker.KEY_PROGRESS, 0.0)))
+            }
 
             when (info.state) {
                 WorkInfo.State.SUCCEEDED -> {

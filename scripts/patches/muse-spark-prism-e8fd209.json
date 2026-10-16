@@ -127,7 +127,7 @@
     {
       "path": "src/llama-model-saver.cpp",
       "beforeSha256": "6dec1fc297dca89fb6933b638acf593a2e4c1ca02b69dafe00268651fa9ef96d",
-      "afterSha256": "6b24cddf3a8d0e49854d6f3bc962b88815e062b22cfba916b6e07a1a97abb367",
+      "afterSha256": "9cc220914143e7d8925f50ce784a1f019f90894e48cdf7dd8e88ea8dfadd7c14",
       "replacements": [
         {
           "before": "    add_kv(LLM_KV_ATTENTION_VALUE_LENGTH,            hparams.n_embd_head_v_full);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_EPS,           hparams.f_norm_eps);\n    add_kv(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_EPS,           hparams.f_norm_group_eps);\n    add_kv(LLM_KV_ATTENTION_GROUPNORM_GROUPS,        hparams.n_norm_groups);\n",
@@ -136,6 +136,10 @@
         {
           "before": "    add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH,        hparams.n_ff_exp);\n",
           "after": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, true);\n    } else {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_exp);\n    }\n    add_kv(LLM_KV_MOE_LATENT_SIZE,                   hparams.moe_latent_size);\n"
+        },
+        {
+          "before": "    // add_kv(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN,  ???);\n",
+          "after": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        // Muse requires an array even when every layer uses the same pattern.\n        add_kv(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, std::vector<uint32_t>(\n                hparams.is_swa_impl.begin(), hparams.is_swa_impl.begin() + hparams.n_layer_all));\n    }\n"
         }
       ]
     },
@@ -234,8 +238,12 @@
     {
       "path": "tests/test-llama-archs.cpp",
       "beforeSha256": "7d542af7b20f6e43d2b174f1dddf9b9480a3130db36c005c3f17c164c032b44d",
-      "afterSha256": "12a7cce2273ad0910e549d6fcbb6d1c805b36e8304756a20bead0f6854905768",
+      "afterSha256": "0302e8ed2b51f36b43e75f95fceaef1e3ed874c5be9c5f28f118e47937db3dae",
       "replacements": [
+        {
+          "before": "#include \"../src/llama-arch.h\"\n",
+          "after": "#include \"../src/llama-arch.h\"\n#include \"../src/llama-model.h\"\n"
+        },
         {
           "before": "    } else if (arch == LLM_ARCH_QWEN3 || arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_AFMOE) {\n",
           "after": "    } else if (arch == LLM_ARCH_QWEN3 || arch == LLM_ARCH_MUSE_GLIMMER || arch == LLM_ARCH_MUSE_SPARK || arch == LLM_ARCH_AFMOE) {\n"

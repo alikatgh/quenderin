@@ -306,6 +306,7 @@ private fun OnboardingPhase.animKey(): String = when (this) {
     is OnboardingPhase.Probing -> "probing"
     is OnboardingPhase.Recommended -> "recommended"
     is OnboardingPhase.Downloading -> "downloading"
+    is OnboardingPhase.Verifying -> "verifying"
     is OnboardingPhase.Loading -> "loading"
     is OnboardingPhase.Ready -> "ready"
     is OnboardingPhase.Failed -> "failed"
@@ -430,6 +431,22 @@ private fun PhaseContent(
                 )
             }
 
+            is OnboardingPhase.Verifying -> {
+                Text(
+                    stringResource(R.string.download_verification_title, phase.model.label),
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    stringResource(R.string.download_verification_progress, phase.checkedFiles, phase.totalFiles),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = { onCancel(phase.model) }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+
             is OnboardingPhase.Loading ->
                 Text(
                     stringResource(R.string.onboarding_warming, phase.model.label),
@@ -530,7 +547,7 @@ private fun ModelCore(phase: OnboardingPhase, fraction: Float) {
     )
 
     val isDownloading = phase is OnboardingPhase.Downloading
-    val isProbing = phase is OnboardingPhase.Probing
+    val isProbing = phase is OnboardingPhase.Probing || phase is OnboardingPhase.Verifying
     val isLoading = phase is OnboardingPhase.Loading
     // Loading pulses faster/tighter than the idle breath.
     val pulseAmount = if (isLoading) 0.10f else 0.05f
