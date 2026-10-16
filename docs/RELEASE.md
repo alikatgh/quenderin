@@ -10,15 +10,26 @@ July release history and the live store consoles. Refresh dated state before
 reusing it; build success, signing, submission and availability are separate.
 
 - Apple app **6789854363**, bundle `ai.quenderin.Quenderin`, signing team
-  `9M2B2P4KSA`. Both iOS and macOS **0.3.0 (15)** are Ready for Distribution.
+  `9M2B2P4KSA`. Both iOS and macOS **0.4.0 (19)** are **Waiting for Review**.
+  Both submissions retain **Automatically release this version** and immediate
+  release to all users after approval. **0.3.0 (15)** remains the public version;
+  submission is not approval or public availability.
+  - [iOS submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/58d4e201-3d64-4c88-a76f-d2762d80757d), submitted 16 October at 13:48 Asia/Ulaanbaatar.
+  - [macOS submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/fb941b2e-296d-407f-b5b1-73c1d19bb308), submitted 16 October.
 - Xcode Cloud team `f68608a6-96f8-4330-b123-b99c104eec71`, product
   `4F96019F-D3C2-4ECE-AA57-12D901AC24A3`, existing workflow **Bonsai 2 App Store**.
   Workflow ID: `76741952-1095-40B7-AA3D-9DA19B3682F2`. It is enabled, starts on
   pushes to `codex/bonsai2-27b-20261012`, and automatically cancels superseded
   builds. It has only iOS/macOS Archive actions, with no simulator/device actions.
-  Latest successful build is 15. The native 0.4.0 candidate starts at build 16;
-  verify Cloud's counter before starting it. The included 25-hour plan showed
-  3h 13m used / 21h 47m available, resetting October 28. No paid upgrade is needed.
+  Latest successful build is **19**; both signed-export verifiers confirmed
+  version 0.4.0, build 19 and the pinned Prism revision. Cloud build ID:
+  `6e352c62-20dc-49ea-bb09-a21a47f3eb8d`. Source:
+  `2c1bf547846c0565f97477ff0b967b46735deecc`, merged in
+  [PR 161](https://github.com/alikatgh/quenderin/pull/161) as
+  `d5b5dcb91bff011137ae355ed57a6dab7147303f`. Use a later counter for another
+  archive and recheck the live value. At task start the included 25-hour plan
+  showed 3h 13m used / 21h 47m available, resetting October 28; subsequent builds
+  consumed part of that allowance. No paid upgrade was made.
 - [Play Console](https://play.google.com/console/u/0/developers/6289191549337108258/app/4976280765138921912/releases/overview):
   developer `6289191549337108258`, app `4976280765138921912`, package
   **ai.quenderin.app**. Highest observed bundle is **2 (0.2.0)**, active on
@@ -32,15 +43,33 @@ reusing it; build success, signing, submission and availability are separate.
   SHA-256: `8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D`.
   Match this **upload** fingerprint before signing; Play's app-signing certificate
   is different. The matching private key was not found on this Mac after checking
-  project/standard signing paths, available session records and keychain metadata.
+  project/standard signing paths, available session records, keychain metadata
+  and a focused connected Drive search. Android 0.4.0 **compiled successfully**
+  as an APK and unsigned release AAB in hosted CI; it was **not uploaded to Play**.
   Do not claim that recovering the public fingerprint recovered the private key.
-- App Store Connect displayed an updated Paid Applications Schedule requiring
-  Account Holder acceptance before updates. Review its current state before
-  submission; never silently accept a new legal agreement.
+- An earlier App Store Connect banner mentioned an updated Paid Applications
+  Schedule, but both 0.4.0 submissions were accepted without a new agreement
+  action. No legal terms were accepted in this task. Recheck any future blocker
+  rather than assuming the earlier banner prevents submission.
+
+[CI 38856241939](https://github.com/alikatgh/quenderin/actions/runs/38856241939)
+passed all 13 jobs on the exact archived source. This includes tiny synthetic
+Muse CPU decode and save/reload, bounded Bonsai generation on the hosted runner,
+576 Apple runtime tests (9 skips), 574 standard Swift tests (6 skips), Android
+packaging, Windows/Linux native-addon and packaged-app checks, and catalog and
+source-provenance checks. Catalog URL liveness and independent engineering/UI
+review also passed. Do not submit build 18: it predates the Muse graph fix.
+
+The [engineering article](https://quenderin.org/blog-muse-engineering),
+[model update](https://quenderin.org/blog-bonsai-small-muse-spark) and
+[changelog](https://quenderin.org/changelog) are live. Static Worker publication
+`cfa3e413-b0a8-438d-8550-033d76b798e9` preserved the existing Worker code and
+settings. The expanded dynamic model-release feed is committed source only;
+it was not activated. No Cloudflare deployment secret was configured in GitHub.
 
 The October 16 task explicitly excludes local model downloads, simulators and
 physical-device runs. Host fixture checks and hosted compilation are permitted;
-actual Muse inference and native UI/device behavior remain unverified. Do not
+full-weight Muse inference and native UI/device behavior remain unverified. Do not
 present old screenshot or inference evidence as validation of the 0.4.0 candidate.
 
 | Product | Public channel | Owner guide |
