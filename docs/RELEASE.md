@@ -12,7 +12,10 @@ reusing it; build success, signing, submission and availability are separate.
 - Apple app **6789854363**, bundle `ai.quenderin.Quenderin`, signing team
   `9M2B2P4KSA`. Both iOS and macOS **0.3.0 (15)** are Ready for Distribution.
 - Xcode Cloud team `f68608a6-96f8-4330-b123-b99c104eec71`, product
-  `4F96019F-D3C2-4ECE-AA57-12D901AC24A3`, existing workflow **Bonsai2AppStore**.
+  `4F96019F-D3C2-4ECE-AA57-12D901AC24A3`, existing workflow **Bonsai 2 App Store**.
+  Workflow ID: `76741952-1095-40B7-AA3D-9DA19B3682F2`. It is enabled, starts on
+  pushes to `codex/bonsai2-27b-20261012`, and automatically cancels superseded
+  builds. It has only iOS/macOS Archive actions, with no simulator/device actions.
   Latest successful build is 15. The native 0.4.0 candidate starts at build 16;
   verify Cloud's counter before starting it. The included 25-hour plan showed
   3h 13m used / 21h 47m available, resetting October 28. No paid upgrade is needed.
@@ -122,7 +125,7 @@ Cloud regenerates and rejects project drift.
 
 ### 2. Use the existing Xcode Cloud workflow
 Open [Quenderin Xcode Cloud](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/groups).
-Reuse **Bonsai2AppStore**, explicit `QUENDERIN_RUNTIME=prism`, and its iOS
+Reuse **Bonsai 2 App Store**, explicit `QUENDERIN_RUNTIME=prism`, and its iOS
 `Quenderin` / macOS `QuenderinMac` App Store Archive actions. Select the reviewed
 pushed commit and record its full SHA. The post-clone hook builds the pinned
 framework before package resolution; post-build hooks verify the signed exports,
