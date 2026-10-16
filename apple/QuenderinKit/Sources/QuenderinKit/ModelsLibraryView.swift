@@ -691,9 +691,9 @@ final class ModelLibraryController: ObservableObject {
             tasks[entry.id] = Task { [weak self] in
                 guard let self else { return }
                 do {
-                    _ = try await ModelArtifactInstaller.install(entry, in: self.modelsDir, downloader: self.downloader) {
+                    _ = try await ModelArtifactInstaller.install(entry, in: self.modelsDir, downloader: self.downloader, progress: {
                         self.states[entry.id] = .downloading($0)
-                    }
+                    })
                     try Task.checkCancellation()
                     self.states[entry.id] = .installed
                 } catch {

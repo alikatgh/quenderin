@@ -14,7 +14,7 @@
   "sourcePatch": {
     "id": "muse-spark-open-v1",
     "path": "scripts/patches/muse-spark-prism-e8fd209.json",
-    "sha256": "7ee83edc8f3247f911102c747ee8b98857446ff5c574c2dfd2f3c0b006d1bda5",
+    "sha256": "5511775f82509444e70c87ae30176a05ad2a5f55075b0c9f17c4a7e1d23a35ce",
     "upstreamRevision": "ba3c05f71da85cd0439e84ba42b0478b24d5db16",
     "museSparkABI": 1
   }

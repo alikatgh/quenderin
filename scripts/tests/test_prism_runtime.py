@@ -195,5 +195,42 @@ class PrismRuntimeTests(unittest.TestCase):
         self.assertEqual(json.loads((artifact / prism.STAMP).read_text()), identity)
 
 
+class PrismCheckoutLineEndingsTests(unittest.TestCase):
+    def test_runtime_fetch_preserves_pinned_bytes_with_windows_git_defaults(self):
+        with tempfile.TemporaryDirectory(prefix="prism-checkout-test-") as scratch:
+            root = Path(scratch)
+            seed, destination = root / "seed", root / "runtime"
+            global_config = root / "gitconfig"
+            global_config.write_text("[core]\n\tautocrlf = true\n")
+            with patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": str(global_config),
+                                         "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_COUNT": "0"}):
+                def run(*args):
+                    return subprocess.check_output(["git", *args], text=True, stderr=subprocess.STDOUT).strip()
+
+                run("init", "--quiet", "--initial-branch=main", str(seed))
+                run("-C", str(seed), "config", "core.autocrlf", "false")
+                (seed / "model.cpp").write_bytes(b"pinned source\nsecond line\n")
+                (seed / "scripts/patches").mkdir(parents=True)
+                manifest = b'{"version": 1}\n'
+                (seed / "scripts/patches/runtime.json").write_bytes(manifest)
+                (seed / ".gitattributes").write_bytes((prism.ROOT / ".gitattributes").read_bytes())
+                run("-C", str(seed), "add", "model.cpp", "scripts/patches/runtime.json", ".gitattributes")
+                run("-C", str(seed), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                    "commit", "--quiet", "-m", "Pinned fixture")
+                lock = {"branch": "main", "repository": str(seed),
+                        "revision": run("-C", str(seed), "rev-parse", "HEAD")}
+                default_checkout = root / "default-checkout"
+                run("clone", "--quiet", str(seed), str(default_checkout))
+                self.assertEqual((default_checkout / "scripts/patches/runtime.json").read_bytes(), manifest)
+                self.assertIn(b"\r\n", (default_checkout / "model.cpp").read_bytes())
+
+                def verify_bytes(source):
+                    self.assertEqual((source / "model.cpp").read_bytes(), b"pinned source\nsecond line\n")
+                    return {"verified": True}
+
+                with patch.object(prism, "LOCK", lock), patch.object(prism, "apply_source_patch", side_effect=verify_bytes):
+                    self.assertEqual(prism.fetch(destination), {"verified": True})
+
+
 if __name__ == "__main__":
     unittest.main()

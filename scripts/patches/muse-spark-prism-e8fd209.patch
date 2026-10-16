@@ -181,19 +181,35 @@
      // inputs
 --- a/src/llama-hparams.h
 +++ b/src/llama-hparams.h
-@@ -116,6 +116,9 @@
+@@ -116,6 +116,11 @@
      float f_norm_eps;
      float f_norm_rms_eps;
      float f_norm_group_eps;
 +
 +    // post norms use their own epsilon
++    std::array<uint32_t, LLAMA_MAX_LAYERS> n_ff_muse_exp_arr{};
++
 +    float f_post_norm_eps = 0.0f;
  
      float f_attn_logit_softcapping   = 50.0f;
      float f_router_logit_softcapping = 30.0f;
 --- a/src/llama-model-saver.cpp
 +++ b/src/llama-model-saver.cpp
-@@ -264,6 +264,7 @@
+@@ -215,7 +215,12 @@
+     add_kv(LLM_KV_BLOCK_COUNT,                       hparams.n_layer_all);
+     add_kv(LLM_KV_LEADING_DENSE_BLOCK_COUNT,         hparams.n_layer_dense_lead);
+     add_kv(LLM_KV_FEED_FORWARD_LENGTH,               hparams.n_ff_arr, true);
+-    add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH,        hparams.n_ff_exp);
++    if (model->arch == LLM_ARCH_MUSE_SPARK) {
++        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, true);
++    } else {
++        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_exp);
++    }
++    add_kv(LLM_KV_MOE_LATENT_SIZE,                   hparams.moe_latent_size);
+     add_kv(LLM_KV_EXPERT_LATENT_LENGTH,              hparams.n_expert_latent);
+     add_kv(LLM_KV_EXPERT_SHARED_FEED_FORWARD_LENGTH, hparams.n_ff_shexp);
+     add_kv(LLM_KV_EXPERT_CHUNK_FEED_FORWARD_LENGTH,  hparams.n_ff_chexp);
+@@ -264,6 +269,7 @@
      add_kv(LLM_KV_ATTENTION_VALUE_LENGTH,            hparams.n_embd_head_v_full);
      add_kv(LLM_KV_ATTENTION_LAYERNORM_EPS,           hparams.f_norm_eps);
      add_kv(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);
@@ -363,7 +379,7 @@
 +    ml.get_key(LLM_KV_EXPERT_WEIGHTS_SCALE,        hparams.expert_weights_scale);
 +    ml.get_key(LLM_KV_EXPERT_GATING_FUNC,          hparams.expert_gating_func);
 +    ml.get_key(LLM_KV_EXPERT_WEIGHTS_NORM,         hparams.expert_weights_norm);
-+    ml.get_key_or_arr(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_exp_arr, hparams.n_layer_all, false);
++    ml.get_key_or_arr(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, hparams.n_layer_all, false);
 +
 +    hparams.swa_type = LLAMA_SWA_TYPE_STANDARD;
 +    ml.get_arr(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, hparams.is_swa_impl);
@@ -378,7 +394,6 @@
 +    LLAMA_LOAD_LOCALS;
 +
 +    const int64_t n_embd_moe = hparams.moe_latent_size;
-+    const int64_t n_ff_exp   = hparams.n_ff_exp();
 +
 +    tok_embd    = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD,  "weight"), {n_embd, n_vocab}, 0);
 +    output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, "weight"), {n_embd}, 0);
@@ -386,6 +401,7 @@
 +
 +    for (int i = 0; i < n_layer; ++i) {
 +        auto & layer = layers[i];
++        const int64_t n_ff_exp = hparams.n_ff_muse_exp_arr[i];
 +
 +        // Pre-attention norm. All block norms hold a delta folded at conversion time.
 +        layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, "weight", i), {n_embd}, 0);
@@ -633,7 +649,19 @@
      }
  
      // MSA requires one indexer head per GQA (KV) head, unlike the DSA archs where the
-@@ -449,6 +458,7 @@
+@@ -276,5 +285,10 @@
+     if (moe) {
+-        ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);
++        if (arch == LLM_ARCH_MUSE_SPARK) {
++            // Exercise distinct per-layer expert widths in the backported graph.
++            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, std::vector<uint32_t>({n_ff, n_ff + 64}));
++        } else {
++            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);
++        }
+         ms.add_kv(LLM_KV_EXPERT_SHARED_FEED_FORWARD_LENGTH, n_ff / 2);  // distinct from n_ff so a saver key-clobber surfaces on reload
+         ms.add_kv(LLM_KV_EXPERT_LATENT_LENGTH,       n_ff);
+         ms.add_kv(LLM_KV_INTERLEAVE_MOE_LAYER_STEP,  uint32_t(2));
+@@ -449,6 +463,7 @@
          case LLM_ARCH_MISTRAL4:
          case LLM_ARCH_MELLUM:
          case LLM_ARCH_LAGUNA:
@@ -641,3 +669,16 @@
              return true;
          default:
              return false;
+@@ -691,6 +706,12 @@
+                 if (!skip) {
+                     if (logits_cpu.empty()) {
+                         model_and_ctx_cpu = get_model_and_ctx(gguf_ctx.get(), nullptr, seed, {}, LLAMA_SPLIT_MODE_LAYER, encode);
++                        if (arch == LLM_ARCH_MUSE_SPARK) {
++                            const auto & layers = model_and_ctx_cpu.first->layers;
++                            GGML_ASSERT(layers[0].ffn_gate_exps->ne[1] == 384);
++                            GGML_ASSERT(layers[1].ffn_gate_exps->ne[1] == 448);
++                            GGML_ASSERT(layers[1].ffn_down_exps->ne[0] == 448);
++                        }
+                         logits_cpu = get_logits(model_and_ctx_cpu.first.get(), model_and_ctx_cpu.second.get(), tokens, encode);
+                     }
+                     if (dc.split_mode != LLAMA_SPLIT_MODE_TENSOR || llm_arch_supports_sm_tensor(arch)) {

@@ -176,8 +176,8 @@ public enum ModelCatalog {
             languagesLabel: "See model card",
             downloadBytes: 429_183_456
         ),
-        ModelEntry(
         .init(id: "muse-spark-open-q2-k", label: "Muse Spark Open Q2_K (Experimental, text only)", filename: "Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", ramGB: 330.0, sizeLabel: "304.08 GB download · 22 files", paramsBillions: 816, quantization: "Q2_K", urlString: "https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF/resolve/ada96652107984f184027153a77ec250d67ed271/Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf", sha256: "b2eb6f55ee80b4e444fb1bde4dc89d1181fb9d159758307bf91a4118cce8b267", languagesLabel: "See model card", downloadBytes: 304080474208, artifacts: MuseModelArtifacts.parts),
+        ModelEntry(
             id: "qwen3-14b",
             label: "Qwen3 14B (Best Quality)",
             filename: "qwen3-14b.Q4_K_M.gguf",

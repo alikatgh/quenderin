@@ -170,7 +170,7 @@ def fetch(destination: Path) -> dict:
     if destination.exists() or destination.is_symlink():
         raise ValueError("Destination already exists; verify it or choose a new empty path")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "clone", "--depth", "1", "--single-branch", "--branch",
+    subprocess.run(["git", "clone", "--config", "core.autocrlf=false", "--depth", "1", "--single-branch", "--branch",
                     LOCK["branch"], LOCK["repository"], str(destination)], check=True)
     subprocess.run(["git", "-C", str(destination), "fetch", "--depth", "1", "origin", LOCK["revision"]], check=True)
     subprocess.run(["git", "-C", str(destination), "checkout", "--detach", LOCK["revision"]], check=True)

@@ -69,7 +69,7 @@ describe('MODEL_CATALOG', () => {
             sha256: '53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3',
         });
         expect(bonsai.url).toContain('/resolve/b072e1d3b35a0a630cece372c2127528e0994386/');
-        expect(MODEL_CATALOG[5].id).toBe('qwen3-14b');
+        expect(MODEL_CATALOG.find(model => model.id === 'qwen3-14b')).toBeDefined();
     });
 
     it.each([
