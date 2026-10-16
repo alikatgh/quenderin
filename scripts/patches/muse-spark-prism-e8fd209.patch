@@ -378,7 +378,7 @@
      void load_arch_hparams(llama_model_loader & ml) override;
 --- /dev/null
 +++ b/src/models/muse-spark.cpp
-@@ -0,0 +1,238 @@
+@@ -0,0 +1,240 @@
 +#include "models.h"
 +
 +void llama_model_muse_spark::load_arch_hparams(llama_model_loader & ml) {
@@ -612,6 +612,8 @@
 +
 +    cb(cur, "result_output", -1);
 +    res->t_logits = cur;
++
++    ggml_build_forward_expand(gf, cur);
 +}
 +
 +std::unique_ptr<llm_graph_context> llama_model_muse_spark::build_arch_graph(const llm_graph_params & params) const {
