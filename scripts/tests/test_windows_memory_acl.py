@@ -1,5 +1,4 @@
 """Exercise the actual private-memory ACL program on synthetic Windows files."""
-import base64
 import json
 import os
 from pathlib import Path
@@ -23,27 +22,24 @@ class WindowsMemoryAclTests(unittest.TestCase):
         executable = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
         self.assertTrue(executable.is_absolute() and executable.is_file())
 
-        def check(kind, item):
+        def check(kind, item, allowed=True):
             result = subprocess.run([str(executable), '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
                                     input=json.dumps({'kind': kind, 'path': str(item)}), text=True,
                                     encoding='utf-8', errors='replace', capture_output=True, timeout=10,
                                     creationflags=subprocess.CREATE_NO_WINDOW)
             diagnostic_data = {'stage': kind, 'status': result.returncode,
                                'stdout': result.stdout[:4096], 'stderr': result.stderr[:4096]}
-            if result.returncode != 0:
-                # Keep the actual production transport failing. Compare only the
-                # constant program's documented quoting-safe transport to isolate
-                # a command-line parsing failure from an ACL-policy rejection.
-                encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
-                comparison = subprocess.run([str(executable), '-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
-                                            input=json.dumps({'kind': kind, 'path': str(item)}), text=True,
-                                            encoding='utf-8', errors='replace', capture_output=True, timeout=10,
-                                            creationflags=subprocess.CREATE_NO_WINDOW)
-                diagnostic_data['encodedComparison'] = {'status': comparison.returncode,
-                    'stdout': comparison.stdout[:4096], 'stderr': comparison.stderr[:4096]}
             diagnostic = json.dumps(diagnostic_data)
-            self.assertEqual(result.returncode, 0, diagnostic)
-            self.assertEqual(result.stdout.strip(), '{"ok":true}', diagnostic)
+            if allowed:
+                self.assertEqual(result.returncode, 0, diagnostic)
+                self.assertEqual(result.stdout.strip(), '{"ok":true}', diagnostic)
+            else:
+                self.assertNotEqual(result.returncode, 0, diagnostic)
+                self.assertNotEqual(result.stdout.strip(), '{"ok":true}', diagnostic)
+                self.assertTrue(any(reason in result.stderr for reason in (
+                    'Directory inheritance is not protected', 'Unexpected private storage owner',
+                    'Unexpected private storage rules', 'Unexpected private storage permission',
+                    'Unexpected directory inheritance')), diagnostic)
 
         with tempfile.TemporaryDirectory(prefix='quenderin-synthetic-acl-') as temporary:
             directory = Path(temporary) / 'approved-memories'
@@ -56,6 +52,14 @@ class WindowsMemoryAclTests(unittest.TestCase):
             published = directory / 'synthetic-published-file'
             os.link(original, published)
             check('file', published)
+            unsafe = Path(temporary) / 'existing-inherited-directory'
+            unsafe.mkdir()
+            marker = unsafe / 'synthetic-original.txt'
+            marker.write_text('Synthetic original is preserved.', encoding='utf-8')
+            identity = unsafe.stat().st_ino
+            check('directory', unsafe, allowed=False)
+            self.assertEqual(unsafe.stat().st_ino, identity)
+            self.assertEqual(marker.read_text(encoding='utf-8'), 'Synthetic original is preserved.')
 
 
 if __name__ == '__main__':

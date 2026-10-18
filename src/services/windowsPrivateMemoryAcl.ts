@@ -20,7 +20,9 @@ $principals = @($user.Value, 'S-1-5-18', 'S-1-5-32-544') | Select-Object -Unique
 function Assert-Private([string] $itemPath, [bool] $directory) {
     $item = Get-Item -LiteralPath $itemPath -Force
     if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.PSIsContainer -ne $directory) { throw 'Unexpected private storage identity' }
-    $acl = Get-Acl -LiteralPath $itemPath
+    # Use the fixed .NET Framework API directly. Inherited PowerShell module
+    # search paths must not select a different Security module for this check.
+    $acl = if ($directory) { [IO.Directory]::GetAccessControl($itemPath) } else { [IO.File]::GetAccessControl($itemPath) }
     $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
     if (($directory -and $owner -ne $user.Value) -or (-not $directory -and $owner -notin $principals)) { throw 'Unexpected private storage owner' }
     if ($directory -and -not $acl.AreAccessRulesProtected) { throw 'Directory inheritance is not protected' }
