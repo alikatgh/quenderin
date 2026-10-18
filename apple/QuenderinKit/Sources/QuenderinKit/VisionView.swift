@@ -111,7 +111,8 @@ public struct VisionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Ask about one still image").font(.headline)
             Text("Separate from your answer model. PNG or JPEG only; video and tools are unavailable. Experimental source integration: model inference has not been validated.").font(.callout).foregroundStyle(.secondary)
-            Picker("Vision model", selection: Binding(get: { controller.selectedID }, set: controller.select)) {
+            // An explicit closure avoids Swift IRGen's isolated-method reabstraction crash.
+            Picker("Vision model", selection: Binding(get: { controller.selectedID }, set: { controller.select($0) })) {
                 ForEach(VisionModels.all, id: \.id) { Text($0.label).tag($0.id) }
             }.disabled(controller.busy)
             Text("\(controller.model.minimumMemoryBytes / 1_073_741_824) GiB available app memory required, including projector and context. Large models are never selected automatically.").font(.caption).foregroundStyle(.secondary)

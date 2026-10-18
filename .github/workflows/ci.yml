@@ -152,7 +152,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
             tail -50 "$build_log"
           else
-            grep -n -B4 -A8 'error:' "$build_log" || true
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
             tail -80 "$build_log"
             exit 1
           fi
@@ -211,7 +211,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
             tail -60 "$build_log"
           else
-            grep -n -B4 -A8 'error:' "$build_log" || true
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
             tail -80 "$build_log"
             exit 1
           fi
@@ -296,6 +296,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Verify protected Windows ACL policy on synthetic files before dependency setup
+        if: runner.os == 'Windows'
+        run: python -m unittest scripts.tests.test_windows_memory_acl
       - name: Install locked dependencies
         run: npm ci
       - name: Verify the actual Windows private approved-memory ACL
@@ -372,7 +375,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
             tail -40 "$build_log"
           else
-            grep -n -B4 -A8 'error:' "$build_log" || true
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
             tail -80 "$build_log"
             exit 1
           fi

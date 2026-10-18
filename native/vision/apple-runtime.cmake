@@ -36,9 +36,15 @@ function(quenderin_add_apple_vision_target)
   target_compile_definitions(quenderin_vision PRIVATE QUENDERIN_VISION_BUILD_DLL
     QUENDERIN_VISION_REVISION="${VISION_REVISION}" QUENDERIN_VISION_PATCH_SHA256="${VISION_PATCH_SHA256}")
   target_link_libraries(quenderin_vision PUBLIC llama mtmd PRIVATE vendor::hash)
-  # Keep the unchanged pinned framework merger's quenderin-vision[/Release] layout.
+  # Xcode's default archive path includes the effective platform (-iphoneos,
+  # -iphonesimulator, etc.). An explicit plain directory would silently drop it.
+  # Keep the unchanged pinned framework merger's exact configuration layout.
+  set(VISION_ARCHIVE_DIRECTORY "${CMAKE_BINARY_DIR}/quenderin-vision")
+  if(CMAKE_GENERATOR STREQUAL "Xcode")
+    set(VISION_ARCHIVE_DIRECTORY "${VISION_ARCHIVE_DIRECTORY}/$<CONFIG>$(EFFECTIVE_PLATFORM_NAME)")
+  endif()
   set_target_properties(quenderin_vision PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/quenderin-vision"
+    ARCHIVE_OUTPUT_DIRECTORY "${VISION_ARCHIVE_DIRECTORY}"
     CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES POSITION_INDEPENDENT_CODE ON
     CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES)
 endfunction()

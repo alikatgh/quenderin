@@ -1,6 +1,7 @@
 """Vision resource sealing failure tests; synthetic bytes, no native builds."""
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,11 +11,45 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_vision_runtime as vision
+import test_vision_runtime as safety_runner
 NINJA = shutil.which('ninja') or os.environ.get('QUENDERIN_TEST_NINJA')
+
+class VisionSafetyInvocationTests(unittest.TestCase):
+    def test_relative_source_and_work_with_spaces_compile_from_the_new_work_directory(self):
+        if not (shutil.which('clang++') or shutil.which('g++')):
+            self.skipTest('Host C++ compiler required')
+        with tempfile.TemporaryDirectory(prefix='vision-relative-path-', dir=os.environ.get('RUNNER_TEMP') or os.environ.get('TMPDIR')) as temporary:
+            root = Path(temporary).resolve(); source = root/'relative source with spaces'
+            (source/'vendor/stb').mkdir(parents=True)
+            (source/'vendor/stb/stb_image.h').write_text('#define FIXTURE_HEADER_VALUE 37\n')
+            project = root/'synthetic project'; native = project/'native/vision'; (native/'tests').mkdir(parents=True)
+            (native/'vision_safety.cpp').write_text('#include "stb/stb_image.h"\nint fixture_source() { return FIXTURE_HEADER_VALUE; }\n')
+            (native/'tests/safety.cpp').write_text('int fixture_source(); int main() { return fixture_source() != 37; }\n')
+            old = Path.cwd()
+            try:
+                os.chdir(root)
+                with patch.object(safety_runner, 'ROOT', project), patch.object(sys, 'argv', ['test_vision_runtime.py', '--source', source.name, '--work', 'relative work with spaces']):
+                    safety_runner.main()
+            finally: os.chdir(old)
+            self.assertTrue((root/'relative work with spaces/vision-safety').is_file())
+
+    def test_existing_work_symlink_is_rejected_without_touching_its_target(self):
+        if not (shutil.which('clang++') or shutil.which('g++')):
+            self.skipTest('Host C++ compiler required')
+        with tempfile.TemporaryDirectory(prefix='vision-work-link-', dir=os.environ.get('RUNNER_TEMP') or os.environ.get('TMPDIR')) as temporary:
+            root = Path(temporary); source = root/'source'; (source/'vendor/stb').mkdir(parents=True)
+            (source/'vendor/stb/stb_image.h').write_text('// fixture\n')
+            target = root/'preserved target'; target.mkdir(); sentinel = target/'original.txt'; sentinel.write_text('preserve')
+            work = root/'work link'
+            try: work.symlink_to(target, target_is_directory=True)
+            except OSError: self.skipTest('Host cannot create fixture symlink')
+            with patch.object(sys, 'argv', ['test_vision_runtime.py', '--source', str(source), '--work', str(work)]), patch.object(safety_runner.subprocess, 'run') as run:
+                with self.assertRaises(SystemExit): safety_runner.main()
+            run.assert_not_called(); self.assertEqual(sentinel.read_text(), 'preserve')
 
 class AppleVisionConfigureTests(unittest.TestCase):
     """Run the actual pre-project/deferred hook with tiny shared-runtime targets."""
-    def configure(self, *, missing=None, rejected=False, abi=1, multiconfig=False):
+    def configure(self, *, missing=None, rejected=False, abi=1, multiconfig=False, xcode=False):
         if not shutil.which('cmake') or not (shutil.which('clang++') or shutil.which('c++')):
             self.skipTest('CMake and host C++ compiler required')
         temp = tempfile.TemporaryDirectory(prefix='apple-vision-configure-', dir=os.environ.get('RUNNER_TEMP') or os.environ.get('TMPDIR'))
@@ -46,7 +81,11 @@ function(check_bridge)
     message(FATAL_ERROR "Bridge did not share the existing verified runtime: ${links}")
   endif()
   get_target_property(archive quenderin_vision ARCHIVE_OUTPUT_DIRECTORY)
-  if(NOT archive STREQUAL "${CMAKE_BINARY_DIR}/quenderin-vision")
+  set(expected_archive "${CMAKE_BINARY_DIR}/quenderin-vision")
+  if(CMAKE_GENERATOR STREQUAL "Xcode")
+    string(APPEND expected_archive "/$<CONFIG>$(EFFECTIVE_PLATFORM_NAME)")
+  endif()
+  if(NOT archive STREQUAL expected_archive)
     message(FATAL_ERROR "Pinned framework archive layout changed: ${archive}")
   endif()
   get_target_property(definitions quenderin_vision COMPILE_DEFINITIONS)
@@ -60,6 +99,13 @@ cmake_language(DEFER CALL check_bridge)
                 '-DQUENDERIN_VISION_SOURCE_DIR=' + str(bridge), '-DPRISM_SOURCE_DIR=' + str(root),
                 '-DPython3_EXECUTABLE=' + sys.executable]
         if multiconfig: args += ['-G', 'Ninja Multi-Config', '-DCMAKE_MAKE_PROGRAM=' + NINJA]
+        if xcode:
+            # This fixture checks generated paths only, with no SDK/compiler test build.
+            args += ['-G', 'Xcode', '-DCMAKE_SYSTEM_NAME=iOS', '-DCMAKE_OSX_SYSROOT=iphoneos',
+                     '-DCMAKE_OSX_ARCHITECTURES=arm64', '-DCMAKE_OSX_DEPLOYMENT_TARGET=16.0',
+                     '-DCMAKE_CXX_COMPILER=' + (shutil.which('clang++') or shutil.which('c++')),
+                     '-DCMAKE_CXX_COMPILER_FORCED=ON', '-DCMAKE_CXX_COMPILER_WORKS=TRUE',
+                     '-DCMAKE_CXX_COMPILER_ID=AppleClang', '-DCMAKE_CXX_COMPILER_VERSION=17.0']
         result = subprocess.run(args, capture_output=True, text=True, timeout=40)
         return root, result
 
@@ -76,6 +122,18 @@ cmake_language(DEFER CALL check_bridge)
         root, result = self.configure(multiconfig=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('/quenderin-vision/Release/', (root/'build/archive-Release.txt').read_text().replace('\\', '/'))
+
+    @unittest.skipUnless(platform.system() == 'Darwin' and shutil.which('xcodebuild'), 'Xcode generator fixture requires macOS')
+    def test_xcode_ios_archive_keeps_effective_platform_for_pinned_merger(self):
+        root, result = self.configure(xcode=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        path = (root/'build/archive-Release.txt').read_text()
+        self.assertIn('/quenderin-vision/Release$(EFFECTIVE_PLATFORM_NAME)/', path)
+        # Xcode resolves this build setting to -iphoneos for a device SDK.
+        self.assertEqual(Path(path.replace('$(EFFECTIVE_PLATFORM_NAME)', '-iphoneos')).parent,
+                         root/'build/quenderin-vision/Release-iphoneos')
+        project = (root/'build/apple_vision_fixture.xcodeproj/project.pbxproj').read_text()
+        self.assertIn('quenderin-vision/Release$(EFFECTIVE_PLATFORM_NAME)', project)
 
     def test_missing_existing_runtime_dependencies_fail_closed(self):
         for dependency in ('llama', 'ggml', 'mtmd', 'vendor::hash'):

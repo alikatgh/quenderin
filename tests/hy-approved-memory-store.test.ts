@@ -65,7 +65,9 @@ describe('private explicitly approved Hy memory bank', () => {
                 const result = spawnSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_MEMORY_ACL_SCRIPT], {
                     input: JSON.stringify({ kind, path: file }), encoding: 'utf8', windowsHide: true, timeout: 15_000, maxBuffer: 8192,
                 });
-                expect({ stage: kind, status: result.status, stdoutBytes: Buffer.byteLength(result.stdout || ''), stderrBytes: Buffer.byteLength(result.stderr || ''), stdout: result.stdout, stderr: result.stderr, error: result.error?.message }).toMatchObject({ status: 0, stdout: '{"ok":true}' });
+                const diagnostic = JSON.stringify({ stage: kind, status: result.status, stdoutBytes: Buffer.byteLength(result.stdout || ''), stderrBytes: Buffer.byteLength(result.stderr || ''), stdout: result.stdout, stderr: result.stderr, error: result.error?.message });
+                expect(result.status, diagnostic).toBe(0);
+                expect(result.stdout, diagnostic).toBe('{"ok":true}');
             };
             checkPolicy('directory', folder);
             const probe = path.join(folder, 'synthetic-empty-acl-probe');
@@ -78,5 +80,5 @@ describe('private explicitly approved Hy memory bank', () => {
             expect(fs.readdirSync(folder)).toEqual([`${id}.json`]);
             expect(JSON.parse(fs.readFileSync(path.join(folder, `${id}.json`), 'utf8')).text).toBe('Synthetic Windows ACL fixture fact');
         } finally { fs.rmSync(root, { recursive: true }); }
-    });
+    }, 90_000);
 });

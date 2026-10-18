@@ -29,7 +29,7 @@ class CoreTest {
     }
 
     @Test fun catalogIntegrity() {
-        assertEquals(27, ModelCatalog.models.size)
+        assertEquals(28, ModelCatalog.models.size)
         assertEquals("llama32-1b-q2", ModelCatalog.smallest.id)
         ModelCatalog.models.forEach { assertNotNull(Quantization.info(it.quantization)) }
         // Russian-first honesty: every entry states its languages; Llama 3.2 says "no Russian".

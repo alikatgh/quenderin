@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <exception>
 #include <string>
 #include <thread>
 #ifndef FIXTURE_VISION_REVISION

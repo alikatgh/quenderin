@@ -9,6 +9,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('--source', type=Path, required=True); p.add_argument('--work', type=Path, required=True); a = p.parse_args()
+    try: a.source = a.source.resolve(strict=True)
+    except OSError as error: p.error('Pinned Prism source must exist: ' + str(error))
+    # The compiler runs in --work; neither its include nor output paths may depend
+    # on the original cwd. Keep the work leaf lexical so symlinks remain rejected.
+    a.work = a.work.absolute()
     compiler = shutil.which('clang++') or shutil.which('g++') or shutil.which('cl')
     if not compiler: p.error('A C++17 compiler is required')
     if not (a.source / 'vendor/stb/stb_image.h').is_file(): p.error('Pinned Prism stb header is missing')
