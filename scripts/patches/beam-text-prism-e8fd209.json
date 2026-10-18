@@ -184,7 +184,7 @@
     {
       "path": "tests/test-llama-archs.cpp",
       "beforeSha256": "76ed477dd7d94a9031a131ec2ce535a5d3e3e578e8a40a57687fbd51c980e4f1",
-      "afterSha256": "f307edd7344b30996c5e8211e4541700f725ca430506c18756847828ce0a2e75",
+      "afterSha256": "e8a44f6853c0281aae8c3c37b83f7da534a6de0b41b57a0c4c29a49fd9486e80",
       "replacements": [
         {
           "before": "    const uint32_t n_embd_head = n_embd / n_head;\n",
@@ -208,7 +208,7 @@
         },
         {
           "before": "                            GGML_ASSERT(params.n_expert_used == 9);\n                        }\n",
-          "after": "                            GGML_ASSERT(params.n_expert_used == 9);\n                        }\n                        if (arch == LLM_ARCH_BEAM) {\n                            GGML_ASSERT(params.attn_temp_pow);\n                            GGML_ASSERT(params.attn_temp_length == 32);\n                            GGML_ASSERT(params.is_swa(0) == false && params.is_swa(1) == true);\n                            GGML_ASSERT(params.n_ff_beam_exp_arr[1] == 384);\n                            GGML_ASSERT(params.n_ff_beam_exp_arr[2] == 448);\n                            GGML_ASSERT(params.n_expert_used == 2);\n                        }\n"
+          "after": "                            GGML_ASSERT(params.n_expert_used == 9);\n                        }\n                        if (arch == LLM_ARCH_BEAM) {\n                            const auto & params = model_and_ctx_cpu.first->hparams;\n                            GGML_ASSERT(params.attn_temp_pow);\n                            GGML_ASSERT(params.attn_temp_length == 32);\n                            GGML_ASSERT(params.is_swa(0) == false && params.is_swa(1) == true);\n                            GGML_ASSERT(params.n_ff_beam_exp_arr[1] == 384);\n                            GGML_ASSERT(params.n_ff_beam_exp_arr[2] == 448);\n                            GGML_ASSERT(params.n_expert_used == 2);\n                        }\n"
         }
       ]
     }

@@ -109,7 +109,7 @@ public struct ImageResourceBudget: Sendable {
             }
         }
         memory = status == KERN_SUCCESS
-            ? (Int64(statistics.free_count) + Int64(statistics.inactive_count)) * Int64(vm_kernel_page_size) : 0
+            ? (Int64(statistics.free_count) + Int64(statistics.inactive_count)) * Int64(getpagesize()) : 0
         #endif
         let attributes = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory())
         let disk = (attributes?[.systemFreeSize] as? NSNumber)?.int64Value ?? 0

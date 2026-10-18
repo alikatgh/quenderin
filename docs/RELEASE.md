@@ -1,7 +1,41 @@
 # Release & store submission
 
-The signing, build and console path for native app updates. Credentials belong in
-gitignored files or the platform keychain. A debug build is not a signed store release.
+The signing, build and console path for native app updates. Never add credentials
+to this record or create new credential files. Use the established project wrapper
+or already-authorized signing configuration. A debug build is not a signed store release.
+
+## October 18 source candidate — not a store release
+
+[PR 163](https://github.com/alikatgh/quenderin/pull/163) expands the shared text
+catalog to 27 entries and adds an isolated image engine with 3 complete component
+presets. Source, architecture and artifact status are separate: Beam has a graph
+backport and complete four-part provenance, but no app adapter/installer; Hy-Memory
+has verified provenance/prompt fixtures but no enabled memory-writing workflow.
+Super VL, Step 5, Granite Switch 4.1 and the future E4B release remain unavailable.
+
+The image build uses a separate patched-GGML DSO. Desktop builds seal and probe
+its CLI/resources and test both text/image library load orders. Android statically
+links its private C++ runtime, seals stripped DSOs, preserves those bytes through
+AGP, and checks final APK/AAB hashes, dependency closure and 16 KiB alignment.
+Apple’s final signed-export gate now also checks the image framework payload,
+platform/architectures, linkage, distribution signature and embedded image catalog.
+
+Initial source revision: `8a18dff844825440ea63a61691f2a77903cba8f1`.
+[Hosted CI 39096103001](https://github.com/alikatgh/quenderin/actions/runs/39096103001)
+passed Linux’s real pinned image build/probe, both Node test/build jobs, Kotlin
+core, JNI syntax and the existing iOS SDK compile. It exposed a Swift 6 global-page
+size concurrency error, experimental website fallback recommendation and a Beam
+fixture variable-scope error; corrected revision and final results are pending.
+Do not infer readiness from this initial partial run. Independent source reviews
+found and resolved image cancellation, Android STL/stripping, Apple final-export,
+macOS signed payload and Linux path parsing defects. Actual final packages still
+need their hosted checks.
+
+No local weights, simulator runs or physical-device runs are authorized for this
+update. Full-weight inference, image quality, measured memory/speed and native
+rendered UI remain unverified. No new archive, signing, store submission or public
+app availability has been established. The dated October 16 store record below is
+historical until refreshed in the consoles. Keep its pending reviews intact.
 
 ## Verified release memory — 16 October 2026
 

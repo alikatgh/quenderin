@@ -15,11 +15,13 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import struct
 import subprocess
 import sys
 
 sys.dont_write_bytecode = True
 import prepare_diffusion_runtime as runtime
+import verify_prism_apple_runtime as apple_runtime
 
 ROOT = Path(__file__).resolve().parent.parent
 STAMP = "quenderin-diffusion-runtime.json"
@@ -89,15 +91,20 @@ def inventory(directory):
     return result
 
 
+def macho_payloads(directory):
+    """Seal executable section identities, independent of code-signing bytes."""
+    return {name: apple_runtime.macho_payload(directory / name) for name in names("mac")}
+
+
 def linux_dependencies(output):
     result = {}
     for line in output.splitlines():
         if "not found" in line:
             raise ValueError("Unresolved Linux runtime dependency")
-        match = re.match(r"\s*(\S+)\s+=>\s+(/\S+)\s+\(", line)
+        match = re.fullmatch(r"\s*(\S+)\s+=>\s+(/.+)\s+\(0x[0-9A-Fa-f]+\)\s*", line)
         if match:
-            result[match[1]] = Path(match[2])
-        elif line.strip() and not re.match(r"\s*(?:linux-vdso\S*|/\S+)\s+\(", line):
+            result[match[1]] = Path(match[2].rstrip())
+        elif line.strip() and not re.fullmatch(r"\s*(?:linux-vdso\S*|/.+)\s+\(0x[0-9A-Fa-f]+\)\s*", line):
             raise ValueError("Unrecognized Linux dependency output")
     return result
 
@@ -172,14 +179,28 @@ def verify(directory, *, os_name=None, arch=None, packaged=False):
     expected = data.get("files")
     if not isinstance(expected, dict) or not expected:
         raise ValueError("Image runtime seal is empty")
-    # Signing changes Mach-O bytes and adds framework signature resources. The
-    # exact pre-sign payload is checked in beforePack and afterPack; final probes
-    # still verify the pinned C ABI, exports and dependency closure after signing.
-    if packaged and os_name == "mac":
-        actual = {k: v for k, v in actual.items() if "/_CodeSignature/" not in k}
-        for key in names(os_name):
-            if key in actual and key in expected:
+    if os_name == "mac":
+        payloads = data.get("machoPayloads")
+        if not isinstance(payloads, dict) or set(payloads) != set(names("mac")):
+            raise ValueError("Image runtime seal is missing Mach-O payload identities")
+        valid_files = all(key in actual and key in expected and "sha256" in actual[key]
+                          for key in names("mac"))
+        try:
+            actual_payloads = macho_payloads(directory) if valid_files else None
+        except (ValueError, struct.error) as error:
+            raise ValueError("Image runtime seal mismatch: Mach-O executable payload changed") from error
+        if actual_payloads != payloads:
+            raise ValueError("Image runtime seal mismatch: Mach-O executable payload changed")
+        # Signing changes the whole-file digests, never the sealed loaded code,
+        # UUID, platform or minimum OS. All other resource bytes remain exact;
+        # only the framework's CodeResources signature may be added/replaced.
+        if packaged:
+            for key in names("mac"):
                 actual[key] = expected[key]
+            signature = "QuenderinDiffusion.framework/Versions/A/_CodeSignature/CodeResources"
+            if signature in actual and "sha256" in actual[signature]:
+                actual.pop(signature)
+                expected = {key: value for key, value in expected.items() if key != signature}
     if actual != expected:
         raise ValueError("Image runtime seal mismatch (missing, extra or modified file)")
     cli, library = (directory / name for name in names(os_name))
@@ -225,6 +246,8 @@ def build(work, destination):
     lock, _ = runtime.manifests()
     seal = {"version": 1, "abiVersion": lock["abiVersion"], "revision": lock["revision"],
             "platform": os_name, "arch": arch, "files": inventory(destination)}
+    if os_name == "mac":
+        seal["machoPayloads"] = macho_payloads(destination)
     (destination / STAMP).write_text(json.dumps(seal, indent=2, sort_keys=True) + "\n")
     return verify(destination)
 

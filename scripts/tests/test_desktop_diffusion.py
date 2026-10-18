@@ -13,6 +13,10 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 import build_desktop_diffusion as build
 
+SPEC = importlib.util.spec_from_file_location('desktop_macho_fixtures', SCRIPTS / 'tests/test_prism_apple_runtime.py')
+macho_fixtures = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(macho_fixtures)
+
 
 class DesktopDiffusionTests(unittest.TestCase):
     def setUp(self):
@@ -29,9 +33,12 @@ class DesktopDiffusionTests(unittest.TestCase):
         for name in build.names(self.os_name):
             path = self.stage / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(b'synthetic fixture, never executable')
+            path.write_bytes(macho_fixtures.thin('arm64' if self.arch == 'arm64' else 'x86_64', 1,
+                executable=name == build.names('mac')[0]) if self.os_name == 'mac' else b'synthetic fixture, never executable')
         self.stamp = dict(version=1, abiVersion=self.lock['abiVersion'], revision=self.lock['revision'],
                           platform=self.os_name, arch=self.arch, files=build.inventory(self.stage))
+        if self.os_name == 'mac':
+            self.stamp['machoPayloads'] = build.macho_payloads(self.stage)
         self.save()
 
     def save(self):
@@ -107,6 +114,62 @@ class DesktopDiffusionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 build.linux_dependencies(output)
         self.assertEqual(build.linux_dependencies(' linux-vdso.so.1 (0x123)\n libc.so.6 => /lib/libc.so.6 (0x123)\n /lib/ld-linux-x86-64.so.2 (0x123)'), {'libc.so.6': Path('/lib/libc.so.6')})
+
+    def test_linux_dependency_paths_may_contain_spaces_and_parentheses(self):
+        self.assertEqual(build.linux_dependencies(' libquenderin_diffusion.so => /tmp/My build (fixture)/libquenderin_diffusion.so (0x123)\n /tmp/My loader (fixture)/ld-linux-x86-64.so.2 (0x456)'), {
+            'libquenderin_diffusion.so': Path('/tmp/My build (fixture)/libquenderin_diffusion.so')})
+
+    def mac_fixture(self):
+        self.stamp.update(platform='mac', arch='arm64')
+        for index, name in enumerate(build.names('mac')):
+            binary = self.stage / name
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            binary.write_bytes(macho_fixtures.thin('arm64', 1, executable=index == 0))
+        self.stamp.update(files=build.inventory(self.stage), machoPayloads=build.macho_payloads(self.stage))
+        self.save()
+
+    def test_mac_packaged_code_changes_fail_even_with_matching_version_and_exports(self):
+        self.mac_fixture()
+        for index, name in enumerate(build.names('mac')):
+            with self.subTest(binary=name), patch.object(build, 'host', return_value=('mac', 'arm64')):
+                binary = self.stage / name
+                binary.write_bytes(macho_fixtures.thin('arm64', 1, signed=True, code=b'tampered executable code', executable=index == 0))
+                with self.assertRaisesRegex(ValueError, 'payload changed'):
+                    self.verify(packaged=True)
+                binary.write_bytes(macho_fixtures.thin('arm64', 1, executable=index == 0))
+
+    def test_mac_packaged_signature_only_changes_preserve_payload(self):
+        self.mac_fixture()
+        for index, name in enumerate(build.names('mac')):
+            (self.stage / name).write_bytes(macho_fixtures.thin('arm64', 1, signed=True, executable=index == 0))
+        signature = self.stage / 'QuenderinDiffusion.framework/Versions/A/_CodeSignature/CodeResources'
+        signature.parent.mkdir(); signature.write_bytes(b'synthetic signature resources')
+        with patch.object(build, 'host', return_value=('mac', 'arm64')):
+            self.verify(packaged=True)
+            with self.assertRaisesRegex(ValueError, 'seal mismatch'):
+                self.verify(packaged=False)
+
+    def test_mac_packaged_other_resources_keep_exact_hashes(self):
+        self.mac_fixture()
+        resource = self.stage / 'runtime-LICENSE.txt'
+        resource.write_bytes(b'sealed license')
+        self.stamp['files'] = build.inventory(self.stage); self.save()
+        resource.write_bytes(b'tampered license')
+        with patch.object(build, 'host', return_value=('mac', 'arm64')):
+            with self.assertRaisesRegex(ValueError, 'seal mismatch'):
+                self.verify(packaged=True)
+        resource.write_bytes(b'sealed license')
+        extra = self.stage / 'QuenderinDiffusion.framework/Versions/A/_CodeSignature/untrusted'
+        extra.parent.mkdir(); extra.write_bytes(b'not a signature resource')
+        with patch.object(build, 'host', return_value=('mac', 'arm64')):
+            with self.assertRaisesRegex(ValueError, 'seal mismatch'):
+                self.verify(packaged=True)
+
+    def test_mac_seal_without_payload_identities_fails_closed(self):
+        self.mac_fixture(); self.stamp.pop('machoPayloads'); self.save()
+        with patch.object(build, 'host', return_value=('mac', 'arm64')):
+            with self.assertRaisesRegex(ValueError, 'missing Mach-O payload'):
+                self.verify(packaged=True)
 
     def test_joint_load_never_silently_skips_missing_prism_libraries(self):
         with self.assertRaisesRegex(ValueError, 'exactly one actual Prism'):

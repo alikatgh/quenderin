@@ -31,7 +31,7 @@
   "beamPatch": {
     "id": "beam-text-v1",
     "path": "scripts/patches/beam-text-prism-e8fd209.json",
-    "sha256": "5cf9f1fc57844f66e7e269fcea1da8611a2990726691d5c65bc050b91e409214",
+    "sha256": "6660851b1e349c5a1082fd9a7d95667244f951e3fc673ff530daf98c4dc21696",
     "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
     "beamABI": 1
   }

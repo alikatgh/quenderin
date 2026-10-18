@@ -1,6 +1,10 @@
 # October open-model engineering update
 
-Status: draft; publication links and hosted compilation results are pending.
+Status: draft; source pushed at `8a18dff844825440ea63a61691f2a77903cba8f1` in
+[PR 163](https://github.com/alikatgh/quenderin/pull/163). Hosted compilation is
+in progress; publication is pending. Cloudflare sign-in recovery requires the user
+after automatic approval review rejected inspecting a token-bearing callback.
+No callback/token contents are recorded here.
 
 The article is `website/blog-open-models-october-2026.html`; the source and public
 changelogs carry an explicitly unreleased entry. The announcement distinguishes
@@ -11,19 +15,19 @@ artifacts are not advertised as runnable chat downloads.
 ## Artwork
 
 Persistent project conversation: <https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a>
-(**Generate Header Image Prompt**), 18 October 2026, announcement cover revision1.
+(**Generate Header Image Prompt**), 18 October 2026, announcement cover revision 1.
 The prompt asks for the established teal/copper elf and modern developers in an
 open-air engineering library above the waterfall city, arranging small model
 modules, a large workstation core and a separate image easel. No labels, logos,
 benchmarks or claims of phone inference. The original remains in that thread.
 
-Downloaded original: `quenderin-open-model-library.png`,1536×1024,2,927,828bytes.
+Downloaded original: `quenderin-open-model-library.png`,1536 × 1024, 2,927,828 bytes.
 SHA-256: `fdb97e87dafb5a84dfa97c8d12f85dabc5f63c488f435aaec2fb55d280df996f`.
 Original download path: `~/Downloads/Elven Atelier Above the Waterfalls.png`.
 Reviewed visually; existing user file was copied, not relocated or replaced.
 Use this original for social uploads and retain platform AI content credentials.
 
-Web derivative: `website/assets/blog/open-model-library-20261018.jpg`,1200×800.
+Web derivative: `website/assets/blog/open-model-library-20261018.jpg`,1200 × 800.
 SHA-256: `37e2ac72bc5068d8991e6816156a6528f3aa09d91b8382a92f695525aa11a334`.
 The article labels it AI-generated editorial illustration, not product evidence.
 
@@ -31,11 +35,11 @@ The article labels it AI-generated editorial illustration, not product evidence.
 
 Quenderin’s experimental model library is growing.
 
-We’ve added nine pinned text-model choices: MiniCPM-V4.7, LFM2.5-24B-A2B,
-the Jais3 family and Nemotron3.5Bolt. The engineering work includes matching
+We’ve added nine pinned text-model choices: MiniCPM-V 4.7, LFM2.5-24B-A2B,
+the Jais 3 family and Nemotron 3.5 Bolt. The engineering work includes matching
 runtime backports, publisher-specific chat formatting and memory checks.
 
-A separate local image engine adds experimental FLUX3ImageKlein and MOSSImage
+A separate local image engine adds experimental FLUX 3 Image Klein and MOSS Image
 paths, with complete component verification, explicit installation/import and
 cancellation. FLUX files remain subject to the publisher’s access and license.
 

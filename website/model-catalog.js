@@ -8,7 +8,8 @@ export function startingModel(catalog, ram) {
   // The public calculator describes ordinary builds. Experimental custom-runtime
   // models remain manual choices in a compatible app, never a RAM-only recommendation.
   function fits(m) {
-    return !/bonsai|PTQ1_0|PQ2_0/i.test(m.id + ' ' + m.quantization)
+    return !/bonsai|muse|jais3|minicpm-v47|lfm25|nemotron35|experimental|PTQ1_0|PQ2_0/i.test(
+      [m.id, m.label, m.filename, m.quantization].join(' '))
       && required(m) <= ram * p.hardBudget;
   }
   var model = catalog.models.find(m => m.id === id);
