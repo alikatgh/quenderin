@@ -1,13 +1,17 @@
-import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage } from 'electron';
+import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startDashboardServer } from '../server.js';
+import { registerImageWorkflow } from './imageWorkflow.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let imageWorkflow: ReturnType<typeof registerImageWorkflow> | undefined;
+let quitAfterImages = false;
+let quittingImages = false;
 // Set from startDashboardServer()'s return — the ACTUAL bound port and the per-launch auth
 // token. The old code pre-probed a port with its own all-interfaces net.createServer and threw
 // the server's return away, so the window could load the wrong port with no token, breaking all
@@ -29,15 +33,15 @@ function createWindow() {
         backgroundColor: '#18181b', // Match dark mode default
         show: false, // Wait until ready to show to prevent flashing
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
+            preload: path.join(__dirname, 'sandboxPreload.cjs'),
             nodeIntegration: false,
             contextIsolation: true,
             // Q-524: run the renderer in a sandbox. The renderer displays untrusted agent/LLM/on-screen
             // content, so a sandboxed OS process is the right blast radius. Safe here because the preload
-            // only touches process.argv/process.env — both available in Electron's sandboxed preload
-            // polyfill — and talks to the renderer purely through contextBridge.
+            // uses the sandbox's process polyfill and fixed Electron IPC bridges, exposed only
+            // through contextBridge. The .cts source emits the sandbox-compatible .cjs preload.
             sandbox: true,
-            // Hand the per-launch token to the renderer via argv — preload.ts reads
+            // Hand the per-launch token to the renderer via argv — sandboxPreload.cts reads
             // `--quenderin-auth=` and exposes it on window.quenderinAuth (Q-001/Q-011). A local
             // attacker process cannot read another process's argv. Set before every createWindow()
             // (incl. the activate re-create), so a remade window is never token-less (Q-129).
@@ -77,6 +81,8 @@ async function bootstrap() {
     const { port, authToken } = await startDashboardServer(PORT, false); // false = don't open system browser
     PORT = port;
     AUTH_TOKEN = authToken;
+
+    imageWorkflow = registerImageWorkflow({ ipcMain, dialog, getWindow: () => mainWindow, trustedUrl: `http://localhost:${PORT}/` });
 
     // 2. Create the Electron Window — platform-aware chrome (loads PORT, carries AUTH_TOKEN)
     createWindow();
@@ -206,4 +212,13 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
     // Unregister all shortcuts.
     globalShortcut.unregisterAll();
+});
+
+app.on('before-quit', event => {
+    if (quitAfterImages || !imageWorkflow) return;
+    event.preventDefault();
+    if (quittingImages) return;
+    quittingImages = true;
+    // Keep the main process alive through the runtime's bounded SIGINT/SIGKILL grace.
+    void imageWorkflow.dispose().finally(() => { quitAfterImages = true; app.quit(); });
 });

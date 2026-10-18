@@ -9,7 +9,7 @@
   },
   "parentWeeklyTextPatch": {
     "id": "weekly-text-k2-nemotron-v1",
-    "sha256": "3e3b3fcc98eca240ce851fc22c7c096e456bc7c74eb17c472d392935f76ef84c"
+    "sha256": "962eb2afaa72f211bc9f6dd24c1e9946c0e61ca9c2b662268f99c97982c8348d"
   },
   "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
   "upstreamGraph": {

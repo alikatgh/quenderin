@@ -21,7 +21,7 @@
         "requiredPatch": {
           "id": "beam-text-v1",
           "path": "scripts/patches/beam-text-prism-e8fd209.json",
-          "sha256": "424efc818902237f1df43563f8f907f4da9868c069d67c3e4fe09d176c4a17dd",
+          "sha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033",
           "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
           "beamABI": 1
         },

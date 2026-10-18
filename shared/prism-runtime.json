@@ -21,7 +21,7 @@
   "weeklyTextPatch": {
     "id": "weekly-text-k2-nemotron-v1",
     "path": "scripts/patches/weekly-text-prism-e8fd209.json",
-    "sha256": "3e3b3fcc98eca240ce851fc22c7c096e456bc7c74eb17c472d392935f76ef84c",
+    "sha256": "962eb2afaa72f211bc9f6dd24c1e9946c0e61ca9c2b662268f99c97982c8348d",
     "upstreamRevisions": {
       "k2Horizon": "4625240437c6821ee5c2da99e12d4817c6a8f07f",
       "nemotron35": "cd0a5b6a180dff0048e5fd993098b21c0b2c91b8"
@@ -31,7 +31,7 @@
   "beamPatch": {
     "id": "beam-text-v1",
     "path": "scripts/patches/beam-text-prism-e8fd209.json",
-    "sha256": "424efc818902237f1df43563f8f907f4da9868c069d67c3e4fe09d176c4a17dd",
+    "sha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033",
     "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
     "beamABI": 1
   }

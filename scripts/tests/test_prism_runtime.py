@@ -15,6 +15,107 @@ prism = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(prism)
 
 
+class WeeklyNemotronRouterRegressionTests(unittest.TestCase):
+    def test_actual_cpp_resolves_user_descriptors_and_indexed_file_tensors(self):
+        """Run the real dimension-resolution block against the loader's two modes.
+
+        The pinned user-model loader has no weights_map: its router dimensions
+        exist only in GGUF descriptors. File loads index tensors across shards.
+        Hosted decode/save-roundtrip still verifies the complete GGML graph.
+        """
+        weekly = prism.load_weekly_text_patch()
+        model = next(entry for entry in weekly['files'] if entry['path'] == 'src/models/nemotron-h.cpp')
+        body = next(item['after'] for item in model['replacements'] if 'router_meta' in item['after'])
+        compiler = shutil.which('clang++') or shutil.which('g++')
+        self.assertIsNotNone(compiler, 'C++ compiler required for the bounded router fixture')
+        fixture = r'''
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+struct ggml_tensor { int64_t ne[4]; };
+struct gguf_context {
+    std::string name;
+    std::array<int64_t, 4> ne;
+    int reads = 0;
+};
+static int64_t gguf_find_tensor(gguf_context * ctx, const char * name) {
+    ++ctx->reads;
+    return ctx->name == name ? 0 : -1;
+}
+static const int64_t * gguf_get_tensor_ne(const gguf_context * ctx, int64_t tid) {
+    assert(tid == 0); return ctx->ne.data();
+}
+struct loader {
+    std::vector<int> files;
+    gguf_context * metadata;
+    const ggml_tensor * indexed = nullptr;
+    // Same lookup behavior as the pinned get_tensor_meta: only file weights
+    // enter weights_map; supplied user GGUF descriptors never enter it.
+    const ggml_tensor * get_tensor_meta(const char *) const { return indexed; }
+};
+enum { LLM_TENSOR_FFN_GATE_INP };
+struct tensor_name { std::string value; std::string str() const { return value; } };
+static tensor_name tn(int, const char *, int i) {
+    return {"blk." + std::to_string(i) + ".ffn_gate_inp.weight"};
+}
+static std::pair<int64_t, int64_t> resolve(loader & ml, int i, int64_t active, int64_t width) {
+    const int64_t n_embd = 256, n_expert = 12;
+    struct {
+        std::array<int64_t, 4> n_expert_weekly_used_arr{0, 0, 0, 0};
+        std::array<int64_t, 4> n_ff_weekly_exp_arr{0, 0, 0, 0};
+        int64_t n_ff(int) const { return 384; }
+    } hparams;
+    hparams.n_expert_weekly_used_arr[i] = active;
+    hparams.n_ff_weekly_exp_arr[i] = width;
+''' + body + r'''
+    return {n_expert_layer, n_ff_exp};
+}
+int main() {
+    // Unchanged hosted fixture: layer 2 has 12/9 experts and layer 3 has 10/6.
+    for (int i : {2, 3}) {
+        gguf_context metadata{"blk." + std::to_string(i) + ".ffn_gate_inp.weight",
+                              {256, i == 2 ? 12 : 10, 1, 1}};
+        loader user{{}, &metadata};
+        const auto result = resolve(user, i, i == 2 ? 9 : 6, i == 2 ? 384 : 448);
+        assert(result.first == (i == 2 ? 12 : 10));
+        assert(result.second == (i == 2 ? 384 : 448));
+    }
+    // An indexed tensor wins over main-file descriptors (including split files).
+    gguf_context metadata{"blk.3.ffn_gate_inp.weight", {256, 12, 1, 1}};
+    ggml_tensor indexed{{256, 10, 1, 1}};
+    loader file{{1}, &metadata, &indexed};
+    assert(resolve(file, 3, 6, 448).first == 10 && metadata.reads == 0);
+    // Legacy generated models without descriptors retain the global shape.
+    gguf_context missing{"", {0, 0, 0, 0}};
+    loader generated{{}, &missing};
+    assert(resolve(generated, 3, 6, 448).first == 12);
+    // Never consult main-file metadata to invent a missing indexed file tensor.
+    loader absent_file{{1}, &metadata};
+    assert(resolve(absent_file, 3, 6, 448).first == 12 && metadata.reads == 0);
+    for (auto dimensions : {std::array<int64_t, 4>{255, 10, 1, 1},
+                            {256, 10, 2, 1}, {256, 10, 1, 2},
+                            {256, 13, 1, 1}, {256, 5, 1, 1}, {256, 0, 1, 1}}) {
+        metadata.ne = dimensions;
+        loader invalid{{}, &metadata};
+        bool rejected = false;
+        try { resolve(invalid, 3, 6, 448); } catch (const std::runtime_error &) { rejected = true; }
+        assert(rejected);
+    }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='weekly-nemotron-router-') as scratch:
+            binary = Path(scratch) / 'router-fixture'
+            result = subprocess.run([compiler, '-std=c++17', '-O0', '-x', 'c++', '-', '-o', str(binary)],
+                                    input=fixture, text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr[-8000:])
+            result = subprocess.run([str(binary)], text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr[-8000:])
+
+
 class WeeklyMoeAggregationRegressionTests(unittest.TestCase):
     def test_actual_cpp_reduction_handles_heterogeneous_topk_and_preserves_warmup_cap(self):
         """Exercise the real patched block, with GGML view bounds and numeric sums.

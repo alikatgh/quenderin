@@ -160,13 +160,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -c "import os,sys; from pathlib import Path; sys.path.insert(0,'scripts'); import build_desktop_diffusion as d; d.windows_tools(); print(d.runtime.verify_library(Path(os.environ['RUNNER_TEMP'])/'diffusion-fixtures/bin/quenderin_diffusion.dll','windows'))"
       - name: Build iOS and universal macOS image frameworks
+        id: compile-apple-image
         if: runner.os == 'macOS'
         run: bash apple/build-diffusion-xcframework.sh "$RUNNER_TEMP/diffusion-apple"
       - name: Compile and test the actual Swift image adapter
-        if: runner.os == 'macOS'
+        if: ${{ !cancelled() && runner.os == 'macOS' && steps.compile-apple-image.outcome == 'success' }}
         run: swift test --package-path apple/QuenderinKit --jobs 3
       - name: Compile the actual image UI against the iOS SDK (no signing or execution)
-        if: runner.os == 'macOS'
+        if: ${{ !cancelled() && runner.os == 'macOS' && steps.compile-apple-image.outcome == 'success' }}
         run: |
           brew install xcodegen
           cd apple/QuenderinApp

@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { spawn, type SpawnOptions } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PNG } from 'pngjs';
 import { ImageGenerationService, IMAGE_MEMORY_REQUIRED_BYTES,
     type ImageModelCatalog, type DiffusionRuntimeLock } from '../src/services/imageGeneration.js';
 
@@ -57,7 +58,12 @@ if (args.includes('--version')) {
     else {
         if (mode !== 'missing-output') {
             const image = new PNG({width: mode === 'wrong-size' ? 80 : Number(options['--width']), height: Number(options['--height'])});
-            const encoded = PNG.sync.write(image);
+            let encoded = PNG.sync.write(image);
+            if (mode === 'duplicate-ihdr') {
+                const second = PNG.sync.write(new PNG({width: 128, height: 128}));
+                encoded = Buffer.concat([encoded.subarray(0, 33), second.subarray(8, 33), encoded.subarray(33)]);
+            }
+            if (mode === 'interlaced') encoded[28] = 1;
             if (mode === 'bad-png-crc') encoded[encoded.length - 1] ^= 1;
             fs.writeFileSync(options['--output'], encoded, {flag: 'wx'});
         }
@@ -172,6 +178,13 @@ describe('bounded local image generation', () => {
     it.each(['missing-output', 'wrong-size', 'bad-png-crc', 'failure'])('does not report success for %s', async value => {
         mode = value;
         await expect(service().generate(request())).rejects.toThrow();
+    });
+
+    it.each(['duplicate-ihdr', 'interlaced'])('rejects %s before the service pixel decoder runs', async value => {
+        mode = value;
+        const decode = vi.spyOn(PNG.sync, 'read');
+        await expect(service().generate(request())).rejects.toThrow('structure');
+        expect(decode).not.toHaveBeenCalled();
     });
 
     it('preserves UTF-8 output paths split between native stdout chunks', async () => {

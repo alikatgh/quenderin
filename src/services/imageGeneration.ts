@@ -4,15 +4,14 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
-import { PNG } from 'pngjs';
 import { availableMemBytes } from '../utils/memory.js';
+import { validateImagePng } from '../utils/imagePng.js';
 
 export const IMAGE_MEMORY_REQUIRED_BYTES = 24 * 1024 ** 3;
 export const IMAGE_GENERATION_TIMEOUT_MS = 15 * 60 * 1000;
 const OUTPUT_RESERVE_BYTES = 64 * 1024 ** 2;
 const STDOUT_LIMIT = 8 * 1024;
 const STDERR_LIMIT = 64 * 1024;
-const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 type ComponentRole = 'diffusion' | 'text_encoder' | 'vae' | 'tokenizer';
 export interface ImageModelComponent {
@@ -408,15 +407,7 @@ export class ImageGenerationService {
                 if (!bytesRead) throw new Error('Runtime output PNG is incomplete.');
                 offset += bytesRead;
             }
-            if (!bytes.subarray(0, 8).equals(PNG_SIGNATURE)
-                || bytes.readUInt32BE(8) !== 13 || bytes.toString('ascii', 12, 16) !== 'IHDR'
-                || bytes.readUInt32BE(16) !== width || bytes.readUInt32BE(20) !== height) {
-                throw new Error('Runtime output PNG dimensions or signature are invalid.');
-            }
-            try {
-                const decoded = PNG.sync.read(bytes, { checkCRC: true });
-                if (decoded.width !== width || decoded.height !== height) throw new Error('Wrong dimensions.');
-            } catch { throw new Error('Runtime output PNG pixels or checksums are invalid.'); }
+            validateImagePng(bytes, width, height);
         } finally { await file.close(); }
     }
 }

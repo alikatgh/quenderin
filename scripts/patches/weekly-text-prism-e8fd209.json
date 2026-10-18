@@ -249,7 +249,7 @@
     {
       "path": "src/models/nemotron-h.cpp",
       "beforeSha256": "d0a2066c77a97c667b78987932a8b20caeb6d1da215e070fa7aa2982aaddef98",
-      "afterSha256": "5a9ea5edc06741ac07f9a31510627c6b3b9787745e86826571e20be74aeca886",
+      "afterSha256": "9bf244c9f85701868a86a2690f35824e7360034c011daf28bec12b1bbc8397f7",
       "replacements": [
         {
           "before": "    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);\n    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_EPS,     hparams.f_norm_eps); // MTP head final_layernorm\n",
@@ -261,7 +261,7 @@
         },
         {
           "before": "                const int64_t n_ff_exp = hparams.n_ff_exp ? hparams.n_ff_exp : n_ff / n_expert_used;\n",
-          "after": "                const auto * router_meta = ml.get_tensor_meta(tn(LLM_TENSOR_FFN_GATE_INP, \"weight\", i).str().c_str());\n                const int64_t n_expert_layer = router_meta ? router_meta->ne[1] : n_expert;\n                const int64_t n_expert_used_i = hparams.n_expert_weekly_used_arr[i];\n                if (n_expert_used_i <= 0 || n_expert_layer < n_expert_used_i || n_expert_layer > n_expert) {\n                    throw std::runtime_error(\"Invalid per-layer Nemotron expert count\");\n                }\n                const int64_t n_ff_exp = hparams.n_ff_weekly_exp_arr[i]\n                    ? (int64_t)hparams.n_ff_weekly_exp_arr[i] : hparams.n_ff(i) / n_expert_used_i;\n                if (n_ff_exp <= 0) {\n                    throw std::runtime_error(\"Invalid Nemotron expert FFN width\");\n                }\n"
+          "after": "                const std::string router_name = tn(LLM_TENSOR_FFN_GATE_INP, \"weight\", i).str();\n                const auto * router_meta = ml.get_tensor_meta(router_name.c_str());\n                const int64_t * router_ne = router_meta ? router_meta->ne : nullptr;\n                // User-created models have GGUF descriptors but no file weights_map.\n                // File loads use the indexed tensor, including tensors in later shards.\n                if (!router_ne && ml.files.empty()) {\n                    const int64_t tid = gguf_find_tensor(ml.metadata, router_name.c_str());\n                    if (tid >= 0) {\n                        router_ne = gguf_get_tensor_ne(ml.metadata, tid);\n                    }\n                }\n                if (router_ne && (router_ne[0] != n_embd || router_ne[2] != 1 || router_ne[3] != 1)) {\n                    throw std::runtime_error(\"Invalid Nemotron router tensor shape\");\n                }\n                const int64_t n_expert_layer = router_ne ? router_ne[1] : n_expert;\n                const int64_t n_expert_used_i = hparams.n_expert_weekly_used_arr[i];\n                if (n_expert_used_i <= 0 || n_expert_layer < n_expert_used_i || n_expert_layer > n_expert) {\n                    throw std::runtime_error(\"Invalid per-layer Nemotron expert count\");\n                }\n                const int64_t n_ff_exp = hparams.n_ff_weekly_exp_arr[i]\n                    ? (int64_t)hparams.n_ff_weekly_exp_arr[i] : hparams.n_ff(i) / n_expert_used_i;\n                if (n_ff_exp <= 0) {\n                    throw std::runtime_error(\"Invalid Nemotron expert FFN width\");\n                }\n"
         },
         {
           "before": "{ n_embd, n_expert}, trunk_flags)",

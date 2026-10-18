@@ -1,9 +1,10 @@
 # October open-model engineering update
 
-Status: draft; source pushed at `8a18dff844825440ea63a61691f2a77903cba8f1` in
-[PR 163](https://github.com/alikatgh/quenderin/pull/163). Hosted compilation is
-in progress; publication is pending. Cloudflare sign-in recovery requires the user
-after automatic approval review rejected inspecting a token-bearing callback.
+Status: draft; runtime repairs pushed at `78f02bfbb596a35c8154112e0cfe514df68c8e75` in
+[PR 163](https://github.com/alikatgh/quenderin/pull/163).
+[Hosted verification](https://github.com/alikatgh/quenderin/actions/runs/39098085518)
+is in progress; the desktop image screen and publication are pending. The user
+completed Cloudflare sign-in recovery and the normal dashboard was verified.
 No callback/token contents are recorded here.
 
 The article is `website/blog-open-models-october-2026.html`; the source and public
@@ -53,5 +54,16 @@ Artwork: AI-generated editorial illustration.
 
 ## Verification and publication evidence
 
-To be filled from the final exact revision and visible Page posts. Never replace
-this with a claim that source-only integration establishes tested inference.
+The next source revision adds the Electron Images screen and the reviewed
+Nemotron descriptor and Apple framework-module fixes. Local checks passed:
+120 focused TypeScript tests, 11 UI/navigation tests and 73 runtime/provenance
+fixtures. Independent review resolved bounded GGUF-reader and PNG-decoder
+allocation defects before publication.
+
+`desktop-image-ui-fixture.jpg` is a browser render of the real component with an
+explicitly labelled mock bridge. Checked at 1497 × 790 and 900 × 700, in light and
+dark appearance: preset information, folder selection, verification, generation
+error, retained caption and leave/return navigation. It is not an Electron launch,
+native-device screenshot, model download or inference result.
+
+Final hosted revision/results and visible Page permalinks are still pending.

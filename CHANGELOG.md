@@ -13,7 +13,7 @@
   replacing concurrent changes; failed recovery retains original backups.
 - Add a separately built, symbol-isolated stable-diffusion.cpp C ABI for FLUX 3
   Image Klein and MOSS Image Base/SFT. Pin every component and the patched GGML
-  source. Add native image workspaces and desktop image models/verify/generate
+  source. Add native and Electron image workspaces and desktop image models/verify/generate
   commands, explicit installation/import, hashing, progress, cancellation and export.
 - Keep FLUX publisher access/license review with the user. MOSS installation is
   explicit. The native image gate requires 24 GiB available memory; this is not

@@ -60,6 +60,14 @@ elseif(APPLE)
     MACOSX_FRAMEWORK_BUNDLE_VERSION 1 MACOSX_FRAMEWORK_SHORT_VERSION_STRING 1.0.0
     VERSION 1.0.0 SOVERSION 1
     OUTPUT_NAME QuenderinDiffusion INSTALL_NAME_DIR "@rpath")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    # Makefile/Ninja generators copy custom Modules content into Versions/A but
+    # do not create the public framework alias that Clang/Swift import expects.
+    add_custom_command(TARGET quenderin_diffusion POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E create_symlink "Versions/Current/Modules"
+        "$<TARGET_BUNDLE_DIR:quenderin_diffusion>/Modules"
+      VERBATIM)
+  endif()
   target_link_options(quenderin_diffusion PRIVATE "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.apple")
 elseif(UNIX)
   target_link_options(quenderin_diffusion PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map" "LINKER:--exclude-libs,ALL" "LINKER:-Bsymbolic")
