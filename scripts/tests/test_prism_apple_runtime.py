@@ -75,6 +75,11 @@ def pkg_fixture(path, entries, second_payload=False):
 
 class ApplePrismTests(unittest.TestCase):
     def setUp(self):
+        # Image artifact guards have their own real Mach-O fixture suite. Keep
+        # text/source-recovery fixtures independent of that second framework.
+        for name in ('embed_image_evidence', 'verify_image_app'):
+            mock = patch.object(prism, name, return_value={})
+            mock.start(); self.addCleanup(mock.stop)
         self.scratch = tempfile.TemporaryDirectory(prefix="apple-prism-test-")
         self.addCleanup(self.scratch.cleanup)
         self.root = Path(self.scratch.name)
@@ -97,9 +102,11 @@ class ApplePrismTests(unittest.TestCase):
         self.framework = self.root / "prism-llama.xcframework"
         self.framework.mkdir()
         self.lock = json.loads((self.root / "shared/prism-runtime.json").read_text())
-        patch_path = self.root / self.lock["sourcePatch"]["path"]
-        patch_path.parent.mkdir(parents=True)
-        shutil.copyfile(prism.ROOT / self.lock["sourcePatch"]["path"], patch_path)
+        for key in ("sourcePatch", "weeklyTextPatch", "beamPatch", "visionPatch", "graniteConverterPatch"):
+            if key not in self.lock: continue
+            patch_path = self.root / self.lock[key]["path"]
+            patch_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(prism.ROOT / self.lock[key]["path"], patch_path)
         self.identity = prism.source_runtime.provenance(self.root, self.lock)
         (self.framework / "quenderin-prism-runtime.json").write_text(json.dumps(self.identity))
         libs = []
@@ -107,7 +114,8 @@ class ApplePrismTests(unittest.TestCase):
             native = self.framework / identifier / "llama.framework"
             (native / "Headers").mkdir(parents=True)
             (native / "Headers/ggml.h").write_text("GGML_TYPE_PQ2_0 GGML_TYPE_PTQ1_0")
-            (native / "Headers/llama.h").write_text("int quenderin_muse_spark_runtime_abi(void);")
+            (native / "Headers/llama.h").write_text("int quenderin_muse_spark_runtime_abi(void); int quenderin_weekly_text_runtime_abi(void); int quenderin_beam_runtime_abi(void);")
+            (native / "Headers/quenderin_vision.h").write_text("unsigned quenderin_vision_runtime_abi(void);")
             binary_rel = "llama.framework/Versions/A/llama" if target == 1 else "llama.framework/llama"
             binary = self.framework / identifier / binary_rel
             binary.parent.mkdir(parents=True, exist_ok=True)
@@ -142,7 +150,7 @@ class ApplePrismTests(unittest.TestCase):
 
     def tool(self, *args):
         if args[:2] == ("xcrun", "nm"):
-            return "0000000000000100 T _quenderin_muse_spark_runtime_abi"
+            return "0000000000000100 T _quenderin_muse_spark_runtime_abi\n0000000000000120 T _quenderin_weekly_text_runtime_abi\n0000000000000140 T _quenderin_beam_runtime_abi\n" + "\n".join("0000000000000200 T _quenderin_vision_" + symbol for symbol in ("runtime_abi", "runtime_revision", "patch_sha256", "create", "load", "generate", "cancel", "free"))
         if args[:3] == ("xcrun", "otool", "-L"):
             return "@rpath/llama.framework/llama"
         if args[:2] == ("codesign", "-d"):
@@ -220,7 +228,7 @@ class ApplePrismTests(unittest.TestCase):
             return "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 verified"
 
         with patch.object(prism, "run", side_effect=old_runtime):
-            with self.assertRaisesRegex(ValueError, "Prism/Muse probe failed"):
+            with self.assertRaisesRegex(ValueError, "Prism/Muse/weekly text probe failed"):
                 prism.native_probe(native)
         self.assertEqual(len(calls), 2)
 
@@ -278,6 +286,7 @@ class ApplePrismTests(unittest.TestCase):
             (native / "llama").write_bytes(thin("arm64", 2, signed=True))
             result = prism.verify_app(app, "ios", stamp, self.root, signed=True)
             self.assertEqual(result["architectures"], ["arm64"])
+            prism.verify_image_app.assert_called_with(app, 'ios', self.root, True)
             (contents / "quenderin-model-catalog.json").write_text("{}")
             with self.assertRaisesRegex(ValueError, "Archive catalog"):
                 prism.verify_app(app, "ios", stamp, self.root, signed=True)
@@ -291,6 +300,7 @@ class ApplePrismTests(unittest.TestCase):
             # probe must link the archived dylib while using the verified headers.
             (native / "Headers/ggml.h").unlink()
             (native / "Headers/llama.h").unlink()
+            (native / "Headers/quenderin_vision.h").unlink()
             (native / "Headers").rmdir()
             (native / "Versions/A/llama").write_bytes(fat(1, signed=True))
             with patch.object(prism, "native_probe", return_value=prism.PROBE) as probe:

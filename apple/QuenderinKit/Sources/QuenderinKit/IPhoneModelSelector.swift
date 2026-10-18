@@ -99,7 +99,7 @@ public enum IPhoneModelSelector {
         _ model: ModelEntry,
         contextTokens: Int = referenceContextTokens
     ) -> Double {
-        if ModelRuntimeSupport.isBonsai(model) || ModelRuntimeSupport.isMuse(model) {
+        if ModelRuntimeSupport.requiresPrism(model) || ModelRuntimeSupport.isMuse(model) {
             // Hybrid KV/state has not been measured here. Budget conservatively at bounded context;
             // the 27B dense-cache formula is not a model of this architecture.
             return ModelRuntimeSupport.memoryFootprintGB(model) * MemoryFitness.overheadLarge

@@ -92,7 +92,7 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*([\d.]+)\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"([^"]*)"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*([\d_]+)L?)?(?:,\s*artifacts\s*=\s*MuseModelArtifacts\.parts)?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*([\d.]+)\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"([^"]*)"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*([\d_]+)L?)?(?:,\s*artifacts\s*=\s*(?:Muse|Beam)ModelArtifacts\.parts)?\s*\)""",
         text,
     ):
         # Normalize hex case so an uppercase Kotlin literal still matches the (lowercase) manifest.
@@ -164,6 +164,67 @@ def check_bonsai_artifacts(canonical: Catalog) -> bool:
     return True
 
 
+EXPERIMENTAL_TEXT_ARTIFACTS = {
+    "minicpm-v47-1b": (
+        "openbmb/MiniCPM-V-4.7-1B-gguf", "9684c734cfb2e6aaccb0bb52ba58afa9aae92d90",
+        "MiniCPM-V-4_7-1B-Q4_K_M.gguf", 672003680, 2.0, "Q4_K_M",
+    ),
+    "minicpm-v47-35b-a3b": (
+        "openbmb/MiniCPM-V-4.7-35B-A3B-gguf", "77ec40de8445999bf3076aeff9ff45d40a2713cc",
+        "MiniCPM-V-4_7-35B-A3B-Q4_K_M.gguf", 21166255008, 25.0, "Q4_K_M",
+    ),
+    "lfm25-24b-a2b": (
+        "LiquidAI/LFM2.5-24B-A2B-GGUF", "0912d33141f77e10705345a6732bfd83f0252fdc",
+        "LFM2.5-24B-A2B-Q4_K_M.gguf", 14526258464, 18.0, "Q4_K_M",
+    ),
+    "jais3-0.9b": (
+        "IFM/Jais-3-0.9B-GGUF", "ac7c7be976446226ca3da9c9986a678c879b2dce",
+        "Jais-3-0.9B-Q4_K_M.gguf", 666192384, 2.0, "Q4_K_M",
+    ),
+    "jais3-3.7b": (
+        "IFM/Jais-3-3.7B-GGUF", "653cc7bb723a5bb13dfa5a407b1fa035f3d0498b",
+        "Jais-3-3.7B-Q4_K_M.gguf", 3156606176, 6.0, "Q4_K_M",
+    ),
+    "jais3-7b": (
+        "IFM/Jais-3-7B-GGUF", "ed44d6f2e90f74c341c0291a07e06ae643d82190",
+        "Jais-3-7B-Q4_K_M.gguf", 5592226016, 9.0, "Q4_K_M",
+    ),
+    "jais3-32b": (
+        "IFM/Jais-3-32B-GGUF", "7f88bd89cbf83ccce89d07776ad11f7bd62cc83b",
+        "Jais-3-32B-Q4_K_M.gguf", 21075786688, 28.0, "Q4_K_M",
+    ),
+    "jais3-mova-36b-a4b": (
+        "IFM/Jais-3-MoVA-36B-A4B-GGUF", "8b2c5ab2feffeeca416c99ec972e543db6a97dbe",
+        "Jais-3-MoVA-36B-A4B-Q4_K_M.gguf", 22368019936, 30.0, "Q4_K_M",
+    ),
+    "nemotron35-bolt-74b-a9b": (
+        "nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF", "e0fecb69cb3e5e4c5e8a056fa2aec98c78e91246",
+        "NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB.gguf", 22018326528, 28.0, "IQ2_XXS-mixed",
+    ),
+}
+
+
+def check_experimental_text_artifacts(canonical: Catalog) -> bool:
+    """These opt-in models retain the verified full artifact and conservative RAM floor.
+
+    Pin the expected byte count independently of source-catalog parity: changing all
+    catalogs together must not turn a projector/partial file into a complete model.
+    """
+    invalid = []
+    for mid, (repository, revision, filename, download_bytes, ram_floor, quantization) in EXPERIMENTAL_TEXT_ARTIFACTS.items():
+        entry = canonical.get(mid)
+        expected_url = f"https://huggingface.co/{repository}/resolve/{revision}/{filename}"
+        if (entry is None or entry.filename != filename or entry.download_bytes != download_bytes
+                or entry.url not in (expected_url, expected_url + "?download=true")
+                or entry.quantization != quantization or entry.ram_gb < ram_floor):
+            invalid.append(mid)
+    if invalid:
+        print(f"  FAIL experimental text artifact identity/bytes/RAM: {', '.join(invalid)}")
+        return False
+    print("  ok   experimental text artifacts: pinned full weights, exact bytes and RAM floors")
+    return True
+
+
 def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
     missing = set(reference) - set(catalog)
     extra = set(catalog) - set(reference)
@@ -183,6 +244,18 @@ def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
     for mid, (ref, got) in sorted(mismatched.items()):
         print(f"        '{mid}' metadata differs: manifest={ref} {name}={got}")
     return False
+
+
+def check_beam_artifacts() -> bool:
+    import generate_beam_artifacts
+    canonical = json.loads(CANONICAL.read_text())["models"]
+    match = next(m for m in canonical if m["id"] == "beam-1.0-501b-a23b-ud-iq2-xxs")
+    assert match["artifacts"] == generate_beam_artifacts.parts()
+    assert match["downloadBytes"] == 133885310500 and match["ramGb"] >= 160
+    for path, content in generate_beam_artifacts.outputs().items():
+        assert path.read_text() == content, f"Stale Beam generated artifacts: {path}"
+    print("  ok   Beam artifacts: all four pinned parts and full-weight memory floor")
+    return True
 
 
 def check_muse_artifacts() -> bool:
@@ -211,7 +284,8 @@ def check_muse_artifacts() -> bool:
 def main() -> int:
     canonical = load_canonical()
     print(f"Catalog parity — canonical: shared/model-catalog.json ({len(canonical)} models)\n")
-    ok = check_sha256_pinned(canonical) and check_bonsai_artifacts(canonical) and check_muse_artifacts()
+    ok = (check_sha256_pinned(canonical) and check_bonsai_artifacts(canonical)
+          and check_experimental_text_artifacts(canonical) and check_muse_artifacts() and check_beam_artifacts())
     for name, path in SOURCES.items():
         ok = compare(name, load(name, path), canonical) and ok
 

@@ -1,0 +1,88 @@
+{
+  "verifiedAtUTC": "2026-10-18T07:44:36.202033+00:00",
+  "engineeringRevision": "1d5f4452b0dd096fdaab737bc4581562f3bce666",
+  "ci": {
+    "run": 39106905620,
+    "jobsPassed": 18,
+    "catalogUrlsRun": 39106905664,
+    "catalogUrlsPassed": true
+  },
+  "worker": {
+    "version": "a493be9a-b250-483e-8d1e-b7d3323955df",
+    "deployment": "db715c94-608c-4c56-8848-437b03c27199",
+    "trafficPercent": 100,
+    "previousVersion": "cfa3e413-b0a8-438d-8550-033d76b798e9",
+    "exactResourcesUnchanged": true,
+    "scriptETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+    "sourceSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+    "assetManifestSha256": "e5e52c217fe7e5282578740f24ffdc7f467eafb2cde59a80252ab847063f6798"
+  },
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 8210,
+      "sha256": "62a073df3ac6c8ef420c0ea9259e848d9b88dffad52c8fb7b6968423cfca4d4f",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/tell-me-more",
+      "status": 200,
+      "bytes": 63445,
+      "sha256": "5d462c0d9af60cd77c6fafde53472c4b0f6336981978a985e5325248547a22f0",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/blog-open-models-october-2026",
+      "status": 200,
+      "bytes": 13215,
+      "sha256": "cd3cc2165c39e7589bfc1f291c452d4659f01cb00de07338f1e197c128ce24e7",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/changelog",
+      "status": 200,
+      "bytes": 15957,
+      "sha256": "a0bc8528812aa5886485d1b25b957fd5866064e199b3b07acc1e10dc765e1faa",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/blog",
+      "status": 200,
+      "bytes": 8200,
+      "sha256": "5e25993e7a4bbff47727ef80910e07ff6286f4b42e5e47793088f7cd06acfc85",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/models",
+      "status": 200,
+      "bytes": 28325,
+      "sha256": "4436c538a539c6d57973fbdf9e7e6b8b4aa6cc2e0909d4d3443837e6fa680719",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    },
+    {
+      "path": "/data/model-catalog.json",
+      "status": 200,
+      "bytes": 27070,
+      "sha256": "391bfe938d841ebb96e18e2c42f3fb12e5de94785b41f06a496b713518064123",
+      "exactAssetMatch": true,
+      "securityHeaders": true
+    }
+  ],
+  "existingModelFeed": {
+    "statusBefore": 200,
+    "statusAfter": 200,
+    "afterSha256": "a5703663c64f56b68974b70a0b2778778afff1b459596f1cce87218cc6fe3d21"
+  },
+  "screenshots": {
+    "homepage-live.png": "e8b46eac4ec14727705d86d7aedd51593aee08f5463c8159c0a818866dfe9d24",
+    "facebook-live.png": "fad09089399d9d61acdac93b475f4717808b6b12267d2cf931ed47ab6339402e",
+    "linkedin-live.png": "4a112fe6a43e28fbcd73340e8964ae6144a0b276bb0cf2375e6cc076987a05ba"
+  }
+}

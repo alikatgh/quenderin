@@ -314,6 +314,35 @@
     </div>
   </section>
 
+  <!-- ENGLISH ENGINEERING UPDATE — separate from installed store versions. -->
+  <section class="section tint" id="october-2026-update" lang="en">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">18 October 2026 &middot; engineering candidate</p>
+        <h2>More models, with separate workflows for different jobs.</h2>
+        <p>The source candidate has 28 curated text choices, including Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks the runtime, complete files and available memory before loading.</p>
+        <p>This describes current source engineering, separate from the versions already installed from the App Store, Google Play or desktop downloads. Hosted native builds and desktop package checks have passed. Full-weight inference for these additions has not been run, and this is not a store-release announcement.</p>
+      </header>
+      <div class="table-wrap reveal">
+        <table class="spec-table model-spec-table">
+          <caption>New workflows in the desktop, Apple and Android source</caption>
+          <thead><tr><th scope="col">Workflow</th><th scope="col">What you can prepare and use in the candidate</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Complete Beam and Muse text chat</th><td>Install and verify every part before chatting: Beam needs all 4 files (133.89 GB) and a 160 GiB memory floor before context overhead; Muse needs all 22 files (304.08 GB). Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</td></tr>
+            <tr><th scope="row">Ask about an image</th><td>Choose one JPEG or PNG and ask a text question on desktop or in the native apps. Each installation includes the complete model and projector. MiniCPM-V 4.7 1B, MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL require at least 8, 32 and 96 GiB of available app memory respectively. Video, audio and tools are unavailable.</td></tr>
+            <tr><th scope="row">Hy-Memory proposals</th><td>Paste a selected conversation, review proposed facts, then explicitly choose which to save in private app storage. Nothing watches conversations or saves generated facts automatically. This separate memory-writing workflow requires at least 32 GiB of available app memory.</td></tr>
+            <tr><th scope="row">Granite Switch 4.1 8B chat</th><td>Import the converted official 8B GGUF together with its matching conversion record. The app verifies the complete pair and reuses an already verified import. Dedicated text chat requires at least 32 GiB of available app memory. Speech, guardian decisions and tools are unavailable; the older 3B preview is not a substitute.</td></tr>
+            <tr><th scope="row">Step 5 on your CUDA host</th><td>Connect to your own prepared Linux GPU host through its secured gateway. You explicitly approve sending the selected conversation there. This is remote text chat on your hardware; Quenderin does not provision a server or run this model on a phone.</td></tr>
+            <tr><th scope="row">Local image generation</th><td>Use the separate Images workspace for FLUX 3 Image Klein or MOSS Image Base/SFT. Complete component sets and at least 24 GiB of available memory are required. FLUX files need your own publisher access and license decision. Generation writes a new PNG and preserves existing files.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="models-foot">Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage. Answer quality, speed and rendered native journeys still need full runtime validation.</p>
+      <p class="models-foot">Nemotron Bolt E4B remains unavailable: there is no verified public artifact in this candidate, so no placeholder download is offered.</p>
+      <p class="learn-more"><a href="blog-open-models-october-2026" data-language-link>Read this week’s model update and verification limits &rarr;</a></p>
+    </div>
+  </section>
+
   <!-- THE COMPUTER-USE AGENT -->
   <section class="section" id="agent">
     <div class="container split">
@@ -605,22 +634,32 @@
 <!-- BEGIN GENERATED: website-models -->
 <tr data-model-id="qwen3-4b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen3-4B-GGUF" rel="noopener">Qwen3 4B</a></td><td data-i18n="catalog.role.everyday">Everyday chat</td><td>2.4 GB</td><td>~3.6 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="muse-spark-open-q2-k"><td><a href="https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF" rel="noopener">Muse Spark Open Q2_K</a></td><td>Experimental, text only</td><td>304.08 GB · 22 files</td><td>~330 GB</td><td>Q2_K</td></tr>
+<tr data-model-id="beam-1.0-501b-a23b-ud-iq2-xxs"><td><a href="https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF" rel="noopener">Beam 1.0 501B-A23B</a></td><td>Experimental, text only</td><td>133.89 GB · 4 files</td><td>~160 GB</td><td>UD-IQ2_XXS</td></tr>
+<tr data-model-id="nemotron35-bolt-74b-a9b"><td><a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a></td><td>Experimental, text only</td><td>22.02 GB</td><td>~28 GB</td><td>IQ2_XXS-mixed</td></tr>
+<tr data-model-id="jais3-mova-36b-a4b"><td><a href="https://huggingface.co/IFM/Jais-3-MoVA-36B-A4B-GGUF" rel="noopener">Jais 3 MoVA 36B-A4B</a></td><td>Experimental, text only</td><td>22.37 GB</td><td>~30 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="minicpm-v47-35b-a3b"><td><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf" rel="noopener">MiniCPM-V 4.7 35B-A3B</a></td><td>Experimental, text only</td><td>21.17 GB</td><td>~25 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen36-35b-a3b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF" rel="noopener">Qwen3.6 35B MoE</a></td><td data-i18n="catalog.role.agent">Agent tasks · fast SSD</td><td>13.2 GB</td><td>~5.5 GB resident*</td><td>UD-IQ3_XXS</td></tr>
+<tr data-model-id="jais3-32b"><td><a href="https://huggingface.co/IFM/Jais-3-32B-GGUF" rel="noopener">Jais 3 32B</a></td><td>Experimental, text only</td><td>21.08 GB</td><td>~28 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="bonsai2-27b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf" rel="noopener">Bonsai 2 27B</a></td><td>Experimental · Prism runtime</td><td>5.95 GB</td><td>~7 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="lfm25-24b-a2b"><td><a href="https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5 24B-A2B</a></td><td>Experimental, text only</td><td>14.53 GB</td><td>~18 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen3-14b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen3-14B-GGUF" rel="noopener">Qwen3 14B</a></td><td data-i18n="catalog.role.desktop">Desktop chat</td><td>9.0 GB</td><td>~11 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="gemma4-12b"><td><span class="model-fam fam-gemma" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/gemma-4-12b-it-GGUF" rel="noopener">Gemma 4 12B</a></td><td data-i18n="catalog.role.multilingual">Multilingual</td><td>7.1 GB</td><td>~9 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="jais3-7b"><td><a href="https://huggingface.co/IFM/Jais-3-7B-GGUF" rel="noopener">Jais 3 7B</a></td><td>Experimental, text only</td><td>5.59 GB</td><td>~9 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="bonsai2-9b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Bonsai 2 9B</a></td><td>Experimental · Prism runtime</td><td>2.00 GB</td><td>~4 GB</td><td>PTQ1_0</td></tr>
 <tr data-model-id="llama3-8b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF" rel="noopener">Llama 3 8B</a></td><td data-i18n="catalog.role.desktop">Desktop chat</td><td>4.7 GB</td><td>~6.75 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="deepseek-r1-7b"><td><span class="model-fam fam-deepseek" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF" rel="noopener">DeepSeek-R1 7B</a></td><td data-i18n="catalog.role.reasoning">Reasoning</td><td>4.7 GB</td><td>~6.5 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="mistral-7b"><td><span class="model-fam fam-mistral" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF" rel="noopener">Mistral 7B</a></td><td data-i18n="catalog.role.allrounder">All-rounder</td><td>4.1 GB</td><td>~6 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen25-coder-7b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF" rel="noopener">Qwen2.5 Coder 7B</a></td><td data-i18n="catalog.role.coding">Coding</td><td>4.7 GB</td><td>~6.5 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="jais3-3.7b"><td><a href="https://huggingface.co/IFM/Jais-3-3.7B-GGUF" rel="noopener">Jais 3 3.7B</a></td><td>Experimental, text only</td><td>3.16 GB</td><td>~6 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="bonsai2-4b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Bonsai 2 4B</a></td><td>Experimental · Prism runtime</td><td>0.95 GB</td><td>~2.5 GB</td><td>PTQ1_0</td></tr>
 <tr data-model-id="gemma3-4b"><td><span class="model-fam fam-gemma" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/gemma-3-4b-it-GGUF" rel="noopener">Gemma 3 4B</a></td><td data-i18n="catalog.role.multilingual">Multilingual</td><td>2.5 GB</td><td>~3.8 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="phi4-mini"><td><span class="model-fam fam-phi" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF" rel="noopener">Phi-4 Mini 3.8B</a></td><td data-i18n="catalog.role.efficient">Efficient</td><td>2.3 GB</td><td>~3.4 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-3b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Llama-3.2-3B-Instruct-GGUF" rel="noopener">Llama 3.2 3B</a></td><td data-i18n="catalog.role.balanced">Balanced chat</td><td>2.0 GB</td><td>~3 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="bonsai2-2b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Bonsai 2 2B</a></td><td>Experimental · Prism runtime</td><td>0.43 GB</td><td>~1.5 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="jais3-0.9b"><td><a href="https://huggingface.co/IFM/Jais-3-0.9B-GGUF" rel="noopener">Jais 3 0.9B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-1b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Llama-3.2-1B-Instruct-GGUF" rel="noopener">Llama 3.2 1B</a></td><td data-i18n="catalog.role.light">Lightweight chat</td><td>0.8 GB</td><td>~1.5 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-1b-q2"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Llama-3.2-1B-Instruct-GGUF" rel="noopener">Llama 3.2 1B Ultra-Light</a></td><td data-i18n="catalog.role.lowram">Low memory</td><td>0.4 GB</td><td>~0.7 GB</td><td>Q2_K</td></tr>
+<tr data-model-id="minicpm-v47-1b"><td><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf" rel="noopener">MiniCPM-V 4.7 1B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
 <!-- END GENERATED: website-models -->
 </tbody>
         </table>
@@ -812,7 +851,7 @@
 })();
 </script>
 <script src="main.js?v=model-catalog-20260930" defer></script>
-<script type="module" src="model-catalog.js?v=20260930-2"></script>
+<script type="module" src="model-catalog.js?v=20261018-1"></script>
 <script src="i18n.js?v=simple-home-20261008" defer></script>
 </body>
 </html>

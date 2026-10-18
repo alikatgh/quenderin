@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "id": "granite-switch-4.1-8b",
+  "repository": "ibm-granite/granite-switch-4.1-8b",
+  "revision": "0d1625d16df2d54cafb6bc5cb0650aec043f77d6",
+  "architecture": "GraniteSwitchForCausalLM",
+  "ggufArchitecture": "graniteswitch",
+  "configuredLayers": 42,
+  "weightLayers": 40,
+  "embeddingSize": 4096,
+  "artifacts": [
+    {
+      "filename": "model-00001-of-00004.safetensors",
+      "bytes": 4901258376,
+      "sha256": "c42900f289feb5d6d8428cecb272600ad43adc614440e9edbbf1853788baef72"
+    },
+    {
+      "filename": "model-00002-of-00004.safetensors",
+      "bytes": 4796544416,
+      "sha256": "d7b70402372894a5361d28982d9a8779b1e41c3b93c7212ababe31c653c5092a"
+    },
+    {
+      "filename": "model-00003-of-00004.safetensors",
+      "bytes": 4985682168,
+      "sha256": "1c2e2d47b1c0b45285b2b1e0c17977b190b7fb2e92b517a6deb7340a8e87c201"
+    },
+    {
+      "filename": "model-00004-of-00004.safetensors",
+      "bytes": 2870747792,
+      "sha256": "621c6b48f38e8e0ad5b15165a02dddd2e061e952065f989efc0e973261c1c1c9"
+    }
+  ],
+  "metadata": [
+    {
+      "filename": "config.json",
+      "bytes": 3174,
+      "sha256": "2009c0ae9800681e540498677734d65364ffcd53d92caaf6521f339994b869b0"
+    },
+    {
+      "filename": "model.safetensors.index.json",
+      "bytes": 75149,
+      "sha256": "57609d2f219f9e062a639445980accad4b48129c0d2ed5f3352d30ca0629ad3f"
+    },
+    {
+      "filename": "tokenizer_config.json",
+      "bytes": 486,
+      "sha256": "974e2811696981fa4ce6d4607fe7d77639c1156782efe3c69929419b01824dcb"
+    },
+    {
+      "filename": "tokenizer.json",
+      "bytes": 7154371,
+      "sha256": "9f7b0026a099a983d2ed25fa255d0a6c387fd8fe4708855069f7ffb93d1b63db"
+    },
+    {
+      "filename": "special_tokens_map.json",
+      "bytes": 579,
+      "sha256": "c08676c49fd7969a3130f72be6d4bf34da66aa484a6e21dffe359893a1bd5f2e"
+    },
+    {
+      "filename": "chat_template.jinja",
+      "bytes": 10594,
+      "sha256": "b6c13a0fa8fbcec4db4f51326614088780203c2e4ca7a46ffa02953c2b49a595"
+    }
+  ],
+  "downloadBytes": 17554232752,
+  "releasedGGUFVerified": false,
+  "inferenceVerified": false
+}

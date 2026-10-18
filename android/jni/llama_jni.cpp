@@ -9,10 +9,13 @@
 // Android Studio. Treated as the on-device cliff, exactly like the iOS xcframework path.
 
 #include <jni.h>
+#include "jni_utf8.h"
 #include <android/log.h>
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
+#include <chrono>
 #include <algorithm>
 #include "llama.h"
 #include "ggml-backend.h"     // ggml_backend_load_all_from_path — runtime CPU-variant pick (DOTPROD/I8MM)
@@ -20,6 +23,7 @@
 #include "gguf.h"
 #include "llama_generate.h"   // the shared KV-reuse loop (also run on-device by the smoke test)
 #include "muse_chat.h"
+#include "beam_chat.h"
 #include <cstdio>
 #include <cstring>
 
@@ -84,6 +88,36 @@ void android_llama_log(ggml_log_level level, const char* text, void* /*user*/) {
     __android_log_print(prio, LOG_TAG, "%s", text);
 }
 
+// Shared by load/decode callbacks. No thread-local JNIEnv crosses a native worker boundary.
+struct SpecialistControl {
+    JavaVM* vm = nullptr;
+    jobject owner = nullptr;
+    jfieldID cancel = nullptr;
+    const std::chrono::steady_clock::time_point deadline;
+    SpecialistControl(JNIEnv* env, jobject thiz, int seconds) : deadline(std::chrono::steady_clock::now() + std::chrono::seconds(seconds)) {
+        env->GetJavaVM(&vm); owner = env->NewGlobalRef(thiz);
+        jclass cls = env->GetObjectClass(thiz); cancel = env->GetFieldID(cls, "cancelRequested", "Z"); env->DeleteLocalRef(cls);
+    }
+    bool cancelled() const {
+        if (std::chrono::steady_clock::now() >= deadline || !vm || !owner || !cancel) return true;
+        JNIEnv* env = nullptr;
+        const jint state = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+        const bool attach = state == JNI_EDETACHED;
+        if (attach && vm->AttachCurrentThread(&env, nullptr) != JNI_OK) return true;
+        if (!env) return true;
+        const bool stopped = env->GetBooleanField(owner, cancel) == JNI_TRUE;
+        if (attach) vm->DetachCurrentThread();
+        return stopped;
+    }
+    ~SpecialistControl() {
+        if (!vm || !owner) return;
+        JNIEnv* env = nullptr; const bool attach = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_EDETACHED;
+        if (attach && vm->AttachCurrentThread(&env, nullptr) != JNI_OK) return;
+        if (env) env->DeleteGlobalRef(owner);
+        if (attach) vm->DetachCurrentThread();
+    }
+};
+
 // Everything one loaded model needs. The opaque jlong handle is a pointer to this.
 struct LlamaHandle {
     llama_model*   model   = nullptr;
@@ -101,6 +135,8 @@ struct LlamaHandle {
     // Set true by the last generate() when it stopped at maxTokens (not EOG/cancel). Chat "Continue".
     bool hitTokenCap = false;
     bool muse = false;
+    bool beam = false;
+    std::unique_ptr<SpecialistControl> specialist;
 };
 
 // Pin decode workers to the N fastest cores (by cpuinfo_max_freq) so the scheduler can't park a
@@ -170,25 +206,8 @@ std::vector<llama_token> tokenize(const llama_vocab* vocab, const std::string& t
     return tokens;
 }
 
-// Build a jstring from raw UTF-8 bytes via the byte[] + Charset constructor, NOT NewStringUTF.
-// NewStringUTF expects JNI's "modified UTF-8" (rejects embedded NUL, encodes chars > U+FFFF as a
-// 6-byte surrogate pair form) — llama_token_to_piece emits STANDARD UTF-8, so any piece containing
-// a 4-byte sequence (emoji, several CJK extension blocks) is not valid modified UTF-8 and NewStringUTF
-// can mangle or reject it (audit M2). "UTF-8" the charset-name literal is pure ASCII, so NewStringUTF
-// is safe for THAT one string. Returns nullptr on OOM (caller checks, matching throw_oom's contract).
-jstring make_jstring(JNIEnv* env, const std::string& s) {
-    jbyteArray bytes = env->NewByteArray((jsize) s.size());
-    if (!bytes) return nullptr;
-    env->SetByteArrayRegion(bytes, 0, (jsize) s.size(), reinterpret_cast<const jbyte*>(s.data()));
-    jclass stringCls = env->FindClass("java/lang/String");
-    jmethodID ctor = env->GetMethodID(stringCls, "<init>", "([BLjava/lang/String;)V");
-    jstring charset = env->NewStringUTF("UTF-8");
-    jstring result = (jstring) env->NewObject(stringCls, ctor, bytes, charset);
-    env->DeleteLocalRef(bytes);
-    env->DeleteLocalRef(stringCls);
-    env->DeleteLocalRef(charset);
-    return result;   // null here means NewObject threw (e.g. OOM) — a pending exception propagates
-}
+// Strict standard UTF-8 output, including supplementary Unicode characters.
+jstring make_jstring(JNIEnv* env, const std::string& s) { return quenderin::jni::java_string(env, s); }
 
 // Run generation with the handle's sampler (top-p + temperature, built in nativeLoad). If
 // `env`/`sink` are non-null, push each piece to sink.onToken(). `failed` is set true only on a
@@ -213,9 +232,13 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
     h->hitTokenCap = false;
 
     // The Muse adapter already writes its explicit begin_of_text token.
-    std::vector<llama_token> newTokens = tokenize(vocab, prompt, !h->muse);
+    std::vector<llama_token> newTokens = tokenize(vocab, prompt, !h->muse && !h->beam && !h->specialist);
     LOGI("generate: prompt_bytes=%zu tokens=%zu max_tokens=%d cached=%zu", prompt.size(), newTokens.size(), max_tokens, h->cached.size());
     if (newTokens.empty()) return std::string();
+    if (h->specialist && (max_tokens != 512 || newTokens.size() + 512 > llama_n_ctx(h->ctx))) { failed = true; return {}; }
+    const int beam_limit = (int)llama_n_ctx(h->ctx) - std::max(256, std::min(max_tokens, (int)llama_n_ctx(h->ctx) / 4));
+    if (h->beam && ((int)newTokens.size() > beam_limit)) { failed = true; return {}; }
+
 
     jmethodID on_token = nullptr;
     if (env && sink) {
@@ -257,7 +280,7 @@ std::string generate(LlamaHandle* h, const std::string& prompt, int max_tokens,
         return !env->ExceptionCheck();
     };
     auto cancelled = [&]() -> bool {
-        return cancel_fid && env->GetBooleanField(thiz, cancel_fid);   // interrupted by a switch/cancel (M3)
+        return (h->specialist && h->specialist->cancelled()) || (cancel_fid && env->GetBooleanField(thiz, cancel_fid));   // interrupted by a switch/cancel (M3)
     };
 
     // Only call llama_set_n_threads when the recommendation actually CHANGES (like iOS's governor,
@@ -291,6 +314,7 @@ LlamaHandle* as_handle(jlong h) { return reinterpret_cast<LlamaHandle*>(h); }
 // Throw a Java OutOfMemoryError (returns nullptr) so a marshaling failure surfaces as an error
 // the UI can show, instead of a silent empty reply (audit L3).
 jstring throw_oom(JNIEnv* env, const char* msg) {
+    if (env->ExceptionCheck()) return nullptr;
     jclass cls = env->FindClass("java/lang/OutOfMemoryError");
     if (cls) env->ThrowNew(cls, msg);
     return nullptr;
@@ -300,6 +324,7 @@ jstring throw_oom(JNIEnv* env, const char* msg) {
 // side (and the UI above it) sees a real error instead of an empty string indistinguishable from a
 // legitimate empty reply (audit H2).
 jstring throw_generation_failed(JNIEnv* env, const char* msg) {
+    if (env->ExceptionCheck()) return nullptr;
     jclass cls = env->FindClass("java/lang/IllegalStateException");
     if (cls) env->ThrowNew(cls, msg);
     return nullptr;
@@ -339,6 +364,11 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
         && std::strcmp(architecture, "muse-spark") == 0) {
         templated = true;
         return quenderin::museChatPrompt(msgs);
+    }
+
+    if (std::strcmp(architecture, "beam") == 0) {
+        templated = true;
+        return quenderin::beamChatPrompt(msgs);
     }
 
     const char* tmpl = llama_model_chat_template(model, nullptr);
@@ -391,6 +421,24 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsBeam(JNIEnv*, jclass) {
+#if defined(QUENDERIN_BEAM_LLAMA) && QUENDERIN_BEAM_LLAMA
+    return quenderin_beam_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsWeeklyText(JNIEnv*, jclass) {
+#if defined(QUENDERIN_WEEKLY_TEXT_LLAMA) && QUENDERIN_WEEKLY_TEXT_LLAMA
+    return quenderin_weekly_text_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeSupportsMuse(JNIEnv* /*env*/, jclass /*clazz*/) {
 #if defined(QUENDERIN_MUSE_LLAMA) && QUENDERIN_MUSE_LLAMA
     return quenderin_muse_spark_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
@@ -418,22 +466,23 @@ Java_ai_quenderin_core_LlamaEngine_nativeSupportsBonsai(JNIEnv* /*env*/, jclass 
 }
 
 JNIEXPORT jlong JNICALL
-Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
+Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject thiz,
                                               jstring model_path, jint context_tokens, jint threads,
                                               jint kv_cache_quant, jfloat temperature, jfloat top_p,
                                               jint gpu_layers, jstring native_lib_dir,
-                                              jboolean verified_muse) {
+                                              jboolean verified_muse, jboolean verified_beam, jboolean verified_hy, jboolean verified_granite) {
     // The app's nativeLibraryDir, where Gradle unpacked the ggml CPU-variant backends
     // (libggml-cpu-android_armv*.so). Loaded once; ggml scores them against the live CPU and
     // registers the best (e.g. armv8.6 DOTPROD+I8MM on an S23) — the fast matmul kernels a single
     // generic arm64 build never used. Empty string → statically-linked default (old builds, tests).
     std::string libDir;
     if (native_lib_dir) {
-        if (const char* d = env->GetStringUTFChars(native_lib_dir, nullptr)) {
+        if (const char* d = quenderin::jni::get_chars(env, native_lib_dir, 16384)) {
             libDir = d;
-            env->ReleaseStringUTFChars(native_lib_dir, d);
+            quenderin::jni::release_chars(d);
         }
     }
+    if (env->ExceptionCheck()) return 0;
     std::call_once(g_backend_once, [&libDir] {
         llama_log_set(android_llama_log, nullptr);   // llama.cpp logs → logcat, before anything loads
         if (!libDir.empty()) {
@@ -450,7 +499,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
         resolve_cpu_threadpool_api();
     });
 
-    const char* path = env->GetStringUTFChars(model_path, nullptr);
+    const char* path = quenderin::jni::get_chars(env, model_path, 16384);
     if (!path) return 0;   // OOM (H4)
     // Inspect metadata before allocating tensors. A renamed metadata-only shard
     // must not bypass Kotlin's manifest, capability, or memory checks.
@@ -458,25 +507,58 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     metadata_params.no_alloc = true;
     gguf_context* metadata = gguf_init_from_file(path, metadata_params);
     if (!metadata) {
-        env->ReleaseStringUTFChars(model_path, path);
+        quenderin::jni::release_chars(path);
         return 0;
     }
     const int64_t architecture_key = gguf_find_key(metadata, "general.architecture");
     const bool is_muse = architecture_key >= 0
         && gguf_get_kv_type(metadata, architecture_key) == GGUF_TYPE_STRING
         && std::strcmp(gguf_get_val_str(metadata, architecture_key), "muse-spark") == 0;
+    const bool is_beam = architecture_key >= 0
+        && gguf_get_kv_type(metadata, architecture_key) == GGUF_TYPE_STRING
+        && std::strcmp(gguf_get_val_str(metadata, architecture_key), "beam") == 0;
+    const bool is_hy = architecture_key >= 0
+        && gguf_get_kv_type(metadata, architecture_key) == GGUF_TYPE_STRING
+        && std::strcmp(gguf_get_val_str(metadata, architecture_key), "hy_v3") == 0;
+    const bool is_granite = architecture_key >= 0 && gguf_get_kv_type(metadata, architecture_key) == GGUF_TYPE_STRING
+        && std::strcmp(gguf_get_val_str(metadata, architecture_key), "graniteswitch") == 0;
+    const int64_t granite_layers = gguf_find_key(metadata, "graniteswitch.block_count");
+    const int64_t granite_embedding = gguf_find_key(metadata, "graniteswitch.embedding_length");
+    const bool granite_shape = granite_layers >= 0 && granite_embedding >= 0
+        && gguf_get_kv_type(metadata, granite_layers) == GGUF_TYPE_UINT32 && gguf_get_val_u32(metadata, granite_layers) == 40
+        && gguf_get_kv_type(metadata, granite_embedding) == GGUF_TYPE_UINT32 && gguf_get_val_u32(metadata, granite_embedding) == 4096;
+    bool beam_capable = false;
+#if defined(QUENDERIN_BEAM_LLAMA) && QUENDERIN_BEAM_LLAMA
+    beam_capable = quenderin_beam_runtime_abi() == 1;
+#endif
+    bool granite_capable = false;
+#if defined(QUENDERIN_PRISM_LLAMA) && QUENDERIN_PRISM_LLAMA && defined(QUENDERIN_WEEKLY_TEXT_LLAMA) && QUENDERIN_WEEKLY_TEXT_LLAMA
+    granite_capable = quenderin_weekly_text_runtime_abi() == 1;
+#endif
     const bool split_model = gguf_find_key(metadata, "split.count") >= 0;
     gguf_free(metadata);
-    if (is_muse != (verified_muse == JNI_TRUE) || (split_model && verified_muse != JNI_TRUE)) {
+    if ((is_granite != (verified_granite == JNI_TRUE)) || (is_granite && (!granite_capable || !granite_shape || split_model || gpu_layers != 0 || context_tokens != 4096 || threads < 1 || threads > 8))
+        || (is_hy != (verified_hy == JNI_TRUE)) || (is_hy && (split_model || gpu_layers != 0 || context_tokens != 4096 || threads < 1 || threads > 8 || temperature != 0))
+        || (is_beam && !beam_capable) || is_muse != (verified_muse == JNI_TRUE) || is_beam != (verified_beam == JNI_TRUE)
+        || (split_model && verified_muse != JNI_TRUE && verified_beam != JNI_TRUE)) {
         LOGE("model requires a verified Muse manifest before loading");
-        env->ReleaseStringUTFChars(model_path, path);
+        quenderin::jni::release_chars(path);
         jclass error = env->FindClass("java/lang/IllegalStateException");
         if (error) env->ThrowNew(error, "Split models require the verified Muse catalog entry and full artifact set.");
         return 0;
     }
     LOGI("nativeLoad: path=%s n_ctx=%d threads=%d gpu_layers=%d kv_quant=%d", path, context_tokens, threads, gpu_layers, kv_cache_quant);
 
+    std::unique_ptr<SpecialistControl> specialist;
+    if (is_hy || is_granite) {
+        specialist = std::make_unique<SpecialistControl>(env, thiz, is_granite ? 300 : 60);
+        if (env->ExceptionCheck() || specialist->cancelled()) { quenderin::jni::release_chars(path); return 0; }
+    }
     llama_model_params mp = llama_model_default_params();
+    if (specialist) {
+        mp.progress_callback = [](float, void* data) { return !static_cast<SpecialistControl*>(data)->cancelled(); };
+        mp.progress_callback_user_data = specialist.get();
+    }
     // GPU layers come from the Kotlin GpuOffloadPlanner (Adreno → all layers, else 0/CPU). A CPU-only
     // build (no Vulkan backend) clamps to 0 via the planner; even if it didn't, llama.cpp treats a
     // positive n_gpu_layers with no GPU backend as a no-op, so this can't fail a CPU build.
@@ -495,10 +577,15 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     mp.use_mlock = false;
 #endif
     llama_model* model = llama_model_load_from_file(path, mp);
-    env->ReleaseStringUTFChars(model_path, path);
+    quenderin::jni::release_chars(path);
     if (!model) { LOGE("model load failed"); return 0; }
 
+    if (specialist && specialist->cancelled()) { llama_model_free(model); return 0; }
     llama_context_params cp = llama_context_default_params();
+    if (specialist) {
+        cp.abort_callback = [](void* data) { return static_cast<SpecialistControl*>(data)->cancelled(); };
+        cp.abort_callback_data = specialist.get();
+    }
     cp.n_ctx     = context_tokens > 0 ? (uint32_t) context_tokens : 4096;
     cp.n_threads = threads > 0 ? threads : 0; // 0 → llama.cpp picks
     cp.n_threads_batch = cp.n_threads;         // prefill (prompt processing) used the default otherwise —
@@ -564,7 +651,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     // Warm the context ONCE here, off the user's critical path (load runs at launch / model switch),
     // so the first message doesn't pay weight page-in + kernel init inside its time-to-first-token.
     // Uses the pinned threadpool above, so the pages land on the cores that will decode.
-    {
+    if (!specialist) {
         const auto w0 = std::chrono::steady_clock::now();
         const int wrc = quenderin::warmupContext(ctx, llama_model_get_vocab(model));
         LOGI("nativeLoad: warmup rc=%d in %.0f ms", wrc,
@@ -574,6 +661,8 @@ Java_ai_quenderin_core_LlamaEngine_nativeLoad(JNIEnv* env, jobject /*thiz*/,
     auto* h = new LlamaHandle{};
     h->model = model;
     h->muse = is_muse;
+    h->beam = is_beam;
+    h->specialist = std::move(specialist);
     h->ctx = ctx;
     h->sampler = sampler;
     h->threadpool = tp;
@@ -587,15 +676,32 @@ Java_ai_quenderin_core_LlamaEngine_nativeComplete(JNIEnv* env, jobject thiz,
                                                   jlong handle, jstring prompt, jint max_tokens) {
     LlamaHandle* h = as_handle(handle);
     if (!h) { LOGE("nativeComplete: null handle (no model loaded)"); return make_jstring(env, ""); }
-    const char* p = env->GetStringUTFChars(prompt, nullptr);
-    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
+    if (h->beam || h->specialist) return throw_generation_failed(env, "Beam requires structured text chat; raw/grammar requests are unavailable.");
+    const char* p = quenderin::jni::get_chars(env, prompt);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");   // OOM (H4/L3)
     bool failed = false;
     std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed);
-    env->ReleaseStringUTFChars(prompt, p);
+    quenderin::jni::release_chars(p);
+    if (env->ExceptionCheck()) return nullptr; // Preserve a throwing TokenSink/cancellation exception.
     // A genuine decode failure (audit H1/H2) — throw instead of returning an empty string that's
     // indistinguishable from a legitimate empty reply.
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);   // audit M2: real UTF-8, not modified-UTF-8
+}
+
+JNIEXPORT jstring JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeCompleteHyMemoryStreaming(JNIEnv* env, jobject thiz,
+                                                                  jlong handle, jstring prompt, jobject sink) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->specialist) return throw_generation_failed(env, "No verified specialist context.");
+    const char* p = quenderin::jni::get_chars(env, prompt);
+    if (!p) return throw_oom(env, "Unable to read specialist prompt.");
+    bool failed = false;
+    const std::string out = generate(h, p, 512, env, sink, thiz, failed);
+    quenderin::jni::release_chars(p);
+    if (env->ExceptionCheck()) return nullptr; // Only cleanup/ExceptionCheck are legal with a pending callback exception.
+    if (failed || h->specialist->cancelled()) return throw_generation_failed(env, "Specialist failed, cancelled, timed out or exceeded its context.");
+    return make_jstring(env, out);
 }
 
 // GRAMMAR-CONSTRAINED completion (the agent decision decode): build a PER-CALL sampler whose first
@@ -611,9 +717,11 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
                                                              jint repeat_last_n) {
     LlamaHandle* h = as_handle(handle);
     if (!h) { LOGE("nativeCompleteWithGrammar: null handle (no model loaded)"); return make_jstring(env, ""); }
-    const char* p = env->GetStringUTFChars(prompt, nullptr);
-    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
-    const char* g = grammar ? env->GetStringUTFChars(grammar, nullptr) : nullptr;
+    if (h->beam || h->specialist) return throw_generation_failed(env, "Beam requires structured text chat; raw/grammar requests are unavailable.");
+    const char* p = quenderin::jni::get_chars(env, prompt);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");   // OOM (H4/L3)
+    const char* g = grammar ? quenderin::jni::get_chars(env, grammar) : nullptr;
+    if (grammar && !g) { quenderin::jni::release_chars(p); return nullptr; }
 
     const llama_vocab* vocab = llama_model_get_vocab(h->model);
     llama_sampler* smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
@@ -630,8 +738,9 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteWithGrammar(JNIEnv* env, jobjec
     bool failed = false;
     std::string out = generate(h, std::string(p), max_tokens, env, nullptr, thiz, failed, smpl);
     llama_sampler_free(smpl);                          // per-call: freed here, never touches h->sampler
-    env->ReleaseStringUTFChars(prompt, p);
-    if (g) env->ReleaseStringUTFChars(grammar, g);
+    quenderin::jni::release_chars(p);
+    if (g) quenderin::jni::release_chars(g);
+    if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
 }
@@ -642,11 +751,13 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteStreaming(JNIEnv* env, jobject 
                                                            jobject sink) {
     LlamaHandle* h = as_handle(handle);
     if (!h) return make_jstring(env, "");
-    const char* p = env->GetStringUTFChars(prompt, nullptr);
-    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");   // OOM (H4/L3)
+    if (h->beam || h->specialist) return throw_generation_failed(env, "Beam requires structured text chat; raw/grammar requests are unavailable.");
+    const char* p = quenderin::jni::get_chars(env, prompt);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");   // OOM (H4/L3)
     bool failed = false;
     std::string out = generate(h, std::string(p), max_tokens, env, sink, thiz, failed);
-    env->ReleaseStringUTFChars(prompt, p);
+    quenderin::jni::release_chars(p);
+    if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
 }
@@ -662,10 +773,11 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobj
                                                                jobject sink) {
     LlamaHandle* h = as_handle(handle);
     if (!h) { LOGE("nativeCompleteChat: null handle (no model loaded)"); return make_jstring(env, ""); }
-    const char* p = env->GetStringUTFChars(payload, nullptr);
-    if (!p) return throw_oom(env, "GetStringUTFChars failed (out of memory)");
+    if (h->specialist) return throw_generation_failed(env, "Hy-Memory requires its specialist workflow.");
+    const char* p = quenderin::jni::get_chars(env, payload);
+    if (!p) return throw_oom(env, "Unable to read native UTF-8 string");
     std::string payloadStr(p);
-    env->ReleaseStringUTFChars(payload, p);
+    quenderin::jni::release_chars(p);
 
     bool templated = false;
     std::string prompt = buildChatPrompt(h->model, payloadStr, templated, disable_thinking == JNI_TRUE);
@@ -674,6 +786,7 @@ Java_ai_quenderin_core_LlamaEngine_nativeCompleteChatStreaming(JNIEnv* env, jobj
 
     bool failed = false;
     std::string out = generate(h, prompt, max_tokens, env, sink, thiz, failed);
+    if (env->ExceptionCheck()) return nullptr;
     if (failed) return throw_generation_failed(env, "llama_decode failed (context/model error)");
     return make_jstring(env, out);
 }
@@ -699,6 +812,15 @@ JNIEXPORT jint JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoadedNCtx(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
     LlamaHandle* h = as_handle(handle);
     return h ? (jint) h->nCtx : 0;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeIsJais(JNIEnv*, jobject, jlong handle) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->model) return JNI_FALSE;
+    char architecture[256] = {};
+    const int count = llama_model_meta_val_str(h->model, "general.architecture", architecture, sizeof(architecture));
+    return count > 0 && count < (int)sizeof(architecture) && std::strcmp(architecture, "k2-horizon") == 0 ? JNI_TRUE : JNI_FALSE;
 }
 
 // Did the most recent generate() stop because it hit maxTokens? ChatModel reads this for "Continue".

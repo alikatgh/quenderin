@@ -7,6 +7,8 @@ import { Sidebar } from './components/Sidebar.js';
 import { ChatArea } from './components/ChatArea.js';
 import { GeneralChatArea } from './components/GeneralChatArea.js';
 import { TasksArea } from './components/TasksArea.js';
+import { ImageGenerationArea } from './components/ImageGenerationArea.js';
+import { VisionArea } from './components/VisionArea.js';
 import { TroubleshooterGuide } from './components/TroubleshooterGuide.js';
 import { useTheme } from './context/ThemeContext.js';
 import { PrivacyLock } from './components/PrivacyLock.js';
@@ -27,7 +29,7 @@ function LazyFallback() {
   return <div className="flex items-center justify-center h-full text-zinc-400 dark:text-zinc-500 text-sm">Loading...</div>;
 }
 
-function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void, downloadProgress: number }) {
+function WelcomeWizard({ onDismiss, onImages, onVision, downloadProgress }: { onDismiss: () => void, onImages: () => void, onVision: () => void, downloadProgress: number }) {
   const [step, setStep] = useState(1);
   // r11 backlog #5: full modal focus management — into the dialog on open, Tab wrapped inside,
   // restored to the opener on close (initial-focus alone left Tab escaping behind the backdrop).
@@ -112,6 +114,8 @@ function WelcomeWizard({ onDismiss, downloadProgress }: { onDismiss: () => void,
               <button onClick={() => setStep(2)} className="w-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 group">
                 Next: Setup AI Knowledge <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
+              <button type="button" onClick={onImages} className="mt-3 w-full rounded-lg py-2 text-[13px] font-medium text-purple-600 dark:text-purple-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500">Use images first</button>
+              <button type="button" onClick={onVision} className="mt-1 w-full rounded-lg py-2 text-[13px] font-medium text-purple-600 dark:text-purple-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500">Ask about an image</button>
             </div>
           )}
 
@@ -239,7 +243,7 @@ function AppContent() {
     try { localStorage.setItem('quenderin_sidebar_open', String(open)); } catch { /* best-effort */ }
   };
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings' | 'tasks'>('general_chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'docs' | 'general_chat' | 'metrics' | 'settings' | 'tasks' | 'images' | 'vision'>('general_chat');
   const [activeModel, setActiveModel] = useState<string>('Loading Model...');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -495,8 +499,8 @@ function AppContent() {
           <button onClick={() => setTokenBannerDismissed(true)} className="ml-1 rounded px-2 py-0.5 text-amber-950/70 hover:bg-amber-950/10 transition-colors" aria-label="Dismiss">✕</button>
         </div>
       )}
-      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} downloadProgress={downloadProgress} />}
-      {requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
+      {showOnboarding && <WelcomeWizard onDismiss={dismissOnboarding} onImages={() => { setShowOnboarding(false); setCurrentView('images'); }} onVision={() => { setShowOnboarding(false); setCurrentView('vision'); }} downloadProgress={downloadProgress} />}
+      {!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter) &&
         <TroubleshooterGuide
           action={requiredAction}
           onResolved={() => {
@@ -556,7 +560,7 @@ function AppContent() {
         </div>
       )}
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
@@ -649,7 +653,13 @@ function AppContent() {
             </button>
           </header>
 
-          {currentView === 'docs' ? (
+          <div className={currentView === 'images' ? 'flex flex-1 min-h-0' : 'hidden'}>
+            <ErrorBoundary fallbackLabel="Images"><ImageGenerationArea active={currentView === 'images'} /></ErrorBoundary>
+          </div>
+          <div className={currentView === 'vision' ? 'flex flex-1 min-h-0' : 'hidden'}>
+            <ErrorBoundary fallbackLabel="Vision"><VisionArea active={currentView === 'vision'} /></ErrorBoundary>
+          </div>
+          {['images', 'vision'].includes(currentView) ? null : currentView === 'docs' ? (
             <ErrorBoundary fallbackLabel="Docs">
             <Suspense fallback={<LazyFallback />}>
               <Docs onBack={() => setCurrentView('general_chat')} />

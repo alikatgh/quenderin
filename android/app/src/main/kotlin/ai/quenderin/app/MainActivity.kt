@@ -8,6 +8,7 @@ import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileConversationPersistence
 import ai.quenderin.core.GpuOffloadPlanner
 import ai.quenderin.core.InferenceEngine
+import ai.quenderin.core.CoordinatedInferenceEngine
 import ai.quenderin.core.LlamaEngine
 import ai.quenderin.core.MockInferenceEngine
 import ai.quenderin.core.MockModelDownloader
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
         //   adb shell am start -n ai.quenderin.app/.MainActivity --ez quenderin.mock_ui true
         val mockUi = BuildConfig.DEBUG && intent?.getBooleanExtra("quenderin.mock_ui", false) == true
 
-        val engine: InferenceEngine =
+        val engine: InferenceEngine = CoordinatedInferenceEngine(
             if (mockUi) {
                 MockInferenceEngine()
             } else if (LlamaEngine.NATIVE_AVAILABLE) {
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity() {
                 }
             } else {
                 MockInferenceEngine()
-            }
+            })
         // Real, resumable downloader that survives app death (WorkManager + the pure-core
         // ModelDownloadEngine). MockModelDownloader stays available for previews/tests.
         val downloader: ModelDownloader =

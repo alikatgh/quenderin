@@ -47,6 +47,26 @@ class CatalogParityTests(unittest.TestCase):
             ):
                 self.assertFalse(parity.check_bonsai_artifacts({"bonsai2-2b": self.entry._replace(**change)}))
 
+    def test_experimental_text_artifacts_reject_partial_files_and_mutable_revisions(self):
+        canonical = parity.load_canonical()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(parity.check_experimental_text_artifacts(canonical))
+            for mid in parity.EXPERIMENTAL_TEXT_ARTIFACTS:
+                entry = canonical[mid]
+                for change in (
+                    {"download_bytes": None}, {"download_bytes": 1},
+                    {"filename": "mmproj-Q4_K_M.gguf"}, {"ram_gb": 0.1},
+                    {"url": entry.url.replace(entry.url.split("/resolve/")[1].split("/")[0], "main")},
+                    {"url": entry.url.replace(entry.url.split("/resolve/")[1].split("/")[0], "f" * 40)},
+                ):
+                    with self.subTest(model=mid, change=change):
+                        tampered = {**canonical, mid: entry._replace(**change)}
+                        self.assertFalse(parity.check_experimental_text_artifacts(tampered))
+                        self.assertFalse(parity.compare("tampered platform", tampered, canonical))
+                with self.subTest(model=mid, missing=True):
+                    missing = {key: value for key, value in canonical.items() if key != mid}
+                    self.assertFalse(parity.check_experimental_text_artifacts(missing))
+
 
 if __name__ == "__main__":
     unittest.main()

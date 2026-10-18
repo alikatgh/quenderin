@@ -34,6 +34,8 @@ public final class OnboardingModel: ObservableObject {
     /// double-tap, or a Settings model-switch during a download) racing `phase` + `engine.load` and
     /// landing on the wrong model. The UI can also bind this to disable the install/switch control.
     @Published public private(set) var isInstalling = false
+    @Published public private(set) var isSpecialistActive = false
+    @Published public private(set) var specialistRestoreError: String?
 
     /// The in-flight install, kept so `cancelInstall()` can abort a multi-GB download the user
     /// regrets (wrong model, metered bandwidth, not enough disk).
@@ -97,6 +99,24 @@ public final class OnboardingModel: ObservableObject {
             ?? { UserDefaults.standard.set($0, forKey: Self.activeModelDefaultsKey) }
     }
 
+    /// Leaves phase/selected model untouched, including before first model setup.
+    public func suspendForSpecialist() async throws -> SpecialistInferenceLease {
+        guard !isInstalling, !isSpecialistActive else { throw SpecialistCoordinationError.busy }
+        isSpecialistActive = true; specialistRestoreError = nil
+        do {
+            let lease = try await engine.suspendForSpecialist()
+            return SpecialistInferenceLease {
+                do {
+                    try await lease.resume()
+                    await MainActor.run { self.isSpecialistActive = false }
+                } catch {
+                    await MainActor.run { self.isSpecialistActive = false; self.specialistRestoreError = error.localizedDescription }
+                    throw error
+                }
+            }
+        } catch { isSpecialistActive = false; throw error }
+    }
+
     /// Probe hardware and produce a recommendation. Idempotent.
     ///
     /// On iPhones (or when a profile is injected) this uses the jetsam-budget- and
@@ -158,7 +178,7 @@ public final class OnboardingModel: ObservableObject {
     /// Fire-and-track wrapper around [install]: runs it in a stored Task so `cancelInstall()` can
     /// abort it mid-download. The UI's entry point (onboarding buttons, Settings model switch).
     public func beginInstall(_ model: ModelEntry) {
-        guard !isInstalling else { return }
+        guard !isInstalling, !isSpecialistActive else { return }
         installTask = Task { await install(model) }
     }
 
@@ -180,7 +200,7 @@ public final class OnboardingModel: ObservableObject {
     /// Download (if needed) then load `model`, driving `phase` through the flow. On a model SWITCH
     /// whose new model fails to load, the previously-working model is restored (H1).
     public func install(_ model: ModelEntry) async {
-        guard !isInstalling else { return }   // serialize: a concurrent install would race phase + engine.load
+        guard !isInstalling, !isSpecialistActive else { return }   // serialize: a concurrent install would race phase + engine.load
         guard ModelRuntimeSupport.supports(model) else {
             phase = .failed(ModelRuntimeSupport.unavailableReason(for: model))
             return

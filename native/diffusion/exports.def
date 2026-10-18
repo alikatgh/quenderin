@@ -1,0 +1,9 @@
+LIBRARY quenderin_diffusion
+EXPORTS
+    quenderin_diffusion_abi
+    quenderin_diffusion_revision
+    quenderin_diffusion_create
+    quenderin_diffusion_destroy
+    quenderin_diffusion_validate
+    quenderin_diffusion_generate
+    quenderin_diffusion_cancel

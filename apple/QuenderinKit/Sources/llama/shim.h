@@ -2,3 +2,7 @@
 // found via the `-I$QUENDERIN_LLAMA_DIR/include` search path injected by
 // Package.swift (the header is NOT vendored here).
 #include <llama.h>
+
+#if __has_include(<quenderin_vision.h>)
+#include <quenderin_vision.h>
+#endif

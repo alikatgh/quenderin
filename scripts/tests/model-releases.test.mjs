@@ -145,4 +145,9 @@ test('RAM-only calculator never recommends an experimental custom runtime', () =
   };
   assert.equal(startingModel(catalog, 16).model.id, 'small');
   assert.equal(startingModel({ ...catalog, models: catalog.models.slice(0, 1) }, 32), null);
+  for (const id of ['muse-spark-open', 'jais3-7b', 'minicpm-v47-1b', 'lfm25-24b-a2b', 'nemotron35-bolt-74b-a9b']) {
+    const experimental = { id, quantization: 'Q4_K_M', ramGb: 2, paramsBillions: 3 };
+    assert.equal(startingModel({ ...catalog, models: [experimental] }, 128), null, id);
+    assert.equal(startingModel({ ...catalog, models: [experimental, catalog.models[1]] }, 128).model.id, 'small', id);
+  }
 });

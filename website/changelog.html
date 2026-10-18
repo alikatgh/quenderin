@@ -28,6 +28,18 @@
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
 
+  <h2 id="2026-10-18">18 October 2026 &middot; Open-model engineering candidate</h2>
+  <ul>
+    <li><strong>28 text-model choices.</strong> MiniCPM-V 4.7, LFM2.5, Jais 3 and Nemotron 3.5 Bolt join the experimental library. Beam and Muse have native and desktop chat adapters with complete multipart installation: all four Beam parts (133,885,310,500 bytes; 160 GiB memory floor) and all 22 Muse parts (304,080,474,208 bytes).</li>
+    <li><strong>Still-image questions.</strong> Dedicated native and desktop workflows install complete MiniCPM-V 4.7 1B/35B-A3B and Nemotron 3.5 Super VL 120B-A12B model/projector pairs, with 8/32/96 GiB available-memory floors. Video, audio and tools are unavailable.</li>
+    <li><strong>Explicit memory proposals.</strong> Hy-Memory uses a separate workflow, strict response validation and a private approved-memory store. Nothing is saved without the user selecting and approving it.</li>
+    <li><strong>Granite Switch 4.1 8B chat.</strong> Native and desktop adapters verify an imported GGUF and receipt from the offline official-checkpoint converter. Speech, decision and guardian modes are not enabled.</li>
+    <li><strong>Step 5 on an existing CUDA host.</strong> The pinned official backend launcher, gateway and native/desktop text clients require consent before sending prompts. They do not provision a server or run Step 5 on a phone.</li>
+    <li><strong>Isolated image generation.</strong> FLUX 3 Image Klein and MOSS Image Base/SFT use complete component verification, explicit install/import and a 24 GiB available-memory floor. Gated FLUX access and license decisions remain with the user.</li>
+    <li><strong>Resource and lifetime checks.</strong> Ordinary and specialist engines share exclusive admission. Cancellation and shutdown join native work before releasing resources. Nemotron Bolt E4B remains unavailable without a verified artifact.</li>
+  </ul>
+  <p>This is source engineering, not a new store release or a full-weight inference result. <a href="https://github.com/alikatgh/quenderin/actions/runs/39106905620" rel="noopener">All 18 integrated CI jobs passed</a>, including native builds, desktop package probes and Windows private-storage checks; the separate catalog URL check passed too. No weights were downloaded locally and no simulator or physical device was run. <a href="blog-open-models-october-2026">Read the complete update and its limits</a>.</p>
+
   <h2 id="2026-10-16">16 October 2026 &middot; Native model update in development</h2>
   <ul>
     <li><strong>Bonsai 2 2B, 4B, and 9B.</strong> Added experimental manual choices to the Android, iPhone, and Mac source catalogs, with pinned PTQ1_0 files of 0.43, 0.95, and 2.00 GB.</li>

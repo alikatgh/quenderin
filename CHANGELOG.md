@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased — October open-model integrations (2026-10-18)
+
+- Add nine pinned experimental text entries across all catalogs: MiniCPM-V 4.7
+  1B/35B-A3B, LFM2.5-24B-A2B, all five Jais 3 sizes and Nemotron 3.5 Bolt 74B-A9B.
+  Use complete model sizes, conservative memory floors, manual selection and
+  compiled runtime gates. MiniCPM vision/video remains unavailable.
+- Backport K2 Horizon, Arabic tokenization and per-layer Nemotron expert metadata
+  onto the pinned Prism/Muse engine. Add publisher-specific Jais/Nemotron prompts,
+  bounded final-answer filtering and generated-tensor graph/save-reload fixtures.
+- Preserve patch preimages and recover from partial filesystem failures without
+  replacing concurrent changes; failed recovery retains original backups.
+- Add a separately built, symbol-isolated stable-diffusion.cpp C ABI for FLUX 3
+  Image Klein and MOSS Image Base/SFT. Pin every component and the patched GGML
+  source. Add native and Electron image workspaces and desktop image models/verify/generate
+  commands, explicit installation/import, hashing, progress, cancellation and export.
+- Keep FLUX publisher access/license review with the user. MOSS installation is
+  explicit. The native image gate requires 24 GiB available memory; this is not
+  a measured inference-memory claim. Existing outputs and corrupt originals are
+  preserved. Bound native requests, output, subprocess duration and concurrency.
+- Add native/desktop package identity checks, private runtime exports, Android
+  dependency-closure/16 KiB checks and signed Apple image-framework verification.
+- Record remaining gaps for Super VL, Step 5, Beam, Granite Switch, Hy-Memory and
+  the announced E4B artifact. Do not list these as ready chat downloads.
+- No local model-weight downloads or simulator/device runs. Full inference,
+  native rendered UI, performance and new store distribution remain unverified.
+
 ## Unreleased — native 0.4.0: Bonsai 2 and Muse Spark Open (2026-10-16)
 
 - Added experimental Bonsai 2 2B, 4B, and 9B manual choices across Android,

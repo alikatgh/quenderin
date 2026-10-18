@@ -18,6 +18,7 @@ let _llamaBindings: {
     LlamaLogLevel: any;
     defineChatSessionFunction: any;
     InputLookupTokenPredictor: any;
+    weeklyWrappers: any;
 } | null = null;
 let _llamaImportError: Error | null = null;
 
@@ -31,6 +32,7 @@ try {
         LlamaLogLevel: mod.LlamaLogLevel,
         defineChatSessionFunction: mod.defineChatSessionFunction,
         InputLookupTokenPredictor: mod.InputLookupTokenPredictor,
+        weeklyWrappers: mod,
     };
 } catch (err) {
     _llamaImportError = err instanceof Error ? err : new Error(String(err));
@@ -62,6 +64,12 @@ import { planDownloadWrite, planDownloadSegments, downloadConnectionCount, parse
 import type { DownloadSegment } from "./modelDownloadPlan.js";
 import type { FileHandle } from "fs/promises";
 import logger from "../utils/logger.js";
+import { jaisChatWrapper } from './weeklyChatWrappers.js';
+import { PublisherChatSession } from './publisherChat.js';
+import { isBeamIdentity, isMuseIdentity } from './multipartModels.js';
+import { installMultipartModel, verifyMultipartModel } from './multipartInstaller.js';
+import { readGgufModelIdentity } from './ggufModelIdentity.js';
+import { nativeWorkloads } from './nativeWorkloads.js';
 import {
     getModelRuntimeCompatibility, isPrismRuntime, modelRuntimeError, requiresPrismRuntime,
     type ModelRuntimeCompatibility, type NodeLlamaRuntime, type RuntimeModelDescriptor,
@@ -91,6 +99,17 @@ function hasPrismTensorTypes(runtime: NodeLlamaRuntime & {
     } catch {
         return false;
     }
+}
+
+function runtimeCapabilities(runtime: any): NodeLlamaRuntime {
+    let weeklyTextABI = 0;
+    let beamABI = 0, museSparkABI = 0, contextAbortABI = 0;
+    try { contextAbortABI = runtime?._bindings?.getQuenderinContextAbortABI?.() === 1 ? 1 : 0; } catch { /* Missing or stale native capabilities remain unavailable. */ }
+    try { beamABI = contextAbortABI === 1 && runtime?._bindings?.getQuenderinBeamRuntimeABI?.() === 1 ? 1 : 0; } catch { /* Missing or stale native capabilities remain unavailable. */ }
+    try { museSparkABI = contextAbortABI === 1 && runtime?._bindings?.getQuenderinMuseSparkRuntimeABI?.() === 1 ? 1 : 0; } catch { /* Missing or stale native capabilities remain unavailable. */ }
+    try { weeklyTextABI = runtime?._bindings?.getQuenderinWeeklyTextRuntimeABI?.() === 1 ? 1 : 0; }
+    catch { /* Old or replaced addons cannot enable new architectures. */ }
+    return { buildType: runtime?.buildType, llamaCppRelease: runtime?.llamaCppRelease, weeklyTextABI, beamABI, museSparkABI };
 }
 
 /** Error carrying a structured `code` plus optional model hints for action_required events. */
@@ -166,6 +185,9 @@ function selectBestModel(memorySafetyEnabled: boolean, runtime?: NodeLlamaRuntim
     let smallestDownloaded: { entry: ModelEntry; path: string } | null = null;
 
     for (const entry of prioritized) {
+        // Experimental models are explicit choices. A missing selection must not
+        // silently switch a conversation to a newly downloaded model family.
+        if (requiresPrismRuntime(entry)) continue;
         // An unsupported model must never enter the low-memory fallback either.
         if (!getModelRuntimeCompatibility(entry, runtime).canLoad) continue;
         const filePath = modelPath(entry.id);
@@ -218,9 +240,17 @@ function selectPinnedOrBestModel(
 }
 
 export class LlmService extends EventEmitter implements ILlmProvider {
+    private unregisterWorkload: () => void;
+    private disposal: Promise<void> = Promise.resolve();
+    private parkedChatHistory: { modelId: string; presetId: string; history: any } | null = null;
     private modelInstance: LlamaModel | null = null;
     private contextInstance: LlamaContext | null = null;
     private initPromise: Promise<{ model: LlamaModel, context: LlamaContext }> | null = null;
+    private nativeLoadPending = false;
+    private shuttingDown = false;
+    private shutdownTask: Promise<void> | undefined;
+    private nativeAborts = new Set<AbortController>();
+    private nativeInitializations = new Set<Promise<unknown>>();
     private isDownloading: boolean = false;
     private generalChatSession: LlamaChatSession | null = null;
     /** The engine handle from getLlama() — retained ONLY so shutdown() can dispose the
@@ -325,8 +355,15 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // "No sequences left" — chat then fails permanently until a full model reload.
         // generateAction's cacheKey path passes false: it OWNS its sequence across calls (KV prefix
         // reuse) and frees it via releaseActionCache/unloadModel instead.
-        return new _llamaBindings.LlamaChatSession({ autoDisposeSequence: true, ...opts });
+        if (this.isPublisherSelected()) return new PublisherChatSession(isBeamIdentity(this.activeModelEntry ?? {}) ? 'beam' : 'muse',
+            opts.contextSequence, opts.systemPrompt ?? '', _llamaBindings.weeklyWrappers);
+        return new _llamaBindings.LlamaChatSession({ autoDisposeSequence: true, ...opts,
+            ...(this.isJaisSelected() ? { chatWrapper: jaisChatWrapper(_llamaBindings.weeklyWrappers) } : {}) });
     }
+
+    private isPublisherSelected(): boolean { return !!this.activeModelEntry && (isBeamIdentity(this.activeModelEntry) || isMuseIdentity(this.activeModelEntry)); }
+
+    private isJaisSelected(): boolean { return /^jais3-/i.test(this.loadedModelId ?? this.activeModelId); }
 
     /** Dispose the general chat session (freeing its KV-cache sequence slot) and clear it. */
     private disposeChatSession(): void {
@@ -336,11 +373,13 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     /** Start the conversation over without unloading the model (CLI `/clear`, UI "new chat"). */
     public resetChat(): void {
+        this.parkedChatHistory = null;
         this.disposeChatSession();
     }
 
     constructor() {
         super();
+        this.unregisterWorkload = nativeWorkloads.register(this);
         this.idleTimeoutMs = this.resolveIdleTimeoutMs();
         logger.log(`[Hardware] ${HW.tier} tier detected: ${HW.platform}/${HW.arch}, ${HW.cpuCores} cores, ${HW.totalRamGb.toFixed(1)}GB RAM, GPU=${HW.tryGpuOffload}, nativeAddons=${HW.nativeAddonsLikely}, timeoutX=${HW.timeoutMultiplier}`);
     }
@@ -418,6 +457,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     public setPreset(presetId: string): void {
         const preset = getPresetById(presetId);
         if (preset.id === this.activePreset.id) return;
+        this.parkedChatHistory = null;
         this.activePreset = preset;
         // Reset chat session to pick up the new system prompt
         this.disposeChatSession();
@@ -470,6 +510,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         await prev;
         try {
             const ac = new AbortController();
+            this.nativeAborts.add(ac);
+            if (this.shuttingDown) ac.abort();
             const timer = setTimeout(() => ac.abort(), timeoutMs);
             // Q-292: compose an optional external cancel (user "stop chat" / agent stop) with the timeout
             // — either aborts the same native decode. Classify the abort by CAUSE: an external cancel is
@@ -494,6 +536,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
                 throw err;
             } finally {
+                this.nativeAborts.delete(ac);
                 clearTimeout(timer);
                 if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
             }
@@ -539,6 +582,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
     /** Explicitly unload model to free RAM */
     public unloadModel(): void {
+        // A caller timeout is not a native join. Keep its reservation and references until the
+        // actual load settles; retrying must join that same work instead of allocating again.
+        if (this.nativeLoadPending) return;
         const wasLoaded = this.modelInstance !== null;
         // Dispose the native handles BEFORE dropping the references. node-llama-cpp models/contexts
         // hold native memory that GC won't promptly reclaim, so nulling alone left the model (~GBs)
@@ -554,8 +600,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // builds fresh ones; keeping stale handles would crash the first post-reload decode.
         this.releaseAllActionCaches();
         this.grammarCache.clear();
-        void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
-        void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
+        this.trackDisposal(context, model);
         this.initPromise = null;
         this.loadedModelId = null;
         this.activeModelEntry = null;
@@ -570,28 +615,73 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         if (wasLoaded) logger.log('[Lifecycle] Model unloaded');
     }
 
-    /** Fully tear down for a clean process EXIT: session → context → model → the llama
-     *  engine itself, all awaited. Without the final engine dispose, ggml-metal's atexit
-     *  destructor asserts (`rsets->data count == 0`, llama.cpp #17869) and a successful
-     *  CLI run exits 134 — fatal for pipe consumers checking the code. */
-    public async shutdown(): Promise<void> {
-        const model = this.modelInstance;
-        const context = this.contextInstance;
-        this.modelInstance = null;
-        this.contextInstance = null;
-        this.disposeChatSession();
-        this.releaseAllActionCaches();
-        this.grammarCache.clear();
-        try { await context?.dispose(); } catch { /* already disposed */ }
-        try { await model?.dispose(); } catch { /* already disposed */ }
-        try { await this.llamaEngine?.dispose(); } catch { /* already disposed */ }
-        this.llamaEngine = null;
-        if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
-        this.stopMemoryPressureMonitor();
+    private trackDisposal(context: any, model: any): void {
+        const work = (async () => {
+            try { await context?.dispose(); } finally { await model?.dispose(); }
+        })();
+        // Preserve a disposal failure: another model must not start against uncertain live allocations.
+        this.disposal = Promise.all([this.disposal, work]).then(() => {});
+        void this.disposal.catch(() => {});
+    }
+
+    /** Called only under the exclusive process lease, after every ordinary operation has joined. */
+    public async releaseForSpecialist(): Promise<void> {
+        if (this.generalChatSession?.getChatHistory) {
+            const encoded = JSON.stringify(this.generalChatSession.getChatHistory());
+            if (Buffer.byteLength(encoded) > 1024 * 1024) throw new Error('The current conversation cannot be suspended within its memory bound.');
+            this.parkedChatHistory = { modelId: this.loadedModelId ?? this.activeModelId, presetId: this.activePreset.id, history: JSON.parse(encoded) };
+        }
+        this.unloadModel();
+        await this.disposal;
+    }
+
+    public cancelNativeWork(): void {
+        this.shuttingDown = true;
+        this.chatAbort?.abort();
+        for (const controller of this.nativeAborts) controller.abort();
+    }
+
+    /** Instance cleanup never disposes the process-global addon backend. */
+    public shutdownNativeWork(): Promise<void> {
+        this.cancelNativeWork();
+        return this.shutdownTask ??= (async () => {
+            await nativeWorkloads.joinOwner(this);
+            if (this.nativeLoadPending) { try { await this.initPromise; } catch { /* load failure owns its partial handles */ } }
+            // A JS init timeout can leave the actual native backend initialization running.
+            while (this.nativeInitializations.size) await Promise.allSettled([...this.nativeInitializations]);
+            await this.inferenceMutex;
+            this.unloadModel();
+            await this.disposal;
+            this.unregisterWorkload();
+            this.llamaEngine = null;
+            if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+            this.stopMemoryPressureMonitor();
+        })();
+    }
+
+    /** Only production process exit may close global admission, join every owner, and free backends. */
+    public async shutdown(options: { processExit?: boolean } = {}): Promise<void> {
+        this.cancelNativeWork();
+        if (options.processExit) {
+            if (this.llamaEngine) nativeWorkloads.registerBackend(this.llamaEngine);
+            await nativeWorkloads.shutdown();
+        }
+        await this.shutdownNativeWork();
+    }
+
+    private trackBackendInitialization<T extends { dispose(): void | Promise<void> }>(promise: Promise<T>): Promise<T> {
+        const tracked = promise.then(backend => { nativeWorkloads.registerBackend(backend); return backend; });
+        this.nativeInitializations.add(tracked);
+        void tracked.then(() => { this.nativeInitializations.delete(tracked); }, () => { this.nativeInitializations.delete(tracked); });
+        return tracked;
     }
 
     /** Switch to a specific model by ID. Unloads current model if different. */
     public async switchModel(modelId: string): Promise<void> {
+        const release = nativeWorkloads.beginOrdinary(this);
+        try { return await this.switchModelWithLease(modelId); } finally { release(); }
+    }
+    private async switchModelWithLease(modelId: string): Promise<void> {
         const entry = MODEL_CATALOG.find((m) => m.id === modelId);
         if (!entry) {
             throw new Error(`Unknown model id: ${modelId}`);
@@ -603,7 +693,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             (err as NodeJS.ErrnoException).code = 'MODEL_MISSING';
             throw err;
         }
-        if (this.isInferenceBusy()) {
+        if (this.isInferenceBusy() || this.nativeLoadPending) {
             // Q-283: THROW, don't silently return — a bare return let the switch route report
             // "Model switched." while nothing changed. The REST caller (the one switch path since
             // the WS twin was removed) already catches switchModel throws, so this reports failure.
@@ -617,6 +707,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             logger.log(`[Lifecycle] Model ${modelId} already loaded, skipping`);
             return;
         }
+        await this.assertModelFileIdentity(entry, filePath,
+            requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined);
         this.unloadModel();
         this.activeModelId = modelId;
         // Pre-warm the model
@@ -652,7 +744,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         logLevel: _llamaBindings.LlamaLogLevel.disabled,
                     });
                     if (!isPrismRuntime(probe) || !hasPrismTensorTypes(probe)) return undefined;
-                    return { buildType: probe.buildType, llamaCppRelease: { ...probe.llamaCppRelease } };
+                    return runtimeCapabilities(probe);
                 } catch {
                     return undefined;
                 }
@@ -700,7 +792,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         this.assertPrismMemory(entry, runtime);
     }
 
+    private async assertModelFileIdentity(entry: ModelEntry, filePath: string, runtime?: NodeLlamaRuntime): Promise<void> {
+        if ('artifacts' in entry) await verifyMultipartModel(entry, filePath);
+        else if (/-\d{5}-of-\d{5}\.gguf$/i.test(entry.filename)) throw new Error('A complete multipart catalog manifest is required.');
+        const identity = await readGgufModelIdentity(filePath);
+        const compatibility = getModelRuntimeCompatibility({ ...entry, ...identity }, runtime);
+        if (!compatibility.canLoad) throw modelRuntimeError(compatibility);
+    }
+
     public async getModelAndContext() {
+        const release = nativeWorkloads.beginOrdinary(this);
+        try { return await this.getModelAndContextWithLease(); } finally { release(); }
+    }
+    private async getModelAndContextWithLease() {
+        if (this.shuttingDown) throw new Error('The local engine is shutting down.');
+        await this.disposal;
         this.touchActivity();
 
         if (this.modelInstance && this.contextInstance) {
@@ -709,17 +815,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
 
         // Mutex lock to prevent multiple concurrent requests from crashing memory
         if (this.initPromise) {
-            try {
-                return await this.waitWithInitTimeout(this.initPromise, 'Model initialization');
-            } catch (error: unknown) {
-                if (errCode(error) === 'LLM_INIT_TIMEOUT') {
-                    logger.warn('[LLM] Detected stale model init lock; clearing and retrying');
-                    this.initPromise = null;
-                }
-                throw error;
-            }
+            return await this.waitWithInitTimeout(this.initPromise, 'Model initialization');
         }
 
+        const releaseLoad = nativeWorkloads.beginOrdinary(this);
+        this.nativeLoadPending = true;
         const promise = (async () => {
             // Hoisted so the catch can dispose a partially-built load (model loaded, context failed).
             let model: LlamaModel | undefined;
@@ -806,6 +906,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
 
                 const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel } = _llamaBindings;
+                // Read only local metadata before any model weights reach the native loader.
+                // A catalog filename or alias cannot turn Beam/Hy-Memory into ordinary chat.
+                await this.assertModelFileIdentity(selected.entry, selected.path, runtime);
                 const llamaInitTimeout = Math.round(30_000 * HW.timeoutMultiplier);
 
                 // ─── 1. Initialize llama engine with GPU fallback ────────────
@@ -818,43 +921,38 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 if (requiresPrismRuntime(selected.entry)) {
                     // Use the exact addon whose capability was probed. A rebuild/replacement
                     // between probe and load must fail before its GGUF parser sees the file.
-                    llama = await getLlamaFn({
+                    llama = await this.trackBackendInitialization(getLlamaFn({
                         build: 'never',
                         gpu: false,
                         usePrebuiltBinaries: false,
                         skipDownload: true,
                         progressLogs: false,
                         logLevel: LogLevel.disabled,
-                    });
-                    const compatibility = getModelRuntimeCompatibility(selected.entry, llama);
+                    }));
+                    const capability = runtimeCapabilities(llama);
+                    const compatibility = getModelRuntimeCompatibility(selected.entry, capability);
                     if (!compatibility.canLoad || !hasPrismTensorTypes(llama)) {
-                        await llama.dispose();
                         throw modelRuntimeError(compatibility.canLoad ? {
                             canLoad: false,
                             message: 'The installed Prism desktop addon is missing the required PQ2_0/PTQ1_0 native tensor types. Rebuild the pinned Prism runtime before selecting this model.',
                         } : compatibility);
                     }
                     // Recheck current RAM after backend initialization, before allocating weights.
-                    try {
-                        this.assertPrismMemory(selected.entry, llama);
-                    } catch (error) {
-                        await llama.dispose();
-                        throw error;
-                    }
+                    this.assertPrismMemory(selected.entry, capability);
                     resolvedGpuBackend = llama.gpu === false ? 'cpu' : String(llama.gpu ?? 'gpu');
                 } else try {
                     llama = await Promise.race([
-                        getLlamaFn({ logLevel: LogLevel.disabled, gpu: gpuMode }),
+                        this.trackBackendInitialization(getLlamaFn({ logLevel: LogLevel.disabled, gpu: gpuMode })),
                         new Promise((_, reject) => setTimeout(() => {
                             reject(new Error(`Llama engine init (gpu=${gpuMode}) timed out after ${llamaInitTimeout / 1000}s`));
                         }, llamaInitTimeout))
                     ]) as any;
                     resolvedGpuBackend = gpuMode === false ? 'cpu' : (HW.platform === 'darwin' ? 'metal' : 'gpu');
                 } catch (initErr) {
-                    if (gpuMode !== false) {
+                    if (gpuMode !== false && !this.shuttingDown) {
                         logger.warn('[LLM] GPU backend init failed, retrying CPU-only:', initErr instanceof Error ? initErr.message : initErr);
                         llama = await Promise.race([
-                            getLlamaFn({ logLevel: LogLevel.disabled, gpu: false }),
+                            this.trackBackendInitialization(getLlamaFn({ logLevel: LogLevel.disabled, gpu: false })),
                             new Promise((_, reject) => setTimeout(() => {
                                 reject(new Error(`Llama engine init (CPU-only) timed out after ${llamaInitTimeout / 1000}s`));
                             }, llamaInitTimeout))
@@ -866,18 +964,21 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     }
                 }
                 this.llamaEngine = llama;   // retained for shutdown()'s device dispose
+                nativeWorkloads.registerBackend(llama);
 
                 // ─── 2. Load model with GPU offload + AbortController ────────
                 // AbortController actually cancels native operations (unlike
                 // bare Promise.race which only races the JS promise).
                 const loadWithGpu = (gpuLayers: "max" | number) => {
+                    if (this.shuttingDown) return Promise.reject(new Error('The local engine is shutting down.'));
                     const ac = new AbortController();
+                    this.nativeAborts.add(ac);
                     const timer = setTimeout(() => ac.abort(), this.modelInitTimeoutMs);
                     return llama.loadModel({
                         modelPath: selected.path,
                         ...(gpuLayers === "max" ? { gpuLayers: "max" as any } : { gpuLayers }),
-                        signal: ac.signal,
-                    }).finally(() => clearTimeout(timer));
+                        loadSignal: ac.signal,
+                    }).finally(() => { clearTimeout(timer); this.nativeAborts.delete(ac); });
                 };
 
                 // A file bigger than the GPU can safely wire (paged MoE, e.g. the 13 GB
@@ -924,14 +1025,16 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 let useFlashAttention = true;
 
                 const tryCreateContext = (ctxSize: number, flash: boolean) => {
+                    if (this.shuttingDown) return Promise.reject(new Error('The local engine is shutting down.'));
                     const ac = new AbortController();
+                    this.nativeAborts.add(ac);
                     const timer = setTimeout(() => ac.abort(), this.modelInitTimeoutMs);
                     return model.createContext({
                         contextSize: ctxSize,
                         flashAttention: flash,
                         threads,
-                        signal: ac.signal,
-                    }).finally(() => clearTimeout(timer));
+                        createSignal: ac.signal,
+                    }).finally(() => { clearTimeout(timer); this.nativeAborts.delete(ac); });
                 };
 
                 const requestedCtx = effectiveCtx;
@@ -1012,26 +1115,17 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // whose context creation then failed (the OOM fallback chain above) would otherwise leak
                 // until process exit, compounding on every retry on exactly the memory-tight devices that
                 // hit this path. Both are undefined for the pre-load throws (MODEL_MISSING/bindings) — no-op.
-                void Promise.resolve(context?.dispose()).catch(() => { /* already disposed */ });
-                void Promise.resolve(model?.dispose()).catch(() => { /* already disposed */ });
+                this.trackDisposal(context, model);
                 this.initPromise = null;
                 throw error;
             }
         })();
+        // A caller timeout must not release the process memory lease while native loading continues.
+        const loadSettled = () => { this.nativeLoadPending = false; releaseLoad(); };
+        void promise.then(loadSettled, loadSettled);
 
         this.initPromise = promise;
-        try {
-            return await this.waitWithInitTimeout(promise, 'Model initialization');
-        } catch (error: unknown) {
-            if (errCode(error) === 'LLM_INIT_TIMEOUT') {
-                this.initPromise = null;
-                this.modelInstance = null;
-                this.contextInstance = null;
-                this.disposeChatSession();
-                this.loadedModelId = null;
-            }
-            throw error;
-        }
+        return await this.waitWithInitTimeout(promise, 'Model initialization');
     }
 
     /** Cross-platform disk space check — best-effort, non-fatal on failure */
@@ -1102,6 +1196,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             return;
         }
         this.isDownloading = true;
+        if ('artifacts' in entry) {
+            try {
+                await installMultipartModel(entry, path.dirname(modelPath(entry.id)), fraction =>
+                    this.emit('model_download_progress', { progress: Math.min(100, fraction * 100), modelId: entry.id }));
+                this.emit('model_download_progress', { progress: 100, modelId: entry.id });
+            } finally { this.isDownloading = false; }
+            return;
+        }
 
         const url = entry.url;
         const dest = modelPath(entry.id);
@@ -1407,17 +1509,17 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string> {
+        const release = nativeWorkloads.beginOrdinary(this);
+        try { return await this.generateActionWithLease(systemPrompt, userPrompt, options, imagePath, signal); } finally { release(); }
+    }
+    private async generateActionWithLease(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string> {
+        if (imagePath?.trim()) throw new Error('Agent actions cannot inspect images. Use the Vision workflow for an image question.');
+        if (this.isJaisSelected() || this.isPublisherSelected()) throw new Error('This experimental model supports text chat only. Choose another model for agent actions.');
         this.isGeneratingAction = true;
         try {
             const { context } = await this.getModelAndContext();
 
-            // HONESTY OVER PRETENSE: no vision model is wired into this provider. The old code
-            // appended a text marker ("[IMAGE UPLOADED: <path>]") the model then confabulated
-            // against — every caller received fluent hallucination presented as perception.
-            // Until a real multimodal path exists, an image the model cannot see is IGNORED.
-            if (imagePath) {
-                logger.debug('[LLM] generateAction received an imagePath but no vision model is wired — ignoring the image.');
-            }
+            if (this.isJaisSelected() || this.isPublisherSelected()) throw new Error('This experimental model supports text chat only. Choose another model for agent actions.');
 
             // Grammar-constrained decoding: with a schema, invalid output is unsampleable —
             // the drunk-JSON failure mode is removed at the decoder, not patched in a parser.
@@ -1508,6 +1610,10 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async generalChat(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string; meta: GenerationMeta }> {
+        const release = nativeWorkloads.beginOrdinary(this);
+        try { return await this.generalChatWithLease(userMsg, onToken, opts); } finally { release(); }
+    }
+    private async generalChatWithLease(userMsg: string, onToken?: (token: string) => void, opts?: { plainChat?: boolean; thoughtTokens?: number }): Promise<{ text: string; meta: GenerationMeta }> {
         // Claim the busy flag BEFORE loading: the memory-pressure monitor skips unload only
         // while isInferenceBusy(), and setting it after setup left a window where pressure
         // unloaded the model between "context ready" and the first token — generalChat then
@@ -1526,7 +1632,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // loop runs inside one prompt(), and no tool markup ever reaches the text stream. The XML
         // protocol below remains the fallback for older bindings (and stays the mobile twins'
         // wire format, pinned by the tool-format parity vectors).
-        const useNativeFunctions = !opts?.plainChat &&
+        const jais = this.isJaisSelected() || this.isPublisherSelected();
+        const useNativeFunctions = !jais && !opts?.plainChat &&
             typeof _llamaBindings?.defineChatSessionFunction === 'function';
 
         const ensureSession = () => {
@@ -1550,7 +1657,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // short directive remains: small models often IMITATE a function call as plain text
                 // instead of emitting the wrapper's real call syntax (live-caught on a 1B) — telling
                 // them not to measurably improves trigger reliability at a ~20-token cost.
-                const fullSystemPrompt = opts?.plainChat
+                const fullSystemPrompt = opts?.plainChat || jais
                     ? this.activePreset.systemPrompt
                     : useNativeFunctions
                         ? `${this.activePreset.systemPrompt}\n\nWhen a calculation, conversion, file read, or lookup is needed, call the corresponding provided function. Never write an imitation of a function call as text.`
@@ -1559,6 +1666,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     contextSequence: context.getSequence(),
                     systemPrompt: fullSystemPrompt
                 });
+                const parked = this.parkedChatHistory;
+                if (parked && parked.modelId === this.loadedModelId && parked.presetId === this.activePreset.id) {
+                    this.generalChatSession.setChatHistory(parked.history);
+                }
+                this.parkedChatHistory = null;
             }
         };
 
@@ -1605,14 +1717,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // truncated or empty (live-caught: a looping 1B ended with "" at maxTokens).
             const functionCallAllowance = useNativeFunctions ? 96 * maxToolCallsPerResponse() : 0;
             const promptOptions = {
-                maxTokens: responseMaxTokens + functionCallAllowance,
+                maxTokens: responseMaxTokens + functionCallAllowance + (jais ? 256 : 0),
                 temperature: this.activePreset.temperature,
                 // Anti-loop guard (Swift-twin parity) + no-think chat: bound reasoning to 0 tokens so
                 // hidden <think> can't eat the whole cap and return an empty answer on tight hardware.
                 repeatPenalty: { penalty: REPEAT_PENALTY, lastTokens: REPEAT_LAST_N },
                 // Default 0 (no-think chat); the agent's opt-in deliberation think-pass passes a >0 budget
                 // so the model can actually reason before it commits to a decision (Swift-twin parity).
-                budgets: { thoughtTokens: opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
+                budgets: { thoughtTokens: jais ? 256 : opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
                     const clean = stripControlTokensWithOptions(chunk, { trim: false });
@@ -1664,7 +1776,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // (use tool A's result to decide a call to tool B); the old single round stripped that
             // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
             // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
-            const MAX_TOOL_ROUNDS = useNativeFunctions ? 0 : 3;
+            const MAX_TOOL_ROUNDS = useNativeFunctions || jais ? 0 : 3;
             let finalResponse = stripControlTokens(response.trim());
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {

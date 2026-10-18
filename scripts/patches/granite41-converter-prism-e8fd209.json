@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "id": "granite41-official-converter-v1",
+  "baseRepository": "https://github.com/PrismML-Eng/llama.cpp.git",
+  "baseRevision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+  "parentVisionPatch": {
+    "id": "vision-minicpm47-supervl-v1",
+    "sha256": "417a4d19ed4e05625cd4bc3ec269bf1a4331e8dd9263956b95e86b6158f938a9"
+  },
+  "upstreamRevisions": [
+    "59d5fad7c111d30a547d690b69235ed9e05c035d",
+    "23f7aabc16c72f6f707dba227251c35d7bd1ed96",
+    "1268edac579110aeb1407f7928f53193ed4e28d4"
+  ],
+  "files": [
+    {
+      "path": "conversion/granite.py",
+      "beforeSha256": "917ce34bcdf6089de3e288338485884010e56343db95ad71a526e226958ee23b",
+      "afterSha256": "facfb194ae08514cc934b5988cda4e1e1e0a7c09ea5992ed0218ce967553df45",
+      "replacements": [
+        {
+          "before": "if TYPE_CHECKING:\n    from torch import Tensor\n\nfrom .base import MmprojModel, ModelBase, gguf, logger\n\nfrom .llama import LlamaModel\nfrom .mamba import Mamba2Model\n",
+          "after": "if TYPE_CHECKING:\n    from torch import Tensor\n\nfrom .base import MmprojModel, ModelBase, gguf, jinja_str_or_json, logger\n\nfrom .llama import LlamaModel\nfrom .mamba import Mamba2Model\n"
+        },
+        {
+          "before": "\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        # the weightless switch reserves one cache slot: one fewer block than num_hidden_layers\n        self.block_count = self.block_count - 1\n        self.tensor_map = gguf.get_tensor_name_map(self.model_arch, self.block_count)\n\n        self._n_adapters = int(self.hparams[\"num_adapters\"])\n",
+          "after": "\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        # The weightless switch layer(s) are counted in num_hidden_layers but carry no tensors.\n        # The count is not fixed, nor is it present in hparams, so we derive it here based on tensor block names.\n        layer_ids = {\n            int(m.group(1))\n            for name in self.model_tensors\n            if (m := re.match(r\"(?:model\\.)?layers\\.(\\d+)\\.\", name))\n        }\n        if not layer_ids:\n            raise ValueError(\"graniteswitch: no 'model.layers.N' tensors found in checkpoint\")\n        n_weight_layers = max(layer_ids) + 1\n        logger.info(\n            \"gguf: (graniteswitch) num_hidden_layers %s counts %d weightless switch layer(s); using %d blocks\",\n            self.hparams[\"num_hidden_layers\"], self.block_count - n_weight_layers, n_weight_layers,\n        )\n        self.block_count = n_weight_layers\n        self.tensor_map = gguf.get_tensor_name_map(self.model_arch, self.block_count)\n\n        self._n_adapters = int(self.hparams[\"num_adapters\"])\n"
+        },
+        {
+          "before": "        self.gguf_writer.add_adapter_lora_rank(self._max_lora_rank)\n        self.gguf_writer.add_adapter_token_ids_activate(self.hparams[\"adapter_token_ids\"])\n        self.gguf_writer.add_adapter_token_ids_substitute(self.hparams[\"adapter_substitute_token_ids\"])\n        router_gain = float(self.hparams.get(\"control_token_gain\", 15.0))\n        self.gguf_writer.add_adapter_router_gain(router_gain)\n        logger.info(\"gguf: (graniteswitch) num_adapters=%s max_lora_rank=%s n_slots=%s router_gain=%s\", self._n_adapters, self._max_lora_rank, self._n_slots, router_gain)\n\n    def _lora_a(self, data: Tensor) -> Tensor:\n        # on-disk A: [n_adapters, 1, max_rank, in] -> [n_adapters+1, max_rank, in]\n",
+          "after": "        self.gguf_writer.add_adapter_lora_rank(self._max_lora_rank)\n        self.gguf_writer.add_adapter_token_ids_activate(self.hparams[\"adapter_token_ids\"])\n        self.gguf_writer.add_adapter_token_ids_substitute(self.hparams[\"adapter_substitute_token_ids\"])\n        if self._has_decision_adapter():\n            self.gguf_writer.add_decision_type(gguf.DecisionType.GRANITE_SWITCH)\n        router_gain = float(self.hparams.get(\"control_token_gain\", 15.0))\n        self.gguf_writer.add_adapter_router_gain(router_gain)\n        logger.info(\"gguf: (graniteswitch) num_adapters=%s max_lora_rank=%s n_slots=%s router_gain=%s\", self._n_adapters, self._max_lora_rank, self._n_slots, router_gain)\n\n    def _has_decision_adapter(self) -> bool:\n        return \"decision\" in self.hparams.get(\"adapter_names\", [])\n\n    def set_vocab(self):\n        super().set_vocab()\n        if self._has_decision_adapter():\n            systemone_template = self._systemone_template()\n            logger.info(\"System One Template: %s\", systemone_template)\n            self.gguf_writer.add_chat_template([{\"name\": \"systemone\", \"template\": systemone_template}])\n\n    def _systemone_template(self) -> str:\n        # prompt of the decision aLoRA: a state turn, then a question turn that opens with the control token\n        # (it replaces the first token of \"### DECISION\"), the answer is the label token that comes next\n        description = jinja_str_or_json(\"o.description\")\n        option = (\n            \"{% if type != 'noul' %}{{ o.label }}: {% if o.description %}\" + description + \"{% endif %}\"\n            \"{% elif o.key == 'true' %}A: {% if o.description %}\" + description + \"{% else %}The statement is true.{% endif %}\"\n            \"{% else %}B: {% if o.description %}\" + description + \"{% else %}The statement is false.{% endif %}{% endif %}\"\n        )\n        return (\n            \"<|start_of_role|>user<|end_of_role|>State:\\n\" + jinja_str_or_json(\"state\") + \"<|end_of_text|>\\n\"\n            \"<|start_of_role|>user<|end_of_role|><|decision|> DECISION\\nQuestion:\\n\" + jinja_str_or_json(\"instructions\")\n            + \"{% if type == 'score' %} Rate along the ordered levels below (lowest first).{% endif %}\"\n            \"{{ '\\n\\nOptions:\\n' }}\"\n            \"{% for o in options %}\" + option + \"{{ '\\n' }}{% endfor %}\"\n            \"{{ '\\nReply with exactly one option label.<|end_of_text|>\\n<|start_of_role|>assistant<|end_of_role|>' }}\"\n        )\n\n    def _lora_a(self, data: Tensor) -> Tensor:\n        # on-disk A: [n_adapters, 1, max_rank, in] -> [n_adapters+1, max_rank, in]\n"
+        }
+      ]
+    },
+    {
+      "path": "conversion/base.py",
+      "beforeSha256": "0727a0c0976770683ba714a42149cf7aa010fd4aa794f7edd203f8aac060bc2b",
+      "afterSha256": "288c9aff1f12b05f4b43675261583300a455e36c143614a884eed60cc9d3b231",
+      "replacements": [
+        {
+          "before": "    if arch is None:\n        raise ValueError(\"Failed to detect model architecture\")\n    return arch\n",
+          "after": "    if arch is None:\n        raise ValueError(\"Failed to detect model architecture\")\n    return arch\n\n\ndef jinja_str_or_json(name: str) -> str:\n    # Upstream helper used by Granite Switch's System One decision template.\n    return \"{{ \" + name + \" if \" + name + \" is string else \" + name + \" | tojson }}\"\n"
+        }
+      ]
+    },
+    {
+      "path": "gguf-py/gguf/constants.py",
+      "beforeSha256": "c52272fe873edeb2117791f014ea4538c71cee3410e249eb8aa6ff44fdf1aa6f",
+      "afterSha256": "ea33949d17989f2341d685e505a69a88df5822b2db3ad6c8007958eef590bce2",
+      "replacements": [
+        {
+          "before": "\n\nclass Keys:\n    class General:\n        TYPE                       = \"general.type\"\n        ARCHITECTURE               = \"general.architecture\"\n",
+          "after": "\n\nclass Keys:\n    class Decision:\n        TYPE = \"{arch}.decision.type\"\n\n    class General:\n        TYPE                       = \"general.type\"\n        ARCHITECTURE               = \"general.architecture\"\n"
+        },
+        {
+          "before": "KEY_TOKENIZER_PREFIX_ID  = Keys.Tokenizer.PREFIX_ID\nKEY_TOKENIZER_SUFFIX_ID  = Keys.Tokenizer.SUFFIX_ID\nKEY_TOKENIZER_MIDDLE_ID  = Keys.Tokenizer.MIDDLE_ID\n",
+          "after": "KEY_TOKENIZER_PREFIX_ID  = Keys.Tokenizer.PREFIX_ID\nKEY_TOKENIZER_SUFFIX_ID  = Keys.Tokenizer.SUFFIX_ID\nKEY_TOKENIZER_MIDDLE_ID  = Keys.Tokenizer.MIDDLE_ID\n\n\nclass DecisionType:\n    GRANITE_SWITCH = \"granite-switch\"\n"
+        }
+      ]
+    },
+    {
+      "path": "gguf-py/gguf/gguf_writer.py",
+      "beforeSha256": "2c6f1b1b2469ef458387017d26322f49d03180b7b56a1c5f0c399f3826e8fce7",
+      "afterSha256": "af9ce35bc8dcfb753b605b115b86f6928e4f91f50d90e16cbde51badcbb32a99",
+      "replacements": [
+        {
+          "before": "    def add_embedding_scale(self, value: float) -> None:\n        self.add_float32(Keys.LLM.EMBEDDING_SCALE.format(arch=self.arch), value)\n\n    def add_adapter_count(self, count: int) -> None:\n        self.add_uint32(Keys.Adapters.COUNT.format(arch=self.arch), count)\n\n",
+          "after": "    def add_embedding_scale(self, value: float) -> None:\n        self.add_float32(Keys.LLM.EMBEDDING_SCALE.format(arch=self.arch), value)\n\n    def add_decision_type(self, value: str) -> None:\n        self.add_string(Keys.Decision.TYPE.format(arch=self.arch), value)\n\n    def add_adapter_count(self, count: int) -> None:\n        self.add_uint32(Keys.Adapters.COUNT.format(arch=self.arch), count)\n\n"
+        }
+      ]
+    }
+  ]
+}

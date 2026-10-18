@@ -1,6 +1,193 @@
 # Bonsai 2 27B integration
 
-## 16 October 2026: smaller models and Muse Spark integration
+## 18 October 2026 engineering candidate
+
+The current candidate extends the pinned Prism runtime rather than treating a
+catalog row as model support. The normal catalog has 28 entries in matching
+TypeScript, Swift and Kotlin manifests. The new text paths include the smaller
+Bonsai 2 models, LFM2.5-24B-A2B, Jais 3, Nemotron 3.5 Bolt, complete Beam and
+complete Muse on native Apple, Android and desktop. Publisher text protocols
+have dedicated adapters; tool use is disabled for the experimental Beam/Muse
+chat paths. Model-weight inference for
+these additions has **not** been run. This section describes engineering in the
+candidate, not a new public installer or store release.
+
+Beam's four-part download is **133,885,310,500 bytes**, including its 5,954,020-byte
+metadata entry point. All four parts are required. Its minimum whole-model
+memory floor is 160 GiB before context overhead. Muse requires all 22 Q2_K parts,
+304,080,474,208 bytes. The desktop adapter now accompanies the native adapters;
+the older October 16 snapshot below records the earlier scope. Complete hashes,
+compiled architecture capabilities and actual free-memory checks gate loading.
+Active parameter counts do not reduce the storage or full-weight memory budget.
+
+The versioned Node addon patch also adds cancellation ABI 1. Atomic context
+callbacks interrupt CPU evaluation during prefill and decode; GPU cancellation
+waits for a scheduler graph boundary. Old addons cannot enable specialist or
+Beam/Muse downloads merely by copying a provenance stamp. A timed-out ordinary
+model initialization retains its reservation until the actual load finishes;
+retrying joins that same load. Specialist and image work use an exclusive memory
+lease, releasing idle text weights before checking available memory. Text model
+selection and conversation state are retained across that lease.
+
+### Still-image questions
+
+**Ask about an image** installs each complete language-model/projector pair from
+`shared/vision-models.json`. It covers MiniCPM-V 4.7 1B and 35B-A3B, and Nemotron
+3.5 Super VL 120B-A12B. Their minimum available-memory floors are 8, 32 and 96 GiB.
+The app accepts one selected JPEG or PNG, at most 8 MiB, 4,096 pixels on either
+side and 16 million pixels. It preserves the selected file and question after
+failure or cancellation. Video, audio and tool requests are unavailable.
+
+The app bounds each question to 8,192 UTF-8 bytes, a 4,096-token context and 512
+output tokens. The C bridge checks actual token/image context usage before
+decoding and buffers only the final answer. Its bounded decoder allocator also
+rejects small compressed PNGs that expand beyond the allocation budget.
+Both native and desktop workflows install the complete pinned pair, verify both
+files and recheck available memory before loading. These are still-image question
+tools, separate from the selected text answer model.
+
+Apple and Android link the C bridge into their existing Prism runtime. Electron
+uses one static worker in a child process; model paths and prompts travel over
+bounded stdin. On a hosted target-OS builder, after preparing the pinned source:
+
+```sh
+python3 scripts/build_vision_runtime.py build --source /absolute/prepared/prism-source --work /absolute/new/vision-build
+python3 scripts/test_vision_runtime.py --source /absolute/prepared/prism-source --work /absolute/new/vision-fixtures
+```
+
+The build helper stages the worker, notices and provenance into the existing
+`build/vision/<platform>-<arch>` resource directory. Packaging verifies the exact
+worker, dependency closure, compiled ABI, source patch and artifact manifest.
+These commands compile code and run synthetic fixtures; they download no weights.
+
+### Hy-Memory proposals
+
+The dedicated **Hy-Memory proposals** workflow uses the pinned 18,236,702,240-byte
+community conversion in `shared/hy-memory-artifacts.json`. It is a separate
+memory writer with a 32 GiB available-memory floor. Paste only the selected
+conversation, preview proposals, then explicitly select which facts to save.
+Nothing subscribes to conversations or persists a generated fact automatically.
+
+The official no-thinking HY template, temperature zero and 512-token output cap
+are fixed. The parser requires one complete object containing only `memories`,
+at most 64 strings of 1–512 characters; duplicate fields, reasoning and trailing
+content are rejected. Approved records use app-private storage and idempotent
+identities. POSIX permissions and a verified protected Windows DACL are separate
+platform implementations. The older general Notes bank is not repurposed.
+Native Apple, Android and desktop workflows keep proposals unchecked until the
+user approves them. The community converter's expert-width correction from 1,536
+to 768 matches the pinned publisher configuration and existing `hy_v3` tensor
+shapes; it is not full-weight inference validation or permission to rewrite an
+arbitrary imported file.
+
+### Granite Switch 4.1 8B
+
+The official checkpoint is `ibm-granite/granite-switch-4.1-8b`, pinned in
+`shared/granite41-source.json`; it is not the older 3B preview. The converter
+requires the four complete source shards and pinned metadata already on disk.
+It fetches no weights, installs no dependencies and executes no remote model
+code. Use the existing environment containing the prepared runtime's converter
+dependencies:
+
+```sh
+python3 scripts/convert_granite41.py --runtime-source /absolute/prepared/prism-source --model-dir /absolute/installed/granite --verify-only
+python3 scripts/convert_granite41.py --runtime-source /absolute/prepared/prism-source --model-dir /absolute/installed/granite --output /absolute/new/granite-switch-4.1-8b-q8_0.gguf --outtype q8_0
+```
+
+The converter creates a new GGUF plus an adjacent `.quenderin.json` record and
+never replaces existing output. Keep both together. The native Apple, Android and
+desktop Granite chat workflows select and hash that pair, verify actual
+`graniteswitch` architecture, 40 weight layers, 4,096 embedding width and a single
+complete file. They require
+the pinned converter record and at least 32 GiB of available memory, with a
+further file-size/context allowance. The receipt is local conversion evidence,
+not a publisher signature or inference validation. Dedicated text chat uses the
+publisher's role template without activating decision, guardian or speech modes.
+The generic unverified family guard remains closed; this explicit receipt-based
+import is the supported source path for the official 8B checkpoint.
+
+### Step 5 Preview on an existing CUDA host
+
+Step 5 uses its official vLLM CUDA backend on the user's own suitably sized Linux
+GPU host. Quenderin does not provision a server or claim this 600B-class model
+fits on a phone. `shared/step5-backend.json` pins the official model and backend
+revisions, all 26 required weight files (**644,100,979,280 bytes**) and metadata.
+With that exact checkout, checkpoint and dependency environment already installed:
+
+```sh
+python3 scripts/run_step5_backend.py --source /absolute/installed/official-vllm --model /absolute/installed/step5 --verify-only
+python3 scripts/run_step5_backend.py --source /absolute/installed/official-vllm --model /absolute/installed/step5 --tensor-parallel-size 4
+```
+
+The launcher verifies source and artifacts, disables model downloads and starts
+an inner backend plus a loopback gateway. Defaults are ports 18001 and 18000.
+Use an existing SSH tunnel to the client's literal loopback address, or a secured
+HTTPS reverse proxy configured for the gateway's loopback Host policy. Never
+expose the gateway directly on a public interface. The app requires explicit
+consent for the selected gateway before sending a conversation and checks the
+pinned readiness contract before each answer. Clients use system TLS validation,
+no automatic credentials, cookies, redirects or retries, a 180-second deadline,
+eight exchanges, 32 KiB of history and at most 1,024 output tokens. The gateway
+admits one GPU request and propagates client disconnection upstream. This app
+workflow currently supports text chat; it does not send images to Step 5.
+The native Apple, Android and desktop clients use this same remote-specialist
+contract. Prompts leave the device for the selected host only after consent.
+
+### Image generation and future artifacts
+
+The separate image workflow covers FLUX 3 Image Klein and MOSS Image Base/SFT.
+`shared/image-model-catalog.json` pins the complete model, text encoder, VAE and
+MOSS tokenizer sets. Import the original components through the app; gated FLUX
+files require the user's own publisher access and license decision. The app does
+not accept publisher terms or download gated weights on the user's behalf. The
+native image runtime stays isolated from Prism's GGML symbols and releases its
+resources before text restoration. Its available-memory floor is 24 GiB.
+Native clients provide explicit component installation/import. The desktop Images
+screen and CLI verify a manually prepared component directory, then save a new
+PNG without overwriting an existing file. The ordinary answer model is not used
+to expand a short FLUX prompt automatically; supply a complete scene caption.
+
+Nemotron Bolt E4B has no verified public artifact in this candidate. It stays
+unavailable; no guessed revision, placeholder download or substitute model is
+presented as that release.
+
+### Candidate checks
+
+Run catalog/provenance checks and targeted TypeScript/UI tests. The additional
+weight-free fixtures exercise real C/Swift/JNI interfaces, cancellation and
+cleanup, controlled decoder failure, conversion methods, multipart integrity,
+Step 5 transport and private-store permissions. Process-exit cleanup closes new
+admission and joins active native work, including child-process exit, before
+disposing the shared backend. Ordinary per-service cleanup retains that backend.
+
+Final engineering revision
+[`1d5f4452b0dd096fdaab737bc4581562f3bce666`](https://github.com/alikatgh/quenderin/commit/1d5f4452b0dd096fdaab737bc4581562f3bce666)
+passed **all 18 jobs** in
+[CI 39106905620](https://github.com/alikatgh/quenderin/actions/runs/39106905620).
+The separate [catalog URL run 39106905664](https://github.com/alikatgh/quenderin/actions/runs/39106905664)
+also passed at the same revision.
+
+Hosted checks built the actual iOS and universal macOS Prism frameworks and
+vision bridge, passed Swift tests and compiled the iOS app against the SDK.
+Android built the actual JNI debug APK and unsigned release AAB, checked their
+image-library identity, dependency closure and 16 KiB alignment, and passed core
+and native runtime/memory-guard tests. Linux and Windows passed ASAR addon and
+packaged image/vision probes; the macOS Electron lab package passed image/vision
+runtime proofs. Separate image-runtime builds passed on all three systems.
+Windows ran the actual private approved-memory store tests and positive/negative
+protected-DACL fixtures successfully.
+
+These are source, compilation, host-test and package results. They do not establish
+new signing, store submission or public availability. Full-weight inference for
+the new models, generated-image quality, measured memory/speed, rendered native
+UI and ARMv7 support remain unverified; the existing hosted Bonsai CPU generation
+gate is separate. Local full type checking was blocked by optional Picovoice
+declarations, and the broad local backend suite encountered sandbox socket/home
+restrictions and a missing ONNX dependency; the integrated hosted jobs above are
+the final engineering evidence. No local weights, device runs or simulator runs
+were authorized or used for this update.
+
+## 16 October 2026: smaller models and Muse Spark integration (historical snapshot)
 
 The source catalogs now also include experimental manual choices for Bonsai 2
 2B, 4B, and 9B. Their PTQ1_0 artifacts pin immutable publisher revisions and

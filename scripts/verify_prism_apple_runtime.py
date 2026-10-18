@@ -28,7 +28,8 @@ FRAMEWORK = ROOT / "apple/QuenderinKit/Frameworks/prism-llama.xcframework"
 STAMP = "quenderin-apple-runtime.json"
 RELEASE_MARKER = ".quenderin-prism-release"
 PROBE = {"PQ2_0": {"type": 142, "block": 128, "size": 34},
-         "PTQ1_0": {"type": 143, "block": 128, "size": 28}, "MuseSparkABI": 1}
+         "PTQ1_0": {"type": 143, "block": 128, "size": 28}, "MuseSparkABI": 1, "WeeklyTextABI": 1,
+         "BeamABI": 1, "VisionABI": 1}
 SOURCE_SPEC = importlib.util.spec_from_file_location("quenderin_prism_source", Path(__file__).with_name("prepare_prism_runtime.py"))
 source_runtime = importlib.util.module_from_spec(SOURCE_SPEC)
 SOURCE_SPEC.loader.exec_module(source_runtime)
@@ -183,11 +184,22 @@ def slices(framework: Path) -> list:
         llama_header = header.with_name("llama.h")
         require(llama_header.is_file() and "quenderin_muse_spark_runtime_abi" in llama_header.read_text(),
                 "Muse capability header missing from a framework slice")
+        require("quenderin_weekly_text_runtime_abi" in llama_header.read_text(),
+                "Weekly text capability header missing from a framework slice")
+        require("quenderin_beam_runtime_abi" in llama_header.read_text(), "Beam capability header missing")
+        vision_header = header.with_name("quenderin_vision.h")
+        require(vision_header.is_file() and "quenderin_vision_runtime_abi" in vision_header.read_text(), "Vision ABI header missing")
         # Inspect every architecture without executing an iOS/device binary.
         for arch in payload:
             symbols = run("xcrun", "nm", "-arch", arch, "-gU", str(binary))
             require(re.search(r"\b_quenderin_muse_spark_runtime_abi$", symbols, re.M) is not None,
                     f"Muse runtime capability symbol missing from {identifier}/{arch}")
+            require(re.search(r"\b_quenderin_weekly_text_runtime_abi$", symbols, re.M) is not None,
+                    f"Weekly text runtime capability symbol missing from {identifier}/{arch}")
+            require(re.search(r"\b_quenderin_beam_runtime_abi$", symbols, re.M) is not None, f"Beam capability symbol missing from {identifier}/{arch}")
+            for symbol in ("runtime_abi", "runtime_revision", "patch_sha256", "create", "load", "generate", "cancel", "free"):
+                require(re.search(r"\b_quenderin_vision_" + symbol + r"$", symbols, re.M) is not None,
+                        f"Vision {symbol} symbol missing from {identifier}/{arch}")
         result.append({"id": identifier, "platform": lib["SupportedPlatform"],
                        "variant": lib.get("SupportedPlatformVariant"), "libraryPath": lib["LibraryPath"],
                        "binaryPath": lib["BinaryPath"], "payload": payload})
@@ -211,6 +223,7 @@ def native_probe(framework: Path, headers: Path | None = None) -> dict:
 #include <string.h>
 #include "ggml.h"
 #include "llama.h"
+#include "quenderin_vision.h"
 int main(void) {
     const int ids[] = {142, 143};
     const char *names[] = {"pq2_0", "ptq1_0"};
@@ -227,14 +240,23 @@ int main(void) {
         fputs("Muse Spark runtime ABI mismatch\\n", stderr);
         return 1;
     }
-    puts("Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 verified");
+    if (quenderin_weekly_text_runtime_abi() != 1) {
+        fputs("Weekly text runtime ABI mismatch\\n", stderr);
+        return 1;
+    }
+    if (quenderin_beam_runtime_abi() != 1) { return 1; }
+    if (quenderin_vision_runtime_abi() != 1
+        || strcmp(quenderin_vision_runtime_revision(), "VISION_REVISION")
+        || strcmp(quenderin_vision_patch_sha256(), "VISION_PATCH_SHA256")) { return 1; }
+    puts("Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 WeeklyTextABI=1 verified");
     return 0;
 }
-''')
+'''.replace("VISION_REVISION", source_runtime.LOCK["revision"])
+   .replace("VISION_PATCH_SHA256", source_runtime.LOCK["visionPatch"]["sha256"]))
         run("xcrun", "--sdk", "macosx", "clang", "-arch", platform.machine(), "-I", str(headers),
             str(source), "-F", str(framework.parent), "-framework", "llama", "-Wl,-rpath," + str(framework.parent),
             "-o", str(executable))
-        require(run(str(executable)) == "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 verified", "Native Prism/Muse probe failed")
+        require(run(str(executable)) == "Prism PQ2_0=142/128/34 PTQ1_0=143/128/28 MuseSparkABI=1 WeeklyTextABI=1 verified", "Native Prism/Muse/weekly text probe failed")
     return PROBE
 
 
@@ -286,6 +308,22 @@ def embed_evidence(app: Path, target: str, stamp: dict, root: Path = ROOT) -> No
     resources.mkdir(parents=True, exist_ok=True)
     (resources / "quenderin-prism-release.json").write_text(json.dumps(stamp, indent=2, sort_keys=True) + "\n")
     (resources / "quenderin-model-catalog.json").write_bytes((root / "shared/model-catalog.json").read_bytes())
+    embed_image_evidence(app, target, root)
+
+
+def image_runtime():
+    spec = importlib.util.spec_from_file_location('quenderin_apple_image', Path(__file__).with_name('verify_diffusion_apple_runtime.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def embed_image_evidence(app: Path, target: str, root: Path) -> None:
+    image_runtime().embed_evidence(app, target, root)
+
+
+def verify_image_app(app: Path, target: str, root: Path, signed: bool) -> dict:
+    return image_runtime().verify_app(app, target, root, signed)
 
 
 def release_version(root: Path = ROOT) -> tuple[str, int]:
@@ -339,6 +377,7 @@ def verify_app(app: Path, target: str, stamp: dict, root: Path = ROOT, signed: b
             native_probe(native, source_framework / lib["id"] / lib["libraryPath"] / "Headers")
     else:
         embed_evidence(app, target, stamp, root)
+    verify_image_app(app, target, root, signed)
     return {"platform": target, "version": info["CFBundleShortVersionString"], "build": str(info["CFBundleVersion"]),
             "architectures": sorted(payload), "runtimeRevision": stamp["revision"]}
 

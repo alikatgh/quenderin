@@ -160,7 +160,7 @@ class ChatModel(
         val tier = ChatTier.of(model)
         val systemPrompt = tier.systemPrompt
         // Cap decode for tiny models (LlamaEngine honors chatMaxTokensOverride).
-        (engine as? LlamaEngine)?.chatMaxTokensOverride = tier.maxTokens
+        engine.setChatTokenBudget(tier.maxTokens)
         // The user line + placeholder assistant slot + this generation's id are established atomically
         // under the lock, so a concurrent reset/restore either happens fully before (this send sees the
         // new transcript) or fully after (it bumps our id and we drop our writes below), never

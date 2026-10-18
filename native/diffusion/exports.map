@@ -1,0 +1,4 @@
+QUENDERIN_DIFFUSION_1 {
+    global: quenderin_diffusion_*;
+    local: *;
+};

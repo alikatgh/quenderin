@@ -3,6 +3,19 @@
 # Electron mac targets remain for local lab builds only (`npm run electron:build:mac`).
 appId: com.quenderin.desktop
 productName: Quenderin
+beforePack: scripts/electron_diffusion_pack.cjs
+afterPack: scripts/electron_diffusion_after_pack.cjs
+# Build on each target host with scripts/build_desktop_diffusion.py first. Never
+# put a host CLI into another architecture's installer or fetch during packaging.
+extraResources:
+  - from: build/diffusion/${os}-${arch}
+    to: diffusion
+    filter:
+      - "**/*"
+  - from: build/vision/${os}-${arch}
+    to: vision
+    filter:
+      - "**/*"
 directories:
   output: release
   # Icon resources (icon.icns / icon.ico / icon.png) — build/ is gitignored TS output,

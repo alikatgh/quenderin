@@ -1,0 +1,682 @@
+{
+  "version": 1,
+  "id": "vision-minicpm47-supervl-v1",
+  "baseRepository": "https://github.com/PrismML-Eng/llama.cpp.git",
+  "baseRevision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+  "parentSourcePatch": {
+    "id": "muse-spark-open-v1",
+    "sha256": "9e9a58a113332a9062c222633fa411f9b000a790a1ba1cb5c1ec989615ea0cf9"
+  },
+  "parentWeeklyTextPatch": {
+    "id": "weekly-text-k2-nemotron-v1",
+    "sha256": "962eb2afaa72f211bc9f6dd24c1e9946c0e61ca9c2b662268f99c97982c8348d"
+  },
+  "parentBeamPatch": {
+    "id": "beam-text-v1",
+    "sha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033"
+  },
+  "upstreamRevisions": {
+    "minicpm47": "69f201a2051ea9b9e9b50c3cc56afd9e2ae64414",
+    "supervl": "cd0a5b6a180dff0048e5fd993098b21c0b2c91b8"
+  },
+  "visionABI": 1,
+  "capabilitySymbol": "quenderin_vision_mtmd_runtime_abi",
+  "notes": [
+    "Backported against complete Muse + weekly text + Beam stack; pinned pure token and embedding batches adapt upstream mixed ubatch M-RoPE handling.",
+    "Base mtmd serialized v1 without lead_pad: v3 persists only supported fields and reads existing v1. DFlash-only Lilicorr converter refactor excluded.",
+    "New vision target shares existing llama + ggml targets; no second GGML ABI."
+  ],
+  "files": [
+    {
+      "path": "conversion/__init__.py",
+      "beforeSha256": "18c5981f0dbc94690e04924a43926bb2fc5052063f18ea867703c6ff0fe690f5",
+      "afterSha256": "4f102fc7b728dc134cbe5a219f5d001d9a7b5d28564a9aad67a1a2d7e514ad2e",
+      "replacements": [
+        {
+          "before": "    \"MiniCPM3ForCausalLM\": \"minicpm\",\n    \"MiniCPMForCausalLM\": \"minicpm\",\n    \"MiniCPMV4_6ForConditionalGeneration\": \"minicpm\",\n    \"MiniMaxText01ForCausalLM\": \"minimax\",\n    \"MiniMaxM1ForCausalLM\": \"minimax\",\n    \"MiniMaxM2ForCausalLM\": \"minimax\",\n",
+          "after": "    \"MiniCPM3ForCausalLM\": \"minicpm\",\n    \"MiniCPMForCausalLM\": \"minicpm\",\n    \"MiniCPMV4_6ForConditionalGeneration\": \"minicpm\",\n    \"MiniCPMV4_7ForConditionalGeneration\": \"minicpm\",\n    \"MiniMaxText01ForCausalLM\": \"minimax\",\n    \"MiniMaxM1ForCausalLM\": \"minimax\",\n    \"MiniMaxM2ForCausalLM\": \"minimax\",\n"
+        },
+        {
+          "before": "    \"MiMoV2ForCausalLM\": \"mimo\",\n    \"MiniMaxM3SparseForConditionalGeneration\": \"minimax\",\n    \"MiniCPMV4_6ForConditionalGeneration\": \"minicpm\",\n    \"Mistral3ForConditionalGeneration\": \"llava\",\n    \"NemotronH_Nano_VL_V2\": \"nemotron\",\n    \"MuseGlimmerForConditionalGeneration\": \"muse_glimmer\",\n    \"PaddleOCRVisionModel\": \"ernie\",\n",
+          "after": "    \"MiMoV2ForCausalLM\": \"mimo\",\n    \"MiniMaxM3SparseForConditionalGeneration\": \"minimax\",\n    \"MiniCPMV4_6ForConditionalGeneration\": \"minicpm\",\n    \"MiniCPMV4_7ForConditionalGeneration\": \"minicpm\",\n    \"Mistral3ForConditionalGeneration\": \"llava\",\n    \"NemotronH_Omni_Reasoning_V3\": \"nemotron\",\n    \"NemotronH_Nano_VL_V2\": \"nemotron\",\n    \"MuseGlimmerForConditionalGeneration\": \"muse_glimmer\",\n    \"PaddleOCRVisionModel\": \"ernie\",\n"
+        }
+      ]
+    },
+    {
+      "path": "conversion/base.py",
+      "beforeSha256": "af650b98b34a00d78b6145e597cc7317aecd3ef4946a79526c839a737bb85a40",
+      "afterSha256": "0727a0c0976770683ba714a42149cf7aa010fd4aa794f7edd203f8aac060bc2b",
+      "replacements": [
+        {
+          "before": "                    pass\n                else:\n                    raise NotImplementedError(f\"Quant format {quant_format!r} for method {quant_method!r} is not yet supported\")\n            elif quant_method == \"modelopt\":\n                # Mixed-precision ModelOpt models: NVFP4 tensors are handled by\n                # _generate_nvfp4_tensors; FP8 tensors have 1D weight_scale and\n                # are dequantized here. k/v scale tensors are unused.\n",
+          "after": "                    pass\n                else:\n                    raise NotImplementedError(f\"Quant format {quant_format!r} for method {quant_method!r} is not yet supported\")\n            elif quant_method in (\"modelopt\", \"modelopt_mixed\"):\n                # Mixed-precision ModelOpt models: NVFP4 tensors are handled by\n                # _generate_nvfp4_tensors; FP8 tensors have 1D weight_scale and\n                # are dequantized here. k/v scale tensors are unused.\n"
+        },
+        {
+          "before": "        name, gen = item\n\n        # Skip multimodal tensors\n        if name.startswith((\"mlp\", \"vit.\", \"vpm.\", \"siglip2.\", \"conformer.\", \"merger.\", \"resampler.\", \"sound_encoder.\", \"sound_projection.\", \"speech_embeddings.\")) \\\n                or \"visual.\" in name or \"vision.\" in name or \"audio.\" in name or \"talker.\" in name \\\n                or \"vision_\" in name or \"audio_\" in name \\\n                or \"token2wav.\" in name or \"code2wav.\" in name \\\n                or \"projector.\" in name or \"pre_mm_projector_norm\" in name \\\n                or \"image_newline\" in name or \"view_seperator\" in name \\\n                or \"patch_embed\" in name or \"patch_embedding\" in name \\\n                or \"patch_merger.\" in name or \"patch_merge_mlp.\" in name or \"model.connector.\" in name:\n            return None\n\n        return super().filter_tensors(item)\n",
+          "after": "        name, gen = item\n\n        # Skip multimodal tensors\n        # strip the \"model.\" wrapper so the prefixes below match (name is not returned)\n        if name.startswith(\"model.\"):\n            name = name[len(\"model.\"):]\n        if name.startswith((\"mlp\", \"vit.\", \"vpm.\", \"siglip2.\", \"conformer.\", \"connector.\", \"merger.\", \"resampler.\", \"sound_encoder.\", \"sound_projection.\", \"speech_embeddings.\")) \\\n                or \"visual.\" in name or \"vision.\" in name or \"audio.\" in name or \"talker.\" in name \\\n                or \"vision_\" in name or \"audio_\" in name \\\n                or \"token2wav.\" in name or \"code2wav.\" in name \\\n                or \"projector.\" in name or \"pre_mm_projector_norm\" in name \\\n                or \"image_newline\" in name or \"view_seperator\" in name \\\n                or \"patch_embed\" in name or \"patch_embedding\" in name \\\n                or \"patch_merger.\" in name or \"patch_merge_mlp.\" in name:\n            return None\n\n        return super().filter_tensors(item)\n"
+        }
+      ]
+    },
+    {
+      "path": "conversion/minicpm.py",
+      "beforeSha256": "ef2627437d2649e6615e47ecc92739b0f09ff1ce1e0454d94c639369374d92c9",
+      "afterSha256": "b257b106a065e6034699235e16e807309fd9d14558eddac4ef45c6da5d0d9548",
+      "replacements": [
+        {
+          "before": "@ModelBase.register(\"MiniCPMV4_6ForConditionalGeneration\")\n@ModelBase.example(\"openbmb/MiniCPM-V-4_6\")\nclass MiniCPMV4_6VisionModel(MmprojModel):\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        self.downsample_mode = self.preprocessor_config.get(\"downsample_mode\", \"16x\")\n        if self.downsample_mode not in {\"4x\", \"16x\"}:\n            raise ValueError(f\"Unsupported downsample mode: {self.downsample_mode}\")\n        if self.downsample_mode == \"4x\":\n            self.model_tensors = {\n                name: tensor for name, tensor in self.model_tensors.items()\n",
+          "after": "@ModelBase.register(\"MiniCPMV4_6ForConditionalGeneration\")\n@ModelBase.example(\"openbmb/MiniCPM-V-4_6\")\nclass MiniCPMV4_6VisionModel(MmprojModel):\n    projector_type = gguf.VisionProjectorType.MINICPMV4_6\n    # fallback for checkpoints whose preprocessor config omits `scale_resolution`\n    default_scale_resolution: int | None = None\n\n    def get_downsample_mode(self) -> str:\n        return self.preprocessor_config.get(\"downsample_mode\", \"16x\")\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        self.downsample_mode = self.get_downsample_mode()\n        if self.downsample_mode not in {\"4x\", \"16x\"}:\n            raise ValueError(f\"Unsupported downsample mode: {self.downsample_mode}\")\n        if self.downsample_mode == \"4x\":\n            self.model_tensors = {\n                name: tensor for name, tensor in self.model_tensors.items()\n"
+        },
+        {
+          "before": "            # positional embedding bucket grid (70 x 70), while the per-slice processing\n            # resolution is the preprocessor's `scale_resolution` (typically 448).\n            # The CLIP loader in tools/mtmd/clip.cpp consumes `clip.vision.image_size`\n            # as the slice size and warmup resolution, so report `scale_resolution` there\n            # to match the upstream MiniCPMV4_6ImageProcessorPil slicing rules.\n            scale_resolution = self.preprocessor_config.get(\"scale_resolution\")\n            if scale_resolution is not None:\n                self.hparams_vision[\"image_size\"] = int(scale_resolution)\n\n    def set_gguf_parameters(self):\n        super().set_gguf_parameters()\n        assert self.hparams_vision is not None\n\n        # projector type string is consumed by clip_projector_type_from_string() in clip.cpp\n        # (mapped to PROJECTOR_TYPE_MINICPMV4_6).\n        self.gguf_writer.add_clip_projector_type(gguf.VisionProjectorType.MINICPMV4_6)\n\n        self.gguf_writer.add_vision_projector_scale_factor(\n            2 if self.downsample_mode == \"4x\" else 4)\n\n        # borrow wa_layer_indexes for vit_merger insertion point\n        insert_layer_id = int(self.global_config.get(\n            \"insert_layer_id\", self.hparams_vision.get(\"insert_layer_id\", 6)))\n        self.gguf_writer.add_vision_wa_layer_indexes([insert_layer_id])\n",
+          "after": "            # positional embedding bucket grid (70 x 70), while the per-slice processing\n            # resolution is the preprocessor's `scale_resolution` (typically 448).\n            # The CLIP loader in tools/mtmd/clip.cpp consumes `clip.vision.image_size`\n            # as the slice size and warmup resolution, so report `scale_resolution` there\n            # to match the upstream MiniCPMV4_6ImageProcessorPil slicing rules.\n            scale_resolution = self.preprocessor_config.get(\n                \"scale_resolution\", self.default_scale_resolution)\n            if scale_resolution is not None:\n                self.hparams_vision[\"image_size\"] = int(scale_resolution)\n\n    def set_gguf_parameters(self):\n        super().set_gguf_parameters()\n        assert self.hparams_vision is not None\n\n        # projector type string is consumed by clip_projector_type_from_string() in clip.cpp\n        self.gguf_writer.add_clip_projector_type(self.projector_type)\n\n        self.gguf_writer.add_vision_projector_scale_factor(\n            2 if self.downsample_mode == \"4x\" else 4)\n\n        max_slice_nums = self.preprocessor_config.get(\"max_slice_nums\")\n        if max_slice_nums is not None:\n            self.gguf_writer.add_vision_max_slice_nums(int(max_slice_nums))\n\n        # borrow wa_layer_indexes for vit_merger insertion point\n        insert_layer_id = int(self.global_config.get(\n            \"insert_layer_id\", self.hparams_vision.get(\"insert_layer_id\", 6)))\n        self.gguf_writer.add_vision_wa_layer_indexes([insert_layer_id])\n"
+        },
+        {
+          "before": "        # lm_head / MTP -> belong to the LM file\n        if name.startswith((\"lm_head.\", \"mtp\")):\n            return None\n\n        return super().filter_tensors(item)\n",
+          "after": "        # lm_head / MTP -> belong to the LM file\n        if name.startswith((\"lm_head.\", \"mtp\")):\n            return None\n\n        return super().filter_tensors(item)\n\n\n# MiniCPM-V 4.7 shares the v4.6 stack: the same Qwen3.5 text tower (MoE variant when the checkpoint says so) and the same SigLIP + vit_merger + merger vision tower.\n\n@ModelBase.register(\"MiniCPMV4_7ForConditionalGeneration\")\n@ModelBase.example(\"openbmb/MiniCPM-V-4.7\")\nclass MiniCPMV4_7TextModel(Qwen3_5TextModel):\n    model_arch = gguf.MODEL_ARCH.QWEN35\n\n    def set_gguf_parameters(self):\n        super().set_gguf_parameters()\n        # mtmd puts the time of the image canvas in slot z, slot t stays the KV cache position\n        self.gguf_writer.add_rope_section_order(gguf.RopeSectionOrder.ZYXT)\n\n    def __init__(self, dir_model, ftype, fname_out, *, hparams: dict | None = None, **kwargs):\n        if hparams is None:\n            hparams = ModelBase.load_hparams(dir_model, is_mistral_format=False)\n        text_config = hparams.get(\"text_config\", {})\n        if text_config.get(\"model_type\") == \"qwen3_5_moe_text\":\n            self.model_arch = gguf.MODEL_ARCH.QWEN35MOE\n        else:\n            self.model_arch = gguf.MODEL_ARCH.QWEN35\n        super().__init__(dir_model, ftype, fname_out, hparams=hparams, **kwargs)\n\n    @classmethod\n    def filter_tensors(cls, item: tuple[str, Callable[[], Tensor]]) -> tuple[str, Callable[[], Tensor]] | None:\n        name, gen = item\n\n        # MTP tensors are not used yet\n        if name.startswith(\"mtp\"):\n            return None\n\n        return super().filter_tensors(item)\n\n\n@ModelBase.register(\"MiniCPMV4_7ForConditionalGeneration\")\n@ModelBase.example(\"openbmb/MiniCPM-V-4.7\")\nclass MiniCPMV4_7VisionModel(MiniCPMV4_6VisionModel):\n    projector_type = gguf.VisionProjectorType.MINICPMV4_7\n    # MiniCPMV4_7ImageProcessorPil default\n    default_scale_resolution = 448\n    # rows of v.tok_embd_sep, the order must match clip_suffix_rows() in clip-impl.h\n    tok_embd_sep = [\"</image>\", \"<slice>\", \"</slice>\", \"\\n\"]\n\n    def get_downsample_mode(self) -> str:\n        # 4.7 moved downsample_mode to the model config; preprocessor value takes priority\n        return self.preprocessor_config.get(\n            \"downsample_mode\", self.global_config.get(\"downsample_mode\", \"16x\"))\n\n    @classmethod\n    def filter_tensors(cls, item: tuple[str, Callable[[], Tensor]]) -> tuple[str, Callable[[], Tensor]] | None:\n        # keep the text tok_embd, the separator rows are taken from it in modify_tensors\n        if item[0] == \"model.language_model.embed_tokens.weight\":\n            return item\n        return super().filter_tensors(item)\n\n    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:\n        if name == \"model.language_model.embed_tokens.weight\":\n            # the tile separators are text tokens; clip appends their embeddings so that one chunk holds the whole image\n            from transformers import AutoTokenizer\n            tokenizer = AutoTokenizer.from_pretrained(self.dir_model)\n            ids = []\n            for text in self.tok_embd_sep:\n                tok = tokenizer.encode(text, add_special_tokens=False)\n                if len(tok) != 1:\n                    raise ValueError(f\"separator {text!r} must be a single token, got {tok}\")\n                ids.append(tok[0])\n            yield self.format_tensor_name(gguf.MODEL_TENSOR.V_TOK_EMBD_SEP, suffix=\"\"), data_torch[ids]\n            return\n        yield from super().modify_tensors(data_torch, name, bid)\n"
+        }
+      ]
+    },
+    {
+      "path": "conversion/nemotron.py",
+      "beforeSha256": "62ea97a7e22464431c170b614b21e3f9f7965a56127f785b5c4029a66c250a29",
+      "afterSha256": "a4f6af11fd83b758f3132baadfd168718127da72d7b19b5b53bcebb7ddd75271",
+      "replacements": [
+        {
+          "before": "from __future__ import annotations\n\nfrom typing import Any, Callable, Iterable, TYPE_CHECKING\n\nimport torch\n\n",
+          "after": "from __future__ import annotations\n\nfrom typing import Any, Callable, Iterable, Sequence, TYPE_CHECKING\n\nimport torch\n\n"
+        },
+        {
+          "before": "            yield mapped_name, tensor\n\n\n@ModelBase.register(\"NemotronForCausalLM\")\n@ModelBase.example(\"nvidia/Minitron-4B-Base\")\nclass NemotronModel(TextModel):\n",
+          "after": "            yield mapped_name, tensor\n\n\n@ModelBase.register(\"NemotronH_Omni_Reasoning_V3\")\nclass NemotronOmniVLModel(NemotronNanoV2VLModel):\n    _omni_tensor_prefixes = (\n        \"vision_model.embeddings.\",\n        \"vision_model.encoder.layer.\",\n        \"vision_projector.mlp1.\",\n    )\n\n    def get_vision_config(self) -> dict[str, Any] | None:\n        vision_config = dict(self.global_config[\"vision_config\"])\n        vision_config[\"intermediate_size\"] = int(vision_config[\"hidden_size\"] * vision_config[\"mlp_ratio\"])\n        vision_config[\"image_size\"] = 512  # warmup only; the full position table is resized at runtime\n        return vision_config\n\n    def set_gguf_parameters(self):\n        preprocessor_config = self.preprocessor_config\n\n        preprocessor_config[\"image_mean\"] = preprocessor_config[\"norm_mean\"]\n        preprocessor_config[\"image_std\"] = preprocessor_config[\"norm_std\"]\n\n        MmprojModel.set_gguf_parameters(self)\n        self.gguf_writer.add_clip_projector_type(gguf.VisionProjectorType.NEMOTRON_OMNI)\n        self.gguf_writer.add_vision_attention_layernorm_eps(1e-6)\n        self.gguf_writer.add_vision_use_gelu(True)\n        downsample_ratio = self.global_config.get(\"downsample_ratio\", 0.5)\n        self.gguf_writer.add_vision_projector_scale_factor(int(1.0 / downsample_ratio))\n        patch_area = self.hparams[\"patch_size\"] ** 2\n        self.gguf_writer.add_vision_min_pixels(preprocessor_config[\"min_num_patches\"] * patch_area)\n        self.gguf_writer.add_vision_max_pixels(preprocessor_config[\"max_num_patches\"] * patch_area)\n\n    @classmethod\n    def filter_tensors(cls, item: tuple[str, Callable[[], Tensor]]) -> tuple[str, Callable[[], Tensor]] | None:\n        name, gen = item\n\n        # Transformers can rename RADIO and projector tensors in Omni checkpoints.\n        # Accept both checkpoint layouts.\n        if name == \"vision_model.summary_idxs\":\n            # This buffer is only used by RadioModel.summary. The multimodal\n            # projector consumes RadioModel.features for both images and video.\n            return None\n        if name.startswith(cls._omni_tensor_prefixes):\n            return name, gen\n\n        if \"radio_model.model.patch_generator.video_embedder\" in name or name.startswith(\"vision_projector.vision_final_layernorm.\"):\n            return MmprojModel.filter_tensors((name, gen))\n\n        return super().filter_tensors(item)\n\n    def tensor_force_quant(self, name, new_name, bid, n_dims):\n        if new_name in (\"v.position_embd.weight\", \"v.class_embd\"):\n            return gguf.GGMLQuantizationType.F32\n        return super().tensor_force_quant(name, new_name, bid, n_dims)\n\n    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:\n        if name.startswith(self._omni_tensor_prefixes):\n            if name == \"vision_model.embeddings.video_patch_projection.weight\":\n                data_torch = data_torch.reshape(\n                    self.hparams[\"hidden_size\"],\n                    6,\n                    self.hparams[\"patch_size\"],\n                    self.hparams[\"patch_size\"],\n                )\n                yield gguf.TENSOR_NAMES[gguf.MODEL_TENSOR.V_ENC_EMBD_PATCH] + \".weight.1\", data_torch\n                return\n\n            if name.startswith(\"vision_projector.mlp1.\"):\n                projector_mapping = {\n                    \"vision_projector.mlp1.norm.weight\": \"mlp1.0.weight\",\n                    \"vision_projector.mlp1.linear1.weight\": \"mlp1.1.weight\",\n                    \"vision_projector.mlp1.linear2.weight\": \"mlp1.3.weight\",\n                }\n                name = projector_mapping[name]\n            elif name == \"vision_model.embeddings.patch_projection.weight\":\n                data_torch = data_torch.reshape(\n                    self.hparams[\"hidden_size\"],\n                    3,\n                    self.hparams[\"patch_size\"],\n                    self.hparams[\"patch_size\"],\n                )\n            elif name == \"vision_model.embeddings.position_embedding\":\n                data_torch = data_torch.squeeze(0)\n                name += \".weight\"\n            elif \".layer_scale\" in name and name.endswith(\".lambda1\"):\n                name = name.removesuffix(\"lambda1\") + \"weight\"\n\n            yield from MmprojModel.modify_tensors(self, data_torch, name, bid)\n            return\n\n        if \"patch_generator.pos_embed\" in name:\n            # Keep the full table for runtime interpolation.\n            yield from MmprojModel.modify_tensors(self, data_torch, name, bid)\n            return\n\n        if \"patch_generator.video_embedder\" in name:\n            patch_size = self.hparams[\"patch_size\"]\n            n_embd = self.hparams[\"hidden_size\"]\n            temporal_patch_size = self.global_config[\"video_temporal_patch_size\"]\n            if temporal_patch_size != 2:\n                raise ValueError(\"Current implementation only supports a temporal patch size of 2\")\n            data_torch = data_torch.reshape(n_embd, temporal_patch_size * 3, patch_size, patch_size)\n            new_name = gguf.TENSOR_NAMES[gguf.MODEL_TENSOR.V_ENC_EMBD_PATCH] + \".weight.1\"\n            yield new_name, data_torch\n            return\n\n        yield from super().modify_tensors(data_torch, name, bid)\n\n\n@ModelBase.register(\"NemotronForCausalLM\")\n@ModelBase.example(\"nvidia/Minitron-4B-Base\")\nclass NemotronModel(TextModel):\n"
+        },
+        {
+          "before": "    @classmethod\n    def filter_tensors(cls, item: tuple[str, Callable[[], Tensor]]) -> tuple[str, Callable[[], Tensor]] | None:\n        name, gen = item\n        if name.startswith(\"mtp.\"):\n            # --no-mtp: drop the MTP head entirely\n            if cls.no_mtp:\n",
+          "after": "    @classmethod\n    def filter_tensors(cls, item: tuple[str, Callable[[], Tensor]]) -> tuple[str, Callable[[], Tensor]] | None:\n        name, gen = item\n        if name.startswith(\"language_model.\"):\n            name = name[len(\"language_model.\"):]\n        if name.startswith(\"mtp.\"):\n            # --no-mtp: drop the MTP head entirely\n            if cls.no_mtp:\n"
+        },
+        {
+          "before": "        \"mtp.layers.1.final_layernorm.weight\": \"model.layers.{bid}.shared_head.norm.weight\",\n    }\n\n    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:\n        #   mtp.layers.0: NextN input fusion + attention\n        #   mtp.layers.1: MoE + final head norm\n",
+          "after": "        \"mtp.layers.1.final_layernorm.weight\": \"model.layers.{bid}.shared_head.norm.weight\",\n    }\n\n    def _generate_nvfp4_tensors(self):\n        if self._mtp_bid is not None:\n            for name in list(self.model_tensors):\n                if name.startswith(\"mtp.layers.1.mixer\"):\n                    new_name = f\"backbone.layers.{self._mtp_bid}.{name.split('.', 3)[3]}\"\n                    self.model_tensors[new_name] = self.model_tensors.pop(name)\n        super()._generate_nvfp4_tensors()\n\n    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:\n        #   mtp.layers.0: NextN input fusion + attention\n        #   mtp.layers.1: MoE + final head norm\n"
+        }
+      ]
+    },
+    {
+      "path": "gguf-py/gguf/constants.py",
+      "beforeSha256": "5f0ff6ba53828fa278d0ecd744d4e1764f433fb7f9b02d87db380e5dcab0bfd2",
+      "afterSha256": "c52272fe873edeb2117791f014ea4538c71cee3410e249eb8aa6ff44fdf1aa6f",
+      "replacements": [
+        {
+          "before": "        DIMENSION_COUNT           = \"{arch}.rope.dimension_count\"\n        DIMENSION_COUNT_SWA       = \"{arch}.rope.dimension_count_swa\"\n        DIMENSION_SECTIONS        = \"{arch}.rope.dimension_sections\"\n        FREQ_BASE                 = \"{arch}.rope.freq_base\"\n        FREQ_BASE_SWA             = \"{arch}.rope.freq_base_swa\"\n        SCALING_TYPE              = \"{arch}.rope.scaling.type\"\n",
+          "after": "        DIMENSION_COUNT           = \"{arch}.rope.dimension_count\"\n        DIMENSION_COUNT_SWA       = \"{arch}.rope.dimension_count_swa\"\n        DIMENSION_SECTIONS        = \"{arch}.rope.dimension_sections\"\n        SECTION_ORDER             = \"{arch}.rope.section_order\"\n        FREQ_BASE                 = \"{arch}.rope.freq_base\"\n        FREQ_BASE_SWA             = \"{arch}.rope.freq_base_swa\"\n        SCALING_TYPE              = \"{arch}.rope.scaling.type\"\n"
+        },
+        {
+          "before": "        BLOCK_COUNT           = \"clip.vision.block_count\"\n        IMAGE_MEAN            = \"clip.vision.image_mean\"\n        IMAGE_STD             = \"clip.vision.image_std\"\n        SPATIAL_MERGE_SIZE    = \"clip.vision.spatial_merge_size\"\n        EXPERT_COUNT_PER_LAYER = \"clip.vision.expert_count_per_layer\" # dots3note pyramid MoE, 0 = dense layer\n        EXPERT_USED_COUNT     = \"clip.vision.expert_used_count\"\n",
+          "after": "        BLOCK_COUNT           = \"clip.vision.block_count\"\n        IMAGE_MEAN            = \"clip.vision.image_mean\"\n        IMAGE_STD             = \"clip.vision.image_std\"\n        MAX_SLICE_NUMS        = \"clip.vision.max_slice_nums\"\n        SPATIAL_MERGE_SIZE    = \"clip.vision.spatial_merge_size\"\n        EXPERT_COUNT_PER_LAYER = \"clip.vision.expert_count_per_layer\" # dots3note pyramid MoE, 0 = dense layer\n        EXPERT_USED_COUNT     = \"clip.vision.expert_used_count\"\n"
+        },
+        {
+          "before": "    V_SAM_NET_3          = auto() # Deepseek-OCR\n    V_ENC_EMBD_IMGNL     = auto() # Deepseek-OCR\n    V_ENC_EMBD_VSEP      = auto() # Deepseek-OCR\n    V_RESMPL_QUERY_768   = auto() # Deepseek-OCR-2\n    V_RESMPL_QUERY_1024  = auto() # Deepseek-OCR-2\n\n",
+          "after": "    V_SAM_NET_3          = auto() # Deepseek-OCR\n    V_ENC_EMBD_IMGNL     = auto() # Deepseek-OCR\n    V_ENC_EMBD_VSEP      = auto() # Deepseek-OCR\n    V_TOK_EMBD_SEP       = auto() # MiniCPM-V 4.7\n    V_RESMPL_QUERY_768   = auto() # Deepseek-OCR-2\n    V_RESMPL_QUERY_1024  = auto() # Deepseek-OCR-2\n\n"
+        },
+        {
+          "before": "    MODEL_TENSOR.V_SAM_NET_3:               \"v.sam.net_3\",\n    MODEL_TENSOR.V_ENC_EMBD_IMGNL:          \"v.image_newline\", # Deepseek-OCR, Granite4Vision\n    MODEL_TENSOR.V_ENC_EMBD_VSEP:           \"v.view_seperator\", # Deepseek-OCR\n    MODEL_TENSOR.V_RESMPL_QUERY_768:        \"v.resample_query_768\", # Deepseek-OCR-2 qwen2\n    MODEL_TENSOR.V_RESMPL_QUERY_1024:       \"v.resample_query_1024\", # Deepseek-OCR-2 qwen2\n    # Granite4 Vision\n",
+          "after": "    MODEL_TENSOR.V_SAM_NET_3:               \"v.sam.net_3\",\n    MODEL_TENSOR.V_ENC_EMBD_IMGNL:          \"v.image_newline\", # Deepseek-OCR, Granite4Vision\n    MODEL_TENSOR.V_ENC_EMBD_VSEP:           \"v.view_seperator\", # Deepseek-OCR\n    MODEL_TENSOR.V_TOK_EMBD_SEP:            \"v.tok_embd_sep\", # MiniCPM-V 4.7\n    MODEL_TENSOR.V_RESMPL_QUERY_768:        \"v.resample_query_768\", # Deepseek-OCR-2 qwen2\n    MODEL_TENSOR.V_RESMPL_QUERY_1024:       \"v.resample_query_1024\", # Deepseek-OCR-2 qwen2\n    # Granite4 Vision\n"
+        },
+        {
+          "before": "        MODEL_TENSOR.V_ENC_EMBD_POS,\n        MODEL_TENSOR.V_ENC_EMBD_IMGNL,\n        MODEL_TENSOR.V_ENC_EMBD_VSEP,\n        MODEL_TENSOR.V_ENC_INPUT_NORM,\n        MODEL_TENSOR.V_ENC_ATTN_QKV,\n        MODEL_TENSOR.V_ENC_ATTN_Q,\n",
+          "after": "        MODEL_TENSOR.V_ENC_EMBD_POS,\n        MODEL_TENSOR.V_ENC_EMBD_IMGNL,\n        MODEL_TENSOR.V_ENC_EMBD_VSEP,\n        MODEL_TENSOR.V_TOK_EMBD_SEP,\n        MODEL_TENSOR.V_ENC_INPUT_NORM,\n        MODEL_TENSOR.V_ENC_ATTN_QKV,\n        MODEL_TENSOR.V_ENC_ATTN_Q,\n"
+        },
+        {
+          "before": "    LONGROPE = 'longrope'\n\n\nclass PoolingType(IntEnum):\n    NONE = 0\n    MEAN = 1\n",
+          "after": "    LONGROPE = 'longrope'\n\n\n# M-RoPE: input position slot (t, y, x, z) that feeds each RoPE section, in section order\nclass RopeSectionOrder(Enum):\n    TYXZ = 'tyxz' # default\n    ZYXT = 'zyxt'\n\n\nclass PoolingType(IntEnum):\n    NONE = 0\n    MEAN = 1\n"
+        },
+        {
+          "before": "    GLM4V = \"glm4v\"\n    YOUTUVL = \"youtuvl\"\n    NEMOTRON_V2_VL = \"nemotron_v2_vl\"\n    QWEN3TTS_SPKENC = \"qwen3tts_spkenc\" # audio: ECAPA-TDNN speaker encoder\n    QWEN3TTS_GEN = \"qwen3tts_gen\" # audio generation: code_predictor\n    POCKETTTS_SPKENC = \"pockettts_spkenc\" # audio: mimi encoder as voice-prompt encoder\n",
+          "after": "    GLM4V = \"glm4v\"\n    YOUTUVL = \"youtuvl\"\n    NEMOTRON_V2_VL = \"nemotron_v2_vl\"\n    NEMOTRON_OMNI = \"nemotron_omni\"\n    QWEN3TTS_SPKENC = \"qwen3tts_spkenc\" # audio: ECAPA-TDNN speaker encoder\n    QWEN3TTS_GEN = \"qwen3tts_gen\" # audio generation: code_predictor\n    POCKETTTS_SPKENC = \"pockettts_spkenc\" # audio: mimi encoder as voice-prompt encoder\n"
+        },
+        {
+          "before": "    PARAKEET       = \"parakeet\"  # audio\n    MINIMAXM3      = \"minimax_m3\"\n    MINICPMV4_6    = \"minicpmv4_6\"\n    GRANITE_SPEECH = \"granite_speech\"  # audio\n    MIMOVL         = \"mimovl\"\n    MIMO_AUDIO     = \"mimo_audio\"\n",
+          "after": "    PARAKEET       = \"parakeet\"  # audio\n    MINIMAXM3      = \"minimax_m3\"\n    MINICPMV4_6    = \"minicpmv4_6\"\n    MINICPMV4_7    = \"minicpmv4_7\"\n    GRANITE_SPEECH = \"granite_speech\"  # audio\n    MIMOVL         = \"mimovl\"\n    MIMO_AUDIO     = \"mimo_audio\"\n"
+        }
+      ]
+    },
+    {
+      "path": "gguf-py/gguf/gguf_writer.py",
+      "beforeSha256": "97c9ab659f024b4a83e6a25f81af2449eeb01000ee863ede223b0e0178ef5b72",
+      "afterSha256": "2c6f1b1b2469ef458387017d26322f49d03180b7b56a1c5f0c399f3826e8fce7",
+      "replacements": [
+        {
+          "before": "    GGUFEndian,\n    GGUFValueType,\n    Keys,\n    RopeScalingType,\n    PoolingType,\n    TokenType,\n",
+          "after": "    GGUFEndian,\n    GGUFValueType,\n    Keys,\n    RopeSectionOrder,\n    RopeScalingType,\n    PoolingType,\n    TokenType,\n"
+        },
+        {
+          "before": "    def add_rope_dimension_sections(self, dims: Sequence[int]) -> None:\n        self.add_array(Keys.Rope.DIMENSION_SECTIONS.format(arch=self.arch), dims)\n\n    def add_rope_freq_base(self, value: float) -> None:\n        self.add_float32(Keys.Rope.FREQ_BASE.format(arch=self.arch), value)\n\n",
+          "after": "    def add_rope_dimension_sections(self, dims: Sequence[int]) -> None:\n        self.add_array(Keys.Rope.DIMENSION_SECTIONS.format(arch=self.arch), dims)\n\n    def add_rope_section_order(self, value: RopeSectionOrder) -> None:\n        self.add_string(Keys.Rope.SECTION_ORDER.format(arch=self.arch), value.value)\n\n    def add_rope_freq_base(self, value: float) -> None:\n        self.add_float32(Keys.Rope.FREQ_BASE.format(arch=self.arch), value)\n\n"
+        },
+        {
+          "before": "    def add_vision_projector_scale_factor(self, value: int) -> None:\n        self.add_uint32(Keys.ClipVision.Projector.SCALE_FACTOR, value)\n\n    def add_vision_n_wa_pattern(self, value: int) -> None:\n        \"\"\"Add window attention pattern interval for vision models.\n\n",
+          "after": "    def add_vision_projector_scale_factor(self, value: int) -> None:\n        self.add_uint32(Keys.ClipVision.Projector.SCALE_FACTOR, value)\n\n    def add_vision_max_slice_nums(self, value: int) -> None:\n        self.add_uint32(Keys.ClipVision.MAX_SLICE_NUMS, value)\n\n    def add_vision_n_wa_pattern(self, value: int) -> None:\n        \"\"\"Add window attention pattern interval for vision models.\n\n"
+        }
+      ]
+    },
+    {
+      "path": "gguf-py/gguf/tensor_mapping.py",
+      "beforeSha256": "a9aca74559ea0899b77becc3d27d1f6b9d1f20e1b99713c7271c10947e9398b7",
+      "afterSha256": "91350391db8f346d74656ac5f3ab240cc390a2194780b865f1c1a8f8654ca084",
+      "replacements": [
+        {
+          "before": "            \"vision_model.class_embedding\", # llama 4\n            \"model.vision.patch_embedding.cls_embedding\", # cogvlm\n            \"vision_model.radio_model.model.patch_generator.cls_token.token\", # Nemotron Nano v2 VL\n            \"model.vision_model.embeddings.class_embedding\", # Deepseek-OCR\n        ),\n\n",
+          "after": "            \"vision_model.class_embedding\", # llama 4\n            \"model.vision.patch_embedding.cls_embedding\", # cogvlm\n            \"vision_model.radio_model.model.patch_generator.cls_token.token\", # Nemotron Nano v2 VL\n            \"vision_model.embeddings.cls_register_token\", # Nemotron Omni\n            \"model.vision_model.embeddings.class_embedding\", # Deepseek-OCR\n        ),\n\n"
+        },
+        {
+          "before": "            \"model.vision_model.embeddings.patch_embedding\", # Deepseek-OCR CLIP\n            \"siglip2.vision_model.embeddings.patch_embedding\",\n            \"vision_model.radio_model.model.patch_generator.embedder\", # Nemotron Nano v2 VL\n            \"model.vision_tower.patch_embedder.input_proj\", # gemma4\n            \"vision_tower.patch_embed.patchifier.proj\", # dots.ocr\n            \"vision_encoder.patch_embed.proj\", # dots3note\n",
+          "after": "            \"model.vision_model.embeddings.patch_embedding\", # Deepseek-OCR CLIP\n            \"siglip2.vision_model.embeddings.patch_embedding\",\n            \"vision_model.radio_model.model.patch_generator.embedder\", # Nemotron Nano v2 VL\n            \"vision_model.embeddings.patch_projection\", # Nemotron Omni\n            \"model.vision_tower.patch_embedder.input_proj\", # gemma4\n            \"vision_tower.patch_embed.patchifier.proj\", # dots.ocr\n            \"vision_encoder.patch_embed.proj\", # dots3note\n"
+        },
+        {
+          "before": "            \"model.vision.patch_embedding.position_embedding\", # cogvlm\n            \"visual.embeddings.position_embedding\", # glm4v\n            \"vision_model.radio_model.model.patch_generator.pos_embed\", # Nemotron Nano v2 VL\n            \"model.vision_tower.patch_embedder.position_embedding_table\", # gemma4\n            \"vision_model.positional_embedding\", # Step3-VL\n            \"model.vision_embedder.pos_embedding\", # gemma4 unified\n",
+          "after": "            \"model.vision.patch_embedding.position_embedding\", # cogvlm\n            \"visual.embeddings.position_embedding\", # glm4v\n            \"vision_model.radio_model.model.patch_generator.pos_embed\", # Nemotron Nano v2 VL\n            \"vision_model.embeddings.position_embedding\", # Nemotron Omni\n            \"model.vision_tower.patch_embedder.position_embedding_table\", # gemma4\n            \"vision_model.positional_embedding\", # Step3-VL\n            \"model.vision_embedder.pos_embedding\", # gemma4 unified\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_Q: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.q_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.q_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.q_proj\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_Q: (\n            \"vision_model.encoder.layer.{bid}.attention.attention.query\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.q_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.q_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.q_proj\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_K: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.k_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.k_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.k_proj\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_K: (\n            \"vision_model.encoder.layer.{bid}.attention.attention.key\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.k_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.k_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.k_proj\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_V: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.v_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.v_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.v_proj\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_V: (\n            \"vision_model.encoder.layer.{bid}.attention.attention.value\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.v_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.v_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.v_proj\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_INPUT_NORM: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.layer_norm1\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.layer_norm1\",\n            \"model.vision_tower.encoder.layers.{bid}.layer_norm1\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_INPUT_NORM: (\n            \"vision_model.encoder.layer.{bid}.norm1\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.layer_norm1\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.layer_norm1\",\n            \"model.vision_tower.encoder.layers.{bid}.layer_norm1\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_O: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.out_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.out_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.out_proj\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_ATTN_O: (\n            \"vision_model.encoder.layer.{bid}.attention.output.dense\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.self_attn.out_proj\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.self_attn.out_proj\",\n            \"model.vision_tower.encoder.layers.{bid}.self_attn.out_proj\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_POST_ATTN_NORM: (\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.layer_norm2\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.layer_norm2\",\n            \"model.vision_tower.encoder.layers.{bid}.layer_norm2\", # minicpmv4_6\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_POST_ATTN_NORM: (\n            \"vision_model.encoder.layer.{bid}.norm2\", # Nemotron Omni\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.layer_norm2\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.layer_norm2\",\n            \"model.vision_tower.encoder.layers.{bid}.layer_norm2\", # minicpmv4_6\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_FFN_UP: (\n            \"vision_encoder.blocks.{bid}.mlp.fc3\", # dots3note\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.mlp.fc1\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.mlp.fc1\",\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_FFN_UP: (\n            \"vision_model.encoder.layer.{bid}.mlp.fc1\", # Nemotron Omni\n            \"vision_encoder.blocks.{bid}.mlp.fc3\", # dots3note\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.mlp.fc1\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.mlp.fc1\",\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_ENC_FFN_DOWN: (\n            \"vision_encoder.blocks.{bid}.mlp.fc2\", # dots3note\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.mlp.fc2\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.mlp.fc2\",\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_ENC_FFN_DOWN: (\n            \"vision_model.encoder.layer.{bid}.mlp.fc2\", # Nemotron Omni\n            \"vision_encoder.blocks.{bid}.mlp.fc2\", # dots3note\n            \"model.vision_tower.vision_model.encoder.layers.{bid}.mlp.fc2\", # Granite4Vision\n            \"vision_tower.vision_model.encoder.layers.{bid}.mlp.fc2\",\n"
+        },
+        {
+          "before": "        ),\n\n        MODEL_TENSOR.V_LAYER_SCALE_1: (\n            \"vision_tower.vision_model.encoder.layers.{bid}.ls1\", # InternVL\n            \"model.vision_tower.encoder.layer.{bid}.lambda_1\", # Intern-S1\n            \"vision_model.transformer.resblocks.{bid}.ls_1\", # Step3-VL\n        ),\n\n        MODEL_TENSOR.V_LAYER_SCALE_2: (\n            \"vision_tower.vision_model.encoder.layers.{bid}.ls2\", # InternVL\n            \"model.vision_tower.encoder.layer.{bid}.lambda_2\", # Intern-S1\n            \"vision_model.transformer.resblocks.{bid}.ls_2\", # Step3-VL\n",
+          "after": "        ),\n\n        MODEL_TENSOR.V_LAYER_SCALE_1: (\n            \"vision_model.encoder.layer.{bid}.layer_scale1\", # Nemotron Omni\n            \"vision_tower.vision_model.encoder.layers.{bid}.ls1\", # InternVL\n            \"model.vision_tower.encoder.layer.{bid}.lambda_1\", # Intern-S1\n            \"vision_model.transformer.resblocks.{bid}.ls_1\", # Step3-VL\n        ),\n\n        MODEL_TENSOR.V_LAYER_SCALE_2: (\n            \"vision_model.encoder.layer.{bid}.layer_scale2\", # Nemotron Omni\n            \"vision_tower.vision_model.encoder.layers.{bid}.ls2\", # InternVL\n            \"model.vision_tower.encoder.layer.{bid}.lambda_2\", # Intern-S1\n            \"vision_model.transformer.resblocks.{bid}.ls_2\", # Step3-VL\n"
+        },
+        {
+          "before": "            \"siglip2.vision_model.post_layernorm\",\n            \"model.qwen2_model.model.model.norm\", # Deepseek-OCR-2 qwen2\n            \"model.vision_tower.ln_post\", # muse-glimmer\n        ),\n\n        MODEL_TENSOR.V_MM_POST_NORM: (\n",
+          "after": "            \"siglip2.vision_model.post_layernorm\",\n            \"model.qwen2_model.model.model.norm\", # Deepseek-OCR-2 qwen2\n            \"model.vision_tower.ln_post\", # muse-glimmer\n            \"vision_projector.vision_final_layernorm\", # Nemotron Omni Reasoning V3\n        ),\n\n        MODEL_TENSOR.V_MM_POST_NORM: (\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.cpp",
+      "beforeSha256": "d18f6b38a4ddc1e1e8bc8ee6f98dabea50633d4167a673b2f31a0e37c959fd61",
+      "afterSha256": "daaeba7738ec13a1b348a254172b873d512d6361a9fd719dc95bcc18763c1e7e",
+      "replacements": [
+        {
+          "before": "\n    { LLM_KV_ROPE_DIMENSION_COUNT,                   \"%s.rope.dimension_count\"                   },\n    { LLM_KV_ROPE_DIMENSION_COUNT_SWA,               \"%s.rope.dimension_count_swa\"               },\n    { LLM_KV_ROPE_DIMENSION_SECTIONS,                \"%s.rope.dimension_sections\"                },\n    { LLM_KV_ROPE_FREQ_BASE,                         \"%s.rope.freq_base\"                         },\n    { LLM_KV_ROPE_FREQ_BASE_SWA,                     \"%s.rope.freq_base_swa\"                     },\n",
+          "after": "\n    { LLM_KV_ROPE_DIMENSION_COUNT,                   \"%s.rope.dimension_count\"                   },\n    { LLM_KV_ROPE_DIMENSION_COUNT_SWA,               \"%s.rope.dimension_count_swa\"               },\n    { LLM_KV_ROPE_SECTION_ORDER, \"%s.rope.section_order\" },\n    { LLM_KV_ROPE_DIMENSION_SECTIONS,                \"%s.rope.dimension_sections\"                },\n    { LLM_KV_ROPE_FREQ_BASE,                         \"%s.rope.freq_base\"                         },\n    { LLM_KV_ROPE_FREQ_BASE_SWA,                     \"%s.rope.freq_base_swa\"                     },\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.h",
+      "beforeSha256": "f265d73fbfa9a81e62d19f2aee7de80653826efd1d317bed34e9cf51d70c8ac7",
+      "afterSha256": "922f286a012b6f5eb3112c2e9c5b54de910bdc2596f2fd0215042439eb9fa9c9",
+      "replacements": [
+        {
+          "before": "    LLM_KV_ROPE_DIMENSION_COUNT,\n    LLM_KV_ROPE_DIMENSION_COUNT_SWA,\n    LLM_KV_ROPE_DIMENSION_SECTIONS,\n    LLM_KV_ROPE_FREQ_BASE,\n    LLM_KV_ROPE_FREQ_BASE_SWA,\n    LLM_KV_ROPE_SCALE_LINEAR,\n",
+          "after": "    LLM_KV_ROPE_DIMENSION_COUNT,\n    LLM_KV_ROPE_DIMENSION_COUNT_SWA,\n    LLM_KV_ROPE_DIMENSION_SECTIONS,\n    LLM_KV_ROPE_SECTION_ORDER,\n    LLM_KV_ROPE_FREQ_BASE,\n    LLM_KV_ROPE_FREQ_BASE_SWA,\n    LLM_KV_ROPE_SCALE_LINEAR,\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-graph.cpp",
+      "beforeSha256": "e0e0ccf7eca6bfb19a40bcc311597bb4228ae68552cde915b54474e25f97c62b",
+      "afterSha256": "03388c119aa3d06bbf5ae4ee3cd61eccbb33cea9070d02899e3c0be4002815dc",
+      "replacements": [
+        {
+          "before": "                pos_data[3 * n_tokens + i] = 0; // 4th dim is 0\n            }\n            ggml_backend_tensor_set(pos, pos_data.data(), 0, pos_data.size()*ggml_element_size(pos));\n        } else {\n            ggml_backend_tensor_set(pos, ubatch->pos, 0, n_tokens*n_pos_per_embd*ggml_element_size(pos));\n        }\n    }\n}\n",
+          "after": "                pos_data[3 * n_tokens + i] = 0; // 4th dim is 0\n            }\n            ggml_backend_tensor_set(pos, pos_data.data(), 0, pos_data.size()*ggml_element_size(pos));\n        } else if (rope_section_order == LLAMA_ROPE_SECTION_ORDER_TYXZ) {\n            ggml_backend_tensor_set(pos, ubatch->pos, 0, n_tokens*n_pos_per_embd*ggml_element_size(pos));\n        } else {\n            // This pinned API has separate token/embedding batches (no mixed ubatch).\n            // mtmd always supplies embedding positions in [t,y,x,z] slot order.\n            GGML_ASSERT(n_pos_per_embd == 4);\n            GGML_ASSERT(rope_section_order == LLAMA_ROPE_SECTION_ORDER_ZYXT);\n            const int64_t slot_of_section[4] = {3, 1, 2, 0};\n            std::vector<llama_pos> pos_data(n_tokens * 4);\n            for (int64_t s = 0; s < 4; ++s) {\n                for (int64_t i = 0; i < n_tokens; ++i) {\n                    pos_data[s*n_tokens+i] = ubatch->pos[slot_of_section[s]*n_tokens+i];\n                }\n            }\n            ggml_backend_tensor_set(pos, pos_data.data(), 0, pos_data.size()*ggml_element_size(pos));\n        }\n    }\n}\n"
+        },
+        {
+          "before": "}\n\nggml_tensor * llm_graph_context::build_inp_pos() const {\n    auto inp = std::make_unique<llm_graph_input_pos>(hparams.n_pos_per_embd());\n\n    auto & cur = inp->pos;\n\n",
+          "after": "}\n\nggml_tensor * llm_graph_context::build_inp_pos() const {\n    auto inp = std::make_unique<llm_graph_input_pos>(hparams.n_pos_per_embd(), hparams.rope_section_order);\n\n    auto & cur = inp->pos;\n\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-graph.h",
+      "beforeSha256": "2670d7adc0e8a93edd66a7f194c943447145a38e1cfc0e15b7aa8191a46f3886",
+      "afterSha256": "d80400ea9ba06dfea56418d1e45c0c3d3e8993f22fe8a9d59456240c9d134304",
+      "replacements": [
+        {
+          "before": "\nclass llm_graph_input_pos : public llm_graph_input_i {\npublic:\n    llm_graph_input_pos(uint32_t n_pos_per_embd) : n_pos_per_embd(n_pos_per_embd) {}\n    virtual ~llm_graph_input_pos() = default;\n\n    void set_input(const llama_ubatch * ubatch) override;\n",
+          "after": "\nclass llm_graph_input_pos : public llm_graph_input_i {\npublic:\n    llm_graph_input_pos(uint32_t n_pos_per_embd, llama_rope_section_order rope_section_order = LLAMA_ROPE_SECTION_ORDER_TYXZ)\n        : n_pos_per_embd(n_pos_per_embd), rope_section_order(rope_section_order) {}\n    virtual ~llm_graph_input_pos() = default;\n\n    void set_input(const llama_ubatch * ubatch) override;\n"
+        },
+        {
+          "before": "    ggml_tensor * pos = nullptr; // I32 [n_batch]\n\n    const uint32_t n_pos_per_embd = 1;\n};\n\n// temperature tuning, used by llama4\n",
+          "after": "    ggml_tensor * pos = nullptr; // I32 [n_batch]\n\n    const uint32_t n_pos_per_embd = 1;\n    const llama_rope_section_order rope_section_order = LLAMA_ROPE_SECTION_ORDER_TYXZ;\n};\n\n// temperature tuning, used by llama4\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-hparams.h",
+      "beforeSha256": "7fb5b2f320809a5ee6dab6a944c87813201089a8cd91f32180bdffc44e1a8b11",
+      "afterSha256": "194021be857120e6baa1c29ba43e68602c55edd803445fd58cb7f321c0981247",
+      "replacements": [
+        {
+          "before": "    LLAMA_SWA_TYPE_STANDARD  = 1,\n    LLAMA_SWA_TYPE_CHUNKED   = 2,\n    LLAMA_SWA_TYPE_SYMMETRIC = 3,\n};\n\n// forward declaration; full definition in llama-graph.h\n",
+          "after": "    LLAMA_SWA_TYPE_STANDARD  = 1,\n    LLAMA_SWA_TYPE_CHUNKED   = 2,\n    LLAMA_SWA_TYPE_SYMMETRIC = 3,\n};\n\n// M-RoPE: which input position slot feeds each RoPE section\nenum llama_rope_section_order {\n    LLAMA_ROPE_SECTION_ORDER_UNSPECIFIED = -1,\n    LLAMA_ROPE_SECTION_ORDER_TYXZ        = 0, // default, slot i feeds section i\n    LLAMA_ROPE_SECTION_ORDER_ZYXT        = 1, // MiniCPM-V 4.7: time last\n};\n\n// forward declaration; full definition in llama-graph.h\n"
+        },
+        {
+          "before": "    float    yarn_beta_slow   =  1.0f;\n\n    std::array<int, 4> rope_sections;\n\n    // Per-layer RoPE enable flags (1 = use RoPE, 0 = NoPE)\n    // by default, all layers use RoPE (controlled by rope_finetuned)\n",
+          "after": "    float    yarn_beta_slow   =  1.0f;\n\n    std::array<int, 4> rope_sections;\n\n    enum llama_rope_section_order rope_section_order = LLAMA_ROPE_SECTION_ORDER_TYXZ;\n\n    // Per-layer RoPE enable flags (1 = use RoPE, 0 = NoPE)\n    // by default, all layers use RoPE (controlled by rope_finetuned)\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model-saver.cpp",
+      "beforeSha256": "3599fc3de192994da5cf38e1afd0b51e641d7cec5ce1112b6b2e15d24f406c27",
+      "afterSha256": "0677445a58d0d4420f10e6f5463292bb81eeeb356488ba284abeba4f528fd664",
+      "replacements": [
+        {
+          "before": "    add_kv(LLM_KV_ROPE_DIMENSION_COUNT,              hparams.n_rot_full);\n    add_kv(LLM_KV_ROPE_DIMENSION_COUNT_SWA,          hparams.n_rot_swa);\n    add_kv(LLM_KV_ROPE_DIMENSION_SECTIONS,           hparams.rope_sections);\n    add_kv(LLM_KV_ROPE_FREQ_BASE,                    hparams.rope_freq_base_train);\n    add_kv(LLM_KV_ROPE_FREQ_BASE_SWA,                hparams.rope_freq_base_train_swa);\n    // add_kv(LLM_KV_ROPE_SCALE_LINEAR,                 rope_scaling_factor); // old name\n",
+          "after": "    add_kv(LLM_KV_ROPE_DIMENSION_COUNT,              hparams.n_rot_full);\n    add_kv(LLM_KV_ROPE_DIMENSION_COUNT_SWA,          hparams.n_rot_swa);\n    add_kv(LLM_KV_ROPE_DIMENSION_SECTIONS,           hparams.rope_sections);\n    add_kv(LLM_KV_ROPE_SECTION_ORDER,                llama_rope_section_order_name(hparams.rope_section_order));\n    add_kv(LLM_KV_ROPE_FREQ_BASE,                    hparams.rope_freq_base_train);\n    add_kv(LLM_KV_ROPE_FREQ_BASE_SWA,                hparams.rope_freq_base_train_swa);\n    // add_kv(LLM_KV_ROPE_SCALE_LINEAR,                 rope_scaling_factor); // old name\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.cpp",
+      "beforeSha256": "e414f856cfa3af698dc6e4bb8c124af75b67b11ea3fa23d295b2fb92d6fe6107",
+      "afterSha256": "01ad22100810b263160245e90345942144caafed1be60ecebb592f085108725d",
+      "replacements": [
+        {
+          "before": "// graph builders. Only gated activations that map cleanly to llm_ffn_op_type are\n// listed; unrecognized values fall back to GeGLU, which matches the historical\n// default for ModernBert-style architectures.\nstatic const std::map<std::string, llm_ffn_op_type> LLM_FFN_OP_TYPES_FROM_STRING = {\n    { \"gelu\",   LLM_FFN_GEGLU  },\n    { \"geglu\",  LLM_FFN_GEGLU  },\n",
+          "after": "// graph builders. Only gated activations that map cleanly to llm_ffn_op_type are\n// listed; unrecognized values fall back to GeGLU, which matches the historical\n// default for ModernBert-style architectures.\nstatic const std::map<llama_rope_section_order, const char *> LLAMA_ROPE_SECTION_ORDERS = {\n    { LLAMA_ROPE_SECTION_ORDER_TYXZ, \"tyxz\" },\n    { LLAMA_ROPE_SECTION_ORDER_ZYXT, \"zyxt\" },\n};\n\nstd::string llama_rope_section_order_name(llama_rope_section_order rope_section_order) {\n    return LLAMA_ROPE_SECTION_ORDERS.at(rope_section_order);\n}\n\nstatic llama_rope_section_order llama_rope_section_order_from_string(const std::string & name) {\n    for (const auto & kv : LLAMA_ROPE_SECTION_ORDERS) {\n        if (kv.second == name) {\n            return kv.first;\n        }\n    }\n\n    return LLAMA_ROPE_SECTION_ORDER_UNSPECIFIED;\n}\n\n\nstatic const std::map<std::string, llm_ffn_op_type> LLM_FFN_OP_TYPES_FROM_STRING = {\n    { \"gelu\",   LLM_FFN_GEGLU  },\n    { \"geglu\",  LLM_FFN_GEGLU  },\n"
+        },
+        {
+          "before": "    hparams.rope_scaling_type_train = llama_rope_scaling_type_from_string(rope_scaling);\n    GGML_ASSERT(hparams.rope_scaling_type_train != LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED);\n\n    // TODO: Handle SWA metadata similarly when models start implementing it\n    // rope_freq_scale (inverse of the kv) is optional\n    float ropescale = 0.0f;\n",
+          "after": "    hparams.rope_scaling_type_train = llama_rope_scaling_type_from_string(rope_scaling);\n    GGML_ASSERT(hparams.rope_scaling_type_train != LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED);\n\n    std::string rope_section_order(\"tyxz\");\n    ml.get_key(LLM_KV_ROPE_SECTION_ORDER, rope_section_order, false);\n    hparams.rope_section_order = llama_rope_section_order_from_string(rope_section_order);\n    if (hparams.rope_section_order == LLAMA_ROPE_SECTION_ORDER_UNSPECIFIED) {\n        throw std::runtime_error(\"unknown rope section order: \" + rope_section_order);\n    }\n\n    // TODO: Handle SWA metadata similarly when models start implementing it\n    // rope_freq_scale (inverse of the kv) is optional\n    float ropescale = 0.0f;\n"
+        },
+        {
+          "before": "    }\n\n    hparams.rope_type = llama_model_rope_type(this);\n}\n\nvoid llama_model_base::load_vocab(llama_model_loader & ml) {\n",
+          "after": "    }\n\n    hparams.rope_type = llama_model_rope_type(this);\n\n    if (hparams.rope_section_order != LLAMA_ROPE_SECTION_ORDER_TYXZ && hparams.n_pos_per_embd() != 4) {\n        throw std::runtime_error(\"rope section order \" + llama_rope_section_order_name(hparams.rope_section_order) + \" requires M-RoPE\");\n    }\n}\n\nvoid llama_model_base::load_vocab(llama_model_loader & ml) {\n"
+        },
+        {
+          "before": "        // MRoPE (Multi-axis Rotary Position Embedding) sections\n        if (const auto & s = hparams.rope_sections; s[0] || s[1] || s[2] || s[3]) {\n            LLAMA_LOG_INFO(\"%s: mrope sections        = [%d, %d, %d, %d]\\n\", __func__, s[0], s[1], s[2], s[3]);\n        }\n        if (!classifier_labels.empty()) {\n            LLAMA_LOG_INFO(\"%s: n_cls_out             = %u\\n\", __func__, hparams.n_cls_out);\n",
+          "after": "        // MRoPE (Multi-axis Rotary Position Embedding) sections\n        if (const auto & s = hparams.rope_sections; s[0] || s[1] || s[2] || s[3]) {\n            LLAMA_LOG_INFO(\"%s: mrope sections        = [%d, %d, %d, %d]\\n\", __func__, s[0], s[1], s[2], s[3]);\n        }\n        if (hparams.rope_section_order != LLAMA_ROPE_SECTION_ORDER_TYXZ) {\n            LLAMA_LOG_INFO(\"%s: rope section order    = %s\\n\", __func__, llama_rope_section_order_name(hparams.rope_section_order).c_str());\n        }\n        if (!classifier_labels.empty()) {\n            LLAMA_LOG_INFO(\"%s: n_cls_out             = %u\\n\", __func__, hparams.n_cls_out);\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.h",
+      "beforeSha256": "1ad7e7c5bd4081d5cf377b3630821a4fccdab35464d8242b0116d3ccb958a628",
+      "afterSha256": "09dcdd90ab1aad51312aa9524baf935e0444cd6888551943fb6cce70b535f873",
+      "replacements": [
+        {
+          "before": "};\n\nstd::string llama_rope_scaling_type_name(llama_rope_scaling_type rope_scaling_type);\n\n// Map a GGUF activation-name string to llm_ffn_op_type. Returns `fallback` if\n// the string is empty or not recognized.\n",
+          "after": "};\n\nstd::string llama_rope_scaling_type_name(llama_rope_scaling_type rope_scaling_type);\nstd::string llama_rope_section_order_name(llama_rope_section_order rope_section_order);\n\n// Map a GGUF activation-name string to llm_ffn_op_type. Returns `fallback` if\n// the string is empty or not recognized.\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/CMakeLists.txt",
+      "beforeSha256": "699b24cd2861200d659d2ca5376a1cf208cb54120378b2e2538019359b491a80",
+      "afterSha256": "93686b95404d84cd4a7ba798ddd6415f5dd730846d80a4e4b1478f2576e9224b",
+      "replacements": [
+        {
+          "before": "            models/kimivl.cpp\n            models/kimik25.cpp\n            models/nemotron-v2-vl.cpp\n            models/muse-glimmer.cpp\n            models/llama4.cpp\n            models/llava.cpp\n",
+          "after": "            models/kimivl.cpp\n            models/kimik25.cpp\n            models/nemotron-v2-vl.cpp\n            models/nemotron-omni.cpp\n            models/muse-glimmer.cpp\n            models/llama4.cpp\n            models/llava.cpp\n"
+        },
+        {
+          "before": "\nif (TARGET BUILD_INFO)\n    add_dependencies(mtmd        BUILD_INFO)\n    add_dependencies(mtmd-helper BUILD_INFO)\nendif()\n\n# if mtmd is linked against llama-common, we throw an error\n",
+          "after": "\nif (TARGET BUILD_INFO)\n    add_dependencies(mtmd        BUILD_INFO)\n    if(TARGET mtmd-helper)\n        add_dependencies(mtmd-helper BUILD_INFO)\n    endif()\nendif()\n\n# if mtmd is linked against llama-common, we throw an error\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/clip-graph.h",
+      "beforeSha256": "0c04795e22939263ff613226428096fbc0f0739cef34a00c3aa675856b4ba4aa",
+      "afterSha256": "c93a579e229d6cca3f0394920714250bb5a775e72debc5ed90c95c49f1b528b5",
+      "replacements": [
+        {
+          "before": "    // Generic function to stack frames for audio processing\n    // Abstracts out the StackAudioFrames logic used by ultravox\n    ggml_tensor * build_stack(ggml_tensor * cur, int32_t stack_factor, int32_t n_embed);\n};\n",
+          "after": "    // Generic function to stack frames for audio processing\n    // Abstracts out the StackAudioFrames logic used by ultravox\n    ggml_tensor * build_stack(ggml_tensor * cur, int32_t stack_factor, int32_t n_embed);\n\n    // append the separators of img.suffix_type after the image tokens\n    ggml_tensor * build_suffix(ggml_tensor * cur);\n};\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/clip-impl.h",
+      "beforeSha256": "23060c1dea9dec19a722d1ff7f5639996826a49be6ab5446aec5b0a7e0d6c335",
+      "afterSha256": "6277955ffa38abd0717748fa68ea3c6151c65fa95d8193ae56ec02a65072e03a",
+      "replacements": [
+        {
+          "before": "\n#define KEY_MM_PATCH_MERGE_TYPE    \"clip.vision.mm_patch_merge_type\"\n#define KEY_IMAGE_GRID_PINPOINTS   \"clip.vision.image_grid_pinpoints\"\n#define KEY_WIN_ATTN_PATTERN       \"clip.vision.n_wa_pattern\"\n#define KEY_WIN_ATTN_LAYER_INDEXES \"clip.vision.wa_layer_indexes\"\n#define KEY_WA_PATTERN_MODE        \"clip.vision.wa_pattern_mode\"\n",
+          "after": "\n#define KEY_MM_PATCH_MERGE_TYPE    \"clip.vision.mm_patch_merge_type\"\n#define KEY_IMAGE_GRID_PINPOINTS   \"clip.vision.image_grid_pinpoints\"\n#define KEY_MAX_SLICE_NUMS         \"clip.vision.max_slice_nums\"\n#define KEY_WIN_ATTN_PATTERN       \"clip.vision.n_wa_pattern\"\n#define KEY_WIN_ATTN_LAYER_INDEXES \"clip.vision.wa_layer_indexes\"\n#define KEY_WA_PATTERN_MODE        \"clip.vision.wa_pattern_mode\"\n"
+        },
+        {
+          "before": "#define TN_MVLM_PROJ_PEG   \"mm.model.peg.%d.%s\"\n#define TN_IMAGE_NEWLINE   \"v.image_newline\"\n#define TN_IMAGE_SEPERATOR \"v.view_seperator\"\n#define TN_MM_INP_NORM     \"mm.input_norm.weight\"\n#define TN_MM_INP_NORM_B   \"mm.input_norm.bias\"\n#define TN_MM_INP_PROJ     \"mm.input_projection.weight\" // gemma3\n",
+          "after": "#define TN_MVLM_PROJ_PEG   \"mm.model.peg.%d.%s\"\n#define TN_IMAGE_NEWLINE   \"v.image_newline\"\n#define TN_IMAGE_SEPERATOR \"v.view_seperator\"\n#define TN_TOK_EMBD_SEP    \"v.tok_embd_sep\"\n#define TN_MM_INP_NORM     \"mm.input_norm.weight\"\n#define TN_MM_INP_NORM_B   \"mm.input_norm.bias\"\n#define TN_MM_INP_PROJ     \"mm.input_projection.weight\" // gemma3\n"
+        },
+        {
+          "before": "    PROJECTOR_TYPE_YASA2,\n    PROJECTOR_TYPE_KIMIK25,\n    PROJECTOR_TYPE_NEMOTRON_V2_VL,\n    PROJECTOR_TYPE_HUNYUANVL,\n    PROJECTOR_TYPE_PARAKEET,\n    PROJECTOR_TYPE_EXAONE4_5,\n    PROJECTOR_TYPE_MINICPMV4_6,\n    PROJECTOR_TYPE_GRANITE_SPEECH,\n    PROJECTOR_TYPE_MIMOVL,\n    PROJECTOR_TYPE_MINIMAX_M3,\n",
+          "after": "    PROJECTOR_TYPE_YASA2,\n    PROJECTOR_TYPE_KIMIK25,\n    PROJECTOR_TYPE_NEMOTRON_V2_VL,\n    PROJECTOR_TYPE_NEMOTRON_OMNI,\n    PROJECTOR_TYPE_HUNYUANVL,\n    PROJECTOR_TYPE_PARAKEET,\n    PROJECTOR_TYPE_EXAONE4_5,\n    PROJECTOR_TYPE_MINICPMV4_6,\n    PROJECTOR_TYPE_MINICPMV4_7,\n    PROJECTOR_TYPE_GRANITE_SPEECH,\n    PROJECTOR_TYPE_MIMOVL,\n    PROJECTOR_TYPE_MINIMAX_M3,\n"
+        },
+        {
+          "before": "    { PROJECTOR_TYPE_YASA2,             \"yasa2\"},\n    { PROJECTOR_TYPE_KIMIK25,           \"kimik25\"},\n    { PROJECTOR_TYPE_NEMOTRON_V2_VL,    \"nemotron_v2_vl\"},\n    { PROJECTOR_TYPE_EXAONE4_5,         \"exaone4_5\"},\n    { PROJECTOR_TYPE_HUNYUANVL,         \"hunyuanvl\"},\n    { PROJECTOR_TYPE_MINICPMV4_6,       \"minicpmv4_6\"},\n    { PROJECTOR_TYPE_GRANITE_SPEECH,    \"granite_speech\"},\n    { PROJECTOR_TYPE_MIMOVL,            \"mimovl\"},\n    { PROJECTOR_TYPE_MINIMAX_M3,        \"minimax_m3\"},\n",
+          "after": "    { PROJECTOR_TYPE_YASA2,             \"yasa2\"},\n    { PROJECTOR_TYPE_KIMIK25,           \"kimik25\"},\n    { PROJECTOR_TYPE_NEMOTRON_V2_VL,    \"nemotron_v2_vl\"},\n    { PROJECTOR_TYPE_NEMOTRON_OMNI,     \"nemotron_omni\"},\n    { PROJECTOR_TYPE_EXAONE4_5,         \"exaone4_5\"},\n    { PROJECTOR_TYPE_HUNYUANVL,         \"hunyuanvl\"},\n    { PROJECTOR_TYPE_MINICPMV4_6,       \"minicpmv4_6\"},\n    { PROJECTOR_TYPE_MINICPMV4_7,       \"minicpmv4_7\"},\n    { PROJECTOR_TYPE_GRANITE_SPEECH,    \"granite_speech\"},\n    { PROJECTOR_TYPE_MIMOVL,            \"mimovl\"},\n    { PROJECTOR_TYPE_MINIMAX_M3,        \"minimax_m3\"},\n"
+        },
+        {
+          "before": "\nstruct mtmd_serialization; // forward declaration\n\n// For images, buf.size() == nx*ny*3\n//     Memory layout: RGBRGBRGB...\n// For seq, buf.size() == nx*ny*3*nt\n",
+          "after": "\nstruct mtmd_serialization; // forward declaration\n\n// separators appended after the image tokens of one entry, as rows of v.tok_embd_sep\nenum clip_suffix_type : int32_t {\n    CLIP_SUFFIX_NONE = 0,\n    // MiniCPM-V 4.7 tiles\n    CLIP_SUFFIX_MINICPMV_OV,       // </image>\n    CLIP_SUFFIX_MINICPMV_OV_SLICE, // </image><slice>\n    CLIP_SUFFIX_MINICPMV_SLICE,    // </slice><slice>\n    CLIP_SUFFIX_MINICPMV_ROW_END,  // </slice>\\n<slice>\n    CLIP_SUFFIX_MINICPMV_LAST,     // </slice>\n    CLIP_SUFFIX_COUNT,\n};\n\n// rows of v.tok_embd_sep for each suffix type\n// MiniCPM-V 4.7 rows (set by the converter): 0 = </image>, 1 = <slice>, 2 = </slice>, 3 = \\n\nstatic inline const std::vector<int> & clip_suffix_rows(clip_suffix_type type) {\n    static const std::vector<int> none;\n    static const std::vector<int> minicpmv_ov       = { 0 };\n    static const std::vector<int> minicpmv_ov_slice = { 0, 1 };\n    static const std::vector<int> minicpmv_slice    = { 2, 1 };\n    static const std::vector<int> minicpmv_row_end  = { 2, 3, 1 };\n    static const std::vector<int> minicpmv_last     = { 2 };\n    switch (type) {\n        case CLIP_SUFFIX_NONE:              return none;\n        case CLIP_SUFFIX_MINICPMV_OV:       return minicpmv_ov;\n        case CLIP_SUFFIX_MINICPMV_OV_SLICE: return minicpmv_ov_slice;\n        case CLIP_SUFFIX_MINICPMV_SLICE:    return minicpmv_slice;\n        case CLIP_SUFFIX_MINICPMV_ROW_END:  return minicpmv_row_end;\n        case CLIP_SUFFIX_MINICPMV_LAST:     return minicpmv_last;\n        default: GGML_ABORT(\"invalid suffix type\");\n    }\n}\n\n// For images, buf.size() == nx*ny*3\n//     Memory layout: RGBRGBRGB...\n// For seq, buf.size() == nx*ny*3*nt\n"
+        },
+        {
+          "before": "    // appends a learned newline (or EOI) token after the image\n    // no model uses it now (Granite4 Vision moved to anyres), kept for future models\n    bool add_newline = false;\n\n    // llava-next \"anyres\" tiling, used by Granite4 Vision\n    // the whole grid is encoded and assembled in a single graph\n",
+          "after": "    // appends a learned newline (or EOI) token after the image\n    // no model uses it now (Granite4 Vision moved to anyres), kept for future models\n    bool add_newline = false;\n\n    clip_suffix_type suffix_type = CLIP_SUFFIX_NONE;\n\n    // llava-next \"anyres\" tiling, used by Granite4 Vision\n    // the whole grid is encoded and assembled in a single graph\n"
+        },
+        {
+          "before": "struct clip_image_f32_batch {\n    std::vector<clip_image_f32> entries;\n    bool is_audio = false;\n\n    clip_image_f32_batch clone() const {\n        clip_image_f32_batch new_batch{\n            /* entries  */ {},\n            /* is_audio */ is_audio,\n        };\n        new_batch.entries.reserve(entries.size());\n        for (const auto & entry : entries) {\n",
+          "after": "struct clip_image_f32_batch {\n    std::vector<clip_image_f32> entries;\n    bool is_audio = false;\n    bool is_video = false;\n\n    clip_image_f32_batch clone() const {\n        clip_image_f32_batch new_batch{\n            /* entries  */ {},\n            /* is_audio */ is_audio,\n            /* is_video */ is_video,\n        };\n        new_batch.entries.reserve(entries.size());\n        for (const auto & entry : entries) {\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/clip-model.h",
+      "beforeSha256": "13010c0ab79624d5d68db13572905740a06ecf05fb65833212b39a23f0aa5225",
+      "afterSha256": "ddbcbc4d07b141da0d0006ee5ef229b7ee5d5d1dab99859cbcfce9eec737fb88",
+      "replacements": [
+        {
+          "before": "    std::vector<clip_image_size> image_res_candidates;\n    int32_t preproc_min_tiles = 0;\n    int32_t preproc_max_tiles = 0;\n    int32_t preproc_tile_size = 0; // local tile size (deepseek-ocr)\n    resize_algo image_resize_algo_rf = RESIZE_ALGO_BICUBIC;\n    resize_algo image_resize_algo_ov = RESIZE_ALGO_BICUBIC;\n",
+          "after": "    std::vector<clip_image_size> image_res_candidates;\n    int32_t preproc_min_tiles = 0;\n    int32_t preproc_max_tiles = 0;\n    int32_t max_slice_nums = 9; // llava-uhd slice cap; per-model, carried in the GGUF\n    int32_t preproc_tile_size = 0; // local tile size (deepseek-ocr)\n    resize_algo image_resize_algo_rf = RESIZE_ALGO_BICUBIC;\n    resize_algo image_resize_algo_ov = RESIZE_ALGO_BICUBIC;\n"
+        },
+        {
+          "before": "    // embeddings\n    ggml_tensor * class_embedding = nullptr;\n    ggml_tensor * patch_embeddings_0 = nullptr;\n    ggml_tensor * patch_embeddings_1 = nullptr;  // second Conv2D kernel when we decouple Conv3D along temporal dimension (Qwen2VL)\n    ggml_tensor * patch_bias = nullptr;\n    ggml_tensor * position_embeddings = nullptr;\n    ggml_tensor * norm_embd_w = nullptr;\n",
+          "after": "    // embeddings\n    ggml_tensor * class_embedding = nullptr;\n    ggml_tensor * patch_embeddings_0 = nullptr;\n    ggml_tensor * patch_embeddings_1 = nullptr;  // additional patch kernel; interpretation is model-specific (Qwen2VL, Nemotron Omni)\n    ggml_tensor * patch_bias = nullptr;\n    ggml_tensor * position_embeddings = nullptr;\n    ggml_tensor * norm_embd_w = nullptr;\n"
+        },
+        {
+          "before": "\n    ggml_tensor * image_newline = nullptr;\n    ggml_tensor * view_seperator = nullptr;\n\n\n    // Yi type models with mlp+normalization projection\n",
+          "after": "\n    ggml_tensor * image_newline = nullptr;\n    ggml_tensor * view_seperator = nullptr;\n    ggml_tensor * tok_embd_sep = nullptr; // [n_embd_text, n_sep] rows of the text model tok_embd (MiniCPM-V 4.7)\n\n\n    // Yi type models with mlp+normalization projection\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/clip.cpp",
+      "beforeSha256": "d20869d359fb135e7726e1d0ea1834d581d3222efba664a8fc5804cbdac29a48",
+      "afterSha256": "3532a8766bdd78a33e19af4060794498fa9f442dbb690bac3dbc2eb5b32c70d6",
+      "replacements": [
+        {
+          "before": "\n// aka pixel_shuffle / pixel_unshuffle / patch_merger (Kimi-VL)\n// support dynamic resolution\nggml_tensor * clip_graph::build_patch_merge_permute(ggml_tensor * cur, int scale_factor) {\n    GGML_ASSERT(scale_factor > 1);\n\n",
+          "after": "\n// aka pixel_shuffle / pixel_unshuffle / patch_merger (Kimi-VL)\n// support dynamic resolution\nggml_tensor * clip_graph::build_suffix(ggml_tensor * cur) {\n    for (int idx : clip_suffix_rows(img.suffix_type)) {\n        GGML_ASSERT(model.tok_embd_sep && idx < model.tok_embd_sep->ne[1]);\n        ggml_tensor * row = ggml_view_2d(ctx0, model.tok_embd_sep, model.tok_embd_sep->ne[0], 1,\n                                         model.tok_embd_sep->nb[1], idx * model.tok_embd_sep->nb[1]);\n        cur = ggml_concat(ctx0, cur, ggml_cast(ctx0, row, cur->type), 1);\n    }\n    return cur;\n}\n\nggml_tensor * clip_graph::build_patch_merge_permute(ggml_tensor * cur, int scale_factor) {\n    GGML_ASSERT(scale_factor > 1);\n\n"
+        },
+        {
+          "before": "                builder = std::make_unique<clip_graph_minicpmv>(ctx, img);\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n            {\n                builder = std::make_unique<clip_graph_minicpmv4_6>(ctx, img);\n            } break;\n",
+          "after": "                builder = std::make_unique<clip_graph_minicpmv>(ctx, img);\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            {\n                builder = std::make_unique<clip_graph_minicpmv4_6>(ctx, img);\n            } break;\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n            {\n                builder = std::make_unique<clip_graph_nemotron_v2_vl>(ctx, img);\n            } break;\n        case PROJECTOR_TYPE_LLAMA4:\n            {\n",
+          "after": "        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n            {\n                builder = std::make_unique<clip_graph_nemotron_v2_vl>(ctx, img);\n            } break;\n        case PROJECTOR_TYPE_NEMOTRON_OMNI:\n            {\n                builder = std::make_unique<clip_graph_nemotron_omni>(ctx, img);\n            } break;\n        case PROJECTOR_TYPE_LLAMA4:\n            {\n"
+        },
+        {
+          "before": "            if (is_vision) {\n                get_u32(KEY_IMAGE_SIZE, hparams.image_size);\n                get_u32(KEY_PATCH_SIZE, hparams.patch_size);\n                get_i32(KEY_MINICPMV_VERSION, hparams.minicpmv_version, false); // legacy\n                get_u32(KEY_MINICPMV_QUERY_NUM, hparams.minicpmv_query_num, false);\n                if (hparams.minicpmv_query_num == 0) {\n",
+          "after": "            if (is_vision) {\n                get_u32(KEY_IMAGE_SIZE, hparams.image_size);\n                get_u32(KEY_PATCH_SIZE, hparams.patch_size);\n                get_u32(KEY_MAX_SLICE_NUMS, hparams.max_slice_nums, false);\n                get_i32(KEY_MINICPMV_VERSION, hparams.minicpmv_version, false); // legacy\n                get_u32(KEY_MINICPMV_QUERY_NUM, hparams.minicpmv_query_num, false);\n                if (hparams.minicpmv_query_num == 0) {\n"
+        },
+        {
+          "before": "                        }\n                    } break;\n                case PROJECTOR_TYPE_MINICPMV4_6:\n                    {\n                        // MiniCPM-V 4.6 unified merger projector\n                        // ViT merger 2x2 + final merger 2x2 = 4x spatial merge per dimension\n                        hparams.n_merge = 4;\n                        get_u32(KEY_PROJ_SCALE_FACTOR, hparams.n_merge, false);\n                        GGML_ASSERT(hparams.n_merge == 2 || hparams.n_merge == 4);\n\n                        // borrow wa_layer_indexes for vit_merger insertion point\n                        std::vector<int> wa_layer_indexes_vec;\n",
+          "after": "                        }\n                    } break;\n                case PROJECTOR_TYPE_MINICPMV4_6:\n                case PROJECTOR_TYPE_MINICPMV4_7:\n                    {\n                        // MiniCPM-V 4.6/4.7 unified merger projector\n                        // ViT merger 2x2 + final merger 2x2 = 4x spatial merge per dimension\n                        hparams.n_merge = 4;\n                        get_u32(KEY_PROJ_SCALE_FACTOR, hparams.n_merge, false);\n                        GGML_ASSERT(hparams.n_merge == 2 || hparams.n_merge == 4);\n\n                        // no padding: the reference stretches the refined image to the target size\n                        hparams.image_pad_ov = PAD_NONE;\n                        hparams.image_pad_rf = PAD_NONE;\n\n                        // borrow wa_layer_indexes for vit_merger insertion point\n                        std::vector<int> wa_layer_indexes_vec;\n"
+        },
+        {
+          "before": "                case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n                    {\n                        get_u32(KEY_PROJ_SCALE_FACTOR, hparams.n_merge, false);\n                    } break;\n                case PROJECTOR_TYPE_PARAKEET:\n                    {\n",
+          "after": "                case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n                    {\n                        get_u32(KEY_PROJ_SCALE_FACTOR, hparams.n_merge, false);\n                    } break;\n                case PROJECTOR_TYPE_NEMOTRON_OMNI:\n                    {\n                        hparams.ffn_op = FFN_GELU_ERF;\n                        log_ffn_op = \"gelu_erf\";\n                        hparams.image_resize_pad = PAD_NONE;\n                        get_u32(KEY_PROJ_SCALE_FACTOR, hparams.n_merge);\n                        get_u32(KEY_IMAGE_MIN_PIXELS, hparams.image_min_pixels);\n                        get_u32(KEY_IMAGE_MAX_PIXELS, hparams.image_max_pixels);\n                        hparams.warmup_image_size = hparams.image_size;\n                    } break;\n                case PROJECTOR_TYPE_PARAKEET:\n                    {\n"
+        },
+        {
+          "before": "                    || model.proj_type == PROJECTOR_TYPE_IDEFICS3\n                    || model.proj_type == PROJECTOR_TYPE_MINICPMV\n                    || model.proj_type == PROJECTOR_TYPE_MINICPMV4_6\n                ) && layer.ff_up_w && layer.ff_down_w && layer.ff_down_w->ne[0] == hparams.n_embd;\n            if (is_ffn_swapped) {\n                // swap up and down weights\n",
+          "after": "                    || model.proj_type == PROJECTOR_TYPE_IDEFICS3\n                    || model.proj_type == PROJECTOR_TYPE_MINICPMV\n                    || model.proj_type == PROJECTOR_TYPE_MINICPMV4_6\n                    || model.proj_type == PROJECTOR_TYPE_MINICPMV4_7\n                ) && layer.ff_up_w && layer.ff_down_w && layer.ff_down_w->ne[0] == hparams.n_embd;\n            if (is_ffn_swapped) {\n                // swap up and down weights\n"
+        },
+        {
+          "before": "                    model.mm_model_ln_post_b = get_tensor(string_format(TN_MINICPMV_LN, \"post\", \"bias\"));\n                } break;\n            case PROJECTOR_TYPE_MINICPMV4_6:\n                {\n                    const bool merger_required = hparams.n_merge == 4;\n                    auto get_merger_tensor = [&](const std::string & name, bool required = true) {\n",
+          "after": "                    model.mm_model_ln_post_b = get_tensor(string_format(TN_MINICPMV_LN, \"post\", \"bias\"));\n                } break;\n            case PROJECTOR_TYPE_MINICPMV4_6:\n            case PROJECTOR_TYPE_MINICPMV4_7:\n                {\n                    const bool merger_required = hparams.n_merge == 4;\n                    auto get_merger_tensor = [&](const std::string & name, bool required = true) {\n"
+        },
+        {
+          "before": "                    model.mm_ffn_up_b     = get_tensor(string_format(TN_MM_UP,   \"bias\"), false);\n                    model.mm_ffn_down_w   = get_tensor(string_format(TN_MM_DOWN, \"weight\"));\n                    model.mm_ffn_down_b   = get_tensor(string_format(TN_MM_DOWN, \"bias\"), false);\n                } break;\n            case PROJECTOR_TYPE_GLM_EDGE:\n                {\n",
+          "after": "                    model.mm_ffn_up_b     = get_tensor(string_format(TN_MM_UP,   \"bias\"), false);\n                    model.mm_ffn_down_w   = get_tensor(string_format(TN_MM_DOWN, \"weight\"));\n                    model.mm_ffn_down_b   = get_tensor(string_format(TN_MM_DOWN, \"bias\"), false);\n                    model.tok_embd_sep    = get_tensor(TN_TOK_EMBD_SEP, model.proj_type == PROJECTOR_TYPE_MINICPMV4_7);\n                } break;\n            case PROJECTOR_TYPE_GLM_EDGE:\n                {\n"
+        },
+        {
+          "before": "                    model.mm_3_b = get_tensor(string_format(TN_MVLM_PROJ_MLP, 3, \"bias\"));\n                } break;\n            case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n                {\n                    model.mm_0_w = get_tensor(string_format(TN_MVLM_PROJ_MLP, 0, \"weight\"));\n                    model.mm_1_w = get_tensor(string_format(TN_MVLM_PROJ_MLP, 1, \"weight\"));\n",
+          "after": "                    model.mm_3_b = get_tensor(string_format(TN_MVLM_PROJ_MLP, 3, \"bias\"));\n                } break;\n            case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n            case PROJECTOR_TYPE_NEMOTRON_OMNI:\n                {\n                    model.mm_0_w = get_tensor(string_format(TN_MVLM_PROJ_MLP, 0, \"weight\"));\n                    model.mm_1_w = get_tensor(string_format(TN_MVLM_PROJ_MLP, 1, \"weight\"));\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_MUSE_GLIMMER:\n            return (img->nx() / params.patch_size) / 2;\n        case PROJECTOR_TYPE_STEP3VL:\n            return img->nx() / (params.patch_size * params.n_merge);\n        case PROJECTOR_TYPE_DEEPSEEKOCR:\n        case PROJECTOR_TYPE_DEEPSEEKOCR2:\n",
+          "after": "        case PROJECTOR_TYPE_MUSE_GLIMMER:\n            return (img->nx() / params.patch_size) / 2;\n        case PROJECTOR_TYPE_STEP3VL:\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            return img->nx() / (params.patch_size * params.n_merge);\n        case PROJECTOR_TYPE_DEEPSEEKOCR:\n        case PROJECTOR_TYPE_DEEPSEEKOCR2:\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_MUSE_GLIMMER:\n            return (img->ny() / params.patch_size) / 2;\n        case PROJECTOR_TYPE_STEP3VL:\n            return img->ny() / (params.patch_size * params.n_merge);\n        default:\n            break;\n",
+          "after": "        case PROJECTOR_TYPE_MUSE_GLIMMER:\n            return (img->ny() / params.patch_size) / 2;\n        case PROJECTOR_TYPE_STEP3VL:\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            return img->ny() / (params.patch_size * params.n_merge);\n        default:\n            break;\n"
+        },
+        {
+          "before": "                }\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n            {\n                n_patches /= params.n_merge * params.n_merge;\n            } break;\n",
+          "after": "                }\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            {\n                n_patches /= params.n_merge * params.n_merge;\n            } break;\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_IDEFICS3:\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n        case PROJECTOR_TYPE_LLAMA4:\n            {\n                // both X and Y are downscaled by the scale factor\n",
+          "after": "        case PROJECTOR_TYPE_IDEFICS3:\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n        case PROJECTOR_TYPE_NEMOTRON_OMNI:\n        case PROJECTOR_TYPE_LLAMA4:\n            {\n                // both X and Y are downscaled by the scale factor\n"
+        },
+        {
+          "before": "        default:\n            GGML_ABORT(\"unsupported projector type\");\n    }\n\n    return n_patches;\n}\n",
+          "after": "        default:\n            GGML_ABORT(\"unsupported projector type\");\n    }\n\n    n_patches += (int) clip_suffix_rows(img->suffix_type).size();\n\n    return n_patches;\n}\n"
+        },
+        {
+          "before": "                set_input_f32(\"omega\", omega);\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n            {\n                const bool is_4x = hparams.n_merge == 2;\n\n",
+          "after": "                set_input_f32(\"omega\", omega);\n            } break;\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            {\n                const bool is_4x = hparams.n_merge == 2;\n\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_IDEFICS3:\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n        case PROJECTOR_TYPE_QWEN2A:\n        case PROJECTOR_TYPE_QWEN3A:\n        case PROJECTOR_TYPE_GLMA:\n",
+          "after": "        case PROJECTOR_TYPE_IDEFICS3:\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n        case PROJECTOR_TYPE_NEMOTRON_OMNI:\n        case PROJECTOR_TYPE_QWEN2A:\n        case PROJECTOR_TYPE_QWEN3A:\n        case PROJECTOR_TYPE_GLMA:\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_MINICPMV:\n            return ctx->model.mm_model_proj->ne[0];\n        case PROJECTOR_TYPE_MINICPMV4_6:\n            return ctx->model.mm_ffn_down_w->ne[1];\n        case PROJECTOR_TYPE_GLM_EDGE:\n            return ctx->model.mm_model_mlp_3_w->ne[1];\n",
+          "after": "        case PROJECTOR_TYPE_MINICPMV:\n            return ctx->model.mm_model_proj->ne[0];\n        case PROJECTOR_TYPE_MINICPMV4_6:\n        case PROJECTOR_TYPE_MINICPMV4_7:\n            return ctx->model.mm_ffn_down_w->ne[1];\n        case PROJECTOR_TYPE_GLM_EDGE:\n            return ctx->model.mm_model_mlp_3_w->ne[1];\n"
+        },
+        {
+          "before": "            return ctx->model.mm_3_w->ne[1]; // out_proj output dim\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n            return ctx->model.mm_3_w->ne[1];\n        case PROJECTOR_TYPE_LLAMA4:\n            return ctx->model.mm_model_proj->ne[1];\n",
+          "after": "            return ctx->model.mm_3_w->ne[1]; // out_proj output dim\n        case PROJECTOR_TYPE_INTERNVL:\n        case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n        case PROJECTOR_TYPE_NEMOTRON_OMNI:\n            return ctx->model.mm_3_w->ne[1];\n        case PROJECTOR_TYPE_LLAMA4:\n            return ctx->model.mm_model_proj->ne[1];\n"
+        },
+        {
+          "before": "        case PROJECTOR_TYPE_QWEN2VL:\n        case PROJECTOR_TYPE_QWEN25VL:\n        case PROJECTOR_TYPE_QWEN3VL:\n            return 2;\n        default:\n            return 1;\n",
+          "after": "        case PROJECTOR_TYPE_QWEN2VL:\n        case PROJECTOR_TYPE_QWEN25VL:\n        case PROJECTOR_TYPE_QWEN3VL:\n        case PROJECTOR_TYPE_NEMOTRON_OMNI:\n            return 2;\n        default:\n            return 1;\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/models/minicpmv.cpp",
+      "beforeSha256": "4c6237e935e577bb226d8989815332f477a52dc6fde80ba9ba23c11eb8b4128b",
+      "afterSha256": "5819ad9f4ab31e87500cd0c99eab1ad6225d4179fffbdaf3015f401b8f6c0669",
+      "replacements": [
+        {
+          "before": "        inpL = cur;\n    }\n\n    ggml_build_forward_expand(gf, inpL);\n    return gf;\n}\n",
+          "after": "        inpL = cur;\n    }\n\n    inpL = build_suffix(inpL);\n\n    ggml_build_forward_expand(gf, inpL);\n    return gf;\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/models/models.h",
+      "beforeSha256": "c9b3a6634d654c2855f713ebe98dfbdba1fa3a139e893991adf65401ee146197",
+      "afterSha256": "b61f7cc6ba035221e1f26ddb7f86e9df9234535ae7138c32bd44fcfdfb0d0987",
+      "replacements": [
+        {
+          "before": "struct clip_graph_nemotron_v2_vl : clip_graph {\n    clip_graph_nemotron_v2_vl(clip_ctx * ctx, const clip_image_f32 & img) : clip_graph(ctx, img) {}\n    ggml_cgraph * build() override;\n};\n\nstruct clip_graph_llama4 : clip_graph {\n",
+          "after": "struct clip_graph_nemotron_v2_vl : clip_graph {\n    clip_graph_nemotron_v2_vl(clip_ctx * ctx, const clip_image_f32 & img) : clip_graph(ctx, img) {}\n    ggml_cgraph * build() override;\n};\n\nstruct clip_graph_nemotron_omni : clip_graph {\n    clip_graph_nemotron_omni(clip_ctx * ctx, const clip_image_f32 & img) : clip_graph(ctx, img) {}\n    ggml_cgraph * build() override;\n    ggml_tensor * build_inp_with_temporal_merge();\n};\n\nstruct clip_graph_llama4 : clip_graph {\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/models/nemotron-omni.cpp",
+      "beforeSha256": null,
+      "afterSha256": "237650c6cb34bcdba7bbee75ccef919d86767693d9b3cea3386c9f338a5e34b7",
+      "content": "#include \"models.h\"\n\nggml_tensor * clip_graph_nemotron_omni::build_inp_with_temporal_merge() {\n    if (n_batch == 1 && !img_batch->is_video) {\n        return build_inp();\n    }\n\n    GGML_ASSERT(n_batch == 1 || n_batch == 2);\n    GGML_ASSERT(model.patch_embeddings_1 != nullptr);\n    GGML_ASSERT(model.patch_embeddings_1->ne[2] == 6);\n\n    ggml_tensor * inp_raw = build_inp_raw();\n    if (n_batch == 1) {\n        // pad the last video frame inside the graph\n        inp_raw = ggml_concat(ctx0, inp_raw, inp_raw, 2);\n    } else {\n        inp_raw = ggml_reshape_4d(ctx0, inp_raw, img.nx(), img.ny(), 6, 1);\n    }\n\n    ggml_tensor * inp = ggml_conv_2d(ctx0, model.patch_embeddings_1, inp_raw, patch_size, patch_size, 0, 0, 1, 1);\n    inp = ggml_reshape_3d(ctx0, inp, n_patches, n_embd, 1);\n    return ggml_cont(ctx0, ggml_transpose(ctx0, inp));\n}\n\nggml_cgraph * clip_graph_nemotron_omni::build() {\n    GGML_ASSERT(model.class_embedding != nullptr);\n    GGML_ASSERT(model.position_embeddings != nullptr);\n\n    const int n_registers = model.class_embedding->ne[1];\n    const int n_pos = n_patches + n_registers;\n\n    ggml_tensor * inp = build_inp_with_temporal_merge();\n\n    inp = ggml_add(ctx0, inp, resize_position_embeddings(GGML_SCALE_MODE_BILINEAR));\n    cb(inp, \"inp_pos\", -1);\n\n    inp = ggml_concat(ctx0, model.class_embedding, inp, 1);\n\n    ggml_tensor * cur = build_vit(inp, n_pos, NORM_TYPE_NORMAL, hparams.ffn_op, nullptr, nullptr);\n\n    cur = ggml_view_2d(ctx0, cur,\n        n_embd, n_patches,\n        ggml_row_size(cur->type, n_embd),\n        n_registers * ggml_row_size(cur->type, n_embd));\n\n    cur = build_patch_merge_permute(cur, model.hparams.n_merge);\n\n    {\n        cur = build_norm(cur, model.mm_0_w, nullptr, NORM_TYPE_RMS, 1e-5, -1);\n        cur = build_ffn(cur, model.mm_1_w, nullptr, nullptr, nullptr, model.mm_3_w, nullptr, FFN_RELU_SQR, -1);\n    }\n\n    ggml_build_forward_expand(gf, cur);\n\n    return gf;\n}\n"
+    },
+    {
+      "path": "tools/mtmd/mtmd-image.cpp",
+      "beforeSha256": "e972f926e842d0352c599f3d82277552b6d08783880c9c5676dd957cc6575829",
+      "afterSha256": "ceb14ef7d4a1ebd1b6dd93dd5f63dcce69f4bf639e9dde615dfabd305910ee89",
+      "replacements": [
+        {
+          "before": "\nmtmd_image_preprocessor_llava_uhd::slice_instructions mtmd_image_preprocessor_llava_uhd::get_slice_instructions(const clip_image_size & original_size) {\n    mtmd_image_preprocessor_llava_uhd::slice_instructions res;\n    // align slices by patch_size * n_merge so an integer number of merger output tokens fits per slice\n    const int n_merge         = hparams.n_merge;\n    const int patch_size      = hparams.patch_size * n_merge;\n    const int slice_size      = hparams.image_size;\n    const int original_width  = original_size.width;\n    const int original_height = original_size.height;\n",
+          "after": "\nmtmd_image_preprocessor_llava_uhd::slice_instructions mtmd_image_preprocessor_llava_uhd::get_slice_instructions(const clip_image_size & original_size) {\n    mtmd_image_preprocessor_llava_uhd::slice_instructions res;\n    const int patch_size      = get_slice_align();\n    const int slice_size      = hparams.image_size;\n    const int original_width  = original_size.width;\n    const int original_height = original_size.height;\n"
+        },
+        {
+          "before": "    res.overview_size = best_size;\n\n    {\n        const int max_slice_nums = 9; // TODO: this is only used by minicpmv, maybe remove it\n        const float log_ratio = log((float)original_width / original_height);\n        const float ratio = (float)original_width * original_height / (slice_size * slice_size);\n        const int multiple = fmin(ceil(ratio), max_slice_nums);\n",
+          "after": "    res.overview_size = best_size;\n\n    {\n        const int max_slice_nums = hparams.max_slice_nums > 0 ? hparams.max_slice_nums : 9;\n        const float log_ratio = log((float)original_width / original_height);\n        const float ratio = (float)original_width * original_height / (slice_size * slice_size);\n        const int multiple = fmin(ceil(ratio), max_slice_nums);\n"
+        },
+        {
+          "before": "}\n\nint mtmd_image_preprocessor_llava_uhd::ensure_divide(int length, int patch_size) {\n    return std::max(static_cast<int>(std::round(static_cast<float>(length) / patch_size) * patch_size), patch_size);\n}\n\nclip_image_size mtmd_image_preprocessor_llava_uhd::get_refine_size(const clip_image_size & original_size, const clip_image_size & grid, int scale_resolution, int patch_size, bool allow_upscale) {\n",
+          "after": "}\n\nint mtmd_image_preprocessor_llava_uhd::ensure_divide(int length, int patch_size) {\n    return std::max(align_round(static_cast<double>(length) / patch_size) * patch_size, patch_size);\n}\n\nclip_image_size mtmd_image_preprocessor_llava_uhd::get_refine_size(const clip_image_size & original_size, const clip_image_size & grid, int scale_resolution, int patch_size, bool allow_upscale) {\n"
+        },
+        {
+          "before": "//\n\nmtmd_image_preprocessor_llava_uhd::slice_instructions mtmd_image_preprocessor_minicpmv::get_slice_instructions(const clip_image_size & original_size) {\n    if (hparams.n_merge == 2) {\n        const int   slice_size = hparams.image_size;\n        const float ratio      = (float)original_size.width * original_size.height / (slice_size * slice_size);\n        if (ratio <= 1.0f) {\n            mtmd_image_preprocessor_llava_uhd::slice_instructions inst;\n            const int patch_size = hparams.patch_size * hparams.n_merge;\n            inst.overview_size = get_best_resize(original_size, slice_size, patch_size, true);\n            inst.refined_size  = clip_image_size{0, 0};\n            inst.grid_size     = clip_image_size{0, 0};\n            return inst;\n        }\n    }\n    return mtmd_image_preprocessor_llava_uhd::get_slice_instructions(original_size);\n}\n",
+          "after": "//\n\nmtmd_image_preprocessor_llava_uhd::slice_instructions mtmd_image_preprocessor_minicpmv::get_slice_instructions(const clip_image_size & original_size) {\n    const int slice_size = hparams.image_size;\n    const float ratio = (float)original_size.width * original_size.height / (slice_size * slice_size);\n    if (ratio <= 1.0f) {\n        slice_instructions inst;\n        inst.overview_size = get_best_resize(original_size, slice_size, get_slice_align(), true);\n        inst.refined_size = clip_image_size{0, 0};\n        inst.grid_size = clip_image_size{0, 0};\n        return inst;\n    }\n    return mtmd_image_preprocessor_llava_uhd::get_slice_instructions(original_size);\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/mtmd-image.h",
+      "beforeSha256": "34b5d904db52fa3680c04786ad854681579fe9a711dc10f9c0b5fef003ab6596",
+      "afterSha256": "40fd5ccdc2cb7e1b8ca16f219583114b2b99cc1d2f64529310d4b5d4ba8afe80",
+      "replacements": [
+        {
+          "before": "    slice_output slice_image(const clip_image_u8 & img, const slice_instructions & inst);\n\nprotected:\n    clip_image_size get_best_resize(const clip_image_size & original_size, int scale_resolution, int patch_size, bool allow_upscale = false);\n\n    /**\n",
+          "after": "    slice_output slice_image(const clip_image_u8 & img, const slice_instructions & inst);\n\nprotected:\n    // align slices to a multiple of the merger factor (integer merger tokens per slice)\n    virtual int get_slice_align() const {\n        const int merge = hparams.n_merge > 0 ? hparams.n_merge : 1;\n        return hparams.patch_size * merge;\n    }\n\n    // rounding for snapping a length to a multiple of the align size\n    virtual int align_round(double v) const {\n        return static_cast<int>(std::round(v));\n    }\n\n\n    clip_image_size get_best_resize(const clip_image_size & original_size, int scale_resolution, int patch_size, bool allow_upscale = false);\n\n    /**\n"
+        },
+        {
+          "before": "struct mtmd_image_preprocessor_minicpmv : mtmd_image_preprocessor_llava_uhd {\n    using mtmd_image_preprocessor_llava_uhd::mtmd_image_preprocessor_llava_uhd;\n    slice_instructions get_slice_instructions(const clip_image_size & original_size) override;\n};\n\n// custom llava-uhd slicing logic for LFM2\n",
+          "after": "struct mtmd_image_preprocessor_minicpmv : mtmd_image_preprocessor_llava_uhd {\n    using mtmd_image_preprocessor_llava_uhd::mtmd_image_preprocessor_llava_uhd;\n    slice_instructions get_slice_instructions(const clip_image_size & original_size) override;\n\nprotected:\n    // always patch_size * 4, even in 4x mode (the 2x2 vit_merger slot stays)\n    int get_slice_align() const override {\n        return hparams.patch_size * 4;\n    }\n\n    // Python's round() breaks ties to even, unlike std::round\n    int align_round(double v) const override {\n        const double fl = std::floor(v);\n        const double diff = v - fl;\n        if (diff > 0.5) {\n            return static_cast<int>(fl) + 1;\n        }\n        if (diff < 0.5) {\n            return static_cast<int>(fl);\n        }\n        const int lo = static_cast<int>(fl);\n        return (lo % 2 == 0) ? lo : lo + 1;\n    }\n};\n\n// custom llava-uhd slicing logic for LFM2\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/mtmd.cpp",
+      "beforeSha256": "9300de0676f5a3100ab67b0194e4999a57b217d12ef5c0c933069d7bf9592925",
+      "afterSha256": "c547aaee0a69cd4f29761a4d6ee723e8f0e1cfb3999c09e97eba7d6976606332",
+      "replacements": [
+        {
+          "before": "\n#include <algorithm>\n#include <cerrno>\n#include <cstdio>\n#include <cstdlib>\n#include <cstring>\n",
+          "after": "\n#include <algorithm>\n#include <cerrno>\n#include <cmath>\n#include <cstdio>\n#include <cstdlib>\n#include <cstring>\n"
+        },
+        {
+          "before": "#include <vector>\n\n// remember to bump this if the serialization format changes\n#define MTMD_SERIALIZATION_VERSION 1\n\nstruct mtmd_serialization {\n    // note: using 64-bit here for future-proofing\n",
+          "after": "#include <vector>\n\n// remember to bump this if the serialization format changes\n#define MTMD_SERIALIZATION_VERSION 3\n#define MTMD_SERIALIZATION_VERSION_MIN 1\n\nstruct mtmd_serialization {\n    // note: using 64-bit here for future-proofing\n"
+        },
+        {
+          "before": "        // copy buf to data\n        data.assign(buf, buf + len);\n        uint64_t ver_in = read<uint64_t>();\n        if (ver_in != version) {\n            throw std::runtime_error(\"version mismatch\");\n        }\n        this->version = ver_in;\n",
+          "after": "        // copy buf to data\n        data.assign(buf, buf + len);\n        uint64_t ver_in = read<uint64_t>();\n        if ((ver_in != 1 && ver_in != 3) || ver_in > version) {\n            throw std::runtime_error(\"version mismatch\");\n        }\n        this->version = ver_in;\n"
+        },
+        {
+          "before": "    // note: buf is intentionally NOT serialized; the loaded clip_image_f32 will always be a placeholder\n    ser.write(add_viewsep);\n    ser.write(add_newline);\n    ser.write((int32_t)nx_);\n    ser.write((int32_t)ny_);\n}\nvoid clip_image_f32::deserialize(mtmd_serialization & ser) {\n    add_viewsep = ser.read<bool>();\n    add_newline = ser.read<bool>();\n    nx_ = ser.read<int32_t>();\n    ny_ = ser.read<int32_t>();\n    buf.clear(); // always a placeholder after loading\n",
+          "after": "    // note: buf is intentionally NOT serialized; the loaded clip_image_f32 will always be a placeholder\n    ser.write(add_viewsep);\n    ser.write(add_newline);\n    ser.write((int32_t)suffix_type);\n    ser.write((int32_t)anyres.grid_x);\n    ser.write((int32_t)anyres.grid_y);\n    ser.write((int32_t)anyres.orig_nx);\n    ser.write((int32_t)anyres.orig_ny);\n    ser.write((int32_t)nx_);\n    ser.write((int32_t)ny_);\n}\nvoid clip_image_f32::deserialize(mtmd_serialization & ser) {\n    add_viewsep = ser.read<bool>();\n    add_newline = ser.read<bool>();\n    if (ser.version >= 3) {\n        const int32_t suffix_raw = ser.read<int32_t>();\n        if (suffix_raw < 0 || suffix_raw >= CLIP_SUFFIX_COUNT) {\n            throw std::runtime_error(\"invalid suffix type\");\n        }\n        suffix_type = (clip_suffix_type)suffix_raw;\n        anyres.grid_x = ser.read<int32_t>();\n        anyres.grid_y = ser.read<int32_t>();\n        anyres.orig_nx = ser.read<int32_t>();\n        anyres.orig_ny = ser.read<int32_t>();\n    }\n    nx_ = ser.read<int32_t>();\n    ny_ = ser.read<int32_t>();\n    buf.clear(); // always a placeholder after loading\n"
+        },
+        {
+          "before": "    MTMD_POS_TYPE_NORMAL,    // number of positions equals to number of tokens\n    MTMD_POS_TYPE_MROPE,     // qwen-vl mrope style, each image takes max(t,h,w) position indexes\n    MTMD_POS_TYPE_HUNYUANVL, // HunyuanVL mrope + BOI/EOI/newline layout with XD-RoPE dim-3\n    MTMD_POS_TYPE_COUNT,     // for validation\n};\n\nstruct mtmd_image_tokens {\n    uint32_t nx = 0; // number of tokens in x direction\n",
+          "after": "    MTMD_POS_TYPE_NORMAL,    // number of positions equals to number of tokens\n    MTMD_POS_TYPE_MROPE,     // qwen-vl mrope style, each image takes max(t,h,w) position indexes\n    MTMD_POS_TYPE_HUNYUANVL, // HunyuanVL mrope + BOI/EOI/newline layout with XD-RoPE dim-3\n    MTMD_POS_TYPE_CANVAS,    // MiniCPM-V 4.7: overview + slices in one chunk, sharing one 2D canvas (see mtmd_image_tokens::canvas_tile_grid)\n    MTMD_POS_TYPE_COUNT,     // for validation\n};\n\n\nstruct mtmd_image_tokens {\n    uint32_t nx = 0; // number of tokens in x direction\n"
+        },
+        {
+          "before": "        if (pos == MTMD_POS_TYPE_HUNYUANVL) {\n            // [BOI] [row0 tokens + newline] ... [row(ny-1) tokens + newline] [EOI]\n            return (nx + 1) * ny + 2;\n        }\n        uint32_t nz = batch_f32.entries.size();\n        if (n_temporal_merge > 1) {\n",
+          "after": "        if (pos == MTMD_POS_TYPE_HUNYUANVL) {\n            // [BOI] [row0 tokens + newline] ... [row(ny-1) tokens + newline] [EOI]\n            return (nx + 1) * ny + 2;\n        }\n        if (pos == MTMD_POS_TYPE_CANVAS) {\n            uint32_t n = 0;\n            for (size_t k = 0; k < batch_f32.entries.size(); ++k) {\n                const auto [gw, gh] = canvas_tile_grid(k);\n                n += gw * gh + (uint32_t) clip_suffix_rows(batch_f32.entries[k].suffix_type).size();\n            }\n            return n;\n        }\n        uint32_t nz = batch_f32.entries.size();\n        if (n_temporal_merge > 1) {\n"
+        },
+        {
+          "before": "        return false;\n    }\n\n    bool can_batch_with(const mtmd_image_tokens & other) {\n        return nx == other.nx && ny == other.ny && pos == other.pos;\n    }\n\n    mtmd_image_tokens clone() {\n",
+          "after": "        return false;\n    }\n\n    // MTMD_POS_TYPE_CANVAS: entries are [overview, slices row by row], nx/ny is the token grid of the last entry\n    // returns the token grid (w, h) of entry k, scaled from its pixel size\n    std::pair<uint32_t, uint32_t> canvas_tile_grid(size_t k) const {\n        const auto & ref = batch_f32.entries.back();\n        const auto & e   = batch_f32.entries[k];\n        return { (uint32_t) e.nx() * nx / ref.nx(), (uint32_t) e.ny() * ny / ref.ny() };\n    }\n\n    bool can_batch_with(const mtmd_image_tokens & other) {\n        // a canvas chunk holds a whole image group, its layout is not given by nx/ny alone\n        return nx == other.nx && ny == other.ny && pos == other.pos && pos != MTMD_POS_TYPE_CANVAS;\n    }\n\n    mtmd_image_tokens clone() {\n"
+        },
+        {
+          "before": "    bool tok_row_end_trail = false;\n    bool ov_img_first      = false;\n\n    // string template for slice image delimiters with row/col (idefics3)\n    std::string sli_img_start_tmpl;\n\n",
+          "after": "    bool tok_row_end_trail = false;\n    bool ov_img_first      = false;\n\n    // MiniCPM-V 4.6/4.7 prepends an <image_id>N</image_id> tag before <image>\n    bool use_image_id = false;\n\n    // string template for slice image delimiters with row/col (idefics3)\n    std::string sli_img_start_tmpl;\n\n"
+        },
+        {
+          "before": "                    image_preproc = std::make_unique<mtmd_image_preprocessor_llava_uhd>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_MINICPMV4_6:\n                {\n                    slice_tmpl        = MTMD_SLICE_TMPL_MINICPMV_2_6;\n                    tok_ov_img_start  = {lookup_token(\"<image>\")};\n",
+          "after": "                    image_preproc = std::make_unique<mtmd_image_preprocessor_llava_uhd>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_MINICPMV4_6:\n            case PROJECTOR_TYPE_MINICPMV4_7:\n                {\n                    slice_tmpl        = MTMD_SLICE_TMPL_MINICPMV_2_6;\n                    tok_ov_img_start  = {lookup_token(\"<image>\")};\n"
+        },
+        {
+          "before": "                    tok_row_end       = {lookup_token(\"\\n\")};\n                    tok_row_end_trail = false; // no trailing end-of-row token\n                    ov_img_first      = true;\n                    image_preproc     = std::make_unique<mtmd_image_preprocessor_minicpmv>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_QWEN2VL:\n",
+          "after": "                    tok_row_end       = {lookup_token(\"\\n\")};\n                    tok_row_end_trail = false; // no trailing end-of-row token\n                    ov_img_first      = true;\n                    use_image_id      = true;\n                    image_preproc     = std::make_unique<mtmd_image_preprocessor_minicpmv>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_QWEN2VL:\n"
+        },
+        {
+          "before": "            case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n                {\n                    image_preproc = std::make_unique<mtmd_image_preprocessor_fixed_size>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_LFM2:\n                {\n",
+          "after": "            case PROJECTOR_TYPE_NEMOTRON_V2_VL:\n                {\n                    image_preproc = std::make_unique<mtmd_image_preprocessor_fixed_size>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_NEMOTRON_OMNI:\n                {\n                    img_beg = \"<img>\";\n                    img_end = \"</img>\";\n                    image_preproc = std::make_unique<mtmd_image_preprocessor_dyn_size>(ctx_v);\n                } break;\n            case PROJECTOR_TYPE_LFM2:\n                {\n"
+        },
+        {
+          "before": "            const bool has_tiling_grid = (preproc_out.grid_x > 0 && preproc_out.grid_y > 0)\n                || preproc_out.has_overview();\n\n            if (has_tiling_grid) {\n                // [QWEN_VIDEO] we do not support \"frame merging\" for llama-uhd style, so no batching for now\n                GGML_ASSERT(bitmaps.size() == 1);\n\n",
+          "after": "            const bool has_tiling_grid = (preproc_out.grid_x > 0 && preproc_out.grid_y > 0)\n                || preproc_out.has_overview();\n\n            if (has_tiling_grid && ctx->proj_type_v() == PROJECTOR_TYPE_MINICPMV4_7) {\n                GGML_ASSERT(bitmaps.size() == 1);\n                if (ctx->use_image_id) {\n                    add_text(\"<image_id>\" + std::to_string(n_images_added) + \"</image_id>\", true);\n                }\n                add_text(ctx->tok_ov_img_start);\n                // the separators after <image> are appended by clip, see add_canvas_chunk()\n                add_canvas_chunk(std::move(preproc_out), bitmaps[0]->id);\n            } else if (has_tiling_grid) {\n                // [QWEN_VIDEO] we do not support \"frame merging\" for llama-uhd style, so no batching for now\n                GGML_ASSERT(bitmaps.size() == 1);\n\n"
+        },
+        {
+          "before": "\n                // add overview image (first)\n                if (ctx->ov_img_first) {\n                    add_text(ctx->tok_ov_img_start);\n                    cur.entries.emplace_back(std::move(ov_chunk));\n                    add_text(ctx->tok_ov_img_end);\n",
+          "after": "\n                // add overview image (first)\n                if (ctx->ov_img_first) {\n                    if (ctx->use_image_id) {\n                        add_text(\"<image_id>\" + std::to_string(n_images_added) + \"</image_id>\", true);\n                    }\n                    add_text(ctx->tok_ov_img_start);\n                    cur.entries.emplace_back(std::move(ov_chunk));\n                    add_text(ctx->tok_ov_img_end);\n"
+        },
+        {
+          "before": "\n                clip_image_f32_batch batch_f32;\n                batch_f32.is_audio = false;\n                batch_f32.entries = std::move(preproc_out.entries);\n                // do NOT use preproc_out from this point on, it's moved\n\n",
+          "after": "\n                clip_image_f32_batch batch_f32;\n                batch_f32.is_audio = false;\n                batch_f32.is_video = bitmaps[0]->mergeable;\n                batch_f32.entries = std::move(preproc_out.entries);\n                // do NOT use preproc_out from this point on, it's moved\n\n"
+        },
+        {
+          "before": "        return 0;\n    }\n\n    std::vector<mtmd_input_chunk> split_batch_to_chunk(mtmd_image_preproc_out && preproc_out, const std::string & id) {\n        std::vector<mtmd_input_chunk> chunks;\n\n",
+          "after": "        return 0;\n    }\n\n    // MiniCPM-V 4.7: the overview and all slices go in one chunk, clip appends the separators after each tile:\n    //   [ov] </image><slice> [S00] </slice><slice> [S01] </slice>\\n<slice> [S10] </slice><slice> [S11] </slice>\n    void add_canvas_chunk(mtmd_image_preproc_out && preproc_out, const std::string & id) {\n        const int n_col = preproc_out.grid_x;\n        const int n_row = preproc_out.grid_y;\n        auto & slices = preproc_out.entries;\n        GGML_ASSERT(preproc_out.has_overview());\n        GGML_ASSERT((int) slices.size() == n_col * n_row);\n\n        auto & ov = preproc_out.overview;\n        ov.suffix_type = CLIP_SUFFIX_MINICPMV_OV;\n        if (!slices.empty()) {\n            ov.suffix_type = CLIP_SUFFIX_MINICPMV_OV_SLICE;\n            ov.anyres.grid_x = n_col;\n            ov.anyres.grid_y = n_row;\n        }\n        for (int y = 0; y < n_row; y++) {\n            for (int x = 0; x < n_col; x++) {\n                auto & suffix = slices[y * n_col + x].suffix_type;\n                if (y == n_row - 1 && x == n_col - 1) {\n                    suffix = CLIP_SUFFIX_MINICPMV_LAST;\n                } else if (x == n_col - 1) {\n                    suffix = CLIP_SUFFIX_MINICPMV_ROW_END;\n                } else {\n                    suffix = CLIP_SUFFIX_MINICPMV_SLICE;\n                }\n            }\n        }\n\n        mtmd_image_tokens_ptr image_tokens(new mtmd_image_tokens);\n        image_tokens->pos = MTMD_POS_TYPE_CANVAS;\n        image_tokens->id  = id;\n        auto & entries = image_tokens->batch_f32.entries;\n        entries.push_back(std::move(ov));\n        for (auto & slice : slices) {\n            entries.push_back(std::move(slice));\n        }\n        // token grid of the last entry, the grids of the other entries are scaled from it\n        image_tokens->nx = clip_n_output_tokens_x(ctx->ctx_v, &entries.back());\n        image_tokens->ny = clip_n_output_tokens_y(ctx->ctx_v, &entries.back());\n\n        size_t n_tokens = 0;\n        for (const auto & entry : entries) {\n            n_tokens += clip_n_output_tokens(ctx->ctx_v, &entry);\n        }\n        GGML_ASSERT(n_tokens == image_tokens->n_tokens());\n\n        mtmd_input_chunk chunk{\n            MTMD_INPUT_CHUNK_TYPE_IMAGE,\n            {}, // text tokens\n            std::move(image_tokens),\n            nullptr, // audio tokens\n        };\n        cur.entries.emplace_back(std::move(chunk));\n    }\n\n    std::vector<mtmd_input_chunk> split_batch_to_chunk(mtmd_image_preproc_out && preproc_out, const std::string & id) {\n        std::vector<mtmd_input_chunk> chunks;\n\n"
+        },
+        {
+          "before": "    if (image_tokens->is_placeholder()) {\n        LOG_ERR(\"%s: image tokens batch is placeholder\\n\", __func__);\n        return 1;\n    }\n\n    bool ok = clip_image_batch_encode(\n",
+          "after": "    if (image_tokens->is_placeholder()) {\n        LOG_ERR(\"%s: image tokens batch is placeholder\\n\", __func__);\n        return 1;\n    }\n\n    if (image_tokens->pos == MTMD_POS_TYPE_CANVAS) {\n        // the tiles differ in size, encode them one by one\n        size_t offset = 0;\n        for (const auto & entry : image_tokens->batch_f32.entries) {\n            clip_image_f32_batch one;\n            one.entries.push_back(entry);\n            std::vector<float> embd((size_t) n_embd_out * clip_n_output_tokens(ctx_clip, &entry));\n            if (!clip_image_batch_encode(ctx_clip, ctx->n_threads, &one, embd)) {\n                return 1;\n            }\n            GGML_ASSERT(offset + embd.size() <= out_embd.size());\n            std::copy(embd.begin(), embd.end(), out_embd.begin() + offset);\n            offset += embd.size();\n        }\n        GGML_ASSERT(offset == out_embd.size());\n        return 0;\n    }\n\n    bool ok = clip_image_batch_encode(\n"
+        },
+        {
+          "before": "    return image_tokens->ny;\n}\n\nmtmd_decoder_pos mtmd_image_tokens_get_decoder_pos(const mtmd_image_tokens * image_tokens, llama_pos pos_0, size_t i) {\n    mtmd_decoder_pos pos;\n    switch (image_tokens->pos) {\n",
+          "after": "    return image_tokens->ny;\n}\n\n// map a tile coordinate onto the canvas like the reference: round(linspace(0, canvas - 1, grid)), round() breaks ties to even\nstatic uint32_t mtmd_canvas_scale(uint32_t coord, uint32_t grid, uint32_t canvas) {\n    if (grid <= 1 || canvas <= 1) {\n        return 0;\n    }\n    const double v = (double) coord * (double) (canvas - 1) / (double) (grid - 1);\n    return std::min((uint32_t) std::nearbyint(v), canvas - 1);\n}\n\n// MTMD_POS_TYPE_CANVAS: every tile shares the <image> token before the chunk as origin\n// the overview is stretched over the whole canvas, each slice fills its own cell; the time component is the origin, in slot z\n// a tile takes one position in slot t (the KV cache position), the separators after it take one position each\nstatic mtmd_decoder_pos mtmd_canvas_decoder_pos(const mtmd_image_tokens * image_tokens, llama_pos pos_0, size_t i) {\n    const auto & entries = image_tokens->batch_f32.entries;\n    const auto & grid    = entries[0].anyres;\n    const uint32_t nx = image_tokens->nx;\n    const uint32_t ny = image_tokens->ny;\n    const uint32_t canvas_w = grid.is_tiled() ? grid.grid_x * nx : nx;\n    const uint32_t canvas_h = grid.is_tiled() ? grid.grid_y * ny : ny;\n    const uint32_t base = pos_0 - 1;\n\n    mtmd_decoder_pos pos;\n    uint32_t t = pos_0;\n    for (size_t k = 0; k < entries.size(); ++k) {\n        const auto [gw, gh] = image_tokens->canvas_tile_grid(k);\n        if (i < gw * gh) {\n            const uint32_t row = i / gw;\n            const uint32_t col = i % gw;\n            uint32_t h;\n            uint32_t w;\n            if (k == 0) {\n                h = mtmd_canvas_scale(row, gh, canvas_h);\n                w = mtmd_canvas_scale(col, gw, canvas_w);\n            } else {\n                const uint32_t s = k - 1;\n                h = (s / grid.grid_x) * ny + row;\n                w = (s % grid.grid_x) * nx + col;\n            }\n            pos.t = t;\n            pos.x = base + w;\n            pos.y = base + h;\n            pos.z = base;\n            return pos;\n        }\n        i -= gw * gh;\n\n        const size_t n_sep = clip_suffix_rows(entries[k].suffix_type).size();\n        if (i < n_sep) {\n            const uint32_t p = t + 1 + i;\n            pos.t = p;\n            pos.x = p;\n            pos.y = p;\n            pos.z = p;\n            return pos;\n        }\n        i -= n_sep;\n        t += 1 + n_sep;\n    }\n    GGML_ABORT(\"token index out of range\");\n}\n\nmtmd_decoder_pos mtmd_image_tokens_get_decoder_pos(const mtmd_image_tokens * image_tokens, llama_pos pos_0, size_t i) {\n    mtmd_decoder_pos pos;\n    switch (image_tokens->pos) {\n"
+        },
+        {
+          "before": "                    pos.z = image_tokens->image_idx;\n                }\n            } break;\n        default:\n            GGML_ABORT(\"invalid position type\");\n    }\n",
+          "after": "                    pos.z = image_tokens->image_idx;\n                }\n            } break;\n        case MTMD_POS_TYPE_CANVAS:\n            {\n                pos = mtmd_canvas_decoder_pos(image_tokens, pos_0, i);\n            } break;\n        default:\n            GGML_ABORT(\"invalid position type\");\n    }\n"
+        },
+        {
+          "before": "            // HunyuanVL: the sequential (dim-0) position advances by the full token count\n            // (includes BOI/EOI and row newline tokens), not by max(nx, ny)\n            return image_tokens->n_tokens();\n        default:\n            GGML_ABORT(\"invalid position type\");\n    }\n",
+          "after": "            // HunyuanVL: the sequential (dim-0) position advances by the full token count\n            // (includes BOI/EOI and row newline tokens), not by max(nx, ny)\n            return image_tokens->n_tokens();\n        case MTMD_POS_TYPE_CANVAS:\n            {\n                // one position per tile, plus one per separator\n                llama_pos n_pos = 0;\n                for (const auto & entry : image_tokens->batch_f32.entries) {\n                    n_pos += 1 + (llama_pos) clip_suffix_rows(entry.suffix_type).size();\n                }\n                return n_pos;\n            }\n        default:\n            GGML_ABORT(\"invalid position type\");\n    }\n"
+        },
+        {
+          "before": "        return {};\n    }\n}\n",
+          "after": "        return {};\n    }\n}\n\nuint32_t quenderin_vision_mtmd_runtime_abi(void) { return 1; }\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/mtmd/mtmd.h",
+      "beforeSha256": "07133fe5dafbcd9a4a705b5d9386fe80f600d06cbea2819d82f70cf7cf4246db",
+      "afterSha256": "6c775df6d31345a77ce8c03d953c59d3f26eb5b9388bdd1b7256917b0c9659b6",
+      "replacements": [
+        {
+          "before": "    mtmd_progress_callback progress_callback;\n    void * progress_callback_user_data;\n};\n\nMTMD_API const char * mtmd_default_marker(void);\n\n",
+          "after": "    mtmd_progress_callback progress_callback;\n    void * progress_callback_user_data;\n};\n\nMTMD_API uint32_t quenderin_vision_mtmd_runtime_abi(void);\n\nMTMD_API const char * mtmd_default_marker(void);\n\n"
+        }
+      ]
+    },
+    {
+      "path": "build-xcframework.sh",
+      "beforeSha256": "46f2e454739e76536fcbacee41f9b25a9c931ee8278fda1ada7241126f21cee1",
+      "afterSha256": "6f85d7f3ad9524141514b9fc333380b5e55018eca7ce73e080ce18d6503d1376",
+      "replacements": [
+        {
+          "before": "    -DGGML_OPENMP=${GGML_OPENMP}\n)\n\ncheck_required_tool() {\n    local tool=$1\n    local install_message=$2\n",
+          "after": "    -DGGML_OPENMP=${GGML_OPENMP}\n)\n\n# Quenderin's bridge is compiled into this very same llama/mtmd framework.\n# Empty environment preserves this upstream script's standalone behavior.\nif [[ -n \"${QUENDERIN_VISION_SOURCE_DIR:-}\" ]]; then\n    COMMON_CMAKE_ARGS+=(\n        \"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=${QUENDERIN_VISION_SOURCE_DIR}/apple-runtime.cmake\"\n        \"-DQUENDERIN_VISION_SOURCE_DIR=${QUENDERIN_VISION_SOURCE_DIR}\"\n        \"-DPRISM_SOURCE_DIR=$(pwd)\"\n        \"-DQUENDERIN_VISION_BUILD_CLI=OFF\"\n    )\nfi\n\ncheck_required_tool() {\n    local tool=$1\n    local install_message=$2\n"
+        },
+        {
+          "before": "    cp ggml/include/gguf.h         ${header_path}\n    cp tools/mtmd/mtmd.h           ${header_path}\n    cp tools/mtmd/mtmd-helper.h    ${header_path}\n\n    # Create module map (common for all platforms)\n    cat > ${module_path}module.modulemap << EOF\n",
+          "after": "    cp ggml/include/gguf.h         ${header_path}\n    cp tools/mtmd/mtmd.h           ${header_path}\n    cp tools/mtmd/mtmd-helper.h    ${header_path}\n    if [[ -n \"${QUENDERIN_VISION_SOURCE_DIR:-}\" ]]; then\n        cp \"${QUENDERIN_VISION_SOURCE_DIR}/quenderin_vision.h\" \"${header_path}\"\n    fi\n\n    # Create module map (common for all platforms)\n    cat > ${module_path}module.modulemap << EOF\n"
+        },
+        {
+          "before": "        \"${base_dir}/${build_dir}/tools/mtmd/${release_dir}/libmtmd.a\"\n        \"${base_dir}/${build_dir}/vendor/hash/${release_dir}/libvendor-hash.a\"\n    )\n\n    # Create temporary directory for processing\n    local temp_dir=\"${base_dir}/${build_dir}/temp\"\n",
+          "after": "        \"${base_dir}/${build_dir}/tools/mtmd/${release_dir}/libmtmd.a\"\n        \"${base_dir}/${build_dir}/vendor/hash/${release_dir}/libvendor-hash.a\"\n    )\n\n    if [[ -n \"${QUENDERIN_VISION_SOURCE_DIR:-}\" ]]; then\n        libs+=(\"${base_dir}/${build_dir}/quenderin-vision/${release_dir}/libquenderin_vision.a\")\n    fi\n\n    # Create temporary directory for processing\n    local temp_dir=\"${base_dir}/${build_dir}/temp\"\n"
+        }
+      ]
+    }
+  ]
+}

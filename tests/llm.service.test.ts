@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { LlmService } from '../src/services/llm.service.js';
+// Lifecycle fixtures never execute tools or require their unrelated embedding backend.
+vi.mock('../src/services/tools/handlers.js', () => ({ executeToolCalls: vi.fn() }));
 
 /**
  * Regression: `unloadModel()` (the "free RAM" path, also fired by the idle-timer and
@@ -14,7 +16,7 @@ import { LlmService } from '../src/services/llm.service.js';
 describe('LlmService.unloadModel — native handle disposal (leak regression)', () => {
     type Privates = { modelInstance: unknown; contextInstance: unknown };
 
-    it('disposes the model + context (not just nulls them) so "free RAM" actually frees native memory', () => {
+    it('disposes the model + context (not just nulls them) so "free RAM" actually frees native memory', async () => {
         const svc = new LlmService();
         const modelDispose = vi.fn();
         const contextDispose = vi.fn();
@@ -22,6 +24,7 @@ describe('LlmService.unloadModel — native handle disposal (leak regression)', 
         (svc as unknown as Privates).contextInstance = { dispose: contextDispose };
 
         svc.unloadModel();
+        await svc.shutdown(); // Join ordered context-then-model disposal before asserting completion.
 
         expect(modelDispose).toHaveBeenCalledTimes(1);
         expect(contextDispose).toHaveBeenCalledTimes(1);

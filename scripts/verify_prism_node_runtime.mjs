@@ -29,10 +29,19 @@ try {
         assert.equal(llama._bindings.getBlockSizeForGgmlType(type), 128, `${name} block size`);
         assert.equal(llama._bindings.getTypeSizeForGgmlType(type), bytes, `${name} packed size`);
     }
+    assert.equal(llama._bindings.getQuenderinContextAbortABI(), 1, 'compiled in-flight context cancellation capability');
+    for (const method of ['getQuenderinContextAbortABI', 'resetQuenderinAbort', 'requestQuenderinAbort']) {
+        assert.equal(typeof llama._bindings.AddonContext.prototype[method], 'function', `native context ${method}`);
+    }
+    assert.equal(llama._bindings.getQuenderinWeeklyTextRuntimeABI(), 1, 'compiled weekly text architecture capability');
+    assert.equal(llama._bindings.getQuenderinBeamRuntimeABI(), 1, 'compiled Beam capability');
+    assert.equal(llama._bindings.getQuenderinMuseSparkRuntimeABI(), 1, 'compiled Muse capability');
     console.log(JSON.stringify({
         buildType: llama.buildType,
         llamaCppRelease: llama.llamaCppRelease,
         nativeTernaryTypes: ['PQ2_0', 'PTQ1_0'],
+        weeklyTextABI: 1,
+        beamABI: 1, museSparkABI: 1, contextAbortABI: 1,
     }));
 } finally {
     await llama.dispose();

@@ -5,15 +5,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = json.loads((ROOT / "shared/prism-runtime.json").read_text())
 STAMP = "quenderin-prism-runtime.json"
-IDENTITY_FIELDS = ("repository", "revision", "sourcePatchId", "sourcePatchSha256", "museSparkABI")
+IDENTITY_FIELDS = ("repository", "revision", "sourcePatchId", "sourcePatchSha256", "museSparkABI",
+                   "weeklyTextPatchId", "weeklyTextPatchSha256", "weeklyTextABI",
+                   "beamPatchId", "beamPatchSha256", "beamABI",
+                   "visionPatchId", "visionPatchSha256", "visionABI",
+                   "graniteConverterPatchId", "graniteConverterPatchSha256")
 
 
 def git(source: Path, *args: str) -> str:
@@ -31,31 +38,24 @@ def relative_path(value: str) -> Path:
     return Path(*path.parts)
 
 
-def load_source_patch(root: Path | None = None, lock: dict | None = None) -> dict:
-    root, lock = root or ROOT, lock or LOCK
-    identity = lock["sourcePatch"]
+def read_patch_manifest(root: Path, identity: dict) -> dict:
     path = root / relative_path(identity["path"])
     if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
         raise ValueError("Runtime patch manifest escapes the project")
     data = path.read_bytes()
     if digest(data) != identity["sha256"]:
         raise ValueError("Runtime source patch digest does not match the lock")
-    manifest = json.loads(data)
-    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
-            or manifest.get("baseRepository") != lock["repository"]
-            or manifest.get("baseRevision") != lock["revision"]
-            or manifest.get("upstreamRevision") != identity["upstreamRevision"]
-            or manifest.get("museSparkABI") != identity["museSparkABI"]
-            or type(manifest.get("museSparkABI")) is not int or manifest["museSparkABI"] != 1
-            or manifest.get("capabilitySymbol") != "quenderin_muse_spark_runtime_abi"):
-        raise ValueError("Runtime source patch identity is invalid")
+    return json.loads(data)
+
+
+def validate_patch_files(manifest: dict, allowed_roots: tuple[str, ...]) -> None:
     files = manifest.get("files", [])
     if not files or len(files) > 64:
         raise ValueError("Runtime source patch file set is invalid")
     seen = set()
     for entry in files:
         path = relative_path(entry["path"])
-        if path.parts[0] not in ("include", "src", "tests") or entry["path"] in seen:
+        if path.parts[0] not in allowed_roots or entry["path"] in seen:
             raise ValueError("Runtime source patch path is duplicated or outside the source")
         seen.add(entry["path"])
         for key in ("beforeSha256", "afterSha256"):
@@ -67,15 +67,173 @@ def load_source_patch(root: Path | None = None, lock: dict | None = None) -> dic
                 raise ValueError("New runtime source patch file needs exact content")
         elif not entry.get("replacements") or "content" in entry:
             raise ValueError("Existing runtime source patch file needs exact replacements")
+
+
+def load_source_patch(root: Path | None = None, lock: dict | None = None) -> dict:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock["sourcePatch"]
+    manifest = read_patch_manifest(root, identity)
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or manifest.get("upstreamRevision") != identity["upstreamRevision"]
+            or manifest.get("museSparkABI") != identity["museSparkABI"]
+            or type(manifest.get("museSparkABI")) is not int or manifest["museSparkABI"] != 1
+            or manifest.get("capabilitySymbol") != "quenderin_muse_spark_runtime_abi"):
+        raise ValueError("Runtime source patch identity is invalid")
+    validate_patch_files(manifest, ("include", "src", "tests"))
     return manifest
+
+
+def load_weekly_text_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("weeklyTextPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or manifest.get("parentSourcePatch") != {"id": lock["sourcePatch"]["id"],
+                                                    "sha256": lock["sourcePatch"]["sha256"]}
+            or manifest.get("upstreamRevisions") != identity["upstreamRevisions"]
+            or manifest.get("weeklyTextABI") != identity["weeklyTextABI"]
+            or type(manifest.get("weeklyTextABI")) is not int or manifest["weeklyTextABI"] != 1
+            or manifest.get("capabilitySymbol") != "quenderin_weekly_text_runtime_abi"):
+        raise ValueError("Weekly text runtime source patch identity is invalid")
+    revisions = manifest["upstreamRevisions"]
+    if (not isinstance(revisions, dict) or set(revisions) != {"k2Horizon", "nemotron35"}
+            or not all(re.fullmatch(r"[0-9a-f]{40}", value or "") for value in revisions.values())):
+        raise ValueError("Weekly text upstream revisions are invalid")
+    validate_patch_files(manifest, ("include", "src", "tests", "ggml"))
+    return manifest
+
+
+def load_beam_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("beamPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    weekly = lock.get("weeklyTextPatch", {})
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or manifest.get("parentSourcePatch") != {"id": lock["sourcePatch"]["id"],
+                                                    "sha256": lock["sourcePatch"]["sha256"]}
+            or not weekly
+            or manifest.get("parentWeeklyTextPatch") != {"id": weekly.get("id"), "sha256": weekly.get("sha256")}
+            or manifest.get("upstreamRevision") != identity["upstreamRevision"]
+            or not re.fullmatch(r"[0-9a-f]{40}", manifest.get("upstreamRevision") or "")
+            or manifest.get("beamABI") != identity["beamABI"]
+            or type(manifest.get("beamABI")) is not int or manifest["beamABI"] != 1
+            or manifest.get("capabilitySymbol") != "quenderin_beam_runtime_abi"):
+        raise ValueError("Beam runtime source patch identity is invalid")
+    validate_patch_files(manifest, ("include", "src", "tests"))
+    return manifest
+
+
+def load_vision_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("visionPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or any(manifest.get(parent) != {"id": lock.get(key, {}).get("id"),
+                                           "sha256": lock.get(key, {}).get("sha256")}
+                   for parent, key in (("parentSourcePatch", "sourcePatch"),
+                                       ("parentWeeklyTextPatch", "weeklyTextPatch"),
+                                       ("parentBeamPatch", "beamPatch")))
+            or manifest.get("upstreamRevisions") != identity["upstreamRevisions"]
+            or type(manifest.get("visionABI")) is not int or manifest["visionABI"] != 1
+            or manifest["visionABI"] != identity["visionABI"]
+            or manifest.get("capabilitySymbol") != "quenderin_vision_mtmd_runtime_abi"):
+        raise ValueError("Vision runtime source patch identity is invalid")
+    revisions = manifest["upstreamRevisions"]
+    if (not isinstance(revisions, dict) or set(revisions) != {"minicpm47", "supervl"}
+            or not all(re.fullmatch(r"[0-9a-f]{40}", value or "") for value in revisions.values())):
+        raise ValueError("Vision upstream revisions are invalid")
+    validate_patch_files(manifest, ("src", "tools", "conversion", "gguf-py", "build-xcframework.sh"))
+    return manifest
+
+
+def load_granite_converter_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("graniteConverterPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    vision = lock.get("visionPatch", {})
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or not vision or manifest.get("parentVisionPatch") != {"id": vision["id"], "sha256": vision["sha256"]}
+            or manifest.get("upstreamRevisions") != identity["upstreamRevisions"]
+            or not isinstance(manifest.get("upstreamRevisions"), list)
+            or len(manifest["upstreamRevisions"]) != 3
+            or not all(re.fullmatch(r"[0-9a-f]{40}", value or "") for value in manifest["upstreamRevisions"])):
+        raise ValueError("Granite converter source patch identity is invalid")
+    validate_patch_files(manifest, ("conversion", "gguf-py"))
+    return manifest
+
+
+def source_patches(root: Path | None = None, lock: dict | None = None) -> list[dict]:
+    manifests = [load_source_patch(root, lock)]
+    weekly = load_weekly_text_patch(root, lock)
+    if weekly is not None:
+        manifests.append(weekly)
+    beam = load_beam_patch(root, lock)
+    if beam is not None:
+        manifests.append(beam)
+    vision = load_vision_patch(root, lock)
+    if vision is not None:
+        manifests.append(vision)
+    granite = load_granite_converter_patch(root, lock)
+    if granite is not None:
+        manifests.append(granite)
+    return manifests
+
+
+def final_patch_files(manifests: list[dict]) -> list[dict]:
+    """Keep the original git status and final digest for each stacked path."""
+    entries = {}
+    for manifest in manifests:
+        for entry in manifest["files"]:
+            original = entries.get(entry["path"])
+            if original and entry["beforeSha256"] != original["afterSha256"]:
+                raise ValueError("Stacked runtime patch preimages do not match")
+            entries[entry["path"]] = {**entry, "beforeSha256": (
+                original["beforeSha256"] if original else entry["beforeSha256"])}
+    return list(entries.values())
 
 
 def provenance(root: Path | None = None, lock: dict | None = None) -> dict:
     lock = lock or LOCK
     manifest = load_source_patch(root, lock)
-    return {"version": 1, "repository": lock["repository"], "revision": lock["revision"],
+    identity = {"version": 1, "repository": lock["repository"], "revision": lock["revision"],
             "sourcePatchId": manifest["id"], "sourcePatchSha256": lock["sourcePatch"]["sha256"],
             "museSparkABI": manifest["museSparkABI"]}
+    weekly = load_weekly_text_patch(root, lock)
+    if weekly is not None:
+        identity.update(weeklyTextPatchId=weekly["id"],
+                        weeklyTextPatchSha256=lock["weeklyTextPatch"]["sha256"],
+                        weeklyTextABI=weekly["weeklyTextABI"])
+    beam = load_beam_patch(root, lock)
+    if beam is not None:
+        identity.update(beamPatchId=beam["id"], beamPatchSha256=lock["beamPatch"]["sha256"],
+                        beamABI=beam["beamABI"])
+    vision = load_vision_patch(root, lock)
+    if vision is not None:
+        identity.update(visionPatchId=vision["id"],
+                        visionPatchSha256=lock["visionPatch"]["sha256"], visionABI=vision["visionABI"])
+    granite = load_granite_converter_patch(root, lock)
+    if granite is not None:
+        identity.update(graniteConverterPatchId=granite["id"],
+                        graniteConverterPatchSha256=lock["graniteConverterPatch"]["sha256"])
+    return identity
 
 
 def source_path(source: Path, name: str) -> Path:
@@ -102,15 +260,15 @@ def verify_base(source: Path) -> None:
 def verify(source: Path) -> dict:
     source = source.resolve(strict=True)
     verify_base(source)
-    manifest = load_source_patch()
-    allowed = {entry["path"]: ("??" if entry["beforeSha256"] is None else " M") for entry in manifest["files"]}
+    entries = final_patch_files(source_patches())
+    allowed = {entry["path"]: ("??" if entry["beforeSha256"] is None else " M") for entry in entries}
     for line in git(source, "status", "--porcelain", "--untracked-files=all").splitlines():
         if len(line) < 4 or allowed.get(line[3:]) != line[:2]:
             raise ValueError("Prism runtime has changes outside the exact source patch")
-    for entry in manifest["files"]:
+    for entry in entries:
         path = source_path(source, entry["path"])
         if not path.is_file() or digest(path.read_bytes()) != entry["afterSha256"]:
-            raise ValueError(f"Muse runtime source patch is missing or modified: {entry['path']}")
+            raise ValueError(f"Runtime source patch is missing or modified: {entry['path']}")
     header = (source / "ggml/include/ggml.h").read_text()
     loader = (source / "src/llama-model.cpp").read_text()
     if not all(t in header for t in LOCK["requiredTypes"]) or '"prism.hadamard.version"' not in loader:
@@ -128,18 +286,20 @@ def apply_source_patch(source: Path) -> dict:
     verify_base(source)
     if git(source, "status", "--porcelain", "--untracked-files=all"):
         raise ValueError("Existing source changes are preserved; the patch requires a clean pinned checkout")
-    manifest = load_source_patch()
-    plan = []
-    for entry in manifest["files"]:
+    manifests = source_patches()
+    final_patch_files(manifests)  # Validate stack order before reading or writing source.
+    plan = {}
+    for entry in [entry for manifest in manifests for entry in manifest["files"]]:
         path = source_path(source, entry["path"])
+        previous = plan.get(entry["path"])
         if entry["beforeSha256"] is None:
             if path.exists() or path.is_symlink():
                 raise ValueError("Existing file is preserved; new Muse source path is occupied")
             before, after = None, entry["content"].encode()
         else:
-            if not path.is_file():
+            if not path.is_file() and previous is None:
                 raise ValueError("Runtime patch preimage is missing")
-            before = path.read_bytes()
+            before = previous[2] if previous is not None else path.read_bytes()
             if digest(before) != entry["beforeSha256"]:
                 raise ValueError(f"Runtime patch preimage differs: {entry['path']}")
             text = before.decode("utf-8")
@@ -150,19 +310,67 @@ def apply_source_patch(source: Path) -> dict:
             after = text.encode("utf-8")
         if digest(after) != entry["afterSha256"]:
             raise ValueError("Runtime patch output digest differs")
-        plan.append((path, before, after))
+        plan[entry["path"]] = (path, previous[1] if previous is not None else before, after)
     # Validate the entire plan before writing any file, then recheck the preimages.
-    for path, before, _after in plan:
+    for path, before, _after in plan.values():
         changed = (path.exists() or path.is_symlink()) if before is None else path.read_bytes() != before
         if changed:
             raise ValueError("Runtime source changed while preparing the patch")
-    for path, before, after in plan:
-        if before is None:
-            with path.open("xb") as handle:
+    # Stage every byte before touching source. Hard-linked preimages permit rollback
+    # without another disk allocation, including ENOSPC during commit. Atomic replace
+    # keeps existing paths continuously readable; new paths are created exclusively.
+    staging = Path(tempfile.mkdtemp(prefix=".quenderin-runtime-patch-", dir=source.parent))
+    committed = []
+    preserve_staging = False
+    try:
+        staged = []
+        for index, (path, before, after) in enumerate(plan.values()):
+            # Upstream model backports can add a new source directory. Parents
+            # must be ordinary directories inside the already verified checkout.
+            path.parent.mkdir(parents=True, exist_ok=True)
+            backup, output = staging / f"{index}.before", staging / f"{index}.after"
+            if before is not None:
+                os.link(path, backup, follow_symlinks=False)
+            with output.open("xb") as handle:
                 handle.write(after)
-        else:
-            path.write_bytes(after)
-    return verify(source)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if output.read_bytes() != after:
+                raise OSError("Runtime patch staging write was incomplete")
+            output.chmod(path.stat().st_mode & 0o777 if before is not None else 0o644)
+            staged.append((path, before, after, backup, output))
+        for path, before, after, backup, output in staged:
+            changed = (path.exists() or path.is_symlink()) if before is None else (
+                path.is_symlink() or path.read_bytes() != before)
+            if changed:
+                raise ValueError("Runtime source changed while staging the patch")
+        for path, before, after, backup, output in staged:
+            if before is None:
+                os.link(output, path)  # Fails if a concurrent writer claimed the new path.
+            else:
+                os.replace(output, path)
+            committed.append((path, before, after, backup))
+        return verify(source)
+    except BaseException:
+        conflicts = []
+        for path, before, after, backup in reversed(committed):
+            try:
+                if path.is_symlink() or not path.is_file() or path.read_bytes() != after:
+                    conflicts.append(str(path))
+                    continue  # Never overwrite a concurrent editor's changes during recovery.
+                if before is None:
+                    path.unlink()  # Only the exclusively-created file from this transaction.
+                else:
+                    os.replace(backup, path)
+            except OSError:
+                conflicts.append(str(path))
+        if conflicts:
+            preserve_staging = True
+            raise ValueError(f"Source changed during recovery; preserved original links in {staging}: {conflicts}")
+        raise
+    finally:
+        if not preserve_staging:
+            shutil.rmtree(staging)  # This invocation created and exclusively owns the staging directory.
 
 
 def fetch(destination: Path) -> dict:
@@ -187,6 +395,19 @@ def stamp(source: Path, artifact: Path) -> dict:
     llama_headers = [h.with_name("llama.h") for h in headers]
     if not all(h.is_file() and "quenderin_muse_spark_runtime_abi" in h.read_text() for h in llama_headers):
         raise ValueError("Every framework slice must contain the Muse capability header")
+    if "weeklyTextABI" in identity and not all(
+            "quenderin_weekly_text_runtime_abi" in h.read_text() for h in llama_headers):
+        raise ValueError("Every framework slice must contain the weekly text capability header")
+    if "beamABI" in identity and not all(
+            "quenderin_beam_runtime_abi" in h.read_text() for h in llama_headers):
+        raise ValueError("Every framework slice must contain the Beam capability header")
+    if "visionABI" in identity:
+        if not all(h.with_name("mtmd.h").is_file()
+                   and "quenderin_vision_mtmd_runtime_abi" in h.with_name("mtmd.h").read_text()
+                   and h.with_name("quenderin_vision.h").is_file()
+                   and "quenderin_vision_generate" in h.with_name("quenderin_vision.h").read_text()
+                   for h in headers):
+            raise ValueError("Every framework slice must contain the vision source and bridge capability headers")
     (artifact / STAMP).write_text(json.dumps(identity, indent=2) + "\n")
     return identity
 

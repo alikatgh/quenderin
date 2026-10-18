@@ -17,7 +17,9 @@ final class ModelPickerTests: XCTestCase {
 
     func testHighRAMAllowsEverySupportedModel() {
         let options = ModelCatalog.optionsWithFitness(forTotalRAMGB: 1024)
-        XCTAssertEqual(options.count, 18)
+        XCTAssertEqual(options.count, 28)
+        XCTAssertEqual(Set(options.map { $0.model.id }), Set(ModelCatalog.models.map(\.id)))
+        XCTAssertEqual(options.first { $0.model.id == "beam-1.0-501b-a23b-ud-iq2-xxs" }?.model.artifacts?.count, 4)
         XCTAssertTrue(options.allSatisfy { $0.fitness.canLoad == ModelRuntimeSupport.supports($0.model) })
     }
 

@@ -65,7 +65,7 @@ struct QuenderinApp: App {
         let mockUI = false
         #endif
         let engine: InferenceEngine = mockUI
-            ? MockInferenceEngine()
+            ? CoordinatedInferenceEngine(MockInferenceEngine())
             : DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = mockUI
             ? MockModelDownloader()
@@ -118,7 +118,7 @@ struct QuenderinApp: App {
                 if case .ready(let model) = onboarding.phase {
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         onboarding.beginInstall(picked)
-                    })
+                    }, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
                 } else {
                     Text("Finish setting up Quenderin in the main window first.")
                         .foregroundStyle(.secondary)

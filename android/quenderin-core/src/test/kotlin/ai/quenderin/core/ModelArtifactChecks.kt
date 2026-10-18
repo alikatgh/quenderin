@@ -243,6 +243,7 @@ internal object ModelArtifactChecks {
     }
 
     private fun museRuntimeAndMemory() {
+        unavailableWorkflows()
         val pinned = requireNotNull(ModelCatalog.entry("muse-spark-open-q2-k"))
         ModelArtifacts.validate(pinned)
         check(pinned.artifacts.size == 22 && ModelRuntimeSupport.isVerifiedMuseManifest(pinned))
@@ -263,6 +264,47 @@ internal object ModelArtifactChecks {
         check(ModelRuntimeSupport.isMuse(renamed))
         check(LlamaEngine(1024.0).runCatching { load(muse, "/unused") }.exceptionOrNull()?.message == ModelRuntimeSupport.MUSE_UNAVAILABLE_MESSAGE)
         check(ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS == 4096)
+    }
+
+    private fun unavailableWorkflows() {
+        val encoded = model.copy(id = "custom", label = "Custom", filename = "custom.gguf", artifacts = emptyList(),
+            url = "https://example.invalid/NVIDIA%2DNemotron%2D3.5%2DBolt%2D74B%2DA9B.gguf")
+        check(ModelRuntimeSupport.requiresWeeklyTextRuntime(encoded))
+        check(ModelRuntimeSupport.unsupportedWorkflowReason(encoded) == null)
+        val names = listOf("Beam-1.0-501B-A23B", "Hy-Memory-30B-A3B", "Nemotron-3.5-Super-VL-120B",
+            "Step-5-Preview", "Granite-Switch-4.1", "Nemotron-3.5-Bolt-E4B", "Nemotron-3.5-Unknown", "Bolt-E4B", "Super-VL-120B", "Beam1.0-501B")
+        for (name in names) for (field in 0..3) {
+            val candidate = model.copy(id = if (field == 0) name else "custom", label = if (field == 1) name else "Custom",
+                filename = if (field == 2) "$name.gguf" else "custom.gguf", url = if (field == 3) "https://example.invalid/$name.gguf" else "https://example.invalid/custom.gguf",
+                artifacts = emptyList())
+            check(!ModelRuntimeSupport.supports(candidate))
+            check(ModelRuntimeSupport.unsupportedWorkflowReason(candidate) != null)
+            check(!MemoryFitness.check(candidate, 1024.0, 1024.0, prismRuntimeAvailable = true,
+                museRuntimeAvailable = true, weeklyTextRuntimeAvailable = true).canLoad)
+            val http = Http(emptyMap())
+            check(runCatching { ModelDownloadEngine(http, Sink(), DownloadStore(), "/models").download(candidate) {} }.isFailure)
+            check(http.calls.isEmpty())
+        }
+        for (name in listOf("Granite-4.0", "Hunyuan-3.0", "Nemotron-3-Super", "Step-3.5-Flash")) {
+            check(ModelRuntimeSupport.unsupportedWorkflowReason(listOf(name)) == null)
+        }
+        for (candidate in ModelCatalog.models.filter { it.id.startsWith("jais3") || it.id.startsWith("nemotron35") || it.id.startsWith("minicpm-v47") || it.id == "lfm25-24b-a2b" }) {
+            check(ModelRuntimeSupport.unsupportedWorkflowReason(candidate) == null)
+        }
+        fun integer(value: Long, width: Int) = ByteArray(width) { (value shr (it * 8)).toByte() }
+        fun string(value: String): ByteArray = value.toByteArray().let { integer(it.size.toLong(), 8) + it }
+        for ((architecture, name) in listOf("beam" to "Custom", "step5_vl" to "Custom", "hy_v3" to "Hy-Memory-30B-A3B", "nemotron_h_moe" to "Nemotron-3.5-Super-VL-120B")) {
+            val bytes = "GGUF".toByteArray() + integer(3, 4) + integer(0, 8) + integer(2, 8) +
+                string("general.architecture") + integer(8, 4) + string(architecture) +
+                string("general.name") + integer(8, 4) + string(name)
+            val file = java.io.File.createTempFile("unavailable-model-", ".gguf")
+            try {
+                file.writeBytes(bytes)
+                check(ModelRuntimeSupport.metadataUnavailableReason(file.path) != null)
+                file.writeBytes(bytes.copyOf(bytes.size - 1))
+                check(runCatching { ModelRuntimeSupport.metadataUnavailableReason(file.path) }.isFailure)
+            } finally { file.delete() }
+        }
     }
 
     private fun retainedVerificationCancelsAndRestoreNeverFetches() {

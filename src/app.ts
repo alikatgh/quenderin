@@ -9,6 +9,12 @@ import { MemoryService } from './services/memory.service.js';
 import { fileURLToPath } from 'url';
 import healthRoute from './routes/health.js';
 import docsRoute from './routes/docs.js';
+import { step5Routes } from './routes/step5.js';
+import { registerHyMemoryRoutes } from './routes/hyMemory.js';
+import { HyMemoryWorkflow } from './services/hyMemory.js';
+import { HyMemoryInstaller } from './services/hyMemoryInstaller.js';
+import { HyApprovedMemoryStore } from './services/hyApprovedMemoryStore.js';
+import { createHyMemoryInferencePort } from './services/hyMemoryRuntime.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { MetricsService } from './services/metrics.service.js';
 import { AgentService } from './services/agent.service.js';
@@ -136,6 +142,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
     // Routes
     app.use('/', healthRoute);
     app.use('/api/docs', docsRoute);
+    app.use('/api/step5', step5Routes());
 
     if (metricsService) {
         app.get('/api/metrics', async (req, res) => {
@@ -466,6 +473,7 @@ export function createApp(metricsService?: MetricsService, agentService?: AgentS
 
     /** Notes + agent memory API — all I/O through MemoryService (single write lock) */
     if (memoryService) {
+        registerHyMemoryRoutes(app, new HyMemoryWorkflow(new HyMemoryInstaller(), createHyMemoryInferencePort(), new HyApprovedMemoryStore()));
         app.get('/api/notes', async (_req, res) => {
             try {
                 const notes = await memoryService.listNotes();

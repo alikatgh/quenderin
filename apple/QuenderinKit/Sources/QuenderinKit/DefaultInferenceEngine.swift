@@ -18,9 +18,9 @@ public enum DefaultInferenceEngine {
     ///   plus the chosen model's footprint at load (see `ContextWindow`). The mock ignores it.
     public static func make(deviceBudgetGB: Double = 4.0) -> InferenceEngine {
         #if canImport(llama)
-        return LlamaEngine(deviceBudgetGB: deviceBudgetGB)
+        return CoordinatedInferenceEngine(LlamaEngine(deviceBudgetGB: deviceBudgetGB))
         #else
-        return MockInferenceEngine()
+        return CoordinatedInferenceEngine(MockInferenceEngine())
         #endif
     }
 

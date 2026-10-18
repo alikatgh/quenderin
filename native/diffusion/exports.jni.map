@@ -1,0 +1,4 @@
+QUENDERIN_DIFFUSION_JNI_1 {
+    global: Java_ai_quenderin_core_NativeImageGenerationBridge_*;
+    local: *;
+};

@@ -103,6 +103,8 @@ jobs:
       - name: Run QuenderinKit tests
         working-directory: apple/QuenderinKit
         run: swift test
+      - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
+        run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
   prism-apple-core:
     name: Apple core (pinned Prism runtime)
@@ -125,6 +127,95 @@ jobs:
               -Xcc "-I$RUNNER_TEMP/prism-llama/include" \
               -Xcc "-I$RUNNER_TEMP/prism-llama/ggml/include"
 
+  prism-apple-framework:
+    name: Apple Prism framework and vision adapter
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and seal the actual iOS and universal macOS framework (no weights)
+        run: bash apple/build-prism-xcframework.sh "$RUNNER_TEMP/prism-framework"
+      - name: Compile and test Swift against the sealed framework
+        run: QUENDERIN_RUNTIME=prism swift test --package-path apple/QuenderinKit
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the native app project
+        working-directory: apple/QuenderinApp
+        run: xcodegen generate
+      - name: Compile the actual vision bridge for the iOS SDK
+        working-directory: apple/QuenderinApp
+        run: |
+          set -o pipefail
+          build_log="$RUNNER_TEMP/vision-ios-build.log"
+          if QUENDERIN_RUNTIME=prism xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/vision-ios-build" \
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -50 "$build_log"
+          else
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
+
+  image-runtime:
+    name: Local image runtime (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    concurrency:
+      group: image-runtime-${{ github.ref }}-${{ matrix.os }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify manifests and no-weight image failure fixtures
+        if: runner.os != 'Windows'
+        env:
+          QUENDERIN_DIFFUSION_TEST_SCRATCH: ${{ runner.temp }}
+        run: |
+          python3 scripts/prepare_diffusion_runtime.py check-manifests
+          python3 scripts/test_diffusion_core.py
+      - name: Build and verify the pinned desktop image CLI and private DSO
+        if: runner.os != 'macOS'
+        run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Run standalone Windows filesystem and Unicode fixtures (no weights)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -S native/diffusion/tests -B "$env:RUNNER_TEMP/diffusion-fixtures" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build "$env:RUNNER_TEMP/diffusion-fixtures" --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir "$env:RUNNER_TEMP/diffusion-fixtures" -C Release --output-on-failure --timeout 30
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import os,sys; from pathlib import Path; sys.path.insert(0,'scripts'); import build_desktop_diffusion as d; d.windows_tools(); print(d.runtime.verify_library(Path(os.environ['RUNNER_TEMP'])/'diffusion-fixtures/bin/quenderin_diffusion.dll','windows'))"
+      - name: Build iOS and universal macOS image frameworks
+        id: compile-apple-image
+        if: runner.os == 'macOS'
+        run: bash apple/build-diffusion-xcframework.sh "$RUNNER_TEMP/diffusion-apple"
+      - name: Compile and test the actual Swift image adapter
+        if: ${{ !cancelled() && runner.os == 'macOS' && steps.compile-apple-image.outcome == 'success' }}
+        run: swift test --package-path apple/QuenderinKit --jobs 3
+      - name: Compile the actual image UI against the iOS SDK (no signing or execution)
+        if: ${{ !cancelled() && runner.os == 'macOS' && steps.compile-apple-image.outcome == 'success' }}
+        run: |
+          brew install xcodegen
+          cd apple/QuenderinApp
+          xcodegen generate
+          set -o pipefail
+          build_log="$RUNNER_TEMP/image-ios-app.log"
+          if xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/image-ios-app" \
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -60 "$build_log"
+          else
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
+
   prism-inference:
     name: Bonsai pinned model (CPU load and generation)
     runs-on: ubuntu-latest
@@ -134,23 +225,41 @@ jobs:
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
       - name: Build the pinned CPU runtime
+        id: compile-runtime
         run: |
           cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
             -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=ON
-          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs --parallel 4
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs test-chat-template --parallel 4
+      - name: Exercise Jais dense and MoE graphs with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a k2-horizon -s 1234
+      - name: Exercise Nemotron hybrid graph with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a nemotron_h_moe -s 1234
+      - name: Exercise Beam graph with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a beam -s 1234
+      - name: Verify publisher prompt formatting
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 120 "$RUNNER_TEMP/prism-llama/build/bin/test-chat-template"
       - name: Exercise Muse with tiny generated tensors (no Muse weight download)
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" --arch muse-spark
       - name: Verify the native Muse text prompt
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror android/jni/tests/muse_chat_test.cpp -o "$RUNNER_TEMP/muse-chat-test"
           "$RUNNER_TEMP/muse-chat-test"
       - name: Fetch and verify the exact catalog artifact
+        id: fetch-artifact
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: |
           curl --fail --location --retry 2 --max-time 600 \
             'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true' \
             --output "$RUNNER_TEMP/bonsai.gguf"
           echo "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3  $RUNNER_TEMP/bonsai.gguf" | sha256sum --check
       - name: Load ternary weights and generate a bounded answer
+        if: ${{ !cancelled() && steps.fetch-artifact.outcome == 'success' }}
         run: |
           timeout 1200 "$RUNNER_TEMP/prism-llama/build/bin/llama-completion" \
             -m "$RUNNER_TEMP/bonsai.gguf" -ngl 0 -c 512 -n 64 -t 4 \
@@ -161,11 +270,15 @@ jobs:
           grep -qi hello "$RUNNER_TEMP/bonsai-answer.log"
 
   prism-desktop:
-    name: Desktop Prism addon (${{ matrix.os }})
+    name: Desktop native runtimes (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
+    concurrency:
+      group: desktop-native-${{ github.ref }}-${{ matrix.os }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - os: ubuntu-latest
@@ -174,14 +287,23 @@ jobs:
           - os: windows-latest
             target: --win
             unpacked: win-unpacked
+          - os: macos-15
+            target: --mac
+            unpacked: mac
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
+      - name: Verify protected Windows ACL policy on synthetic files before dependency setup
+        if: runner.os == 'Windows'
+        run: python -m unittest scripts.tests.test_windows_memory_acl
       - name: Install locked dependencies
         run: npm ci
+      - name: Verify the actual Windows private approved-memory ACL
+        if: runner.os == 'Windows'
+        run: npx vitest run tests/hy-approved-memory-store.test.ts
       - name: Prepare verified Prism source and versioned addon patch
         run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
       - name: Compile the actual desktop addon (bounded CPU backend)
@@ -190,12 +312,44 @@ jobs:
         run: |
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
+      - name: Exercise actual addon cancellation edits without model weights
+        if: runner.os != 'Windows'
+        run: python3 -m unittest scripts.tests.test_node_context_abort
+      - name: Build and seal the isolated desktop image runtime
+        run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Build and seal the pinned vision worker (no weights)
+        run: python scripts/build_vision_runtime.py build --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-desktop"
+      - name: Exercise bounded image parsing and vision prompt fixtures (no weights)
+        run: python scripts/test_vision_runtime.py --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-fixtures"
+      - name: Load the actual Prism and image DSOs together in both orders (no weights)
+        shell: bash
+        run: |
+          native_arch="$(node -p process.arch)"
+          native_os="$(node -p "({win32:'win',darwin:'mac',linux:'linux'})[process.platform]")"
+          python scripts/build_desktop_diffusion.py joint-load --directory "build/diffusion/$native_os-$native_arch" --prism node_modules/node-llama-cpp/llama/localBuilds
       - name: Build and package the desktop application
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           npm run build
-          npx --no-install electron-builder --dir ${{ matrix.target }} --x64 --publish never
+          native_arch="$(node -p process.arch)"
+          npx --no-install electron-builder --dir ${{ matrix.target }} --"$native_arch" --publish never
       - name: Probe the addon inside the actual packaged ASAR
+        if: runner.os != 'macOS'
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
+      - name: Verify the packaged image CLI, private DSO, exports and dependency closure
+        if: runner.os != 'macOS'
+        run: python scripts/build_desktop_diffusion.py verify --directory release/${{ matrix.unpacked }}/resources/diffusion --packaged
+      - name: Verify the shipped vision worker and exact compiled capability
+        if: runner.os != 'macOS'
+        run: python scripts/build_vision_runtime.py verify --directory release/${{ matrix.unpacked }}/resources/vision --packaged
+      - name: Verify the macOS lab application's packaged image runtime
+        if: runner.os == 'macOS'
+        run: |
+          resources="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)/Contents/Resources"
+          python3 scripts/build_desktop_diffusion.py verify --directory "$resources/diffusion" --packaged
+          python3 scripts/build_vision_runtime.py verify --directory "$resources/vision" --packaged
 
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was
@@ -215,9 +369,16 @@ jobs:
         working-directory: apple/QuenderinApp
         run: |
           set -o pipefail
-          xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+          build_log="$RUNNER_TEMP/ios-app.log"
+          if xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" \
-            CODE_SIGNING_ALLOWED=NO build | tail -40
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -40 "$build_log"
+          else
+            grep -n -B4 -A8 -E 'error:|fatal error|SmallVector|While evaluating|While emitting|failed|Stack dump' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
 
   mobile-android-core:
     name: Android core (Kotlin) checks
@@ -242,12 +403,42 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
           java -jar /tmp/qcore.jar
+      - name: Verify Beam framing and specialist native capability gates with tiny fixtures
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/BeamVerify.kt -include-runtime -d "$RUNNER_TEMP/beam-runtime.jar"
+          java -jar "$RUNNER_TEMP/beam-runtime.jar"
+          python3 -m unittest scripts.tests.test_beam_native_prompt scripts.tests.test_jni_exception_boundary scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_jni_utf8_boundary scripts.tests.test_granite_native
+      - name: Verify Android Step 5 transport policy and conversation boundary (no models)
+        run: |
+          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar -o "$RUNNER_TEMP/okhttp-4.12.0.jar"
+          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar -o "$RUNNER_TEMP/okio-jvm-3.6.0.jar"
+          echo "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0  $RUNNER_TEMP/okhttp-4.12.0.jar" | sha256sum -c -
+          echo "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412  $RUNNER_TEMP/okio-jvm-3.6.0.jar" | sha256sum -c -
+          step5_cp="$RUNNER_TEMP/okhttp-4.12.0.jar:$RUNNER_TEMP/okio-jvm-3.6.0.jar:$HOME/kotlin/kotlinc/lib/kotlinx-coroutines-core-jvm.jar"
+          kotlinc -classpath "$step5_cp" android/quenderin-core/src/main/kotlin/ai/quenderin/core/Step5Client.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/Step5OkHttpTransport.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/Step5Controller.kt \
+            android/quenderin-core/src/verify/Step5ControllerVerify.kt \
+            android/quenderin-core/src/verify/Step5AndroidTransportVerify.kt -d "$RUNNER_TEMP/step5-clients.jar"
+          kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5ControllerVerifyKt
+          kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5AndroidTransportVerifyKt
       - name: Verify multipart installation and Muse response framing with small fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/test/kotlin/ai/quenderin/core/ModelArtifactChecks.kt \
             android/quenderin-core/src/verify/ModelArtifactsVerify.kt -include-runtime -d "$RUNNER_TEMP/model-artifacts.jar"
           java -jar "$RUNNER_TEMP/model-artifacts.jar"
+      - name: Verify image component installation, resources and unavailable native failure
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/ImageGenerationVerify.kt -include-runtime -d "$RUNNER_TEMP/image-generation.jar"
+          java -Djava.io.tmpdir="$RUNNER_TEMP" -jar "$RUNNER_TEMP/image-generation.jar"
+      - name: Verify native vision installation and image-copy bounds with synthetic files
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/VisionInstallerVerify.kt -include-runtime -d "$RUNNER_TEMP/vision-installer.jar"
+          java -jar "$RUNNER_TEMP/vision-installer.jar"
       - name: Verify native discovery snapshot and Android offline catalog
         run: |
           python3 scripts/generate_website_catalog.py --check
@@ -283,11 +474,17 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the isolated image runtime and JNI bridge
+        run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" bash scripts/build_android_diffusion.sh "$RUNNER_TEMP/android-diffusion"
       - name: Build the debug APK and release bundle with the actual Prism JNI runtime
         working-directory: android
         # The bundle is unsigned without the existing upload key. Compilation is
         # a release check, not evidence of signing or Play submission.
-        run: ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama"
+        run: ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama" -Pquenderin.diffusionLibDir="$RUNNER_TEMP/android-diffusion/jniLibs"
+      - name: Verify both packaged image DSO pairs, dependency closure and 16 KiB alignment
+        run: |
+          python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/apk/debug/app-debug.apk
+          python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/bundle/release/app-release.aab
       - name: Run native runtime and memory guard unit tests
         working-directory: android
         run: ./gradlew :quenderin-core:test --no-daemon --console=plain
@@ -333,7 +530,17 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_prism_node_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_prism_apple_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_diffusion_android_package.py
+          python3 -m unittest discover -s scripts/tests -p test_diffusion_apple_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_desktop_diffusion.py
+          python3 -m unittest discover -s scripts/tests -p test_experimental_model_support.py
+          python3 -m unittest discover -s scripts/tests -p test_step5_backend.py
+          python3 -m unittest discover -s scripts/tests -p test_vision_build.py
+          python3 scripts/generate_beam_artifacts.py --check
+          python3 scripts/generate_vision_models.py --check
+          python3 native/diffusion/tests/test_windows_exports.py
           node --test scripts/tests/prism-node-loader.test.mjs scripts/tests/desktop-release.test.mjs
+          node --test scripts/tests/desktop-diffusion-pack.test.cjs
       - name: FEATURES.md model table is a rendering of the catalog (no doc drift)
         run: python3 scripts/generate_features_models.py --check
       - name: Website tables and calculator match the app catalog

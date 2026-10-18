@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Brain, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../../lib/api.js';
+import { HyMemorySection } from './HyMemorySection.js';
 
 /**
  * Agent Memory panel — extracted from SettingsArea (r38/r44 split, 2026-07-11). Self-contained:
@@ -28,7 +29,7 @@ export function MemorySection() {
     };
 
     return (
-        <section className="premium-card p-6">
+        <><HyMemorySection /><section className="premium-card p-6">
             <button
                 type="button"
                 aria-expanded={memoryOpen}
@@ -73,6 +74,6 @@ export function MemorySection() {
                     )}
                 </div>
             )}
-        </section>
+        </section></>
     );
 }

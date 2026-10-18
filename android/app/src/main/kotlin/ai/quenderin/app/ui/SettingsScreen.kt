@@ -4,6 +4,11 @@ import androidx.compose.ui.res.stringResource
 import ai.quenderin.app.R
 import ai.quenderin.app.probeDeviceProfile
 import ai.quenderin.core.AndroidModelSelector
+import ai.quenderin.app.HyMemoryController
+import ai.quenderin.app.Step5Controller
+import ai.quenderin.app.VisionController
+import ai.quenderin.app.GraniteController
+import ai.quenderin.core.HyMemoryNativeInferencePort
 
 import ai.quenderin.core.ConversationPersistence
 import ai.quenderin.core.FileModelStorage
@@ -67,9 +72,18 @@ fun SettingsScreen(
     onSelectModel: (ModelEntry) -> Unit,
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
+    active: Boolean = true,
+    suspendForSpecialist: () -> ai.quenderin.core.SpecialistInferenceLease = { error("The app has not supplied exclusive specialist engine coordination.") },
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val hyMemory = remember { HyMemoryController(context, HyMemoryNativeInferencePort(context.applicationInfo.nativeLibraryDir) { HyMemoryController.availableMemoryBytes(context) }, suspendForSpecialist) }
+    val step5 = remember { Step5Controller() }
+    val vision = remember { VisionController(context, suspendForSpecialist) }
+    val granite = remember { GraniteController(context, suspendForSpecialist) }
+    androidx.compose.runtime.DisposableEffect(granite) { onDispose { granite.close() } }
+    androidx.compose.runtime.DisposableEffect(vision) { onDispose { vision.close() } }
+    LaunchedEffect(active) { if (!active) { hyMemory.cancel(); step5.cancel(); vision.cancel(); granite.cancel() } }
     // Read on entry (the tab recomposes fresh each visit); the index file is tiny.
     val conversationCount = remember { persistence.loadIndex().size }
     var showPicker by remember { mutableStateOf(false) }
@@ -203,6 +217,10 @@ fun SettingsScreen(
         // dashboard's "What it can do here": every T1+ capability in plain words with its consent
         // toggle (the SAME PrefsConsentStore the Agent screen's runner reads, so this pane IS the
         // grant), plus the last ledger rows — refusals included, the local flight recorder.
+        SettingsGroup("Approved memories") { HyMemoryScreen(hyMemory) }
+        SettingsGroup("Step 5 CUDA host") { Step5Screen(step5) }
+        SettingsGroup("Still-image questions") { VisionScreen(vision) }
+        SettingsGroup("Granite Switch 4.1 8B") { GraniteScreen(granite) }
         SettingsGroup(stringResource(R.string.settings_agent)) {
             val consent = remember { ai.quenderin.app.PrefsConsentStore(context) }
             // Metadata-only instances (empty seams) — listing runs nothing; the pane can't drift

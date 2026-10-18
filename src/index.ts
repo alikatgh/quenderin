@@ -29,6 +29,7 @@ import { OsascriptMacUi } from './services/capability/macUi.js';
 import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
 import { ExecFileRunner } from './services/capability/platformAutomation.js';
 import { platformCapabilities } from './services/capability/platformCapabilities.js';
+import { registerImageCommands } from './commands/images.js';
 
 const program = new Command();
 
@@ -38,6 +39,8 @@ program
   // Keep in sync with package.json (was stale at 0.0.1 while package.json read 0.1.0 — Q-046).
   .version('0.1.0');
 
+registerImageCommands(program);
+
 // Run a single agent task from the CLI without starting the full dashboard
 program
   .command('agent')
@@ -45,6 +48,7 @@ program
   .argument('<goal>', 'The objective the agent should accomplish')
   .option('-s, --steps <number>', 'Maximum allowed steps', '20')
   .action(async (goal: string, options) => {
+    let llmService: LlmService | undefined;
     try {
       // Q-278: `agent` is the LEGACY device-driving research loop (raw screenshot→coordinate
       // actions), which lacks the governed spine — no consent/preview/per-run approval/undo/ledger.
@@ -55,7 +59,7 @@ program
       const deviceProvider = targetOS === 'desktop' ? new DesktopProvider() : new AndroidProvider();
 
       const uiParserService = new UiParserService();
-      const llmService = new LlmService();
+      llmService = new LlmService();
       const metricsService = new MetricsService();
       const ocrService = new OcrService();
       const memoryService = new MemoryService();
@@ -71,6 +75,9 @@ program
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("Agent encountered a fatal error:", message);
+      process.exitCode = 1;
+    } finally {
+      try { await llmService?.shutdown({ processExit: true }); } catch { process.exitCode = 1; }
     }
   });
 
@@ -167,6 +174,7 @@ program
         if (!MODEL_CATALOG.some(m => m.id === options.model)) {
           console.error(`Unknown model "${options.model}". Run \`quenderin models\` for the list.`);
           process.exitCode = 1;
+          await llm.shutdown({ processExit: true });
           return;
         }
         await llm.switchModel(options.model);
@@ -180,13 +188,14 @@ program
         if (!prompt) {
           console.error('Nothing to answer: pass a prompt (`-p "…"`) or pipe input.');
           process.exitCode = 1;
+          await llm.shutdown({ processExit: true });
           return;
         }
         await llm.generalChat(prompt, tok => process.stdout.write(tok), { plainChat: true });
         process.stdout.write('\n');
         // Full engine dispose before exit — ggml-metal's atexit destructor asserts if the
         // device is still alive (llama.cpp #17869), turning a good run into exit 134.
-        await llm.shutdown();
+        await llm.shutdown({ processExit: true });
         process.exit(0);
       }
 
@@ -195,12 +204,14 @@ program
       console.log(dim(`model: ${llm.getActiveModelLabel()} · /help for commands\n`));
 
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      let closing = false;
       const ask = (): void => {
+        if (closing) return;
         rl.question('› ', async (line: string) => {
           const input = line.trim();
           if (!input) return ask();
 
-          if (input === '/exit' || input === '/quit') { rl.close(); await llm.shutdown(); process.exit(0); }
+          if (input === '/exit' || input === '/quit') { rl.close(); return; }
           if (input === '/help') {
             console.log(dim('  /model <id>   switch model      /models   list models'));
             console.log(dim('  /clear        new conversation  /exit     leave\n'));
@@ -232,11 +243,12 @@ program
           ask();
         });
       };
-      rl.on('close', () => { void llm.shutdown().finally(() => process.exit(0)); });
+      rl.on('close', () => { closing = true; void llm.shutdown({ processExit: true }).then(() => process.exit(0), () => process.exit(1)); });
       ask();
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
       process.exitCode = 1;
+      try { await llm.shutdown({ processExit: true }); } catch { /* failed native join must not free its backend */ }
     }
   });
 
@@ -296,6 +308,7 @@ program
         if (!MODEL_CATALOG.some(m => m.id === modelId)) {
           console.error(`Unknown model "${modelId}". Run \`quenderin models\`.`);
           process.exitCode = 1;
+          await llm.shutdown({ processExit: true });
           return;
         }
         await llm.switchModel(modelId);
@@ -372,11 +385,12 @@ program
         }
       }
       rl.close();
-      await llm.shutdown();
+      await llm.shutdown({ processExit: true });
       process.exit(0);
     } catch (e: unknown) {
       console.error(e instanceof Error ? e.message : String(e));
       process.exitCode = 1;
+      try { await llm.shutdown({ processExit: true }); } catch { /* failed native join must not free its backend */ }
     }
   });
 

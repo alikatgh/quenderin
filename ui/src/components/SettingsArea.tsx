@@ -5,6 +5,8 @@ import { hashPassphrase } from '../lib/passphrase.js';
 import { ModelManagerSection } from './settings/ModelManagerSection.js';
 import { NotesSection } from './settings/NotesSection.js';
 import { MemorySection } from './settings/MemorySection.js';
+import { Step5Section } from './settings/Step5Section.js';
+import { GraniteSection } from './settings/GraniteSection.js';
 
 interface Settings {
     contextSize: number;
@@ -534,6 +536,8 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
                     <NotesSection />
 
                     <MemorySection />
+                    <Step5Section />
+                    <GraniteSection />
                 </div>
 
                 <div className="mt-10 pt-6 border-t border-zinc-200/60 dark:border-zinc-800/50 flex flex-col items-center text-center">

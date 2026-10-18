@@ -157,7 +157,7 @@ class OnboardingModel(
         // download/load) would race `phase` + engine.load(). Twin of Swift install()'s isInstalling
         // guard. Sequential calls still work: the flag is cleared in the finally below.
         synchronized(this) {
-            if (isInstalling) return
+            if (isInstalling || engine.isSuspendedForSpecialist) return
             isInstalling = true
         }
         try {
