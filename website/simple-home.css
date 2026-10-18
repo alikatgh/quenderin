@@ -20,6 +20,9 @@
 }
 .simple-home .brand-name { font-weight: 600; }
 .simple-controls { display: flex; align-items: center; gap: 0.5rem; }
+.simple-github { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--text-secondary); flex: none; }
+.simple-github svg { width: 21px; height: 21px; }
+.simple-github:hover { color: var(--text); }
 .simple-home .theme-toggle { width: 44px; height: 44px; }
 .simple-home .lang-select {
   width: 9.5rem;
@@ -103,6 +106,9 @@
 .simple-home .store-link:hover { color: var(--brand); background: var(--accent-soft); }
 .simple-home .store-link:active { background: var(--border); }
 .simple-platforms { margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.8125rem; }
+.simple-beta { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; margin-top: 0.75rem; color: var(--brand); font-size: 0.8125rem; }
+.simple-beta:hover { text-decoration: underline; text-underline-offset: 5px; }
+.simple-beta img { flex: none; }
 .simple-update {
   display: block;
   margin-top: clamp(3rem, 7vh, 5.5rem);
@@ -165,8 +171,7 @@ html[dir="rtl"] .simple-arrow { transform: scaleX(-1); }
   }
   .simple-update { margin-top: 2.5rem; }
 }
-@media (max-width: 380px) {
-  .simple-wrap { padding-inline: 1.25rem; }
+@media (max-width: 520px) {
   .simple-header { gap: 0.5rem; }
   .simple-controls { gap: 0.25rem; }
   .simple-home .lang-select,
@@ -175,6 +180,9 @@ html[dir="rtl"] .simple-arrow { transform: scaleX(-1); }
   .simple-home .lang-select:focus-visible { color: transparent; }
   .simple-home .simple-controls .lang-picker .lang-globe { display: block; left: 50%; right: auto; transform: translateX(-50%); }
   .simple-home .lang-picker .lang-chev { display: none; }
+}
+@media (max-width: 380px) {
+  .simple-wrap { padding-inline: 1.25rem; }
   .simple-home .store-link > img { width: 132px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {

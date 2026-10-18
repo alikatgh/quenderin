@@ -15,6 +15,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
+<style>
+  #android-beta .btn { max-width: 100%; white-space: normal; }
+  #android-beta .btn-primary { background: var(--brand-dark); color: #fff; box-shadow: none; }
+  #android-beta .btn-primary:hover { background: var(--brand); }
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -41,6 +46,16 @@
       <a class="store-link" href="https://apps.apple.com/app/id6789854363?platform=iphone" rel="noopener" aria-label="Download Quenderin for iPhone on the App Store"><img src="assets/app-store-badge.svg" width="150" height="50" alt="Download on the App Store" /></a>
     </section>
   </div>
+  <section class="legal-note" id="android-beta" aria-labelledby="android-beta-title">
+    <h2 class="platform-heading" id="android-beta-title" style="margin-top:0"><img src="icons/android.svg" alt="" /> Android &middot; closed beta</h2>
+    <p>The native Android app is in closed testing on Google Play. Use the same Google account for both steps and on your phone.</p>
+    <ol style="margin:1rem 0">
+      <li><a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener">1. Join the testing group</a></li>
+      <li><a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">2. Opt in on Google Play</a></li>
+    </ol>
+    <p><a href="blog-android-beta.html">Step-by-step beta guide &rarr;</a></p>
+  </section>
+
   <h2>Your first offline conversation</h2>
   <ol><li>Open the app and choose a recommended model. Start with a smaller one if you are unsure.</li><li>Download it over Wi-Fi and wait until it is ready. Models are separate from the app and can take several gigabytes.</li><li>Ask it to rewrite a paragraph or explain a topic. After setup, try a reply with the network off.</li></ol>
   <p>Smaller models need less memory; larger models can give better answers but take more space and time. <a href="reality.html">See the measured trade-offs</a> or <a href="help.html">get setup help</a>. <a href="blog-apple-launch.html">Read the Apple launch story &rarr;</a></p>
@@ -64,9 +79,6 @@
   <p>For programmers there's a CLI — the same models, in your shell. <code>git diff | quenderin chat -p "review this change"</code> is code review that never leaves your machine.</p>
   <p>And on a Mac, <code>quenderin do "&lt;anything&gt;"</code> is a local computer-use agent — a private alternative to cloud agents like Cowork. It can organise a folder (<code>--workspace ~/Downloads</code>), click and type in <strong>any</strong> app via accessibility (<code>--gui</code>), and run any of your <strong>Apple Shortcuts</strong> — but every change is <strong>previewed and approved by you</strong>, logged to a local audit trail (<code>quenderin history</code>, grouped by task), and reversible — even in a new session, an hour later (<code>quenderin undo</code>). Want to look before you leap? <code>--dry-run</code> shows exactly what it would do, touching nothing. See the whole toolkit with <code>quenderin capabilities</code>. Nothing — not your files, not your screen, not your intent — ever leaves the machine.</p>
   <p>It ships with the source today (<code>npm install &amp;&amp; npm run build:tsc &amp;&amp; npm link</code> from <a href="https://github.com/alikatgh/quenderin" rel="noopener">the repo</a>); an npm package is planned. <a href="blog-cli">Read the announcement →</a> · <a href="why-local-agent">Why a local agent →</a></p>
-
-  <h2 class="platform-heading"><img src="icons/android.svg" alt="" /> Android &middot; closed beta</h2>
-  <p>The native Android app is in closed testing on Google Play. <a href="https://groups.google.com/g/quenderin-testers" rel="noopener">Join the testers group</a> with the Google account you use on your phone, then <a href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener">opt in on Google Play</a>. <a href="blog-android-beta.html">Step-by-step beta guide &rarr;</a></p>
 
   <h2>Before you download — use with judgement</h2>
   <p>Quenderin runs open AI models on your own machine, and on-device models are small: they can be <strong>confidently wrong, outdated, or occasionally inappropriate</strong>, and nothing filters them. Nothing Quenderin produces is medical, legal, financial, or safety advice — verify anything that matters with a qualified source. <strong>By downloading or using Quenderin you agree</strong> that the software is provided &ldquo;as is&rdquo; and that, to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce. The app asks for the same agreement on first launch. Full detail: <a href="terms">Terms of Use</a>.</p>
