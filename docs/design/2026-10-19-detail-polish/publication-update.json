@@ -1,0 +1,115 @@
+{
+  "verifiedAtUTC": "2026-10-18T23:10:25.503030+00:00",
+  "revision": "4887e633962c6e1c5c735b11c0db0a654b87bca0",
+  "site": "https://quenderin.org",
+  "workerVersion": "f9e7bf5e-5273-4e1d-a792-18f1b4c20f24",
+  "previousVersion": "0fff4c28-5e74-4346-8978-98e777d26cdc",
+  "workerSourceSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+  "exactWorkerResourcesPreserved": true,
+  "releaseFileCount": 112,
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "responseSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "sourceSha256": "ed0a2b2435438afa8a73c43b54c6ff6dc122d6dffae6deda0c2a63d950c28cba",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/blog",
+      "status": 200,
+      "responseSha256": "8c9132710b42df0417fc44b03cacd51c4bc13b6c66700664c4d9d2a53e2eb582",
+      "sourceSha256": "8c9132710b42df0417fc44b03cacd51c4bc13b6c66700664c4d9d2a53e2eb582",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/changelog",
+      "status": 200,
+      "responseSha256": "3dea809c425e4f9428b6a3010e5743236102234ee184d31fb3d059b0df347709",
+      "sourceSha256": "3dea809c425e4f9428b6a3010e5743236102234ee184d31fb3d059b0df347709",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/blog-open-models-october-2026",
+      "status": 200,
+      "responseSha256": "a0f7b165093ae8eb09e321f454f776a9dff3b4ba98a00bf6ce6836d2c9a14f65",
+      "sourceSha256": "a0f7b165093ae8eb09e321f454f776a9dff3b4ba98a00bf6ce6836d2c9a14f65",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/blog-website-update-october-2026",
+      "status": 200,
+      "responseSha256": "9cd6649f548d2d3554f5c2c0951650b1bf40331994ca2fc1b626d74573eb332d",
+      "sourceSha256": "9cd6649f548d2d3554f5c2c0951650b1bf40331994ca2fc1b626d74573eb332d",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "responseSha256": "cbd347954c77c2d7b86a347fcde817f17b29152bfbb70f1960588c9a36878957",
+      "sourceSha256": "cbd347954c77c2d7b86a347fcde817f17b29152bfbb70f1960588c9a36878957",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/assets/blog/website-update-20261019.jpg",
+      "status": 200,
+      "responseSha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+      "sourceSha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 0,
+      "securityHeadersPreserved": true
+    }
+  ],
+  "existingApi": {
+    "path": "/api/model-releases",
+    "status": 200,
+    "validJson": true,
+    "sha256": "783700ff896dda88988c4d6c4f830a6cb9ae9f2dcc921e021912b0bc5b5e699d"
+  },
+  "deliveryNote": "Cloudflare injects one analytics tag and newline into HTML. Existing CSP blocks that script. Exact source comparison removes only this known tag; no analytics or security settings changed.",
+  "deployment": {
+    "id": "d07af374-2900-45c6-aaf9-6129fb55f8ab",
+    "created_on": "2026-10-18T23:09:50.307646Z",
+    "versions": [
+      {
+        "version_id": "f9e7bf5e-5273-4e1d-a792-18f1b4c20f24",
+        "percentage": 100
+      }
+    ]
+  },
+  "releaseScope": "Static website publication only: new website post, real website screenshot, changelog, blog summaries, homepage latest-post link, model-article update note and sitemap. No new app/store release or mirror publication.",
+  "releaseSafety": {
+    "newBillableBehavior": false,
+    "runtimeChanges": false,
+    "resourceConfigurationChanges": false,
+    "dataMutationChanges": false,
+    "nonVersionedSettingsChanges": false,
+    "rollbackVersion": "0fff4c28-5e74-4346-8978-98e777d26cdc"
+  },
+  "checks": {
+    "websiteTests": "13 passed",
+    "sharedWebsiteCatalog": "28 models, calculator and SEO in sync",
+    "publicationReferences": "118 internal references across five changed HTML pages resolve; canonical/JSON-LD dates and sitemap checked",
+    "readOnlyContentReview": "passed after qualifying narrow layout checks as local",
+    "localBrowser": "New post and homepage latest row: 320px viewport and document width; article screenshot loaded",
+    "priorDesignEvidence": "deployment.json and committed local English/Russian/Arabic screenshots",
+    "liveBrowser": "Homepage latest-post link opened the new article; its changelog link opened the October 19 entry. Article image loaded; viewport and document width both 1497px."
+  },
+  "screenshot": {
+    "file": "blog-live.jpg",
+    "sha256": "4f5503e4fd0d4bdccaffd99817034b58a4f359d3443927f25c60380dd0bb4f8e",
+    "bytes": 65663
+  }
+}
