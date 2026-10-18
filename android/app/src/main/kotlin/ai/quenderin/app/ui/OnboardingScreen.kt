@@ -1,6 +1,8 @@
 package ai.quenderin.app.ui
 
 import androidx.compose.ui.res.stringResource
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.rememberSaveable
 import ai.quenderin.app.R
 
 import ai.quenderin.app.WorkManagerModelDownloader
@@ -174,6 +176,15 @@ fun AppRoot(
         return
     }
 
+    var showImagesBeforeChat by rememberSaveable { mutableStateOf(false) }
+    if (showImagesBeforeChat) {
+        BackHandler { showImagesBeforeChat = false }
+        Column(Modifier.fillMaxSize()) {
+            TextButton(onClick = { showImagesBeforeChat = false }) { Text("Back to setup") }
+            Box(Modifier.weight(1f)) { ImageGenerationScreen() }
+        }
+        return
+    }
     when (val current = phase) {
         is OnboardingPhase.Ready -> MainTabs(
             engine = engine,
@@ -184,6 +195,7 @@ fun AppRoot(
         )
         else -> {
             var showPicker by remember { mutableStateOf(false) }
+            Box(Modifier.fillMaxSize()) {
             OnboardingScreen(
                 phase = current,
                 selection = onboarding.selection,
@@ -197,6 +209,10 @@ fun AppRoot(
                             model, File(context.filesDir, "models").absolutePath))
                 },
             )
+                TextButton(onClick = { showImagesBeforeChat = true }, modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    Text("Images")
+                }
+            }
             // The recommendation is a default, not a cage: the full catalog one tap away.
             if (showPicker) {
                 ModalBottomSheet(onDismissRequest = { showPicker = false }) {

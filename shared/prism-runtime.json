@@ -17,5 +17,22 @@
     "sha256": "9e9a58a113332a9062c222633fa411f9b000a790a1ba1cb5c1ec989615ea0cf9",
     "upstreamRevision": "ba3c05f71da85cd0439e84ba42b0478b24d5db16",
     "museSparkABI": 1
+  },
+  "weeklyTextPatch": {
+    "id": "weekly-text-k2-nemotron-v1",
+    "path": "scripts/patches/weekly-text-prism-e8fd209.json",
+    "sha256": "759e6582835fa241a74e5e2c39e6cb758c533fb92330e42f2f86a3b9c0faf977",
+    "upstreamRevisions": {
+      "k2Horizon": "4625240437c6821ee5c2da99e12d4817c6a8f07f",
+      "nemotron35": "cd0a5b6a180dff0048e5fd993098b21c0b2c91b8"
+    },
+    "weeklyTextABI": 1
+  },
+  "beamPatch": {
+    "id": "beam-text-v1",
+    "path": "scripts/patches/beam-text-prism-e8fd209.json",
+    "sha256": "5cf9f1fc57844f66e7e269fcea1da8611a2990726691d5c65bc050b91e409214",
+    "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
+    "beamABI": 1
   }
 }

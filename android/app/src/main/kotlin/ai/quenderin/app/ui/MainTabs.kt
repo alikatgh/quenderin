@@ -92,6 +92,7 @@ fun MainTabs(
                 ) {
                     BottomTab(NavKind.Chat, stringResource(R.string.tab_chat), tab == 0, { tab = 0 }, Modifier.weight(1f))
                     BottomTab(NavKind.Agent, stringResource(R.string.tab_agent), tab == 1, { tab = 1 }, Modifier.weight(1f))
+                    BottomTab(NavKind.Images, "Images", tab == 3, { tab = 3 }, Modifier.weight(1f))
                     BottomTab(NavKind.Settings, stringResource(R.string.tab_settings), tab == 2, { tab = 2 }, Modifier.weight(1f))
                 }
             }
@@ -137,6 +138,9 @@ fun MainTabs(
                     deepThinking = deepThinking,
                     onDeepThinkingChange = { deepThinking = it },
                 )
+            }
+            Box(Modifier.fillMaxSize().tabVisibility(tab == 3)) {
+                ImageGenerationScreen()
             }
         }
     }
@@ -220,7 +224,7 @@ private fun Modifier.tabVisibility(visible: Boolean): Modifier = this
         indication = null,
     ) {}
 
-private enum class NavKind { Chat, Agent, Settings }
+private enum class NavKind { Chat, Agent, Images, Settings }
 
 /**
  * One bottom-bar destination in the native Material 3 NavigationBar idiom: the icon sits in a
@@ -310,6 +314,16 @@ private fun NavIcon(kind: NavKind, selected: Boolean) {
                     close()
                 }
                 drawPath(p, color, style = Stroke(sw, join = StrokeJoin.Round))
+            }
+            NavKind.Images -> {
+                drawRoundRect(color, topLeft = Offset(s * 0.12f, s * 0.14f), size = Size(s * 0.76f, s * 0.72f),
+                    cornerRadius = CornerRadius(s * 0.10f), style = Stroke(sw))
+                drawCircle(color, s * 0.07f, Offset(s * 0.66f, s * 0.35f))
+                val mountain = Path().apply {
+                    moveTo(s * 0.18f, s * 0.77f); lineTo(s * 0.41f, s * 0.46f)
+                    lineTo(s * 0.59f, s * 0.66f); lineTo(s * 0.72f, s * 0.53f); lineTo(s * 0.83f, s * 0.76f)
+                }
+                drawPath(mountain, color, style = Stroke(sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
             NavKind.Settings -> {
                 val cx = s * 0.5f; val cy = s * 0.5f

@@ -86,6 +86,7 @@ PY
 # Each Cloud checkout owns this new path. No existing source/build/framework path
 # is replaced and the build script enforces available space before allocation.
 "$ROOT/apple/build-prism-xcframework.sh" "$ROOT/.quenderin-cloud-prism-work"
+"$ROOT/apple/build-diffusion-xcframework.sh" "$ROOT/.quenderin-cloud-diffusion-work"
 python3 "$ROOT/scripts/verify_prism_apple_runtime.py" activate
 xcodegen generate --spec "$ROOT/apple/QuenderinApp/project.yml"
 git -C "$ROOT" diff --exit-code -- apple/QuenderinApp/Quenderin.xcodeproj/project.pbxproj apple/QuenderinApp/Quenderin.xcodeproj/xcshareddata/xcschemes

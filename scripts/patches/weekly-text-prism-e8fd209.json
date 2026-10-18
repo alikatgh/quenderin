@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "id": "weekly-text-k2-nemotron-v1",
+  "baseRepository": "https://github.com/PrismML-Eng/llama.cpp.git",
+  "baseRevision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+  "parentSourcePatch": {
+    "id": "muse-spark-open-v1",
+    "sha256": "9e9a58a113332a9062c222633fa411f9b000a790a1ba1cb5c1ec989615ea0cf9"
+  },
+  "upstreamRevisions": {
+    "k2Horizon": "4625240437c6821ee5c2da99e12d4817c6a8f07f",
+    "nemotron35": "cd0a5b6a180dff0048e5fd993098b21c0b2c91b8"
+  },
+  "weeklyTextABI": 1,
+  "capabilitySymbol": "quenderin_weekly_text_runtime_abi",
+  "chatTemplateSources": {
+    "jais3": {
+      "url": "https://huggingface.co/IFM/Jais-3-0.9B/resolve/e51941b37091287fee4934e3f8a799e0d3fef37f/chat_template.jinja",
+      "sha256": "38964d6fc5e411718d88f7a5c1b3664b3d97208c6ac93160b6c9eadc63c14057"
+    },
+    "nemotron35": {
+      "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-BF16/resolve/a6a1e5030819a130a1ea08aadb1fe42f4cc86777/chat_template.jinja",
+      "sha256": "6521afc75afb0661e3558e7e6dee5f2d15de8be1c4dece8171935e778ea283f4"
+    }
+  },
+  "scope": "Text-only K2 Horizon/Jais 3 dense and MoVA, Nemotron 3.5 heterogeneous expert layout; no multimodal or speculative decoding integration.",
+  "files": [
+    {
+      "path": "ggml/src/ggml-metal/kernels/mul_mm.metal",
+      "beforeSha256": "96fbb544f1085903ad1d510bff5614c43fd1a79e3af7d614c1baf3df79d896d0",
+      "afterSha256": "01fa2a3e3066524ca4141a72888dab7fe8484585b3ada0c3b84d8b50f7d3e4bd",
+      "replacements": [
+        {
+          "before": "template [[host_name(\"kernel_mul_mm_id_map0_ne20_8\" )]] kernel kernel_mul_mm_id_map0_t kernel_mul_mm_id_map0<8>;\n",
+          "after": "template [[host_name(\"kernel_mul_mm_id_map0_ne20_8\" )]] kernel kernel_mul_mm_id_map0_t kernel_mul_mm_id_map0<8>;\ntemplate [[host_name(\"kernel_mul_mm_id_map0_ne20_9\" )]] kernel kernel_mul_mm_id_map0_t kernel_mul_mm_id_map0<9>;\n"
+        }
+      ]
+    },
+    {
+      "path": "include/llama.h",
+      "beforeSha256": "64a0c3baeb5600153107bddf298f0ba51a774dce88da92b245527e71ba41b8df",
+      "afterSha256": "a27343e2e2482db0fbf4d7fe6ef827a12fd6da47d497fbb3f0ba99fa0c4b230a",
+      "replacements": [
+        {
+          "before": "    LLAMA_API int32_t quenderin_muse_spark_runtime_abi(void);\n",
+          "after": "    LLAMA_API int32_t quenderin_muse_spark_runtime_abi(void);\n\n    // Exact K2 Horizon/Jais 3 and Nemotron 3.5 text backport capability.\n    LLAMA_API int32_t quenderin_weekly_text_runtime_abi(void);\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.cpp",
+      "beforeSha256": "64264cb270435fc77e130afd7403918f6c8d0cbadb97427898627f6c606c5bca",
+      "afterSha256": "cf60e0395f0ec69e95ee2132b363cc38b6d426f7778ae2668675173e2db41802",
+      "replacements": [
+        {
+          "before": "    { LLM_ARCH_MUSE_SPARK,       \"muse-spark\"       },\n",
+          "after": "    { LLM_ARCH_MUSE_SPARK,       \"muse-spark\"       },\n    { LLM_ARCH_K2_HORIZON,       \"k2-horizon\"       },\n"
+        },
+        {
+          "before": "    { LLM_KV_ATTENTION_ROPE_PATTERN,                 \"%s.attention.rope_pattern\"                 },\n",
+          "after": "    { LLM_KV_ATTENTION_ROPE_PATTERN,                 \"%s.attention.rope_pattern\"                 },\n    { LLM_KV_ATTENTION_VALUE_EXPERT_COUNT,           \"%s.attention.value_expert_count\"           },\n    { LLM_KV_ATTENTION_VALUE_EXPERT_USED_COUNT,      \"%s.attention.value_expert_used_count\"      },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_ATTN_GATE,                              \"blk.%d.attn_gate\" },\n",
+          "after": "    { LLM_TENSOR_ATTN_GATE,                              \"blk.%d.attn_gate\" },\n    { LLM_TENSOR_ATTN_V_GATE,                            \"blk.%d.attn_v_gate\" },\n    { LLM_TENSOR_ATTN_V_EXPS,                            \"blk.%d.attn_v_exps\" },\n"
+        },
+        {
+          "before": "    { LLM_TENSOR_ATTN_GATE,                { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n",
+          "after": "    { LLM_TENSOR_ATTN_GATE,                { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n    { LLM_TENSOR_ATTN_V_GATE,              { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT }    },\n    { LLM_TENSOR_ATTN_V_EXPS,              { LLM_TENSOR_LAYER_REPEATING, GGML_OP_MUL_MAT_ID } },\n"
+        },
+        {
+          "before": "        case LLM_ARCH_QWEN3TTS:\n            return false;\n",
+          "after": "        case LLM_ARCH_QWEN3TTS:\n        case LLM_ARCH_K2_HORIZON:\n            return false;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-arch.h",
+      "beforeSha256": "9c2d12f4efe51237b03d6f64fb6b39236f17daa46a1da50fd6efdc07b0398b93",
+      "afterSha256": "59ab5fcf37ff86253f47767635f5772b11dbf0a64e0fce84e608c78bcfb4aeff",
+      "replacements": [
+        {
+          "before": "    LLM_ARCH_MUSE_SPARK,\n",
+          "after": "    LLM_ARCH_MUSE_SPARK,\n    LLM_ARCH_K2_HORIZON,\n"
+        },
+        {
+          "before": "    LLM_KV_ATTENTION_ROPE_PATTERN,\n",
+          "after": "    LLM_KV_ATTENTION_ROPE_PATTERN,\n    LLM_KV_ATTENTION_VALUE_EXPERT_COUNT,\n    LLM_KV_ATTENTION_VALUE_EXPERT_USED_COUNT,\n"
+        },
+        {
+          "before": "    LLM_TENSOR_ATTN_GATE,\n",
+          "after": "    LLM_TENSOR_ATTN_GATE,\n    LLM_TENSOR_ATTN_V_GATE,\n    LLM_TENSOR_ATTN_V_EXPS,\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-chat.cpp",
+      "beforeSha256": "0029616465e6d641c1e75a0e0e6e132f3ea6177593735d7f16c89e7edfbbe9a8",
+      "afterSha256": "9936803652e6ba94a5a9382428ad31db6a194da220163ee7f380a89eb2d9f385",
+      "replacements": [
+        {
+          "before": "    { \"chatml\",            LLM_CHAT_TEMPLATE_CHATML            },\n",
+          "after": "    { \"chatml\",            LLM_CHAT_TEMPLATE_CHATML            },\n    { \"k2-horizon\",        LLM_CHAT_TEMPLATE_K2_HORIZON        },\n    { \"jais3\",             LLM_CHAT_TEMPLATE_JAIS3             },\n    { \"nemotron-3.5\",      LLM_CHAT_TEMPLATE_NEMOTRON35        },\n"
+        },
+        {
+          "before": "    if (tmpl_contains(\"<|im_start|>\")) {\n",
+          "after": "    if (tmpl_contains(\"<|ifm|im_start|>\")) {\n        return tmpl_contains(\"You are Jais 3\") ? LLM_CHAT_TEMPLATE_JAIS3 : LLM_CHAT_TEMPLATE_K2_HORIZON;\n    } else if (tmpl_contains(\"<|im_start|>\") && tmpl_contains(\"truncate_history_thinking\") && tmpl_contains(\"medium_effort\")) {\n        return LLM_CHAT_TEMPLATE_NEMOTRON35;\n    } else if (tmpl_contains(\"<|im_start|>\")) {\n"
+        },
+        {
+          "before": "    if (tmpl == LLM_CHAT_TEMPLATE_CHATML) {\n",
+          "after": "    if (tmpl == LLM_CHAT_TEMPLATE_K2_HORIZON || tmpl == LLM_CHAT_TEMPLATE_JAIS3) {\n        // Tokenization adds BOS, as for the other native templates.\n        if (tmpl == LLM_CHAT_TEMPLATE_JAIS3 && (chat.empty() || std::string(chat.front()->role) != \"system\")) {\n            ss << \"<|ifm|im_start|>system\\n\" << LU8(R\"JAIS(You are Jais 3, an AI model developed by the Institute of Foundation Models (IFM) at MBZUAI, in collaboration with Inception42 (a G42 company) and Cerebras.\n- Whenever you are asked who you are or who created, built, trained, or owns you (including yes/no questions such as \"Are you ChatGPT?\" or \"Did G42 make you?\"), say this in the user's language and always name all three organizations.\n- Arabic names: \u062c\u064a\u0633 3\u060c \u0645\u0639\u0647\u062f \u0627\u0644\u0646\u0645\u0627\u0630\u062c \u0627\u0644\u062a\u0623\u0633\u064a\u0633\u064a\u0629 (IFM) \u0641\u064a \u062c\u0627\u0645\u0639\u0629 \u0645\u062d\u0645\u062f \u0628\u0646 \u0632\u0627\u064a\u062f \u0644\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a\u060c \u0625\u0646\u0633\u0628\u0634\u064642 (Inception42)\u060c \u0633\u064a\u0631\u064a\u0628\u0631\u0627\u0633 (Cerebras).\n- Do not mention your identity or creators in answers to other questions.)JAIS\") << \"<|ifm|im_end|>\";\n        }\n        for (auto message : chat) {\n            const std::string role(message->role);\n            if (role != \"system\" && role != \"user\" && role != \"assistant\") {\n                return -1; // Tool and multimodal conversations require the full template engine.\n            }\n            ss << \"<|ifm|im_start|>\" << role;\n            if (role == \"assistant\") {\n                // Stored history contains the final text, with reasoning removed by the adapter.\n                ss << \"<ifm|think>\\n</ifm|think>\";\n            } else {\n                ss << \"\\n\";\n            }\n            ss << message->content << \"<|ifm|im_end|>\";\n        }\n        if (add_ass) {\n            ss << \"<|ifm|im_start|>assistant\\n<ifm|think_faster>\\n\";\n        }\n    } else if (tmpl == LLM_CHAT_TEMPLATE_NEMOTRON35) {\n        if (chat.empty() || std::string(chat.front()->role) != \"system\") {\n            ss << \"<|im_start|>system\\n<|im_end|>\\n\";\n        }\n        for (auto message : chat) {\n            const std::string role(message->role);\n            if (role != \"system\" && role != \"user\" && role != \"assistant\") {\n                return -1;\n            }\n            ss << \"<|im_start|>\" << role << \"\\n\";\n            if (role == \"assistant\") {\n                ss << \"<think></think>\" << trim(message->content);\n            } else {\n                ss << message->content;\n            }\n            ss << \"<|im_end|>\\n\";\n        }\n        if (add_ass) {\n            ss << \"<|im_start|>assistant\\n<think></think>\";\n        }\n    } else if (tmpl == LLM_CHAT_TEMPLATE_CHATML) {\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-chat.h",
+      "beforeSha256": "15d7f3257e01e3f095d79350f969658abfb0f0305a4f9bc734ebfafb067ed80c",
+      "afterSha256": "5ae5efe2271a260fea83141c887a6ee74a3b18edceb81cfd8dda388b46e42592",
+      "replacements": [
+        {
+          "before": "    LLM_CHAT_TEMPLATE_CHATML,\n",
+          "after": "    LLM_CHAT_TEMPLATE_CHATML,\n    LLM_CHAT_TEMPLATE_K2_HORIZON,\n    LLM_CHAT_TEMPLATE_JAIS3,\n    LLM_CHAT_TEMPLATE_NEMOTRON35,\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-hparams.h",
+      "beforeSha256": "a31d22a574e13a92aa54a2eb1a2abc9b44a0bd3b390d63d28551118cd4bf5198",
+      "afterSha256": "68cb9dcb6ca50b282f4d06fefa14435af7ddb010f9cd6688edafd9fe7e6d62dc",
+      "replacements": [
+        {
+          "before": "    std::array<uint32_t, LLAMA_MAX_LAYERS> n_ff_muse_exp_arr{};\n",
+          "after": "    std::array<uint32_t, LLAMA_MAX_LAYERS> n_ff_muse_exp_arr{};\n\n    // Separate from the legacy scalar: only the weekly text backports read it.\n    std::array<uint32_t, LLAMA_MAX_LAYERS> n_ff_weekly_exp_arr{};\n    std::array<uint32_t, LLAMA_MAX_LAYERS> n_expert_weekly_used_arr{};\n    uint32_t n_value_expert = 0;\n    uint32_t n_value_expert_used = 0;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model-saver.cpp",
+      "beforeSha256": "9cc220914143e7d8925f50ce784a1f019f90894e48cdf7dd8e88ea8dfadd7c14",
+      "afterSha256": "66a20b2f9074dfd13056c2fc5803b66005f83e32d3e568bf03f9b6c9ac5e0ec1",
+      "replacements": [
+        {
+          "before": "    add_kv(LLM_KV_ATTENTION_GROUPNORM_GROUPS,        hparams.n_norm_groups);\n",
+          "after": "    add_kv(LLM_KV_ATTENTION_GROUPNORM_GROUPS,        hparams.n_norm_groups);\n    add_kv(LLM_KV_ATTENTION_VALUE_EXPERT_COUNT,      hparams.n_value_expert);\n    add_kv(LLM_KV_ATTENTION_VALUE_EXPERT_USED_COUNT, hparams.n_value_expert_used);\n"
+        },
+        {
+          "before": "    add_kv(LLM_KV_EXPERT_USED_COUNT,                 hparams.n_expert_used);\n",
+          "after": "    if (model->arch == LLM_ARCH_NEMOTRON_H || model->arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        add_kv(LLM_KV_EXPERT_USED_COUNT, hparams.n_expert_weekly_used_arr, true);\n    } else {\n        add_kv(LLM_KV_EXPERT_USED_COUNT, hparams.n_expert_used);\n    }\n"
+        },
+        {
+          "before": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, true);\n    } else {\n",
+          "after": "    if (model->arch == LLM_ARCH_MUSE_SPARK) {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_muse_exp_arr, true);\n    } else if (model->arch == LLM_ARCH_K2_HORIZON || model->arch == LLM_ARCH_NEMOTRON_H || model->arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_weekly_exp_arr, true);\n    } else {\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.cpp",
+      "beforeSha256": "f8865341db0798ae8bd653d265686a054a9893e880a1fa658e496febd884a3b0",
+      "afterSha256": "d3aeb08d1e006abaa5fecf318302be8147d5f71b6575a696a2eff7154aa7d03a",
+      "replacements": [
+        {
+          "before": "        case LLM_ARCH_DSPARK:\n            return new llama_model_dspark(params);\n",
+          "after": "        case LLM_ARCH_DSPARK:\n            return new llama_model_dspark(params);\n        case LLM_ARCH_K2_HORIZON:\n            return new llama_model_k2_horizon(params);\n"
+        },
+        {
+          "before": "        case LLM_ARCH_TALKIE:\n        case LLM_ARCH_MELLUM:\n",
+          "after": "        case LLM_ARCH_TALKIE:\n        case LLM_ARCH_K2_HORIZON:\n        case LLM_ARCH_MELLUM:\n"
+        },
+        {
+          "before": "    ml.get_key(LLM_KV_EXPERT_USED_COUNT,       hparams.n_expert_used,   false);\n",
+          "after": "    if (arch == LLM_ARCH_NEMOTRON_H || arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        // Puzzle/Bolt stores zero for non-MoE blocks and a per-layer top-k.\n        // Scalar Nemotron checkpoints remain valid through get_key_or_arr.\n        ml.get_key_or_arr(LLM_KV_EXPERT_USED_COUNT, hparams.n_expert_weekly_used_arr, hparams.n_layer_all, false);\n        hparams.n_expert_used = *std::max_element(hparams.n_expert_weekly_used_arr.begin(),\n            hparams.n_expert_weekly_used_arr.begin() + hparams.n_layer_all);\n    } else {\n        ml.get_key(LLM_KV_EXPERT_USED_COUNT, hparams.n_expert_used, false);\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-model.h",
+      "beforeSha256": "5e6cecfe050736eed842a3287b314d89e59843ae6f21028a9287fdfbb0a386bf",
+      "afterSha256": "f7b6832235ad7b50375ece4eb81742eda925799cd72f31d995ec743d3d6b8ae4",
+      "replacements": [
+        {
+          "before": "    struct ggml_tensor * wqkv_gate = nullptr;\n",
+          "after": "    struct ggml_tensor * wqkv_gate = nullptr;\n    struct ggml_tensor * attn_v_gate = nullptr;\n    struct ggml_tensor * attn_v_gate_b = nullptr;\n    struct ggml_tensor * attn_v_exps = nullptr;\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-vocab.cpp",
+      "beforeSha256": "8f7873c922d5934cefb259cbb60aa2293d8ce33a52e348eb006ea5dea84eb95a",
+      "afterSha256": "1c7f168adf5b7b9921e58fdc59e4d0c5434bd177fd2fbf434718aacd027c9bab",
+      "replacements": [
+        {
+          "before": "                    \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?\\\\p{L}+|\\\\p{N}+| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\",\n                };\n                break;\n            case LLAMA_VOCAB_PRE_TYPE_WHITESPACE:\n                // whitespace pre-tokenizer (jinaai/jina-embeddings-v2-base-zh)\n                regex_exprs = {\n",
+          "after": "                    \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?\\\\p{L}+|\\\\p{N}+| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\",\n                };\n                break;\n            case LLAMA_VOCAB_PRE_TYPE_K2_HORIZON:\n                regex_exprs = {\n                    \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?(?:\\\\p{L}|\\\\p{M}|\\\\u200C|\\\\u200D)+|\\\\p{N}{1,3}| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\",\n                };\n                break;\n            case LLAMA_VOCAB_PRE_TYPE_WHITESPACE:\n                // whitespace pre-tokenizer (jinaai/jina-embeddings-v2-base-zh)\n                regex_exprs = {\n"
+        },
+        {
+          "before": "            } else if (\n                tokenizer_pre == \"mellum2\") {\n                pre_type = LLAMA_VOCAB_PRE_TYPE_MELLUM2;\n            } else {\n                throw std::runtime_error(format(\"unknown pre-tokenizer type: '%s'\", tokenizer_pre.c_str()));\n            }\n",
+          "after": "            } else if (\n                tokenizer_pre == \"mellum2\") {\n                pre_type = LLAMA_VOCAB_PRE_TYPE_MELLUM2;\n            } else if (\n                tokenizer_pre == \"k2-horizon\") {\n                pre_type = LLAMA_VOCAB_PRE_TYPE_K2_HORIZON;\n                clean_spaces = false;\n            } else {\n                throw std::runtime_error(format(\"unknown pre-tokenizer type: '%s'\", tokenizer_pre.c_str()));\n            }\n"
+        },
+        {
+          "before": "                    || t.first == \"<|tool_response>\" // gemma4\n                    || t.first == \"<\uff5cend\u2581of\u2581sentence\uff5c>\" // deepseek-ocr\n                    || t.first == \"[e~[\" // minimax-m2/m3\n               ) {\n                special_eog_ids.insert(t.second);\n                if ((attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {",
+          "after": "                    || t.first == \"<|tool_response>\" // gemma4\n                    || t.first == \"<\uff5cend\u2581of\u2581sentence\uff5c>\" // deepseek-ocr\n                    || t.first == \"[e~[\" // minimax-m2/m3\n                    || t.first == \"<|ifm|im_end|>\" // k2-horizon\n               ) {\n                special_eog_ids.insert(t.second);\n                if ((attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {"
+        }
+      ]
+    },
+    {
+      "path": "src/llama-vocab.h",
+      "beforeSha256": "864acfeaa8b14c871bc31f9c94e50e26b3a1274219bbb9b99c94263be63af91c",
+      "afterSha256": "6275568be68afc7e67c8cff5bafb44e7708f449b96a7dff673066dcbf4715614",
+      "replacements": [
+        {
+          "before": "    LLAMA_VOCAB_PRE_TYPE_LAGUNA            = 56,\n",
+          "after": "    LLAMA_VOCAB_PRE_TYPE_LAGUNA            = 56,\n    LLAMA_VOCAB_PRE_TYPE_K2_HORIZON        = 57,\n"
+        }
+      ]
+    },
+    {
+      "path": "src/llama.cpp",
+      "beforeSha256": "656545558400661e3a8a752c7cfefcab202419529246bf67b4ebc163e8c9630a",
+      "afterSha256": "7d4d6fb59be1cd3a1b964962fbc4a6bd0bf57bad1a65ae19bbef16633c7fe547",
+      "replacements": [
+        {
+          "before": "int32_t quenderin_muse_spark_runtime_abi(void) {\n    return 1;\n}\n",
+          "after": "int32_t quenderin_muse_spark_runtime_abi(void) {\n    return 1;\n}\n\nint32_t quenderin_weekly_text_runtime_abi(void) {\n    return 1;\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "src/models/models.h",
+      "beforeSha256": "753a60c5f52eb74a4d17e192c9cdb249b2a69eb559b7e1b2869cecc34966bed6",
+      "afterSha256": "8273fca72174f1e0481eb38f12d8b7612c8c7fb3d95aecba511f093a430dfaa5",
+      "replacements": [
+        {
+          "before": "gml_tensor *, ggml_tensor *> build_kda_autoregressive(\n                    ggml_tensor * q,\n                    ggml_tensor * k,\n                    ggml_tensor * v,\n                    ggml_tensor * gk,\n                    ggml_tensor * beta,\n                    ggml_tensor * state,\n                            int   il);\n\n        std::pair<ggml_tensor *, ggml_tensor *> build_kda_chunking(\n                    ggml_tensor * q,\n                    ggml_tensor * k,\n                    ggml_tensor * v,\n                    ggml_tensor * gk,\n                    ggml_tensor * beta,\n                    ggml_tensor * state,\n                    ggml_tensor * causal_mask,\n                    ggml_tensor * identity,\n                    ggml_tensor * diag_mask,\n                            int   il);\n\n        const llama_model & model;\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n\n\nstruct llama_model_step35 : public llama_model_base {\n    llama_model_step35(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n    void load_arch_tensors(llama_model_loader & ml) override;\n\n    struct graph : public llm_graph_context {\n        graph(const llama_model & model, const llm_graph_params & params);\n    };\n\n    struct graph_mtp : public llm_graph_context {\n        graph_mtp(const llama_model & model, const llm_graph_params & params);\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n",
+          "after": "gml_tensor *, ggml_tensor *> build_kda_autoregressive(\n                    ggml_tensor * q,\n                    ggml_tensor * k,\n                    ggml_tensor * v,\n                    ggml_tensor * gk,\n                    ggml_tensor * beta,\n                    ggml_tensor * state,\n                            int   il);\n\n        std::pair<ggml_tensor *, ggml_tensor *> build_kda_chunking(\n                    ggml_tensor * q,\n                    ggml_tensor * k,\n                    ggml_tensor * v,\n                    ggml_tensor * gk,\n                    ggml_tensor * beta,\n                    ggml_tensor * state,\n                    ggml_tensor * causal_mask,\n                    ggml_tensor * identity,\n                    ggml_tensor * diag_mask,\n                            int   il);\n\n        const llama_model & model;\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n\n\nstruct llama_model_step35 : public llama_model_base {\n    llama_model_step35(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n    void load_arch_tensors(llama_model_loader & ml) override;\n\n    struct graph : public llm_graph_context {\n        graph(const llama_model & model, const llm_graph_params & params);\n    };\n\n    struct graph_mtp : public llm_graph_context {\n        graph_mtp(const llama_model & model, const llm_graph_params & params);\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n\nstruct llama_model_k2_horizon : public llama_model_base {\n    llama_model_k2_horizon(const struct llama_model_params & params) : llama_model_base(params) {}\n    void load_arch_hparams(llama_model_loader & ml) override;\n    void load_arch_tensors(llama_model_loader & ml) override;\n\n    struct graph : public llm_graph_context {\n        graph(const llama_model & model, const llm_graph_params & params);\n\n        ggml_tensor * build_routed_value(const llama_layer & layer, ggml_tensor * cur, int il) const;\n    };\n\n    std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;\n};\n"
+        }
+      ]
+    },
+    {
+      "path": "src/models/nemotron-h.cpp",
+      "beforeSha256": "d0a2066c77a97c667b78987932a8b20caeb6d1da215e070fa7aa2982aaddef98",
+      "afterSha256": "5a9ea5edc06741ac07f9a31510627c6b3b9787745e86826571e20be74aeca886",
+      "replacements": [
+        {
+          "before": "    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);\n    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_EPS,     hparams.f_norm_eps); // MTP head final_layernorm\n",
+          "after": "    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_EPS, hparams.f_norm_eps); // MTP head final_layernorm\n    if (!ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps, false)) {\n        hparams.f_norm_rms_eps = hparams.f_norm_eps;\n    }\n"
+        },
+        {
+          "before": "    ml.get_key(LLM_KV_EXPERT_FEED_FORWARD_LENGTH,        hparams.n_ff_exp,        false);\n",
+          "after": "    ml.get_key_or_arr(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_weekly_exp_arr, hparams.n_layer_all, false);\n"
+        },
+        {
+          "before": "                const int64_t n_ff_exp = hparams.n_ff_exp ? hparams.n_ff_exp : n_ff / n_expert_used;\n",
+          "after": "                const auto * router_meta = ml.get_tensor_meta(tn(LLM_TENSOR_FFN_GATE_INP, \"weight\", i).str().c_str());\n                const int64_t n_expert_layer = router_meta ? router_meta->ne[1] : n_expert;\n                const int64_t n_expert_used_i = hparams.n_expert_weekly_used_arr[i];\n                if (n_expert_used_i <= 0 || n_expert_layer < n_expert_used_i || n_expert_layer > n_expert) {\n                    throw std::runtime_error(\"Invalid per-layer Nemotron expert count\");\n                }\n                const int64_t n_ff_exp = hparams.n_ff_weekly_exp_arr[i]\n                    ? (int64_t)hparams.n_ff_weekly_exp_arr[i] : hparams.n_ff(i) / n_expert_used_i;\n                if (n_ff_exp <= 0) {\n                    throw std::runtime_error(\"Invalid Nemotron expert FFN width\");\n                }\n"
+        },
+        {
+          "before": "{ n_embd, n_expert}, trunk_flags)",
+          "after": "{ n_embd, n_expert_layer}, trunk_flags)"
+        },
+        {
+          "before": "{n_expert         }, trunk_flags)",
+          "after": "{n_expert_layer}, trunk_flags)"
+        },
+        {
+          "before": "{n_ff_exp,   moe_n_embd, n_expert}, trunk_flags)",
+          "after": "{n_ff_exp,   moe_n_embd, n_expert_layer}, trunk_flags)"
+        },
+        {
+          "before": "{moe_n_embd, n_ff_exp, n_expert}, trunk_flags)",
+          "after": "{moe_n_embd, n_ff_exp, n_expert_layer}, trunk_flags)"
+        },
+        {
+          "before": "        const int64_t n_ff_exp       = hparams.n_ff_exp ? hparams.n_ff_exp : n_ff / n_expert_used;\n",
+          "after": "        const int64_t n_expert_used_i = hparams.n_expert_weekly_used_arr[i];\n        const int64_t n_ff_exp = hparams.n_ff_weekly_exp_arr[i] ? (int64_t)hparams.n_ff_weekly_exp_arr[i] :\n            (n_expert_used_i > 0 ? hparams.n_ff(i) / n_expert_used_i : 0);\n        if (n_ff_exp <= 0) {\n            throw std::runtime_error(\"Invalid Nemotron MTP expert FFN width\");\n        }\n"
+        },
+        {
+          "before": "                    n_expert, n_expert_used,\n",
+          "after": "                    model.layers[il].ffn_up_exps->ne[2], (int64_t)hparams.n_expert_weekly_used_arr[il],\n"
+        }
+      ]
+    },
+    {
+      "path": "src/unicode.cpp",
+      "beforeSha256": "b1f3a18646197e21f7300c6d3b45c9faf52a123d58a38d7d54f3f225018da45d",
+      "afterSha256": "2818ca5657cff7b2b4f50bc976bb9bdc4e75e92fd595a5a75555b22946e149da",
+      "replacements": [
+        {
+          "before": "    return bpe_offsets;\n}\n\n// Qwen2 system regex: \"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?\\\\p{L}+|\\\\p{N}| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\"\nstatic std::vector<size_t> unicode_regex_split_custom_qwen2(const std::string & text, const std::vector<size_t> & offsets) {\n    std::vector<size_t> bpe_offsets; // store the offset of each word\n",
+          "after": "    return bpe_offsets;\n}\n\nstatic std::vector<size_t> unicode_regex_split_custom_k2_horizon(const std::string & text, const std::vector<size_t> & offsets) {\n    std::vector<size_t> bpe_offsets; // store the offset of each word\n    bpe_offsets.reserve(offsets.size()); // Reserve memory for the approximate size\n\n    const auto cpts = unicode_cpts_from_utf8(text);\n\n    size_t start = 0;\n    for (auto offset : offsets) {\n        const size_t offset_ini = start;\n        const size_t offset_end = start + offset;\n        assert(offset_end <= cpts.size());\n        start = offset_end;\n\n        static const uint32_t OUT_OF_RANGE = 0xFFFFFFFF;\n        auto _get_cpt = [&] (const size_t pos) -> uint32_t {\n            return (offset_ini <= pos && pos < offset_end) ? cpts[pos] : OUT_OF_RANGE;\n        };\n\n        auto _get_flags = [&] (const size_t pos) -> unicode_cpt_flags {\n            return (offset_ini <= pos && pos < offset_end) ? unicode_cpt_flags_from_cpt(cpts[pos]) : unicode_cpt_flags{};\n        };\n\n        // K2-Horizon: letter runs are (?:\\p{L}|\\p{M}|\\u200C|\\u200D)+\n        auto _is_k2_letter = [&] (const size_t pos) -> bool {\n            const uint32_t c = _get_cpt(pos);\n            if (c == 0x200C || c == 0x200D) {\n                return true;\n            }\n            const auto f = _get_flags(pos);\n            return f.is_letter || f.is_accent_mark;\n        };\n\n        size_t _prev_end = offset_ini;\n        auto _add_token = [&] (const size_t end) -> size_t {\n            assert(_prev_end <= end && end <= offset_end);\n            size_t len = end - _prev_end;\n            if (len > 0) {\n                bpe_offsets.push_back(len);\n            }\n            _prev_end = end;\n            return len;\n        };\n\n        for (size_t pos = offset_ini; pos < offset_end; /*pos++*/ ) {\n            const uint32_t cpt = _get_cpt(pos);\n            const auto flags = _get_flags(pos);\n\n            // regex: (?i:'s|'t|'re|'ve|'m|'ll|'d) // case insensitive\n            if (cpt == '\\'' && pos+1 < offset_end) {\n                uint32_t cpt_next = unicode_tolower(_get_cpt(pos+1));\n                if (cpt_next == 0x017F) {\n                    cpt_next = 's'; // Unicode case-folding of long s\n                }\n                if (cpt_next == 's' || cpt_next == 't' || cpt_next == 'm' || cpt_next == 'd') {\n                    pos += _add_token(pos+2);\n                    continue;\n                }\n                if (pos+2 < offset_end) {\n                    uint32_t cpt_next_next = unicode_tolower(_get_cpt(pos+2));\n                    if ((cpt_next == 'r' && cpt_next_next == 'e') ||\n                        (cpt_next == 'v' && cpt_next_next == 'e') ||\n                        (cpt_next == 'l' && cpt_next_next == 'l')) {\n                        pos += _add_token(pos+3);\n                        continue;\n                    }\n                }\n            }\n\n            // regex: [^\\r\\n\\p{L}\\p{N}]?(?:\\p{L}|\\p{M}|\\u200C|\\u200D)+\n            if (!(cpt == '\\r' || cpt == '\\n' || flags.is_number)) {\n                if (_is_k2_letter(pos) || _is_k2_letter(pos+1)) {  // one or more letters/marks/ZWNJ/ZWJ\n                    pos++;\n                    while (_is_k2_letter(pos)) {\n                        pos++;\n                    }\n                    _add_token(pos);\n                    continue;\n                }\n            }\n\n            // regex: \\p{N}{1,3}\n            if (flags.is_number) {\n                size_t ini = pos;\n                while (_get_flags(pos).is_number) {\n                    if (++pos - ini >= 3 ) {\n                        _add_token(pos);\n                        ini = pos;\n                    }\n                }\n                _add_token(pos);\n                continue;\n            }\n\n            // regex: <space>?[^\\s\\p{L}\\p{N}]+[\\r\\n]*\n            auto flags2 = (cpt == ' ' ? _get_flags(pos+1) : flags);\n            if (!(flags2.is_whitespace | flags2.is_letter | flags2.is_number) && flags.as_uint()) {\n                pos += (cpt == ' ');\n                while (!(flags2.is_whitespace | flags2.is_letter | flags2.is_number) && flags2.as_uint()) {\n                    flags2 = _get_flags(++pos);\n                }\n                uint32_t cpt2 = _get_cpt(pos);\n                while (cpt2 == '\\r' || cpt2 == '\\n') {\n                    cpt2 = _get_cpt(++pos);\n                }\n                _add_token(pos);\n                continue;\n            }\n\n            size_t num_whitespaces = 0;\n            size_t last_end_r_or_n = 0;\n            while (_get_flags(pos+num_whitespaces).is_whitespace) {\n                uint32_t cpt2 = _get_cpt(pos+num_whitespaces);\n                if (cpt2 == '\\r' || cpt2 == '\\n') {\n                    last_end_r_or_n = pos + num_whitespaces + 1;\n                }\n                num_whitespaces++;\n            }\n\n            // regex: \\s*[\\r\\n]+\n            if (last_end_r_or_n > 0) {\n                pos = last_end_r_or_n;\n                _add_token(pos);\n                continue;\n            }\n\n            // regex: \\s+(?!\\S)\n            if (num_whitespaces > 1 && _get_cpt(pos+num_whitespaces) != OUT_OF_RANGE) {\n                pos += num_whitespaces - 1;\n                _add_token(pos);\n                continue;\n            }\n\n            // regex: \\s+\n            if (num_whitespaces > 0) {\n                pos += num_whitespaces;\n                _add_token(pos);\n                continue;\n            }\n\n            // no matches\n            _add_token(++pos);\n        }\n    }\n\n    return bpe_offsets;\n}\n\n// Qwen2 system regex: \"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?\\\\p{L}+|\\\\p{N}| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\"\nstatic std::vector<size_t> unicode_regex_split_custom_qwen2(const std::string & text, const std::vector<size_t> & offsets) {\n    std::vector<size_t> bpe_offsets; // store the offset of each word\n"
+        },
+        {
+          "before": "    } else if (\n           regex_expr == \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?[\\\\p{L}\\\\p{M}]+|\\\\p{N}| ?[^\\\\s\\\\p{L}\\\\p{M}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\") {\n        bpe_offsets = unicode_regex_split_custom_qwen35(text, offsets);\n    } else if (regex_expr == \"\\\\p{Han}+\") {\n        // K2's first pattern - handle all K2 patterns together\n        bpe_offsets = unicode_regex_split_custom_kimi_k2(text, offsets);\n",
+          "after": "    } else if (\n           regex_expr == \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?[\\\\p{L}\\\\p{M}]+|\\\\p{N}| ?[^\\\\s\\\\p{L}\\\\p{M}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\") {\n        bpe_offsets = unicode_regex_split_custom_qwen35(text, offsets);\n    } else if (\n            regex_expr == \"(?:'[sS]|'[tT]|'[rR][eE]|'[vV][eE]|'[mM]|'[lL][lL]|'[dD])|[^\\\\r\\\\n\\\\p{L}\\\\p{N}]?(?:\\\\p{L}|\\\\p{M}|\\\\u200C|\\\\u200D)+|\\\\p{N}{1,3}| ?[^\\\\s\\\\p{L}\\\\p{N}]+[\\\\r\\\\n]*|\\\\s*[\\\\r\\\\n]+|\\\\s+(?!\\\\S)|\\\\s+\") {\n        // K2-Horizon: llama3 splitter with marks + ZWNJ/ZWJ inside letter runs\n        // (the generic std::regex fallback cannot parse \\p{..} on MSVC)\n        bpe_offsets = unicode_regex_split_custom_k2_horizon(text, offsets);\n    } else if (regex_expr == \"\\\\p{Han}+\") {\n        // K2's first pattern - handle all K2 patterns together\n        bpe_offsets = unicode_regex_split_custom_kimi_k2(text, offsets);\n"
+        },
+        {
+          "before": "}\n\nstd::vector<std::string> unicode_regex_split(const std::string & text, const std::vector<std::string> & regex_exprs, bool byte_encode) {\n    // unicode categories\n    static const std::map<std::string, int> k_ucat_enum = {\n        { \"\\\\p{N}\", unicode_cpt_flags::NUMBER },",
+          "after": "}\n\nstd::vector<std::string> unicode_regex_split(const std::string & text, const std::vector<std::string> & regex_exprs, bool byte_encode) {\n    if (text.empty()) {\n        return {};\n    }\n\n    // unicode categories\n    static const std::map<std::string, int> k_ucat_enum = {\n        { \"\\\\p{N}\", unicode_cpt_flags::NUMBER },"
+        }
+      ]
+    },
+    {
+      "path": "tests/test-chat-template.cpp",
+      "beforeSha256": "7a790605222858ca5d5a2de94de27115d693e2c293638c392b7726a44ad3451f",
+      "afterSha256": "0979f1ad495ad90e5f9c99483a5269a47a0ccd92ea995d1d71cafa95a2c6d6d3",
+      "replacements": [
+        {
+          "before": "    // test invalid chat template\n",
+          "after": "    // Native text templates must not fall back to flat User:/Assistant: prompts.\n    {\n        const std::vector<llama_chat_message> weekly_conversation = {\n            {\"system\", \"Be precise.\"}, {\"user\", \"Hello\"}, {\"assistant\", \"Hi\"}, {\"user\", \"Again\"},\n        };\n        auto check_weekly = [&](const char * tmpl, bool add, const std::string & expected) {\n            std::vector<char> buffer(expected.size() + 16);\n            const int32_t size = llama_chat_apply_template(tmpl, weekly_conversation.data(),\n                weekly_conversation.size(), add, buffer.data(), buffer.size());\n            assert(size == (int32_t) expected.size());\n            assert(std::string(buffer.data(), size) == expected);\n        };\n        const std::string jais_history = \"<|ifm|im_start|>system\\nBe precise.<|ifm|im_end|>\"\n            \"<|ifm|im_start|>user\\nHello<|ifm|im_end|>\"\n            \"<|ifm|im_start|>assistant<ifm|think>\\n</ifm|think>Hi<|ifm|im_end|>\"\n            \"<|ifm|im_start|>user\\nAgain<|ifm|im_end|>\";\n        check_weekly(\"jais3\", false, jais_history);\n        check_weekly(\"<|ifm|im_start|> You are Jais 3\", true,\n            jais_history + \"<|ifm|im_start|>assistant\\n<ifm|think_faster>\\n\");\n        const std::string nemotron_history = \"<|im_start|>system\\nBe precise.<|im_end|>\\n\"\n            \"<|im_start|>user\\nHello<|im_end|>\\n\"\n            \"<|im_start|>assistant\\n<think></think>Hi<|im_end|>\\n\"\n            \"<|im_start|>user\\nAgain<|im_end|>\\n\";\n        check_weekly(\"nemotron-3.5\", false, nemotron_history);\n        check_weekly(\"<|im_start|> truncate_history_thinking medium_effort\", true,\n            nemotron_history + \"<|im_start|>assistant\\n<think></think>\");\n    }\n\n    // test invalid chat template\n"
+        }
+      ]
+    },
+    {
+      "path": "tests/test-llama-archs.cpp",
+      "beforeSha256": "0302e8ed2b51f36b43e75f95fceaef1e3ed874c5be9c5f28f118e47937db3dae",
+      "afterSha256": "76ed477dd7d94a9031a131ec2ce535a5d3e3e578e8a40a57687fbd51c980e4f1",
+      "replacements": [
+        {
+          "before": "    } else if (arch == LLM_ARCH_NEMOTRON_H || arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        n_layer = 3;\n",
+          "after": "    } else if (arch == LLM_ARCH_NEMOTRON_H || arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        n_layer = arch == LLM_ARCH_NEMOTRON_H_MOE ? 4 : 3;\n"
+        },
+        {
+          "before": "            n_ff_per_layer.push_back(il <= 1 ? 0 : n_ff);\n",
+          "after": "            n_ff_per_layer.push_back(il <= 1 ? 0 : n_ff + (il == 3 ? 64 : 0));\n"
+        },
+        {
+          "before": "    ms.add_kv(LLM_KV_LEADING_DENSE_BLOCK_COUNT, uint32_t(1));\n",
+          "after": "    ms.add_kv(LLM_KV_LEADING_DENSE_BLOCK_COUNT, uint32_t(1));\n\n    if (arch == LLM_ARCH_K2_HORIZON) {\n        ms.add_kv(LLM_KV_ROPE_SCALING_YARN_BETA_FAST, 128.0f);\n        ms.add_kv(LLM_KV_ROPE_SCALING_YARN_BETA_SLOW, 4.0f);\n    }\n"
+        },
+        {
+          "before": "        } else {\n            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);\n        }\n",
+          "after": "        } else if (arch == LLM_ARCH_NEMOTRON_H_MOE) {\n            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, std::vector<uint32_t>({0, 0, n_ff, n_ff + 64}));\n        } else {\n            ms.add_kv(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, n_ff);\n        }\n"
+        },
+        {
+          "before": "        ms.add_kv(LLM_KV_EXPERT_COUNT,               uint32_t(2));\n        ms.add_kv(LLM_KV_EXPERT_USED_COUNT,          uint32_t(1));\n",
+          "after": "        ms.add_kv(LLM_KV_EXPERT_COUNT,               arch == LLM_ARCH_NEMOTRON_H_MOE ? uint32_t(12) : uint32_t(2));\n        if (arch == LLM_ARCH_NEMOTRON_H_MOE) {\n            // Publisher-shaped array: attention/Mamba zero, distinct MoE top-k.\n            ms.add_kv(LLM_KV_EXPERT_USED_COUNT, std::vector<uint32_t>({0, 0, 9, 6}));\n        } else {\n            ms.add_kv(LLM_KV_EXPERT_USED_COUNT, uint32_t(1));\n        }\n"
+        },
+        {
+          "before": "        ms.add_kv(LLM_KV_EXPERTS_PER_GROUP,          uint32_t(1));\n",
+          "after": "        ms.add_kv(LLM_KV_EXPERTS_PER_GROUP,          uint32_t(1));\n        if (arch == LLM_ARCH_K2_HORIZON) {\n            ms.add_kv(LLM_KV_ATTENTION_VALUE_EXPERT_COUNT, uint32_t(2));\n            ms.add_kv(LLM_KV_ATTENTION_VALUE_EXPERT_USED_COUNT, uint32_t(2));\n        }\n"
+        },
+        {
+          "before": "        case LLM_ARCH_LAGUNA:\n        case LLM_ARCH_MUSE_SPARK:\n",
+          "after": "        case LLM_ARCH_LAGUNA:\n        case LLM_ARCH_MUSE_SPARK:\n        case LLM_ARCH_NEMOTRON_H_MOE:\n"
+        },
+        {
+          "before": "        case LLM_ARCH_LLAMA_EMBED:\n            return true;\n",
+          "after": "        case LLM_ARCH_LLAMA_EMBED:\n        case LLM_ARCH_K2_HORIZON:\n            return true;\n"
+        },
+        {
+          "before": "    return ret;\n}\n\nstatic bool silent_model_load_progress",
+          "after": "    if (arch == LLM_ARCH_NEMOTRON_H_MOE) {\n        ggml_init_params params = {2 * ggml_tensor_overhead(), nullptr, true};\n        ggml_context * ctx = ggml_init(params);\n        GGML_ASSERT(ctx);\n        for (int il : {2, 3}) {\n            ggml_tensor * router = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, il == 2 ? 12 : 10);\n            ggml_format_name(router, \"blk.%d.ffn_gate_inp.weight\", il);\n            gguf_add_tensor(ms.gguf_ctx, router);\n        }\n        ggml_free(ctx);\n    }\n    return ret;\n}\n\nstatic bool silent_model_load_progress"
+        },
+        {
+          "before": "                        logits_cpu = get_logits(model_and_ctx_cpu.first.get(), model_and_ctx_cpu.second.get(), tokens, encode);\n",
+          "after": "                        logits_cpu = get_logits(model_and_ctx_cpu.first.get(), model_and_ctx_cpu.second.get(), tokens, encode);\n                        if (arch == LLM_ARCH_NEMOTRON_H_MOE) {\n                            const auto & layers = model_and_ctx_cpu.first->layers;\n                            GGML_ASSERT(layers[2].ffn_up_exps->ne[2] == 12);\n                            GGML_ASSERT(layers[3].ffn_up_exps->ne[2] == 10);\n                            GGML_ASSERT(layers[3].ffn_up_exps->ne[1] == 448);\n                            const auto & params = model_and_ctx_cpu.first->hparams;\n                            GGML_ASSERT(params.n_expert_weekly_used_arr[0] == 0);\n                            GGML_ASSERT(params.n_expert_weekly_used_arr[1] == 0);\n                            GGML_ASSERT(params.n_expert_weekly_used_arr[2] == 9);\n                            GGML_ASSERT(params.n_expert_weekly_used_arr[3] == 6);\n                            GGML_ASSERT(params.n_expert_used == 9);\n                        }\n"
+        }
+      ]
+    },
+    {
+      "path": "src/models/k2-horizon.cpp",
+      "beforeSha256": null,
+      "afterSha256": "8c9661f13ccdc243d52c9c1e17c03a6b66b89aa282dca9b1cd1d01c8e2d6e6ff",
+      "content": "#include \"models.h\"\n\nvoid llama_model_k2_horizon::load_arch_hparams(llama_model_loader & ml) {\n    ml.get_key(LLM_KV_ROPE_SCALING_YARN_BETA_FAST, hparams.yarn_beta_fast, false);\n    ml.get_key(LLM_KV_ROPE_SCALING_YARN_BETA_SLOW, hparams.yarn_beta_slow, false);\n    ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);\n    ml.get_key(LLM_KV_ATTENTION_GROUPNORM_GROUPS,  hparams.n_norm_groups, false);\n    if (hparams.n_norm_groups == 0) {\n        hparams.n_norm_groups = 1;\n    }\n\n    if (hparams.n_expert > 0) {\n        ml.get_key_or_arr(LLM_KV_EXPERT_FEED_FORWARD_LENGTH, hparams.n_ff_weekly_exp_arr, hparams.n_layer_all);\n        ml.get_key(LLM_KV_LEADING_DENSE_BLOCK_COUNT,         hparams.n_layer_dense_lead,   false);\n        ml.get_key(LLM_KV_MOE_EVERY_N_LAYERS,                hparams.moe_every_n_layers,   false);\n        ml.get_key(LLM_KV_EXPERT_SHARED_COUNT,               hparams.n_expert_shared,      false);\n        ml.get_key(LLM_KV_EXPERT_SHARED_FEED_FORWARD_LENGTH, hparams.n_ff_shexp,           false);\n        ml.get_key(LLM_KV_EXPERT_WEIGHTS_SCALE,              hparams.expert_weights_scale, false);\n        ml.get_key(LLM_KV_EXPERT_WEIGHTS_NORM,               hparams.expert_weights_norm,  false);\n        ml.get_key(LLM_KV_EXPERT_GATING_FUNC,                hparams.expert_gating_func,   false);\n        if (hparams.expert_gating_func == LLAMA_EXPERT_GATING_FUNC_TYPE_NONE) {\n            hparams.expert_gating_func = LLAMA_EXPERT_GATING_FUNC_TYPE_SIGMOID;\n        }\n    }\n\n    // MoVA\n    ml.get_key(LLM_KV_ATTENTION_VALUE_EXPERT_COUNT,      hparams.n_value_expert,      false);\n    ml.get_key(LLM_KV_ATTENTION_VALUE_EXPERT_USED_COUNT, hparams.n_value_expert_used, false);\n    if (hparams.n_value_expert > 0) {\n        GGML_ASSERT(hparams.n_value_expert <= LLAMA_MAX_EXPERTS);\n        GGML_ASSERT(hparams.n_value_expert_used > 0);\n        GGML_ASSERT(hparams.n_value_expert_used <= hparams.n_value_expert);\n    } else {\n        GGML_ASSERT(hparams.n_value_expert_used == 0);\n    }\n\n    switch (hparams.n_layer()) {\n        case 28: type = LLM_TYPE_1B; break;\n        case 36:\n            switch (hparams.n_embd) {\n                case 2560: type = LLM_TYPE_4B; break;\n                case 4096: type = LLM_TYPE_7B; break;\n                default:   type = LLM_TYPE_UNKNOWN;\n            } break;\n        case 48: type = LLM_TYPE_36B; break;\n        case 64: type = LLM_TYPE_32B; break;\n        default: type = LLM_TYPE_UNKNOWN;\n    }\n}\n\nvoid llama_model_k2_horizon::load_arch_tensors(llama_model_loader &) {\n    LLAMA_LOAD_LOCALS;\n\n    tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, \"weight\"), {n_embd, n_vocab}, 0);\n\n    // output\n    output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, \"weight\"), {n_embd}, 0);\n    output      = create_tensor(tn(LLM_TENSOR_OUTPUT,      \"weight\"), {n_embd, n_vocab}, TENSOR_NOT_REQUIRED);\n    // if output is NULL, init from the input tok embed\n    if (output == NULL) {\n        output = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, \"weight\"), {n_embd, n_vocab}, TENSOR_DUPLICATED);\n    }\n\n    for (int i = 0; i < n_layer; ++i) {\n        auto & layer = layers[i];\n\n        const bool is_moe_layer  = n_expert > 0 && (uint32_t) i >= hparams.n_layer_dense_lead;\n        const bool is_mova_layer = is_moe_layer && hparams.n_value_expert > 0;\n\n        layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, \"weight\", i), {n_embd}, 0);\n\n        layer.wq          = create_tensor(tn(LLM_TENSOR_ATTN_Q,      \"weight\", i), {n_embd, n_embd_head_k * n_head}, 0);\n        layer.wk          = create_tensor(tn(LLM_TENSOR_ATTN_K,      \"weight\", i), {n_embd, n_embd_k_gqa}, 0);\n        // one norm weight per head, stored flat; viewed as {head_dim, n_head} so it splits by head like Q/K\n        layer.attn_q_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, \"weight\", i), {n_embd_head_k, n_head},    TENSOR_NOT_REQUIRED | TENSOR_ALLOW_RESHAPE);\n        layer.attn_k_norm = create_tensor(tn(LLM_TENSOR_ATTN_K_NORM, \"weight\", i), {n_embd_head_k, n_head_kv}, TENSOR_NOT_REQUIRED | TENSOR_ALLOW_RESHAPE);\n\n        if (is_mova_layer) {\n            layer.attn_v_gate   = create_tensor(tn(LLM_TENSOR_ATTN_V_GATE, \"weight\", i), {n_embd, hparams.n_value_expert}, 0);\n            layer.attn_v_gate_b = create_tensor(tn(LLM_TENSOR_ATTN_V_GATE, \"bias\",   i), {hparams.n_value_expert}, TENSOR_NOT_REQUIRED);\n            layer.attn_v_exps   = create_tensor(tn(LLM_TENSOR_ATTN_V_EXPS, \"weight\", i), {n_embd, n_embd_v_gqa, hparams.n_value_expert}, 0);\n        } else {\n            layer.wv = create_tensor(tn(LLM_TENSOR_ATTN_V, \"weight\", i), {n_embd, n_embd_v_gqa}, 0);\n        }\n\n        layer.wo        = create_tensor(tn(LLM_TENSOR_ATTN_OUT,  \"weight\", i), {n_embd_head_v * n_head, n_embd}, 0);\n        layer.wqkv_gate = create_tensor(tn(LLM_TENSOR_ATTN_GATE, \"weight\", i), {n_embd, n_embd_head_v * n_head}, TENSOR_NOT_REQUIRED);\n\n        layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, \"weight\", i), {n_embd}, 0);\n\n        if (is_moe_layer) {\n            const int64_t n_ff_exp = hparams.n_ff_weekly_exp_arr[i];\n            if (n_ff_exp == 0) {\n                throw std::runtime_error(\"K2 Horizon MoE layer requires expert_feed_forward_length\");\n            }\n\n            layer.ffn_gate_inp    = create_tensor(tn(LLM_TENSOR_FFN_GATE_INP,    \"weight\", i), {n_embd, n_expert}, 0);\n            layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_FFN_EXP_PROBS_B, \"bias\",   i), {n_expert}, TENSOR_NOT_REQUIRED);\n\n            layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   \"weight\", i), {n_embd,   n_ff_exp, n_expert}, 0);\n            layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, \"weight\", i), {n_embd,   n_ff_exp, n_expert}, 0);\n            layer.ffn_down_exps = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS, \"weight\", i), {n_ff_exp, n_embd,   n_expert}, 0);\n\n            if (hparams.n_expert_shared > 0) {\n                const int64_t n_ff_shexp = hparams.n_ff_shexp > 0 ? hparams.n_ff_shexp : n_ff_exp * hparams.n_expert_shared;\n\n                layer.ffn_up_shexp   = create_tensor(tn(LLM_TENSOR_FFN_UP_SHEXP,   \"weight\", i), {n_embd,     n_ff_shexp}, 0);\n                layer.ffn_gate_shexp = create_tensor(tn(LLM_TENSOR_FFN_GATE_SHEXP, \"weight\", i), {n_embd,     n_ff_shexp}, 0);\n                layer.ffn_down_shexp = create_tensor(tn(LLM_TENSOR_FFN_DOWN_SHEXP, \"weight\", i), {n_ff_shexp, n_embd},     0);\n            }\n        } else {\n            layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   \"weight\", i), {n_embd, n_ff}, 0);\n            layer.ffn_gate = create_tensor(tn(LLM_TENSOR_FFN_GATE, \"weight\", i), {n_embd, n_ff}, 0);\n            layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, \"weight\", i), {n_ff,   n_embd}, 0);\n        }\n    }\n}\n\nstd::unique_ptr<llm_graph_context> llama_model_k2_horizon::build_arch_graph(const llm_graph_params & params) const {\n    return std::make_unique<graph>(*this, params);\n}\n\n// RMS norm over n_groups equal slices of ne[0], then one full-width weight\nstatic ggml_tensor * k2_horizon_group_rms_norm(ggml_context * ctx, ggml_tensor * cur, ggml_tensor * weight, int64_t n_groups, float eps) {\n    GGML_ASSERT(n_groups > 0 && cur->ne[0] % n_groups == 0);\n\n    const int64_t n_embd   = cur->ne[0];\n    const int64_t n_tokens = cur->ne[1];\n\n    cur = ggml_reshape_3d(ctx, cur, n_embd / n_groups, n_groups, n_tokens);\n    cur = ggml_rms_norm(ctx, cur, eps);\n    cur = ggml_reshape_2d(ctx, cur, n_embd, n_tokens);\n\n    return weight ? ggml_mul(ctx, cur, weight) : cur;\n}\n\n// MoVA: route each token to n_value_expert_used value experts, V = sum_k w_k * silu(W_k x)\nggml_tensor * llama_model_k2_horizon::graph::build_routed_value(const llama_layer & layer, ggml_tensor * cur, int il) const {\n    const int64_t n_embd     = cur->ne[0];\n    const int64_t n_tokens   = cur->ne[1];\n    const int64_t n_embd_gqa = hparams.n_embd_v_gqa(il);\n    const int64_t n_values   = hparams.n_value_expert;\n    const int64_t n_used     = hparams.n_value_expert_used;\n\n    ggml_tensor * logits = build_lora_mm(layer.attn_v_gate, cur);\n    ggml_tensor * probs  = nullptr;\n\n    switch ((llama_expert_gating_func_type) hparams.expert_gating_func) {\n        case LLAMA_EXPERT_GATING_FUNC_TYPE_SOFTMAX: probs = ggml_soft_max(ctx0, logits); break;\n        case LLAMA_EXPERT_GATING_FUNC_TYPE_SIGMOID: probs = ggml_sigmoid(ctx0, logits);  break;\n        default: GGML_ABORT(\"unsupported K2 Horizon value-router gating function\");\n    }\n\n    // the bias only affects which experts are selected, not their weights\n    ggml_tensor * selection_probs = probs;\n    if (layer.attn_v_gate_b) {\n        selection_probs = ggml_add(ctx0, probs, layer.attn_v_gate_b);\n        cb(selection_probs, \"v_moe_probs_biased\", il);\n    }\n\n    ggml_tensor * selected_experts = ggml_argsort_top_k(ctx0, selection_probs, n_used);\n\n    probs = ggml_reshape_3d(ctx0, probs, 1, n_values, n_tokens);\n    ggml_tensor * weights = ggml_get_rows(ctx0, probs, selected_experts);\n\n    if (hparams.expert_weights_norm) {\n        weights = ggml_reshape_2d(ctx0, weights, n_used, n_tokens);\n        ggml_tensor * weights_sum = ggml_sum_rows(ctx0, weights);\n        weights_sum = ggml_clamp(ctx0, weights_sum, 6.103515625e-5f, INFINITY);\n        weights = ggml_div(ctx0, weights, weights_sum);\n        weights = ggml_reshape_3d(ctx0, weights, 1, n_used, n_tokens);\n        cb(weights, \"v_moe_weights_norm\", il);\n    }\n\n    if (hparams.expert_weights_scale != 0.0f && hparams.expert_weights_scale != 1.0f) {\n        weights = ggml_scale(ctx0, weights, hparams.expert_weights_scale);\n        cb(weights, \"v_moe_weights_scaled\", il);\n    }\n\n    cb(logits, \"v_moe_logits\", il);\n    cb(probs,  \"v_moe_probs\",  il);\n    cb(selected_experts->src[0], \"v_moe_argsort\", il);\n    cb(selected_experts,         \"v_moe_topk\",    il);\n    cb(weights, \"v_moe_weights\", il);\n\n    ggml_tensor * values = build_lora_mm_id(layer.attn_v_exps, ggml_reshape_3d(ctx0, cur, n_embd, 1, n_tokens), selected_experts);\n    values = ggml_silu(ctx0, values);\n    values = ggml_mul(ctx0, values, weights);\n    cb(values, \"v_moe_weighted\", il);\n\n    // sum the selected experts; 3D views of {n_embd_gqa, 1, n_tokens} keep the strides of values,\n    // which lets the tensor-parallel backend follow its split through the views\n    // order the views before the adds so backends can fuse the sum\n    ggml_tensor * value_views[LLAMA_MAX_EXPERTS] = { nullptr };\n    for (int64_t i = 0; i < n_used; ++i) {\n        value_views[i] = ggml_view_3d(ctx0, values, n_embd_gqa, 1, n_tokens, values->nb[1], values->nb[2], i * values->nb[1]);\n        ggml_build_forward_expand(gf, value_views[i]);\n    }\n\n    ggml_tensor * value_out = value_views[0];\n    for (int64_t i = 1; i < n_used; ++i) {\n        value_out = ggml_add(ctx0, value_out, value_views[i]);\n        ggml_build_forward_expand(gf, value_out);\n    }\n    if (n_used == 1) {\n        value_out = ggml_cont(ctx0, value_out);\n    }\n    cb(value_out, \"Vcur_routed\", il);\n\n    return value_out;\n}\n\nllama_model_k2_horizon::graph::graph(const llama_model & model, const llm_graph_params & params) : llm_graph_context(params) {\n    const int64_t n_embd_head = hparams.n_embd_head_v();\n    GGML_ASSERT(n_embd_head == hparams.n_embd_head_k());\n\n    ggml_tensor * cur;\n    ggml_tensor * inpL;\n\n    inpL = build_inp_embd(model.tok_embd);\n\n    // inp_pos - contains the positions\n    ggml_tensor * inp_pos = build_inp_pos();\n\n    auto * inp_attn = build_attn_inp_kv();\n\n    ggml_tensor * inp_out_ids = build_inp_out_ids();\n\n    const float kq_scale = 1.0f / sqrtf(float(n_embd_head));\n\n    for (int il = 0; il < n_layer; ++il) {\n        const auto & layer = model.layers[il];\n\n        res->t_layer_inp[il] = inpL;\n\n        ggml_tensor * inpSA = inpL;\n\n        const bool is_moe_layer  = n_expert > 0 && (uint32_t) il >= hparams.n_layer_dense_lead;\n        const bool is_mova_layer = is_moe_layer && hparams.n_value_expert > 0;\n\n        cur = k2_horizon_group_rms_norm(ctx0, inpL, layer.attn_norm, hparams.n_norm_groups, hparams.f_norm_rms_eps);\n        cb(cur, \"attn_norm\", il);\n\n        // self-attention\n        {\n            ggml_tensor * attn_inp = cur; // saved for the output gate\n\n            ggml_tensor * Qcur = build_lora_mm(layer.wq, cur, layer.wq_s);\n            ggml_tensor * Kcur = build_lora_mm(layer.wk, cur, layer.wk_s);\n            ggml_tensor * Vcur = is_mova_layer ? build_routed_value(layer, cur, il) : build_lora_mm(layer.wv, cur, layer.wv_s);\n\n            Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head,    n_tokens);\n            Kcur = ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens);\n            Vcur = ggml_reshape_3d(ctx0, Vcur, n_embd_head, n_head_kv, n_tokens);\n\n            // per-head RMS norm with a separate weight for every head\n            if (layer.attn_q_norm) {\n                Qcur = build_norm(Qcur, layer.attn_q_norm, NULL, LLM_NORM_RMS, il);\n            }\n            if (layer.attn_k_norm) {\n                Kcur = build_norm(Kcur, layer.attn_k_norm, NULL, LLM_NORM_RMS, il);\n            }\n\n            Qcur = ggml_rope_ext(ctx0, Qcur, inp_pos, nullptr,\n                    n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,\n                    ext_factor, attn_factor, beta_fast, beta_slow);\n            Kcur = ggml_rope_ext(ctx0, Kcur, inp_pos, nullptr,\n                    n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,\n                    ext_factor, attn_factor, beta_fast, beta_slow);\n\n            cb(Qcur, \"Qcur\", il);\n            cb(Kcur, \"Kcur\", il);\n            cb(Vcur, \"Vcur\", il);\n\n            // with an output gate, o_proj is applied after gating\n            const bool gated = layer.wqkv_gate != nullptr;\n\n            cur = build_attn(inp_attn,\n                    gated ? nullptr : layer.wo, gated ? nullptr : layer.wo_b, gated ? nullptr : layer.wo_s,\n                    Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);\n\n            if (gated) {\n                // softplus with beta = ln(2): log2(1 + 2^x)\n                constexpr float ln2 = 0.6931471805599453f;\n                ggml_tensor * gate = build_lora_mm(layer.wqkv_gate, attn_inp, layer.wqkv_gate_s);\n                gate = ggml_scale(ctx0, gate, ln2);\n                gate = ggml_softplus(ctx0, gate);\n                gate = ggml_scale(ctx0, gate, 1.4426950408889634f); // 1 / ln(2)\n\n                cur = ggml_mul(ctx0, cur, gate);\n                cur = build_lora_mm(layer.wo, cur, layer.wo_s);\n                if (layer.wo_b) {\n                    cur = ggml_add(ctx0, cur, layer.wo_b);\n                }\n            }\n        }\n\n        if (il == n_layer - 1 && inp_out_ids) {\n            cur   = ggml_get_rows(ctx0,   cur, inp_out_ids);\n            inpSA = ggml_get_rows(ctx0, inpSA, inp_out_ids);\n        }\n\n        ggml_tensor * ffn_inp = ggml_add(ctx0, cur, inpSA);\n        cb(ffn_inp, \"ffn_inp\", il);\n\n        cur = k2_horizon_group_rms_norm(ctx0, ffn_inp, layer.ffn_norm, hparams.n_norm_groups, hparams.f_norm_rms_eps);\n        cb(cur, \"ffn_norm\", il);\n\n        if (is_moe_layer) {\n            ggml_tensor * moe_out = build_moe_ffn(cur,\n                    layer.ffn_gate_inp,\n                    layer.ffn_up_exps,\n                    layer.ffn_gate_exps,\n                    layer.ffn_down_exps,\n                    layer.ffn_exp_probs_b,\n                    n_expert, n_expert_used,\n                    LLM_FFN_SILU,\n                    hparams.expert_weights_norm,\n                    hparams.expert_weights_scale,\n                    (llama_expert_gating_func_type) hparams.expert_gating_func,\n                    il);\n\n            if (layer.ffn_gate_shexp) {\n                ggml_tensor * ffn_shexp = build_ffn(cur,\n                        layer.ffn_up_shexp,   NULL, NULL,\n                        layer.ffn_gate_shexp, NULL, NULL,\n                        layer.ffn_down_shexp, NULL, NULL,\n                        NULL,\n                        LLM_FFN_SILU, LLM_FFN_PAR, il);\n                cur = ggml_add(ctx0, moe_out, ffn_shexp);\n            } else {\n                cur = moe_out;\n            }\n        } else {\n            cur = build_ffn(cur,\n                    layer.ffn_up,   NULL, NULL,\n                    layer.ffn_gate, NULL, NULL,\n                    layer.ffn_down, NULL, NULL,\n                    NULL,\n                    LLM_FFN_SILU, LLM_FFN_PAR, il);\n        }\n        cb(cur, \"ffn_out\", il);\n\n        cur = ggml_add(ctx0, cur, ffn_inp);\n        cur = build_cvec(cur, il);\n        cb(cur, \"l_out\", il);\n\n        // input for next layer\n        inpL = cur;\n    }\n\n    cur = k2_horizon_group_rms_norm(ctx0, inpL, model.output_norm, hparams.n_norm_groups, hparams.f_norm_rms_eps);\n    cb(cur, \"result_norm\", -1);\n    res->t_embd = cur;\n\n    // lm_head\n    cur = build_lora_mm(model.output, cur, model.output_s);\n    cb(cur, \"result_output\", -1);\n    res->t_logits = cur;\n\n    ggml_build_forward_expand(gf, cur);\n}\n"
+    }
+  ]
+}

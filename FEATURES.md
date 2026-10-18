@@ -11,7 +11,7 @@ Quenderin ships with a built-in multi-model catalog spanning coding, reasoning, 
 **Available models:**
 
 <!-- BEGIN GENERATED: model-catalog (scripts/generate_features_models.py) -->
-_18 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
+_27 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
 
 | ID | Label | Params | RAM footprint | Download | Quantization |
 |----|-------|--------|---------------|----------|--------------|
@@ -20,6 +20,15 @@ _18 models — generated from `shared/model-catalog.json`; edit `src/constants.t
 | `bonsai2-9b` | Bonsai 2 9B (Experimental) | 8.95B | ~4 GB | 2.00 GB download | `PTQ1_0` |
 | `bonsai2-4b` | Bonsai 2 4B (Experimental) | 4.21B | ~2.5 GB | 0.95 GB download | `PTQ1_0` |
 | `bonsai2-2b` | Bonsai 2 2B (Experimental) | 1.88B | ~1.5 GB | 0.43 GB download | `PTQ1_0` |
+| `minicpm-v47-1b` | MiniCPM-V 4.7 1B (Experimental, text only) | 1B | ~2 GB | 0.67 GB download | `Q4_K_M` |
+| `minicpm-v47-35b-a3b` | MiniCPM-V 4.7 35B-A3B (Experimental, text only) | 35B | ~25 GB | 21.17 GB download | `Q4_K_M` |
+| `lfm25-24b-a2b` | LFM2.5 24B-A2B (Experimental, text only) | 24B | ~18 GB | 14.53 GB download | `Q4_K_M` |
+| `jais3-0.9b` | Jais 3 0.9B (Experimental, text only) | 1.07829B | ~2 GB | 0.67 GB download | `Q4_K_M` |
+| `jais3-3.7b` | Jais 3 3.7B (Experimental, text only) | 5.05826B | ~6 GB | 3.16 GB download | `Q4_K_M` |
+| `jais3-7b` | Jais 3 7B (Experimental, text only) | 8.99918B | ~9 GB | 5.59 GB download | `Q4_K_M` |
+| `jais3-32b` | Jais 3 32B (Experimental, text only) | 34.7793B | ~28 GB | 21.08 GB download | `Q4_K_M` |
+| `jais3-mova-36b-a4b` | Jais 3 MoVA 36B-A4B (Experimental, text only) | 37.4448B | ~30 GB | 22.37 GB download | `Q4_K_M` |
+| `nemotron35-bolt-74b-a9b` | Nemotron 3.5 Bolt 74B-A9B (Experimental, text only) | 74.0427B | ~28 GB | 22.02 GB download | `IQ2_XXS-mixed` |
 | `muse-spark-open-q2-k` | Muse Spark Open Q2_K (Experimental, text only) | 816B | ~330 GB | 304.08 GB download · 22 files | `Q2_K` |
 | `qwen3-14b` | Qwen3 14B (Best Quality) | 14B | ~11 GB | 9.0 GB download | `Q4_K_M` |
 | `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.1 GB download | `Q4_K_M` |

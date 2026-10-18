@@ -391,6 +391,15 @@ std::string buildChatPrompt(llama_model* model, const std::string& payload, bool
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeSupportsWeeklyText(JNIEnv*, jclass) {
+#if defined(QUENDERIN_WEEKLY_TEXT_LLAMA) && QUENDERIN_WEEKLY_TEXT_LLAMA
+    return quenderin_weekly_text_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeSupportsMuse(JNIEnv* /*env*/, jclass /*clazz*/) {
 #if defined(QUENDERIN_MUSE_LLAMA) && QUENDERIN_MUSE_LLAMA
     return quenderin_muse_spark_runtime_abi() == 1 ? JNI_TRUE : JNI_FALSE;
@@ -699,6 +708,15 @@ JNIEXPORT jint JNICALL
 Java_ai_quenderin_core_LlamaEngine_nativeLoadedNCtx(JNIEnv* /*env*/, jobject /*thiz*/, jlong handle) {
     LlamaHandle* h = as_handle(handle);
     return h ? (jint) h->nCtx : 0;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_ai_quenderin_core_LlamaEngine_nativeIsJais(JNIEnv*, jobject, jlong handle) {
+    LlamaHandle* h = as_handle(handle);
+    if (!h || !h->model) return JNI_FALSE;
+    char architecture[256] = {};
+    const int count = llama_model_meta_val_str(h->model, "general.architecture", architecture, sizeof(architecture));
+    return count > 0 && count < (int)sizeof(architecture) && std::strcmp(architecture, "k2-horizon") == 0 ? JNI_TRUE : JNI_FALSE;
 }
 
 // Did the most recent generate() stop because it hit maxTokens? ChatModel reads this for "Continue".

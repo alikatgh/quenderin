@@ -6,6 +6,8 @@
 // NOTE: requires the Android SDK + AGP (Android Studio / Gradle) to build — it is NOT
 // compiled by the headless kotlinc check that proves :quenderin-core.
 import java.util.Properties
+import java.security.MessageDigest
+import groovy.json.JsonSlurper
 
 plugins {
     id("com.android.application") version "8.10.1"
@@ -33,6 +35,23 @@ require(runtimeName in listOf("standard", "prism")) { "quenderin.runtime must be
 val llamaSource = providers.gradleProperty("quenderin.llamaDir").orNull?.let { file(it) }
     ?: file("../jni/llama.cpp")
 val nativeLlama = llamaSource.resolve("include/llama.h").isFile
+val diffusionLibDir = providers.gradleProperty("quenderin.diffusionLibDir").orNull?.let { file(it) }
+if (diffusionLibDir != null) {
+    val stamp = JsonSlurper().parse(diffusionLibDir.resolve("quenderin-diffusion-runtime.json")) as Map<*, *>
+    val lock = JsonSlurper().parse(rootProject.file("../shared/diffusion-runtime.json")) as Map<*, *>
+    require(stamp["revision"] == lock["revision"] && stamp["abiVersion"].toString() == "1" &&
+        stamp["submodules"] == lock["submodules"] && stamp["androidStl"] == "c++_static") { "Image runtime identity differs" }
+    val hashes = stamp["files"] as Map<*, *>
+    for (name in listOf("libquenderin_diffusion.so", "libquenderin_diffusion_jni.so")) {
+        val lib = diffusionLibDir.resolve("arm64-v8a/$name")
+        require(lib.isFile) { "Image runtime component is missing: $name" }
+        val digest = MessageDigest.getInstance("SHA-256")
+        lib.inputStream().use { input -> val bytes = ByteArray(1048576); while (true) {
+            val count = input.read(bytes); if (count < 0) break; digest.update(bytes, 0, count)
+        } }
+        require(digest.digest().joinToString("") { "%02x".format(it) } == hashes[name]) { "Image runtime component checksum differs: $name" }
+    }
+}
 require(runtimeName != "prism" || nativeLlama) {
     "Prepare the pinned Prism checkout and pass -Pquenderin.llamaDir=/absolute/path"
 }
@@ -93,6 +112,8 @@ android {
             // nativeLibraryDir, which sees nothing when variant .so files exist only as APK entries
             // (bug journal 2026-07-02: 0 devices until useLegacyPackaging=true).
             useLegacyPackaging = true
+            // The image builder strips and seals these bytes before packaging.
+            keepDebugSymbols += setOf("**/libquenderin_diffusion.so", "**/libquenderin_diffusion_jni.so")
         }
     }
 
@@ -127,6 +148,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
+    if (diffusionLibDir != null) sourceSets["main"].jniLibs.srcDir(diffusionLibDir)
 }
 
 // Release artifacts without native llama silently ship demo-mode chat. Fail closed unless
@@ -135,6 +157,9 @@ android {
 gradle.taskGraph.whenReady {
     val releaseTasks = allTasks.filter {
         it.path.endsWith(":app:assembleRelease") || it.path.endsWith(":app:bundleRelease")
+    }
+    if (releaseTasks.isNotEmpty() && runtimeName == "prism" && diffusionLibDir == null) {
+        throw GradleException("This release requires the verified isolated image runtime; prepare it with scripts/build_android_diffusion.sh and pass -Pquenderin.diffusionLibDir.")
     }
     if (releaseTasks.isNotEmpty() && !nativeLlama) {
         val allow = project.findProperty("quenderin.allowMockRelease")?.toString() == "true"

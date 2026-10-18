@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "modelId": "hy-memory-30b-a3b-q4-k-m",
+  "displayName": "Hy-Memory 30B-A3B Q4_K_M",
+  "repository": "rapatsky/Hy-Memory-30B-A3B-GGUF",
+  "revision": "ac7974ba17f696b57c3c75229d127494b371f46f",
+  "sourceModel": {
+    "repository": "tencent/Hy-Memory-30B-A3B",
+    "revision": "64a460a94d5498b7316fb02395c72d01c47a7347",
+    "license": "Apache-2.0"
+  },
+  "generalArchitecture": "hy_v3",
+  "quantization": "Q4_K_M",
+  "totalDownloadBytes": 18236702240,
+  "minimumMemoryBytes": 34359738368,
+  "memoryPolicy": "32 GiB conservative application floor includes all model weights; context/KV cache/workspace may require more.",
+  "complete": true,
+  "shardCount": 1,
+  "entryPoint": "Hy-Memory-30B-A3B-Q4_K_M.gguf",
+  "artifacts": [
+    {
+      "filename": "Hy-Memory-30B-A3B-Q4_K_M.gguf",
+      "url": "https://huggingface.co/rapatsky/Hy-Memory-30B-A3B-GGUF/resolve/ac7974ba17f696b57c3c75229d127494b371f46f/Hy-Memory-30B-A3B-Q4_K_M.gguf",
+      "sha256": "6eea28e22b33661d5d0a464d6fe91762794ceb13c2f5093d8a78d5f4ff3e228b",
+      "downloadBytes": 18236702240
+    }
+  ],
+  "conversion": {
+    "metadataUrl": "https://huggingface.co/rapatsky/Hy-Memory-30B-A3B-GGUF/resolve/ac7974ba17f696b57c3c75229d127494b371f46f/conversion.json",
+    "metadataSha256": "49991f3ffa8ca0b3354eec2cd421c3c01a31d9cbf71aa1b95b3eae11f1d7d2ef",
+    "llamaCppRevision": "f3363593f457169cdfbdfe22ea399b1cc139ba18",
+    "publisherMoeIntermediateSize": 1536,
+    "convertedMoeIntermediateSize": 768,
+    "note": "Community converter reports correcting the publisher expert width to match tensors. This correction and external Metal result are not Quenderin inference validation."
+  },
+  "verification": "Public conversion metadata and repository LFS size/hash metadata only. No weights downloaded or model inference run."
+}

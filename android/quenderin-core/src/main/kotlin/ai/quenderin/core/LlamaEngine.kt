@@ -46,6 +46,7 @@ class LlamaEngine(
     /** Opaque native pointer (a `llama_context*` on the C++ side); 0 = nothing loaded. */
     private var handle: Long = 0L
     private var loadedMuse = false
+    private var loadedJais = false
 
     /**
      * Per-send chat decode cap from [ChatTier] (tiny models get 256, full 512). Null → [maxTokens].
@@ -161,6 +162,7 @@ class LlamaEngine(
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
         loadedMuse = ModelRuntimeSupport.isMuse(model)
+        loadedJais = nativeIsJais(handle) || ModelRuntimeSupport.isJais(model)
         // JNI may shrink n_ctx on the q8_0→F16 KV-cache fallback; publish the window that
         // actually exists, not the q8-sized request (otherwise ChatModel trims to a window
         // larger than native and overflows — twin of the Aug-10 llama_jni.cpp n_ctx resize).
@@ -175,12 +177,13 @@ class LlamaEngine(
         }
         loadedModelId = null
         loadedMuse = false
+        loadedJais = false
         loadedContextTokens = null
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
+        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -192,7 +195,7 @@ class LlamaEngine(
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
     ): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
+        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
     }
@@ -202,7 +205,7 @@ class LlamaEngine(
      *  per-call token cap; the grammar decode is a separate call. */
     override fun completeThinking(prompt: String, maxTokens: Int): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
+        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -213,7 +216,7 @@ class LlamaEngine(
      */
     override fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse) { MUSE_CHAT_ONLY_MESSAGE }
+        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
@@ -244,6 +247,14 @@ class LlamaEngine(
                     nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 MuseOutputFilter.finalText(wire)
+            } else if (loadedJais) {
+                val filter = JaisOutputFilter(onToken)
+                val wire = try {
+                    nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
+                } finally { filter.finish() }
+                val final = JaisOutputFilter.finalText(wire)
+                check(final.isNotEmpty() || cancelRequested) { "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget." }
+                final
             } else {
                 nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { onToken(it) })
             }
@@ -262,6 +273,7 @@ class LlamaEngine(
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
     private external fun nativeLastHitTokenCap(handle: Long): Boolean
     private external fun nativeLoadedNCtx(handle: Long): Int
+    private external fun nativeIsJais(handle: Long): Boolean
     private external fun nativeFree(handle: Long)
 
     /** JNI-friendly callback (a single known method signature `(Ljava/lang/String;)V`). */
@@ -284,6 +296,8 @@ class LlamaEngine(
         private external fun nativeSupportsBonsai(): Boolean
         @JvmStatic
         private external fun nativeSupportsMuse(): Boolean
+        @JvmStatic
+        private external fun nativeSupportsWeeklyText(): Boolean
 
         /** An old library can load successfully while lacking this symbol. That is unsupported. */
         val supportsBonsaiRuntime: Boolean by lazy {
@@ -291,6 +305,9 @@ class LlamaEngine(
         }
         val supportsMuseRuntime: Boolean by lazy {
             NATIVE_AVAILABLE && runCatching { nativeSupportsMuse() }.getOrDefault(false)
+        }
+        val supportsWeeklyTextRuntime: Boolean by lazy {
+            NATIVE_AVAILABLE && runCatching { nativeSupportsWeeklyText() }.getOrDefault(false)
         }
 
         val NATIVE_AVAILABLE: Boolean = try {

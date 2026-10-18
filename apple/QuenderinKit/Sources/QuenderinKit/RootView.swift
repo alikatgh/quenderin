@@ -13,6 +13,7 @@ public struct RootView: View {
     @State private var needsConsent = ConsentGate.needsConsent()
     /// iOS tab selection — programmatic so the chat→agent handoff can jump to the Agent tab.
     @State private var tab = 0
+    @State private var showImagesBeforeChat = false
 
     public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
@@ -42,10 +43,15 @@ public struct RootView: View {
                     .task(id: model.id) { conversations.activeModelID = model.id }
             } else {
                 OnboardingView(model: onboarding)
+                    .overlay(alignment: .topTrailing) {
+                        Button { showImagesBeforeChat = true } label: { Label("Images", systemImage: "photo") }
+                            .padding()
+                    }
             }
         }
         // Appearance → Theme (nil = follow the system, the default).
         .preferredColorScheme(settings.theme.colorScheme)
+        .sheet(isPresented: $showImagesBeforeChat) { ImageGenerationView(showsDoneButton: true) }
     }
 
     @ViewBuilder
@@ -67,6 +73,9 @@ public struct RootView: View {
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                             .tag(1)
                     }
+                    ImageGenerationView()
+                        .tabItem { Label("Images", systemImage: "photo") }
+                        .tag(5)
                     UniversalSearchView(activeModelID: model.id, onSelectModel: { picked in
                         onboarding.beginInstall(picked)
                     })

@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "reviewedAt": "2026-10-18",
+  "scope": "Source and artifact provenance for pending app integrations. This file does not enable runnable catalog entries.",
+  "models": [
+    {
+      "modelId": "beam-1.0-501b-a23b-ud-iq2-xxs",
+      "status": "experimental-source-only",
+      "appAvailable": false,
+      "kind": "text-generation",
+      "modalities": [
+        "text"
+      ],
+      "artifactManifest": {
+        "path": "shared/beam-artifacts.json",
+        "sha256": "20cd2ba9e9456028a9fe6b071d7540e87333789bd0c60ae8e698e0e856cc28b9"
+      },
+      "runtime": {
+        "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
+        "revision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+        "requiredPatch": {
+          "id": "beam-text-v1",
+          "path": "scripts/patches/beam-text-prism-e8fd209.json",
+          "sha256": "5cf9f1fc57844f66e7e269fcea1da8611a2990726691d5c65bc050b91e409214",
+          "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
+          "beamABI": 1
+        },
+        "capabilitySymbol": "quenderin_beam_runtime_abi",
+        "capabilityABI": 1,
+        "tensorParallel": false,
+        "layerSplit": true
+      },
+      "chat": {
+        "format": "harmony-xml",
+        "templateUrl": "https://huggingface.co/reflection/Beam-1.0-501B-A23B/resolve/78f8f654d40a40919b8e9954b40dd879ecb9a692/chat_template.jinja",
+        "templateSha256": "24371da068468a5d15940c9af90dbf3d2ce61a6aa99fc122384aed49fc6c3c68",
+        "reasoningEffort": "minimal",
+        "reasoningEffortTokenValue": 8,
+        "generationPrefix": "<|start|>assistant",
+        "analysisOpen": "<|channel|>analysis<|message|>",
+        "finalOpen": "<|channel|>final<|message|>",
+        "endOfTurn": "<|return|>",
+        "preserveReasoningHistory": true,
+        "notes": [
+          "Assistant history supports reasoning_content; preserve it for fidelity. The official template allows allow_missing_thinking=true but warns that dropping reasoning degrades output.",
+          "A final-channel parser must hide analysis and Harmony wire headers; generic GPT-OSS or ChatML formatting is insufficient.",
+          "Tool calls use Reflection XML and are outside this graph-only integration."
+        ]
+      },
+      "blockers": [
+        "Hosted compile and synthetic graph fixture have not yet been observed passing.",
+        "Native Harmony prompt adapter and final-channel streaming parser are not wired.",
+        "Native complete multipart model installer and whole-model memory gate are not wired.",
+        "Desktop complete multipart installation and Harmony adapter are not wired."
+      ],
+      "validation": {
+        "hostedFixtureCommand": "./build/bin/test-llama-archs -a beam -s 1234",
+        "localSourceProvenance": "passed",
+        "modelInference": "not-run",
+        "deviceUI": "not-run"
+      }
+    },
+    {
+      "modelId": "hy-memory-30b-a3b-q4-k-m",
+      "status": "experimental-workflow-only",
+      "appAvailable": false,
+      "kind": "memory-writer",
+      "modalities": [
+        "text"
+      ],
+      "artifactManifest": {
+        "path": "shared/hy-memory-artifacts.json",
+        "sha256": "3cad9b1d0a47d22676c5fb60dfb7b668668f12c2e34d628392350c676f59b830"
+      },
+      "runtime": {
+        "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
+        "revision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+        "architecture": "hy_v3",
+        "sourceUrl": "https://raw.githubusercontent.com/PrismML-Eng/llama.cpp/e8fd209c975c80aa7fb36a8423571ff3b1b7e955/src/models/hy-v3.cpp",
+        "sourceSha256": "7578c18abdea87e783cb7692e82687c011611b13fed05925b19bc3cedfb3e750",
+        "newGraphPatchRequired": false
+      },
+      "chat": {
+        "templateUrl": "https://huggingface.co/tencent/Hy-Memory-30B-A3B/resolve/64a460a94d5498b7316fb02395c72d01c47a7347/chat_template.jinja",
+        "templateSha256": "8759492d33deb19b2f58855f62d3e431276da89d698b2800d1e353fbb12d5320",
+        "reasoningEffort": "no_think",
+        "bosToken": "<｜hy_begin▁of▁sentence｜>",
+        "generationSuffix": "<｜hy_Assistant｜><think></think>",
+        "reasoningModeSuffix": "<｜reasoning_mode｜>reasoning_effort:no_think"
+      },
+      "workflow": {
+        "purpose": "Extract proposed explicit facts/preferences from a user-selected conversation; keep the answer model and persistent memory bank separate.",
+        "responseSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "memories"
+          ],
+          "properties": {
+            "memories": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              }
+            }
+          }
+        },
+        "sampling": {
+          "temperature": 0,
+          "maxOutputTokens": 512
+        },
+        "automaticPersistence": false,
+        "requiresExplicitApprovalBeforePersistence": true,
+        "rejectMalformedOrExtraFields": true,
+        "frameworkUrl": "https://github.com/Tencent-Hunyuan/Hy-Memory"
+      },
+      "blockers": [
+        "Dedicated memory-proposal command/UI with strict JSON validation and explicit save approval is not wired.",
+        "Native exact no_think HY template adapter and desktop specialized workflow are not wired.",
+        "Community conversion expert-width correction has not been independently validated with model weights."
+      ],
+      "validation": {
+        "artifactMetadata": "verified",
+        "officialTemplateFixture": "rendered",
+        "modelInference": "not-run",
+        "persistentMemoryWrites": "not-enabled"
+      }
+    }
+  ]
+}

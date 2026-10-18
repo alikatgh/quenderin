@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "purpose": "Official immutable Jinja outputs for future app adapters. These fixtures do not implement or enable the adapters.",
+  "renderer": "Jinja2; generation annotations preserve caller text unchanged.",
+  "cases": [
+    {
+      "name": "beam-minimal-single",
+      "templateUrl": "https://huggingface.co/reflection/Beam-1.0-501B-A23B/resolve/78f8f654d40a40919b8e9954b40dd879ecb9a692/chat_template.jinja",
+      "templateSha256": "24371da068468a5d15940c9af90dbf3d2ce61a6aa99fc122384aed49fc6c3c68",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Answer concisely."
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "kwargs": {
+        "reasoning_effort": "minimal",
+        "allow_missing_thinking": false
+      },
+      "addGenerationPrompt": true,
+      "expected": "<|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.\n\nReasoning effort: 8\n\n# Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Instructions\n\nAnswer concisely.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant"
+    },
+    {
+      "name": "beam-minimal-history",
+      "templateUrl": "https://huggingface.co/reflection/Beam-1.0-501B-A23B/resolve/78f8f654d40a40919b8e9954b40dd879ecb9a692/chat_template.jinja",
+      "templateSha256": "24371da068468a5d15940c9af90dbf3d2ce61a6aa99fc122384aed49fc6c3c68",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello.",
+          "reasoning_content": "A short greeting is appropriate."
+        },
+        {
+          "role": "user",
+          "content": "Continue"
+        }
+      ],
+      "kwargs": {
+        "reasoning_effort": "minimal",
+        "allow_missing_thinking": false
+      },
+      "addGenerationPrompt": true,
+      "expected": "<|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.\n\nReasoning effort: 8\n\n# Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant<|channel|>analysis<|message|>A short greeting is appropriate.<|end|><|start|>assistant<|channel|>final<|message|>Hello.<|return|><|start|>user<|message|>Continue<|end|><|start|>assistant"
+    },
+    {
+      "name": "hy-no-think-memory-proposal",
+      "templateUrl": "https://huggingface.co/tencent/Hy-Memory-30B-A3B/resolve/64a460a94d5498b7316fb02395c72d01c47a7347/chat_template.jinja",
+      "templateSha256": "8759492d33deb19b2f58855f62d3e431276da89d698b2800d1e353fbb12d5320",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Extract explicit user facts and preferences from the conversation. Write each memory as a concise, self-contained statement. Do not infer or invent information. Return only a JSON object with a \"memories\" list of strings."
+        },
+        {
+          "role": "user",
+          "content": "I prefer concise answers with code examples."
+        }
+      ],
+      "kwargs": {
+        "reasoning_effort": "no_think"
+      },
+      "addGenerationPrompt": true,
+      "expected": "<｜hy_begin▁of▁sentence｜>Extract explicit user facts and preferences from the conversation. Write each memory as a concise, self-contained statement. Do not infer or invent information. Return only a JSON object with a \"memories\" list of strings.<｜reasoning_mode｜>reasoning_effort:no_think<｜hy_User｜>I prefer concise answers with code examples.<｜hy_Assistant｜><think></think>"
+    }
+  ]
+}

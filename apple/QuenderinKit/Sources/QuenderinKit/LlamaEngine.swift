@@ -58,6 +58,7 @@ public actor LlamaEngine: InferenceEngine {
 
     private var loaded: String?
     private var loadedMuse = false
+    private var loadedJais = false
     /// The `n_ctx` the loaded context was actually created with (sized from the device budget in
     /// `loadLocked`), or nil when nothing is loaded. Surfaced via `loadedContextTokens()` so the
     /// chat layer trims history to the REAL native window, not a hardcoded 4096 (Q-167 twin).
@@ -121,6 +122,7 @@ public actor LlamaEngine: InferenceEngine {
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
         loadedMuse = ModelRuntimeSupport.isMuse(entry)
+        loadedJais = metadata.architecture == "k2-horizon" || ModelRuntimeSupport.isJais(entry)
         #else
         throw InferenceError.loadFailed(
             reason: "llama.cpp is not linked into QuenderinKit yet. Add a `llama` module dependency (see the wiring notes in LlamaEngine.swift), or use MockInferenceEngine in the meantime."
@@ -136,6 +138,7 @@ public actor LlamaEngine: InferenceEngine {
         loaded = nil
         loadedNCtx = nil
         loadedMuse = false
+        loadedJais = false
     }
 
     /// Best-effort: interrupt an in-flight `generate` (e.g. a stop button). The switch path
@@ -148,15 +151,20 @@ public actor LlamaEngine: InferenceEngine {
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        guard !loadedJais else { throw InferenceError.generationFailed(reason: "Jais 3 currently supports structured text chat only; choose another model for agent actions.") }
         try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .raw, hasGrammar: options.gbnfGrammar != nil)
         return try await startGeneration(prompt: prompt, options: options)
     }
 
     /// Called only after the public API selected and constructed the appropriate framing.
     private func startGeneration(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+        guard !loadedJais || options.gbnfGrammar == nil else {
+            throw InferenceError.generationFailed(reason: "Jais 3 agent grammar decoding is unavailable.")
+        }
         try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .chat, hasGrammar: options.gbnfGrammar != nil)
         #if canImport(llama)
         let muse = loadedMuse
+        let jais = loadedJais
         // Mint THIS generation's id — never reset a shared flag (S2): the old `= false` here
         // erased a Stop aimed at the still-running previous decode, and the old onTermination's
         // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
@@ -166,7 +174,7 @@ public actor LlamaEngine: InferenceEngine {
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
             DispatchQueue.global(qos: .userInitiated).async {
-                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, into: continuation)
+                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, jais: jais, into: continuation)
             }
             continuation.onTermination = { _ in self.cancelState.withLock { $0.cancel(upTo: myGen) } }
         }
@@ -433,6 +441,7 @@ public actor LlamaEngine: InferenceEngine {
         prompt: String,
         options: GenerationOptions,
         muse: Bool,
+        jais: Bool,
         into continuation: AsyncThrowingStream<String, Error>.Continuation
     ) {
         // This generation answers ONLY for its own id — a cancel aimed at an older run, or a
@@ -594,6 +603,7 @@ public actor LlamaEngine: InferenceEngine {
         // so a plain generation is byte-for-byte unchanged. (Revives the dead stopSequences field.)
         var stopScanner = StopSequenceScanner(stops: options.stopSequences)
         var museFilter = MuseFinalChannelFilter()
+        var jaisFilter = JaisFinalChannelFilter()
         var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
                                       // piece has been yielded, INCLUDING the current token's (checked
                                       // below only after this token's own yield, same ordering as the
@@ -615,7 +625,7 @@ public actor LlamaEngine: InferenceEngine {
             }
 
             let decodedPiece = decoder.feed(tokenToBytes(next))
-            let piece = muse ? museFilter.feed(decodedPiece) : decodedPiece
+            let piece = muse ? museFilter.feed(decodedPiece) : jais ? jaisFilter.feed(decodedPiece) : decodedPiece
             if !piece.isEmpty {
                 if stopScanner.isActive {
                     let (emit, stop) = stopScanner.feed(piece)
@@ -627,6 +637,7 @@ public actor LlamaEngine: InferenceEngine {
                 }
             }
             if muse && museFilter.isStopped { break }
+            if jais && jaisFilter.isStopped { break }
             produced += 1
 
             var one = [next]                               // feed the token back (alive during decode)
@@ -656,7 +667,8 @@ public actor LlamaEngine: InferenceEngine {
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
         let decodedTail = decoder.flush()
-        let tail = muse ? (museFilter.feed(decodedTail) + museFilter.finish()) : decodedTail                          // any held bytes (end-of-stream mid-character)
+        let tail = muse ? (museFilter.feed(decodedTail) + museFilter.finish())
+            : jais ? (jaisFilter.feed(decodedTail) + jaisFilter.finish()) : decodedTail
         if stopScanner.isActive {
             if !tail.isEmpty {
                 let (emit, _) = stopScanner.feed(tail)      // a stop sequence may complete on the tail
@@ -666,6 +678,10 @@ public actor LlamaEngine: InferenceEngine {
             if !held.isEmpty { continuation.yield(held) }
         } else if !tail.isEmpty {
             continuation.yield(tail)
+        }
+        if jais && !yieldedAnyText && tail.isEmpty && !cancelled() {
+            continuation.finish(throwing: InferenceError.generationFailed(reason: "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget."))
+            return
         }
         let perfEnd = ContinuousClock.now
         let prefillMs = Self.ms(perfPrefillDone - perfT0)

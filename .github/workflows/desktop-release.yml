@@ -54,6 +54,7 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - os: windows-latest
@@ -65,7 +66,7 @@ jobs:
             unpacked: linux-unpacked
             platform: linux
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -93,10 +94,19 @@ jobs:
           node node_modules/node-llama-cpp/dist/cli/cli.js source build --gpu false --ciMode --noUsageExample
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
+      - name: Build and seal the pinned isolated image runtime (no model weights)
+        run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Verify the actual Prism and image DSOs coexist in both load orders (no weights)
+        shell: bash
+        run: |
+          native_os="$(node -p "({win32:'win',linux:'linux'})[process.platform]")"
+          python scripts/build_desktop_diffusion.py joint-load --directory "build/diffusion/$native_os-x64" --prism node_modules/node-llama-cpp/llama/localBuilds
       - name: Package
         run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Probe the shipped Prism addon inside the packaged ASAR
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
+      - name: Probe the shipped image CLI and verify its DSO, exports and dependency closure
+        run: python scripts/build_desktop_diffusion.py verify --directory release/${{ matrix.unpacked }}/resources/diffusion --packaged
       - name: Generate with the exact Bonsai model through the packaged addon
         if: matrix.os == 'ubuntu-latest'
         run: |

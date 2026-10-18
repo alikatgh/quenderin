@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "abiVersion": 1,
+  "repository": "https://github.com/leejet/stable-diffusion.cpp.git",
+  "revision": "f0aac524d3f29140e60ba78f3cfb16d6acea87db",
+  "submodules": [
+    {
+      "path": "ggml",
+      "repository": "https://github.com/leejet/ggml.git",
+      "revision": "dc998771e700d49bbdf9a39cede22bb5b3311767"
+    }
+  ],
+  "capabilities": ["flux3-klein", "moss-image-base", "moss-image-sft"],
+  "bounds": {"maxDimension": 1024, "maxSteps": 50, "maxThreads": 8, "maxImages": 1, "maxReferences": 10},
+  "isolation": "separate-shared-library-private-patched-ggml",
+  "upstreamLicense": "MIT",
+  "inferenceVerified": false,
+  "sourceEvidence": [
+    "https://github.com/leejet/stable-diffusion.cpp/blob/f0aac524d3f29140e60ba78f3cfb16d6acea87db/docs/flux3.md",
+    "https://github.com/leejet/stable-diffusion.cpp/blob/f0aac524d3f29140e60ba78f3cfb16d6acea87db/docs/moss_image.md"
+  ]
+}

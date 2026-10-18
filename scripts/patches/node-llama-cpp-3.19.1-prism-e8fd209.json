@@ -60,6 +60,21 @@
           "after": "{\n  \"tag\": \"e8fd209c975c80aa7fb36a8423571ff3b1b7e955\",\n  \"llamaCppGithubRepo\": \"PrismML-Eng/llama.cpp\"\n}\n"
         }
       ]
+    },
+    {
+      "path": "llama/addon/addon.cpp",
+      "beforeSha256": "5c4f223c1f22e60c583f5affcc5c4d61160e008e4b1414d32c9654c1627009bb",
+      "afterSha256": "d3cb4352d9773ed8cb2b72959b0a3ce0022a0dbc22e44b56450f313e2f5c45f9",
+      "replacements": [
+        {
+          "before": "std::mutex backendMutex;",
+          "after": "Napi::Value addonGetQuenderinWeeklyTextRuntimeABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), quenderin_weekly_text_runtime_abi());\n}\n\nstd::mutex backendMutex;"
+        },
+        {
+          "before": "        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),",
+          "after": "        Napi::PropertyDescriptor::Function(\"getQuenderinWeeklyTextRuntimeABI\", addonGetQuenderinWeeklyTextRuntimeABI),\n        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),"
+        }
+      ]
     }
   ]
 }

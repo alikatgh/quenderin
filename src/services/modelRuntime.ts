@@ -8,12 +8,27 @@ export interface RuntimeModelDescriptor {
     filename?: string;
     quantization?: string;
     label?: string;
+    url?: string;
+}
+
+/** These language towers exist in the pinned source, but are too new for arbitrary
+ * bundled stock addons. This is text-only: a GGUF is not a vision projector. */
+export function requiresVerifiedTextRuntime(entry: RuntimeModelDescriptor): boolean {
+    const identity = `${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''} ${entry.url ?? ''}`;
+    return /minicpm[-_ ]?v[-_ ]?(?:4[._-]?7|47)|lfm(?:2[._-]?5|25)[-_ ]?24b/i.test(identity);
+}
+
+export function requiresWeeklyTextRuntime(entry: RuntimeModelDescriptor): boolean {
+    return /jais[-_ ]?3|nemotron[-_ ]?(?:3[._-]?5|35)/i.test(
+        `${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''} ${entry.url ?? ''}`);
 }
 
 /** Metadata reported by the loaded node-llama-cpp addon, not an environment override. */
 export interface NodeLlamaRuntime {
     buildType?: string;
     llamaCppRelease?: { repo?: string; release?: string };
+    /** Read from the compiled addon capability function, never preferences or environment. */
+    weeklyTextABI?: number;
 }
 
 export interface ModelRuntimeCompatibility {
@@ -23,7 +38,8 @@ export interface ModelRuntimeCompatibility {
 }
 
 export function requiresPrismRuntime(entry: RuntimeModelDescriptor): boolean {
-    return /^(?:PTQ1_0|PQ2_0)$/i.test(entry.quantization?.trim() ?? '')
+    return requiresVerifiedTextRuntime(entry) || requiresWeeklyTextRuntime(entry)
+        || /^(?:PTQ1_0|PQ2_0)$/i.test(entry.quantization?.trim() ?? '')
         || /bonsai/i.test(entry.id ?? '')
         || /bonsai|PTQ1_0|PQ2_0/i.test(entry.filename ?? '');
 }
@@ -45,6 +61,13 @@ export function getModelRuntimeCompatibility(
             message: 'Muse Spark Open requires the native multipart installer and text-chat adapter. This Electron/CLI build cannot install or run Muse.',
         };
     }
+    if (requiresWeeklyTextRuntime(entry) && (!isPrismRuntime(runtime) || runtime?.weeklyTextABI !== 1)) {
+        return {
+            canLoad: false,
+            runtimeRequirement: 'Verified weekly text runtime',
+            message: 'Jais 3 and Nemotron 3.5 require the verified architecture backport in this build. Older Prism and stock runtimes cannot download or load these models. Support is experimental text chat only.',
+        };
+    }
     if (!requiresPrismRuntime(entry)) {
         return { canLoad: true, message: 'Supported by the standard desktop runtime.' };
     }
@@ -54,7 +77,7 @@ export function getModelRuntimeCompatibility(
     return {
         canLoad: false,
         runtimeRequirement: 'Prism llama.cpp',
-        message: `${entry.label ?? entry.id ?? entry.filename ?? 'This model'} requires the pinned Prism llama.cpp runtime. The stock desktop runtime cannot load PTQ1_0 or PQ2_0 models. Install the experimental Prism desktop runtime before downloading or selecting this model.`,
+            message: `${entry.label ?? entry.id ?? entry.filename ?? 'This model'} requires the pinned Prism llama.cpp runtime. Install the experimental Prism desktop runtime before downloading or selecting this model. MiniCPM-V 4.7 support is limited to text; image and video input are unavailable.`,
     };
 }
 

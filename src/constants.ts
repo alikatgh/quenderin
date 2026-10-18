@@ -3,7 +3,7 @@ import { MUSE_SPARK_ARTIFACTS } from './museModelArtifacts.js';
 import os from 'os';
 import { availableMemBytes } from './utils/memory.js';
 import { getHardwareProfile } from './utils/hardware.js';
-import { getModelRuntimeCompatibility, type NodeLlamaRuntime } from './services/modelRuntime.js';
+import { getModelRuntimeCompatibility, requiresPrismRuntime, type NodeLlamaRuntime } from './services/modelRuntime.js';
 
 export const MODELS_DIR = path.join(os.homedir(), '.quenderin', 'models');
 
@@ -116,6 +116,125 @@ export const MODEL_CATALOG = [
         quantization: 'PTQ1_0',
         url: 'https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf?download=true',
         sha256: '36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa',
+        languages: 'See model card',
+    },
+    // Manual text-only choices. These budgets cover the full quantized weights; active
+    // MoE parameter counts do not establish a smaller resident-memory requirement.
+    {
+        id: 'minicpm-v47-1b',
+        label: 'MiniCPM-V 4.7 1B (Experimental, text only)',
+        filename: 'MiniCPM-V-4_7-1B-Q4_K_M.gguf',
+        ramGb: 2.0,
+        sizeLabel: '0.67 GB download',
+        downloadBytes: 672003680,
+        paramsBillions: 1,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf/resolve/9684c734cfb2e6aaccb0bb52ba58afa9aae92d90/MiniCPM-V-4_7-1B-Q4_K_M.gguf?download=true',
+        sha256: '588c6c94c82f756b86dba35c42ed9ba9ec187d65824eb52f039c347df563e63d',
+        languages: 'See model card',
+    },
+    {
+        id: 'minicpm-v47-35b-a3b',
+        label: 'MiniCPM-V 4.7 35B-A3B (Experimental, text only)',
+        filename: 'MiniCPM-V-4_7-35B-A3B-Q4_K_M.gguf',
+        ramGb: 25.0,
+        sizeLabel: '21.17 GB download',
+        downloadBytes: 21166255008,
+        paramsBillions: 35,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf/resolve/77ec40de8445999bf3076aeff9ff45d40a2713cc/MiniCPM-V-4_7-35B-A3B-Q4_K_M.gguf?download=true',
+        sha256: 'bf3d1c67f7843193e4483aebd26c5dea6b6d1f6a06ffa03c2387a6f3cc6d7df5',
+        languages: 'See model card',
+    },
+    {
+        id: 'lfm25-24b-a2b',
+        label: 'LFM2.5 24B-A2B (Experimental, text only)',
+        filename: 'LFM2.5-24B-A2B-Q4_K_M.gguf',
+        ramGb: 18.0,
+        sizeLabel: '14.53 GB download',
+        downloadBytes: 14526258464,
+        paramsBillions: 24,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF/resolve/0912d33141f77e10705345a6732bfd83f0252fdc/LFM2.5-24B-A2B-Q4_K_M.gguf?download=true',
+        sha256: 'd3334405b96228eb9908cdebb5c6194908f2da64282bda852afc3a3910c64e7d',
+        languages: 'See model card',
+    },
+    {
+        id: 'jais3-0.9b',
+        label: 'Jais 3 0.9B (Experimental, text only)',
+        filename: 'Jais-3-0.9B-Q4_K_M.gguf',
+        ramGb: 2.0,
+        sizeLabel: '0.67 GB download',
+        downloadBytes: 666192384,
+        paramsBillions: 1.078285824,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/IFM/Jais-3-0.9B-GGUF/resolve/ac7c7be976446226ca3da9c9986a678c879b2dce/Jais-3-0.9B-Q4_K_M.gguf?download=true',
+        sha256: 'e56a4b769c397a1fd2620cf1eec94513debb1664092d0dfad4af01083c2ac3b0',
+        languages: 'See model card',
+    },
+    {
+        id: 'jais3-3.7b',
+        label: 'Jais 3 3.7B (Experimental, text only)',
+        filename: 'Jais-3-3.7B-Q4_K_M.gguf',
+        ramGb: 6.0,
+        sizeLabel: '3.16 GB download',
+        downloadBytes: 3156606176,
+        paramsBillions: 5.05825536,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/IFM/Jais-3-3.7B-GGUF/resolve/653cc7bb723a5bb13dfa5a407b1fa035f3d0498b/Jais-3-3.7B-Q4_K_M.gguf?download=true',
+        sha256: 'd2039e169049f0646f79bc27aec82ffc0842ff9af1bf75bfc16628929636e09a',
+        languages: 'See model card',
+    },
+    {
+        id: 'jais3-7b',
+        label: 'Jais 3 7B (Experimental, text only)',
+        filename: 'Jais-3-7B-Q4_K_M.gguf',
+        ramGb: 9.0,
+        sizeLabel: '5.59 GB download',
+        downloadBytes: 5592226016,
+        paramsBillions: 8.99917824,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/IFM/Jais-3-7B-GGUF/resolve/ed44d6f2e90f74c341c0291a07e06ae643d82190/Jais-3-7B-Q4_K_M.gguf?download=true',
+        sha256: 'a8caa7fecf38d064f216f66d3d59641c1fbefdca9756af0703f4a872ab852eeb',
+        languages: 'See model card',
+    },
+    {
+        id: 'jais3-32b',
+        label: 'Jais 3 32B (Experimental, text only)',
+        filename: 'Jais-3-32B-Q4_K_M.gguf',
+        ramGb: 28.0,
+        sizeLabel: '21.08 GB download',
+        downloadBytes: 21075786688,
+        paramsBillions: 34.77930496,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/IFM/Jais-3-32B-GGUF/resolve/7f88bd89cbf83ccce89d07776ad11f7bd62cc83b/Jais-3-32B-Q4_K_M.gguf?download=true',
+        sha256: '75b5f08fd3b00c4934132aa620662d6b4b09dca2df4ee40243296ed94ee11967',
+        languages: 'See model card',
+    },
+    {
+        id: 'jais3-mova-36b-a4b',
+        label: 'Jais 3 MoVA 36B-A4B (Experimental, text only)',
+        filename: 'Jais-3-MoVA-36B-A4B-Q4_K_M.gguf',
+        ramGb: 30.0,
+        sizeLabel: '22.37 GB download',
+        downloadBytes: 22368019936,
+        paramsBillions: 37.44479202,
+        quantization: 'Q4_K_M',
+        url: 'https://huggingface.co/IFM/Jais-3-MoVA-36B-A4B-GGUF/resolve/8b2c5ab2feffeeca416c99ec972e543db6a97dbe/Jais-3-MoVA-36B-A4B-Q4_K_M.gguf?download=true',
+        sha256: 'ba9df171ff9e39b52cdd684d4e518163d686bc52a2f49195e9af576621abb2dc',
+        languages: 'See model card',
+    },
+    {
+        id: 'nemotron35-bolt-74b-a9b',
+        label: 'Nemotron 3.5 Bolt 74B-A9B (Experimental, text only)',
+        filename: 'NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB.gguf',
+        ramGb: 28.0,
+        sizeLabel: '22.02 GB download',
+        downloadBytes: 22018326528,
+        paramsBillions: 74.042720848,
+        quantization: 'IQ2_XXS-mixed',
+        url: 'https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF/resolve/e0fecb69cb3e5e4c5e8a056fa2aec98c78e91246/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB.gguf?download=true',
+        sha256: '91d63363e782c8a3d5f4be42816eba8e0d42dd2530bd07a7d0d2dc440599af75',
         languages: 'See model card',
     },
     {
@@ -303,6 +422,7 @@ export function getBestInstallableModel(totalRamGb: number): ModelEntry['id'] {
     if (banded && checkMemoryForModel(banded).canLoad) return bandedId;
     let fitting: ModelEntry | undefined;
     for (const m of MODEL_CATALOG) {
+        if (requiresPrismRuntime(m)) continue;
         if ((!fitting || m.ramGb > fitting.ramGb) && checkMemoryForModel(m).canLoad) fitting = m;
     }
     return (fitting ?? MODEL_CATALOG[MODEL_CATALOG.length - 1]).id;
@@ -335,17 +455,26 @@ export function checkMemoryForModel(entry: ModelEntry, runtime?: NodeLlamaRuntim
     const freeGb = availableMemBytes() / (1024 ** 3);
     const totalGb = os.totalmem() / (1024 ** 3);
     // Smaller models need proportionally less overhead (KV cache is smaller)
-    const isBonsai = /bonsai/i.test(`${entry.id} ${entry.label} ${entry.filename} ${entry.url}`);
+    const identity = `${entry.id} ${entry.label} ${entry.filename} ${entry.url}`;
+    const isBonsai = /bonsai/i.test(identity);
+    const isMiniCPM47 = /minicpm[-_ ]?v[-_ ]?(?:4[._-]?7|47)/i.test(identity);
+    const isLfm25 = /lfm(?:2[._-]?5|25)[-_ ]?24b/i.test(identity);
+    const isJais3 = /jais[-_ ]?3/i.test(identity);
+    const isNemotron35 = /nemotron[-_ ]?(?:3[._-]?5|35)/i.test(identity);
     const overhead = entry.paramsBillions <= 3 && !isBonsai ? MODEL_OVERHEAD_MULTIPLIER_BASE : MODEL_OVERHEAD_MULTIPLIER_LARGE;
-    // Smaller Bonsai floors apply only to the pinned catalog artifact. An imported model's
-    // name or claimed RAM cannot inherit the small-model budget from its id alone.
-    const pinnedBonsai = isBonsai ? MODEL_CATALOG.find(model => model.id === entry.id
+    // Smaller experimental-model floors apply only to the pinned catalog artifact. An
+    // imported model's name or claimed RAM cannot inherit the small-model budget from its id.
+    const pinnedExperimental = isBonsai || isMiniCPM47 || isLfm25 || isJais3 || isNemotron35 ? MODEL_CATALOG.find(model => model.id === entry.id
         && model.filename === entry.filename && model.url === entry.url
         && model.sha256 === entry.sha256 && model.quantization === entry.quantization
         && model.paramsBillions === entry.paramsBillions
         && ('downloadBytes' in model ? model.downloadBytes : undefined)
             === ('downloadBytes' in entry ? entry.downloadBytes : undefined)) : undefined;
-    const footprint = isBonsai ? Math.max(pinnedBonsai?.ramGb ?? 7, entry.ramGb) : entry.ramGb;
+    // Full-weight floors remain mandatory for imports too. Only the complete pinned
+    // MiniCPM 1B identity receives its 2 GB floor; arbitrary imports keep 25 GB.
+    const textFloor = isMiniCPM47 ? pinnedExperimental?.ramGb ?? 25
+        : isLfm25 ? 18 : isJais3 ? pinnedExperimental?.ramGb ?? 30 : isNemotron35 ? 28 : 0;
+    const footprint = isBonsai ? Math.max(pinnedExperimental?.ramGb ?? 7, entry.ramGb) : Math.max(textFloor, entry.ramGb);
     const required = footprint * overhead;
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;

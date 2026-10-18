@@ -30,6 +30,10 @@ if(QUENDERIN_PRISM_RUNTIME)
     if(_MUSE_ABI_ERROR OR NOT _MUSE_RUNTIME_ABI EQUAL 1)
         message(FATAL_ERROR "Pinned Muse source-patch verification is missing")
     endif()
+    string(JSON _WEEKLY_RUNTIME_ABI ERROR_VARIABLE _WEEKLY_ABI_ERROR GET "${_PRISM_PROVENANCE}" weeklyTextABI)
+    if(_WEEKLY_ABI_ERROR OR NOT _WEEKLY_RUNTIME_ABI EQUAL 1)
+        message(FATAL_ERROR "Verified weekly text architecture backport is missing")
+    endif()
 endif()
 
 # Mobile-friendly llama.cpp options (no host tools/tests).
@@ -84,7 +88,7 @@ add_subdirectory(${LLAMA_DIR} ${CMAKE_BINARY_DIR}/llama.cpp)
 
 add_library(quenderin_llama SHARED llama_jni.cpp)
 if(QUENDERIN_PRISM_RUNTIME)
-    target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_PRISM_LLAMA=1 QUENDERIN_MUSE_LLAMA=1)
+    target_compile_definitions(quenderin_llama PRIVATE QUENDERIN_PRISM_LLAMA=1 QUENDERIN_MUSE_LLAMA=1 QUENDERIN_WEEKLY_TEXT_LLAMA=1)
 endif()
 # ggml/include for ggml-backend.h (runtime CPU-variant pick) + ggml-cpu.h (pinned threadpool).
 target_include_directories(quenderin_llama PRIVATE ${LLAMA_DIR}/include ${LLAMA_DIR}/ggml/include)

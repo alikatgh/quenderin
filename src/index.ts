@@ -29,6 +29,7 @@ import { OsascriptMacUi } from './services/capability/macUi.js';
 import { macUiCapabilities } from './services/capability/macUiCapabilities.js';
 import { ExecFileRunner } from './services/capability/platformAutomation.js';
 import { platformCapabilities } from './services/capability/platformCapabilities.js';
+import { registerImageCommands } from './commands/images.js';
 
 const program = new Command();
 
@@ -37,6 +38,8 @@ program
   .description('An offline autonomous agent control')
   // Keep in sync with package.json (was stale at 0.0.1 while package.json read 0.1.0 — Q-046).
   .version('0.1.0');
+
+registerImageCommands(program);
 
 // Run a single agent task from the CLI without starting the full dashboard
 program

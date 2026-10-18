@@ -4,7 +4,15 @@ package ai.quenderin.core
 object ModelRuntimeSupport {
     val supportsBonsai: Boolean get() = LlamaEngine.supportsBonsaiRuntime
     val supportsMuse: Boolean get() = LlamaEngine.supportsMuseRuntime
-    const val UNAVAILABLE_MESSAGE = "Bonsai and Prism quantizations require an experimental build with the pinned Prism llama.cpp runtime. This build cannot download or load them."
+    val supportsWeeklyText: Boolean get() = LlamaEngine.supportsWeeklyTextRuntime
+    const val WEEKLY_TEXT_UNAVAILABLE_MESSAGE = "Jais 3 and Nemotron 3.5 require a build with the verified architecture backport. Older Prism runtimes cannot download or load them. Support is experimental text chat only."
+    private val weeklyTextIdentity = Regex("jais[-_ ]?3|nemotron[-_ ]?(?:3[._-]?5|35)", RegexOption.IGNORE_CASE)
+    fun isJais(model: ModelEntry): Boolean = listOf(model.id, model.label, model.filename, model.url).any {
+        Regex("jais[-_ ]?3", RegexOption.IGNORE_CASE).containsMatchIn(it)
+    }
+    fun requiresWeeklyTextRuntime(model: ModelEntry): Boolean =
+        listOf(model.id, model.label, model.filename, model.url).any { weeklyTextIdentity.containsMatchIn(it) }
+    const val UNAVAILABLE_MESSAGE = "Bonsai, Prism quantizations, MiniCPM-V 4.7 and LFM2.5 24B require a build with the verified Prism llama.cpp runtime. This build cannot download or load them. MiniCPM support is text only."
     const val BONSAI_MAX_CONTEXT_TOKENS = 4096
     const val MUSE_MAX_CONTEXT_TOKENS = 4096
     const val MUSE_UNAVAILABLE_MESSAGE = "Muse Spark requires a verified Muse-compatible llama.cpp runtime. This build cannot download or load it."
@@ -16,6 +24,7 @@ object ModelRuntimeSupport {
             model.artifacts.flatMap { listOf(it.filename, it.url) }).any { museIdentity.containsMatchIn(it) }
 
     fun unavailableMessage(model: ModelEntry): String = when {
+        requiresWeeklyTextRuntime(model) && !supportsWeeklyText -> WEEKLY_TEXT_UNAVAILABLE_MESSAGE
         !isMuse(model) -> UNAVAILABLE_MESSAGE
         !supportsMuse -> MUSE_UNAVAILABLE_MESSAGE
         else -> MUSE_MANIFEST_MESSAGE
@@ -35,12 +44,17 @@ object ModelRuntimeSupport {
     fun isBonsai(model: ModelEntry): Boolean =
         listOf(model.id, model.label, model.filename, model.url).any { it.contains("bonsai", ignoreCase = true) }
 
-    fun requiresPrism(model: ModelEntry): Boolean = isBonsai(model) ||
+    private val verifiedTextIdentity = Regex("minicpm[-_ ]?v[-_ ]?(?:4[._-]?7|47)|lfm(?:2[._-]?5|25)[-_ ]?24b", RegexOption.IGNORE_CASE)
+    fun requiresVerifiedTextRuntime(model: ModelEntry): Boolean =
+        listOf(model.id, model.label, model.filename, model.url).any { verifiedTextIdentity.containsMatchIn(it) }
+
+    fun requiresPrism(model: ModelEntry): Boolean = isBonsai(model) || requiresVerifiedTextRuntime(model) || requiresWeeklyTextRuntime(model) ||
         listOf(model.quantization, model.filename, model.url).any {
             it.contains("PTQ1_0", ignoreCase = true) || it.contains("PQ2_0", ignoreCase = true)
         }
 
-    fun supports(model: ModelEntry): Boolean = (!requiresPrism(model) || supportsBonsai) &&
+    fun supports(model: ModelEntry): Boolean = (!requiresWeeklyTextRuntime(model) || supportsWeeklyText) &&
+        (!requiresPrism(model) || supportsBonsai) &&
         (!isMuse(model) || (supportsMuse && isVerifiedMuseManifest(model)))
 
     /** Conservative capped-context estimate, with overhead added by callers. Unknown imports
@@ -49,12 +63,19 @@ object ModelRuntimeSupport {
         // This is a 304 GB split model, not its ~13 MB metadata shard or its active-parameter count.
         // Renamed imports cannot use the first shard's size to claim phone-sized memory fitness.
         if (isMuse(model)) return maxOf(330.0, model.ramGB.takeUnless { it.isNaN() } ?: 330.0)
-        if (!isBonsai(model)) return model.ramGB
+        if (!requiresPrism(model)) return model.ramGB
         val pinned = ModelCatalog.models.firstOrNull {
             it.id == model.id && it.filename == model.filename && it.url == model.url &&
                 it.sha256 != null && it.sha256 == model.sha256 && it.downloadBytes == model.downloadBytes &&
                 it.quantization == model.quantization && it.paramsBillions == model.paramsBillions
         }
-        return maxOf(pinned?.ramGB ?: 7.0, model.ramGB)
+        val importedFloor = when {
+            requiresWeeklyTextRuntime(model) && listOf(model.id, model.filename).any { it.contains("nemotron", ignoreCase = true) } -> 28.0
+            requiresWeeklyTextRuntime(model) -> 30.0
+            !requiresVerifiedTextRuntime(model) -> 7.0
+            listOf(model.id, model.filename).any { it.contains("24b", ignoreCase = true) } -> 18.0
+            else -> 25.0
+        }
+        return maxOf(pinned?.ramGB ?: importedFloor, model.ramGB.takeIf { it.isFinite() } ?: importedFloor)
     }
 }

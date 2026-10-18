@@ -18,6 +18,7 @@ let _llamaBindings: {
     LlamaLogLevel: any;
     defineChatSessionFunction: any;
     InputLookupTokenPredictor: any;
+    weeklyWrappers: any;
 } | null = null;
 let _llamaImportError: Error | null = null;
 
@@ -31,6 +32,7 @@ try {
         LlamaLogLevel: mod.LlamaLogLevel,
         defineChatSessionFunction: mod.defineChatSessionFunction,
         InputLookupTokenPredictor: mod.InputLookupTokenPredictor,
+        weeklyWrappers: mod,
     };
 } catch (err) {
     _llamaImportError = err instanceof Error ? err : new Error(String(err));
@@ -62,6 +64,7 @@ import { planDownloadWrite, planDownloadSegments, downloadConnectionCount, parse
 import type { DownloadSegment } from "./modelDownloadPlan.js";
 import type { FileHandle } from "fs/promises";
 import logger from "../utils/logger.js";
+import { jaisChatWrapper } from './weeklyChatWrappers.js';
 import {
     getModelRuntimeCompatibility, isPrismRuntime, modelRuntimeError, requiresPrismRuntime,
     type ModelRuntimeCompatibility, type NodeLlamaRuntime, type RuntimeModelDescriptor,
@@ -91,6 +94,13 @@ function hasPrismTensorTypes(runtime: NodeLlamaRuntime & {
     } catch {
         return false;
     }
+}
+
+function runtimeCapabilities(runtime: any): NodeLlamaRuntime {
+    let weeklyTextABI = 0;
+    try { weeklyTextABI = runtime?._bindings?.getQuenderinWeeklyTextRuntimeABI?.() === 1 ? 1 : 0; }
+    catch { /* Old or replaced addons cannot enable new architectures. */ }
+    return { buildType: runtime?.buildType, llamaCppRelease: runtime?.llamaCppRelease, weeklyTextABI };
 }
 
 /** Error carrying a structured `code` plus optional model hints for action_required events. */
@@ -166,6 +176,9 @@ function selectBestModel(memorySafetyEnabled: boolean, runtime?: NodeLlamaRuntim
     let smallestDownloaded: { entry: ModelEntry; path: string } | null = null;
 
     for (const entry of prioritized) {
+        // Experimental models are explicit choices. A missing selection must not
+        // silently switch a conversation to a newly downloaded model family.
+        if (requiresPrismRuntime(entry)) continue;
         // An unsupported model must never enter the low-memory fallback either.
         if (!getModelRuntimeCompatibility(entry, runtime).canLoad) continue;
         const filePath = modelPath(entry.id);
@@ -325,8 +338,11 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // "No sequences left" — chat then fails permanently until a full model reload.
         // generateAction's cacheKey path passes false: it OWNS its sequence across calls (KV prefix
         // reuse) and frees it via releaseActionCache/unloadModel instead.
-        return new _llamaBindings.LlamaChatSession({ autoDisposeSequence: true, ...opts });
+        return new _llamaBindings.LlamaChatSession({ autoDisposeSequence: true, ...opts,
+            ...(this.isJaisSelected() ? { chatWrapper: jaisChatWrapper(_llamaBindings.weeklyWrappers) } : {}) });
     }
+
+    private isJaisSelected(): boolean { return /^jais3-/i.test(this.loadedModelId ?? this.activeModelId); }
 
     /** Dispose the general chat session (freeing its KV-cache sequence slot) and clear it. */
     private disposeChatSession(): void {
@@ -652,7 +668,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         logLevel: _llamaBindings.LlamaLogLevel.disabled,
                     });
                     if (!isPrismRuntime(probe) || !hasPrismTensorTypes(probe)) return undefined;
-                    return { buildType: probe.buildType, llamaCppRelease: { ...probe.llamaCppRelease } };
+                    return runtimeCapabilities(probe);
                 } catch {
                     return undefined;
                 }
@@ -826,7 +842,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                         progressLogs: false,
                         logLevel: LogLevel.disabled,
                     });
-                    const compatibility = getModelRuntimeCompatibility(selected.entry, llama);
+                    const capability = runtimeCapabilities(llama);
+                    const compatibility = getModelRuntimeCompatibility(selected.entry, capability);
                     if (!compatibility.canLoad || !hasPrismTensorTypes(llama)) {
                         await llama.dispose();
                         throw modelRuntimeError(compatibility.canLoad ? {
@@ -836,7 +853,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                     }
                     // Recheck current RAM after backend initialization, before allocating weights.
                     try {
-                        this.assertPrismMemory(selected.entry, llama);
+                        this.assertPrismMemory(selected.entry, capability);
                     } catch (error) {
                         await llama.dispose();
                         throw error;
@@ -1407,6 +1424,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
     }
 
     public async generateAction(systemPrompt: string, userPrompt: string, options: GenerationOptions, imagePath?: string, signal?: AbortSignal): Promise<string> {
+        if (this.isJaisSelected()) throw new Error('Jais 3 currently supports text chat only. Choose another model for agent actions.');
         this.isGeneratingAction = true;
         try {
             const { context } = await this.getModelAndContext();
@@ -1526,7 +1544,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
         // loop runs inside one prompt(), and no tool markup ever reaches the text stream. The XML
         // protocol below remains the fallback for older bindings (and stays the mobile twins'
         // wire format, pinned by the tool-format parity vectors).
-        const useNativeFunctions = !opts?.plainChat &&
+        const jais = this.isJaisSelected();
+        const useNativeFunctions = !jais && !opts?.plainChat &&
             typeof _llamaBindings?.defineChatSessionFunction === 'function';
 
         const ensureSession = () => {
@@ -1550,7 +1569,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 // short directive remains: small models often IMITATE a function call as plain text
                 // instead of emitting the wrapper's real call syntax (live-caught on a 1B) — telling
                 // them not to measurably improves trigger reliability at a ~20-token cost.
-                const fullSystemPrompt = opts?.plainChat
+                const fullSystemPrompt = opts?.plainChat || jais
                     ? this.activePreset.systemPrompt
                     : useNativeFunctions
                         ? `${this.activePreset.systemPrompt}\n\nWhen a calculation, conversion, file read, or lookup is needed, call the corresponding provided function. Never write an imitation of a function call as text.`
@@ -1605,14 +1624,14 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // truncated or empty (live-caught: a looping 1B ended with "" at maxTokens).
             const functionCallAllowance = useNativeFunctions ? 96 * maxToolCallsPerResponse() : 0;
             const promptOptions = {
-                maxTokens: responseMaxTokens + functionCallAllowance,
+                maxTokens: responseMaxTokens + functionCallAllowance + (jais ? 256 : 0),
                 temperature: this.activePreset.temperature,
                 // Anti-loop guard (Swift-twin parity) + no-think chat: bound reasoning to 0 tokens so
                 // hidden <think> can't eat the whole cap and return an empty answer on tight hardware.
                 repeatPenalty: { penalty: REPEAT_PENALTY, lastTokens: REPEAT_LAST_N },
                 // Default 0 (no-think chat); the agent's opt-in deliberation think-pass passes a >0 budget
                 // so the model can actually reason before it commits to a decision (Swift-twin parity).
-                budgets: { thoughtTokens: opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
+                budgets: { thoughtTokens: jais ? 256 : opts?.thoughtTokens ?? CHAT_THOUGHT_TOKEN_BUDGET },
                 ...(nativeFunctions ? { functions: nativeFunctions } : {}),
                 onTextChunk: onToken ? (chunk: string) => {
                     const clean = stripControlTokensWithOptions(chunk, { trim: false });
@@ -1664,7 +1683,7 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             // (use tool A's result to decide a call to tool B); the old single round stripped that
             // second call instead of running it. Bounded by MAX_TOOL_ROUNDS so a model that keeps
             // emitting tool calls can't loop forever — after the cap, any remaining markup is stripped.
-            const MAX_TOOL_ROUNDS = useNativeFunctions ? 0 : 3;
+            const MAX_TOOL_ROUNDS = useNativeFunctions || jais ? 0 : 3;
             let finalResponse = stripControlTokens(response.trim());
 
             for (let round = 0; round < MAX_TOOL_ROUNDS && hasToolCalls(finalResponse); round++) {

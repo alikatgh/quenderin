@@ -1,0 +1,4 @@
+framework module QuenderinDiffusion {
+  umbrella header "quenderin_diffusion.h"
+  export *
+}

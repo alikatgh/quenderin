@@ -60,6 +60,8 @@ public struct MacRootView: View {
                 UniversalSearchView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
             case .models:
                 ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
+            case .images:
+                ImageGenerationView()
             case .about:
                 AboutView()
             }
@@ -114,6 +116,7 @@ public struct MacRootView: View {
                 Button("") { rail = .agent }.keyboardShortcut("2", modifiers: .command)
                 Button("") { rail = .search }.keyboardShortcut("3", modifiers: .command)
                 Button("") { rail = .models }.keyboardShortcut("4", modifiers: .command)
+                Button("") { rail = .images }.keyboardShortcut("5", modifiers: .command)
                 Button("") { rail = .search }.keyboardShortcut("f", modifiers: .command)
                 Button("") { rail = .search }.keyboardShortcut("k", modifiers: .command)
             }
@@ -328,7 +331,7 @@ private struct SidebarChatRow: View {
 /// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
 /// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
 enum RailSection: Hashable {
-    case chats, agent, search, models, about
+    case chats, agent, search, models, images, about
 }
 
 extension MacRootView {
@@ -343,6 +346,7 @@ extension MacRootView {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
             railButton(.search, icon: "magnifyingglass", label: "Search (⌘F)", palette: p)
+            railButton(.images, icon: "photo", label: "Images (⌘5)", palette: p)
             railButton(.models, icon: "books.vertical", label: "Model library (⌘4)", palette: p)
                 .overlay(alignment: .topTrailing) {
                     // Live download activity: a thin progress ring + count, visible from any

@@ -27,6 +27,8 @@ class PrismRuntimeTests(unittest.TestCase):
         self.after = self.before.replace("old", "new")
         self.new = "synthetic Muse source\n"
         self.lock = copy.deepcopy(prism.LOCK)
+        self.lock.pop("weeklyTextPatch", None)
+        self.lock.pop("beamPatch", None)
         self.manifest = {
             "version": 1, "id": self.lock["sourcePatch"]["id"],
             "baseRepository": self.lock["repository"], "baseRevision": self.lock["revision"],
@@ -181,6 +183,41 @@ class PrismRuntimeTests(unittest.TestCase):
         run.assert_not_called()
         self.assertEqual(original.read_text(), "preserve me")
 
+    def test_commit_io_failure_restores_original_and_retry_succeeds(self):
+        real_link = prism.os.link
+        new_file = self.root / "src/models/muse-spark.cpp"
+        def fail_new(source, destination, **kwargs):
+            if Path(destination) == new_file.resolve():
+                raise OSError("injected disk exhaustion")
+            return real_link(source, destination, **kwargs)
+        with patch.object(prism.os, "link", side_effect=fail_new), self.assertRaisesRegex(OSError, "disk exhaustion"):
+            prism.apply_source_patch(self.root)
+        self.assertEqual((self.root / "src/llama-model.cpp").read_text(), self.before)
+        self.assertFalse(new_file.exists())
+        self.assertEqual(list(self.root.parent.glob(".quenderin-runtime-patch-*")), [])
+        self.ready()
+
+    def test_recovery_inspection_failure_retains_original_links(self):
+        original = self.root / "src/llama-model.cpp"
+        new_file = self.root / "src/models/muse-spark.cpp"
+        real_link, real_read = prism.os.link, Path.read_bytes
+        failing = False
+        def fail_new(source, destination, **kwargs):
+            nonlocal failing
+            if Path(destination) == new_file.resolve():
+                failing = True
+                raise OSError("injected commit failure")
+            return real_link(source, destination, **kwargs)
+        def fail_inspection(path):
+            if failing and path == original.resolve(): raise PermissionError("injected recovery read failure")
+            return real_read(path)
+        with patch.object(prism.os, "link", side_effect=fail_new), patch.object(Path, "read_bytes", fail_inspection):
+            with self.assertRaisesRegex(ValueError, "preserved original links"):
+                prism.apply_source_patch(self.root)
+        retained = list(self.root.parent.glob(".quenderin-runtime-patch-*"))
+        self.assertEqual(len(retained), 1)
+        self.assertEqual((retained[0] / "0.before").read_text(), self.before)
+
     def test_stamp_requires_muse_header_in_every_slice_and_binds_identity(self):
         identity = self.ready()
         artifact = self.project / "new.xcframework"
@@ -230,6 +267,221 @@ class PrismCheckoutLineEndingsTests(unittest.TestCase):
 
                 with patch.object(prism, "LOCK", lock), patch.object(prism, "apply_source_patch", side_effect=verify_bytes):
                     self.assertEqual(prism.fetch(destination), {"verified": True})
+
+
+class WeeklyTextPatchTests(unittest.TestCase):
+    """Exercise ordered composition independently of actual model source text."""
+
+    def setUp(self):
+        self.fixture = PrismRuntimeTests(methodName="test_fetch_preserves_existing_path")
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        f = self.fixture
+        self.weekly_after = f.after.replace("new", "weekly")
+        self.new_content = "weekly text source\n"
+        self.manifest = {
+            "version": 1, "id": "weekly-text-fixture",
+            "baseRepository": f.lock["repository"], "baseRevision": f.lock["revision"],
+            "parentSourcePatch": {"id": f.lock["sourcePatch"]["id"], "sha256": f.lock["sourcePatch"]["sha256"]},
+            "upstreamRevisions": {"k2Horizon": "a" * 40, "nemotron35": "b" * 40},
+            "weeklyTextABI": 1, "capabilitySymbol": "quenderin_weekly_text_runtime_abi",
+            "files": [
+                {"path": "src/llama-model.cpp", "beforeSha256": prism.digest(f.after.encode()),
+                 "afterSha256": prism.digest(self.weekly_after.encode()),
+                 "replacements": [{"before": "new\n", "after": "weekly\n"}]},
+                {"path": "src/models/weekly.cpp", "beforeSha256": None,
+                 "afterSha256": prism.digest(self.new_content.encode()), "content": self.new_content},
+            ],
+        }
+        self.path = f.project / "scripts/patches/weekly.json"
+        f.lock["weeklyTextPatch"] = {
+            "id": self.manifest["id"], "path": "scripts/patches/weekly.json", "sha256": "",
+            "weeklyTextABI": 1, "upstreamRevisions": self.manifest["upstreamRevisions"],
+        }
+        self.save()
+
+        def git(source, *args):
+            result = f.git(source, *args)
+            if args[0] == "status" and (source / "src/models/weekly.cpp").exists():
+                result += "\n?? src/models/weekly.cpp"
+            return result
+        p = patch.object(prism, "git", side_effect=git)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def save(self):
+        data = (json.dumps(self.manifest) + "\n").encode()
+        self.path.write_bytes(data)
+        self.fixture.lock["weeklyTextPatch"]["sha256"] = prism.digest(data)
+
+    def test_both_stages_are_atomic_exact_and_idempotent(self):
+        f = self.fixture
+        identity = prism.apply_source_patch(f.root)
+        self.assertEqual((f.root / "src/llama-model.cpp").read_text(), self.weekly_after)
+        self.assertEqual(identity["sourcePatchId"], f.manifest["id"])
+        self.assertEqual(identity["weeklyTextABI"], 1)
+        self.assertEqual(identity["weeklyTextPatchSha256"], f.lock["weeklyTextPatch"]["sha256"])
+        self.assertEqual(prism.verify(f.root), identity)
+        self.assertEqual(prism.apply_source_patch(f.root), identity)
+
+    def test_second_stage_output_failure_writes_neither_stage(self):
+        self.manifest["files"][1]["content"] = "wrong output"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "output digest"):
+            prism.apply_source_patch(self.fixture.root)
+        self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+        self.assertFalse((self.fixture.root / "src/models/muse-spark.cpp").exists())
+
+    def test_wrong_parent_or_order_is_rejected_before_writes(self):
+        original = copy.deepcopy(self.manifest)
+        for mutation in ("parent", "preimage", "symbol", "revision", "abi", "path"):
+            self.manifest = copy.deepcopy(original)
+            if mutation == "parent":
+                self.manifest["parentSourcePatch"]["sha256"] = "c" * 64
+            elif mutation == "preimage":
+                self.manifest["files"][0]["beforeSha256"] = "d" * 64
+            elif mutation == "symbol":
+                self.manifest["capabilitySymbol"] = "untrusted_symbol"
+            elif mutation == "revision":
+                self.manifest["upstreamRevisions"]["k2Horizon"] = "latest"
+            elif mutation == "abi":
+                self.manifest["weeklyTextABI"] = True
+            elif mutation == "path":
+                self.manifest["files"][1]["path"] = "ggml/../outside.cpp"
+            self.save()
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                prism.apply_source_patch(self.fixture.root)
+            self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+
+    def test_partial_install_and_tampered_final_source_are_preserved(self):
+        f = self.fixture
+        # A Muse-only checkout is not silently updated in place.
+        identity = f.lock.pop("weeklyTextPatch")
+        prism.apply_source_patch(f.root)
+        f.lock["weeklyTextPatch"] = identity
+        with self.assertRaisesRegex(ValueError, "Existing source changes"):
+            prism.apply_source_patch(f.root)
+        self.assertEqual((f.root / "src/llama-model.cpp").read_text(), f.after)
+        self.assertFalse((f.root / "src/models/weekly.cpp").exists())
+
+    def test_artifact_stamp_requires_both_exported_capability_headers(self):
+        f = self.fixture
+        identity = prism.apply_source_patch(f.root)
+        artifact = f.project / "weekly.xcframework"
+        headers = artifact / "macos/llama.framework/Headers"
+        headers.mkdir(parents=True)
+        (headers / "ggml.h").write_text("GGML_TYPE_PTQ1_0 GGML_TYPE_PQ2_0")
+        llama_header = headers / "llama.h"
+        llama_header.write_text("int quenderin_muse_spark_runtime_abi(void);")
+        with self.assertRaisesRegex(ValueError, "weekly text capability"):
+            prism.stamp(f.root, artifact)
+        self.assertFalse((artifact / prism.STAMP).exists())
+        llama_header.write_text(llama_header.read_text() + "\nint quenderin_weekly_text_runtime_abi(void);")
+        self.assertEqual(prism.stamp(f.root, artifact), identity)
+
+
+class BeamPatchTests(unittest.TestCase):
+    """A third stage cannot borrow weekly text capability or bypass stack identity."""
+
+    def setUp(self):
+        self.weekly = WeeklyTextPatchTests(methodName="test_both_stages_are_atomic_exact_and_idempotent")
+        self.weekly.setUp()
+        self.addCleanup(self.weekly.doCleanups)
+        f = self.fixture = self.weekly.fixture
+        self.after = self.weekly.weekly_after.replace("weekly", "beam")
+        self.manifest = {
+            "version": 1, "id": "beam-fixture", "baseRepository": f.lock["repository"],
+            "baseRevision": f.lock["revision"],
+            "parentSourcePatch": {k: f.lock["sourcePatch"][k] for k in ("id", "sha256")},
+            "parentWeeklyTextPatch": {k: f.lock["weeklyTextPatch"][k] for k in ("id", "sha256")},
+            "upstreamRevision": "e" * 40, "beamABI": 1,
+            "capabilitySymbol": "quenderin_beam_runtime_abi",
+            "files": [
+                {"path": "src/llama-model.cpp", "beforeSha256": prism.digest(self.weekly.weekly_after.encode()),
+                 "afterSha256": prism.digest(self.after.encode()),
+                 "replacements": [{"before": "weekly\n", "after": "beam\n"}]},
+                {"path": "src/models/beam.cpp", "beforeSha256": None,
+                 "afterSha256": prism.digest(b"Beam graph fixture\n"), "content": "Beam graph fixture\n"},
+            ],
+        }
+        f.lock["beamPatch"] = {"id": self.manifest["id"], "path": "scripts/patches/beam.json",
+                               "sha256": "", "upstreamRevision": self.manifest["upstreamRevision"], "beamABI": 1}
+        self.save()
+        previous_git = prism.git
+
+        def git(source, *args):
+            result = previous_git(source, *args)
+            if args[0] == "status" and (source / "src/models/beam.cpp").exists():
+                result += "\n?? src/models/beam.cpp"
+            return result
+        p = patch.object(prism, "git", side_effect=git)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def save(self):
+        f = self.fixture
+        data = (json.dumps(self.manifest) + "\n").encode()
+        (f.project / f.lock["beamPatch"]["path"]).write_bytes(data)
+        f.lock["beamPatch"]["sha256"] = prism.digest(data)
+
+    def test_third_stage_is_exact_and_idempotent_and_has_its_own_identity(self):
+        f = self.fixture
+        identity = prism.apply_source_patch(f.root)
+        self.assertEqual((f.root / "src/llama-model.cpp").read_text(), self.after)
+        self.assertEqual(identity["beamABI"], 1)
+        self.assertEqual(identity["beamPatchSha256"], f.lock["beamPatch"]["sha256"])
+        self.assertEqual(identity["weeklyTextPatchSha256"], f.lock["weeklyTextPatch"]["sha256"])
+        self.assertEqual(prism.verify(f.root), identity)
+        self.assertEqual(prism.apply_source_patch(f.root), identity)
+
+    def test_third_stage_output_failure_writes_none_of_the_stages(self):
+        self.manifest["files"][1]["content"] = "invalid output"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "output digest"):
+            prism.apply_source_patch(self.fixture.root)
+        self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+        self.assertEqual(list((self.fixture.root / "src/models").iterdir()), [])
+
+    def test_missing_or_changed_parent_abi_symbol_revision_and_preimage_fail_closed(self):
+        original = copy.deepcopy(self.manifest)
+        for mutation in ("parent", "weekly", "abi", "symbol", "revision", "preimage"):
+            self.manifest = copy.deepcopy(original)
+            if mutation == "parent":
+                self.manifest["parentSourcePatch"]["sha256"] = "f" * 64
+            elif mutation == "weekly":
+                self.manifest["parentWeeklyTextPatch"]["sha256"] = "f" * 64
+            elif mutation == "abi":
+                self.manifest["beamABI"] = True
+            elif mutation == "symbol":
+                self.manifest["capabilitySymbol"] = "quenderin_weekly_text_runtime_abi"
+            elif mutation == "revision":
+                self.manifest["upstreamRevision"] = "latest"
+            elif mutation == "preimage":
+                self.manifest["files"][0]["beforeSha256"] = "f" * 64
+            self.save()
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                prism.apply_source_patch(self.fixture.root)
+            self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+        self.manifest = original
+        self.save()
+        self.fixture.lock.pop("weeklyTextPatch")
+        with self.assertRaisesRegex(ValueError, "Beam.*identity"):
+            prism.apply_source_patch(self.fixture.root)
+
+    def test_stamp_requires_separate_beam_header(self):
+        f = self.fixture
+        identity = prism.apply_source_patch(f.root)
+        artifact = f.project / "beam.xcframework"
+        headers = artifact / "macos/llama.framework/Headers"
+        headers.mkdir(parents=True)
+        (headers / "ggml.h").write_text("GGML_TYPE_PTQ1_0 GGML_TYPE_PQ2_0")
+        header = headers / "llama.h"
+        header.write_text("int quenderin_muse_spark_runtime_abi(void);\nint quenderin_weekly_text_runtime_abi(void);")
+        with self.assertRaisesRegex(ValueError, "Beam capability"):
+            prism.stamp(f.root, artifact)
+        self.assertFalse((artifact / prism.STAMP).exists())
+        header.write_text(header.read_text() + "\nint quenderin_beam_runtime_abi(void);")
+        self.assertEqual(prism.stamp(f.root, artifact), identity)
 
 
 if __name__ == "__main__":

@@ -104,7 +104,7 @@ fun main() {
         listOf(0.5, 2.0, 3.5, 8.0, 18.0, 64.0).all { ModelCatalog.entry(ModelRecommender.recommendedModelId(it)) != null })
 
     // --- Catalog integrity ---
-    check("18 models across families", ModelCatalog.models.size == 18)
+    check("27 models across families", ModelCatalog.models.size == 27)
     check("smallest is the ultra-light", ModelCatalog.smallest.id == "llama32-1b-q2")
     check("every model uses a known quant", ModelCatalog.models.all { Quantization.info(it.quantization) != null })
     check("catalog spans 6 families", listOf("qwen3-14b", "deepseek-r1-7b", "gemma3-4b", "phi4-mini", "mistral-7b", "llama3-8b").all { ModelCatalog.entry(it) != null })
@@ -2494,6 +2494,18 @@ fun main() {
     check("UTF8 incompleteTailLength: lone lead of 2-byte is 1",
         UTF8StreamDecoder.incompleteTailLength(listOf(0xD1.toByte())) == 1)
 
+    check("Jais private reasoning stays hidden across every split", run {
+        listOf("</ifm|think>", "</ifm|think_faster>", "</ifm|think_fast>").all { closer ->
+            val wire = "private reasoning${closer}مرحباً world<|ifm|im_end|>hidden next turn"
+            (0..wire.length).all { split ->
+                val output = StringBuilder()
+                val filter = JaisOutputFilter { output.append(it) }
+                filter.accept(wire.take(split)); filter.accept(wire.drop(split)); filter.finish()
+                output.toString() == "مرحباً world"
+            }
+        }
+    })
+    check("Jais incomplete reasoning is discarded", JaisOutputFilter.finalText("private</ifm|thi").isEmpty())
     println()
     if (failures == 0) {
         println("ALL PASSED")

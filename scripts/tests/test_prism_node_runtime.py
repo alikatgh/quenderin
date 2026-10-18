@@ -41,7 +41,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             package = self.package(Path(directory))
             plan = prism_node.patch_plan(package, prism_node.load_patch())
-            self.assertEqual(len(plan), 4)
+            self.assertEqual(len(plan), 5)
             model = plan[0][2].decode()
             self.assertNotIn("model_params.use_mmap", model)
             self.assertNotIn("model_params.use_direct_io", model)
@@ -52,6 +52,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
             self.assertIn("llama_sampler_init_dry(\n                model->vocab,\n                strength,", sampler)
             self.assertIn("quenderin-prism-node-runtime.json", plan[2][2].decode())
             self.assertEqual(json.loads(plan[3][2]), prism_node.source_info())
+            self.assertIn("quenderin_weekly_text_runtime_abi()", plan[4][2].decode())
             for path, before, _after in plan:
                 self.assertEqual(path.read_bytes(), before)
 

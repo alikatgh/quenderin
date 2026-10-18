@@ -47,6 +47,21 @@ guard ["standard", "prism"].contains(runtimeName) else {
 let prismRuntime = runtimeName == "prism"
 let xcframeworkRelPath = prismRuntime ? prismFrameworkPath : "Frameworks/llama.xcframework"
 let hasXcframework = FileManager.default.fileExists(atPath: packageDir + "/" + xcframeworkRelPath)
+let diffusionFrameworkPath = "Frameworks/QuenderinDiffusion.xcframework"
+let hasDiffusionFramework = FileManager.default.fileExists(atPath: packageDir + "/" + diffusionFrameworkPath)
+if prismRelease && !hasDiffusionFramework {
+    fatalError("Release profile requires the verified local image runtime framework")
+}
+if hasDiffusionFramework {
+    let root = URL(fileURLWithPath: packageDir).deletingLastPathComponent().deletingLastPathComponent()
+    let verifier = Process()
+    verifier.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    verifier.arguments = ["python3", root.appendingPathComponent("scripts/verify_diffusion_apple_runtime.py").path,
+                          "verify", "--framework", packageDir + "/" + diffusionFrameworkPath]
+    do { try verifier.run(); verifier.waitUntilExit() }
+    catch { fatalError("Unable to verify image runtime: \(error)") }
+    guard verifier.terminationStatus == 0 else { fatalError("Image runtime framework verification failed") }
+}
 if prismRelease && (!prismRuntime || llamaDir != nil) {
     fatalError("Release profile requires the verified Prism xcframework; stock/source fallback is disabled")
 }
@@ -74,12 +89,17 @@ if prismRuntime {
         guard let data = FileManager.default.contents(atPath: stampPath),
               let stamp = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sourcePatch = lock["sourcePatch"] as? [String: Any],
+              let weeklyPatch = lock["weeklyTextPatch"] as? [String: Any],
               stamp["repository"] as? String == lock["repository"] as? String,
               stamp["revision"] as? String == lock["revision"] as? String,
               stamp["sourcePatchId"] as? String == sourcePatch["id"] as? String,
               stamp["sourcePatchSha256"] as? String == sourcePatch["sha256"] as? String,
               stamp["museSparkABI"] as? Int == 1,
-              sourcePatch["museSparkABI"] as? Int == 1 else {
+              sourcePatch["museSparkABI"] as? Int == 1,
+              stamp["weeklyTextPatchId"] as? String == weeklyPatch["id"] as? String,
+              stamp["weeklyTextPatchSha256"] as? String == weeklyPatch["sha256"] as? String,
+              stamp["weeklyTextABI"] as? Int == 1,
+              weeklyPatch["weeklyTextABI"] as? Int == 1 else {
             fatalError("Prism framework provenance is missing or does not match the pinned runtime")
         }
         let verifier = Process()
@@ -98,11 +118,16 @@ var qkDependencies: [Target.Dependency] = []
 var qkSwiftSettings: [SwiftSetting] = []
 var qkLinkerSettings: [LinkerSetting] = []
 var optionalTargets: [Target] = []
+if hasDiffusionFramework {
+    qkDependencies.append("QuenderinDiffusion")
+    optionalTargets.append(.binaryTarget(name: "QuenderinDiffusion", path: diffusionFrameworkPath))
+}
 
 if prismRuntime {
     qkSwiftSettings.append(.define("QUENDERIN_PRISM_LLAMA"))
     // Reaching this point requires the exact Muse source patch or sealed framework.
     qkSwiftSettings.append(.define("QUENDERIN_MUSE_LLAMA"))
+    qkSwiftSettings.append(.define("QUENDERIN_WEEKLY_TEXT_LLAMA"))
 }
 
 if hasXcframework && !(prismRuntime && llamaDir != nil) {

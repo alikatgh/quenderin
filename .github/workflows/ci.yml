@@ -125,6 +125,57 @@ jobs:
               -Xcc "-I$RUNNER_TEMP/prism-llama/include" \
               -Xcc "-I$RUNNER_TEMP/prism-llama/ggml/include"
 
+  image-runtime:
+    name: Local image runtime (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    concurrency:
+      group: image-runtime-${{ github.ref }}-${{ matrix.os }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify manifests and no-weight image failure fixtures
+        if: runner.os != 'Windows'
+        env:
+          QUENDERIN_DIFFUSION_TEST_SCRATCH: ${{ runner.temp }}
+        run: |
+          python3 scripts/prepare_diffusion_runtime.py check-manifests
+          python3 scripts/test_diffusion_core.py
+      - name: Build and verify the pinned desktop image CLI and private DSO
+        if: runner.os != 'macOS'
+        run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Run standalone Windows filesystem and Unicode fixtures (no weights)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -S native/diffusion/tests -B "$env:RUNNER_TEMP/diffusion-fixtures" -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build "$env:RUNNER_TEMP/diffusion-fixtures" --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir "$env:RUNNER_TEMP/diffusion-fixtures" -C Release --output-on-failure --timeout 30
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import os,sys; from pathlib import Path; sys.path.insert(0,'scripts'); import build_desktop_diffusion as d; d.windows_tools(); print(d.runtime.verify_library(Path(os.environ['RUNNER_TEMP'])/'diffusion-fixtures/bin/quenderin_diffusion.dll','windows'))"
+      - name: Build iOS and universal macOS image frameworks
+        if: runner.os == 'macOS'
+        run: bash apple/build-diffusion-xcframework.sh "$RUNNER_TEMP/diffusion-apple"
+      - name: Compile and test the actual Swift image adapter
+        if: runner.os == 'macOS'
+        run: swift test --package-path apple/QuenderinKit --jobs 3
+      - name: Compile the actual image UI against the iOS SDK (no signing or execution)
+        if: runner.os == 'macOS'
+        run: |
+          brew install xcodegen
+          cd apple/QuenderinApp
+          xcodegen generate
+          set -o pipefail
+          xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/image-ios-app" \
+            CODE_SIGNING_ALLOWED=NO build | tail -60
+
   prism-inference:
     name: Bonsai pinned model (CPU load and generation)
     runs-on: ubuntu-latest
@@ -137,7 +188,13 @@ jobs:
         run: |
           cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
             -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=ON
-          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs --parallel 4
+          cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs test-chat-template --parallel 4
+      - name: Exercise weekly text graphs and publisher prompt templates with tiny tensors
+        run: |
+          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a k2-horizon -s 1234
+          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a nemotron_h_moe -s 1234
+          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a beam -s 1234
+          timeout 120 "$RUNNER_TEMP/prism-llama/build/bin/test-chat-template"
       - name: Exercise Muse with tiny generated tensors (no Muse weight download)
         run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" --arch muse-spark
       - name: Verify the native Muse text prompt
@@ -161,11 +218,15 @@ jobs:
           grep -qi hello "$RUNNER_TEMP/bonsai-answer.log"
 
   prism-desktop:
-    name: Desktop Prism addon (${{ matrix.os }})
+    name: Desktop native runtimes (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
+    concurrency:
+      group: desktop-native-${{ github.ref }}-${{ matrix.os }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - os: ubuntu-latest
@@ -174,6 +235,9 @@ jobs:
           - os: windows-latest
             target: --win
             unpacked: win-unpacked
+          - os: macos-15
+            target: --mac
+            unpacked: mac
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
@@ -190,12 +254,33 @@ jobs:
         run: |
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
+      - name: Build and seal the isolated desktop image runtime
+        run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Load the actual Prism and image DSOs together in both orders (no weights)
+        shell: bash
+        run: |
+          native_arch="$(node -p process.arch)"
+          native_os="$(node -p "({win32:'win',darwin:'mac',linux:'linux'})[process.platform]")"
+          python scripts/build_desktop_diffusion.py joint-load --directory "build/diffusion/$native_os-$native_arch" --prism node_modules/node-llama-cpp/llama/localBuilds
       - name: Build and package the desktop application
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           npm run build
-          npx --no-install electron-builder --dir ${{ matrix.target }} --x64 --publish never
+          native_arch="$(node -p process.arch)"
+          npx --no-install electron-builder --dir ${{ matrix.target }} --"$native_arch" --publish never
       - name: Probe the addon inside the actual packaged ASAR
+        if: runner.os != 'macOS'
         run: node scripts/verify_prism_desktop_package.mjs release/${{ matrix.unpacked }}/resources
+      - name: Verify the packaged image CLI, private DSO, exports and dependency closure
+        if: runner.os != 'macOS'
+        run: python scripts/build_desktop_diffusion.py verify --directory release/${{ matrix.unpacked }}/resources/diffusion --packaged
+      - name: Verify the macOS lab application's packaged image runtime
+        if: runner.os == 'macOS'
+        run: |
+          resources="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)/Contents/Resources"
+          python3 scripts/build_desktop_diffusion.py verify --directory "$resources/diffusion" --packaged
 
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was
@@ -248,6 +333,11 @@ jobs:
             android/quenderin-core/src/test/kotlin/ai/quenderin/core/ModelArtifactChecks.kt \
             android/quenderin-core/src/verify/ModelArtifactsVerify.kt -include-runtime -d "$RUNNER_TEMP/model-artifacts.jar"
           java -jar "$RUNNER_TEMP/model-artifacts.jar"
+      - name: Verify image component installation, resources and unavailable native failure
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/ImageGenerationVerify.kt -include-runtime -d "$RUNNER_TEMP/image-generation.jar"
+          java -Djava.io.tmpdir="$RUNNER_TEMP" -jar "$RUNNER_TEMP/image-generation.jar"
       - name: Verify native discovery snapshot and Android offline catalog
         run: |
           python3 scripts/generate_website_catalog.py --check
@@ -283,11 +373,17 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the isolated image runtime and JNI bridge
+        run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" bash scripts/build_android_diffusion.sh "$RUNNER_TEMP/android-diffusion"
       - name: Build the debug APK and release bundle with the actual Prism JNI runtime
         working-directory: android
         # The bundle is unsigned without the existing upload key. Compilation is
         # a release check, not evidence of signing or Play submission.
-        run: ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama"
+        run: ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama" -Pquenderin.diffusionLibDir="$RUNNER_TEMP/android-diffusion/jniLibs"
+      - name: Verify both packaged image DSO pairs, dependency closure and 16 KiB alignment
+        run: |
+          python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/apk/debug/app-debug.apk
+          python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/bundle/release/app-release.aab
       - name: Run native runtime and memory guard unit tests
         working-directory: android
         run: ./gradlew :quenderin-core:test --no-daemon --console=plain
@@ -333,7 +429,13 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p test_prism_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_prism_node_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_prism_apple_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_diffusion_android_package.py
+          python3 -m unittest discover -s scripts/tests -p test_diffusion_apple_runtime.py
+          python3 -m unittest discover -s scripts/tests -p test_desktop_diffusion.py
+          python3 -m unittest discover -s scripts/tests -p test_experimental_model_support.py
+          python3 native/diffusion/tests/test_windows_exports.py
           node --test scripts/tests/prism-node-loader.test.mjs scripts/tests/desktop-release.test.mjs
+          node --test scripts/tests/desktop-diffusion-pack.test.cjs
       - name: FEATURES.md model table is a rendering of the catalog (no doc drift)
         run: python3 scripts/generate_features_models.py --check
       - name: Website tables and calculator match the app catalog
