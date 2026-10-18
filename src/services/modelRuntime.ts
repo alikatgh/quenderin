@@ -9,18 +9,48 @@ export interface RuntimeModelDescriptor {
     quantization?: string;
     label?: string;
     url?: string;
+    architecture?: string;
+    modelName?: string;
+}
+
+function identifiers(entry: RuntimeModelDescriptor): string[] {
+    return [entry.id, entry.filename, entry.label, entry.url, entry.modelName].filter((s): s is string => typeof s === 'string');
+}
+function decodedIdentity(value: string): string {
+    if (value.length > 16_384) return '';
+    try { return decodeURIComponent(value); } catch { return value; }
+}
+
+/** Source availability is not a complete chat workflow. Actual GGUF identity wins over aliases. */
+export function unsupportedModelWorkflowReason(entry: RuntimeModelDescriptor): string | undefined {
+    if ((entry.architecture?.length ?? 0) > 256 || identifiers(entry).some(value => value.length > 16_384)) return 'The model identity is too long to validate safely.';
+    const values = identifiers(entry).map(decodedIdentity);
+    const keys = values.map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const arch = entry.architecture?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? '';
+    if (arch === 'beam' || values.some(value => /(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)/i.test(value))) {
+        return 'Beam requires the complete multipart installer and Harmony chat adapter. Generic chat is unavailable.';
+    }
+    if (keys.some(key => key.includes('hymemory'))) return 'Hy-Memory requires a specialized memory-proposal workflow with JSON validation and explicit save approval. Generic chat is unavailable.';
+    if (keys.some(key => key.includes('supervl') && (key.includes('nemotron') || key.includes('120b')))) return 'Nemotron Super VL 120B requires variant and vision validation. This model is unavailable in generic chat.';
+    if (arch === 'step5' || arch === 'step5vl' || keys.some(key => key.includes('step5') && !key.includes('step35'))) return 'Step 5 requires an architecture that is unavailable in the pinned runtime.';
+    if (arch.includes('graniteswitch') || keys.some(key => key.includes('granite') && key.includes('switch') && key.includes('41'))) return 'Granite Switch 4.1 requires its speech adapter. Generic chat is unavailable.';
+    if (keys.some(key => key.includes('bolte4b') || (key.includes('nemotron') && key.includes('e4b')))) return 'Nemotron Bolt E4B has no verified public artifact in this release.';
+    if (keys.some(key => key.includes('nemotron35')) && !keys.some(key => /nemotron35.*bolt.*74b.*a9b/.test(key))) return 'This Nemotron 3.5 variant has not been validated. Only Bolt 74B-A9B is available as experimental text chat.';
+    return undefined;
 }
 
 /** These language towers exist in the pinned source, but are too new for arbitrary
  * bundled stock addons. This is text-only: a GGUF is not a vision projector. */
 export function requiresVerifiedTextRuntime(entry: RuntimeModelDescriptor): boolean {
-    const identity = `${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''} ${entry.url ?? ''}`;
+    const identity = identifiers(entry).map(decodedIdentity).join(' ');
     return /minicpm[-_ ]?v[-_ ]?(?:4[._-]?7|47)|lfm(?:2[._-]?5|25)[-_ ]?24b/i.test(identity);
 }
 
 export function requiresWeeklyTextRuntime(entry: RuntimeModelDescriptor): boolean {
-    return /jais[-_ ]?3|nemotron[-_ ]?(?:3[._-]?5|35)/i.test(
-        `${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''} ${entry.url ?? ''}`);
+    return entry.architecture === 'k2-horizon' || identifiers(entry).some(value => {
+        const key = decodedIdentity(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+        return key.includes('jais3') || /nemotron35.*bolt.*74b.*a9b/.test(key);
+    });
 }
 
 /** Metadata reported by the loaded node-llama-cpp addon, not an environment override. */
@@ -54,7 +84,11 @@ export function getModelRuntimeCompatibility(
     entry: RuntimeModelDescriptor,
     runtime?: NodeLlamaRuntime,
 ): ModelRuntimeCompatibility {
-    if (/muse[-_ ]?spark/i.test(`${entry.id ?? ''} ${entry.filename ?? ''} ${entry.label ?? ''}`)) {
+    const unavailable = unsupportedModelWorkflowReason({ architecture: entry.architecture, modelName: entry.modelName })
+        ?? unsupportedModelWorkflowReason(entry);
+    if (unavailable) return { canLoad: false, message: unavailable, runtimeRequirement: 'Unavailable model workflow' };
+    if (entry.architecture?.toLowerCase().replace(/[^a-z0-9]/g, '') === 'musespark'
+        || /muse[-_ ]?spark/i.test(identifiers(entry).map(decodedIdentity).join(' '))) {
         return {
             canLoad: false,
             runtimeRequirement: 'Muse native text adapter',

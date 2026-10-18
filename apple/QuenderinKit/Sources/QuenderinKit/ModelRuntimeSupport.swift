@@ -6,6 +6,36 @@ import llama
 /// Custom ternary formats need the pinned Prism fork. A model label or app preference cannot
 /// enable a missing native implementation; stock and previously built frameworks fail closed.
 public enum ModelRuntimeSupport {
+    private static func identities(_ model: ModelEntry) -> [String] {
+        [model.id, model.label, model.filename, model.urlString] + (model.artifacts ?? []).flatMap { [$0.filename, $0.url] }
+    }
+    private static func key(_ value: String) -> String {
+        value.lowercased().replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
+    }
+    private static func decodedIdentity(_ value: String) -> String {
+        guard value.utf16.count <= 16_384 else { return "" }
+        return value.removingPercentEncoding ?? value
+    }
+    static func unsupportedWorkflowReason(identifiers: [String], architecture: String = "") -> String? {
+        if architecture.utf16.count > 256 || identifiers.contains(where: { $0.utf16.count > 16_384 }) { return "The model identity is too long to validate safely." }
+        let identifiers = identifiers.map(decodedIdentity)
+        let keys = identifiers.map(key), arch = key(architecture)
+        if arch == "beam" || identifiers.contains(where: { $0.range(of: #"(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)"#, options: [.regularExpression, .caseInsensitive]) != nil }) {
+            return "Beam requires the complete multipart installer and Harmony chat adapter. Generic chat is unavailable."
+        }
+        if keys.contains(where: { $0.contains("hymemory") }) { return "Hy-Memory requires a specialized memory-proposal workflow with JSON validation and explicit save approval. Generic chat is unavailable." }
+        if keys.contains(where: { $0.contains("supervl") && ($0.contains("nemotron") || $0.contains("120b")) }) { return "Nemotron Super VL 120B requires variant and vision validation. This model is unavailable in generic chat." }
+        if arch == "step5" || arch == "step5vl" || keys.contains(where: { $0.contains("step5") && !$0.contains("step35") }) { return "Step 5 requires an architecture that is unavailable in the pinned runtime." }
+        if arch.contains("graniteswitch") || keys.contains(where: { $0.contains("granite") && $0.contains("switch") && $0.contains("41") }) { return "Granite Switch 4.1 requires its speech adapter. Generic chat is unavailable." }
+        if keys.contains(where: { $0.contains("bolte4b") || ($0.contains("nemotron") && $0.contains("e4b")) }) { return "Nemotron Bolt E4B has no verified public artifact in this release." }
+        if keys.contains(where: { $0.contains("nemotron35") }), !keys.contains(where: { $0.range(of: "nemotron35.*bolt.*74b.*a9b", options: .regularExpression) != nil }) {
+            return "This Nemotron 3.5 variant has not been validated. Only Bolt 74B-A9B is available as experimental text chat."
+        }
+        return nil
+    }
+    public static func unsupportedWorkflowReason(for model: ModelEntry) -> String? {
+        unsupportedWorkflowReason(identifiers: identities(model))
+    }
     public static var supportsBonsai: Bool {
         #if canImport(llama) && QUENDERIN_PRISM_LLAMA
         var types = Set<String>()
@@ -42,10 +72,12 @@ public enum ModelRuntimeSupport {
         }
     }
     public static func requiresWeeklyTextRuntime(_ model: ModelEntry) -> Bool {
-        [model.id, model.label, model.filename, model.urlString].contains {
-            $0.range(of: #"jais[-_ ]?3|nemotron[-_ ]?(?:3[._-]?5|35)"#,
-                     options: .regularExpression.union(.caseInsensitive)) != nil
-        }
+        identities(model).contains(where: isWeeklyIdentity)
+    }
+    static func isWeeklyIdentity(_ value: String) -> Bool {
+        let identity = key(decodedIdentity(value))
+        return identity.contains("jais3")
+            || identity.range(of: "nemotron35.*bolt.*74b.*a9b", options: .regularExpression) != nil
     }
     public static let museMaxContextTokens = 4096
     public static let museUnavailableMessage = "Muse Spark Open requires a build with the pinned Muse-compatible local llama.cpp runtime. This build cannot download or load it."
@@ -57,6 +89,7 @@ public enum ModelRuntimeSupport {
         return key.contains("muse-spark") || key.contains("musespark")
     }
     public static func unavailableReason(for model: ModelEntry) -> String {
+        if let reason = unsupportedWorkflowReason(for: model) { return reason }
         if requiresWeeklyTextRuntime(model), !supportsWeeklyText { return weeklyTextUnavailableMessage }
         if ModelArtifactSet.looksLikeSplitFilename(model.filename), !ModelArtifactSet.isMultipart(model) {
             return "This is one file of a split model. Choose a catalog model with the complete verified file manifest."
@@ -92,18 +125,18 @@ public enum ModelRuntimeSupport {
     }
 
     public static func supports(_ model: ModelEntry) -> Bool {
+        if unsupportedWorkflowReason(for: model) != nil { return false }
         if requiresWeeklyTextRuntime(model), !supportsWeeklyText { return false }
         if (ModelArtifactSet.looksLikeSplitFilename(model.filename) || isMuse(model)) && !ModelArtifactSet.isMultipart(model) { return false }
         if ModelArtifactSet.isMultipart(model), (try? ModelArtifactSet.validate(model)) == nil { return false }
         return (!requiresPrism(model) || supportsBonsai) && (!isMuse(model) || supportsMuse)
     }
 
-    static func blockedDownloadReason(from url: URL, to destination: URL, modelID: String = "") -> String? {
+    static func blockedDownloadReason(from url: URL, to destination: URL, modelID: String = "",
+                                      weeklyTextRuntimeAvailable: Bool = supportsWeeklyText) -> String? {
         let identifiers = [url.absoluteString, destination.lastPathComponent, modelID]
-        if !supportsWeeklyText, identifiers.contains(where: {
-            $0.range(of: #"jais[-_ ]?3|nemotron[-_ ]?(?:3[._-]?5|35)"#,
-                     options: .regularExpression.union(.caseInsensitive)) != nil
-        }) { return weeklyTextUnavailableMessage }
+        if let reason = unsupportedWorkflowReason(identifiers: identifiers) { return reason }
+        if !weeklyTextRuntimeAvailable, identifiers.contains(where: isWeeklyIdentity) { return weeklyTextUnavailableMessage }
         if identifiers.contains(where: isMuseIdentifier), !supportsMuse { return museUnavailableMessage }
         let needsPrism = identifiers.contains {
             $0.localizedCaseInsensitiveContains("bonsai") || containsPrismFormat($0)

@@ -40,6 +40,11 @@ public enum MemoryFitness {
         let remaining = freeGB - required
         let usageAfterLoad = (totalGB - freeGB + required) / totalGB
 
+        if let reason = ModelRuntimeSupport.unsupportedWorkflowReason(for: model) {
+            return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
+                                     requiredMemoryGB: required, remainingAfterLoadGB: remaining, message: reason)
+        }
+
         if ModelRuntimeSupport.requiresWeeklyTextRuntime(model), !weeklyTextRuntimeAvailable {
             return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
                                      requiredMemoryGB: required, remainingAfterLoadGB: remaining,

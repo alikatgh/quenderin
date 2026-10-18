@@ -5,7 +5,8 @@ import { MODEL_CATALOG, modelPath } from '../src/constants.js';
 import { LlmService } from '../src/services/llm.service.js';
 import { PRISM_LLAMA_CPP_REPO, PRISM_LLAMA_CPP_REVISION } from '../src/services/modelRuntime.js';
 
-const mocks = vi.hoisted(() => ({ getLlama: vi.fn(), availableMemBytes: vi.fn(() => 64 * 1024 ** 3) }));
+const mocks = vi.hoisted(() => ({ getLlama: vi.fn(), readGgufModelIdentity: vi.fn(), availableMemBytes: vi.fn(() => 64 * 1024 ** 3) }));
+vi.mock('../src/services/ggufModelIdentity.js', () => ({ readGgufModelIdentity: mocks.readGgufModelIdentity }));
 vi.mock('node-llama-cpp', () => ({
     getLlama: mocks.getLlama,
     LlamaLogLevel: { disabled: 'disabled' },
@@ -34,6 +35,7 @@ function service(safety = false) {
 
 beforeEach(() => {
     mocks.getLlama.mockReset().mockResolvedValue({ buildType: 'prebuilt', llamaCppRelease: { repo: 'ggml-org/llama.cpp', release: 'stock' } });
+    mocks.readGgufModelIdentity.mockReset().mockResolvedValue({ architecture: 'llama', modelName: 'Standard model' });
     mocks.availableMemBytes.mockReturnValue(64 * 1024 ** 3);
     vi.spyOn(os, 'totalmem').mockReturnValue(64 * 1024 ** 3);
     vi.spyOn(fs, 'existsSync').mockImplementation(file => String(file) === modelPath('bonsai2-27b'));
@@ -44,6 +46,37 @@ afterEach(async () => {
 });
 
 describe('Prism desktop hard runtime gate', () => {
+    it('keeps the working model when a standard catalog alias contains Beam metadata', async () => {
+        vi.mocked(fs.existsSync).mockImplementation(file => String(file) === modelPath('qwen3-4b'));
+        mocks.readGgufModelIdentity.mockResolvedValue({ architecture: 'beam', modelName: 'Renamed' });
+        const svc = service();
+        const loaded = svc as unknown as { modelInstance: unknown; contextInstance: unknown; loadedModelId: string };
+        const model = { dispose: vi.fn() }, context = { dispose: vi.fn() };
+        Object.assign(loaded, { modelInstance: model, contextInstance: context, loadedModelId: 'qwen3-14b' });
+        const unload = vi.spyOn(svc, 'unloadModel');
+        await expect(svc.switchModel('qwen3-4b')).rejects.toMatchObject({ code: 'MODEL_RUNTIME_UNSUPPORTED' });
+        expect(unload).not.toHaveBeenCalled();
+        expect(model.dispose).not.toHaveBeenCalled();
+        expect(context.dispose).not.toHaveBeenCalled();
+    });
+    it.each([
+        { architecture: 'beam', name: 'Renamed' },
+        { architecture: 'hy_v3', name: 'Hy-Memory-30B-A3B' },
+        { architecture: 'nemotron_h_moe', name: 'NVIDIA-Nemotron-3.5-Super-VL-120B' },
+        { architecture: 'step5_vl', name: 'Renamed' },
+        { architecture: 'muse-spark', name: 'Renamed' },
+    ])('rejects actual unavailable GGUF identity before native allocation: %j', async general => {
+        vi.mocked(fs.existsSync).mockImplementation(file => String(file) === modelPath('qwen3-4b'));
+        mocks.readGgufModelIdentity.mockResolvedValue({ architecture: general.architecture, modelName: general.name });
+        const engine = { loadModel: vi.fn(), dispose: vi.fn() };
+        mocks.getLlama.mockResolvedValue(engine);
+        const svc = service();
+        (svc as unknown as { activeModelId: string }).activeModelId = 'qwen3-4b';
+        await expect(svc.getModelAndContext()).rejects.toMatchObject({ code: 'MODEL_RUNTIME_UNSUPPORTED' });
+        expect(engine.loadModel).not.toHaveBeenCalled();
+        expect(mocks.getLlama).not.toHaveBeenCalled();
+        expect(mocks.readGgufModelIdentity).toHaveBeenCalledWith(modelPath('qwen3-4b'));
+    });
     it.each([
         undefined,
         { getBlockSizeForGgmlType: () => 128, getTypeSizeForGgmlType: () => undefined },

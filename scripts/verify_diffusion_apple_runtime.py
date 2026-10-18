@@ -18,6 +18,17 @@ prism = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prism)
 
 
+def framework_metadata(directory: Path) -> dict:
+    info_path = directory / 'Info.plist'
+    if not info_path.is_file(): info_path = directory / 'Resources/Info.plist'
+    info = plistlib.loads(info_path.read_bytes())
+    expected = {'CFBundleIdentifier':'org.quenderin.diffusion', 'CFBundlePackageType':'FMWK',
+                'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1'}
+    if any(str(info.get(key, '')) != value for key, value in expected.items()):
+        raise ValueError('Image framework bundle identity/version is invalid')
+    return expected
+
+
 def description(framework: Path, execute: bool = False) -> dict:
     lock = json.loads((ROOT / 'shared/diffusion-runtime.json').read_text())
     info = plistlib.loads((framework / 'Info.plist').read_bytes())
@@ -42,7 +53,8 @@ def description(framework: Path, execute: bool = False) -> dict:
         if not header.is_file() or not (directory / 'Modules/module.modulemap').is_file():
             raise ValueError('Image framework is missing its public C/Swift module')
         slices.append({'id': item['LibraryIdentifier'], 'platform': item['SupportedPlatform'],
-                       'payload': payload, 'headerSha256': hashlib.sha256(header.read_bytes()).hexdigest()})
+                       'payload': payload, 'headerSha256': hashlib.sha256(header.read_bytes()).hexdigest(),
+                       'bundleMetadata': framework_metadata(directory)})
         if execute and item['SupportedPlatform'] == 'macos':
             library = ctypes.CDLL(str(binary))
             library.quenderin_diffusion_abi.restype = ctypes.c_uint32
@@ -82,6 +94,8 @@ def verify_app(app: Path, target: str, root: Path = ROOT, signed: bool = False) 
     contents = app / 'Contents' if target == 'macos' else app
     resources = contents / 'Resources' if target == 'macos' else contents
     native = contents / 'Frameworks/QuenderinDiffusion.framework'
+    if framework_metadata(native) != expected['bundleMetadata']:
+        raise ValueError('App image framework bundle metadata differs')
     binary = native / ('Versions/A/QuenderinDiffusion' if target == 'macos' else 'QuenderinDiffusion')
     payload = prism.macho_payload(binary)
     if payload != expected['payload']:

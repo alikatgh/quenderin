@@ -33,7 +33,7 @@ if(APPLE)
   set(GGML_METAL_EMBED_LIBRARY ON CACHE BOOL "" FORCE)
 endif()
 add_subdirectory("${DIFFUSION_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/diffusion-upstream" EXCLUDE_FROM_ALL)
-add_library(quenderin_diffusion SHARED quenderin_diffusion.cpp)
+add_library(quenderin_diffusion SHARED quenderin_diffusion.cpp quenderin_diffusion.h)
 target_compile_definitions(quenderin_diffusion PRIVATE QUENDERIN_DIFFUSION_BUILD_DLL QUENDERIN_DIFFUSION_REVISION="${DIFFUSION_REVISION}")
 target_include_directories(quenderin_diffusion PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" PRIVATE "${DIFFUSION_SOURCE_DIR}/include")
 target_link_libraries(quenderin_diffusion PRIVATE stable-diffusion)
@@ -56,6 +56,9 @@ elseif(APPLE)
   set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
   set_target_properties(quenderin_diffusion PROPERTIES FRAMEWORK TRUE FRAMEWORK_VERSION A
     MACOSX_FRAMEWORK_IDENTIFIER org.quenderin.diffusion PUBLIC_HEADER quenderin_diffusion.h
+    MACOSX_FRAMEWORK_BUNDLE_NAME QuenderinDiffusion
+    MACOSX_FRAMEWORK_BUNDLE_VERSION 1 MACOSX_FRAMEWORK_SHORT_VERSION_STRING 1.0.0
+    VERSION 1.0.0 SOVERSION 1
     OUTPUT_NAME QuenderinDiffusion INSTALL_NAME_DIR "@rpath")
   target_link_options(quenderin_diffusion PRIVATE "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/exports.apple")
 elseif(UNIX)

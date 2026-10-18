@@ -74,6 +74,18 @@ final class ImageModelsTests: XCTestCase {
         }
     }
 
+    func testNewDirectoryURLFlagsAreAllowedAndActualSymlinksAreRejected() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fixture = model()
+        let fresh = root.appendingPathComponent("not-created", isDirectory: true)
+        XCTAssertEqual(try ImageModelInstaller.remainingDownloadBytes(fixture, in: fresh), fixture.downloadBytes)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fresh.path))
+        let link = root.appendingPathComponent("linked", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: root)
+        XCTAssertThrowsError(try ImageModelInstaller.remainingDownloadBytes(fixture, in: link))
+    }
+
     func testRetryBudgetsOnlyVerifiedMissingComponentsAndPreservesCorruptFiles() async throws {
         let root = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

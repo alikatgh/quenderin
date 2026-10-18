@@ -124,6 +124,17 @@
       ]
     },
     {
+      "path": "src/llama-graph.cpp",
+      "beforeSha256": "6d82915f45a97ef48538066bbb97b4945a079fe0071b41230a0551d8d99a4135",
+      "afterSha256": "16a328b8bff187c2b2efe1bc699b115c0e32bdf50975448435cdbf8a3b1351f4",
+      "replacements": [
+        {
+          "before": "    ggml_tensor * cur_experts[LLAMA_MAX_EXPERTS] = { nullptr };\n\n    assert(n_expert_used > 0);\n\n    // order the views before the adds\n    for (uint32_t i = 0; i < hparams.n_expert_used; ++i) {\n        cur_experts[i] = ggml_view_2d(ctx0, experts, n_embd, n_tokens, experts->nb[2], i*experts->nb[1]);\n\n        ggml_build_forward_expand(gf, cur_experts[i]);\n    }\n\n    // aggregate experts\n    // note: here we explicitly use hparams.n_expert_used instead of n_expert_used\n    //       to avoid potentially a large number of add nodes during warmup\n    //       ref: https://github.com/ggml-org/llama.cpp/pull/14753\n    ggml_tensor * moe_out = cur_experts[0];\n\n    for (uint32_t i = 1; i < hparams.n_expert_used; ++i) {\n        moe_out = ggml_add(ctx0, moe_out, cur_experts[i]);\n\n        ggml_build_forward_expand(gf, moe_out);\n    }\n\n    if (hparams.n_expert_used == 1) {\n        // avoid returning a non-contiguous tensor\n        moe_out = ggml_cont(ctx0, moe_out);\n    }\n\n    cb(moe_out, \"ffn_moe_out\", il);\n\n    return moe_out;\n",
+          "after": "    ggml_tensor * cur_experts[LLAMA_MAX_EXPERTS] = { nullptr };\n\n    // Per-layer top-k can be smaller than the model-wide maximum (Nemotron 3.5).\n    // Keep the existing global cap during warmup, but never view unselected experts.\n    const int64_t n_expert_sum = std::min<int64_t>(n_expert_used, hparams.n_expert_used);\n    GGML_ASSERT(n_expert_sum > 0 && n_expert_sum <= experts->ne[1] && n_expert_sum <= LLAMA_MAX_EXPERTS);\n\n    // order the views before the adds\n    for (int64_t i = 0; i < n_expert_sum; ++i) {\n        cur_experts[i] = ggml_view_2d(ctx0, experts, n_embd, n_tokens, experts->nb[2], i*experts->nb[1]);\n\n        ggml_build_forward_expand(gf, cur_experts[i]);\n    }\n\n    // aggregate experts\n    // The global cap avoids a large number of add nodes during warmup;\n    // smaller per-layer selections aggregate only the experts actually present.\n    //       ref: https://github.com/ggml-org/llama.cpp/pull/14753\n    ggml_tensor * moe_out = cur_experts[0];\n\n    for (int64_t i = 1; i < n_expert_sum; ++i) {\n        moe_out = ggml_add(ctx0, moe_out, cur_experts[i]);\n\n        ggml_build_forward_expand(gf, moe_out);\n    }\n\n    if (n_expert_sum == 1) {\n        // avoid returning a non-contiguous tensor\n        moe_out = ggml_cont(ctx0, moe_out);\n    }\n\n    cb(moe_out, \"ffn_moe_out\", il);\n\n    return moe_out;\n"
+        }
+      ]
+    },
+    {
       "path": "src/llama-hparams.h",
       "beforeSha256": "a31d22a574e13a92aa54a2eb1a2abc9b44a0bd3b390d63d28551118cd4bf5198",
       "afterSha256": "68cb9dcb6ca50b282f4d06fefa14435af7ddb010f9cd6688edafd9fe7e6d62dc",

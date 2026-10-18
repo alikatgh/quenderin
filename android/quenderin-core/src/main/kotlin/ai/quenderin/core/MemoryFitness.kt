@@ -34,6 +34,9 @@ object MemoryFitness {
         val required = ModelRuntimeSupport.memoryFootprintGb(model) * overhead
         val usageAfterLoad = (totalGB - freeGB + required) / totalGB
         return when {
+            ModelRuntimeSupport.unsupportedWorkflowReason(model) != null -> MemoryCheckResult(
+                false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.unsupportedWorkflowReason(model)!!,
+            )
             ModelRuntimeSupport.requiresWeeklyTextRuntime(model) && !weeklyTextRuntimeAvailable -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.WEEKLY_TEXT_UNAVAILABLE_MESSAGE,
             )

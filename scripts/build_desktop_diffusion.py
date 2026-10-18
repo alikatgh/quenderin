@@ -28,6 +28,57 @@ STAMP = "quenderin-diffusion-runtime.json"
 PLATFORMS = {"Windows": "win", "Linux": "linux", "Darwin": "mac"}
 ARCHES = {"AMD64": "x64", "x86_64": "x64", "aarch64": "arm64", "arm64": "arm64", "armv7l": "armv7l"}
 
+# node-llama-cpp 3.19.1 copies build/bin into build/Release and keeps both.
+# Resolve the addon actually loaded by the same no-fallback CPU options as the
+# mandatory Prism probe; lastBuild metadata alone is not proof of that identity.
+ACTIVE_PRISM_PROBE = r'''
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFile, realpath} from 'node:fs/promises';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const packageDir=path.resolve(process.argv[1]), revision=process.argv[2];
+const readJSON=async file=>JSON.parse(await readFile(file,'utf8'));
+const metadata=await readJSON(path.join(packageDir,'package.json'));
+assert.equal(metadata.name,'node-llama-cpp'); assert.equal(metadata.version,'3.19.1');
+const {folderName}=await readJSON(path.join(packageDir,'llama/lastBuild.json'));
+assert.equal(typeof folderName,'string'); assert.match(folderName,/^[A-Za-z0-9_. -]+$/);
+assert(!['.','..'].includes(folderName));
+const release=path.join(packageDir,'llama/localBuilds',folderName,'Release');
+const {buildOptions}=await readJSON(path.join(release,'_nlcBuildMetadata.json'));
+assert.deepEqual(buildOptions.llamaCpp,{repo:'PrismML-Eng/llama.cpp',release:revision});
+assert.equal(buildOptions.gpu,false);
+assert.equal(buildOptions.arch,process.arch);
+assert.equal(buildOptions.platform,({win32:'win',linux:'linux',darwin:'mac'})[process.platform]);
+const {getBuildFolderNameForBuildOptions}=await import(pathToFileURL(path.join(packageDir,'dist/bindings/utils/getBuildFolderNameForBuildOptions.js')));
+const computed=await getBuildFolderNameForBuildOptions({...buildOptions,customCmakeOptions:new Map(Object.entries(buildOptions.customCmakeOptions))});
+assert.equal(computed.withCustomCmakeOptions,folderName);
+const {getLlama}=await import(pathToFileURL(path.join(packageDir,'dist/index.js')));
+const loaded=[], original=process.dlopen;
+process.dlopen=function(module, filename, ...args) {
+    if(path.basename(filename)==='llama-addon.node') loaded.push(path.resolve(filename));
+    return original.call(this,module,filename,...args);
+};
+let llama;
+try {
+    llama=await getLlama({gpu:false,build:'never',usePrebuiltBinaries:false,skipDownload:true,progressLogs:false,maxThreads:2});
+    assert.equal(llama.buildType,'localBuild');
+    assert.deepEqual(llama.llamaCppRelease,buildOptions.llamaCpp);
+    assert.equal(loaded.length,1,'Expected exactly one actually loaded local Prism addon');
+    const addonPath=await realpath(loaded[0]);
+    assert.equal(addonPath,await realpath(path.join(release,'llama-addon.node')),'Loaded addon differs from active lastBuild');
+    for(const [type,size] of [[142,34],[143,28]]) {
+        assert.equal(llama._bindings.getBlockSizeForGgmlType(type),128);
+        assert.equal(llama._bindings.getTypeSizeForGgmlType(type),size);
+    }
+    assert.equal(llama._bindings.getQuenderinWeeklyTextRuntimeABI(),1);
+    console.log(JSON.stringify({folderName,addonPath,addonSha256:createHash('sha256').update(await readFile(addonPath)).digest('hex'),binVariant:computed.binVariant}));
+} finally {
+    process.dlopen=original;
+    if(llama) await llama.dispose();
+}
+'''
+
 
 def host():
     try:
@@ -252,23 +303,91 @@ def build(work, destination):
     return verify(destination)
 
 
+def probe_active_prism(package, revision):
+    try:
+        output = run(["node", "--input-type=module", "-e", ACTIVE_PRISM_PROBE, package, revision], timeout=60)
+    except subprocess.CalledProcessError as error:
+        raise ValueError("Active Prism addon probe failed: " + (error.stderr or error.stdout or "no diagnostic")[-3000:]) from error
+    except subprocess.SubprocessError as error:
+        raise ValueError("Active Prism addon probe did not finish within its bound") from error
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError as error:
+        raise ValueError("Active Prism addon probe did not return its identity JSON") from error
+
+
+def active_prism_libraries(prism):
+    """Select dependencies beside the proven active Release/llama-addon.node.
+
+    CMake's retained bin copies are accepted only when byte-identical to that
+    active artifact. Other build folders never participate in selection.
+    """
+    if not prism.is_dir() or prism.is_symlink() or prism.name != "localBuilds" or prism.parent.name != "llama":
+        raise ValueError("Joint load requires node-llama-cpp/llama/localBuilds with active lastBuild.json metadata")
+    prism = prism.resolve()
+    package = prism.parent.parent
+    metadata = json.loads((package / "package.json").read_text())
+    if (metadata.get("name"), metadata.get("version")) != ("node-llama-cpp", "3.19.1"):
+        raise ValueError("Joint load requires the exact node-llama-cpp 3.19.1 layout")
+    last_build = json.loads((prism.parent / "lastBuild.json").read_text())
+    folder = last_build.get("folderName")
+    if not isinstance(folder, str) or not re.fullmatch(r"[A-Za-z0-9_. -]+", folder) or folder in (".", ".."):
+        raise ValueError("Invalid active Prism lastBuild folderName")
+    active = prism / folder
+    release = active / "Release"
+    if not release.is_dir() or active.is_symlink() or release.is_symlink() or not release.resolve().is_relative_to(prism):
+        raise ValueError(f"Active Prism Release directory is missing or unsafe: {folder}/Release")
+    for file in (active / "buildDone.status", release / "llama-addon.node", release / "_nlcBuildMetadata.json"):
+        if not file.is_file() or file.is_symlink():
+            raise ValueError(f"Active Prism build is incomplete or unsafe: {file.relative_to(prism)}")
+    options = json.loads((release / "_nlcBuildMetadata.json").read_text()).get("buildOptions", {})
+    lock = json.loads((ROOT / "shared/prism-runtime.json").read_text())
+    if (options.get("platform"), options.get("arch"), options.get("llamaCpp"), options.get("gpu") is False) != (
+            *host(), {"repo": "PrismML-Eng/llama.cpp", "release": lock["revision"]}, True):
+        raise ValueError("Active Prism build metadata does not match the pinned CPU platform/architecture/revision")
+    probe = probe_active_prism(package, lock["revision"])
+    addon = release / "llama-addon.node"
+    if probe.get("folderName") != folder or Path(probe.get("addonPath", "")).resolve() != addon.resolve() or probe.get("addonSha256") != sha(addon):
+        raise ValueError("Actually loaded Prism addon does not match the active build path and digest")
+    variant = probe.get("binVariant")
+    expected_variant = "PrismML-Eng_llama.cpp_" + lock["revision"]
+    if not isinstance(variant, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", variant) or not (
+            variant == expected_variant or variant.startswith(expected_variant + ".")):
+        raise ValueError("Active Prism binary variant does not identify the pinned source")
+    os_name, _ = host()
+    prefix, suffix = ("", ".dll") if os_name == "win" else ("lib", ".dylib" if os_name == "mac" else ".so")
+    libraries = [release / (prefix + "ggml-base" + suffix), release / (prefix + "llama." + variant + suffix)]
+    for library in libraries:
+        if not library.is_file() or not library.resolve().is_relative_to(release):
+            raise ValueError(f"Active Prism dependency is missing or unsafe beside the loaded addon: {library.name}")
+        identity = sha(library)
+        copies = []
+        for source in (active / "bin", active / "llama.cpp/bin"):
+            if source.is_symlink() or (source.exists() and not source.resolve().is_relative_to(active)):
+                raise ValueError("Unsafe retained active Prism dependency directory")
+            if source.is_dir():
+                copies.extend(source.rglob(library.name))
+        if len(copies) > 64:
+            raise ValueError(f"Too many retained active-build copies to verify: {library.name}")
+        for copy in copies:
+            if not copy.is_file() or not copy.resolve().is_relative_to(active) or sha(copy) != identity:
+                raise ValueError(f"Mismatched retained active Prism dependency copy: {copy.relative_to(active)}")
+    return {"ggml": libraries[0].resolve(), "llama": libraries[1].resolve(),
+            "folderName": folder, "addonSha256": probe["addonSha256"]}
+
+
 def joint_load(directory, prism):
     """No weights: prove both GGML ABIs remain usable in one process, both orders."""
-    os_name, _ = host()
-    library = directory / names(os_name)[1]
-    suffix = {"win": r"\.dll", "mac": r"\.dylib", "linux": r"\.so(?:\.\d+)*"}[os_name]
-    candidates = sorted({p.resolve() for p in prism.rglob("*ggml-base*")
-                         if p.is_file() and re.search(suffix + "$", p.name, re.IGNORECASE)})
-    if len(candidates) != 1:
-        raise ValueError("Joint load requires exactly one actual Prism ggml-base library")
+    selected = active_prism_libraries(prism)
     # Each order runs in a fresh child so an already loaded DSO cannot hide a bug.
     for order in ("prism-first", "image-first"):
         run([sys.executable, __file__, "joint-child", "--directory", directory,
-             "--prism-library", candidates[0], "--order", order], timeout=30, capture=False)
-    return {"jointLoad": True, "orders": 2, "weightsLoaded": False}
+             "--prism-library", selected["ggml"], "--llama-library", selected["llama"], "--order", order], timeout=30, capture=False)
+    return {"jointLoad": True, "orders": 2, "weightsLoaded": False,
+            "activePrismBuild": selected["folderName"], "addonSha256": selected["addonSha256"]}
 
 
-def joint_child(directory, prism_library, order):
+def joint_child(directory, prism_library, llama_library, order):
     image_path = directory / names(host()[0])[1]
     # Windows resolves the compiled Prism dependency closure in this directory.
     dll_directory = os.add_dll_directory(str(prism_library.parent)) if os.name == "nt" else None
@@ -286,12 +405,9 @@ def joint_child(directory, prism_library, order):
             ggml.ggml_type_size.restype = ctypes.c_size_t
             ggml.ggml_blck_size.argtypes = [ctypes.c_int]
             ggml.ggml_blck_size.restype = ctypes.c_int64
-            suffix = {"win": r"\.dll", "mac": r"\.dylib", "linux": r"\.so(?:\.\d+)*"}[host()[0]]
-            libraries = {p.resolve() for p in prism_library.parent.glob("*llama*")
-                         if p.is_file() and re.search(suffix + "$", p.name, re.IGNORECASE)}
-            if len(libraries) != 1:
-                raise ValueError("Joint load requires the actual Prism llama DSO beside ggml-base")
-            llama = ctypes.CDLL(str(libraries.pop()), mode=getattr(ctypes, "RTLD_GLOBAL", 0))
+            if llama_library.parent != prism_library.parent:
+                raise ValueError("Joint load requires both Prism dependencies beside the same active addon")
+            llama = ctypes.CDLL(str(llama_library), mode=getattr(ctypes, "RTLD_GLOBAL", 0))
             if llama.quenderin_weekly_text_runtime_abi() != 1 or llama.quenderin_muse_spark_runtime_abi() != 1:
                 raise ValueError("Joint-loaded Prism llama capabilities are missing")
             return ggml, llama
@@ -321,7 +437,7 @@ def main():
     p = commands.add_parser("build"); p.add_argument("--work", type=Path, required=True); p.add_argument("--destination", type=Path)
     p = commands.add_parser("verify"); p.add_argument("--directory", type=Path, required=True); p.add_argument("--platform", choices=("win", "linux", "mac")); p.add_argument("--arch", choices=("x64", "arm64", "armv7l")); p.add_argument("--packaged", action="store_true")
     p = commands.add_parser("joint-load"); p.add_argument("--directory", type=Path, required=True); p.add_argument("--prism", type=Path, required=True)
-    p = commands.add_parser("joint-child"); p.add_argument("--directory", type=Path, required=True); p.add_argument("--prism-library", type=Path, required=True); p.add_argument("--order", choices=("prism-first", "image-first"), required=True)
+    p = commands.add_parser("joint-child"); p.add_argument("--directory", type=Path, required=True); p.add_argument("--prism-library", type=Path, required=True); p.add_argument("--llama-library", type=Path, required=True); p.add_argument("--order", choices=("prism-first", "image-first"), required=True)
     args = parser.parse_args()
     try:
         if args.command == "build":
@@ -332,7 +448,7 @@ def main():
         elif args.command == "joint-load":
             result = joint_load(args.directory, args.prism)
         else:
-            joint_child(args.directory, args.prism_library, args.order); result = {"order": args.order, "passed": True}
+            joint_child(args.directory, args.prism_library, args.llama_library, args.order); result = {"order": args.order, "passed": True}
         print(json.dumps(result, sort_keys=True))
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Desktop diffusion gate failed: {error}\n")

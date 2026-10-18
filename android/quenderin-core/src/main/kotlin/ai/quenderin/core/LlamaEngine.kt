@@ -136,6 +136,7 @@ class LlamaEngine(
             check(fitness.canLoad) { fitness.message }
         }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
+        ModelRuntimeSupport.metadataUnavailableReason(filePath)?.let { throw IllegalStateException(it) }
         cancelRequested = false
         if (model.artifacts.isNotEmpty()) ModelArtifacts.requireComplete(model, filePath) { cancelRequested }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null; loadedMuse = false; loadedContextTokens = null }

@@ -34,10 +34,14 @@ class ImageExportTests(unittest.TestCase):
         binary = contents / 'Frameworks/QuenderinDiffusion.framework' / ('Versions/A/QuenderinDiffusion' if target == 'macos' else 'QuenderinDiffusion')
         binary.parent.mkdir(parents=True)
         binary.write_bytes(fixtures.fat(1, signed=True) if target == 'macos' else fixtures.thin('arm64', 2, signed=True))
+        native = contents / 'Frameworks/QuenderinDiffusion.framework'
+        metadata = {'CFBundleIdentifier':'org.quenderin.diffusion', 'CFBundlePackageType':'FMWK',
+                    'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1'}
+        (native / 'Info.plist').write_bytes(plistlib.dumps(metadata))
         executable = contents / ('MacOS/Quenderin' if target == 'macos' else 'Quenderin')
         executable.parent.mkdir(exist_ok=True)
         executable.write_bytes(fixtures.fat(1, executable=True) if target == 'macos' else fixtures.thin('arm64', 2, executable=True))
-        stamp = {'revision':'pinned-image', 'abiVersion':1, 'slices':[{'platform':target,'payload':image.prism.macho_payload(binary)}]}
+        stamp = {'revision':'pinned-image', 'abiVersion':1, 'slices':[{'platform':target,'payload':image.prism.macho_payload(binary), 'bundleMetadata':metadata}]}
         return app, contents, binary, stamp
 
     def tools(self, *args):
@@ -89,6 +93,12 @@ class ImageExportTests(unittest.TestCase):
             image.embed_evidence(app,'ios',self.root)
             (contents / 'quenderin-diffusion-release.json').write_text('{}')
             with self.assertRaisesRegex(ValueError,'provenance'): image.verify_app(app,'ios',self.root,signed=True)
+
+    def test_framework_bundle_version_cannot_be_empty(self):
+        app, contents, _, stamp = self.app()
+        with patch.object(image,'verify',return_value=stamp):
+            (contents / 'Frameworks/QuenderinDiffusion.framework/Info.plist').write_bytes(plistlib.dumps({}))
+            with self.assertRaisesRegex(ValueError,'bundle identity/version'): image.verify_app(app,'ios',self.root)
 
 
 if __name__ == '__main__': unittest.main()

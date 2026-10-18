@@ -65,6 +65,7 @@ import type { DownloadSegment } from "./modelDownloadPlan.js";
 import type { FileHandle } from "fs/promises";
 import logger from "../utils/logger.js";
 import { jaisChatWrapper } from './weeklyChatWrappers.js';
+import { readGgufModelIdentity } from './ggufModelIdentity.js';
 import {
     getModelRuntimeCompatibility, isPrismRuntime, modelRuntimeError, requiresPrismRuntime,
     type ModelRuntimeCompatibility, type NodeLlamaRuntime, type RuntimeModelDescriptor,
@@ -633,6 +634,8 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             logger.log(`[Lifecycle] Model ${modelId} already loaded, skipping`);
             return;
         }
+        await this.assertModelFileIdentity(entry, filePath,
+            requiresPrismRuntime(entry) ? await this.getPrismRuntime() : undefined);
         this.unloadModel();
         this.activeModelId = modelId;
         // Pre-warm the model
@@ -714,6 +717,12 @@ export class LlmService extends EventEmitter implements ILlmProvider {
             throw modelRuntimeError(compatibility);
         }
         this.assertPrismMemory(entry, runtime);
+    }
+
+    private async assertModelFileIdentity(entry: ModelEntry, filePath: string, runtime?: NodeLlamaRuntime): Promise<void> {
+        const identity = await readGgufModelIdentity(filePath);
+        const compatibility = getModelRuntimeCompatibility({ ...entry, ...identity }, runtime);
+        if (!compatibility.canLoad) throw modelRuntimeError(compatibility);
     }
 
     public async getModelAndContext() {
@@ -822,6 +831,9 @@ export class LlmService extends EventEmitter implements ILlmProvider {
                 }
 
                 const { getLlama: getLlamaFn, LlamaLogLevel: LogLevel } = _llamaBindings;
+                // Read only local metadata before any model weights reach the native loader.
+                // A catalog filename or alias cannot turn Beam/Hy-Memory into ordinary chat.
+                await this.assertModelFileIdentity(selected.entry, selected.path, runtime);
                 const llamaInitTimeout = Math.round(30_000 * HW.timeoutMultiplier);
 
                 // ─── 1. Initialize llama engine with GPU fallback ────────────

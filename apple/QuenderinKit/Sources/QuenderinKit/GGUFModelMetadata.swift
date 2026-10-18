@@ -5,8 +5,26 @@ import Foundation
 public struct GGUFModelMetadata: Sendable, Equatable {
     public let architecture: String
     public let splitCount: UInt64
+    public let modelName: String
+
+    public init(architecture: String, splitCount: UInt64, modelName: String = "") {
+        self.architecture = architecture
+        self.splitCount = splitCount
+        self.modelName = modelName
+    }
 
     public func validateForLoad(_ model: ModelEntry) throws {
+        try validateForLoad(model, weeklyTextRuntimeAvailable: ModelRuntimeSupport.supportsWeeklyText)
+    }
+
+    func validateForLoad(_ model: ModelEntry, weeklyTextRuntimeAvailable: Bool) throws {
+        if let reason = ModelRuntimeSupport.unsupportedWorkflowReason(identifiers: [modelName], architecture: architecture)
+            ?? ModelRuntimeSupport.unsupportedWorkflowReason(for: model) {
+            throw ModelArtifactError.invalidManifest(reason)
+        }
+        if (architecture.lowercased() == "k2-horizon" || ModelRuntimeSupport.isWeeklyIdentity(modelName)), !weeklyTextRuntimeAvailable {
+            throw ModelArtifactError.invalidManifest(ModelRuntimeSupport.weeklyTextUnavailableMessage)
+        }
         let actualMuse = architecture.lowercased().replacingOccurrences(of: "_", with: "-") == "muse-spark"
         if actualMuse {
             guard let pinned = ModelCatalog.entry(id: "muse-spark-open-q2-k"), model == pinned,
@@ -33,13 +51,19 @@ public struct GGUFModelMetadata: Sendable, Equatable {
         let count = try reader.integer(8)
         guard count <= 100_000 else { throw ModelArtifactError.invalidManifest("too many GGUF metadata keys") }
         var architecture: String?
+        var modelName = ""
+        var hasModelName = false
         var splits: UInt64 = 1
         for _ in 0..<count {
             let key = try reader.string(maximum: 1024)
             let type = try reader.integer(4)
             if key == "general.architecture" {
-                guard type == 8 else { throw ModelArtifactError.invalidManifest("architecture must be a string") }
+                guard type == 8, architecture == nil else { throw ModelArtifactError.invalidManifest("architecture must be one string") }
                 architecture = try reader.string(maximum: 256)
+            } else if key == "general.name" {
+                guard type == 8, !hasModelName else { throw ModelArtifactError.invalidManifest("model name must be one string") }
+                hasModelName = true
+                modelName = try reader.string(maximum: 4096)
             } else if key == "split.count" {
                 guard [UInt64(0), 2, 4, 10].contains(type) else { throw ModelArtifactError.invalidManifest("invalid GGUF split count") }
                 splits = try reader.integer(type == 0 ? 1 : type == 2 ? 2 : type == 4 ? 4 : 8)
@@ -47,7 +71,7 @@ public struct GGUFModelMetadata: Sendable, Equatable {
             } else { try reader.skipValue(type: type) }
         }
         guard let architecture, !architecture.isEmpty else { throw ModelArtifactError.invalidManifest("GGUF architecture is missing") }
-        return GGUFModelMetadata(architecture: architecture, splitCount: splits)
+        return GGUFModelMetadata(architecture: architecture, splitCount: splits, modelName: modelName)
     }
 
     private final class Reader {

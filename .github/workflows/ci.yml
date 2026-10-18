@@ -185,29 +185,41 @@ jobs:
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
       - name: Build the pinned CPU runtime
+        id: compile-runtime
         run: |
           cmake -S "$RUNNER_TEMP/prism-llama" -B "$RUNNER_TEMP/prism-llama/build" \
             -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DLLAMA_BUILD_TESTS=ON
           cmake --build "$RUNNER_TEMP/prism-llama/build" --target llama-completion test-llama-archs test-chat-template --parallel 4
-      - name: Exercise weekly text graphs and publisher prompt templates with tiny tensors
-        run: |
-          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a k2-horizon -s 1234
-          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a nemotron_h_moe -s 1234
-          timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a beam -s 1234
-          timeout 120 "$RUNNER_TEMP/prism-llama/build/bin/test-chat-template"
+      - name: Exercise Jais dense and MoE graphs with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a k2-horizon -s 1234
+      - name: Exercise Nemotron hybrid graph with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a nemotron_h_moe -s 1234
+      - name: Exercise Beam graph with tiny tensors
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" -a beam -s 1234
+      - name: Verify publisher prompt formatting
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
+        run: timeout 120 "$RUNNER_TEMP/prism-llama/build/bin/test-chat-template"
       - name: Exercise Muse with tiny generated tensors (no Muse weight download)
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: timeout 300 "$RUNNER_TEMP/prism-llama/build/bin/test-llama-archs" --arch muse-spark
       - name: Verify the native Muse text prompt
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror android/jni/tests/muse_chat_test.cpp -o "$RUNNER_TEMP/muse-chat-test"
           "$RUNNER_TEMP/muse-chat-test"
       - name: Fetch and verify the exact catalog artifact
+        id: fetch-artifact
+        if: ${{ !cancelled() && steps.compile-runtime.outcome == 'success' }}
         run: |
           curl --fail --location --retry 2 --max-time 600 \
             'https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/b072e1d3b35a0a630cece372c2127528e0994386/Ternary-Bonsai-2-27B-PTQ1_0.gguf?download=true' \
             --output "$RUNNER_TEMP/bonsai.gguf"
           echo "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3  $RUNNER_TEMP/bonsai.gguf" | sha256sum --check
       - name: Load ternary weights and generate a bounded answer
+        if: ${{ !cancelled() && steps.fetch-artifact.outcome == 'success' }}
         run: |
           timeout 1200 "$RUNNER_TEMP/prism-llama/build/bin/llama-completion" \
             -m "$RUNNER_TEMP/bonsai.gguf" -ngl 0 -c 512 -n 64 -t 4 \

@@ -171,9 +171,11 @@ export class ImageGenerationService {
         validateConfiguration(this.catalog, this.runtimeLock);
         const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
         const executable = `quenderin-diffusion-cli${process.platform === 'win32' ? '.exe' : ''}`;
+        const nativeOS = { win32: 'win', darwin: 'mac', linux: 'linux' }[process.platform as 'win32' | 'darwin' | 'linux'];
+        const nativeArch = process.arch === 'arm' ? 'armv7l' : process.arch;
         this.bundledRuntimePath = dependencies.bundledRuntimePath ?? (resources
             ? path.join(resources, 'diffusion', executable)
-            : path.join(shared ?? sharedDirectory(), '..', 'native', 'diffusion', 'bin', executable));
+            : path.join(shared ?? sharedDirectory(), '..', 'build', 'diffusion', `${nativeOS}-${nativeArch}`, executable));
         this.spawnProcess = dependencies.spawnProcess ?? spawn;
         this.availableMemoryBytes = dependencies.availableMemoryBytes ?? availableMemBytes;
         this.freeDiskBytes = dependencies.freeDiskBytes ?? (async directory => {

@@ -9,7 +9,7 @@
   },
   "parentWeeklyTextPatch": {
     "id": "weekly-text-k2-nemotron-v1",
-    "sha256": "759e6582835fa241a74e5e2c39e6cb758c533fb92330e42f2f86a3b9c0faf977"
+    "sha256": "3e3b3fcc98eca240ce851fc22c7c096e456bc7c74eb17c472d392935f76ef84c"
   },
   "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
   "upstreamGraph": {
@@ -62,8 +62,8 @@
     },
     {
       "path": "src/llama-graph.cpp",
-      "beforeSha256": "6d82915f45a97ef48538066bbb97b4945a079fe0071b41230a0551d8d99a4135",
-      "afterSha256": "ce4cc4022bfc8c4446b7b0ee031e7eb242599e389022df1812e4783b9419a388",
+      "beforeSha256": "16a328b8bff187c2b2efe1bc699b115c0e32bdf50975448435cdbf8a3b1351f4",
+      "afterSha256": "e0e0ccf7eca6bfb19a40bcc311597bb4228ae68552cde915b54474e25f97c62b",
       "replacements": [
         {
           "before": "        GGML_ASSERT(n_attn_temp_floor_scale != 0);\n\n        std::vector<float> attn_scale_data(n_tokens, 0.0f);\n        for (int i = 0; i < n_tokens; ++i) {\n            const float pos = ubatch->pos[i];\n            attn_scale_data[i] = std::log(\n                std::floor((pos + f_attn_temp_offset) / n_attn_temp_floor_scale) + 1.0\n            ) * f_attn_temp_scale + 1.0;\n        }\n\n        ggml_backend_tensor_set(attn_scale, attn_scale_data.data(), 0, n_tokens*ggml_element_size(attn_scale));\n    }\n}\n\nvoid llm_graph_input_pos_bucket::set_input(const llama_ubatch * ubatch) {\n    if (pos_bucket) {\n        const int64_t n_tokens = ubatch->n_tokens;\n",

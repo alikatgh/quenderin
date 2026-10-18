@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -12,6 +13,110 @@ from unittest.mock import patch
 SPEC = importlib.util.spec_from_file_location("prism_runtime", Path(__file__).resolve().parents[1] / "prepare_prism_runtime.py")
 prism = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(prism)
+
+
+class WeeklyMoeAggregationRegressionTests(unittest.TestCase):
+    def test_actual_cpp_reduction_handles_heterogeneous_topk_and_preserves_warmup_cap(self):
+        """Exercise the real patched block, with GGML view bounds and numeric sums.
+
+        The original block must reproduce the six-selected/nine-global failure.
+        This tiny tensor API needs no GGML build, model data or accelerator.
+        The existing heterogeneous Nemotron decode/save-roundtrip fixture remains
+        the full graph regression check in hosted CI.
+        """
+        weekly = prism.load_weekly_text_patch()
+        graph = next(entry for entry in weekly['files'] if entry['path'] == 'src/llama-graph.cpp')
+        replacement = next(item for item in graph['replacements'] if 'cur_experts[LLAMA_MAX_EXPERTS]' in item['before'])
+        compiler = shutil.which('clang++') or shutil.which('g++')
+        self.assertIsNotNone(compiler, 'C++ compiler required for the bounded graph-reduction fixture')
+        fixture = r'''
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+#define LLAMA_MAX_EXPERTS 256
+#define GGML_ASSERT(value) do { if (!(value)) throw std::runtime_error("graph assertion"); } while (0)
+struct ggml_tensor {
+    int64_t ne[4];
+    size_t nb[4];
+    std::vector<float> values;
+    bool contiguous;
+};
+static std::vector<std::unique_ptr<ggml_tensor>> storage;
+static ggml_tensor * tensor(int64_t width, int64_t selected, int64_t tokens) {
+    auto value = std::make_unique<ggml_tensor>();
+    value->ne[0]=width; value->ne[1]=selected; value->ne[2]=tokens; value->ne[3]=1;
+    value->nb[0]=sizeof(float); value->nb[1]=width*sizeof(float);
+    value->nb[2]=width*selected*sizeof(float); value->nb[3]=width*selected*tokens*sizeof(float);
+    value->values.resize(width*selected*tokens); value->contiguous=true;
+    ggml_tensor * result=value.get(); storage.push_back(std::move(value)); return result;
+}
+static ggml_tensor * ggml_view_2d(void *, ggml_tensor * source, int64_t width, int64_t tokens, size_t stride, size_t offset) {
+    if (offset + width*sizeof(float) + (tokens-1)*stride > source->values.size()*sizeof(float)) {
+        throw std::out_of_range("expert view exceeds selected expert tensor");
+    }
+    ggml_tensor * out=tensor(width,tokens,1);
+    out->contiguous=stride==width*sizeof(float);
+    for (int64_t token=0; token<tokens; ++token) {
+        for (int64_t index=0; index<width; ++index) {
+            out->values[token*width+index]=source->values[(offset+token*stride)/sizeof(float)+index];
+        }
+    }
+    return out;
+}
+static ggml_tensor * ggml_add(void *, ggml_tensor * a, ggml_tensor * b) {
+    GGML_ASSERT(a->values.size()==b->values.size());
+    ggml_tensor * out=tensor(a->ne[0],a->ne[1],a->ne[2]);
+    for (size_t index=0; index<a->values.size(); ++index) out->values[index]=a->values[index]+b->values[index];
+    return out;
+}
+static ggml_tensor * ggml_cont(void *, ggml_tensor * source) {
+    ggml_tensor * out=tensor(source->ne[0],source->ne[1],source->ne[2]);
+    out->values=source->values; return out;
+}
+static void ggml_build_forward_expand(void *, ggml_tensor *) {}
+static void cb(ggml_tensor *, const char *, int) {}
+'''
+        for name, body in (('original', replacement['before']), ('fixed', replacement['after'])):
+            fixture += '\nstatic ggml_tensor * ' + name + r'''(ggml_tensor * experts, int64_t n_expert_used, uint32_t global_active) {
+    struct { uint32_t n_expert_used; } hparams{global_active};
+    void * ctx0=nullptr; void * gf=nullptr; int il=0;
+    const int64_t n_embd=experts->ne[0], n_tokens=experts->ne[2];
+''' + body + '\n}\n'
+        fixture += r'''
+int main() {
+    // Match Nemotron's second MoE block: six selected, global maximum nine.
+    bool reproduced=false;
+    try { original(tensor(7,6,3),6,9); } catch (const std::out_of_range &) { reproduced=true; }
+    GGML_ASSERT(reproduced);
+    // Homogeneous top-k, smaller per-layer top-k, warmup selecting every expert,
+    // and a single selected expert that must return a contiguous output.
+    for (auto counts : {std::pair<int64_t,uint32_t>{9,9}, {6,9}, {12,9}, {1,9}, {1,1}}) {
+        storage.clear();
+        const int64_t selected=counts.first, width=7, tokens=3;
+        ggml_tensor * experts=tensor(width,selected,tokens);
+        for (int64_t token=0; token<tokens; ++token)
+            for (int64_t expert=0; expert<selected; ++expert)
+                for (int64_t index=0; index<width; ++index)
+                    experts->values[(token*selected+expert)*width+index]=float(expert+1);
+        ggml_tensor * out=fixed(experts,selected,counts.second);
+        const int64_t used=std::min<int64_t>(selected,counts.second);
+        const float expected=float(used*(used+1)/2);
+        GGML_ASSERT(out->values.size()==size_t(width*tokens) && out->contiguous);
+        for (float value : out->values) GGML_ASSERT(value==expected);
+    }
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='weekly-moe-reduction-') as scratch:
+            binary = Path(scratch) / 'aggregation-fixture'
+            result = subprocess.run([compiler, '-std=c++17', '-O0', '-x', 'c++', '-', '-o', str(binary)],
+                                    input=fixture, text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr[-8000:])
+            result = subprocess.run([str(binary)], text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr[-8000:])
 
 
 class PrismRuntimeTests(unittest.TestCase):

@@ -34,7 +34,7 @@ public actor ImageModelInstaller {
             throw ImageGenerationError.invalid(reason)
         }
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
-        guard target.resolvingSymlinksInPath().standardizedFileURL == target.standardizedFileURL else {
+        guard target.resolvingSymlinksInPath().standardizedFileURL.path == target.standardizedFileURL.path else {
             throw ImageGenerationError.invalid("The image model folder must not contain symbolic links.")
         }
         var completed: Int64 = 0
@@ -86,7 +86,7 @@ public actor ImageModelInstaller {
     /// Corrupt files cause a visible failure and remain in place; installation never replaces them.
     public static func remainingDownloadBytes(_ model: ImageModel, in directory: URL, cancelled: () -> Bool = { false }) throws -> Int64 {
         try model.validate()
-        guard directory.resolvingSymlinksInPath().standardizedFileURL == directory.standardizedFileURL else {
+        guard directory.resolvingSymlinksInPath().standardizedFileURL.path == directory.standardizedFileURL.path else {
             throw ImageGenerationError.invalid("The image model folder must not contain symbolic links.")
         }
         var remaining: Int64 = 0
@@ -103,7 +103,7 @@ public actor ImageModelInstaller {
 
     public static func verify(_ model: ImageModel, in directory: URL, cancelled: () -> Bool = { false }) throws {
         try model.validate()
-        guard directory.resolvingSymlinksInPath().standardizedFileURL == directory.standardizedFileURL else {
+        guard directory.resolvingSymlinksInPath().standardizedFileURL.path == directory.standardizedFileURL.path else {
             throw ImageGenerationError.invalid("The image model folder must not contain symbolic links.")
         }
         for component in model.components {
