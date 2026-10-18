@@ -159,13 +159,33 @@ cleanup, controlled decoder failure, conversion methods, multipart integrity,
 Step 5 transport and private-store permissions. Process-exit cleanup closes new
 admission and joins active native work, including child-process exit, before
 disposing the shared backend. Ordinary per-service cleanup retains that backend.
-Final integrated native/desktop hosted builds and package checks are pending;
-Windows ACL behavior needs the Windows job. Local full type checking is currently
-blocked by missing optional Picovoice declarations. The broad local backend suite
-also encounters sandbox socket/home-write restrictions and an absent ONNX
-dependency; targeted in-scope tests pass. Refresh this dated paragraph from the
-final hosted revision before publishing a release. No local weights, device
-runs or simulator runs are authorized for this update.
+
+Final engineering revision
+[`1d5f4452b0dd096fdaab737bc4581562f3bce666`](https://github.com/alikatgh/quenderin/commit/1d5f4452b0dd096fdaab737bc4581562f3bce666)
+passed **all 18 jobs** in
+[CI 39106905620](https://github.com/alikatgh/quenderin/actions/runs/39106905620).
+The separate [catalog URL run 39106905664](https://github.com/alikatgh/quenderin/actions/runs/39106905664)
+also passed at the same revision.
+
+Hosted checks built the actual iOS and universal macOS Prism frameworks and
+vision bridge, passed Swift tests and compiled the iOS app against the SDK.
+Android built the actual JNI debug APK and unsigned release AAB, checked their
+image-library identity, dependency closure and 16 KiB alignment, and passed core
+and native runtime/memory-guard tests. Linux and Windows passed ASAR addon and
+packaged image/vision probes; the macOS Electron lab package passed image/vision
+runtime proofs. Separate image-runtime builds passed on all three systems.
+Windows ran the actual private approved-memory store tests and positive/negative
+protected-DACL fixtures successfully.
+
+These are source, compilation, host-test and package results. They do not establish
+new signing, store submission or public availability. Full-weight inference for
+the new models, generated-image quality, measured memory/speed, rendered native
+UI and ARMv7 support remain unverified; the existing hosted Bonsai CPU generation
+gate is separate. Local full type checking was blocked by optional Picovoice
+declarations, and the broad local backend suite encountered sandbox socket/home
+restrictions and a missing ONNX dependency; the integrated hosted jobs above are
+the final engineering evidence. No local weights, device runs or simulator runs
+were authorized or used for this update.
 
 ## 16 October 2026: smaller models and Muse Spark integration (historical snapshot)
 

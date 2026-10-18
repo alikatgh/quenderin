@@ -65,13 +65,32 @@ fixture variable-scope error that were subsequently corrected. It predates the
 complete workflows above and is not evidence for the final candidate. Independent
 reviews and targeted host fixtures cover source provenance, prompt protocols,
 multipart installation, private storage, resource bounds, cancellation and cleanup.
-**Final integrated hosted builds and package checks are pending.** Record their
-exact revision and results here before any release readiness claim. Windows ACL
-behavior also requires the hosted Windows fixture.
+
+**Final engineering verification passed** at revision
+[`1d5f4452b0dd096fdaab737bc4581562f3bce666`](https://github.com/alikatgh/quenderin/commit/1d5f4452b0dd096fdaab737bc4581562f3bce666).
+[CI 39106905620](https://github.com/alikatgh/quenderin/actions/runs/39106905620)
+completed successfully with **all 18 jobs passing**. The separate
+[catalog URL check 39106905664](https://github.com/alikatgh/quenderin/actions/runs/39106905664)
+also passed on that exact revision.
+
+- **Apple:** the actual iOS and universal macOS Prism frameworks, linked vision
+  bridge, Swift tests and iOS SDK app compilation passed.
+- **Android:** the actual Prism JNI app built a debug APK and an **unsigned**
+  release AAB. Both packages passed image-library identity, dependency-closure
+  and 16 KiB alignment checks; Kotlin core and native runtime/memory-guard tests
+  passed.
+- **Desktop:** Linux and Windows passed packaged ASAR addon probes and packaged
+  image/vision runtime verification. The macOS Electron lab package passed its
+  image and vision runtime proofs; it is separate from the native Mac App Store
+  product. Independent image-runtime build jobs passed on all three host systems.
+- **Windows private storage:** actual protected-DACL approval-store tests and
+  positive/negative synthetic ACL policy fixtures passed on the Windows runner.
 
 No local weights, simulator runs or physical-device runs are authorized for this
 update. Full-weight inference, image quality, measured memory/speed and native
-rendered UI remain unverified. No new archive, signing, store submission or public
+rendered UI and ARMv7 support remain unverified. The existing hosted Bonsai CPU
+generation check does not validate full-weight inference for the new models.
+No new archive, signing, store submission or public
 app availability has been established. The dated October 16 store record below is
 historical until refreshed in the consoles. Keep its pending reviews intact.
 Windows/Linux desktop packages and their distribution channels remain separate
