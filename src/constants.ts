@@ -1,5 +1,6 @@
 import path from 'path';
 import { MUSE_SPARK_ARTIFACTS } from './museModelArtifacts.js';
+import { BEAM_ARTIFACTS } from './beamModelArtifacts.js';
 import os from 'os';
 import { availableMemBytes } from './utils/memory.js';
 import { getHardwareProfile } from './utils/hardware.js';
@@ -238,6 +239,20 @@ export const MODEL_CATALOG = [
         languages: 'See model card',
     },
     {
+        id: 'beam-1.0-501b-a23b-ud-iq2-xxs',
+        label: 'Beam 1.0 501B-A23B (Experimental, text only)',
+        filename: 'Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf',
+        ramGb: 160.0,
+        sizeLabel: '133.89 GB download · 4 files',
+        downloadBytes: 133885310500,
+        paramsBillions: 501,
+        quantization: 'UD-IQ2_XXS',
+        url: 'https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf',
+        sha256: '1ca3bcc65093311a5a6824d1274f581f1253bcd992312d021be4f47d38fc3493',
+        languages: 'See model card',
+        artifacts: BEAM_ARTIFACTS,
+    },
+    {
         id: 'muse-spark-open-q2-k',
         label: 'Muse Spark Open Q2_K (Experimental, text only)',
         filename: 'Muse-Spark-Open-816B-A42B-Q2_K-00001-of-00022.gguf',
@@ -456,6 +471,8 @@ export function checkMemoryForModel(entry: ModelEntry, runtime?: NodeLlamaRuntim
     const totalGb = os.totalmem() / (1024 ** 3);
     // Smaller models need proportionally less overhead (KV cache is smaller)
     const identity = `${entry.id} ${entry.label} ${entry.filename} ${entry.url}`;
+    const isBeam = /(?:^|[^a-z0-9])beam(?:[^a-z0-9]|$)/i.test(identity);
+    const isMuse = /muse[-_ ]?spark/i.test(identity);
     const isBonsai = /bonsai/i.test(identity);
     const isMiniCPM47 = /minicpm[-_ ]?v[-_ ]?(?:4[._-]?7|47)/i.test(identity);
     const isLfm25 = /lfm(?:2[._-]?5|25)[-_ ]?24b/i.test(identity);
@@ -474,7 +491,8 @@ export function checkMemoryForModel(entry: ModelEntry, runtime?: NodeLlamaRuntim
     // MiniCPM 1B identity receives its 2 GB floor; arbitrary imports keep 25 GB.
     const textFloor = isMiniCPM47 ? pinnedExperimental?.ramGb ?? 25
         : isLfm25 ? 18 : isJais3 ? pinnedExperimental?.ramGb ?? 30 : isNemotron35 ? 28 : 0;
-    const footprint = isBonsai ? Math.max(pinnedExperimental?.ramGb ?? 7, entry.ramGb) : Math.max(textFloor, entry.ramGb);
+    const footprint = isBeam ? Math.max(160, Number.isFinite(entry.ramGb) ? entry.ramGb : 160)
+        : isMuse ? Math.max(330, Number.isFinite(entry.ramGb) ? entry.ramGb : 330) : isBonsai ? Math.max(pinnedExperimental?.ramGb ?? 7, entry.ramGb) : Math.max(textFloor, entry.ramGb);
     const required = footprint * overhead;
     const remaining = freeGb - required;
     const usageAfterLoad = (totalGb - freeGb + required) / totalGb;

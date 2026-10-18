@@ -6,6 +6,7 @@ import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder';
 import { availableMemBytes } from '../utils/memory.js';
 import { validateImagePng } from '../utils/imagePng.js';
+import { nativeWorkloads, type NativeWorkloadLease } from './nativeWorkloads.js';
 
 export const IMAGE_MEMORY_REQUIRED_BYTES = 24 * 1024 ** 3;
 export const IMAGE_GENERATION_TIMEOUT_MS = 15 * 60 * 1000;
@@ -254,12 +255,15 @@ export class ImageGenerationService {
     }
 
     private run(executable: string, args: string[], timeoutMs: number, signal?: AbortSignal,
-        onProgress?: (progress: ImageProgress) => void): Promise<string> {
+        onProgress?: (progress: ImageProgress) => void, lease?: NativeWorkloadLease): Promise<string> {
         abortIfNeeded(signal);
         return new Promise((resolve, reject) => {
             let child: ChildProcess;
             try { child = this.spawnProcess(executable, args, { shell: false, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }); }
             catch { reject(new Error('Unable to launch the local image runtime.')); return; }
+            // A bounded user-facing failure does not establish process death. Retain native
+            // admission until the actual close event, including after the SIGKILL grace expires.
+            lease?.joinBeforeRelease(new Promise<void>(closed => { child.once('close', () => closed()); }));
             let stdout = '';
             let stdoutBytes = 0;
             const decoder = new StringDecoder('utf8');
@@ -332,6 +336,9 @@ export class ImageGenerationService {
     }
 
     async generate(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
+        return nativeWorkloads.exclusive('Image generation', request.signal, lease => this.generateWithLease({ ...request, signal: lease.signal }, lease));
+    }
+    private async generateWithLease(request: ImageGenerationRequest, lease: NativeWorkloadLease): Promise<ImageGenerationResult> {
         if (this.active) throw new Error('An image generation is already running in this process.');
         this.active = true;
         try {
@@ -349,7 +356,7 @@ export class ImageGenerationService {
             const components = await this.components(model.id, request.directory, request.signal);
             const executable = await this.runtime(request.runtime);
             let version: { abiVersion?: number; revision?: string };
-            try { version = JSON.parse(await this.run(executable, ['--version'], 5000, request.signal)); }
+            try { version = JSON.parse(await this.run(executable, ['--version'], 5000, request.signal, undefined, lease)); }
             catch (error) {
                 if (request.signal?.aborted) throw error;
                 throw new Error('Image runtime identity probe failed. A verified local CLI build is required.');
@@ -369,7 +376,7 @@ export class ImageGenerationService {
             for (const component of components) args.push(flags[component.role], component.path);
             args.push('--prompt', request.prompt, '--output', output, '--width', String(model.defaults.width),
                 '--height', String(model.defaults.height), '--steps', String(model.defaults.steps), '--threads', '4', '--seed', '0');
-            const response = await this.run(executable, args, this.timeoutMs, request.signal, request.onProgress);
+            const response = await this.run(executable, args, this.timeoutMs, request.signal, request.onProgress, lease);
             let result: { ok?: boolean; path?: string; width?: number; height?: number };
             try { result = JSON.parse(response); } catch { throw new Error('Image runtime returned an invalid completion response.'); }
             if (!result || result.ok !== true || result.path !== output

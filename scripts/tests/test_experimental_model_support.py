@@ -1,4 +1,4 @@
-"""Pending integrations stay unavailable and describe complete immutable artifacts."""
+"""Experimental integrations retain exact immutable artifacts and explicit validation limits."""
 import hashlib
 import json
 from pathlib import Path
@@ -43,14 +43,21 @@ class ExperimentalModelSupportTests(unittest.TestCase):
         self.assertEqual(manifest["totalDownloadBytes"], 133885310500)
         self.assertGreater(manifest["totalDownloadBytes"], manifest["artifacts"][0]["downloadBytes"] * 1000)
 
-    def test_support_records_are_bound_and_do_not_enable_runnable_catalog_entries(self):
+    def test_support_records_are_bound_and_only_complete_beam_is_in_normal_catalog(self):
         support = read("shared/experimental-model-support.json")
         catalog = read("shared/model-catalog.json")
         catalog_ids = {model["id"] for model in catalog["models"]}
         for model in support["models"]:
             with self.subTest(model=model["modelId"]):
-                self.assertIs(model["appAvailable"], False)
-                self.assertNotIn(model["modelId"], catalog_ids)
+                if model["modelId"].startswith("beam-"):
+                    self.assertIs(model["appAvailable"], True)
+                    self.assertIn(model["modelId"], catalog_ids)
+                    entry = next(item for item in catalog["models"] if item["id"] == model["modelId"])
+                    self.assertEqual(len(entry["artifacts"]), 4)
+                    self.assertEqual(sum(item["downloadBytes"] for item in entry["artifacts"]), 133885310500)
+                    self.assertEqual(model["validation"]["modelInference"], "not-run")
+                else:
+                    self.assertNotIn(model["modelId"], catalog_ids)
                 self.assertTrue(model["status"].startswith("experimental-"))
                 self.assertGreater(len(model["blockers"]), 0)
                 artifact = model["artifactManifest"]

@@ -1,12 +1,12 @@
 {
   "version": 1,
   "reviewedAt": "2026-10-18",
-  "scope": "Source and artifact provenance for pending app integrations. This file does not enable runnable catalog entries.",
+  "scope": "Source and artifact provenance for experimental app workflows. Catalog availability remains subject to actual compiled capabilities, complete verified artifacts, and resource gates.",
   "models": [
     {
       "modelId": "beam-1.0-501b-a23b-ud-iq2-xxs",
-      "status": "experimental-source-only",
-      "appAvailable": false,
+      "status": "experimental-text-chat",
+      "appAvailable": true,
       "kind": "text-generation",
       "modalities": [
         "text"
@@ -44,26 +44,25 @@
         "notes": [
           "Assistant history supports reasoning_content; preserve it for fidelity. The official template allows allow_missing_thinking=true but warns that dropping reasoning degrades output.",
           "A final-channel parser must hide analysis and Harmony wire headers; generic GPT-OSS or ChatML formatting is insufficient.",
-          "Tool calls use Reflection XML and are outside this graph-only integration."
-        ]
+          "Reflection XML tool calls and grammar requests remain unavailable; text chat uses the official minimal-effort framing."
+        ],
+        "allowMissingThinkingForRestoredHistory": true
       },
       "blockers": [
-        "Hosted compile and synthetic graph fixture have not yet been observed passing.",
-        "Native Harmony prompt adapter and final-channel streaming parser are not wired.",
-        "Native complete multipart model installer and whole-model memory gate are not wired.",
-        "Desktop complete multipart installation and Harmony adapter are not wired."
+        "Full-weight Beam inference and device UI validation have not been run."
       ],
       "validation": {
         "hostedFixtureCommand": "./build/bin/test-llama-archs -a beam -s 1234",
         "localSourceProvenance": "passed",
         "modelInference": "not-run",
-        "deviceUI": "not-run"
+        "deviceUI": "not-run",
+        "appIntegration": "Host fixtures cover catalog, complete multipart installer, capability and memory gates, prompt framing and final-only streaming; hosted compilation is required for the final integrated native revision."
       }
     },
     {
       "modelId": "hy-memory-30b-a3b-q4-k-m",
       "status": "experimental-workflow-only",
-      "appAvailable": false,
+      "appAvailable": true,
       "kind": "memory-writer",
       "modalities": [
         "text"
@@ -84,9 +83,9 @@
         "templateUrl": "https://huggingface.co/tencent/Hy-Memory-30B-A3B/resolve/64a460a94d5498b7316fb02395c72d01c47a7347/chat_template.jinja",
         "templateSha256": "8759492d33deb19b2f58855f62d3e431276da89d698b2800d1e353fbb12d5320",
         "reasoningEffort": "no_think",
-        "bosToken": "<｜hy_begin▁of▁sentence｜>",
-        "generationSuffix": "<｜hy_Assistant｜><think></think>",
-        "reasoningModeSuffix": "<｜reasoning_mode｜>reasoning_effort:no_think"
+        "bosToken": "<\uff5chy_begin\u2581of\u2581sentence\uff5c>",
+        "generationSuffix": "<\uff5chy_Assistant\uff5c><think></think>",
+        "reasoningModeSuffix": "<\uff5creasoning_mode\uff5c>reasoning_effort:no_think"
       },
       "workflow": {
         "purpose": "Extract proposed explicit facts/preferences from a user-selected conversation; keep the answer model and persistent memory bank separate.",
@@ -118,15 +117,16 @@
         "frameworkUrl": "https://github.com/Tencent-Hunyuan/Hy-Memory"
       },
       "blockers": [
-        "Dedicated memory-proposal command/UI with strict JSON validation and explicit save approval is not wired.",
-        "Native exact no_think HY template adapter and desktop specialized workflow are not wired.",
-        "Community conversion expert-width correction has not been independently validated with model weights."
+        "Full-weight Hy-Memory inference has not been run; expert width 768 follows the pinned conversion metadata, not a weight-level inference validation.",
+        "Final integrated native compilation and Windows private-store ACL execution remain required hosted checks for this candidate."
       ],
       "validation": {
         "artifactMetadata": "verified",
         "officialTemplateFixture": "rendered",
         "modelInference": "not-run",
-        "persistentMemoryWrites": "not-enabled"
+        "persistentMemoryWrites": "explicit-approval-only-private-store",
+        "appIntegration": "Dedicated desktop and native install/proposal/approval workflows; strict JSON validation, pinned no_think template, compiled runtime preflight, exclusive model lease and cancellation host fixtures.",
+        "deviceUI": "not-run"
       }
     }
   ]

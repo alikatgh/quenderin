@@ -9,6 +9,21 @@ import os
 import llama
 #endif
 
+#if canImport(llama)
+// Multiple independent engines share llama's process-wide backend registration.
+final class SharedLlamaBackend: @unchecked Sendable {
+    static let shared = SharedLlamaBackend()
+    private let lock = NSLock()
+    private var references = 0
+    func acquire() { lock.lock(); defer { lock.unlock() }; if references == 0 { llama_backend_init() }; references += 1 }
+    func release() { lock.lock(); defer { lock.unlock() }; precondition(references > 0); references -= 1; if references == 0 { llama_backend_free() } }
+}
+private final class NativeLoadCancellation {
+    let cancelled: @Sendable () -> Bool
+    init(_ cancelled: @escaping @Sendable () -> Bool) { self.cancelled = cancelled }
+}
+#endif
+
 /// Generation-scoped cancellation ledger — the fix for the stop→resend race (audit S2). The old
 /// single shared Bool had two failure modes, both user-visible: (a) a NEW generation reset the
 /// flag before the still-running decode observed it, so a Stop followed quickly by a new prompt
@@ -59,6 +74,8 @@ public actor LlamaEngine: InferenceEngine {
     private var loaded: String?
     private var loadedMuse = false
     private var loadedJais = false
+    private var loadedBeam = false
+    private var loadedSpecialist = false
     /// The `n_ctx` the loaded context was actually created with (sized from the device budget in
     /// `loadLocked`), or nil when nothing is loaded. Surfaced via `loadedContextTokens()` so the
     /// chat layer trims history to the REAL native window, not a hardcoded 4096 (Q-167 twin).
@@ -71,6 +88,7 @@ public actor LlamaEngine: InferenceEngine {
     nonisolated(unsafe) private var model: OpaquePointer?     // llama_model *
     nonisolated(unsafe) private var context: OpaquePointer?   // llama_context *
     nonisolated(unsafe) private var vocab: OpaquePointer?     // const llama_vocab *
+    nonisolated(unsafe) private var contextCancellation: Unmanaged<NativeLoadCancellation>?
     nonisolated(unsafe) private var backendInitialized = false  // llama_backend_init is once-per-process (L1)
     /// The unthrottled (P-core) thread count chosen at load — the governor's baseline for in-flight
     /// thermal re-tuning during generation. Set under `nativeLock`; read at the start of a decode.
@@ -102,7 +120,8 @@ public actor LlamaEngine: InferenceEngine {
             throw InferenceError.loadFailed(reason: ModelRuntimeSupport.unavailableReason(for: entry))
         }
         if ModelRuntimeSupport.requiresPrism(entry) || ModelRuntimeSupport.isMuse(entry) {
-            let fitness = MemoryFitness.check(model: entry, totalGB: deviceBudgetGB, freeGB: deviceBudgetGB)
+            let freeGB = ModelRuntimeSupport.isBeam(entry) ? min(deviceBudgetGB, Double(ImageResourceBudget.current().availableMemoryBytes) / 1_073_741_824) : deviceBudgetGB
+            let fitness = MemoryFitness.check(model: entry, totalGB: deviceBudgetGB, freeGB: freeGB)
             guard fitness.canLoad else { throw InferenceError.loadFailed(reason: fitness.message) }
         }
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -119,10 +138,18 @@ public actor LlamaEngine: InferenceEngine {
         cancelState.withLock { $0.cancelAll() }   // stop any running generation before we free the context
         loaded = nil                              // nothing loaded until the new model succeeds
         loadedNCtx = nil
+        if ModelRuntimeSupport.isBeam(entry) {
+            let freeGB = min(deviceBudgetGB, Double(ImageResourceBudget.current().availableMemoryBytes) / 1_073_741_824)
+            guard MemoryFitness.check(model: entry, totalGB: deviceBudgetGB, freeGB: freeGB).canLoad else {
+                throw InferenceError.loadFailed(reason: ModelRuntimeSupport.beamUnavailableMessage)
+            }
+        }
         loadedNCtx = try loadLocked(entry: entry, path: fileURL.path)
         loaded = entry.id
         loadedMuse = ModelRuntimeSupport.isMuse(entry)
         loadedJais = metadata.architecture == "k2-horizon" || ModelRuntimeSupport.isJais(entry)
+        loadedBeam = ModelRuntimeSupport.isBeam(entry)
+        loadedSpecialist = false
         #else
         throw InferenceError.loadFailed(
             reason: "llama.cpp is not linked into QuenderinKit yet. Add a `llama` module dependency (see the wiring notes in LlamaEngine.swift), or use MockInferenceEngine in the meantime."
@@ -139,6 +166,8 @@ public actor LlamaEngine: InferenceEngine {
         loadedNCtx = nil
         loadedMuse = false
         loadedJais = false
+        loadedBeam = false
+        loadedSpecialist = false
     }
 
     /// Best-effort: interrupt an in-flight `generate` (e.g. a stop button). The switch path
@@ -151,13 +180,18 @@ public actor LlamaEngine: InferenceEngine {
 
     public func generate(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        guard !loadedSpecialist else { throw InferenceError.generationFailed(reason: "This specialist is available only through its dedicated text workflow.") }
+        guard !loadedBeam else { throw InferenceError.generationFailed(reason: "Beam supports structured text chat only; raw/agent requests are unavailable.") }
         guard !loadedJais else { throw InferenceError.generationFailed(reason: "Jais 3 currently supports structured text chat only; choose another model for agent actions.") }
         try MuseGenerationPolicy.validate(isMuse: loadedMuse, request: .raw, hasGrammar: options.gbnfGrammar != nil)
         return try await startGeneration(prompt: prompt, options: options)
     }
 
     /// Called only after the public API selected and constructed the appropriate framing.
-    private func startGeneration(prompt: String, options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
+    private func startGeneration(prompt: String, options: GenerationOptions, generationID: UInt64? = nil, deadline: ContinuousClock.Instant? = nil) async throws -> AsyncThrowingStream<String, Error> {
+        guard !loadedBeam || options.gbnfGrammar == nil else {
+            throw InferenceError.generationFailed(reason: "Beam tools and grammar decoding are unavailable.")
+        }
         guard !loadedJais || options.gbnfGrammar == nil else {
             throw InferenceError.generationFailed(reason: "Jais 3 agent grammar decoding is unavailable.")
         }
@@ -165,16 +199,18 @@ public actor LlamaEngine: InferenceEngine {
         #if canImport(llama)
         let muse = loadedMuse
         let jais = loadedJais
+        let beam = loadedBeam
+        let hy = loadedSpecialist
         // Mint THIS generation's id — never reset a shared flag (S2): the old `= false` here
         // erased a Stop aimed at the still-running previous decode, and the old onTermination's
         // `= true` could kill the NEXT generation. With ids, a cancel reaches exactly the
         // generations minted before it.
-        let myGen = cancelState.withLock { $0.mint() }
+        let myGen = generationID ?? cancelState.withLock { $0.mint() }
         return AsyncThrowingStream { continuation in
             // Run the decode OFF the cooperative pool (M2) so a multi-second generation doesn't
             // pin a Swift-concurrency thread; `nativeLock` (acquired inside) keeps it safe.
             DispatchQueue.global(qos: .userInitiated).async {
-                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, jais: jais, into: continuation)
+                self.runGeneration(gen: myGen, prompt: prompt, options: options, muse: muse, jais: jais, beam: beam, hy: hy, deadline: deadline, into: continuation)
             }
             continuation.onTermination = { _ in self.cancelState.withLock { $0.cancel(upTo: myGen) } }
         }
@@ -190,8 +226,10 @@ public actor LlamaEngine: InferenceEngine {
     /// `buildChatPrompt` path, including the no-think close for reasoning models.
     public func generateChat(system: String, history: [ChatMessage], options: GenerationOptions) async throws -> AsyncThrowingStream<String, Error> {
         guard loaded != nil else { throw InferenceError.modelNotLoaded }
+        guard !loadedSpecialist else { throw InferenceError.generationFailed(reason: "This specialist requires its dedicated workflow.") }
         #if canImport(llama)
-        let prompt = loadedMuse ? MuseChatPrompt.build(system: system, history: history)
+        let prompt = loadedBeam ? BeamChatPrompt.build(system: system, history: history)
+            : loadedMuse ? MuseChatPrompt.build(system: system, history: history)
             : (buildChatPrompt(system: system, history: history)
             ?? flatTranscriptPrompt(system: system, history: history))   // model exposes no template
         return try await startGeneration(prompt: prompt, options: options)
@@ -199,6 +237,60 @@ public actor LlamaEngine: InferenceEngine {
         throw InferenceError.loadFailed(reason: "llama.cpp not linked; use MockInferenceEngine.")
         #endif
     }
+
+    /// A genuine artifact proof is the only entry to this separate specialist engine.
+    func generateHyMemory(_ request: HyMemoryInferenceRequest, externalCancellation: @escaping @Sendable () -> Bool) async throws -> AsyncThrowingStream<String, Error> {
+        guard loaded == nil, ModelRuntimeSupport.supportsBonsai else { throw HyMemoryError.invalid("A separate verified Prism specialist engine is required.") }
+        try request.artifact.assertCurrent()
+        guard ImageResourceBudget.current().availableMemoryBytes >= HyMemory.minimumMemoryBytes else { throw HyMemoryError.invalid("Hy-Memory requires at least 32 GiB available app memory.") }
+        guard request.prompt.utf8.count <= 16_384, request.prompt.hasPrefix("<｜hy_begin▁of▁sentence｜>"),
+              request.prompt.components(separatedBy: "<｜hy_begin▁of▁sentence｜>").count == 2 else { throw HyMemoryError.invalid("Invalid specialist prompt.") }
+        #if canImport(llama)
+        let metadata = try GGUFModelMetadata.read(from: request.artifact.fileURL)
+        guard metadata.architecture == "hy_v3", metadata.splitCount == 1 else { throw HyMemoryError.invalid("The specialist architecture is invalid.") }
+        let gen = cancelState.withLock { $0.mint() }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(60))
+        let cancelled: @Sendable () -> Bool = { externalCancellation() || self.cancelState.withLock { $0.isCancelled(gen) } || ContinuousClock.now >= deadline }
+        guard !cancelled() else { throw InferenceError.cancelled }
+        let entry = ModelEntry(id: HyMemory.modelID, label: "Hy-Memory specialist", filename: HyMemory.filename,
+            ramGB: 24, sizeLabel: "18.24 GB", paramsBillions: 30, quantization: "Q4_K_M", urlString: "",
+            sha256: HyMemory.sha256, downloadBytes: HyMemory.downloadBytes)
+        loadedNCtx = try loadLocked(entry: entry, path: request.artifact.fileURL.path, specialist: true, cancellation: cancelled)
+        guard !cancelled() else { throw InferenceError.cancelled }
+        try request.artifact.assertCurrent()
+        loaded = HyMemory.modelID; loadedSpecialist = true
+        return try await startGeneration(prompt: request.prompt, options: .init(maxTokens: 512, temperature: 0,
+            topP: 1, topK: 0, stopSequences: request.stopSequences), generationID: gen, deadline: deadline)
+        #else
+        throw HyMemoryError.invalid("The native Prism specialist runtime is not linked.")
+        #endif
+    }
+
+    func generateGranite(_ proof: GraniteArtifactProof, messages: [GraniteMessage], externalCancellation: @escaping @Sendable () -> Bool) async throws -> AsyncThrowingStream<String, Error> {
+        guard loaded == nil, ModelRuntimeSupport.supportsBonsai, ModelRuntimeSupport.supportsWeeklyText else { throw GraniteError.invalid("The verified Prism text runtime and a separate specialist engine are required.") }
+        try proof.assertCurrent()
+        guard ImageResourceBudget.current().availableMemoryBytes >= Granite41.requiredMemory(bytes: proof.bytes) else { throw GraniteError.invalid("Granite requires at least 32 GiB of available app memory and complete model headroom.") }
+        let prompt = try Granite41.prompt(messages)
+        #if canImport(llama)
+        let metadata = try GGUFModelMetadata.read(from: proof.fileURL)
+        guard metadata.architecture == "graniteswitch", metadata.splitCount == 1, metadata.blockCount == 40, metadata.embeddingLength == 4096 else { throw GraniteError.invalid("Invalid Granite 4.1 8B metadata.") }
+        let gen = cancelState.withLock { $0.mint() }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(300))
+        let cancelled: @Sendable () -> Bool = { externalCancellation() || self.cancelState.withLock { $0.isCancelled(gen) } || ContinuousClock.now >= deadline }
+        guard !cancelled() else { throw InferenceError.cancelled }
+        let entry = ModelEntry(id: "granite-switch-4.1-8b-local", label: "Granite Switch 4.1 8B (local conversion)", filename: proof.fileURL.lastPathComponent,
+            ramGB: max(32, Double(proof.bytes) / 1_073_741_824), sizeLabel: "Local conversion", paramsBillions: 8, quantization: "local", urlString: "",
+            sha256: proof.sha256, downloadBytes: proof.bytes)
+        loadedNCtx = try loadLocked(entry: entry, path: proof.fileURL.path, specialist: true, cancellation: cancelled)
+        guard !cancelled() else { throw InferenceError.cancelled }
+        try proof.assertCurrent(); loaded = entry.id; loadedSpecialist = true
+        return try await startGeneration(prompt: prompt, options: .init(maxTokens: 512, temperature: 0.7,
+            topP: 0.95, topK: 40, stopSequences: ["<|end_of_text|>"]), generationID: gen, deadline: deadline)
+        #else
+        throw GraniteError.invalid("The native Prism runtime is not linked.")
+        #endif
+    }
+
 
     // MARK: - Real inference (compiled only when llama.cpp is linked)
 
@@ -260,19 +352,31 @@ public actor LlamaEngine: InferenceEngine {
     /// failure, leaving `model`/`context`/`vocab` nil so the engine reports "not loaded".
     /// Returns the `n_ctx` the context was created with, for `loadedContextTokens()` (the caller
     /// stores it on the actor — this nonisolated helper can't write actor state itself).
-    nonisolated private func loadLocked(entry: ModelEntry, path: String) throws -> Int {
+    nonisolated private func loadLocked(entry: ModelEntry, path: String, specialist: Bool = false, cancellation: (@Sendable () -> Bool)? = nil) throws -> Int {
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
         if let c = context { llama_free(c) }
+        contextCancellation?.release(); contextCancellation = nil
         if let m = model { llama_model_free(m) }
         context = nil
         model = nil
         vocab = nil
 
-        if !backendInitialized { llama_backend_init(); backendInitialized = true }  // once per process (L1)
+        if !backendInitialized { SharedLlamaBackend.shared.acquire(); backendInitialized = true }  // once per process (L1)
 
         var modelParams = llama_model_default_params()
+        var loadCancellation: Unmanaged<NativeLoadCancellation>?
+        if let cancellation {
+            let box = Unmanaged.passRetained(NativeLoadCancellation(cancellation))
+            loadCancellation = box
+            modelParams.progress_callback = { _, data in
+                guard let data else { return false }
+                return !Unmanaged<NativeLoadCancellation>.fromOpaque(data).takeUnretainedValue().cancelled()
+            }
+            modelParams.progress_callback_user_data = box.toOpaque()
+        }
+        defer { loadCancellation?.release() }
         // Metal offload only when the weights actually fit the app budget. A paged MoE
         // (file > budget, e.g. a 13 GB 35B-A3B on 16 GB) runs CPU-only so the OS page cache
         // streams the routed experts — Metal would wire the whole file into the GPU working
@@ -288,13 +392,13 @@ public actor LlamaEngine: InferenceEngine {
         let plan = GpuOffloadPolicy.plan(
             fileSizeGB: fileSizeGB, deviceBudgetGB: deviceBudgetGB,
             isMoE: isMoE, expertOffloadEnabled: expertOffloadEnabled)
-        modelParams.n_gpu_layers = plan.nGpuLayers
+        modelParams.n_gpu_layers = specialist ? 0 : plan.nGpuLayers
         // Expert buffer-type override — a NULL-terminated `llama_model_tensor_buft_override`
         // array (the C API behind `--cpu-moe`). The pattern string and array must outlive the
         // load call, so allocate here and release on exit (also on the throw path below).
         var expertPatternPtr: UnsafeMutablePointer<CChar>?
         var expertOverrides: UnsafeMutableBufferPointer<llama_model_tensor_buft_override>?
-        if isMoE && plan.experts == .cpu {
+        if !specialist && isMoE && plan.experts == .cpu {
             expertPatternPtr = strdup(GpuOffloadPolicy.moeExpertTensorPattern)
             let buf = UnsafeMutableBufferPointer<llama_model_tensor_buft_override>.allocate(capacity: 2)
             buf[0] = llama_model_tensor_buft_override(
@@ -326,6 +430,13 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         var ctxParams = llama_context_default_params()
+        if let box = loadCancellation {
+            ctxParams.abort_callback = { data in
+                guard let data else { return true }
+                return Unmanaged<NativeLoadCancellation>.fromOpaque(data).takeUnretainedValue().cancelled()
+            }
+            ctxParams.abort_callback_data = box.toOpaque()
+        }
         // Flash Attention EXPLICITLY on AUTO — llama.cpp enables it whenever the model supports it
         // (a real Metal decode win + required for quantized V-cache) and resolves to disabled, not a
         // hard failure, when it can't (ENABLED would abort context init on unsupported archs). The
@@ -342,6 +453,8 @@ public actor LlamaEngine: InferenceEngine {
             appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: kvCacheType)
         if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
         if ModelRuntimeSupport.isMuse(entry) { nctx = min(nctx, ModelRuntimeSupport.museMaxContextTokens) }
+        if ModelRuntimeSupport.isBeam(entry) { nctx = min(nctx, 4096) }
+        if specialist { nctx = min(nctx, 4096) }
         ctxParams.n_ctx = UInt32(nctx)
         // Bound the logical and physical prefill batches, as on Android. Native calls
         // can then return to the Stop check every 512 tokens, instead of 2048.
@@ -355,9 +468,10 @@ public actor LlamaEngine: InferenceEngine {
         ctxParams.type_k = ggmlCacheType
         ctxParams.type_v = ggmlCacheType
         // Performance-core count, not all cores — E-cores slow + heat up mobile decode.
-        let baseThreads = ThreadPlanner.recommend(
+        let plannedThreads = ThreadPlanner.recommend(
             performanceCores: HardwareProbe.performanceCoreCount(),
             totalCores: ProcessInfo.processInfo.activeProcessorCount)
+        let baseThreads = specialist ? min(8, plannedThreads) : plannedThreads
         loadedBaseThreads = baseThreads   // governor baseline for in-flight thermal re-tuning
         // If the device is already thermally throttling when we load, start with fewer threads
         // so a long generation stays sustainable instead of spiking heat and getting killed.
@@ -380,6 +494,7 @@ public actor LlamaEngine: InferenceEngine {
             nctx = ContextWindow.recommend(
                 appBudgetGB: deviceBudgetGB, modelWeightsGB: entry.ramGB, kvCacheType: .f16)
             if ModelRuntimeSupport.isBonsai(entry) { nctx = min(nctx, ModelRuntimeSupport.bonsaiMaxContextTokens) }
+            if specialist || ModelRuntimeSupport.isBeam(entry) { nctx = min(nctx, 4096) }
             ctxParams.n_ctx = UInt32(nctx)
             ctxParams.n_batch = min(ctxParams.n_batch, UInt32(nctx))
             ctxParams.n_ubatch = ctxParams.n_batch
@@ -392,9 +507,10 @@ public actor LlamaEngine: InferenceEngine {
 
         model = m
         context = ctx
+        if let box = loadCancellation { contextCancellation = box.retain() }
         vocab = llama_model_get_vocab(m)
         cachedTokens = []   // fresh context ⇒ empty KV cache
-        warmUpLocked(context: ctx, vocab: llama_model_get_vocab(m))
+        if !specialist { warmUpLocked(context: ctx, vocab: llama_model_get_vocab(m)) }
         return nctx
     }
 
@@ -426,12 +542,13 @@ public actor LlamaEngine: InferenceEngine {
         nativeLock.lock()
         defer { nativeLock.unlock() }
         if let context { llama_free(context) }
+        contextCancellation?.release(); contextCancellation = nil
         if let model { llama_model_free(model) }
         context = nil
         model = nil
         vocab = nil
         cachedTokens = []
-        if backendInitialized { llama_backend_free(); backendInitialized = false }  // symmetric with the gated init (L1)
+        if backendInitialized { SharedLlamaBackend.shared.release(); backendInitialized = false }  // symmetric with the gated init (L1)
     }
 
     /// The whole generation loop: tokenize → decode → sample → detokenize → yield → repeat. Runs
@@ -442,11 +559,14 @@ public actor LlamaEngine: InferenceEngine {
         options: GenerationOptions,
         muse: Bool,
         jais: Bool,
+        beam: Bool,
+        hy: Bool,
+        deadline: ContinuousClock.Instant?,
         into continuation: AsyncThrowingStream<String, Error>.Continuation
     ) {
         // This generation answers ONLY for its own id — a cancel aimed at an older run, or a
         // stale onTermination from a dead stream, can never stop it (S2).
-        let cancelled = { self.cancelState.withLock { $0.isCancelled(myGen) } }
+        let cancelled = { self.cancelState.withLock { $0.isCancelled(myGen) } || (deadline.map { ContinuousClock.now >= $0 } ?? false) }
         nativeLock.lock()
         defer { nativeLock.unlock() }
 
@@ -456,7 +576,7 @@ public actor LlamaEngine: InferenceEngine {
         }
 
         // 1) Prompt → tokens.
-        let rawTokens = tokenize(text: prompt, addBOS: !muse)
+        let rawTokens = tokenize(text: prompt, addBOS: !muse && !beam && !hy)
         guard !rawTokens.isEmpty else {
             continuation.finish(throwing: InferenceError.generationFailed(reason: "tokenizer produced no tokens"))
             return
@@ -471,6 +591,14 @@ public actor LlamaEngine: InferenceEngine {
         let reserve = max(256, min(options.maxTokens, nCtx / 4))
         let promptLimit = max(16, nCtx - reserve)
         let newTokens: [llama_token]
+        if hy && rawTokens.count + options.maxTokens > nCtx {
+            continuation.finish(throwing: InferenceError.generationFailed(reason: "Selected conversation exceeds the specialist context budget."))
+            return
+        }
+        if beam && rawTokens.count > promptLimit {
+            continuation.finish(throwing: InferenceError.generationFailed(reason: "Beam conversation exceeds the available context; start a shorter chat."))
+            return
+        }
         if rawTokens.count > promptLimit {
             let head = promptLimit / 2
             newTokens = Array(rawTokens.prefix(head)) + Array(rawTokens.suffix(promptLimit - head))
@@ -573,7 +701,8 @@ public actor LlamaEngine: InferenceEngine {
         case .cancelled:
             llama_memory_clear(mem, true)
             cachedTokens = []
-            continuation.finish()
+            if hy { continuation.finish(throwing: SpecialistGenerationTermination.failure(cancelled: true, deadlineExpired: deadline.map { ContinuousClock.now >= $0 } ?? false)!) }
+            else { continuation.finish() }
             return
         case .decoded(let code) where code != 0:
             llama_memory_clear(mem, true)
@@ -604,6 +733,7 @@ public actor LlamaEngine: InferenceEngine {
         var stopScanner = StopSequenceScanner(stops: options.stopSequences)
         var museFilter = MuseFinalChannelFilter()
         var jaisFilter = JaisFinalChannelFilter()
+        var beamFilter = BeamFinalChannelFilter()
         var yieldedAnyText = false   // mirrors llama_generate.h's `out.empty()` — true once ANY non-empty
                                       // piece has been yielded, INCLUDING the current token's (checked
                                       // below only after this token's own yield, same ordering as the
@@ -625,7 +755,7 @@ public actor LlamaEngine: InferenceEngine {
             }
 
             let decodedPiece = decoder.feed(tokenToBytes(next))
-            let piece = muse ? museFilter.feed(decodedPiece) : jais ? jaisFilter.feed(decodedPiece) : decodedPiece
+            let piece = beam ? beamFilter.feed(decodedPiece) : muse ? museFilter.feed(decodedPiece) : jais ? jaisFilter.feed(decodedPiece) : decodedPiece
             if !piece.isEmpty {
                 if stopScanner.isActive {
                     let (emit, stop) = stopScanner.feed(piece)
@@ -636,6 +766,7 @@ public actor LlamaEngine: InferenceEngine {
                     yieldedAnyText = true
                 }
             }
+            if beam && beamFilter.isStopped { break }
             if muse && museFilter.isStopped { break }
             if jais && jaisFilter.isStopped { break }
             produced += 1
@@ -666,8 +797,13 @@ public actor LlamaEngine: InferenceEngine {
             }
             cachedTokens.append(next)                       // KV (and our mirror) now also holds this reply token
         }
+        if hy, let failure = SpecialistGenerationTermination.failure(cancelled: cancelled(), deadlineExpired: deadline.map { ContinuousClock.now >= $0 } ?? false) {
+            continuation.finish(throwing: failure)
+            return
+        }
         let decodedTail = decoder.flush()
-        let tail = muse ? (museFilter.feed(decodedTail) + museFilter.finish())
+        let tail = beam ? (beamFilter.feed(decodedTail) + beamFilter.finish())
+            : muse ? (museFilter.feed(decodedTail) + museFilter.finish())
             : jais ? (jaisFilter.feed(decodedTail) + jaisFilter.finish()) : decodedTail
         if stopScanner.isActive {
             if !tail.isEmpty {
@@ -679,8 +815,8 @@ public actor LlamaEngine: InferenceEngine {
         } else if !tail.isEmpty {
             continuation.yield(tail)
         }
-        if jais && !yieldedAnyText && tail.isEmpty && !cancelled() {
-            continuation.finish(throwing: InferenceError.generationFailed(reason: "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget."))
+        if (jais || beam) && !yieldedAnyText && tail.isEmpty && !cancelled() {
+            continuation.finish(throwing: InferenceError.generationFailed(reason: "This model reached its generation limit before producing a final answer. Try a shorter question or a larger token budget."))
             return
         }
         let perfEnd = ContinuousClock.now

@@ -32,6 +32,7 @@ async function beforePack(context, run = command) {
   run(python, ['scripts/prepare_prism_node_runtime.py', 'verify', '--package-dir', 'node_modules/node-llama-cpp'], root);
   run(process.execPath, ['scripts/verify_prism_node_runtime.mjs'], root);
   run(python, ['scripts/build_desktop_diffusion.py', 'verify', '--directory', path.join(root, 'build', 'diffusion', `${os}-${arch}`), '--platform', os, '--arch', arch], root);
+  run(python, ['scripts/build_vision_runtime.py', 'verify', '--directory', path.join(root, 'build', 'vision', `${os}-${arch}`)], root);
 }
 
 async function afterPack(context, run = command) {
@@ -42,6 +43,9 @@ async function afterPack(context, run = command) {
     : path.join(context.appOutDir, 'resources');
   run(process.platform === 'win32' ? 'python' : 'python3', [
     path.join(root, 'scripts', 'build_desktop_diffusion.py'), 'verify', '--directory', path.join(resources, 'diffusion'), '--platform', os, '--arch', arch,
+  ], root);
+  run(process.platform === 'win32' ? 'python' : 'python3', [
+    path.join(root, 'scripts', 'build_vision_runtime.py'), 'verify', '--directory', path.join(resources, 'vision'),
   ], root);
 }
 

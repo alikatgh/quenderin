@@ -40,10 +40,10 @@ async function readHead(filePath: string, n: number): Promise<Buffer> {
 }
 
 /** Stream the file through SHA-256 (constant memory) → lowercase hex digest. */
-export function sha256File(filePath: string): Promise<string> {
+export function sha256File(filePath: string, signal?: AbortSignal): Promise<string> {
     return new Promise((resolve, reject) => {
         const hash = crypto.createHash('sha256');
-        const stream = fs.createReadStream(filePath);
+        const stream = fs.createReadStream(filePath, { signal });
         stream.on('error', reject);
         stream.on('data', (chunk) => hash.update(chunk));
         stream.on('end', () => resolve(hash.digest('hex')));
@@ -60,7 +60,8 @@ export function sha256File(filePath: string): Promise<string> {
  * the 4-byte header is UNDETECTABLE here (bug hunt r-uc #5 — the old "rejects truncated files"
  * claim was false for exactly that case), so a caller that knows the expected total MUST pass it.
  */
-export async function verifyModelIntegrity(filePath: string, expectedSha256?: string | null, expectedBytes?: number): Promise<void> {
+export async function verifyModelIntegrity(filePath: string, expectedSha256?: string | null, expectedBytes?: number, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     const head = await readHead(filePath, 4);
     if (!hasGGUFMagic(head)) {
         throw new ModelIntegrityError(
@@ -77,8 +78,9 @@ export async function verifyModelIntegrity(filePath: string, expectedSha256?: st
             );
         }
     }
+    signal?.throwIfAborted();
     if (expectedSha256) {
-        const actual = await sha256File(filePath);
+        const actual = await sha256File(filePath, signal);
         if (actual.toLowerCase() !== expectedSha256.toLowerCase()) {
             throw new ModelIntegrityError(
                 `Model checksum mismatch — expected SHA-256 ${expectedSha256}, got ${actual}. ` +

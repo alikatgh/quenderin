@@ -7,3 +7,5 @@ These small fixtures verify exact preimage hashes and patch applicability withou
 The published loader fixture is from https://unpkg.com/node-llama-cpp@3.19.1/dist/bindings/utils/cloneLlamaCppRepo.js
 
 The published source metadata fixture is from https://unpkg.com/node-llama-cpp@3.19.1/llama/llama.cpp.info.json
+
+The context-initialization fixture is from https://unpkg.com/node-llama-cpp@3.19.1/dist/evaluator/LlamaContext/LlamaContext.js

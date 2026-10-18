@@ -1,9 +1,10 @@
+import { isBeamIdentity, isMuseIdentity, pinnedMultipartParts, type MultipartDescriptor } from './multipartModels.js';
 /** Prism's packed ternary formats are not understood by stock llama.cpp. */
 export const PRISM_LLAMA_CPP_REPO = 'PrismML-Eng/llama.cpp';
 export const PRISM_LLAMA_CPP_REVISION = 'e8fd209c975c80aa7fb36a8423571ff3b1b7e955';
 
 /** Structural so imported models can use the same gate as catalog entries. */
-export interface RuntimeModelDescriptor {
+export interface RuntimeModelDescriptor extends MultipartDescriptor {
     id?: string;
     filename?: string;
     quantization?: string;
@@ -22,18 +23,18 @@ function decodedIdentity(value: string): string {
 }
 
 /** Source availability is not a complete chat workflow. Actual GGUF identity wins over aliases. */
-export function unsupportedModelWorkflowReason(entry: RuntimeModelDescriptor): string | undefined {
+export function unsupportedModelWorkflowReason(entry: RuntimeModelDescriptor, allowPinnedBeam = false): string | undefined {
     if ((entry.architecture?.length ?? 0) > 256 || identifiers(entry).some(value => value.length > 16_384)) return 'The model identity is too long to validate safely.';
     const values = identifiers(entry).map(decodedIdentity);
     const keys = values.map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ''));
     const arch = entry.architecture?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? '';
-    if (arch === 'beam' || values.some(value => /(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)/i.test(value))) {
+    if (isBeamIdentity(entry) && !allowPinnedBeam && !(entry.id === 'beam-1.0-501b-a23b-ud-iq2-xxs' && pinnedMultipartParts(entry))) {
         return 'Beam requires the complete multipart installer and Harmony chat adapter. Generic chat is unavailable.';
     }
     if (keys.some(key => key.includes('hymemory'))) return 'Hy-Memory requires a specialized memory-proposal workflow with JSON validation and explicit save approval. Generic chat is unavailable.';
-    if (keys.some(key => key.includes('supervl') && (key.includes('nemotron') || key.includes('120b')))) return 'Nemotron Super VL 120B requires variant and vision validation. This model is unavailable in generic chat.';
-    if (arch === 'step5' || arch === 'step5vl' || keys.some(key => key.includes('step5') && !key.includes('step35'))) return 'Step 5 requires an architecture that is unavailable in the pinned runtime.';
-    if (arch.includes('graniteswitch') || keys.some(key => key.includes('granite') && key.includes('switch') && key.includes('41'))) return 'Granite Switch 4.1 requires its speech adapter. Generic chat is unavailable.';
+    if (keys.some(key => key.includes('supervl') && (key.includes('nemotron') || key.includes('120b')))) return 'Use Ask about an image with the complete Nemotron Super VL model and matching projector.';
+    if (arch === 'step5' || arch === 'step5vl' || keys.some(key => key.includes('step5') && !key.includes('step35'))) return 'Use the Step 5 workflow with the pinned official CUDA gateway on your own host.';
+    if (arch.includes('graniteswitch') || keys.some(key => key.includes('granite') && key.includes('switch') && key.includes('41'))) return 'Use Granite Switch 4.1 chat with a verified converted model and its provenance record.';
     if (keys.some(key => key.includes('bolte4b') || (key.includes('nemotron') && key.includes('e4b')))) return 'Nemotron Bolt E4B has no verified public artifact in this release.';
     if (keys.some(key => key.includes('nemotron35')) && !keys.some(key => /nemotron35.*bolt.*74b.*a9b/.test(key))) return 'This Nemotron 3.5 variant has not been validated. Only Bolt 74B-A9B is available as experimental text chat.';
     return undefined;
@@ -59,6 +60,8 @@ export interface NodeLlamaRuntime {
     llamaCppRelease?: { repo?: string; release?: string };
     /** Read from the compiled addon capability function, never preferences or environment. */
     weeklyTextABI?: number;
+    beamABI?: number;
+    museSparkABI?: number;
 }
 
 export interface ModelRuntimeCompatibility {
@@ -68,7 +71,7 @@ export interface ModelRuntimeCompatibility {
 }
 
 export function requiresPrismRuntime(entry: RuntimeModelDescriptor): boolean {
-    return requiresVerifiedTextRuntime(entry) || requiresWeeklyTextRuntime(entry)
+    return isBeamIdentity(entry) || isMuseIdentity(entry) || requiresVerifiedTextRuntime(entry) || requiresWeeklyTextRuntime(entry)
         || /^(?:PTQ1_0|PQ2_0)$/i.test(entry.quantization?.trim() ?? '')
         || /bonsai/i.test(entry.id ?? '')
         || /bonsai|PTQ1_0|PQ2_0/i.test(entry.filename ?? '');
@@ -84,16 +87,19 @@ export function getModelRuntimeCompatibility(
     entry: RuntimeModelDescriptor,
     runtime?: NodeLlamaRuntime,
 ): ModelRuntimeCompatibility {
-    const unavailable = unsupportedModelWorkflowReason({ architecture: entry.architecture, modelName: entry.modelName })
-        ?? unsupportedModelWorkflowReason(entry);
+    const unavailable = unsupportedModelWorkflowReason({ architecture: entry.architecture, modelName: entry.modelName },
+        entry.id === 'beam-1.0-501b-a23b-ud-iq2-xxs' && !!pinnedMultipartParts(entry)) ?? unsupportedModelWorkflowReason(entry);
     if (unavailable) return { canLoad: false, message: unavailable, runtimeRequirement: 'Unavailable model workflow' };
-    if (entry.architecture?.toLowerCase().replace(/[^a-z0-9]/g, '') === 'musespark'
-        || /muse[-_ ]?spark/i.test(identifiers(entry).map(decodedIdentity).join(' '))) {
-        return {
-            canLoad: false,
-            runtimeRequirement: 'Muse native text adapter',
-            message: 'Muse Spark Open requires the native multipart installer and text-chat adapter. This Electron/CLI build cannot install or run Muse.',
-        };
+    if (isBeamIdentity(entry) || isMuseIdentity(entry)) {
+        const beam = entry.id === 'beam-1.0-501b-a23b-ud-iq2-xxs';
+        if (!pinnedMultipartParts(entry) || !isPrismRuntime(runtime)
+            || (beam ? runtime?.beamABI : runtime?.museSparkABI) !== 1) {
+            return { canLoad: false, runtimeRequirement: 'Verified multipart text runtime',
+                message: `${beam ? 'Beam' : 'Muse Spark'} requires the complete pinned catalog artifact set and compiled ${beam ? 'Beam' : 'Muse'} capability. Experimental text chat only.` };
+        }
+        if (entry.architecture && entry.architecture.toLowerCase().replace(/_/g, '-') !== (beam ? 'beam' : 'muse-spark')) {
+            return { canLoad: false, message: 'GGUF architecture does not match the pinned multipart model.' };
+        }
     }
     if (requiresWeeklyTextRuntime(entry) && (!isPrismRuntime(runtime) || runtime?.weeklyTextABI !== 1)) {
         return {

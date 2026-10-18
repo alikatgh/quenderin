@@ -33,7 +33,8 @@ public enum MemoryFitness {
         budgetWarning: Double = defaultBudgetWarning,
         prismRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBonsai,
         museRuntimeAvailable: Bool = ModelRuntimeSupport.supportsMuse,
-        weeklyTextRuntimeAvailable: Bool = ModelRuntimeSupport.supportsWeeklyText
+        weeklyTextRuntimeAvailable: Bool = ModelRuntimeSupport.supportsWeeklyText,
+        beamRuntimeAvailable: Bool = ModelRuntimeSupport.supportsBeam
     ) -> MemoryCheckResult {
         let overhead = model.paramsBillions <= 3 && !ModelRuntimeSupport.requiresPrism(model) ? overheadBase : overheadLarge
         let required = ModelRuntimeSupport.memoryFootprintGB(model) * overhead
@@ -45,6 +46,10 @@ public enum MemoryFitness {
                                      requiredMemoryGB: required, remainingAfterLoadGB: remaining, message: reason)
         }
 
+        if ModelRuntimeSupport.isBeam(model), (!beamRuntimeAvailable || !ModelRuntimeSupport.isVerifiedBeamManifest(model)) {
+            return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
+                requiredMemoryGB: required, remainingAfterLoadGB: remaining, message: ModelRuntimeSupport.beamUnavailableMessage)
+        }
         if ModelRuntimeSupport.requiresWeeklyTextRuntime(model), !weeklyTextRuntimeAvailable {
             return MemoryCheckResult(canLoad: false, severity: .blocked, availableMemoryGB: freeGB,
                                      requiredMemoryGB: required, remainingAfterLoadGB: remaining,

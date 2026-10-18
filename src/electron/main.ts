@@ -2,7 +2,9 @@ import { app, BrowserWindow, Menu, Tray, globalShortcut, nativeImage, ipcMain, d
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startDashboardServer } from '../server.js';
+import type { DashboardServerHandle } from '../server.js';
 import { registerImageWorkflow } from './imageWorkflow.js';
+import { registerVisionWorkflow } from './visionWorkflow.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,8 +12,10 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let imageWorkflow: ReturnType<typeof registerImageWorkflow> | undefined;
+let visionWorkflow: ReturnType<typeof registerVisionWorkflow> | undefined;
 let quitAfterImages = false;
 let quittingImages = false;
+let backendReady: Promise<DashboardServerHandle> | undefined;
 // Set from startDashboardServer()'s return — the ACTUAL bound port and the per-launch auth
 // token. The old code pre-probed a port with its own all-interfaces net.createServer and threw
 // the server's return away, so the window could load the wrong port with no token, breaking all
@@ -78,11 +82,15 @@ async function bootstrap() {
     //    BOTH from the return instead of pre-probing our own port (which bound all interfaces and
     //    could disagree) and discarding the token (Q-001/Q-128).
     console.log(`Booting Quenderin backend near port ${PORT}...`);
-    const { port, authToken } = await startDashboardServer(PORT, false); // false = don't open system browser
+    backendReady = startDashboardServer(PORT, false); // false = don't open system browser
+    const backend = await backendReady;
+    if (quittingImages) { await backend.shutdown(); return; }
+    const { port, authToken } = backend;
     PORT = port;
     AUTH_TOKEN = authToken;
 
     imageWorkflow = registerImageWorkflow({ ipcMain, dialog, getWindow: () => mainWindow, trustedUrl: `http://localhost:${PORT}/` });
+    visionWorkflow = registerVisionWorkflow({ ipcMain, dialog, getWindow: () => mainWindow, trustedUrl: `http://localhost:${PORT}/` });
 
     // 2. Create the Electron Window — platform-aware chrome (loads PORT, carries AUTH_TOKEN)
     createWindow();
@@ -215,10 +223,14 @@ app.on('will-quit', () => {
 });
 
 app.on('before-quit', event => {
-    if (quitAfterImages || !imageWorkflow) return;
+    if (quitAfterImages || (!imageWorkflow && !backendReady)) return;
     event.preventDefault();
     if (quittingImages) return;
     quittingImages = true;
-    // Keep the main process alive through the runtime's bounded SIGINT/SIGKILL grace.
-    void imageWorkflow.dispose().finally(() => { quitAfterImages = true; app.quit(); });
+    // The same booted backend closes global admission and joins native work before app exit.
+    const forceExit = setTimeout(() => app.exit(1), 10_000); forceExit.unref();
+    const backendCleanup = backendReady?.then(backend => backend.shutdown());
+    void Promise.all([imageWorkflow?.dispose(), visionWorkflow?.dispose(), backendCleanup]).then(() => {
+        clearTimeout(forceExit); quitAfterImages = true; app.quit();
+    }, error => { clearTimeout(forceExit); console.error('Native shutdown failed:', error); app.exit(1); });
 });

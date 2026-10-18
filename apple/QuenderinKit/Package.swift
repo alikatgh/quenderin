@@ -90,6 +90,9 @@ if prismRuntime {
               let stamp = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sourcePatch = lock["sourcePatch"] as? [String: Any],
               let weeklyPatch = lock["weeklyTextPatch"] as? [String: Any],
+              let beamPatch = lock["beamPatch"] as? [String: Any],
+              let visionPatch = lock["visionPatch"] as? [String: Any],
+              let granitePatch = lock["graniteConverterPatch"] as? [String: Any],
               stamp["repository"] as? String == lock["repository"] as? String,
               stamp["revision"] as? String == lock["revision"] as? String,
               stamp["sourcePatchId"] as? String == sourcePatch["id"] as? String,
@@ -99,7 +102,15 @@ if prismRuntime {
               stamp["weeklyTextPatchId"] as? String == weeklyPatch["id"] as? String,
               stamp["weeklyTextPatchSha256"] as? String == weeklyPatch["sha256"] as? String,
               stamp["weeklyTextABI"] as? Int == 1,
-              weeklyPatch["weeklyTextABI"] as? Int == 1 else {
+              weeklyPatch["weeklyTextABI"] as? Int == 1,
+              stamp["beamPatchId"] as? String == beamPatch["id"] as? String,
+              stamp["beamPatchSha256"] as? String == beamPatch["sha256"] as? String,
+              stamp["beamABI"] as? Int == 1,
+              stamp["visionPatchId"] as? String == visionPatch["id"] as? String,
+              stamp["visionPatchSha256"] as? String == visionPatch["sha256"] as? String,
+              stamp["visionABI"] as? Int == 1,
+              stamp["graniteConverterPatchId"] as? String == granitePatch["id"] as? String,
+              stamp["graniteConverterPatchSha256"] as? String == granitePatch["sha256"] as? String else {
             fatalError("Prism framework provenance is missing or does not match the pinned runtime")
         }
         let verifier = Process()
@@ -128,6 +139,12 @@ if prismRuntime {
     // Reaching this point requires the exact Muse source patch or sealed framework.
     qkSwiftSettings.append(.define("QUENDERIN_MUSE_LLAMA"))
     qkSwiftSettings.append(.define("QUENDERIN_WEEKLY_TEXT_LLAMA"))
+    qkSwiftSettings.append(.define("QUENDERIN_BEAM_LLAMA"))
+    // The sealed framework verifier checks every slice's vision header and exports.
+    // Generic source-only llama builds have no linked bridge and remain unavailable.
+    if hasXcframework && llamaDir == nil {
+        qkSwiftSettings.append(.define("QUENDERIN_VISION_LLAMA"))
+    }
 }
 
 if hasXcframework && !(prismRuntime && llamaDir != nil) {

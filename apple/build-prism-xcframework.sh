@@ -28,6 +28,7 @@ done
 python3 "$ROOT/scripts/prepare_prism_runtime.py" fetch --destination "$WORK/llama.cpp"
 cd "$WORK/llama.cpp"
 # Do not build unused tvOS/visionOS/simulator platforms in a release job.
+export QUENDERIN_VISION_SOURCE_DIR="$ROOT/native/vision"
 ./build-xcframework.sh ios-device macos
 python3 "$ROOT/scripts/prepare_prism_runtime.py" stamp --source "$PWD" --artifact "$PWD/build-apple/llama.xcframework"
 python3 "$ROOT/scripts/verify_prism_apple_runtime.py" seal --framework "$PWD/build-apple/llama.xcframework"

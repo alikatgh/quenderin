@@ -1,6 +1,6 @@
 import { open } from 'node:fs/promises';
 
-export interface GgufModelIdentity { architecture: string; modelName?: string }
+export interface GgufModelIdentity { architecture: string; modelName?: string; splitCount?: number; graniteLayers?: number; graniteEmbedding?: number }
 
 /** Metadata only: bounded reads and cursor skips, never tokenizer arrays or tensor payloads. */
 export async function readGgufModelIdentity(path: string): Promise<GgufModelIdentity> {
@@ -51,6 +51,7 @@ export async function readGgufModelIdentity(path: string): Promise<GgufModelIden
         if (count > 100_000n) throw invalid();
         let architecture: string | undefined;
         let modelName: string | undefined;
+        const dimensions: Record<string, number> = {};
         for (let i = 0n; i < count; i++) {
             const key = await string(1024n);
             const type = await integer(4);
@@ -63,6 +64,11 @@ export async function readGgufModelIdentity(path: string): Promise<GgufModelIden
                     if (modelName !== undefined) throw invalid();
                     modelName = await string(4096n);
                 }
+            } else if (['split.count', 'graniteswitch.block_count', 'graniteswitch.embedding_length'].includes(key)) {
+                if (key in dimensions || ![0n, 2n, 4n, 10n].includes(type)) throw invalid();
+                const value = await integer(Number(width(type)));
+                if (value < 1n || value > 1_000_000n) throw invalid();
+                dimensions[key] = Number(value);
             } else if (type === 8n) {
                 skip(await integer(8));
             } else if (type === 9n) {
@@ -75,7 +81,10 @@ export async function readGgufModelIdentity(path: string): Promise<GgufModelIden
             } else skip(width(type));
         }
         if (!architecture?.trim()) throw invalid();
-        return { architecture, modelName };
+        return { architecture, modelName,
+            ...(dimensions['split.count'] !== undefined ? { splitCount: dimensions['split.count'] } : {}),
+            ...(dimensions['graniteswitch.block_count'] !== undefined ? { graniteLayers: dimensions['graniteswitch.block_count'] } : {}),
+            ...(dimensions['graniteswitch.embedding_length'] !== undefined ? { graniteEmbedding: dimensions['graniteswitch.embedding_length'] } : {}) };
     } finally {
         await file.close();
     }

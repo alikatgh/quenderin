@@ -19,11 +19,18 @@ public struct SettingsView: View {
     @State private var totalModelBytes: Int64 = 0
     @State private var pendingModelDelete: InstalledModel?
     @State private var confirmClearConversations = false
+    @StateObject private var hyMemory: HyMemoryController
+    @StateObject private var step5 = Step5Controller()
+    @StateObject private var vision: VisionController
+    @StateObject private var granite: GraniteChatController
 
-    public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void) {
+    public init(coordinator: ConversationCoordinator, model: ModelEntry, onSelectModel: @escaping (ModelEntry) -> Void, suspendForSpecialist: @escaping @Sendable () async throws -> SpecialistInferenceLease = { throw VisionWorkflowError.invalid("The app has not supplied exclusive specialist engine coordination.") }) {
         self.coordinator = coordinator
         self.model = model
         self.onSelectModel = onSelectModel
+        _hyMemory = StateObject(wrappedValue: HyMemoryController(inference: DefaultHyMemoryInference.make(), suspendForSpecialist: suspendForSpecialist))
+        _vision = StateObject(wrappedValue: VisionController(suspendForSpecialist: suspendForSpecialist))
+        _granite = StateObject(wrappedValue: GraniteChatController(suspendForSpecialist: suspendForSpecialist))
     }
 
     /// A fresh manager over the on-disk models dir each access — the files on disk are the source of
@@ -63,6 +70,9 @@ public struct SettingsView: View {
         case model = "Model"
         case appearance = "Appearance"
         case agent = "Agent"
+        case step5 = "Step 5"
+        case vision = "Still image"
+        case granite = "Granite 4.1"
         case storage = "Storage"
         case about = "About"
         var id: String { rawValue }
@@ -71,6 +81,9 @@ public struct SettingsView: View {
             case .model: return "cpu"
             case .appearance: return "paintbrush"
             case .agent: return "sparkles"
+            case .step5: return "server.rack"
+            case .vision: return "photo.viewfinder"
+            case .granite: return "text.bubble"
             case .storage: return "internaldrive"
             case .about: return "info.circle"
             }
@@ -137,9 +150,16 @@ public struct SettingsView: View {
                     appearancePreviewSection
                     appearanceSection
                 case .agent:
+                    Section { HyMemoryView(controller: hyMemory) }
                     reasoningSection
                     capabilitiesSection
                     agentActivitySection
+                case .step5:
+                    Section { Step5View(controller: step5) }
+                case .vision:
+                    Section { VisionView(controller: vision) }
+                case .granite:
+                    Section { GraniteChatView(controller: granite) }
                 case .storage:
                     storageSection
                     downloadedModelsSection
@@ -163,6 +183,10 @@ public struct SettingsView: View {
             appearancePreviewSection
             appearanceSection
             reasoningSection
+            Section { HyMemoryView(controller: hyMemory) }
+            Section { Step5View(controller: step5) }
+            Section { VisionView(controller: vision) }
+            Section { GraniteChatView(controller: granite) }
             capabilitiesSection
             agentActivitySection
             storageSection

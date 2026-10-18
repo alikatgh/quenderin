@@ -103,6 +103,8 @@ jobs:
       - name: Run QuenderinKit tests
         working-directory: apple/QuenderinKit
         run: swift test
+      - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
+        run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
   prism-apple-core:
     name: Apple core (pinned Prism runtime)
@@ -124,6 +126,29 @@ jobs:
             swift test --package-path apple/QuenderinKit \
               -Xcc "-I$RUNNER_TEMP/prism-llama/include" \
               -Xcc "-I$RUNNER_TEMP/prism-llama/ggml/include"
+
+  prism-apple-framework:
+    name: Apple Prism framework and vision adapter
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and seal the actual iOS and universal macOS framework (no weights)
+        run: bash apple/build-prism-xcframework.sh "$RUNNER_TEMP/prism-framework"
+      - name: Compile and test Swift against the sealed framework
+        run: QUENDERIN_RUNTIME=prism swift test --package-path apple/QuenderinKit
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the native app project
+        working-directory: apple/QuenderinApp
+        run: xcodegen generate
+      - name: Compile the actual vision bridge for the iOS SDK
+        working-directory: apple/QuenderinApp
+        run: |
+          set -o pipefail
+          QUENDERIN_RUNTIME=prism xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/vision-ios-build" \
+            CODE_SIGNING_ALLOWED=NO build | tail -50
 
   image-runtime:
     name: Local image runtime (${{ matrix.os }})
@@ -259,6 +284,9 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Verify the actual Windows private approved-memory ACL
+        if: runner.os == 'Windows'
+        run: npx vitest run tests/hy-approved-memory-store.test.ts
       - name: Prepare verified Prism source and versioned addon patch
         run: python scripts/prepare_prism_node_runtime.py prepare --package-dir node_modules/node-llama-cpp
       - name: Compile the actual desktop addon (bounded CPU backend)
@@ -267,8 +295,15 @@ jobs:
         run: |
           python scripts/prepare_prism_node_runtime.py verify --package-dir node_modules/node-llama-cpp
           node scripts/verify_prism_node_runtime.mjs
+      - name: Exercise actual addon cancellation edits without model weights
+        if: runner.os != 'Windows'
+        run: python3 -m unittest scripts.tests.test_node_context_abort
       - name: Build and seal the isolated desktop image runtime
         run: python scripts/build_desktop_diffusion.py build --work "${{ runner.temp }}/diffusion-desktop"
+      - name: Build and seal the pinned vision worker (no weights)
+        run: python scripts/build_vision_runtime.py build --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-desktop"
+      - name: Exercise bounded image parsing and vision prompt fixtures (no weights)
+        run: python scripts/test_vision_runtime.py --source node_modules/node-llama-cpp/llama/llama.cpp --work "${{ runner.temp }}/vision-fixtures"
       - name: Load the actual Prism and image DSOs together in both orders (no weights)
         shell: bash
         run: |
@@ -289,11 +324,15 @@ jobs:
       - name: Verify the packaged image CLI, private DSO, exports and dependency closure
         if: runner.os != 'macOS'
         run: python scripts/build_desktop_diffusion.py verify --directory release/${{ matrix.unpacked }}/resources/diffusion --packaged
+      - name: Verify the shipped vision worker and exact compiled capability
+        if: runner.os != 'macOS'
+        run: python scripts/build_vision_runtime.py verify --directory release/${{ matrix.unpacked }}/resources/vision --packaged
       - name: Verify the macOS lab application's packaged image runtime
         if: runner.os == 'macOS'
         run: |
           resources="$(find release -maxdepth 3 -type d -name Quenderin.app -print -quit)/Contents/Resources"
           python3 scripts/build_desktop_diffusion.py verify --directory "$resources/diffusion" --packaged
+          python3 scripts/build_vision_runtime.py verify --directory "$resources/vision" --packaged
 
   # ── The APP target is a separate compile gate: `swift test` runs on the macOS SDK and never
   #    compiles the `canImport(UIKit)` branches or iOS-SDK-only actor isolation. 2026-09-05: main was
@@ -340,6 +379,26 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/CoreVerify.kt -include-runtime -d /tmp/qcore.jar
           java -jar /tmp/qcore.jar
+      - name: Verify Beam framing and specialist native capability gates with tiny fixtures
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/BeamVerify.kt -include-runtime -d "$RUNNER_TEMP/beam-runtime.jar"
+          java -jar "$RUNNER_TEMP/beam-runtime.jar"
+          python3 -m unittest scripts.tests.test_beam_native_prompt scripts.tests.test_jni_exception_boundary scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_jni_utf8_boundary scripts.tests.test_granite_native
+      - name: Verify Android Step 5 transport policy and conversation boundary (no models)
+        run: |
+          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar -o "$RUNNER_TEMP/okhttp-4.12.0.jar"
+          curl --fail --silent --show-error --location https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar -o "$RUNNER_TEMP/okio-jvm-3.6.0.jar"
+          echo "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0  $RUNNER_TEMP/okhttp-4.12.0.jar" | sha256sum -c -
+          echo "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412  $RUNNER_TEMP/okio-jvm-3.6.0.jar" | sha256sum -c -
+          step5_cp="$RUNNER_TEMP/okhttp-4.12.0.jar:$RUNNER_TEMP/okio-jvm-3.6.0.jar:$HOME/kotlin/kotlinc/lib/kotlinx-coroutines-core-jvm.jar"
+          kotlinc -classpath "$step5_cp" android/quenderin-core/src/main/kotlin/ai/quenderin/core/Step5Client.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/Step5OkHttpTransport.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/Step5Controller.kt \
+            android/quenderin-core/src/verify/Step5ControllerVerify.kt \
+            android/quenderin-core/src/verify/Step5AndroidTransportVerify.kt -d "$RUNNER_TEMP/step5-clients.jar"
+          kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5ControllerVerifyKt
+          kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5AndroidTransportVerifyKt
       - name: Verify multipart installation and Muse response framing with small fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
@@ -351,6 +410,11 @@ jobs:
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/ImageGenerationVerify.kt -include-runtime -d "$RUNNER_TEMP/image-generation.jar"
           java -Djava.io.tmpdir="$RUNNER_TEMP" -jar "$RUNNER_TEMP/image-generation.jar"
+      - name: Verify native vision installation and image-copy bounds with synthetic files
+        run: |
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/VisionInstallerVerify.kt -include-runtime -d "$RUNNER_TEMP/vision-installer.jar"
+          java -jar "$RUNNER_TEMP/vision-installer.jar"
       - name: Verify native discovery snapshot and Android offline catalog
         run: |
           python3 scripts/generate_website_catalog.py --check
@@ -446,6 +510,10 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p test_diffusion_apple_runtime.py
           python3 -m unittest discover -s scripts/tests -p test_desktop_diffusion.py
           python3 -m unittest discover -s scripts/tests -p test_experimental_model_support.py
+          python3 -m unittest discover -s scripts/tests -p test_step5_backend.py
+          python3 -m unittest discover -s scripts/tests -p test_vision_build.py
+          python3 scripts/generate_beam_artifacts.py --check
+          python3 scripts/generate_vision_models.py --check
           python3 native/diffusion/tests/test_windows_exports.py
           node --test scripts/tests/prism-node-loader.test.mjs scripts/tests/desktop-release.test.mjs
           node --test scripts/tests/desktop-diffusion-pack.test.cjs

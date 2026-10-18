@@ -34,5 +34,25 @@
     "sha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033",
     "upstreamRevision": "01fc3aae846caa644f0cee360f108d4c48e4aaa1",
     "beamABI": 1
+  },
+  "visionPatch": {
+    "id": "vision-minicpm47-supervl-v1",
+    "path": "scripts/patches/vision-prism-e8fd209.json",
+    "sha256": "417a4d19ed4e05625cd4bc3ec269bf1a4331e8dd9263956b95e86b6158f938a9",
+    "upstreamRevisions": {
+      "minicpm47": "69f201a2051ea9b9e9b50c3cc56afd9e2ae64414",
+      "supervl": "cd0a5b6a180dff0048e5fd993098b21c0b2c91b8"
+    },
+    "visionABI": 1
+  },
+  "graniteConverterPatch": {
+    "id": "granite41-official-converter-v1",
+    "path": "scripts/patches/granite41-converter-prism-e8fd209.json",
+    "sha256": "301fbf51eb833e8481b4f516b28a23cd374f25db88c3e6e8af8277ecad826248",
+    "upstreamRevisions": [
+      "59d5fad7c111d30a547d690b69235ed9e05c035d",
+      "23f7aabc16c72f6f707dba227251c35d7bd1ed96",
+      "1268edac579110aeb1407f7928f53193ed4e28d4"
+    ]
   }
 }

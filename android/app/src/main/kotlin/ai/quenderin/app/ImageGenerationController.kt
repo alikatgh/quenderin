@@ -8,13 +8,16 @@ import ai.quenderin.core.ImageGenerationRequest
 import ai.quenderin.core.ImageModel
 import ai.quenderin.core.ImageResourceBudget
 import ai.quenderin.core.NativeImageGenerationEngine
+import ai.quenderin.core.SpecialistInferenceLease
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +35,7 @@ data class ImageGenerationUiState(
     val output: File? = null,
 ) { val selected: ImageModel? get() = models.firstOrNull { it.id == selectedID } }
 
-class ImageGenerationController(context: Context, engine: ImageGenerationEngine? = null) {
+class ImageGenerationController(context: Context, engine: ImageGenerationEngine? = null, private val suspendForSpecialist: () -> SpecialistInferenceLease = { error("The app has not supplied exclusive specialist engine coordination.") }) {
     private val context = context.applicationContext
     private val installer = ImageModelInstaller(this.context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -93,18 +96,25 @@ class ImageGenerationController(context: Context, engine: ImageGenerationEngine?
         val snapshot = state.value
         val model = snapshot.selected ?: return
         if (snapshot.busy || !snapshot.installed) return
-        fitReason(false)?.let { reportError(it); return }
+        if (!engine.available) { reportError("This build does not include the local image engine."); return }
         if (model.requiresPublisherAccess && !snapshot.publisherTermsAccepted) { reportError("Confirm that you have reviewed and accepted the publisher terms."); return }
         mutable.update { it.copy(busy = true, progress = null, error = null, status = "Verifying components and loading the model…") }
         job = scope.launch {
             try {
                 val image = withContext(Dispatchers.IO) {
                     val generationContext = currentCoroutineContext()
-                    val outputs = File(context.filesDir, "created-images").canonicalFile
-                    check(outputs.mkdirs() || outputs.isDirectory) { "Could not create image output folder" }
-                    engine.generate(ImageGenerationRequest(model, File(installer.directory, model.id), snapshot.prompt,
-                        File(outputs, "Quenderin-${UUID.randomUUID()}.png"), isCancelled = { !generationContext.isActive })) { progress ->
-                        mutable.update { it.copy(progress = progress, status = "Generating image…") }
+                    val lease = suspendForSpecialist()
+                    try {
+                        generationContext.ensureActive()
+                        budget().blockReason(model, false)?.let { error(it) }
+                        val outputs = File(context.filesDir, "created-images").canonicalFile
+                        check(outputs.mkdirs() || outputs.isDirectory) { "Could not create image output folder" }
+                        engine.generate(ImageGenerationRequest(model, File(installer.directory, model.id), snapshot.prompt,
+                            File(outputs, "Quenderin-${UUID.randomUUID()}.png"), isCancelled = { !generationContext.isActive })) { progress ->
+                            mutable.update { it.copy(progress = progress, status = "Generating image…") }
+                        }
+                    } finally {
+                        withContext(NonCancellable) { lease.resume() }
                     }
                 }
                 mutable.update { it.copy(output = image, status = "Image created locally.") }

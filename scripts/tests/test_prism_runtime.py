@@ -235,6 +235,8 @@ class PrismRuntimeTests(unittest.TestCase):
         self.lock = copy.deepcopy(prism.LOCK)
         self.lock.pop("weeklyTextPatch", None)
         self.lock.pop("beamPatch", None)
+        self.lock.pop("visionPatch", None)
+        self.lock.pop("graniteConverterPatch", None)
         self.manifest = {
             "version": 1, "id": self.lock["sourcePatch"]["id"],
             "baseRepository": self.lock["repository"], "baseRevision": self.lock["revision"],
@@ -688,6 +690,77 @@ class BeamPatchTests(unittest.TestCase):
         self.assertFalse((artifact / prism.STAMP).exists())
         header.write_text(header.read_text() + "\nint quenderin_beam_runtime_abi(void);")
         self.assertEqual(prism.stamp(f.root, artifact), identity)
+
+
+class VisionPatchTests(unittest.TestCase):
+    def setUp(self):
+        self.beam = BeamPatchTests(methodName="test_third_stage_is_exact_and_idempotent_and_has_its_own_identity")
+        self.beam.setUp()
+        self.addCleanup(self.beam.doCleanups)
+        f = self.fixture = self.beam.fixture
+        self.manifest = {
+            "version": 1, "id": "vision-fixture", "baseRepository": f.lock["repository"],
+            "baseRevision": f.lock["revision"],
+            **{parent: {k: f.lock[key][k] for k in ("id", "sha256")}
+               for parent, key in (("parentSourcePatch", "sourcePatch"),
+                                   ("parentWeeklyTextPatch", "weeklyTextPatch"),
+                                   ("parentBeamPatch", "beamPatch"))},
+            "upstreamRevisions": {"minicpm47": "a" * 40, "supervl": "b" * 40},
+            "visionABI": 1, "capabilitySymbol": "quenderin_vision_mtmd_runtime_abi",
+            "files": [{"path": "src/llama-model.cpp",
+                       "beforeSha256": prism.digest(self.beam.after.encode()),
+                       "afterSha256": prism.digest(self.beam.after.replace("beam", "vision").encode()),
+                       "replacements": [{"before": "beam\n", "after": "vision\n"}]}],
+        }
+        f.lock["visionPatch"] = {"id": self.manifest["id"], "path": "scripts/patches/vision.json",
+                                 "sha256": "", "upstreamRevisions": self.manifest["upstreamRevisions"], "visionABI": 1}
+        self.save()
+
+    def save(self):
+        f = self.fixture
+        data = (json.dumps(self.manifest) + "\n").encode()
+        (f.project / f.lock["visionPatch"]["path"]).write_bytes(data)
+        f.lock["visionPatch"]["sha256"] = prism.digest(data)
+
+    def test_four_stages_are_exact_and_idempotent(self):
+        identity = prism.apply_source_patch(self.fixture.root)
+        self.assertEqual(identity["visionABI"], 1)
+        self.assertEqual(identity["visionPatchSha256"], self.fixture.lock["visionPatch"]["sha256"])
+        self.assertEqual(prism.verify(self.fixture.root), identity)
+        self.assertEqual(prism.apply_source_patch(self.fixture.root), identity)
+        self.assertIn("vision", (self.fixture.root / "src/llama-model.cpp").read_text())
+
+    def test_missing_parent_wrong_abi_revision_symbol_and_preimage_fail_before_writes(self):
+        original = copy.deepcopy(self.manifest)
+        for mutation in ("parent", "abi", "revision", "symbol", "preimage"):
+            self.manifest = copy.deepcopy(original)
+            if mutation == "parent": self.manifest["parentBeamPatch"]["sha256"] = "f" * 64
+            elif mutation == "abi": self.manifest["visionABI"] = True
+            elif mutation == "revision": self.manifest["upstreamRevisions"] = {"minicpm47": "latest", "supervl": "b" * 40}
+            elif mutation == "symbol": self.manifest["capabilitySymbol"] = "quenderin_beam_runtime_abi"
+            else: self.manifest["files"][0]["beforeSha256"] = "f" * 64
+            self.save()
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError): prism.apply_source_patch(self.fixture.root)
+            self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+
+    def test_vision_output_hash_failure_preserves_all_preimages(self):
+        self.manifest["files"][0]["afterSha256"] = "f" * 64
+        self.save()
+        with self.assertRaisesRegex(ValueError, "output digest"): prism.apply_source_patch(self.fixture.root)
+        self.assertEqual((self.fixture.root / "src/llama-model.cpp").read_text(), self.fixture.before)
+
+    def test_apple_stamp_requires_both_vision_headers(self):
+        identity = prism.apply_source_patch(self.fixture.root)
+        artifact = self.fixture.project / "vision.xcframework"
+        headers = artifact / "macos/llama.framework/Headers"
+        headers.mkdir(parents=True)
+        (headers / "ggml.h").write_text("GGML_TYPE_PTQ1_0 GGML_TYPE_PQ2_0")
+        (headers / "llama.h").write_text("quenderin_muse_spark_runtime_abi quenderin_weekly_text_runtime_abi quenderin_beam_runtime_abi")
+        for name, content in (("mtmd.h", "quenderin_vision_mtmd_runtime_abi"),
+                              ("quenderin_vision.h", "quenderin_vision_generate")):
+            with self.assertRaisesRegex(ValueError, "vision source and bridge"): prism.stamp(self.fixture.root, artifact)
+            (headers / name).write_text(content)
+        self.assertEqual(prism.stamp(self.fixture.root, artifact), identity)
 
 
 if __name__ == "__main__":

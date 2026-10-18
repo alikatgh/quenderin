@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- The explicitly selected Step 5 SSH tunnel can terminate on literal loopback.
+         Every non-loopback endpoint still requires HTTPS in both transport and policy. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">::1</domain>
+        <domain includeSubdomains="false">[::1]</domain>
+    </domain-config>
+</network-security-config>

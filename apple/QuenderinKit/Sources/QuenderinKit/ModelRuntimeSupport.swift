@@ -16,17 +16,17 @@ public enum ModelRuntimeSupport {
         guard value.utf16.count <= 16_384 else { return "" }
         return value.removingPercentEncoding ?? value
     }
-    static func unsupportedWorkflowReason(identifiers: [String], architecture: String = "") -> String? {
+    static func unsupportedWorkflowReason(identifiers: [String], architecture: String = "", allowPinnedBeam: Bool = false) -> String? {
         if architecture.utf16.count > 256 || identifiers.contains(where: { $0.utf16.count > 16_384 }) { return "The model identity is too long to validate safely." }
         let identifiers = identifiers.map(decodedIdentity)
         let keys = identifiers.map(key), arch = key(architecture)
-        if arch == "beam" || identifiers.contains(where: { $0.range(of: #"(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)"#, options: [.regularExpression, .caseInsensitive]) != nil }) {
+        if !allowPinnedBeam && (arch == "beam" || identifiers.contains(where: { $0.range(of: #"(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)"#, options: [.regularExpression, .caseInsensitive]) != nil })) {
             return "Beam requires the complete multipart installer and Harmony chat adapter. Generic chat is unavailable."
         }
         if keys.contains(where: { $0.contains("hymemory") }) { return "Hy-Memory requires a specialized memory-proposal workflow with JSON validation and explicit save approval. Generic chat is unavailable." }
-        if keys.contains(where: { $0.contains("supervl") && ($0.contains("nemotron") || $0.contains("120b")) }) { return "Nemotron Super VL 120B requires variant and vision validation. This model is unavailable in generic chat." }
-        if arch == "step5" || arch == "step5vl" || keys.contains(where: { $0.contains("step5") && !$0.contains("step35") }) { return "Step 5 requires an architecture that is unavailable in the pinned runtime." }
-        if arch.contains("graniteswitch") || keys.contains(where: { $0.contains("granite") && $0.contains("switch") && $0.contains("41") }) { return "Granite Switch 4.1 requires its speech adapter. Generic chat is unavailable." }
+        if keys.contains(where: { $0.contains("supervl") && ($0.contains("nemotron") || $0.contains("120b")) }) { return "Use Ask about an image with the complete Nemotron Super VL model and matching projector." }
+        if arch == "step5" || arch == "step5vl" || keys.contains(where: { $0.contains("step5") && !$0.contains("step35") }) { return "Use the Step 5 workflow with the pinned official CUDA gateway on your own host." }
+        if arch.contains("graniteswitch") || keys.contains(where: { $0.contains("granite") && $0.contains("switch") && $0.contains("41") }) { return "Use Granite Switch 4.1 chat with a verified converted model and its provenance record." }
         if keys.contains(where: { $0.contains("bolte4b") || ($0.contains("nemotron") && $0.contains("e4b")) }) { return "Nemotron Bolt E4B has no verified public artifact in this release." }
         if keys.contains(where: { $0.contains("nemotron35") }), !keys.contains(where: { $0.range(of: "nemotron35.*bolt.*74b.*a9b", options: .regularExpression) != nil }) {
             return "This Nemotron 3.5 variant has not been validated. Only Bolt 74B-A9B is available as experimental text chat."
@@ -34,7 +34,7 @@ public enum ModelRuntimeSupport {
         return nil
     }
     public static func unsupportedWorkflowReason(for model: ModelEntry) -> String? {
-        unsupportedWorkflowReason(identifiers: identities(model))
+        unsupportedWorkflowReason(identifiers: identities(model), allowPinnedBeam: isVerifiedBeamManifest(model))
     }
     public static var supportsBonsai: Bool {
         #if canImport(llama) && QUENDERIN_PRISM_LLAMA
@@ -57,6 +57,21 @@ public enum ModelRuntimeSupport {
         #else
         return false
         #endif
+    }
+    public static var supportsBeam: Bool {
+        #if canImport(llama) && QUENDERIN_BEAM_LLAMA
+        return quenderin_beam_runtime_abi() == 1
+        #else
+        return false
+        #endif
+    }
+    public static let beamUnavailableMessage = "Beam requires the verified Beam runtime, all four pinned shards and at least 160 GiB plus context headroom. Experimental text chat only."
+    public static func isBeam(_ model: ModelEntry) -> Bool {
+        identities(model).contains { decodedIdentity($0).range(of: #"(?:^|[^a-z0-9])beam(?:[0-9]|[^a-z0-9]|$)"#, options: [.regularExpression, .caseInsensitive]) != nil }
+    }
+    public static func isVerifiedBeamManifest(_ model: ModelEntry) -> Bool {
+        guard model.id == "beam-1.0-501b-a23b-ud-iq2-xxs", let pinned = ModelCatalog.entry(id: model.id), model == pinned else { return false }
+        return model.artifacts == BeamModelArtifacts.parts && model.downloadBytes == 133885310500
     }
     public static var supportsWeeklyText: Bool {
         #if canImport(llama) && QUENDERIN_WEEKLY_TEXT_LLAMA
@@ -90,6 +105,7 @@ public enum ModelRuntimeSupport {
     }
     public static func unavailableReason(for model: ModelEntry) -> String {
         if let reason = unsupportedWorkflowReason(for: model) { return reason }
+        if isBeam(model), (!supportsBeam || !isVerifiedBeamManifest(model)) { return beamUnavailableMessage }
         if requiresWeeklyTextRuntime(model), !supportsWeeklyText { return weeklyTextUnavailableMessage }
         if ModelArtifactSet.looksLikeSplitFilename(model.filename), !ModelArtifactSet.isMultipart(model) {
             return "This is one file of a split model. Choose a catalog model with the complete verified file manifest."
@@ -120,12 +136,13 @@ public enum ModelRuntimeSupport {
     }
 
     public static func requiresPrism(_ model: ModelEntry) -> Bool {
-        isBonsai(model) || requiresVerifiedTextRuntime(model) || requiresWeeklyTextRuntime(model)
+        isBeam(model) || isBonsai(model) || requiresVerifiedTextRuntime(model) || requiresWeeklyTextRuntime(model)
             || [model.quantization, model.filename, model.urlString].contains { containsPrismFormat($0) }
     }
 
     public static func supports(_ model: ModelEntry) -> Bool {
         if unsupportedWorkflowReason(for: model) != nil { return false }
+        if isBeam(model), (!supportsBeam || !isVerifiedBeamManifest(model)) { return false }
         if requiresWeeklyTextRuntime(model), !supportsWeeklyText { return false }
         if (ModelArtifactSet.looksLikeSplitFilename(model.filename) || isMuse(model)) && !ModelArtifactSet.isMultipart(model) { return false }
         if ModelArtifactSet.isMultipart(model), (try? ModelArtifactSet.validate(model)) == nil { return false }
@@ -135,7 +152,9 @@ public enum ModelRuntimeSupport {
     static func blockedDownloadReason(from url: URL, to destination: URL, modelID: String = "",
                                       weeklyTextRuntimeAvailable: Bool = supportsWeeklyText) -> String? {
         let identifiers = [url.absoluteString, destination.lastPathComponent, modelID]
-        if let reason = unsupportedWorkflowReason(identifiers: identifiers) { return reason }
+        let pinnedBeamPart = BeamModelArtifacts.parts.contains { $0.url == url.absoluteString && $0.filename == destination.lastPathComponent }
+        if let reason = unsupportedWorkflowReason(identifiers: identifiers, allowPinnedBeam: pinnedBeamPart) { return reason }
+        if pinnedBeamPart && !supportsBeam { return beamUnavailableMessage }
         if !weeklyTextRuntimeAvailable, identifiers.contains(where: isWeeklyIdentity) { return weeklyTextUnavailableMessage }
         if identifiers.contains(where: isMuseIdentifier), !supportsMuse { return museUnavailableMessage }
         let needsPrism = identifiers.contains {
@@ -150,6 +169,7 @@ public enum ModelRuntimeSupport {
     /// Only an exact pinned artifact receives a size-specific floor. Unknown imported Bonsai
     /// keeps the original 7 GB floor; a small-model id alone cannot lower its memory budget.
     static func memoryFootprintGB(_ model: ModelEntry) -> Double {
+        if isBeam(model) { return max(160.0, model.ramGB.isFinite ? model.ramGB : 160.0) }
         if isMuse(model) { return max(330.0, model.ramGB) }
         guard requiresPrism(model) else { return model.ramGB }
         let pinned = ModelCatalog.models.first {

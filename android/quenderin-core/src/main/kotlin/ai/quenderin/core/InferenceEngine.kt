@@ -10,6 +10,11 @@ package ai.quenderin.core
  * Android module wraps `complete` in a coroutine and exposes token Flow.)
  */
 interface InferenceEngine {
+    val isSuspendedForSpecialist: Boolean get() = false
+    fun suspendForSpecialist(): SpecialistInferenceLease = throw IllegalStateException("This text engine does not support exclusive specialist workflows.")
+    fun setChatTokenBudget(tokens: Int) {}
+    fun thinkingEnabled(): Boolean = false
+    fun setThinkingEnabled(enabled: Boolean) {}
     val loadedModelId: String?
 
     /**

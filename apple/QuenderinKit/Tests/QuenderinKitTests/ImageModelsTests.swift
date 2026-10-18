@@ -136,13 +136,21 @@ final class ImageModelsTests: XCTestCase {
             engine: FixtureImageEngine(), directory: models, budget: { budget })
         controller.publisherTermsAccepted = true
         controller.prompt = "A simple scene for a synthetic fixture."
-        controller.generate()
+        let leaseCounter = ImageFixtureLeaseCounter()
+        controller.generate(suspendForSpecialist: { await leaseCounter.acquire(); return SpecialistInferenceLease { await leaseCounter.resume() } })
         for _ in 0..<100 where controller.busy { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertFalse(controller.busy)
         XCTAssertNil(controller.failure)
         XCTAssertNotNil(controller.output)
         XCTAssertEqual(controller.status, "Image created locally.")
+        let leaseEvents = await leaseCounter.events; XCTAssertEqual(leaseEvents, ["acquire", "resume"])
     }
+}
+
+private actor ImageFixtureLeaseCounter {
+    var events: [String] = []
+    func acquire() { events.append("acquire") }
+    func resume() { events.append("resume") }
 }
 
 private struct FixtureImageEngine: ImageGenerationEngine {

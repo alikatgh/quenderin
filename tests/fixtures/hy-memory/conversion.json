@@ -1,0 +1,43 @@
+{
+  "base_model": "tencent/Hy-Memory-30B-A3B",
+  "base_revision": "64a460a94d5498b7316fb02395c72d01c47a7347",
+  "llama_cpp_revision": "f3363593f457169cdfbdfe22ea399b1cc139ba18",
+  "intermediate": "BF16 GGUF",
+  "importance_matrix": null,
+  "config_change": {
+    "moe_intermediate_size": {
+      "publisher": 1536,
+      "converted": 768
+    }
+  },
+  "files": [
+    {
+      "name": "Hy-Memory-30B-A3B-Q4_K_M.gguf",
+      "quantization": "Q4_K_M",
+      "size_bytes": 18236702240,
+      "sha256": "6eea28e22b33661d5d0a464d6fe91762794ceb13c2f5093d8a78d5f4ff3e228b",
+      "gguf": {
+        "general.architecture": "hy_v3",
+        "general.file_type": 15,
+        "hy_v3.block_count": 48,
+        "hy_v3.expert_feed_forward_length": 768,
+        "hy_v3.expert_shared_feed_forward_length": 768
+      },
+      "tensor_count": 766
+    },
+    {
+      "name": "Hy-Memory-30B-A3B-Q5_K_M.gguf",
+      "quantization": "Q5_K_M",
+      "size_bytes": 21374041632,
+      "sha256": "a17e78eadb3f3ff0cc696405d1f2de01d2014a240bb7dace4b37a01902283408",
+      "gguf": {
+        "general.architecture": "hy_v3",
+        "general.file_type": 17,
+        "hy_v3.block_count": 48,
+        "hy_v3.expert_feed_forward_length": 768,
+        "hy_v3.expert_shared_feed_forward_length": 768
+      },
+      "tensor_count": 766
+    }
+  ]
+}

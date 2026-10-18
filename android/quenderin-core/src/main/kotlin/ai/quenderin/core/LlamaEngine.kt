@@ -47,6 +47,8 @@ class LlamaEngine(
     private var handle: Long = 0L
     private var loadedMuse = false
     private var loadedJais = false
+    private var loadedBeam = false
+    private var loadedSpecialist = false
 
     /**
      * Per-send chat decode cap from [ChatTier] (tiny models get 256, full 512). Null → [maxTokens].
@@ -118,6 +120,9 @@ class LlamaEngine(
 
     /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
     override fun requestCancel() { cancelRequested = true }
+    override fun setChatTokenBudget(tokens: Int) { chatMaxTokensOverride = tokens }
+    override fun thinkingEnabled(): Boolean = enableThinking
+    override fun setThinkingEnabled(enabled: Boolean) { enableThinking = enabled }
 
     /**
      * True when the most recent native generation stopped because it hit [maxTokens] (not EOG /
@@ -136,7 +141,7 @@ class LlamaEngine(
             check(fitness.canLoad) { fitness.message }
         }
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
-        ModelRuntimeSupport.metadataUnavailableReason(filePath)?.let { throw IllegalStateException(it) }
+        ModelRuntimeSupport.metadataUnavailableReason(filePath, model)?.let { throw IllegalStateException(it) }
         cancelRequested = false
         if (model.artifacts.isNotEmpty()) ModelArtifacts.requireComplete(model, filePath) { cancelRequested }
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null; loadedMuse = false; loadedContextTokens = null }
@@ -153,17 +158,23 @@ class LlamaEngine(
         // n_ctx from the real app-memory budget, this model's footprint, AND the cache dtype (M1).
         val nctx = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kvCacheType).let {
             when {
+                ModelRuntimeSupport.isBeam(model) -> minOf(it, 4096)
                 ModelRuntimeSupport.isMuse(model) -> minOf(it, ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS)
                 ModelRuntimeSupport.isBonsai(model) -> minOf(it, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
                 else -> it
             }
         }
+        if (ModelRuntimeSupport.isBeam(model)) {
+            val free = minOf(deviceBudgetGb, NativeModelResources.availableMemoryBytes().toDouble() / (1024.0 * 1024 * 1024))
+            check(MemoryFitness.check(model, deviceBudgetGb, free).canLoad) { ModelRuntimeSupport.BEAM_UNAVAILABLE_MESSAGE }
+        }
         handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers,
-            nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model))
+            nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model), verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model), verifiedHy = false, verifiedGranite = false)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
         loadedModelId = model.id
         loadedMuse = ModelRuntimeSupport.isMuse(model)
         loadedJais = nativeIsJais(handle) || ModelRuntimeSupport.isJais(model)
+        loadedBeam = ModelRuntimeSupport.isBeam(model)
         // JNI may shrink n_ctx on the q8_0→F16 KV-cache fallback; publish the window that
         // actually exists, not the q8-sized request (otherwise ChatModel trims to a window
         // larger than native and overflows — twin of the Aug-10 llama_jni.cpp n_ctx resize).
@@ -179,12 +190,14 @@ class LlamaEngine(
         loadedModelId = null
         loadedMuse = false
         loadedJais = false
+        loadedBeam = false
+        loadedSpecialist = false
         loadedContextTokens = null
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
+        check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -196,7 +209,7 @@ class LlamaEngine(
         topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int,
     ): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
+        check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteWithGrammar(handle, prompt, maxTokens, grammar, topP, topK, temperature, repeatPenalty, repeatLastN)
     }
@@ -206,7 +219,7 @@ class LlamaEngine(
      *  per-call token cap; the grammar decode is a separate call. */
     override fun completeThinking(prompt: String, maxTokens: Int): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
+        check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeComplete(handle, prompt, maxTokens)
     }
@@ -217,7 +230,7 @@ class LlamaEngine(
      */
     override fun complete(prompt: String, onToken: (String) -> Unit): String = synchronized(lock) {
         ensureReady()
-        check(!loadedMuse && !loadedJais) { "This experimental model supports text chat only. Choose another model for agent actions." }
+        check(!loadedMuse && !loadedJais && !loadedBeam && !loadedSpecialist) { "This experimental model supports text chat only. Choose another model for agent actions." }
         cancelRequested = false   // fresh generation (M3)
         nativeCompleteStreaming(handle, prompt, maxTokens, TokenSink { onToken(it) })
     }
@@ -232,6 +245,7 @@ class LlamaEngine(
     override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String =
         synchronized(lock) {
             ensureReady()
+            check(!loadedSpecialist) { "Hy-Memory requires its specialist proposal workflow." }
             cancelRequested = false
             fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
             val payload = buildString {
@@ -242,7 +256,15 @@ class LlamaEngine(
                 }
             }
             val cap = chatMaxTokensOverride ?: maxTokens
-            if (loadedMuse) {
+            if (loadedBeam) {
+                val filter = BeamOutputFilter(onToken)
+                val wire = try {
+                    nativeCompleteChatStreaming(handle, payload, cap, true, TokenSink { filter.accept(it) })
+                } finally { filter.finish() }
+                val final = BeamOutputFilter.finalText(wire)
+                check(final.isNotEmpty() || cancelRequested) { "Beam generation ended before a final-channel answer." }
+                final
+            } else if (loadedMuse) {
                 val filter = MuseOutputFilter(onToken)
                 val wire = try {
                     nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
@@ -261,13 +283,63 @@ class LlamaEngine(
             }
         }
 
+    /** Separate engine only: the installer proof is never reconstructed from UI input. */
+    internal fun completeHyMemory(request: HyMemoryInferenceRequest, availableMemoryBytes: () -> Long, cancelled: () -> Boolean, onToken: (String) -> Unit): String = synchronized(lock) {
+        check(handle == 0L && loadedModelId == null) { "A separate specialist engine is required." }
+        check(NATIVE_AVAILABLE && supportsBonsaiRuntime) { UNAVAILABLE_MSG }
+        request.artifact.assertCurrent()
+        check(availableMemoryBytes() >= HyMemory.MINIMUM_MEMORY_BYTES) { "Hy-Memory requires 32 GiB of available app memory." }
+        check(ModelRuntimeSupport.hyMemoryMetadataMatches(request.artifact.filePath)) { "Invalid specialist architecture." }
+        require(request.prompt.toByteArray(Charsets.UTF_8).size <= 16_384 && request.prompt.startsWith("<｜hy_begin▁of▁sentence｜>")
+            && request.prompt.split("<｜hy_begin▁of▁sentence｜>").size == 2) { "Invalid specialist prompt." }
+        cancelRequested = false
+        check(!cancelled()) { "Specialist generation cancelled." }
+        loadedBaseThreads = minOf(8, maxOf(1, Runtime.getRuntime().availableProcessors()))
+        try {
+            request.artifact.assertCurrent()
+            check(availableMemoryBytes() >= HyMemory.MINIMUM_MEMORY_BYTES) { "Insufficient current memory for the specialist." }
+            handle = nativeLoad(request.artifact.filePath, 4096, loadedBaseThreads, 0, 0f, 1f, 0,
+                nativeLibDir, verifiedMuse = false, verifiedBeam = false, verifiedHy = true, verifiedGranite = false)
+            check(handle != 0L && !cancelRequested && !cancelled()) { "Specialist loading failed or was cancelled." }
+            request.artifact.assertCurrent()
+            loadedSpecialist = true; loadedModelId = HyMemory.MODEL_ID; loadedContextTokens = nativeLoadedNCtx(handle)
+            val result = nativeCompleteHyMemoryStreaming(handle, request.prompt, TokenSink { onToken(it) })
+            check(!cancelRequested) { "Specialist generation cancelled." }
+            request.artifact.assertCurrent()
+            result
+        } finally { unload() }
+    }
+
+    internal fun completeGranite(proof: GraniteArtifactProof, messages: List<GraniteMessage>, availableMemoryBytes: () -> Long, cancelled: () -> Boolean): String = synchronized(lock) {
+        check(handle == 0L && loadedModelId == null && NATIVE_AVAILABLE && supportsBonsaiRuntime && supportsWeeklyTextRuntime) { "The verified Prism text runtime and a separate specialist engine are required." }
+        proof.assertCurrent(); check(availableMemoryBytes() >= Granite41.requiredMemory(proof.bytes)) { "Granite requires at least 32 GiB available app memory and whole-model headroom." }
+        check(ModelRuntimeSupport.graniteMetadataMatches(proof.filePath)) { "Invalid Granite 4.1 8B metadata." }
+        val prompt = Granite41.prompt(messages)
+        cancelRequested = false; check(!cancelled()) { "Granite cancelled." }
+        loadedBaseThreads = minOf(8, maxOf(1, Runtime.getRuntime().availableProcessors()))
+        try {
+            proof.assertCurrent()
+            handle = nativeLoad(proof.filePath, 4096, loadedBaseThreads, 0, 0.7f, 0.95f, 0, nativeLibDir,
+                verifiedMuse = false, verifiedBeam = false, verifiedHy = false, verifiedGranite = true)
+            check(handle != 0L && !cancelRequested && !cancelled()) { "Granite loading failed or was cancelled." }
+            proof.assertCurrent(); loadedSpecialist = true; loadedModelId = "granite-switch-4.1-8b-local"; loadedContextTokens = nativeLoadedNCtx(handle)
+            val output = StringBuilder()
+            nativeCompleteHyMemoryStreaming(handle, prompt, TokenSink { piece ->
+                output.append(piece); check(output.toString().toByteArray(Charsets.UTF_8).size <= 65_536) { "Granite output exceeded its bound." }
+            })
+            check(!cancelRequested && !cancelled()) { "Granite cancelled." }; proof.assertCurrent()
+            Granite41.finalAnswer(output.toString())
+        } finally { unload() }
+    }
+
     private fun ensureReady() {
         if (!NATIVE_AVAILABLE) throw IllegalStateException(UNAVAILABLE_MSG)
         if (handle == 0L || loadedModelId == null) throw EngineNotLoadedException()
     }
 
     // --- JNI bridge — implemented in jni/llama_jni.cpp, resolved only when called ---
-    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean): Long
+    private external fun nativeLoad(modelPath: String, contextTokens: Int, threads: Int, kvCacheQuant: Int, temperature: Float, topP: Float, gpuLayers: Int, nativeLibDir: String, verifiedMuse: Boolean, verifiedBeam: Boolean, verifiedHy: Boolean, verifiedGranite: Boolean): Long
+    private external fun nativeCompleteHyMemoryStreaming(handle: Long, prompt: String, sink: TokenSink): String
     private external fun nativeComplete(handle: Long, prompt: String, maxTokens: Int): String
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
@@ -299,6 +371,8 @@ class LlamaEngine(
         private external fun nativeSupportsMuse(): Boolean
         @JvmStatic
         private external fun nativeSupportsWeeklyText(): Boolean
+        @JvmStatic
+        private external fun nativeSupportsBeam(): Boolean
 
         /** An old library can load successfully while lacking this symbol. That is unsupported. */
         val supportsBonsaiRuntime: Boolean by lazy {
@@ -306,6 +380,9 @@ class LlamaEngine(
         }
         val supportsMuseRuntime: Boolean by lazy {
             NATIVE_AVAILABLE && runCatching { nativeSupportsMuse() }.getOrDefault(false)
+        }
+        val supportsBeamRuntime: Boolean by lazy {
+            NATIVE_AVAILABLE && runCatching { nativeSupportsBeam() }.getOrDefault(false)
         }
         val supportsWeeklyTextRuntime: Boolean by lazy {
             NATIVE_AVAILABLE && runCatching { nativeSupportsWeeklyText() }.getOrDefault(false)

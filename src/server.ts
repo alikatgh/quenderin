@@ -106,7 +106,8 @@ async function findAvailablePort(startPort: number, maxTries: number = 20): Prom
     throw new Error(`No available port found in range ${startPort}-${startPort + maxTries - 1}`);
 }
 
-export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<{ port: number; authToken: string }> {
+export interface DashboardServerHandle { port: number; authToken: string; shutdown(): Promise<void> }
+export async function startDashboardServer(port: number = 3000, openBrowser: boolean = true): Promise<DashboardServerHandle> {
     resetReadinessForStartup('Dashboard startup initiated');
     setReadiness(false, 'initializing-services', 'Initializing core services');
 
@@ -211,6 +212,8 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     setReadiness(false, 'starting-http-server', `Binding HTTP server on port ${selectedPort}`);
     const app = createApp(metricsService, agentService, llmService, sessionService, memoryService, authToken);
     const server = createServer(app);
+    const connections = new Set<net.Socket>();
+    server.on('connection', socket => { connections.add(socket); socket.once('close', () => connections.delete(socket)); });
 
     // 2b. Start periodic temp file cleanup (every 30 min)
     const cleanupTimer = setInterval(cleanupOrphanedTempFiles, TEMP_CLEANUP_INTERVAL_MS);
@@ -219,36 +222,45 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
     cleanupOrphanedTempFiles();
 
     // 3. Graceful shutdown handlers
-    const shutdown = () => {
+    let shutdownTask: Promise<void> | undefined;
+    const shutdown = (): Promise<void> => {
+        if (shutdownTask) return shutdownTask;
         setReadiness(false, 'shutting-down', 'Shutdown signal received');
         logger.info('[System] Shutting down gracefully...');
         clearInterval(cleanupTimer);
         backgroundDaemon.stop();
         voiceService.shutdown();
+        agentService.stop();
+        taskService.stop();
         // Q-298/Q-348: flush buffered session writes to disk BEFORE exit. SessionService debounces
         // saves on a timer, so a SIGINT between the last message and the timer firing would drop the
         // tail of the conversation. destroy() does a SYNCHRONOUS flushNow() + clears the timer, so it
         // completes here (unlike the fire-and-forget async teardown below).
         sessionService.destroy();
-        // Free the native llama model/context AND the llama engine itself — shutdown() disposes the
-        // engine handle that unloadModel() leaves alive, avoiding the ggml-metal atexit assert on a
-        // graceful shutdown / in-process restart (Q-145). Fire-and-forget like the other async teardown.
-        void Promise.resolve(llmService.shutdown()).catch((e) => logger.debug('[Shutdown] model shutdown error:', e));
-        ocrService.terminate().catch((e) => logger.debug('[Shutdown] OCR terminate error:', e));
-        // Final cleanup of temp files on shutdown
-        cleanupOrphanedTempFiles().catch((e) => logger.debug('[Shutdown] Temp cleanup error:', e));
-        server.close(() => {
-            logger.info('[System] HTTP server closed.');
-            process.exit(0);
+        // Closing admission happens synchronously, before disconnecting request abort handlers.
+        const nativeCleanup = llmService.shutdown({ processExit: true });
+        const forceExit = setTimeout(() => process.exit(1), 10_000); forceExit.unref();
+        const httpClosed = new Promise<void>((resolve, reject) => {
+            server.close(error => { if (error && (error as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') reject(error); else resolve(); });
+            // Includes upgraded WebSockets, which server.closeAllConnections does not close.
+            for (const socket of connections) socket.destroy();
         });
-        // Force-kill after 10 s if something hangs
-        setTimeout(() => process.exit(1), 10_000).unref();
+        shutdownTask = Promise.all([
+            nativeCleanup, httpClosed,
+            ocrService.terminate().catch(e => logger.debug('[Shutdown] OCR terminate error:', e)),
+            cleanupOrphanedTempFiles().catch(e => logger.debug('[Shutdown] Temp cleanup error:', e)),
+        ]).then(() => { logger.info('[System] Native work joined and HTTP server closed.'); }).finally(() => {
+            clearTimeout(forceExit);
+            process.off('SIGTERM', onShutdownSignal); process.off('SIGINT', onShutdownSignal);
+        });
+        return shutdownTask;
     };
-    process.once('SIGTERM', shutdown);
-    process.once('SIGINT', shutdown);
+    const onShutdownSignal = () => { void shutdown().then(() => process.exit(0), error => { logger.error('[Shutdown] Cleanup failed:', error); process.exit(1); }); };
+    process.once('SIGTERM', onShutdownSignal);
+    process.once('SIGINT', onShutdownSignal);
 
     // 4. Boot Server
-    return new Promise<{ port: number; authToken: string }>((resolve, reject) => {
+    return new Promise<DashboardServerHandle>((resolve, reject) => {
         server.once('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
                 logger.error(`[Server] Port ${selectedPort} is already in use. Kill the existing process (lsof -ti:${selectedPort} | xargs kill) and retry.`);
@@ -285,7 +297,7 @@ export async function startDashboardServer(port: number = 3000, openBrowser: boo
                 // handing it to `open`: both are visible only to the local user.
                 logger.critical(`Open this URL to connect: http://localhost:${selectedPort}/?token=${authToken}`);
             }
-            resolve({ port: selectedPort, authToken });
+            resolve({ port: selectedPort, authToken, shutdown });
         });
     });
 }

@@ -57,8 +57,8 @@ public final class NativeImageGenerationEngine: ImageGenerationEngine, @unchecke
         return try await withTaskCancellationHandler {
             return try await withCheckedThrowingContinuation { continuation in
                 queue.async { [self] in
-                    defer { lock.withLock { running = false } }
-                    do {
+                    let result: Result<URL, Error> = Result {
+                        defer { lock.withLock { running = false } }
                         try ImageModelInstaller.verify(request.model, in: request.directory, cancelled: isCancelled)
                         if isCancelled() { throw CancellationError() }
                         #if canImport(QuenderinDiffusion)
@@ -77,8 +77,9 @@ public final class NativeImageGenerationEngine: ImageGenerationEngine, @unchecke
                             request.model.components.first { $0.role == role }
                                 .map { request.directory.appendingPathComponent($0.localFilename).path } ?? ""
                         }
-                        let strings = [component("diffusion"), component("text_encoder"), component("vae"),
-                                       component("tokenizer"), request.prompt, "", request.output.path].map { strdup($0)! }
+                        let values: [String] = [component("diffusion"), component("text_encoder"), component("vae"),
+                                                component("tokenizer"), request.prompt, "", request.output.path(percentEncoded: false)]
+                        let strings = values.map { strdup($0)! }
                         defer { strings.forEach { free($0) } }
                         var native = quenderin_diffusion_request()
                         native.abi_version = 1
@@ -113,11 +114,14 @@ public final class NativeImageGenerationEngine: ImageGenerationEngine, @unchecke
                         guard try data.read(upToCount: 8) == Data([137, 80, 78, 71, 13, 10, 26, 10]) else {
                             throw ImageGenerationError.invalid("The image engine did not produce a valid PNG.")
                         }
-                        continuation.resume(returning: request.output)
+                        return request.output
                         #else
                         throw ImageGenerationError.invalid("This build does not include the local image engine.")
                         #endif
-                    } catch { continuation.resume(throwing: error) }
+                    }
+                    // Destruction and cancellation-handle cleanup must finish before a text
+                    // engine waiting on the specialist lease can restore its own allocations.
+                    continuation.resume(with: result)
                 }
             }
         } onCancel: { cancel() }

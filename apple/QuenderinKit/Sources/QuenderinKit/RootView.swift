@@ -14,11 +14,19 @@ public struct RootView: View {
     /// iOS tab selection — programmatic so the chat→agent handoff can jump to the Agent tab.
     @State private var tab = 0
     @State private var showImagesBeforeChat = false
+    @State private var showStep5BeforeChat = false
+    @StateObject private var step5BeforeChat = Step5Controller()
+    @State private var showVisionBeforeChat = false
+    @StateObject private var visionBeforeChat: VisionController
+    @State private var showGraniteBeforeChat = false
+    @StateObject private var graniteBeforeChat: GraniteChatController
 
     public init(onboarding: OnboardingModel, conversations: ConversationCoordinator, agent: AgentSession? = nil) {
         self.onboarding = onboarding
         self.conversations = conversations
         self.agent = agent
+        _visionBeforeChat = StateObject(wrappedValue: VisionController(suspendForSpecialist: { try await onboarding.suspendForSpecialist() }))
+        _graniteBeforeChat = StateObject(wrappedValue: GraniteChatController(suspendForSpecialist: { try await onboarding.suspendForSpecialist() }))
     }
 
     public var body: some View {
@@ -44,14 +52,40 @@ public struct RootView: View {
             } else {
                 OnboardingView(model: onboarding)
                     .overlay(alignment: .topTrailing) {
-                        Button { showImagesBeforeChat = true } label: { Label("Images", systemImage: "photo") }
+                        Menu {
+                            Button { showVisionBeforeChat = true } label: { Label("Still image", systemImage: "photo.viewfinder") }
+                            Button { showStep5BeforeChat = true } label: { Label("Step 5", systemImage: "server.rack") }
+                            Button { showImagesBeforeChat = true } label: { Label("Images", systemImage: "photo") }
+                            Button { showGraniteBeforeChat = true } label: { Label("Granite 4.1", systemImage: "text.bubble") }
+                        } label: { Label("More models", systemImage: "square.stack") }
                             .padding()
                     }
             }
         }
         // Appearance → Theme (nil = follow the system, the default).
         .preferredColorScheme(settings.theme.colorScheme)
-        .sheet(isPresented: $showImagesBeforeChat) { ImageGenerationView(showsDoneButton: true) }
+        .sheet(isPresented: $showImagesBeforeChat) { ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() }) }
+        .sheet(isPresented: $showVisionBeforeChat) {
+            NavigationStack {
+                ScrollView { VisionView(controller: visionBeforeChat).padding() }
+                    .navigationTitle("Still-image questions")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showVisionBeforeChat = false } } }
+            }
+        }
+        .sheet(isPresented: $showGraniteBeforeChat) {
+            NavigationStack {
+                ScrollView { GraniteChatView(controller: graniteBeforeChat).padding() }
+                    .navigationTitle("Granite Switch 4.1 8B")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showGraniteBeforeChat = false } } }
+            }
+        }
+        .sheet(isPresented: $showStep5BeforeChat) {
+            NavigationStack {
+                ScrollView { Step5View(controller: step5BeforeChat).padding() }
+                    .navigationTitle("Step 5 CUDA host")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showStep5BeforeChat = false } } }
+            }
+        }
     }
 
     @ViewBuilder
@@ -73,7 +107,7 @@ public struct RootView: View {
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }
                             .tag(1)
                     }
-                    ImageGenerationView()
+                    ImageGenerationView(suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
                         .tabItem { Label("Images", systemImage: "photo") }
                         .tag(5)
                     UniversalSearchView(activeModelID: model.id, onSelectModel: { picked in
@@ -89,7 +123,7 @@ public struct RootView: View {
                     SettingsView(coordinator: conversations, model: model, onSelectModel: { picked in
                         // Reuse the onboarding install flow: download (if needed) → load → swap.
                         onboarding.beginInstall(picked)
-                    })
+                    }, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(4)
                 }

@@ -81,6 +81,9 @@ def parse_desktop_models(text: str) -> list[dict]:
         download_bytes = re.search(r"downloadBytes:\s*([\d]+)", entry)
         if download_bytes:
             model["downloadBytes"] = int(download_bytes.group(1))
+        if "artifacts: BEAM_ARTIFACTS" in entry:
+            from generate_beam_artifacts import parts
+            model["artifacts"] = parts()
         if "artifacts: MUSE_SPARK_ARTIFACTS" in entry:
             manifest = json.loads((ROOT / "shared/muse-spark-artifacts.json").read_text())
             if model["id"] != manifest["modelId"]:

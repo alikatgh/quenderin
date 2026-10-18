@@ -2,6 +2,7 @@ package ai.quenderin.app.ui
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.content.ContextWrapper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -52,12 +53,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 
 @Composable
-fun ImageGenerationScreen() {
+fun ImageGenerationScreen(suspendForSpecialist: () -> ai.quenderin.core.SpecialistInferenceLease = { error("The app has not supplied exclusive specialist engine coordination.") }, active: Boolean = true) {
     val context = LocalContext.current
-    val controller = remember(context.applicationContext) { ImageGenerationController(context.applicationContext) }
+    val controller = remember(context.applicationContext) { ImageGenerationController(context.applicationContext, suspendForSpecialist = suspendForSpecialist) }
     DisposableEffect(controller) { onDispose { controller.close() } }
+    LaunchedEffect(active) { if (!active) controller.cancel() }
+    val lifecycle = remember(context) { generateSequence(context) { (it as? ContextWrapper)?.baseContext?.takeIf { parent -> parent !== it } }.filterIsInstance<LifecycleOwner>().firstOrNull()?.lifecycle }
+    DisposableEffect(controller, lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) controller.cancel() }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer); controller.cancel() }
+    }
     val state by controller.state.collectAsState()
     var prompt by rememberSaveable { mutableStateOf("") }
     var selectedID by rememberSaveable { mutableStateOf("moss-image-sft") }
@@ -152,7 +163,7 @@ fun ImageGenerationScreen() {
         }
         item {
             Button(onClick = controller::generate, enabled = !state.busy && state.installed && available && prompt.isNotBlank() &&
-                controller.fitReason(installing = false) == null && (model?.requiresPublisherAccess != true || state.publisherTermsAccepted)) {
+                (model?.requiresPublisherAccess != true || state.publisherTermsAccepted)) {
                 Text("Generate one image")
             }
         }

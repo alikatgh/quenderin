@@ -27,6 +27,11 @@ async function fixture(data: Buffer): Promise<string> {
 }
 
 describe('bounded GGUF model identity preflight', () => {
+    it('reads actual Granite layer/embedding and split metadata for conversion validation', async () => {
+        const file = await fixture(gguf([architecture('graniteswitch'), field('graniteswitch.block_count', 4, uint(40, 4)),
+            field('graniteswitch.embedding_length', 4, uint(4096, 4)), field('split.count', 2, uint(1, 2))]));
+        expect(await readGgufModelIdentity(file)).toMatchObject({ architecture: 'graniteswitch', graniteLayers: 40, graniteEmbedding: 4096, splitCount: 1 });
+    });
     it.each(['llama', 'k2-horizon', 'beam'])('reads %s identity without tensor allocation', async arch => {
         const file = await fixture(gguf([architecture(arch), field('general.name', 8, string('Tiny fixture'))]));
         const identity = await readGgufModelIdentity(file);

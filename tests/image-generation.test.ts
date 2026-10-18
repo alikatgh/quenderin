@@ -6,8 +6,11 @@ import { spawn, type SpawnOptions } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PNG } from 'pngjs';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import { ImageGenerationService, IMAGE_MEMORY_REQUIRED_BYTES,
-    type ImageModelCatalog, type DiffusionRuntimeLock } from '../src/services/imageGeneration.js';
+    type ImageModelCatalog, type DiffusionRuntimeLock, type ImageGenerationDependencies } from '../src/services/imageGeneration.js';
+import { nativeWorkloads } from '../src/services/nativeWorkloads.js';
 
 const REVISION = 'f0aac524d3f29140e60ba78f3cfb16d6acea87db';
 const LOCK: DiffusionRuntimeLock = { version: 1, abiVersion: 1, revision: REVISION,
@@ -85,18 +88,18 @@ afterEach(async () => {
 });
 
 function service(overrides: Parameters<typeof makeService>[0] = {}): ImageGenerationService { return makeService(overrides); }
-function makeService(overrides: { memory?: number; disk?: bigint; timeout?: number; grace?: number } = {}): ImageGenerationService {
+function makeService(overrides: { memory?: number; disk?: bigint; timeout?: number; grace?: number; spawnProcess?: ImageGenerationDependencies['spawnProcess'] } = {}): ImageGenerationService {
     return new ImageGenerationService({ catalog, runtimeLock: LOCK, bundledRuntimePath: runtime,
         availableMemoryBytes: () => overrides.memory ?? IMAGE_MEMORY_REQUIRED_BYTES,
         freeDiskBytes: async () => overrides.disk ?? BigInt(1024 ** 3),
         timeoutMs: overrides.timeout, killGraceMs: overrides.grace ?? 40,
-        spawnProcess: (file, args, options) => {
+        spawnProcess: overrides.spawnProcess ?? ((file, args, options) => {
             calls.push({ file, args, options });
             const child = spawn(process.execPath, [runtime, mode, ...args], options);
             const kill = child.kill.bind(child);
             vi.spyOn(child, 'kill').mockImplementation(signal => { signals.push(signal); return kill(signal); });
             return child;
-        },
+        }),
     });
 }
 
@@ -217,6 +220,25 @@ describe('bounded local image generation', () => {
         await expect(service().generate({ ...request(), signal: controller.signal,
             onProgress: () => controller.abort() })).rejects.toThrow('cancelled');
         expect(signals).toEqual(['SIGINT', 'SIGKILL']);
+    });
+
+    it('keeps other local models blocked after a bounded error until an unresponsive child actually closes', async () => {
+        let child: (EventEmitter & { stdout: PassThrough; stderr: PassThrough; kill: ReturnType<typeof vi.fn>; unref: ReturnType<typeof vi.fn> }) | undefined;
+        const instance = service({ grace: 5, spawnProcess: (_file, args, options) => {
+            if (args.includes('--version')) return spawn(process.execPath, [runtime, 'success', ...args], options);
+            child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), kill: vi.fn((_signal: NodeJS.Signals) => false), unref: vi.fn() });
+            return child as never;
+        } });
+        const controller = new AbortController();
+        const pending = instance.generate({ ...request(), signal: controller.signal });
+        const cancelled = expect(pending).rejects.toThrow('cancelled');
+        try {
+            await vi.waitFor(() => expect(child).toBeDefined()); controller.abort(); await cancelled;
+            expect(child!.kill.mock.calls.map(call => call[0])).toEqual(['SIGINT', 'SIGKILL']);
+            expect(() => nativeWorkloads.beginOrdinary()).toThrow('Image generation');
+            await expect(nativeWorkloads.acquire('Vision fixture')).rejects.toThrow('Image generation');
+        } finally { child?.emit('close', null, 'SIGKILL'); }
+        await vi.waitFor(() => { nativeWorkloads.beginOrdinary()(); });
     });
 
     it('bounds total runtime and rejects already-cancelled operations without spawning', async () => {

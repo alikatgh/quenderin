@@ -61,7 +61,7 @@ public struct MacRootView: View {
             case .models:
                 ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
             case .images:
-                ImageGenerationView()
+                ImageGenerationView(suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
             case .about:
                 AboutView()
             }

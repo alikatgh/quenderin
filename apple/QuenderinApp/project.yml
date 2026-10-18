@@ -58,6 +58,14 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            "127.0.0.1":
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
+            "::1":
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
         # T1 device perception (device.calendar.today) — read-only; the OS prompt is the grant.
         NSCalendarsUsageDescription: >-
           Quenderin's on-device assistant can read today's calendar events when you ask it to —
@@ -112,6 +120,14 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         # Only standard OS crypto (TLS + CryptoKit SHA-256) → exempt under EAR §742.15(b).
         ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            "127.0.0.1":
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
+            "::1":
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
         # The agent's opt-in Mac tools drive other apps via Apple Events (AppleScript);
         # macOS shows its per-app Automation consent on first use — this string is that
         # dialog's explanation. Without it (or the matching entitlement) every mac.* tool

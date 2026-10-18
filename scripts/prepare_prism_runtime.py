@@ -18,7 +18,9 @@ LOCK = json.loads((ROOT / "shared/prism-runtime.json").read_text())
 STAMP = "quenderin-prism-runtime.json"
 IDENTITY_FIELDS = ("repository", "revision", "sourcePatchId", "sourcePatchSha256", "museSparkABI",
                    "weeklyTextPatchId", "weeklyTextPatchSha256", "weeklyTextABI",
-                   "beamPatchId", "beamPatchSha256", "beamABI")
+                   "beamPatchId", "beamPatchSha256", "beamABI",
+                   "visionPatchId", "visionPatchSha256", "visionABI",
+                   "graniteConverterPatchId", "graniteConverterPatchSha256")
 
 
 def git(source: Path, *args: str) -> str:
@@ -131,6 +133,53 @@ def load_beam_patch(root: Path | None = None, lock: dict | None = None) -> dict 
     return manifest
 
 
+def load_vision_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("visionPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or any(manifest.get(parent) != {"id": lock.get(key, {}).get("id"),
+                                           "sha256": lock.get(key, {}).get("sha256")}
+                   for parent, key in (("parentSourcePatch", "sourcePatch"),
+                                       ("parentWeeklyTextPatch", "weeklyTextPatch"),
+                                       ("parentBeamPatch", "beamPatch")))
+            or manifest.get("upstreamRevisions") != identity["upstreamRevisions"]
+            or type(manifest.get("visionABI")) is not int or manifest["visionABI"] != 1
+            or manifest["visionABI"] != identity["visionABI"]
+            or manifest.get("capabilitySymbol") != "quenderin_vision_mtmd_runtime_abi"):
+        raise ValueError("Vision runtime source patch identity is invalid")
+    revisions = manifest["upstreamRevisions"]
+    if (not isinstance(revisions, dict) or set(revisions) != {"minicpm47", "supervl"}
+            or not all(re.fullmatch(r"[0-9a-f]{40}", value or "") for value in revisions.values())):
+        raise ValueError("Vision upstream revisions are invalid")
+    validate_patch_files(manifest, ("src", "tools", "conversion", "gguf-py", "build-xcframework.sh"))
+    return manifest
+
+
+def load_granite_converter_patch(root: Path | None = None, lock: dict | None = None) -> dict | None:
+    root, lock = root or ROOT, lock or LOCK
+    identity = lock.get("graniteConverterPatch")
+    if identity is None:
+        return None
+    manifest = read_patch_manifest(root, identity)
+    vision = lock.get("visionPatch", {})
+    if (manifest.get("version") != 1 or manifest.get("id") != identity["id"]
+            or manifest.get("baseRepository") != lock["repository"]
+            or manifest.get("baseRevision") != lock["revision"]
+            or not vision or manifest.get("parentVisionPatch") != {"id": vision["id"], "sha256": vision["sha256"]}
+            or manifest.get("upstreamRevisions") != identity["upstreamRevisions"]
+            or not isinstance(manifest.get("upstreamRevisions"), list)
+            or len(manifest["upstreamRevisions"]) != 3
+            or not all(re.fullmatch(r"[0-9a-f]{40}", value or "") for value in manifest["upstreamRevisions"])):
+        raise ValueError("Granite converter source patch identity is invalid")
+    validate_patch_files(manifest, ("conversion", "gguf-py"))
+    return manifest
+
+
 def source_patches(root: Path | None = None, lock: dict | None = None) -> list[dict]:
     manifests = [load_source_patch(root, lock)]
     weekly = load_weekly_text_patch(root, lock)
@@ -139,6 +188,12 @@ def source_patches(root: Path | None = None, lock: dict | None = None) -> list[d
     beam = load_beam_patch(root, lock)
     if beam is not None:
         manifests.append(beam)
+    vision = load_vision_patch(root, lock)
+    if vision is not None:
+        manifests.append(vision)
+    granite = load_granite_converter_patch(root, lock)
+    if granite is not None:
+        manifests.append(granite)
     return manifests
 
 
@@ -170,6 +225,14 @@ def provenance(root: Path | None = None, lock: dict | None = None) -> dict:
     if beam is not None:
         identity.update(beamPatchId=beam["id"], beamPatchSha256=lock["beamPatch"]["sha256"],
                         beamABI=beam["beamABI"])
+    vision = load_vision_patch(root, lock)
+    if vision is not None:
+        identity.update(visionPatchId=vision["id"],
+                        visionPatchSha256=lock["visionPatch"]["sha256"], visionABI=vision["visionABI"])
+    granite = load_granite_converter_patch(root, lock)
+    if granite is not None:
+        identity.update(graniteConverterPatchId=granite["id"],
+                        graniteConverterPatchSha256=lock["graniteConverterPatch"]["sha256"])
     return identity
 
 
@@ -262,6 +325,9 @@ def apply_source_patch(source: Path) -> dict:
     try:
         staged = []
         for index, (path, before, after) in enumerate(plan.values()):
+            # Upstream model backports can add a new source directory. Parents
+            # must be ordinary directories inside the already verified checkout.
+            path.parent.mkdir(parents=True, exist_ok=True)
             backup, output = staging / f"{index}.before", staging / f"{index}.after"
             if before is not None:
                 os.link(path, backup, follow_symlinks=False)
@@ -335,6 +401,13 @@ def stamp(source: Path, artifact: Path) -> dict:
     if "beamABI" in identity and not all(
             "quenderin_beam_runtime_abi" in h.read_text() for h in llama_headers):
         raise ValueError("Every framework slice must contain the Beam capability header")
+    if "visionABI" in identity:
+        if not all(h.with_name("mtmd.h").is_file()
+                   and "quenderin_vision_mtmd_runtime_abi" in h.with_name("mtmd.h").read_text()
+                   and h.with_name("quenderin_vision.h").is_file()
+                   and "quenderin_vision_generate" in h.with_name("quenderin_vision.h").read_text()
+                   for h in headers):
+            raise ValueError("Every framework slice must contain the vision source and bridge capability headers")
     (artifact / STAMP).write_text(json.dumps(identity, indent=2) + "\n")
     return identity
 

@@ -41,7 +41,7 @@ class PrismNodeRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             package = self.package(Path(directory))
             plan = prism_node.patch_plan(package, prism_node.load_patch())
-            self.assertEqual(len(plan), 5)
+            self.assertEqual(len(plan), 8)
             model = plan[0][2].decode()
             self.assertNotIn("model_params.use_mmap", model)
             self.assertNotIn("model_params.use_direct_io", model)
@@ -53,6 +53,17 @@ class PrismNodeRuntimeTests(unittest.TestCase):
             self.assertIn("quenderin-prism-node-runtime.json", plan[2][2].decode())
             self.assertEqual(json.loads(plan[3][2]), prism_node.source_info())
             self.assertIn("quenderin_weekly_text_runtime_abi()", plan[4][2].decode())
+            self.assertIn("quenderin_beam_runtime_abi()", plan[4][2].decode())
+            self.assertIn("quenderin_muse_spark_runtime_abi()", plan[4][2].decode())
+            self.assertIn("AddonContext::ContextAbortRuntimeABI()", plan[4][2].decode())
+            context = next(after.decode() for path, _before, after in plan if path.name == "AddonContext.cpp")
+            self.assertIn("context_params.abort_callback = quenderinContextAbortCallback", context)
+            self.assertIn("context_params.cb_eval = quenderinContextEvalCallback", context)
+            self.assertIn("return ask || !quenderinContextAbortCallback(data)", context)
+            self.assertIn('InstanceMethod("requestQuenderinAbort"', context)
+            creation = next(after.decode() for path, _before, after in plan if path.name == "LlamaContext.js")
+            self.assertLess(creation.index('createSignal?.addEventListener("abort", requestContextAbort'), creation.index('contextLoaded = await context._ctx.init()'))
+            self.assertIn('createSignal?.removeEventListener("abort", requestContextAbort)', creation)
             for path, before, _after in plan:
                 self.assertEqual(path.read_bytes(), before)
 

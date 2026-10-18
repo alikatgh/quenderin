@@ -79,23 +79,31 @@ public final class ImageGenerationController: ObservableObject {
         }
     }
 
-    public func generate() {
+    public func generate(suspendForSpecialist: @escaping @Sendable () async throws -> SpecialistInferenceLease = { throw ImageGenerationError.invalid("The app has not supplied exclusive specialist engine coordination.") }) {
         guard job == nil, let model = selected, installed else { return }
-        let budget = budget()
-        if let reason = budget.blockReason(for: model, installing: false) { failure = reason; return }
+        guard engine.available else { failure = "This build does not include the local image engine."; return }
         if model.requiresPublisherAccess && !publisherTermsAccepted { failure = "Confirm that you have reviewed and accepted the publisher terms."; return }
         let description = prompt
         let operation = UUID(); operationID = operation
         busy = true; progress = nil; failure = nil; status = "Verifying components and loading the model…"
         job = Task {
             do {
-                let outputs = directory.deletingLastPathComponent().appendingPathComponent("created-images", isDirectory: true)
-                try FileManager.default.createDirectory(at: outputs, withIntermediateDirectories: true)
-                let request = ImageGenerationRequest(model: model, directory: directory.appendingPathComponent(model.id), prompt: description,
-                                                     output: outputs.appendingPathComponent("Quenderin-\(UUID().uuidString).png"), seed: 0, budget: budget)
-                let image = try await engine.generate(request) { [weak self] fraction in
-                    Task { @MainActor in if self?.operationID == operation { self?.progress = fraction; self?.status = "Generating image…" } }
-                }
+                let lease = try await suspendForSpecialist()
+                let result: Result<URL, Error>
+                do {
+                    try Task.checkCancellation()
+                    let fresh = self.budget()
+                    if let reason = fresh.blockReason(for: model, installing: false) { throw ImageGenerationError.invalid(reason) }
+                    let outputs = directory.deletingLastPathComponent().appendingPathComponent("created-images", isDirectory: true)
+                    try FileManager.default.createDirectory(at: outputs, withIntermediateDirectories: true)
+                    let request = ImageGenerationRequest(model: model, directory: directory.appendingPathComponent(model.id), prompt: description,
+                                                         output: outputs.appendingPathComponent("Quenderin-\(UUID().uuidString).png"), seed: 0, budget: fresh)
+                    result = .success(try await engine.generate(request) { [weak self] fraction in
+                        Task { @MainActor in if self?.operationID == operation { self?.progress = fraction; self?.status = "Generating image…" } }
+                    })
+                } catch { result = .failure(error) }
+                try await Task.detached { try await lease.resume() }.value
+                let image = try result.get()
                 try Task.checkCancellation()
                 output = image; status = "Image created locally."
             } catch is CancellationError { status = "Generation cancelled." }
@@ -117,10 +125,13 @@ public struct ImageGenerationView: View {
     @State private var exporting = false
     @State private var exportDocument: GeneratedImageDocument?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     private let showsDoneButton: Bool
+    private let suspendForSpecialist: @Sendable () async throws -> SpecialistInferenceLease
 
-    public init(controller: ImageGenerationController = .shared, showsDoneButton: Bool = false) {
-        self.controller = controller; self.showsDoneButton = showsDoneButton
+    public init(controller: ImageGenerationController? = nil, showsDoneButton: Bool = false, suspendForSpecialist: @escaping @Sendable () async throws -> SpecialistInferenceLease = { throw ImageGenerationError.invalid("The app has not supplied exclusive specialist engine coordination.") }) {
+        self.controller = controller ?? .shared; self.showsDoneButton = showsDoneButton
+        self.suspendForSpecialist = suspendForSpecialist
     }
 
     public var body: some View {
@@ -166,8 +177,8 @@ public struct ImageGenerationView: View {
                         Text("FLUX works from a complete scene caption. Include the subject, setting, lighting and composition. Reference-image input is not available in this screen.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
-                    Button("Generate one image") { controller.generate() }
-                        .disabled(controller.busy || !controller.installed || !controller.engine.available || controller.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || controller.fitReason(installing: false) != nil || (controller.selected?.requiresPublisherAccess == true && !controller.publisherTermsAccepted))
+                    Button("Generate one image") { controller.generate(suspendForSpecialist: suspendForSpecialist) }
+                        .disabled(controller.busy || !controller.installed || !controller.engine.available || controller.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (controller.selected?.requiresPublisherAccess == true && !controller.publisherTermsAccepted))
                     if controller.busy {
                         if let progress = controller.progress { ProgressView(value: progress) }
                         else { ProgressView() }
@@ -194,6 +205,8 @@ public struct ImageGenerationView: View {
                 }
             }
             .onChange(of: controller.selectedID) { _ in controller.refreshSelection() }
+            .onDisappear { controller.cancel() }
+            .onChange(of: scenePhase) { phase in if phase != .active { controller.cancel() } }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.data, .json], allowsMultipleSelection: true) { result in
                 switch result { case .success(let urls): controller.install(imported: urls); case .failure(let error): controller.reportExport(.failure(error)) }
             }

@@ -93,6 +93,8 @@ public protocol InferenceEngine: Sendable {
     /// silently overflows the native window (Q-167, twin of Kotlin `loadedContextTokens`). The
     /// default nil keeps mock/scripted engines and their tests unchanged.
     func loadedContextTokens() async -> Int?
+    func isSuspendedForSpecialist() async -> Bool
+    func suspendForSpecialist() async throws -> SpecialistInferenceLease
 }
 
 /// The flat "User:/Assistant:" transcript prompt — the template-less fallback shared by the
@@ -107,6 +109,8 @@ func flatTranscriptPrompt(system: String, history: [ChatMessage]) -> String {
 }
 
 public extension InferenceEngine {
+    func isSuspendedForSpecialist() async -> Bool { false }
+    func suspendForSpecialist() async throws -> SpecialistInferenceLease { throw SpecialistCoordinationError.unavailable }
     func requestCancel() {}
 
     func loadedContextTokens() async -> Int? { nil }

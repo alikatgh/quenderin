@@ -73,10 +73,30 @@ describe('desktop model runtime compatibility', () => {
         expect(result.message).toContain('Prism llama.cpp');
     });
 
-    it('keeps Muse disabled without a desktop multipart/chat adapter even with the Prism addon', () => {
+    it('requires the compiled Muse capability even with the pinned Prism addon', () => {
         const muse = MODEL_CATALOG.find(m => m.id === 'muse-spark-open-q2-k')!;
         expect(getModelRuntimeCompatibility(muse, prism).canLoad).toBe(false);
-        expect(getModelRuntimeCompatibility(muse, prism).message).toContain('Electron/CLI');
+        expect(getModelRuntimeCompatibility(muse, prism).message).toContain('compiled Muse capability');
+        expect(getModelRuntimeCompatibility(muse, { ...prism, museSparkABI: 1 }).canLoad).toBe(true);
+    });
+
+    it('enables only the complete pinned Beam path with its own compiled ABI and whole-model memory', () => {
+        const beam = MODEL_CATALOG.find(m => m.id === 'beam-1.0-501b-a23b-ud-iq2-xxs')!;
+        const capable = { ...prism, beamABI: 1, museSparkABI: 1 };
+        expect(getModelRuntimeCompatibility(beam, prism).canLoad).toBe(false);
+        expect(getModelRuntimeCompatibility(beam, { ...capable, buildType: 'prebuilt' }).canLoad).toBe(false);
+        expect(getModelRuntimeCompatibility(beam, capable).canLoad).toBe(true);
+        for (const change of [{ artifacts: beam.artifacts.slice(0, 1) }, { downloadBytes: 5954020 }, { sha256: '0'.repeat(64) }, { architecture: 'muse-spark' }]) {
+            expect(getModelRuntimeCompatibility({ ...beam, ...change }, capable).canLoad).toBe(false);
+        }
+        const muse = MODEL_CATALOG.find(m => m.id === 'muse-spark-open-q2-k')!;
+        expect(getModelRuntimeCompatibility({ ...muse, architecture: 'beam' }, capable).canLoad).toBe(false);
+        vi.spyOn(os, 'totalmem').mockReturnValue(256 * 1024 ** 3);
+        const free = vi.spyOn(memory, 'availableMemBytes').mockReturnValue(256 * 1024 ** 3);
+        expect(checkMemoryForModel(beam, capable).requiredMemoryGB).toBe(208);
+        expect(checkMemoryForModel(beam, capable).canLoad).toBe(true);
+        free.mockReturnValue(159 * 1024 ** 3);
+        expect(checkMemoryForModel(beam, capable).canLoad).toBe(false);
     });
 
     it('keeps standard models compatible without a Prism addon', () => {

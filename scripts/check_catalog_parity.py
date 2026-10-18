@@ -92,7 +92,7 @@ def parse_kotlin(text: str) -> Catalog:
     """Android Kotlin (positional). sha256 is the optional last arg (data-class default null)."""
     catalog: Catalog = {}
     for m in re.finditer(
-        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*([\d.]+)\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"([^"]*)"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*([\d_]+)L?)?(?:,\s*artifacts\s*=\s*MuseModelArtifacts\.parts)?\s*\)""",
+        r"""ModelEntry\(\s*"([\w.-]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*([\d.]+)\s*,\s*"[^"]*"\s*,\s*([\d.]+)\s*,\s*"([\w_-]+)"\s*,\s*"([^"]*)"\s*(?:,\s*"([0-9a-fA-F]{64})")?(?:,\s*languagesLabel\s*=\s*"[^"]*")?(?:,\s*downloadBytes\s*=\s*([\d_]+)L?)?(?:,\s*artifacts\s*=\s*(?:Muse|Beam)ModelArtifacts\.parts)?\s*\)""",
         text,
     ):
         # Normalize hex case so an uppercase Kotlin literal still matches the (lowercase) manifest.
@@ -246,6 +246,18 @@ def compare(name: str, catalog: Catalog, reference: Catalog) -> bool:
     return False
 
 
+def check_beam_artifacts() -> bool:
+    import generate_beam_artifacts
+    canonical = json.loads(CANONICAL.read_text())["models"]
+    match = next(m for m in canonical if m["id"] == "beam-1.0-501b-a23b-ud-iq2-xxs")
+    assert match["artifacts"] == generate_beam_artifacts.parts()
+    assert match["downloadBytes"] == 133885310500 and match["ramGb"] >= 160
+    for path, content in generate_beam_artifacts.outputs().items():
+        assert path.read_text() == content, f"Stale Beam generated artifacts: {path}"
+    print("  ok   Beam artifacts: all four pinned parts and full-weight memory floor")
+    return True
+
+
 def check_muse_artifacts() -> bool:
     """Check every shard and its actual reference, not just the first-file identity."""
     import generate_muse_artifacts
@@ -273,7 +285,7 @@ def main() -> int:
     canonical = load_canonical()
     print(f"Catalog parity — canonical: shared/model-catalog.json ({len(canonical)} models)\n")
     ok = (check_sha256_pinned(canonical) and check_bonsai_artifacts(canonical)
-          and check_experimental_text_artifacts(canonical) and check_muse_artifacts())
+          and check_experimental_text_artifacts(canonical) and check_muse_artifacts() and check_beam_artifacts())
     for name, path in SOURCES.items():
         ok = compare(name, load(name, path), canonical) and ok
 

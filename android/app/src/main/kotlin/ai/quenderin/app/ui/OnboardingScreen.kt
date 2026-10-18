@@ -4,6 +4,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.saveable.rememberSaveable
 import ai.quenderin.app.R
+import ai.quenderin.app.Step5Controller
+import ai.quenderin.app.VisionController
+import ai.quenderin.app.GraniteController
 
 import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
@@ -177,11 +180,43 @@ fun AppRoot(
     }
 
     var showImagesBeforeChat by rememberSaveable { mutableStateOf(false) }
+    var showStep5BeforeChat by remember { mutableStateOf(false) }
+    val step5BeforeChat = remember { Step5Controller() }
+    var showVisionBeforeChat by remember { mutableStateOf(false) }
+    val visionBeforeChat = remember { VisionController(context, engine::suspendForSpecialist) }
+    androidx.compose.runtime.DisposableEffect(visionBeforeChat) { onDispose { visionBeforeChat.close() } }
+    var showGraniteBeforeChat by remember { mutableStateOf(false) }
+    val graniteBeforeChat = remember { GraniteController(context, engine::suspendForSpecialist) }
+    androidx.compose.runtime.DisposableEffect(graniteBeforeChat) { onDispose { graniteBeforeChat.close() } }
+    if (showGraniteBeforeChat) {
+        BackHandler { showGraniteBeforeChat = false }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            TextButton(onClick = { showGraniteBeforeChat = false }) { Text("Back to setup") }
+            GraniteScreen(graniteBeforeChat)
+        }
+        return
+    }
+    if (showVisionBeforeChat) {
+        BackHandler { showVisionBeforeChat = false }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            TextButton(onClick = { showVisionBeforeChat = false }) { Text("Back to setup") }
+            VisionScreen(visionBeforeChat)
+        }
+        return
+    }
+    if (showStep5BeforeChat) {
+        BackHandler { showStep5BeforeChat = false }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            TextButton(onClick = { showStep5BeforeChat = false }) { Text("Back to setup") }
+            Step5Screen(step5BeforeChat)
+        }
+        return
+    }
     if (showImagesBeforeChat) {
         BackHandler { showImagesBeforeChat = false }
         Column(Modifier.fillMaxSize()) {
             TextButton(onClick = { showImagesBeforeChat = false }) { Text("Back to setup") }
-            Box(Modifier.weight(1f)) { ImageGenerationScreen() }
+            Box(Modifier.weight(1f)) { ImageGenerationScreen(suspendForSpecialist = engine::suspendForSpecialist) }
         }
         return
     }
@@ -209,8 +244,15 @@ fun AppRoot(
                             model, File(context.filesDir, "models").absolutePath))
                 },
             )
-                TextButton(onClick = { showImagesBeforeChat = true }, modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                    Text("Images")
+                var showOtherModels by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    TextButton(onClick = { showOtherModels = true }) { Text("More models") }
+                    androidx.compose.material3.DropdownMenu(expanded = showOtherModels, onDismissRequest = { showOtherModels = false }) {
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Still image") }, onClick = { showOtherModels = false; showVisionBeforeChat = true })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Step 5") }, onClick = { showOtherModels = false; showStep5BeforeChat = true })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Images") }, onClick = { showOtherModels = false; showImagesBeforeChat = true })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Granite 4.1") }, onClick = { showOtherModels = false; showGraniteBeforeChat = true })
+                    }
                 }
             }
             // The recommendation is a default, not a cage: the full catalog one tap away.

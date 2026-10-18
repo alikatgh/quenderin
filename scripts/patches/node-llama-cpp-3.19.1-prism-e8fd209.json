@@ -64,17 +64,83 @@
     {
       "path": "llama/addon/addon.cpp",
       "beforeSha256": "5c4f223c1f22e60c583f5affcc5c4d61160e008e4b1414d32c9654c1627009bb",
-      "afterSha256": "d3cb4352d9773ed8cb2b72959b0a3ce0022a0dbc22e44b56450f313e2f5c45f9",
+      "afterSha256": "f4c2cf2a9e037dd99aa770f1601c91abfbdf44c356c729af4971bda31eb47c29",
       "replacements": [
         {
-          "before": "std::mutex backendMutex;",
-          "after": "Napi::Value addonGetQuenderinWeeklyTextRuntimeABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), quenderin_weekly_text_runtime_abi());\n}\n\nstd::mutex backendMutex;"
+          "before": "#include \"globals/getSwapInfo.h\"\n#include \"globals/getSystemMemoryInfo.h\"\n#include \"globals/addonEnv.h\"\n\nstd::mutex backendMutex;\nbool backendInitialized = false;\n",
+          "after": "#include \"globals/getSwapInfo.h\"\n#include \"globals/getSystemMemoryInfo.h\"\n#include \"globals/addonEnv.h\"\n\nNapi::Value addonGetQuenderinWeeklyTextRuntimeABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), quenderin_weekly_text_runtime_abi());\n}\n\nNapi::Value addonGetQuenderinBeamRuntimeABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), quenderin_beam_runtime_abi());\n}\nNapi::Value addonGetQuenderinMuseSparkRuntimeABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), quenderin_muse_spark_runtime_abi());\n}\n\nNapi::Value addonGetQuenderinContextAbortABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), AddonContext::ContextAbortRuntimeABI());\n}\n\nstd::mutex backendMutex;\nbool backendInitialized = false;\n"
         },
         {
-          "before": "        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),",
-          "after": "        Napi::PropertyDescriptor::Function(\"getQuenderinWeeklyTextRuntimeABI\", addonGetQuenderinWeeklyTextRuntimeABI),\n        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),"
+          "before": "        Napi::PropertyDescriptor::Function(\"getGpuSupportsMmap\", addonGetGpuSupportsMmap),\n        Napi::PropertyDescriptor::Function(\"getSupportsMlock\", addonGetSupportsMlock),\n        Napi::PropertyDescriptor::Function(\"getMathCores\", addonGetMathCores),\n        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),\n        Napi::PropertyDescriptor::Function(\"getTypeSizeForGgmlType\", addonGetTypeSizeForGgmlType),\n        Napi::PropertyDescriptor::Function(\"getGgmlGraphOverheadCustom\", addonGetGgmlGraphOverheadCustom),\n",
+          "after": "        Napi::PropertyDescriptor::Function(\"getGpuSupportsMmap\", addonGetGpuSupportsMmap),\n        Napi::PropertyDescriptor::Function(\"getSupportsMlock\", addonGetSupportsMlock),\n        Napi::PropertyDescriptor::Function(\"getMathCores\", addonGetMathCores),\n        Napi::PropertyDescriptor::Function(\"getQuenderinBeamRuntimeABI\", addonGetQuenderinBeamRuntimeABI),\n        Napi::PropertyDescriptor::Function(\"getQuenderinMuseSparkRuntimeABI\", addonGetQuenderinMuseSparkRuntimeABI),\n        Napi::PropertyDescriptor::Function(\"getQuenderinWeeklyTextRuntimeABI\", addonGetQuenderinWeeklyTextRuntimeABI),\n        Napi::PropertyDescriptor::Function(\"getQuenderinContextAbortABI\", addonGetQuenderinContextAbortABI),\n        Napi::PropertyDescriptor::Function(\"getBlockSizeForGgmlType\", addonGetBlockSizeForGgmlType),\n        Napi::PropertyDescriptor::Function(\"getTypeSizeForGgmlType\", addonGetTypeSizeForGgmlType),\n        Napi::PropertyDescriptor::Function(\"getGgmlGraphOverheadCustom\", addonGetGgmlGraphOverheadCustom),\n"
+        }
+      ]
+    },
+    {
+      "path": "llama/addon/AddonContext.h",
+      "beforeSha256": "c82d36751105fc54391e60c45bc75d478d3c94e88e04b407ec83cebf7f33fa16",
+      "afterSha256": "517d2f9415a9a3b01665532d36ffdbb27ffac11140d91b702b7dfaff6ffb0757",
+      "replacements": [
+        {
+          "before": "#pragma once\n\n#include <mutex>\n\n#include \"llama.h\"\n",
+          "after": "#pragma once\n\n#include <atomic>\n#include <mutex>\n\n#include \"llama.h\"\n"
+        },
+        {
+          "before": "    public:\n        AddonModel* model;\n        llama_context_params context_params;\n        llama_context* ctx;\n        llama_batch batch;\n        uint64_t batchMemorySize = 0;\n        bool has_batch = false;\n",
+          "after": "    public:\n        AddonModel* model;\n        llama_context_params context_params;\n        llama_context* ctx = nullptr;\n        llama_batch batch;\n        uint64_t batchMemorySize = 0;\n        bool has_batch = false;\n"
+        },
+        {
+          "before": "        uint64_t loadedContextMemorySize = 0;\n        bool contextLoaded = false;\n        std::mutex disposeMutex;\n\n        bool disposed = false;\n        bool memoryDisposed = false;\n\n        AddonContext(const Napi::CallbackInfo& info);\n        ~AddonContext();\n\n        void disposeMemory();\n        void disposeMT();\n",
+          "after": "        uint64_t loadedContextMemorySize = 0;\n        bool contextLoaded = false;\n        std::mutex disposeMutex;\n        std::atomic<bool> quenderinAbortRequested{false};\n\n        bool disposed = false;\n        bool memoryDisposed = false;\n\n        AddonContext(const Napi::CallbackInfo& info);\n        ~AddonContext();\n\n        static uint32_t ContextAbortRuntimeABI();\n        Napi::Value GetQuenderinContextAbortABI(const Napi::CallbackInfo& info);\n        Napi::Value RequestQuenderinAbort(const Napi::CallbackInfo& info);\n        Napi::Value ResetQuenderinAbort(const Napi::CallbackInfo& info);\n\n        void disposeMemory();\n        void disposeMT();\n"
+        }
+      ]
+    },
+    {
+      "path": "llama/addon/AddonContext.cpp",
+      "beforeSha256": "7bd06749d38c9b083fa5ad84a41d498dea9ed90cbaf3e49b100351ed3c851b58",
+      "afterSha256": "e662803611a29060219a0c65bd06e4b41496c3199f560a75e59467f61ec9b8dc",
+      "replacements": [
+        {
+          "before": "#include \"AddonModelLora.h\"\n#include \"AddonGrammarEvaluationState.h\"\n#include \"AddonContext.h\"\n\nstatic uint64_t calculateBatchMemorySize(int32_t n_tokens_alloc, int32_t embd, int32_t n_seq_max) {\n    uint64_t totalSize = 0;\n",
+          "after": "#include \"AddonModelLora.h\"\n#include \"AddonGrammarEvaluationState.h\"\n#include \"AddonContext.h\"\n\n// The callback data is the Ref()-held AddonContext, never a disposable llama_context.\n// Cancellation mutates only an atomic; it cannot block on the in-flight worker.\nstatic bool quenderinContextAbortCallback(void * data) {\n    return static_cast<AddonContext *>(data)->quenderinAbortRequested.load(std::memory_order_relaxed);\n}\nstatic bool quenderinContextEvalCallback(ggml_tensor *, bool ask, void * data) {\n    return ask || !quenderinContextAbortCallback(data);\n}\n\nstatic uint64_t calculateBatchMemorySize(int32_t n_tokens_alloc, int32_t embd, int32_t n_seq_max) {\n    uint64_t totalSize = 0;\n"
+        },
+        {
+          "before": "\n        void Execute() {\n            try {\n                // Perform the evaluation using llama_decode.\n                int r = llama_decode(ctx->ctx, ctx->batch);\n\n",
+          "after": "\n        void Execute() {\n            try {\n                if (quenderinContextAbortCallback(ctx)) {\n                    SetError(\"Context evaluation aborted\");\n                    return;\n                }\n                // Perform the evaluation using llama_decode.\n                int r = llama_decode(ctx->ctx, ctx->batch);\n\n"
+        },
+        {
+          "before": "\n        void Execute() {\n            try {\n                context->ctx = llama_init_from_model(context->model->model, context->context_params);\n\n                context->contextLoaded = context->ctx != nullptr;\n",
+          "after": "\n        void Execute() {\n            try {\n                if (quenderinContextAbortCallback(context)) {\n                    SetError(\"Context initialization aborted\");\n                    return;\n                }\n                context->ctx = llama_init_from_model(context->model->model, context->context_params);\n\n                context->contextLoaded = context->ctx != nullptr;\n"
+        },
+        {
+          "before": "    model->Ref();\n\n    context_params = llama_context_default_params();\n    context_params.n_ctx = 4096;\n    context_params.n_threads = std::max(common_cpu_get_num_math(), 1);\n    context_params.n_threads_batch = context_params.n_threads;\n",
+          "after": "    model->Ref();\n\n    context_params = llama_context_default_params();\n    context_params.abort_callback = quenderinContextAbortCallback;\n    context_params.abort_callback_data = this;\n    context_params.cb_eval = quenderinContextEvalCallback;\n    context_params.cb_eval_user_data = this;\n    context_params.n_ctx = 4096;\n    context_params.n_threads = std::max(common_cpu_get_num_math(), 1);\n    context_params.n_threads_batch = context_params.n_threads;\n"
+        },
+        {
+          "before": "    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(info.Env());\n    deferred.Resolve(info.Env().Undefined());\n    return deferred.Promise();\n}\n\nNapi::Value AddonContext::Init(const Napi::CallbackInfo& info) {\n",
+          "after": "    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(info.Env());\n    deferred.Resolve(info.Env().Undefined());\n    return deferred.Promise();\n}\n\nuint32_t AddonContext::ContextAbortRuntimeABI() { return 1; }\nNapi::Value AddonContext::GetQuenderinContextAbortABI(const Napi::CallbackInfo& info) {\n    return Napi::Number::New(info.Env(), ContextAbortRuntimeABI());\n}\nNapi::Value AddonContext::RequestQuenderinAbort(const Napi::CallbackInfo& info) {\n    quenderinAbortRequested.store(true, std::memory_order_relaxed);\n    return info.Env().Undefined();\n}\nNapi::Value AddonContext::ResetQuenderinAbort(const Napi::CallbackInfo& info) {\n    quenderinAbortRequested.store(false, std::memory_order_relaxed);\n    return info.Env().Undefined();\n}\n\nNapi::Value AddonContext::Init(const Napi::CallbackInfo& info) {\n"
+        },
+        {
+          "before": "            exports.Env(),\n            \"AddonContext\",\n            {\n                InstanceMethod(\"init\", &AddonContext::Init),\n                InstanceMethod(\"getContextSize\", &AddonContext::GetContextSize),\n                InstanceMethod(\"initBatch\", &AddonContext::InitBatch),\n",
+          "after": "            exports.Env(),\n            \"AddonContext\",\n            {\n                InstanceMethod(\"getQuenderinContextAbortABI\", &AddonContext::GetQuenderinContextAbortABI),\n                InstanceMethod(\"requestQuenderinAbort\", &AddonContext::RequestQuenderinAbort),\n                InstanceMethod(\"resetQuenderinAbort\", &AddonContext::ResetQuenderinAbort),\n                InstanceMethod(\"init\", &AddonContext::Init),\n                InstanceMethod(\"getContextSize\", &AddonContext::GetContextSize),\n                InstanceMethod(\"initBatch\", &AddonContext::InitBatch),\n"
+        }
+      ]
+    },
+    {
+      "path": "dist/evaluator/LlamaContext/LlamaContext.js",
+      "beforeSha256": "554dd154a2cb09d827f31e1aa7dcf9e39435e86df354d80a30124d070b0f1760",
+      "afterSha256": "271de64c76b773c032768f0ed9c6a555b401444cdbd68affa5849efe39f18691",
+      "replacements": [
+        {
+          "before": "                    throw createSignal.reason;\n                const initLock = await acquireLock([_model._llama._memoryLock, LlamaLocks.addonInit]);\n                let contextLoaded = false;\n                try {\n                    contextLoaded = await context._ctx.init();\n                }\n                finally {\n                    initLock.dispose();\n                }\n                if (createSignal?.aborted) {\n                    if (contextLoaded)\n                        await context._ctx.dispose();\n                    throw createSignal.reason;\n                }\n                else if (!contextLoaded)\n",
+          "after": "                    throw createSignal.reason;\n                const initLock = await acquireLock([_model._llama._memoryLock, LlamaLocks.addonInit]);\n                let contextLoaded = false;\n                const requestContextAbort = () => context._ctx.requestQuenderinAbort();\n                try {\n                    context._ctx.resetQuenderinAbort();\n                    createSignal?.addEventListener(\"abort\", requestContextAbort, { once: true });\n                    if (createSignal?.aborted) {\n                        requestContextAbort();\n                        throw createSignal.reason;\n                    }\n                    contextLoaded = await context._ctx.init();\n                }\n                catch (error) {\n                    if (createSignal?.aborted)\n                        throw createSignal.reason;\n                    throw error;\n                }\n                finally {\n                    createSignal?.removeEventListener(\"abort\", requestContextAbort);\n                    initLock.dispose();\n                }\n                if (createSignal?.aborted) {\n                    if (contextLoaded)\n                        await context.dispose();\n                    throw createSignal.reason;\n                }\n                else if (!contextLoaded)\n"
+        },
+        {
+          "before": "                    }\n                }\n                return context;\n            }\n            finally {\n                contextCreationVramReservation?.dispose?.();\n",
+          "after": "                    }\n                }\n                return context;\n            }\n            catch (error) {\n                await context.dispose();\n                throw error;\n            }\n            finally {\n                contextCreationVramReservation?.dispose?.();\n"
         }
       ]
     }
-  ]
+  ],
+  "contextAbortABI": 1
 }

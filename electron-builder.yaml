@@ -12,6 +12,10 @@ extraResources:
     to: diffusion
     filter:
       - "**/*"
+  - from: build/vision/${os}-${arch}
+    to: vision
+    filter:
+      - "**/*"
 directories:
   output: release
   # Icon resources (icon.icns / icon.ico / icon.png) — build/ is gitignored TS output,

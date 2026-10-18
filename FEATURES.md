@@ -11,7 +11,7 @@ Quenderin ships with a built-in multi-model catalog spanning coding, reasoning, 
 **Available models:**
 
 <!-- BEGIN GENERATED: model-catalog (scripts/generate_features_models.py) -->
-_27 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
+_28 models — generated from `shared/model-catalog.json`; edit `src/constants.ts` and run `npm run gen:features`, never this table._
 
 | ID | Label | Params | RAM footprint | Download | Quantization |
 |----|-------|--------|---------------|----------|--------------|
@@ -29,6 +29,7 @@ _27 models — generated from `shared/model-catalog.json`; edit `src/constants.t
 | `jais3-32b` | Jais 3 32B (Experimental, text only) | 34.7793B | ~28 GB | 21.08 GB download | `Q4_K_M` |
 | `jais3-mova-36b-a4b` | Jais 3 MoVA 36B-A4B (Experimental, text only) | 37.4448B | ~30 GB | 22.37 GB download | `Q4_K_M` |
 | `nemotron35-bolt-74b-a9b` | Nemotron 3.5 Bolt 74B-A9B (Experimental, text only) | 74.0427B | ~28 GB | 22.02 GB download | `IQ2_XXS-mixed` |
+| `beam-1.0-501b-a23b-ud-iq2-xxs` | Beam 1.0 501B-A23B (Experimental, text only) | 501B | ~160 GB | 133.89 GB download · 4 files | `UD-IQ2_XXS` |
 | `muse-spark-open-q2-k` | Muse Spark Open Q2_K (Experimental, text only) | 816B | ~330 GB | 304.08 GB download · 22 files | `Q2_K` |
 | `qwen3-14b` | Qwen3 14B (Best Quality) | 14B | ~11 GB | 9.0 GB download | `Q4_K_M` |
 | `gemma4-12b` | Gemma 4 12B (Multilingual) | 12B | ~9 GB | 7.1 GB download | `Q4_K_M` |

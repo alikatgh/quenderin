@@ -29,6 +29,7 @@ object MemoryFitness {
         prismRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBonsai,
         museRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsMuse,
         weeklyTextRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsWeeklyText,
+        beamRuntimeAvailable: Boolean = ModelRuntimeSupport.supportsBeam,
     ): MemoryCheckResult {
         val overhead = if (model.paramsBillions <= 3.0 && !ModelRuntimeSupport.requiresMemoryGate(model)) OVERHEAD_BASE else OVERHEAD_LARGE
         val required = ModelRuntimeSupport.memoryFootprintGb(model) * overhead
@@ -36,6 +37,9 @@ object MemoryFitness {
         return when {
             ModelRuntimeSupport.unsupportedWorkflowReason(model) != null -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.unsupportedWorkflowReason(model)!!,
+            )
+            ModelRuntimeSupport.isBeam(model) && (!beamRuntimeAvailable || !ModelRuntimeSupport.isVerifiedBeamManifest(model)) -> MemoryCheckResult(
+                false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.BEAM_UNAVAILABLE_MESSAGE,
             )
             ModelRuntimeSupport.requiresWeeklyTextRuntime(model) && !weeklyTextRuntimeAvailable -> MemoryCheckResult(
                 false, MemorySeverity.BLOCKED, required, freeGB, ModelRuntimeSupport.WEEKLY_TEXT_UNAVAILABLE_MESSAGE,

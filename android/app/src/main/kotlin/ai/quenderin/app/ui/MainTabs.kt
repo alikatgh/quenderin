@@ -75,8 +75,8 @@ fun MainTabs(
     var tab by remember { mutableIntStateOf(0) }
     // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
     // the generation path reads it; a no-op for the mock/scripted engines.
-    var deepThinking by remember { mutableStateOf((engine as? LlamaEngine)?.enableThinking ?: false) }
-    LaunchedEffect(deepThinking) { (engine as? LlamaEngine)?.enableThinking = deepThinking }
+    var deepThinking by remember { mutableStateOf(engine.thinkingEnabled()) }
+    LaunchedEffect(deepThinking) { engine.setThinkingEnabled(deepThinking) }
     Scaffold(
         bottomBar = {
             // A custom bar instead of Material's NavigationBar: its content band is a hard-coded 80dp
@@ -132,6 +132,8 @@ fun MainTabs(
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
                 SettingsScreen(
+                    active = tab == 2,
+                    suspendForSpecialist = engine::suspendForSpecialist,
                     model = model,
                     persistence = conversations,
                     onSelectModel = onSelectModel,
@@ -140,7 +142,7 @@ fun MainTabs(
                 )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 3)) {
-                ImageGenerationScreen()
+                ImageGenerationScreen(suspendForSpecialist = engine::suspendForSpecialist, active = tab == 3)
             }
         }
     }
