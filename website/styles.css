@@ -396,13 +396,20 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 .model-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.9rem; }
 /* Model-family marks — official brand SVGs inlined locally (same-origin, no third-party
    load), tinted to each family's brand color via CSS mask. */
-.model-fam { display: inline-block; width: 1.15rem; height: 1.15rem; margin-right: 0.55rem; vertical-align: -0.24rem; flex: none; background-color: var(--fam-c, var(--text-muted)); -webkit-mask: var(--fam-i) center / contain no-repeat; mask: var(--fam-i) center / contain no-repeat; }
+.model-fam { display: inline-block; width: 1.15rem; height: 1.15rem; margin-inline-end: 0.55rem; vertical-align: -0.24rem; flex: none; background-color: var(--fam-c, var(--text-muted)); -webkit-mask: var(--fam-i) center / contain no-repeat; mask: var(--fam-i) center / contain no-repeat; }
 .fam-qwen { --fam-c: #7c3aed; --fam-i: url(icons/qwen.svg); }
 .fam-deepseek { --fam-c: #2563eb; --fam-i: url(icons/deepseek.svg); }
 .fam-llama { --fam-c: #4f46e5; --fam-i: url(icons/llama.svg); }
 .fam-gemma { --fam-c: #0d9488; --fam-i: url(icons/gemma.svg); }
 .fam-phi { --fam-c: #0284c7; --fam-i: url(icons/phi.svg); }
 .fam-mistral { --fam-c: #ea580c; --fam-i: url(icons/mistral.svg); }
+.fam-muse { --fam-c: #0866ff; --fam-i: url(icons/llama.svg); }
+.fam-beam { --fam-c: var(--text-secondary); --fam-i: url(icons/beam.svg); }
+.fam-nemotron { --fam-c: #598900; --fam-i: url(icons/nemotron.svg); }
+.fam-jais { --fam-c: var(--text-secondary); --fam-i: url(icons/jais.svg); }
+.fam-bonsai { --fam-c: var(--text-secondary); --fam-i: url(icons/bonsai.svg); }
+.fam-lfm { --fam-c: var(--text-secondary); --fam-i: url(icons/lfm.svg); }
+.fam-minicpm { --fam-c: #315efe; --fam-i: url(icons/minicpm.svg); }
 .model-badge { font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brand); border: 1px solid var(--accent-border); border-radius: 99px; padding: 0.16rem 0.5rem; white-space: nowrap; }
 .model-card h3 { font-size: 1.18rem; }
 .model-tag { margin-top: 0.35rem; color: var(--text-secondary); font-size: 0.88rem; }
@@ -416,7 +423,7 @@ html[data-theme-mode="dark"] .site-header.scrolled { background: color-mix(in sr
 /* Model catalog as a table (one header, no repeated labels) */
 .model-spec-table td:first-child { font-family: var(--font-sans); white-space: nowrap; }
 .model-spec-table td:nth-child(2) { font-family: var(--font-sans); white-space: normal; color: var(--text-secondary); font-size: 0.9rem; }
-.model-spec-table .model-fam { margin-right: 0.5rem; vertical-align: middle; }
+.model-spec-table .model-fam { margin-inline-end: 0.5rem; vertical-align: middle; }
 .model-spec-table .badge { margin-left: 0.5rem; }
 .model-spec-table tr.recommended td:first-child { font-weight: 600; }
 .model-spec-table a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }

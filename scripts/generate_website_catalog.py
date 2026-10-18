@@ -15,6 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BEGIN = '<!-- BEGIN GENERATED: website-models -->'
 END = '<!-- END GENERATED: website-models -->'
+FAMILIES = ('qwen', 'deepseek', 'gemma', 'phi', 'mistral', 'llama',
+            'muse', 'beam', 'nemotron', 'jais', 'bonsai', 'lfm', 'minicpm')
 
 
 def policy(text: str) -> dict:
@@ -34,7 +36,20 @@ def policy(text: str) -> dict:
 
 def family(model: dict) -> str:
     mid = model['id']
-    return next((f for f in ['qwen', 'deepseek', 'gemma', 'phi', 'mistral', 'llama'] if mid.startswith(f)), '')
+    for name in FAMILIES:
+        if mid.startswith(name):
+            return name
+    raise ValueError(f'Model {mid!r} needs an explicit website family icon')
+
+
+def check_family_icons(models: list[dict]) -> None:
+    """A new curated family must have a local icon before it can be published."""
+    css = (ROOT / 'website/styles.css').read_text()
+    for name in {family(model) for model in models}:
+        rule = re.search(rf'\.fam-{name}\s*\{{([^}}]+)\}}', css)
+        asset = re.search(r'--fam-i:\s*url\((icons/[\w.-]+\.svg)\)', rule[1]) if rule else None
+        if not asset or not (ROOT / 'website' / asset[1]).is_file():
+            raise ValueError(f'Family {name!r} needs a CSS rule and local SVG icon')
 
 
 def rows(models: list[dict]) -> str:
@@ -58,7 +73,7 @@ def rows(models: list[dict]) -> str:
         url = m['url'].split('/resolve/', 1)[0]
         h = html.escape
         note = ' resident*' if m['id'] == 'qwen36-35b-a3b' else ''
-        icon = f'<span class="model-fam fam-{family(m)}" aria-hidden="true"></span>' if family(m) else ''
+        icon = f'<span class="model-fam fam-{family(m)}" aria-hidden="true"></span>'
         result.append(f'<tr data-model-id="{h(m["id"])}"><td>{icon}'
                       f'<a href="{h(url)}" rel="noopener">{h(name)}</a></td><td{role_attr}>{h(role)}</td>'
                       f'<td>{h(m["sizeLabel"].replace(" download", ""))}</td><td>~{m["ramGb"]:g} GB{note}</td>'
@@ -83,6 +98,7 @@ def main() -> int:
     raw = (ROOT / 'shared/model-catalog.json').read_bytes()
     data = json.loads(raw)
     models = data['models']
+    check_family_icons(models)
     rec = policy((ROOT / 'src/constants.ts').read_text())
     releases = json.loads((ROOT / 'website/data/model-releases.json').read_text())
     ids = {m['id'] for m in models}
