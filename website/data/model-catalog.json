@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "catalogSha256": "b139c2a66a49b5be9a48e949b556af86a56179a11fc245d49ed09e237684af8e",
+  "catalogSha256": "ce27b90d1f9fb2cb1f841703f28c8cb3d0b449648bdcd28486548fd030009771",
   "models": [
     {
       "id": "qwen36-35b-a3b",
@@ -182,6 +182,45 @@
       "sha256": "91d63363e782c8a3d5f4be42816eba8e0d42dd2530bd07a7d0d2dc440599af75",
       "languages": "See model card",
       "downloadBytes": 22018326528
+    },
+    {
+      "id": "beam-1.0-501b-a23b-ud-iq2-xxs",
+      "label": "Beam 1.0 501B-A23B (Experimental, text only)",
+      "filename": "Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf",
+      "ramGb": 160.0,
+      "sizeLabel": "133.89 GB download \u00b7 4 files",
+      "paramsBillions": 501.0,
+      "quantization": "UD-IQ2_XXS",
+      "url": "https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf",
+      "sha256": "1ca3bcc65093311a5a6824d1274f581f1253bcd992312d021be4f47d38fc3493",
+      "languages": "See model card",
+      "downloadBytes": 133885310500,
+      "artifacts": [
+        {
+          "filename": "Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf",
+          "url": "https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00001-of-00004.gguf",
+          "sha256": "1ca3bcc65093311a5a6824d1274f581f1253bcd992312d021be4f47d38fc3493",
+          "downloadBytes": 5954020
+        },
+        {
+          "filename": "Beam-1.0-501B-A23B-UD-IQ2_XXS-00002-of-00004.gguf",
+          "url": "https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00002-of-00004.gguf",
+          "sha256": "e7b7438b215b62a02d1095f789e243d9bcbad4c8dde34402ade2324554433cce",
+          "downloadBytes": 49990720128
+        },
+        {
+          "filename": "Beam-1.0-501B-A23B-UD-IQ2_XXS-00003-of-00004.gguf",
+          "url": "https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00003-of-00004.gguf",
+          "sha256": "e872f31d1c6a60ce529530a85495f98431eb698fc820501d91a303bb53028a18",
+          "downloadBytes": 49103685184
+        },
+        {
+          "filename": "Beam-1.0-501B-A23B-UD-IQ2_XXS-00004-of-00004.gguf",
+          "url": "https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF/resolve/4cc80272381734e2b16b34c1af3362c7268a0ebc/UD-IQ2_XXS/Beam-1.0-501B-A23B-UD-IQ2_XXS-00004-of-00004.gguf",
+          "sha256": "0375d1b93b9b9caa2d12afb1293531ae2d1c8448cad55d5bb45a4bc9de85b4f0",
+          "downloadBytes": 34784951168
+        }
+      ]
     },
     {
       "id": "muse-spark-open-q2-k",

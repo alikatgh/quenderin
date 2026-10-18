@@ -4,15 +4,15 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
-<title>Adding this week’s open models to Quenderin — Quenderin blog</title>
-<meta name="description" content="New experimental text-model integrations and a separate local image engine, with a model-by-model record of what works in source and what still needs verification." />
+<title>This week’s open models in Quenderin — Quenderin blog</title>
+<meta name="description" content="An engineering candidate with 28 text-model choices and dedicated image, vision, memory, Granite and remote Step 5 workflows. Builds and inference remain separate checks." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/blog-open-models-october-2026" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="Quenderin" />
-<meta property="og:title" content="Adding this week’s open models to Quenderin" />
-<meta property="og:description" content="New experimental text-model integrations and a separate local image engine, with a model-by-model record of what works in source and what still needs verification." />
+<meta property="og:title" content="This week’s open models in Quenderin" />
+<meta property="og:description" content="An engineering candidate with 28 text-model choices and dedicated image, vision, memory, Granite and remote Step 5 workflows. Builds and inference remain separate checks." />
 <meta property="og:url" content="https://quenderin.org/blog-open-models-october-2026" />
 <meta property="og:image" content="https://quenderin.org/assets/blog/open-model-library-20261018.jpg" />
 <meta property="article:published_time" content="2026-10-18" />
@@ -23,7 +23,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css?v=apple-launch-20260930-3" />
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Adding this week’s open models to Quenderin", "description": "New experimental text-model integrations and a separate local image engine, with a model-by-model record of what works in source and what still needs verification.", "datePublished": "2026-10-18", "dateModified": "2026-10-18", "author": {"@type": "Organization", "name": "Quenderin"}, "image": "https://quenderin.org/assets/blog/open-model-library-20261018.jpg", "mainEntityOfPage": "https://quenderin.org/blog-open-models-october-2026"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "This week’s open models in Quenderin", "description": "An engineering candidate with 28 text-model choices and dedicated image, vision, memory, Granite and remote Step 5 workflows. Builds and inference remain separate checks.", "datePublished": "2026-10-18", "dateModified": "2026-10-18", "author": {"@type": "Organization", "name": "Quenderin"}, "image": "https://quenderin.org/assets/blog/open-model-library-20261018.jpg", "mainEntityOfPage": "https://quenderin.org/blog-open-models-october-2026"}</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -40,56 +40,61 @@
 
 <main class="container legal" id="main">
   <p class="eyebrow">Engineering update · experimental source integration</p>
-  <h1>Adding this week’s open models to Quenderin</h1>
+  <h1>This week’s open models in Quenderin</h1>
   <p class="legal-updated"><time datetime="2026-10-18">18 October 2026</time> &middot; Quenderin</p>
   <figure style="margin:1.5rem 0">
     <img src="assets/blog/open-model-library-20261018.jpg" width="1200" height="800" alt="An elf and modern developers assemble model modules and an image workstation in a library above a waterfall city." style="display:block;width:100%;height:auto;border-radius:12px" />
     <figcaption>AI-generated editorial illustration. It is not a screenshot or evidence of model inference.</figcaption>
   </figure>
-  <p>A busy week of model releases brings several different engineering problems: compact language models, very large mixtures of experts, specialized memory writers, vision and speech systems, and image generators. We have expanded Quenderin’s experimental source integrations and started a separate local image engine. This post records the boundaries of that work; it is not an announcement that every model is available in the store apps.</p>
+  <p>Quenderin’s October 18 engineering candidate connects this week’s models to the app: 28 text-model choices, still-image questions, memory proposals, image generation and dedicated Granite and Step 5 tools. The source includes native Apple, Android and desktop workflows. Final integrated hosted builds are pending, and these additions have not had full-weight inference validation. This is not a new store release.</p>
 
-  <h2>Nine new text choices</h2>
-  <p>The shared text catalog now has 27 entries. The additions are <a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf" rel="noopener">MiniCPM-V 4.7</a> 1B and 35B-A3B, <a href="https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5 24B-A2B</a>, five <a href="https://huggingface.co/IFM/Jais-3-7B-GGUF" rel="noopener">Jais 3</a> sizes, and <a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a>. Each file is pinned to an immutable revision, exact size and SHA-256 checksum across desktop, Android, iPhone and Mac.</p>
-  <p>These are manual experimental text options. MiniCPM’s image and video inputs are not connected by this update. A model’s small active parameter count does not mean its full weights fit in the same amount of memory: the MiniCPM 35B file is about 21.17 GB, Liquid’s is 14.53 GB, and the mixed-quantization Bolt file is 22.02 GB before context, caches and working buffers.</p>
+  <h2>Text models, from small downloads to large workstations</h2>
+  <p>The text catalog adds <a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf" rel="noopener">MiniCPM-V 4.7</a> 1B and 35B-A3B, <a href="https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5 24B-A2B</a>, five <a href="https://huggingface.co/IFM/Jais-3-7B-GGUF" rel="noopener">Jais 3</a> sizes, <a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a> and <a href="https://huggingface.co/reflection/Beam-1.0-501B-A23B" rel="noopener">Beam 1.0</a>. Bonsai 2 2B, 4B, 9B and 27B remain in the library. These experimental choices are manual selections, with pinned files, compatible-runtime checks and memory gates.</p>
+  <p>Jais, Bolt, Beam and Muse need architecture or conversation handling beyond a catalog entry. Their adapters follow the publisher’s prompt format and keep private reasoning out of the displayed answer. Beam and Muse text chat now have native and desktop adapters and complete multipart installation; tools and multimodal inputs are unavailable on those paths.</p>
+  <p>Large models still need all their weights. Beam’s four parts total <strong>133,885,310,500 bytes</strong>, with a <strong>160 GiB</strong> whole-model memory floor; context and working buffers may require more. Its small first part contains metadata, not the complete model. Muse requires all <strong>22 parts, totaling 304,080,474,208 bytes</strong>. An active parameter count is not a storage or RAM estimate.</p>
 
-  <h2>Architecture and conversation handling</h2>
-  <p>Jais 3 needs the K2 Horizon architecture, its Arabic-aware tokenizer and its own conversation format. The new adapter follows the publisher’s low-reasoning prompt and filters the private reasoning stream before showing the final answer. An incomplete reasoning segment is never flushed into the conversation. Unsupported tool and grammar requests are refused.</p>
-  <p>Bolt needs more than a familiar model-family name. Its hybrid architecture has layer-specific expert counts, widths and top-k values; its GGUF stores top-k as an array. The runtime backport handles those differences and adds tiny generated-tensor fixtures. A compiled capability check keeps an older engine from attempting to load these files. Automatic recommendations continue to exclude the experimental integrations.</p>
+  <h2>Ask about one image</h2>
+  <p>The dedicated Vision workflow installs and verifies a complete language-model/projector pair for <strong>MiniCPM-V 4.7 1B</strong>, <strong>MiniCPM-V 4.7 35B-A3B</strong> or <strong>Nemotron 3.5 Super VL 120B-A12B</strong>. Their available-memory floors are <strong>8, 32 and 96 GiB</strong>, respectively. The same pair manifests serve the native and desktop workflows.</p>
+  <p>Choose one JPEG or PNG and ask a question. Input is limited to 8 MiB, 4,096 pixels per side and 16 million pixels, with a bounded final answer. The app preserves the selection and question after an error. This is a still-image tool; video, audio and tool execution are unavailable.</p>
 
-  <h2>A separate engine for local images</h2>
-  <p><a href="https://github.com/leejet/stable-diffusion.cpp" rel="noopener">stable-diffusion.cpp</a> provides the source route for FLUX 3 Image Klein and MOSS Image Base/SFT. Quenderin now has a pinned, isolated image runtime, image workspaces in the native Apple, Android and Electron desktop source, and desktop command-line generation. Its patched GGML implementation stays in a separate dynamic library so it cannot replace or collide with the text engine’s GGML symbols.</p>
-  <p>The component manifests cover the diffusion model, text encoder, VAE and, for MOSS, tokenizer. Public MOSS components can be installed explicitly; retained parts are reused only after checksum verification. FLUX’s publisher-gated files require the user’s own access and license review, followed by local import. Quenderin does not accept those terms on the user’s behalf.</p>
-  <p>Generation uses local components and writes one new PNG. Existing files are preserved. Dimensions, steps and threads have explicit limits; desktop process output and job duration are bounded, and cancellation reaches the native engine. The initial native hardware gate requires 24 GiB of available memory, so ordinary phones will show an explanation instead of offering an unrealistic generation button. This threshold is conservative, not a measured peak-memory result.</p>
-  <p>The desktop source commands are <code>quenderin image models</code>, <code>quenderin image verify</code> and <code>quenderin image generate</code>. They verify complete components and the pinned executable before launching it. FLUX takes a full scene caption; this integration does not automatically expand a short prompt with another model. Reference-image generation is available at the C interface and is not yet exposed by every app workspace.</p>
-  <p>The desktop Images screen uses native folder and save dialogs, checks the prepared components, and previews the validated PNG from disk. It keeps captions after errors and when switching workspaces. A browser dashboard can inspect the presets but needs the desktop app for local file selection and generation. This interface has been exercised with explicitly labelled UI fixtures, without loading model weights.</p>
+  <h2>Memory proposals and Granite chat</h2>
+  <p><a href="https://huggingface.co/tencent/Hy-Memory-30B-A3B" rel="noopener">Hy-Memory</a> has a separate proposal workflow in the native and desktop source. You choose the conversation to submit, review the proposed facts and explicitly select each item to save. Proposals start unchecked. Strict JSON validation and a private approved-memory store keep generated text from becoming a saved fact automatically. The pinned community conversion is an 18.24 GB download and needs at least 32 GiB of available memory; its conversion metadata has been checked, but its full weights have not been inference-tested.</p>
+  <p><a href="https://huggingface.co/ibm-granite/granite-switch-4.1-8b" rel="noopener">Granite Switch 4.1 8B</a> also has a dedicated native and desktop chat path. An offline converter checks the official checkpoint already on your disk and creates a new GGUF plus a conversion receipt. Import both files together; the app checks their hashes, architecture and resource requirements before loading. It requires at least 32 GiB of available memory, with further allowance for the file and context. The receipt records the local conversion; it is not a publisher signature or an inference result. Speech, decision and guardian modes are not enabled.</p>
 
-  <h2>The full release list, with its limits</h2>
+  <h2>Step 5 on your own CUDA host</h2>
+  <p><a href="https://huggingface.co/stepfun-ai/Step-5-Preview" rel="noopener">Step 5 Preview</a> runs through its <a href="https://github.com/stepfun-ai/vllm/tree/e177c621f2b8ae1be06190bc34eef84646e54f11" rel="noopener">pinned official CUDA backend</a> on an existing, suitably sized Linux GPU host. Quenderin’s launcher verifies the complete installed checkpoint and backend source, then starts a bounded gateway. It does not download weights or provision a server.</p>
+  <p>Native and desktop clients ask for consent before sending text to the selected host. Use an existing SSH tunnel or an independently secured HTTPS proxy; do not expose the loopback gateway publicly. This is remote specialist chat, not on-phone Step 5 inference. The current clients accept text only.</p>
+
+  <h2>A separate local image engine</h2>
+  <p>The Images workflow covers <strong>FLUX 3 Image Klein</strong> and <strong>MOSS Image Base/SFT</strong> through a pinned <a href="https://github.com/leejet/stable-diffusion.cpp" rel="noopener">stable-diffusion.cpp</a> runtime, isolated from the text engine. Native clients provide component installation/import; the desktop app and CLI verify a prepared folder. Every preset requires its complete diffusion model, text encoder, VAE and, for MOSS, tokenizer.</p>
+  <p>FLUX files require your own publisher access and license decision. Quenderin does not accept those terms for you. Supply a full scene caption; the app does not automatically expand a short FLUX prompt with another model. Generation requires <strong>24 GiB of available memory</strong>, supports cancellation and saves a new PNG without overwriting an existing file. A browser dashboard needs the desktop app for local folder selection and generation.</p>
+
+  <h2>Release-by-release source status</h2>
   <div style="overflow-x:auto">
   <table>
-    <thead><tr><th scope="col">Release</th><th scope="col">Quenderin status in this update</th></tr></thead>
+    <thead><tr><th scope="col">Release</th><th scope="col">Path in this candidate</th></tr></thead>
     <tbody>
-      <tr><th scope="row">Bonsai 2 2B / 4B / 9B</th><td>Existing experimental Prism text integration retained, alongside 27B.</td></tr>
-      <tr><th scope="row">Nemotron 3.5 Bolt 74B</th><td>New experimental text catalog and hybrid-runtime backport.</td></tr>
-      <tr><th scope="row">Nemotron 3.5 Super VL 120B</th><td>Not enabled. Its model variant and vision path need separate validation.</td></tr>
-      <tr><th scope="row">MiniCPM-V 4.7 1B / 35B-A3B</th><td>New experimental text entries. Image/video adapters remain unavailable.</td></tr>
-      <tr><th scope="row">LFM2.5 24B-A2B</th><td>New experimental text entry using the pinned Liquid MoE graph.</td></tr>
-      <tr><th scope="row">Muse Spark Open</th><td>Existing native text backport and complete 22-part installer retained; approximately 304 GB. Desktop adapter and multimodal inputs remain unavailable.</td></tr>
-      <tr><th scope="row">Step 5 Preview</th><td>Not enabled. The required architecture is absent from the app’s pinned engine.</td></tr>
-      <tr><th scope="row">Beam 1.0</th><td>Architecture and complete multipart-artifact integration in development; not a selectable app model.</td></tr>
-      <tr><th scope="row">Jais 3 family</th><td>New experimental text integration for 0.9B, 3.7B, 7B, 32B and MoVA 36B-A4B.</td></tr>
-      <tr><th scope="row">Granite Switch 4.1</th><td>Not enabled. Its speech/decision workflow needs a dedicated integration; the older preview is not a substitute.</td></tr>
-      <tr><th scope="row">Hy-Memory 30B-A3B</th><td>Specialized memory-writing workflow under investigation; not offered as an ordinary chat model.</td></tr>
-      <tr><th scope="row">FLUX 3 Image Klein</th><td>New experimental image-engine path; user-provided gated components and license review required.</td></tr>
-      <tr><th scope="row">MOSS Image Base / SFT</th><td>New experimental image-engine path and public component installer.</td></tr>
-      <tr><th scope="row">Nemotron Bolt E4B</th><td>Announced future release; no model artifact or download is invented.</td></tr>
+      <tr><th scope="row">Bonsai 2 2B / 4B / 9B / 27B</th><td>Experimental Prism text choices retained.</td></tr>
+      <tr><th scope="row">Nemotron 3.5 Bolt 74B-A9B</th><td>Text chat with the hybrid-runtime backport.</td></tr>
+      <tr><th scope="row">Nemotron 3.5 Super VL 120B-A12B</th><td>Dedicated still-image questions with its complete pinned model/projector pair.</td></tr>
+      <tr><th scope="row">MiniCPM-V 4.7 1B / 35B-A3B</th><td>Text entries and a separate still-image workflow.</td></tr>
+      <tr><th scope="row">LFM2.5 24B-A2B</th><td>Experimental text chat.</td></tr>
+      <tr><th scope="row">Muse Spark Open</th><td>Native and desktop text adapters; complete 22-part installation.</td></tr>
+      <tr><th scope="row">Step 5 Preview</th><td>Text clients for the user’s existing official CUDA host and pinned gateway.</td></tr>
+      <tr><th scope="row">Beam 1.0 501B-A23B</th><td>Native and desktop text adapters; complete four-part installation.</td></tr>
+      <tr><th scope="row">Jais 3 family</th><td>Text chat for 0.9B, 3.7B, 7B, 32B and MoVA 36B-A4B.</td></tr>
+      <tr><th scope="row">Granite Switch 4.1 8B</th><td>Verified offline conversion, receipt import and dedicated text chat.</td></tr>
+      <tr><th scope="row">Hy-Memory 30B-A3B</th><td>Explicit memory proposals and approval; separate from ordinary chat.</td></tr>
+      <tr><th scope="row">FLUX 3 Image Klein / MOSS Image Base / SFT</th><td>Isolated image workflows with complete component verification.</td></tr>
+      <tr><th scope="row">Nemotron Bolt E4B</th><td>Unavailable: no exact public artifact has been verified.</td></tr>
     </tbody>
   </table>
   </div>
 
-  <h2>What has actually been checked</h2>
-  <p>Host fixtures cover catalog parity, source provenance and recovery, publisher prompt formatting, split reasoning markers, component tampering, output preservation, cancellation and packaging failure conditions. The native image runtime and new text graphs also have hosted compilation checks. The linked source review records their current results.</p>
-  <p>No model weights were downloaded onto the development Mac, and no simulator or physical device was run for this work. Full-weight inference, generated-image quality, peak memory, speed, rendered native UI and new store availability remain unverified. The native Apple and Android source integrations and desktop commands should be evaluated against those limits.</p>
-  <p><a href="changelog#2026-10-18">Changelog</a> &middot; <a href="models">Text model catalog</a> &middot; <a href="https://github.com/alikatgh/quenderin/pull/163" rel="noopener">Source and verification record</a></p>
+  <h2>What has been checked, and what remains</h2>
+  <p>Source checks and small host fixtures exercise prompt formats, complete-file verification, conversion receipts, bounded input/output, cancellation, private storage and native interfaces. Specialist work releases idle text weights before checking memory and preserves the selected answer model and conversation. Shutdown joins native work before freeing the shared backend. These checks establish engineering behavior, not full-model quality, speed or peak memory.</p>
+  <p>No model weights were downloaded locally, and no simulator or physical device was run for this update. Final integrated hosted builds and package checks are pending. Full-weight inference, generated-image quality and rendered native UI remain unverified. Native store submissions and Windows/Linux desktop releases are separate steps; no new public app availability is claimed here.</p>
+  <p><a href="https://github.com/alikatgh/quenderin/blob/codex/october-model-support-20261018/docs/bonsai-2.md" rel="noopener">Pinned sources, setup commands and limits</a> &middot; <a href="https://github.com/alikatgh/quenderin/pull/163" rel="noopener">Candidate source and verification record</a> &middot; <a href="changelog#2026-10-18">Changelog</a> &middot; <a href="models">Text model catalog</a></p>
 </main>
 </body>
 </html>

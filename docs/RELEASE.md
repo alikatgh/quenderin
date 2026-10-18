@@ -7,11 +7,47 @@ or already-authorized signing configuration. A debug build is not a signed store
 ## October 18 source candidate — not a store release
 
 [PR 163](https://github.com/alikatgh/quenderin/pull/163) expands the shared text
-catalog to 27 entries and adds an isolated image engine with 3 complete component
-presets. Source, architecture and artifact status are separate: Beam has a graph
-backport and complete four-part provenance, but no app adapter/installer; Hy-Memory
-has verified provenance/prompt fixtures but no enabled memory-writing workflow.
-Super VL, Step 5, Granite Switch 4.1 and the future E4B release remain unavailable.
+catalog to **28 entries** in TypeScript, Swift and Kotlin. The candidate includes
+the runtime, complete-artifact installation and publisher chat adapters for Beam
+and Muse on native Apple, Android and desktop. Beam requires all four parts
+(**133,885,310,500 bytes**) and a 160 GiB whole-model memory floor; context and
+working buffers may need more. Muse requires all 22 parts (**304,080,474,208
+bytes**). A small metadata entry point is never treated as a complete model.
+
+Dedicated app workflows now cover these additional releases:
+
+- **Still-image questions:** managed model/projector pairs for MiniCPM-V 4.7 1B,
+  MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL 120B-A12B, with respective
+  8/32/96 GiB available-memory floors. Native and desktop clients accept one
+  bounded JPEG/PNG; video, audio and tools are unavailable.
+- **Hy-Memory proposals:** separate native and desktop installation and inference,
+  using the pinned community conversion, official no-thinking prompt and strict
+  JSON validation. Only explicitly selected proposals enter a private approved
+  memory store. No automatic conversation hook or generic chat path is enabled.
+- **Granite Switch 4.1 8B:** an offline converter verifies the official checkpoint
+  already on disk and creates a new GGUF plus conversion receipt. Native and
+  desktop import/chat adapters verify that pair before loading. The receipt is
+  conversion evidence, not a publisher signature or inference result. Speech,
+  decision and guardian modes are not enabled.
+- **Step 5 Preview:** native and desktop text clients connect, after explicit
+  consent, to the user's existing CUDA host through the pinned official backend
+  and Quenderin gateway. This is a remote specialist, not on-phone inference or
+  automatic server provisioning.
+- **Images:** isolated FLUX 3 Image Klein and MOSS Image Base/SFT workflows use
+  three complete component presets and a 24 GiB available-memory floor. Gated
+  FLUX files require the user's publisher access and license decision. Native
+  import/install and desktop prepared-folder verification are explicit actions.
+
+Nemotron Bolt E4B remains unavailable because no exact public artifact has been
+verified. See [the model integration record](bonsai-2.md) for pinned sources,
+resource limits, conversion commands and workflow boundaries.
+
+Ordinary and specialist engines share an exclusive resource lease. The app
+joins ordinary work and unloads idle text weights before measuring memory for a
+specialist; selection and conversation state are preserved. Process-exit cleanup
+closes admission, cancels and joins native workers and child processes, then
+disposes the shared backend. Per-service cleanup does not free another workflow's
+backend.
 
 The image build uses a separate patched-GGML DSO. Desktop builds seal and probe
 its CLI/resources and test both text/image library load orders. Android statically
@@ -20,22 +56,26 @@ AGP, and checks final APK/AAB hashes, dependency closure and 16 KiB alignment.
 Apple’s final signed-export gate now also checks the image framework payload,
 platform/architectures, linkage, distribution signature and embedded image catalog.
 
-Initial source revision: `8a18dff844825440ea63a61691f2a77903cba8f1`.
+Earlier partial verification used source `8a18dff844825440ea63a61691f2a77903cba8f1`.
 [Hosted CI 39096103001](https://github.com/alikatgh/quenderin/actions/runs/39096103001)
 passed Linux’s real pinned image build/probe, both Node test/build jobs, Kotlin
 core, JNI syntax and the existing iOS SDK compile. It exposed a Swift 6 global-page
 size concurrency error, experimental website fallback recommendation and a Beam
-fixture variable-scope error; corrected revision and final results are pending.
-Do not infer readiness from this initial partial run. Independent source reviews
-found and resolved image cancellation, Android STL/stripping, Apple final-export,
-macOS signed payload and Linux path parsing defects. Actual final packages still
-need their hosted checks.
+fixture variable-scope error that were subsequently corrected. It predates the
+complete workflows above and is not evidence for the final candidate. Independent
+reviews and targeted host fixtures cover source provenance, prompt protocols,
+multipart installation, private storage, resource bounds, cancellation and cleanup.
+**Final integrated hosted builds and package checks are pending.** Record their
+exact revision and results here before any release readiness claim. Windows ACL
+behavior also requires the hosted Windows fixture.
 
 No local weights, simulator runs or physical-device runs are authorized for this
 update. Full-weight inference, image quality, measured memory/speed and native
 rendered UI remain unverified. No new archive, signing, store submission or public
 app availability has been established. The dated October 16 store record below is
 historical until refreshed in the consoles. Keep its pending reviews intact.
+Windows/Linux desktop packages and their distribution channels remain separate
+from the native Apple and Android store releases.
 
 ## Verified release memory — 16 October 2026
 

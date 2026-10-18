@@ -314,6 +314,35 @@
     </div>
   </section>
 
+  <!-- ENGLISH ENGINEERING UPDATE — separate from installed store versions. -->
+  <section class="section tint" id="october-2026-update" lang="en">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">18 October 2026 &middot; engineering candidate</p>
+        <h2>More models, with separate workflows for different jobs.</h2>
+        <p>The source candidate has 28 curated text choices, including Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks the runtime, complete files and available memory before loading.</p>
+        <p>This describes current source engineering, separate from the versions already installed from the App Store, Google Play or desktop downloads. Full-weight inference for these additions has not been run, and this is not a store-release announcement.</p>
+      </header>
+      <div class="table-wrap reveal">
+        <table class="spec-table model-spec-table">
+          <caption>New workflows in the desktop, Apple and Android source</caption>
+          <thead><tr><th scope="col">Workflow</th><th scope="col">What you can prepare and use in the candidate</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Complete Beam and Muse text chat</th><td>Install and verify every part before chatting: Beam needs all 4 files (133.89 GB) and a 160 GiB memory floor before context overhead; Muse needs all 22 files (304.08 GB). Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</td></tr>
+            <tr><th scope="row">Ask about an image</th><td>Choose one JPEG or PNG and ask a text question on desktop or in the native apps. Each installation includes the complete model and projector. MiniCPM-V 4.7 1B, MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL require at least 8, 32 and 96 GiB of available app memory respectively. Video, audio and tools are unavailable.</td></tr>
+            <tr><th scope="row">Hy-Memory proposals</th><td>Paste a selected conversation, review proposed facts, then explicitly choose which to save in private app storage. Nothing watches conversations or saves generated facts automatically. This separate memory-writing workflow requires at least 32 GiB of available app memory.</td></tr>
+            <tr><th scope="row">Granite Switch 4.1 8B chat</th><td>Import the converted official 8B GGUF together with its matching conversion record. The app verifies the complete pair and reuses an already verified import. Dedicated text chat requires at least 32 GiB of available app memory. Speech, guardian decisions and tools are unavailable; the older 3B preview is not a substitute.</td></tr>
+            <tr><th scope="row">Step 5 on your CUDA host</th><td>Connect to your own prepared Linux GPU host through its secured gateway. You explicitly approve sending the selected conversation there. This is remote text chat on your hardware; Quenderin does not provision a server or run this model on a phone.</td></tr>
+            <tr><th scope="row">Local image generation</th><td>Use the separate Images workspace for FLUX 3 Image Klein or MOSS Image Base/SFT. Complete component sets and at least 24 GiB of available memory are required. FLUX files need your own publisher access and license decision. Generation writes a new PNG and preserves existing files.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="models-foot">Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage. Answer quality, speed and rendered native journeys still need full runtime validation.</p>
+      <p class="models-foot">Nemotron Bolt E4B remains unavailable: there is no verified public artifact in this candidate, so no placeholder download is offered.</p>
+      <p class="learn-more"><a href="blog-open-models-october-2026" data-language-link>Read this week’s model update and verification limits &rarr;</a></p>
+    </div>
+  </section>
+
   <!-- THE COMPUTER-USE AGENT -->
   <section class="section" id="agent">
     <div class="container split">
@@ -605,6 +634,7 @@
 <!-- BEGIN GENERATED: website-models -->
 <tr data-model-id="qwen3-4b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen3-4B-GGUF" rel="noopener">Qwen3 4B</a></td><td data-i18n="catalog.role.everyday">Everyday chat</td><td>2.4 GB</td><td>~3.6 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="muse-spark-open-q2-k"><td><a href="https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF" rel="noopener">Muse Spark Open Q2_K</a></td><td>Experimental, text only</td><td>304.08 GB · 22 files</td><td>~330 GB</td><td>Q2_K</td></tr>
+<tr data-model-id="beam-1.0-501b-a23b-ud-iq2-xxs"><td><a href="https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF" rel="noopener">Beam 1.0 501B-A23B</a></td><td>Experimental, text only</td><td>133.89 GB · 4 files</td><td>~160 GB</td><td>UD-IQ2_XXS</td></tr>
 <tr data-model-id="nemotron35-bolt-74b-a9b"><td><a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a></td><td>Experimental, text only</td><td>22.02 GB</td><td>~28 GB</td><td>IQ2_XXS-mixed</td></tr>
 <tr data-model-id="jais3-mova-36b-a4b"><td><a href="https://huggingface.co/IFM/Jais-3-MoVA-36B-A4B-GGUF" rel="noopener">Jais 3 MoVA 36B-A4B</a></td><td>Experimental, text only</td><td>22.37 GB</td><td>~30 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="minicpm-v47-35b-a3b"><td><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf" rel="noopener">MiniCPM-V 4.7 35B-A3B</a></td><td>Experimental, text only</td><td>21.17 GB</td><td>~25 GB</td><td>Q4_K_M</td></tr>
