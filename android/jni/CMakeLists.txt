@@ -122,4 +122,4 @@ if(EXISTS "${LLAMA_DIR}/include/llama.h")
 endif()
 # Do NOT link ggml-cpu: with BACKEND_DL the CPU kernels are separate libggml-cpu-android_armv*.so
 # plugins, and ggml_threadpool_* is resolved at runtime from the CPU backend registry.
-target_link_libraries(quenderin_llama llama ggml android log)
+target_link_libraries(quenderin_llama PRIVATE llama ggml android log)

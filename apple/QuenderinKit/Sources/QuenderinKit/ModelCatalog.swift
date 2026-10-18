@@ -17,6 +17,7 @@ public struct QuantizationInfo: Sendable, Hashable, Codable {
 public enum Quantization {
     public static let all: [QuantizationInfo] = [
         .init(id: "IQ2_XXS-mixed", bitsPerWeight: 2.4, quality: "Experimental", summary: "Mixed IQ2 experts, NVFP4 state-space weights and Q8 embeddings; exact catalog size applies", recommended: false),
+        .init(id: "UD-IQ2_XXS", bitsPerWeight: 2.14, quality: "Experimental", summary: "Approximate whole-file bits/weight for the pinned Beam mix; exact complete artifact size applies", recommended: false),
         .init(id: "PTQ1_0", bitsPerWeight: 1.75, quality: "Experimental", summary: "Prism ternary quantization; requires the Prism runtime", recommended: false),
         .init(id: "PQ2_0", bitsPerWeight: 2.13, quality: "Experimental", summary: "Prism quantization; requires the Prism runtime", recommended: false),
         .init(id: "Q2_K",   bitsPerWeight: 2.625, quality: "Low",       summary: "Extreme compression, noticeable quality loss", recommended: false),

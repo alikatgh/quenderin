@@ -12,7 +12,7 @@ final class ModelManifestTests: XCTestCase {
         let data = try ModelManifest.current.jsonData()
         let decoded = try ModelManifest.decode(from: data)
         XCTAssertEqual(decoded, ModelManifest.current)
-        XCTAssertEqual(decoded.models.count, 27)
+        XCTAssertEqual(decoded.models.count, 28)
     }
 
     func testJSONIsStableAndContainsCatalogIDs() throws {

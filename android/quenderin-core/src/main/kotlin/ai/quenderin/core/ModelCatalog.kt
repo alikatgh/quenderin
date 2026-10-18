@@ -18,6 +18,8 @@ data class QuantizationInfo(
 object Quantization {
     val all: List<QuantizationInfo> = listOf(
         QuantizationInfo("IQ2_XXS-mixed", 2.4, "Experimental", false),
+        // Approximate whole-file bits/weight for the pinned Beam mix; use exact artifact bytes for resources.
+        QuantizationInfo("UD-IQ2_XXS", 2.14, "Experimental", false),
         QuantizationInfo("PTQ1_0", 1.75, "Experimental", false),
         QuantizationInfo("PQ2_0", 2.13, "Experimental", false),
         QuantizationInfo("Q2_K", 2.625, "Low", false),

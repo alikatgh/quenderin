@@ -146,9 +146,16 @@ jobs:
         working-directory: apple/QuenderinApp
         run: |
           set -o pipefail
-          QUENDERIN_RUNTIME=prism xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+          build_log="$RUNNER_TEMP/vision-ios-build.log"
+          if QUENDERIN_RUNTIME=prism xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
             -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/vision-ios-build" \
-            CODE_SIGNING_ALLOWED=NO build | tail -50
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -50 "$build_log"
+          else
+            grep -n -B4 -A8 'error:' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
 
   image-runtime:
     name: Local image runtime (${{ matrix.os }})
@@ -198,9 +205,16 @@ jobs:
           cd apple/QuenderinApp
           xcodegen generate
           set -o pipefail
-          xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+          build_log="$RUNNER_TEMP/image-ios-app.log"
+          if xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
             -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/image-ios-app" \
-            CODE_SIGNING_ALLOWED=NO build | tail -60
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -60 "$build_log"
+          else
+            grep -n -B4 -A8 'error:' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
 
   prism-inference:
     name: Bonsai pinned model (CPU load and generation)
@@ -352,9 +366,16 @@ jobs:
         working-directory: apple/QuenderinApp
         run: |
           set -o pipefail
-          xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
+          build_log="$RUNNER_TEMP/ios-app.log"
+          if xcodebuild -project Quenderin.xcodeproj -scheme Quenderin -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" \
-            CODE_SIGNING_ALLOWED=NO build | tail -40
+            CODE_SIGNING_ALLOWED=NO build > "$build_log" 2>&1; then
+            tail -40 "$build_log"
+          else
+            grep -n -B4 -A8 'error:' "$build_log" || true
+            tail -80 "$build_log"
+            exit 1
+          fi
 
   mobile-android-core:
     name: Android core (Kotlin) checks

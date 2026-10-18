@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { HyApprovedMemoryStore } from '../src/services/hyApprovedMemoryStore.js';
 import { WINDOWS_MEMORY_ACL_POLICY, WINDOWS_MEMORY_ACL_SCRIPT } from '../src/services/windowsPrivateMemoryAcl.js';
 
@@ -57,7 +58,22 @@ describe('private explicitly approved Hy memory bank', () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quenderin-hy-windows-acl-test-'));
         try {
             const folder = path.join(root, 'approved-memories'), store = new HyApprovedMemoryStore(folder), id = crypto.randomUUID();
-            expect(await store.saveNote(`Hy memory ${id}`, 'Synthetic Windows ACL fixture fact')).toHaveProperty('path');
+            // Expose policy failures only for these fresh synthetic paths. The
+            // production writer never logs personal facts or ACL diagnostics.
+            const checkPolicy = (kind: 'directory' | 'file', file: string) => {
+                const executable = path.win32.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+                const result = spawnSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_MEMORY_ACL_SCRIPT], {
+                    input: JSON.stringify({ kind, path: file }), encoding: 'utf8', windowsHide: true, timeout: 15_000, maxBuffer: 8192,
+                });
+                expect({ stage: kind, status: result.status, stdoutBytes: Buffer.byteLength(result.stdout || ''), stderrBytes: Buffer.byteLength(result.stderr || ''), stdout: result.stdout, stderr: result.stderr, error: result.error?.message }).toMatchObject({ status: 0, stdout: '{"ok":true}' });
+            };
+            checkPolicy('directory', folder);
+            const probe = path.join(folder, 'synthetic-empty-acl-probe');
+            fs.writeFileSync(probe, '', { flag: 'wx' });
+            checkPolicy('file', probe);
+            fs.unlinkSync(probe);
+            const started = Date.now(), first = await store.saveNote(`Hy memory ${id}`, 'Synthetic Windows ACL fixture fact');
+            expect(first, `Actual private writer completed in ${Date.now() - started} ms`).toHaveProperty('path');
             expect(await store.saveNote(`Hy memory ${id}`, 'Synthetic Windows ACL fixture fact')).toHaveProperty('path');
             expect(fs.readdirSync(folder)).toEqual([`${id}.json`]);
             expect(JSON.parse(fs.readFileSync(path.join(folder, `${id}.json`), 'utf8')).text).toBe('Synthetic Windows ACL fixture fact');

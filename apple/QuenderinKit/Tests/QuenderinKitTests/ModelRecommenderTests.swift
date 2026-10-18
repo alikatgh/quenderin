@@ -48,12 +48,21 @@ final class ModelRecommenderTests: XCTestCase {
         XCTAssertEqual(ModelRecommender.recommendation(forTotalRAMGB: 0.25).maxParamsBillions, 1)
     }
 
-    func testCatalogIntegrity() {
-        XCTAssertEqual(ModelCatalog.models.count, 27)
+    func testCatalogIntegrity() throws {
+        XCTAssertEqual(ModelCatalog.models.count, 28)
         for model in ModelCatalog.models {
             XCTAssertNotNil(model.downloadURL, "\(model.id) has a malformed URL")
             XCTAssertNotNil(Quantization.info(id: model.quantization), "\(model.id) uses unknown quant \(model.quantization)")
         }
         XCTAssertEqual(ModelCatalog.smallest.id, "llama32-1b-q2")
+        let beam = try XCTUnwrap(ModelCatalog.entry(id: "beam-1.0-501b-a23b-ud-iq2-xxs"))
+        let parts = try XCTUnwrap(beam.artifacts)
+        XCTAssertEqual(beam.quantization, "UD-IQ2_XXS")
+        XCTAssertEqual(Quantization.info(id: beam.quantization)?.quality, "Experimental")
+        XCTAssertEqual(Quantization.info(id: beam.quantization)?.recommended, false)
+        XCTAssertEqual(parts.count, 4)
+        XCTAssertEqual(parts.reduce(0) { $0 + $1.downloadBytes }, 133_885_310_500)
+        XCTAssertEqual(beam.downloadBytes, 133_885_310_500)
+        XCTAssertEqual(beam.ramGB, 160)
     }
 }

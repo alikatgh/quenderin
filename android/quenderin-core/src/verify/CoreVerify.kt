@@ -104,9 +104,17 @@ fun main() {
         listOf(0.5, 2.0, 3.5, 8.0, 18.0, 64.0).all { ModelCatalog.entry(ModelRecommender.recommendedModelId(it)) != null })
 
     // --- Catalog integrity ---
-    check("27 models across families", ModelCatalog.models.size == 27)
+    check("28 models across families", ModelCatalog.models.size == 28)
     check("smallest is the ultra-light", ModelCatalog.smallest.id == "llama32-1b-q2")
     check("every model uses a known quant", ModelCatalog.models.all { Quantization.info(it.quantization) != null })
+    check("Beam has its exact experimental dynamic quant and complete artifact contract", run {
+        val beam = ModelCatalog.entry("beam-1.0-501b-a23b-ud-iq2-xxs")!!
+        val quant = Quantization.info(beam.quantization)
+        beam.quantization == "UD-IQ2_XXS" && quant?.id == "UD-IQ2_XXS" &&
+            quant.quality == "Experimental" && !quant.recommended &&
+            beam.artifacts.size == 4 && beam.downloadBytes == 133_885_310_500L &&
+            beam.artifacts.sumOf { it.downloadBytes } == beam.downloadBytes && beam.ramGB == 160.0
+    })
     check("catalog spans 6 families", listOf("qwen3-14b", "deepseek-r1-7b", "gemma3-4b", "phi4-mini", "mistral-7b", "llama3-8b").all { ModelCatalog.entry(it) != null })
 
     // --- Memory fitness ---
