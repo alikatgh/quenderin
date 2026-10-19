@@ -4,6 +4,61 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## Store browser profiles — verified 19 October 2026
+
+| Service | Chrome profile |
+|---|---|
+| App Store Connect and Xcode Cloud | **Apple Developer** |
+| Google Play Console | **Albert - Main - CMax** |
+
+Confirm the profile name and reuse the existing signed-in tab before store work.
+Browser and tab IDs change between sessions; do not save an ID as the account
+mapping. Do not open Play Console in Apple Developer: that profile's Google
+account does not establish access to the registered Play developer. Reuse these
+known profiles instead of starting new sign-in or account/terms setup flows.
+Store-console access and access to the private Android upload key are separate
+prerequisites; a public certificate is not a recovered private key.
+
+## 19 October 2026 — native 0.5.0 preparation
+
+The new release source includes the October model workflows described below.
+Version preparation and store publication are separate states.
+
+- **Apple live state refreshed:** iOS and macOS **0.4.0 Ready for Distribution**
+  in App Store Connect. The iOS version selects build **19** and has automatic
+  release selected. This supersedes the October 16 pending-review snapshot.
+- **Next release:** both native Apple targets and Android are prepared as
+  **0.5.0**. Xcode Cloud reports next build **20**. The active existing workflow
+  archives iOS and universal macOS only, with `QUENDERIN_RUNTIME=prism`; its
+  automatic trigger still targets the old Bonsai branch. Select the release
+  branch explicitly for this update. The included Cloud plan is 25 hours, with
+  4h03 used and 20h57 available in the current period; no plan change was made.
+- **Apple drafts:** iOS and macOS **0.5.0 Prepare for Submission** were created
+  with updated description, release notes and review notes. Automatic release
+  after approval is selected on both. No 0.5.0 build has been selected or submitted.
+- **Google Play live state:** highest uploaded code **2 (0.2.0)** remains at
+  100% on **Closed testing – Alpha**. There are seven opted-in testers and
+  production access is not enabled. Candidate code **5** is available; preserve
+  the existing closed-test track.
+- **Android signing:** the canonical `android/keystore.properties` is absent,
+  and the repository has no signing secrets. The existing registered upload
+  key is required; no replacement key or reset is implied by release preparation.
+- **Validation scope:** source/fixture checks and hosted compilation only. The
+  user's exclusion of local weights, simulators and physical-device runs remains
+  in effect. No 0.5.0 signed archive, store submission or public availability is
+  established by this preparation record.
+
+The Android backup rules now exclude approved memories as well as conversations
+from legacy backup, cloud backup and device transfer. Host fixtures fail if any
+approved-memory exclusion is removed. Apple system backups remain controlled by
+the user; the privacy policy distinguishes them from app-provided cloud sync.
+The localization generators retain unmanaged Android resources and are checked
+against repeated generation.
+
+The Mac source preserves its existing quit-on-last-window-close lifecycle and
+prior native teardown remedy. Settings-only/window recovery in a signed candidate
+has not been rendered under this update’s explicit no-device-run constraint.
+
 ## October 18 source candidate — not a store release
 
 [PR 163](https://github.com/alikatgh/quenderin/pull/163) expands the shared text
@@ -90,9 +145,9 @@ No local weights, simulator runs or physical-device runs are authorized for this
 update. Full-weight inference, image quality, measured memory/speed and native
 rendered UI and ARMv7 support remain unverified. The existing hosted Bonsai CPU
 generation check does not validate full-weight inference for the new models.
-No new archive, signing, store submission or public
-app availability has been established. The dated October 16 store record below is
-historical until refreshed in the consoles. Keep its pending reviews intact.
+No new 0.5.0 archive, signing, store submission or public app availability has
+been established. The dated October 16 store record below is historical; the
+October 19 refresh above supersedes its pending-review status.
 Windows/Linux desktop packages and their distribution channels remain separate
 from the native Apple and Android store releases.
 
@@ -185,14 +240,11 @@ Inspect public certificate metadata with `keytool -list -v -keystore /path/to/ke
 enter passwords interactively, never in committed commands or task output.
 
 ### 2. Point the build at it — WITHOUT committing secrets
-Create `android/keystore.properties` (already gitignored — `keystore.properties`, `*.jks`, `*.keystore`):
-```properties
-storeFile=/absolute/path/to/upload.jks
-storePassword=••••••
-keyAlias=quenderin
-keyPassword=••••••
-```
-`app/build.gradle.kts` loads this and signs the **release** build automatically. With no file present,
+The established build reads the human-managed `android/keystore.properties`
+(gitignored, together with `*.jks` and `*.keystore`). Restore the existing secure
+signing setup; do not print, copy or create credential contents in an agent
+session. A path or existing signing-job name is enough to locate the setup.
+`app/build.gradle.kts` loads it and signs the **release** build automatically. With no file present,
 release still *builds* (unsigned) — so CI and contributors are never blocked.
 
 ### 3. Build the release bundle
@@ -202,9 +254,16 @@ is preferable when this Mac cannot fit native build output.
 
 ```sh
 python3 scripts/prepare_prism_runtime.py fetch --destination /absolute/new/prism-source
+ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" \
+  bash scripts/build_android_diffusion.sh /absolute/new/android-diffusion
 cd android
 ./gradlew :app:bundleRelease --no-daemon --console=plain \
-  -Pquenderin.runtime=prism -Pquenderin.llamaDir=/absolute/new/prism-source
+  -Pquenderin.runtime=prism -Pquenderin.llamaDir=/absolute/new/prism-source \
+  -Pquenderin.diffusionLibDir=/absolute/new/android-diffusion/jniLibs
+cd ..
+python3 scripts/verify_diffusion_android_package.py \
+  --libraries /absolute/new/android-diffusion/jniLibs \
+  --package android/app/build/outputs/bundle/release/app-release.aab
 ```
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`. Without the
@@ -222,7 +281,11 @@ require API 36 for updates after 31 August 2026.
   report that runtime validation has not been performed.
 - **Data safety form:** review against the public privacy policy. Network activity includes
   user-selected Hugging Face downloads, optional model search, and public release metadata
-  from quenderin.org when model selection is opened. These requests carry no chats or files.
+  from quenderin.org when model selection is opened. Those catalog/download
+  requests carry no chats or files. In versions with the optional Step 5 workflow,
+  an approved request sends its prompt and selected conversation to the user's
+  configured CUDA host. Review the actual destination and consent behavior
+  separately; a local-chat disclosure alone does not describe this workflow.
   Declare the **`dataSync`** foreground-service type used for model downloads.
 - **Content rating (IARC):** file **Mature 17+** — an unrestricted local LLM can emit mature text.
 - **Privacy policy URL:** `https://quenderin.org/privacy` (already hosted + in-app).

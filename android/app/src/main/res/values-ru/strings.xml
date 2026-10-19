@@ -43,7 +43,7 @@
     <string name="tab_agent">Агент</string>
     <string name="tab_settings">Настройки</string>
     <string name="chat_empty_title">Спросите %1$s о чём угодно</string>
-    <string name="chat_empty_body">Работает полностью на вашем телефоне. Ничего из введённого не покидает устройство.</string>
+    <string name="chat_empty_body">Этот чат работает на вашем телефоне. Сообщения обрабатываются локально.</string>
     <string name="chat_composer_placeholder">Сообщение</string>
     <string name="chat_day_today">Сегодня</string>
     <string name="chat_send">Отправить сообщение</string>
@@ -88,7 +88,7 @@
     <string name="profile_precision_bits">%1$s бит/вес</string>
     <string name="profile_reasoning_on">Модель рассуждает шаг за шагом перед ответом — лучше на сложных вопросах, но заметно медленнее.</string>
     <string name="profile_reasoning_off">Выключено: быстрые прямые ответы. Включите, чтобы модель рассуждала шаг за шагом (медленнее).</string>
-    <string name="profile_privacy_body">Работает полностью на устройстве через llama.cpp. Без аккаунта, облака и слежки — после загрузки работает полностью офлайн, и ничто из введённого не покидает ваш телефон.</string>
+    <string name="profile_privacy_body">Эта модель работает локально через llama.cpp и после загрузки доступна офлайн. Step 5 — отдельное необязательное подключение к выбранному вами CUDA-хосту.</string>
     <string name="blurb_qwen3">Qwen3 от Alibaba — сильная, широко многоязычная универсальная модель.</string>
     <string name="blurb_qwen25_coder">Qwen2.5 Coder — заточен под программирование и работу с кодом.</string>
     <string name="blurb_deepseek_r1">DeepSeek-R1 (дистиллят) — модель с упором на рассуждение, думает перед ответом.</string>
@@ -106,9 +106,9 @@
     <string name="picker_not_enough_memory">Недостаточно памяти</string>
     <string name="picker_memory_shortfall">Для загрузки нужно ~%1$s ГБ — на телефоне свободно %2$s ГБ.</string>
     <string name="welcome_title">Знакомьтесь: Quenderin</string>
-    <string name="welcome_tagline">Персональный ИИ, который живёт на вашем телефоне — а не в чужом облаке.</string>
+    <string name="welcome_tagline">Персональный ИИ с локальными моделями на вашем телефоне.</string>
     <string name="welcome_private_title">Приватность по умолчанию</string>
-    <string name="welcome_private_body">Беседы не покидают этот телефон. Без аккаунта, без слежки.</string>
+    <string name="welcome_private_body">Локальные беседы остаются на этом телефоне. Необязательный Step 5 отправляет текст на выбранный вами хост только с вашего разрешения.</string>
     <string name="welcome_offline_title">Работает офлайн</string>
     <string name="welcome_offline_body">Скачайте модель один раз — и она отвечает где угодно, даже в авиарежиме.</string>
     <string name="welcome_oss_title">Открытый код</string>
@@ -122,7 +122,7 @@
     <string name="consent_charge_body">Каждый ответ генерируется и используется на ваш страх и риск и по вашему усмотрению — что с ним делать, решаете только вы.</string>
     <string name="consent_legal">Продолжая, вы соглашаетесь: Quenderin предоставляется «как есть», и в максимальной мере, допускаемой законом, проект Quenderin и его участники не несут никакой ответственности ни перед кем и ни при каких обстоятельствах — ни за программу, ни за что-либо, созданное её ИИ-моделями.</string>
     <string name="onboarding_tagline">ИИ, который работает на вашем телефоне — даже офлайн.</string>
-    <string name="onboarding_private_line">Приватность по умолчанию — без аккаунта, облака и слежки.</string>
+    <string name="onboarding_private_line">Локальный чат работает офлайн. Необязательный Step 5 использует выбранный вами хост с вашего разрешения.</string>
     <string name="onboarding_checking">Проверяем ваше устройство…</string>
     <string name="onboarding_recommended_overline">РЕКОМЕНДОВАНО ДЛЯ ВАШЕГО УСТРОЙСТВА</string>
     <string name="onboarding_free_up_storage">Или освободите место и вернитесь.</string>
@@ -194,7 +194,7 @@
     <string name="settings_active">Активна</string>
     <string name="settings_no_models_yet">Пока нет скачанных моделей.</string>
     <string name="settings_delete_model_hint">Удалите модель, чтобы освободить место — активная модель защищена.</string>
-    <string name="settings_on_device_llama">Работает полностью на устройстве через llama.cpp — без облака.</string>
+    <string name="settings_on_device_llama">Эта модель чата работает на устройстве через llama.cpp и доступна офлайн.</string>
     <string name="settings_speed_fast">Быстро</string>
     <string name="settings_speed_balanced">Сбалансировано</string>
     <string name="settings_speed_quality">Качество</string>
@@ -234,7 +234,7 @@
     <string name="picker_too_big">Слишком большая</string>
     <string name="agent_may_read_files">Агент может читать прикреплённые файлы</string>
     <string name="agent_may_organize_workspace">Агент может упорядочивать папку рабочего пространства</string>
-    <string name="settings_about_on_device">Quenderin работает полностью на вашем устройстве. Без аккаунта, облака и слежки — после загрузки модель работает офлайн, и ничто из введённого не покидает телефон.</string>
+    <string name="settings_about_on_device">Локальные чаты, изображения и память обрабатываются на вашем устройстве. Необязательный Step 5 отправляет свою отдельную беседу на выбранный вами CUDA-хост только с вашего разрешения. Аккаунта и автоматической облачной синхронизации нет.</string>
     <string name="router_task_coding">вопрос по коду</string>
     <string name="router_task_reasoning">задача по шагам</string>
     <string name="router_task_multilingual">многоязычный запрос</string>

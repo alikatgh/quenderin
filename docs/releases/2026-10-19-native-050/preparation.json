@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-19",
+  "releaseVersion": "0.5.0",
+  "storeProfiles": {
+    "apple": "Apple Developer",
+    "googlePlay": "Albert - Main - CMax"
+  },
+  "apple": {
+    "currentIOSVersion": "0.4.0",
+    "currentMacOSVersion": "0.4.0",
+    "currentStatuses": "Ready for Distribution",
+    "selectedIOSBuild": 19,
+    "automaticReleaseIOS": true,
+    "cloudPlanHours": 25,
+    "cloudUsedMinutes": 243,
+    "cloudAvailableMinutes": 1257,
+    "cloudResetsLocal": "2026-10-28 15:02",
+    "newArchiveStatus": "not started",
+    "nextCloudBuild": 20,
+    "workflow": "Bonsai 2 App Store",
+    "workflowEnabled": true,
+    "workflowActions": [
+      "Archive - macOS / QuenderinMac / Any Mac / App Store Connect",
+      "Archive - iOS / Quenderin / App Store Connect"
+    ],
+    "draftIOS": "0.5.0 Prepare for Submission",
+    "draftIOSAutomaticRelease": true,
+    "draftMacOS": "0.5.0 Prepare for Submission",
+    "draftMacOSAutomaticRelease": true
+  },
+  "android": {
+    "latestUploadedCode": 2,
+    "latestUploadedVersion": "0.2.0",
+    "track": "Closed testing - Alpha",
+    "currentRolloutPercent": 100,
+    "testersOptedIn": 7,
+    "productionEligible": false,
+    "candidateCode": 5,
+    "candidateCodeAvailable": true,
+    "signingStatus": "Existing private upload key not established by console access; canonical local signing configuration absent.",
+    "uploadCertificateSHA256": "8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D"
+  },
+  "verificationLimits": "No local weights, simulator or physical-device runs authorized. App Store signing, build selection, submission and availability require their own evidence.",
+  "hostChecks": {
+    "catalogParity": "28 models match TypeScript/Swift/Kotlin",
+    "museManifest": "22 parts match",
+    "beamManifest": "four parts match",
+    "androidPrivateBackup": "2 positive checks passed; removing approved-memory exclusion fails each of legacy/cloud/device-transfer checks",
+    "androidLocalization": "6 generator preservation fixtures passed; five locale resources deterministic",
+    "appleLocalization": "353 catalog entries match canonical TSV; deterministic regeneration"
+  },
+  "review": "Independent Sol 6.1 xhigh review: material findings resolved; final self-closing resource edge fixed with regression fixture."
+}

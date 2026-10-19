@@ -393,30 +393,30 @@
         }
       }
     },
-    "A personal AI that lives on your %@ — not in someone's cloud.": {
+    "A personal AI that runs local models on your %@.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "誰かのクラウドではなく、あなたの%@に住むパーソナルAI。"
+            "value": "%@上でローカルモデルを実行するパーソナル AI。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "클라우드가 아닌 당신의 %@ 안에 사는 개인 AI."
+            "value": "%@에서 로컬 모델을 실행하는 개인 AI."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Персональный ИИ, который живёт на вашем устройстве (%@) — а не в чужом облаке."
+            "value": "Персональный ИИ с локальными моделями на вашем устройстве (%@)."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "住在你的%@上的个人 AI——而不是别人的云端。"
+            "value": "在你的%@上运行本地模型的个人 AI。"
           }
         }
       }
@@ -4593,6 +4593,62 @@
         }
       }
     },
+    "Local chat, images, and memory run on your device. Optional Step 5 sends its separate conversation to your chosen CUDA host only with your approval. No account or automatic cloud sync.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカルのチャット・画像・メモリーは端末上で処理されます。任意の Step 5 機能は、承認した場合にのみ、専用の会話を指定した CUDA ホストへ送信します。アカウントや自動クラウド同期はありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 채팅, 이미지, 메모리는 기기에서 처리됩니다. 선택 기능인 Step 5는 사용자가 승인한 경우에만 별도 대화를 선택한 CUDA 호스트로 보냅니다. 계정이나 자동 클라우드 동기화는 없습니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальные чаты, изображения и память обрабатываются на вашем устройстве. Необязательный Step 5 отправляет свою отдельную беседу на выбранный вами CUDA-хост только с вашего разрешения. Аккаунта и автоматической облачной синхронизации нет."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地聊天、图像和记忆在你的设备上处理。可选的 Step 5 仅在你批准后将其独立对话发送到你选择的 CUDA 主机。无需账号，也没有自动云同步。"
+          }
+        }
+      }
+    },
+    "Local conversations stay on this %@. Optional Step 5 sends text to your chosen host only with your approval.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカルの会話はこの%@内に保存されます。任意の Step 5 機能は、承認した場合にのみ指定したホストへテキストを送信します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 대화는 이 %@에 보관됩니다. 선택 기능인 Step 5는 사용자가 승인한 경우에만 선택한 호스트로 텍스트를 보냅니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальные беседы остаются на вашем устройстве (%@). Необязательный Step 5 отправляет текст на выбранный вами хост только с вашего разрешения."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地对话保留在这台%@上。可选的 Step 5 仅在你批准后将文本发送到你选择的主机。"
+          }
+        }
+      }
+    },
     "Looking for a model that isn’t listed? Use Search in the sidebar (⌘F) — installed, catalog, and open Hugging Face GGUFs in one place.": {
       "localizations": {
         "ja": {
@@ -5237,30 +5293,30 @@
         }
       }
     },
-    "No account, no log-out — your chats never leave this Mac.": {
+    "No account required. Local chats stay on this Mac; Step 5 sends text to your chosen host with your approval.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アカウントもログアウトもなし — チャットがこのMacを離れることはありません。"
+            "value": "アカウントは不要です。ローカルのチャットはこの Mac 内に保存されます。Step 5 は、承認した場合に指定したホストへテキストを送信します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계정도 로그아웃도 없습니다 — 채팅은 이 Mac을 떠나지 않습니다."
+            "value": "계정이 필요하지 않습니다. 로컬 채팅은 이 Mac에 보관됩니다. Step 5는 사용자가 승인하면 선택한 호스트로 텍스트를 보냅니다."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Без аккаунта и входа — ваши беседы никогда не покидают этот Mac."
+            "value": "Аккаунт не нужен. Локальные беседы остаются на этом Mac; Step 5 отправляет текст на выбранный вами хост с вашего разрешения."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无账号、无需退出——你的聊天永远不会离开这台 Mac。"
+            "value": "无需账号。本地聊天保留在这台 Mac 上；Step 5 会在你批准后将文本发送到你选择的主机。"
           }
         }
       }
@@ -7001,62 +7057,6 @@
         }
       }
     },
-    "Runs entirely on your %@. Nothing you type leaves the device.": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべて%@上で動作します。入力内容がデバイスの外に出ることはありません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전부 당신의 %@에서 실행됩니다. 입력한 내용은 기기를 떠나지 않습니다."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Работает полностью на вашем устройстве (%@). Ничего из введённого не покидает его."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "完全在你的%@上运行。你输入的内容不会离开设备。"
-          }
-        }
-      }
-    },
-    "Runs entirely on-device via llama.cpp — no cloud.": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "llama.cppで完全オンデバイス — クラウドなし。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "llama.cpp로 완전 기기 내 실행 — 클라우드 없음."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Работает полностью на устройстве через llama.cpp — без облака."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "完全通过 llama.cpp 在设备端运行——无云端。"
-          }
-        }
-      }
-    },
     "Russian, English + 140 more": {
       "localizations": {
         "ja": {
@@ -8513,6 +8513,62 @@
         }
       }
     },
+    "This chat model runs on-device via llama.cpp and works offline.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このチャットモデルは llama.cpp により端末上で動作し、オフラインで使えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 채팅 모델은 llama.cpp로 기기에서 실행되며 오프라인으로 작동합니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта модель чата работает на устройстве через llama.cpp и доступна офлайн."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此聊天模型通过 llama.cpp 在设备上运行，可离线使用。"
+          }
+        }
+      }
+    },
+    "This chat runs on your %@. Its messages are processed locally.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このチャットは%@上で動作します。メッセージは端末内で処理されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 채팅은 %@에서 실행됩니다. 메시지는 기기에서 처리됩니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот чат работает на вашем устройстве (%@). Сообщения обрабатываются локально."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此聊天在你的%@上运行，消息在本地处理。"
+          }
+        }
+      }
+    },
     "This is the model you’re using now.": {
       "localizations": {
         "ja": {
@@ -8565,6 +8621,34 @@
           "stringUnit": {
             "state": "translated",
             "value": "此模型需要约 %1$@ GB——你的%2$@有 %3$@ GB 可用。"
+          }
+        }
+      }
+    },
+    "This model runs locally via llama.cpp and works offline after download. Step 5 is a separate, optional connection to your chosen CUDA host.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このモデルは llama.cpp により端末上で動作し、ダウンロード後はオフラインで使えます。Step 5 は、指定した CUDA ホストへの独立した任意の接続機能です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 모델은 llama.cpp로 기기에서 실행되며 다운로드 후 오프라인으로 작동합니다. Step 5는 선택한 CUDA 호스트에 연결하는 별도의 선택 기능입니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта модель работает локально через llama.cpp и после загрузки доступна офлайн. Step 5 — отдельное необязательное подключение к выбранному вами CUDA-хосту."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此模型通过 llama.cpp 在本地运行，下载后可离线使用。Step 5 是连接到你所选 CUDA 主机的独立可选功能。"
           }
         }
       }

@@ -1,15 +1,25 @@
-# Android integration — native 0.4.0 with Bonsai and Muse
+# Android integration — native 0.5.0 model update
 
-This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. Native 0.4.0 uses
-the locked Prism runtime plus the verified Muse source patch. A stock llama.cpp
-checkout does not provide the Bonsai/Muse runtime capabilities.
+This is the Android twin of `apple/QuenderinKit/INTEGRATION.md`. The native 0.5.0
+candidate uses the locked Prism runtime, verified Muse source patch and isolated
+image runtime. A stock llama.cpp checkout does not provide these capabilities.
 
-The source declares `versionCode = 4`, `versionName = "0.4.0"`, and compile/target
+The update expands the shared text catalog to 28 entries, including complete-part
+Beam and Muse installation. Dedicated workflows cover still-image questions with
+managed vision model/projector pairs, explicit Hy-Memory proposals, receipt-verified
+Granite Switch imports, Step 5 Preview through a user-owned CUDA host, and isolated
+FLUX/MOSS image generation. Resource leases, memory floors and cancellation guard
+these workflows; availability depends on each model's artifacts and device capacity.
+See `docs/bonsai-2.md` for exact sources and limits. Source integration and hosted
+compilation do not establish full-weight inference or image quality.
+
+The source declares `versionCode = 5`, `versionName = "0.5.0"`, and compile/target
 API 36. Build with AGP 8.10.1, Kotlin/Compose compiler 2.2.21, and the checked-in
 Gradle 8.11.1 wrapper. The SDK
 packages used by the build are `platforms;android-36`, `build-tools;35.0.0`,
 `ndk;26.3.11579264`, and `cmake;3.22.1`; Java source/bytecode targets remain 17.
 The wrapper verifies its distribution against Gradle's published SHA-256.
+Code 5 is provisional until the highest uploaded Play version code is refreshed.
 
 ## Verification boundaries
 
@@ -17,14 +27,15 @@ The wrapper verifies its distribution against Gradle's published SHA-256.
 |-------|-------|-------------------|
 | `quenderin-core` (Kotlin brain) | Portable source and fixture tests | `kotlinc` verification and `:quenderin-core:test` |
 | Prism/Muse source identity | Build-time gate | `prepare_prism_runtime.py verify` and CMake's provenance check |
-| `jni/llama_jni.cpp` and Compose app | Hosted compilation gate | CI builds `assembleDebug` and `bundleRelease` with the prepared Prism source |
+| Image runtime and package identity | Build and final-package gates | `build_android_diffusion.sh` seals the private runtime; `verify_diffusion_android_package.py` checks APK/AAB bytes, dependency closure and 16 KiB alignment |
+| `jni/llama_jni.cpp` and Compose app | Hosted compilation gate | CI builds `assembleDebug` and `bundleRelease` with prepared Prism and image runtimes |
 | Signed Google Play update | Separate release step | Requires the package's registered upload key and Play Console acceptance |
 | Android 16 behavior and real inference | Device validation still required | No current physical-device evidence is implied by compilation or fixtures |
 
 The historical 2026-06-14 smoke test used NDK r26d and an arm64 emulator with an
 older runtime, reporting coherent output and about 102 tok/s. It does not verify
-0.4.0, Bonsai, Muse, Android 16, or physical-phone performance. The legacy
-`verify-llama-link.sh` path is a device smoke-test helper, not the 0.4.0 source
+0.4.0, 0.5.0, Bonsai, Muse, Android 16, or physical-phone performance. The legacy
+`verify-llama-link.sh` path is a device smoke-test helper, not the current source
 preparation or release-build procedure.
 
 The app **boots on `MockInferenceEngine`** when `jni/llama.cpp` is absent so onboarding → chat
@@ -47,32 +58,59 @@ llama.cpp stays C/C++; `jni/llama_jni.cpp` is the only glue (twin of the Swift a
 
 1. From the repository root, prepare the runtime at a new or matching destination:
    ```sh
-   python3 scripts/prepare_prism_runtime.py fetch --destination "$PWD/android/jni/llama.cpp"
-   python3 scripts/prepare_prism_runtime.py verify --source "$PWD/android/jni/llama.cpp"
+   quenderin_root="$PWD"
+   python3 scripts/prepare_prism_runtime.py fetch --destination "$quenderin_root/android/jni/llama.cpp"
+   python3 scripts/prepare_prism_runtime.py verify --source "$quenderin_root/android/jni/llama.cpp"
    ```
    This downloads source only. The lock is `shared/prism-runtime.json`; the helper
    verifies the base revision, applies the locked Muse patch, and verifies its
    files. It refuses to replace a mismatched existing checkout. Choose a separate
    destination if `android/jni/llama.cpp` already contains other work and pass that
    absolute path below. The example checkout is gitignored.
-2. Build the app and run the JVM unit tests with an explicit runtime selection:
+2. Build the isolated image runtime in a **new absolute work directory**, using
+   the established NDK. Replace the example SDK/work paths with your own:
    ```sh
-   cd android
+   quenderin_diffusion_work="/absolute/new/android-diffusion"
+   ANDROID_NDK_HOME="/absolute/path/to/Android/sdk/ndk/26.3.11579264" \
+     bash scripts/build_android_diffusion.sh "$quenderin_diffusion_work"
+   ```
+   The builder refuses an existing work path. It fetches pinned source, statically
+   links its private C++ runtime, strips and seals both image DSOs, and verifies
+   their identity, dependencies and 16 KiB alignment. It downloads no model weights.
+3. Build the app and run the JVM unit tests with both explicit runtime paths:
+   ```sh
+   cd "$quenderin_root/android"
    ./gradlew :app:assembleDebug :app:bundleRelease :quenderin-core:test \
      --no-daemon --console=plain \
-     -Pquenderin.runtime=prism -Pquenderin.llamaDir="$PWD/jni/llama.cpp"
+     -Pquenderin.runtime=prism \
+     -Pquenderin.llamaDir="$quenderin_root/android/jni/llama.cpp" \
+     -Pquenderin.diffusionLibDir="$quenderin_diffusion_work/jniLibs"
    ```
    Gradle enables CMake/NDK automatically and builds arm64-v8a JNI plus the CPU
    backend variants. CMake rejects missing or altered Prism/Muse provenance.
    No model weights are downloaded by these build tasks.
-3. The bundle is `app/build/outputs/bundle/release/app-release.aab`. Without
+4. Verify the actual packaged libraries in **both** outputs:
+   ```sh
+   cd "$quenderin_root"
+   python3 scripts/verify_diffusion_android_package.py \
+     --libraries "$quenderin_diffusion_work/jniLibs" \
+     --package android/app/build/outputs/apk/debug/app-debug.apk
+   python3 scripts/verify_diffusion_android_package.py \
+     --libraries "$quenderin_diffusion_work/jniLibs" \
+     --package android/app/build/outputs/bundle/release/app-release.aab
+   ```
+   This verifies sealed image-library bytes, dependency closure and 16 KiB ELF
+   alignment after AGP packaging. Gradle also rejects a Prism release without the
+   verified image-runtime directory.
+5. The bundle is `android/app/build/outputs/bundle/release/app-release.aab`. Without
    `android/keystore.properties` it is **unsigned**. Reuse the registered upload
    key for a signed Google Play update; do not create a replacement key as a
    workaround. See `docs/RELEASE.md` for the signing and console steps.
 
-CI uses the same explicit Prism selection and compiles an unsigned release
-bundle. A passing job proves compilation of that revision, not signing, upload,
-submission, installation, or inference with the real model weights.
+CI uses the same explicit runtime selections and compiles an unsigned release
+bundle. A passing job proves compilation and package verification of that
+revision, not signing, upload, submission, installation, or inference with the
+real model weights.
 
 ### Keep the C API in sync
 `llama_jni.cpp` targets the post-2024 llama.cpp API (`llama_model_load_from_file`,

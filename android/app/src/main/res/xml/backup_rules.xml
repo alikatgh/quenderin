@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- API <=30 backup rules (android:fullBackupContent).
-     - models/        : downloaded GGUFs (0.4-9 GB) — over the cloud cap & re-downloadable.
-     - conversations/ : chat transcripts — excluded so the "nothing you type leaves your phone"
-       promise holds on legacy Auto Backup too (the API 31+ twin lives in data_extraction_rules.xml). -->
+     - models/          : downloaded weights — re-downloadable and over the cloud cap.
+     - conversations/   : local chat transcripts.
+     - approved-memories/ : facts explicitly saved from Hy-Memory proposals.
+       Private text is excluded on legacy Auto Backup too; the API 31+ twin lives
+       in data_extraction_rules.xml. Optional Step 5 sends are a separate consented flow. -->
 <full-backup-content>
     <exclude domain="file" path="models/" />
     <exclude domain="file" path="conversations/" />
+    <exclude domain="file" path="approved-memories/" />
 </full-backup-content>

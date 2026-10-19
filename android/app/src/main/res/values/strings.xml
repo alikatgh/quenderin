@@ -43,7 +43,7 @@
     <string name="tab_agent">Agent</string>
     <string name="tab_settings">Settings</string>
     <string name="chat_empty_title">Ask %1$s anything</string>
-    <string name="chat_empty_body">Runs entirely on your phone. Nothing you type leaves the device.</string>
+    <string name="chat_empty_body">This chat runs on your phone. Its messages are processed locally.</string>
     <string name="chat_try_one">Try one</string>
     <string name="chat_try_starter_a11y">Try: %1$s</string>
     <string name="chat_composer_placeholder">Message</string>
@@ -113,7 +113,7 @@
     <string name="profile_precision_bits">%1$s bits/weight</string>
     <string name="profile_reasoning_on">The model reasons step-by-step before answering — better on hard questions, but noticeably slower.</string>
     <string name="profile_reasoning_off">Off: fast, direct answers. Turn on to let the model reason step-by-step (slower).</string>
-    <string name="profile_privacy_body">Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — once downloaded it works fully offline and nothing you type leaves your phone.</string>
+    <string name="profile_privacy_body">This model runs locally via llama.cpp and works offline after download. Step 5 is a separate, optional connection to your chosen CUDA host.</string>
     <string name="blurb_qwen3">Alibaba\'s Qwen3 — a strong, broadly multilingual all-rounder.</string>
     <string name="blurb_qwen25_coder">Qwen2.5 Coder — tuned for programming and code reasoning.</string>
     <string name="blurb_deepseek_r1">DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers.</string>
@@ -133,9 +133,9 @@
     <string name="picker_not_enough_memory">Not enough memory</string>
     <string name="picker_memory_shortfall">Needs ~%1$s GB to load — this phone has %2$s GB free.</string>
     <string name="welcome_title">Meet Quenderin</string>
-    <string name="welcome_tagline">A personal AI that lives on your phone — not in someone\'s cloud.</string>
+    <string name="welcome_tagline">A personal AI that runs local models on your phone.</string>
     <string name="welcome_private_title">Private by design</string>
-    <string name="welcome_private_body">Conversations never leave this phone. No account, no tracking.</string>
+    <string name="welcome_private_body">Local conversations stay on this phone. Optional Step 5 sends text to your chosen host only with your approval.</string>
     <string name="welcome_offline_title">Works offline</string>
     <string name="welcome_offline_body">Download a model once — then it answers anywhere, airplane mode included.</string>
     <string name="welcome_oss_title">Open source</string>
@@ -149,7 +149,7 @@
     <string name="consent_charge_body">Every answer is generated and acted on at your own risk and judgement — what you do with it is your decision alone.</string>
     <string name="consent_legal">By continuing you agree: Quenderin is provided “as is”, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce.</string>
     <string name="onboarding_tagline">An AI that runs on your phone — even offline.</string>
-    <string name="onboarding_private_line">Private by design — no account, no cloud, no tracking.</string>
+    <string name="onboarding_private_line">Local chat works offline. Optional Step 5 uses your chosen host with your approval.</string>
     <string name="onboarding_checking">Checking your device…</string>
     <string name="onboarding_recommended_overline">RECOMMENDED FOR YOUR DEVICE</string>
     <string name="onboarding_free_up_storage">Or free up storage and come back.</string>
@@ -197,7 +197,7 @@
     <string name="settings_active">Active</string>
     <string name="settings_no_models_yet">No models downloaded yet.</string>
     <string name="settings_delete_model_hint">Delete a model to free space — the active model is protected.</string>
-    <string name="settings_on_device_llama">Runs entirely on-device via llama.cpp — no cloud.</string>
+    <string name="settings_on_device_llama">This chat model runs on-device via llama.cpp and works offline.</string>
     <string name="settings_speed_fast">Fast</string>
     <string name="settings_speed_balanced">Balanced</string>
     <string name="settings_speed_quality">Quality</string>
@@ -237,7 +237,7 @@
     <string name="picker_too_big">Too big</string>
     <string name="agent_may_read_files">The agent may read attached files</string>
     <string name="agent_may_organize_workspace">The agent may organize the workspace folder</string>
-    <string name="settings_about_on_device">Quenderin runs entirely on your device. No account, no cloud, no tracking — once a model is downloaded it works fully offline, and nothing you type leaves your phone.</string>
+    <string name="settings_about_on_device">Local chat, images, and memory run on your device. Optional Step 5 sends its separate conversation to your chosen CUDA host only with your approval. No account or automatic cloud sync.</string>
     <string name="router_task_coding">a coding question</string>
     <string name="router_task_reasoning">a step-by-step problem</string>
     <string name="router_task_multilingual">a multilingual prompt</string>
