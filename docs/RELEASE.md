@@ -10,6 +10,7 @@ or already-authorized signing configuration. A debug build is not a signed store
 |---|---|
 | App Store Connect and Xcode Cloud | **Apple Developer** |
 | Google Play Console | **Albert - Main - CMax** |
+| Cloudflare publishing | **Albert - Main - CMax** (user-approved) |
 
 Confirm the profile name and reuse the existing signed-in tab before store work.
 Browser and tab IDs change between sessions; do not save an ID as the account
@@ -33,7 +34,7 @@ Version preparation and store publication are separate states.
   automatic trigger still targets the old Bonsai branch. A manual-only start
   condition now permits exactly `codex/native-050-20261019`; select that branch
   explicitly for this update. The included Cloud plan is 25 hours, with
-  4h03 used and 20h57 available in the current period; no plan change was made.
+  4h36 used and 20h24 available after build 21; no plan change was made.
 - **Apple drafts:** iOS and macOS **0.5.0 Prepare for Submission** were created
   with updated description, release notes and review notes. Automatic release
   after approval is selected on both. No 0.5.0 build has been selected or submitted.
@@ -41,15 +42,28 @@ Version preparation and store publication are separate states.
   passed at `3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2`, including Android APK/unsigned
   AAB package checks and Apple runtime/SDK compilation.
 - **Cloud build 20:** iOS compiled, exported, passed the final signed-payload
-  gate and completed preparation/upload to App Store Connect. macOS compiled
+  gate and reached App Store Connect processing, which subsequently failed.
+  macOS compiled
   and exported, but its final gate rejected a framework build-number mismatch.
   The actual Mac export retained the image framework identity, short version
   and sealed binary payload, with only framework build `1` synchronized to
   enclosing app build `20`. The correction accepts exactly that signed Mac
   case while retaining source, identity, payload and signature checks; 36
   positive/negative fixtures pass and independent review has no remaining findings.
-  A fresh Cloud run must establish the corrected final gate before Mac submission.
+  Cloud build 21 established the corrected final gate on its actual signed export.
   [Artifact evidence](releases/2026-10-19-native-050/xcode-cloud-20-image-framework-evidence.json).
+- **Cloud build 21:** both signed-payload gates passed at
+  `f891f2c07ff832d46f996a9bc3ca2cdbb18f1184`. macOS **0.5.0 (21)** completed
+  App Store Connect processing and is **Ready to Submit**. iOS upload processing
+  failed with **90208 / 90360 / 90530**: the manually assembled
+  `QuenderinDiffusion.framework` lacks `MinimumOSVersion`. Compilation, signature
+  verification and upload preparation did not establish acceptance by Apple.
+  The producer now supplies platform and deployment metadata from the same CMake
+  target used by the compiler. The release verifier checks this against every
+  Mach-O architecture and the app's deployment target. Forty Apple host fixtures
+  pass, including missing/malformed metadata, wrong platform, mismatched slice
+  minima and the existing signature/payload checks. A fresh signed archive and
+  successful Apple processing are still required before selecting the iOS build.
 - **Google Play live state:** highest uploaded code **2 (0.2.0)** remains at
   100% on **Closed testing – Alpha**. There are seven opted-in testers and
   production access is not enabled. Candidate code **5** is available; preserve
@@ -57,11 +71,18 @@ Version preparation and store publication are separate states.
 - **Android signing:** the canonical `android/keystore.properties` is absent,
   and the repository has no signing secrets. The existing registered upload
   key is required; no replacement key or reset is implied by release preparation.
+- **Privacy-page publication:** the source now explains optional Step 5 host
+  processing and system backups. Cloudflare authentication remains unfinished:
+  the user approved Main - CMax with Account Read and Workers Scripts Write,
+  but the provider also requires Background Access. Approval for that additional
+  permission is pending. Expired device codes must not be reused. Preserve the
+  deployed Worker module and configuration when publishing the static asset;
+  do not activate the different local Worker implementation.
 - **Validation scope:** source/fixture checks and hosted compilation only. The
   user's exclusion of local weights, simulators and physical-device runs remains
-  in effect. The iOS signed Cloud export/upload is established above; no
-  0.5.0 store submission or public availability has been established. The Mac
-  signed-export gate still needs a successful fresh Cloud run.
+  in effect. The signed Cloud exports are established above; no
+  0.5.0 store submission or public availability has been established. iOS build
+  processing remains failed; macOS 21 is accepted for build selection.
 
 The Android backup rules now exclude approved memories as well as conversations
 from legacy backup, cloud backup and device transfer. Host fixtures fail if any
@@ -160,8 +181,9 @@ No local weights, simulator runs or physical-device runs are authorized for this
 update. Full-weight inference, image quality, measured memory/speed and native
 rendered UI and ARMv7 support remain unverified. The existing hosted Bonsai CPU
 generation check does not validate full-weight inference for the new models.
-No new 0.5.0 archive, signing, store submission or public app availability has
-been established. The dated October 16 store record below is historical; the
+At that engineering revision, no 0.5.0 archive, signing, store submission or public
+app availability had been established. The October 19 record above carries the
+subsequent native archive and processing results. The dated October 16 store record below is historical; the
 October 19 refresh above supersedes its pending-review status.
 Windows/Linux desktop packages and their distribution channels remain separate
 from the native Apple and Android store releases.

@@ -3,7 +3,8 @@
   "releaseVersion": "0.5.0",
   "storeProfiles": {
     "apple": "Apple Developer",
-    "googlePlay": "Albert - Main - CMax"
+    "googlePlay": "Albert - Main - CMax",
+    "cloudflare": "Albert - Main - CMax (user-approved)"
   },
   "apple": {
     "currentIOSVersion": "0.4.0",
@@ -12,11 +13,11 @@
     "selectedIOSBuild": 19,
     "automaticReleaseIOS": true,
     "cloudPlanHours": 25,
-    "cloudUsedMinutes": 243,
-    "cloudAvailableMinutes": 1257,
+    "cloudUsedMinutes": 276,
+    "cloudAvailableMinutes": 1224,
     "cloudResetsLocal": "2026-10-28 15:02",
-    "newArchiveStatus": "Cloud20: iOS signed gate passed and upload/preparation complete; macOS export produced but final image framework metadata gate rejected build synchronization. Corrected gate requires fresh Cloud run.",
-    "nextCloudBuild": 20,
+    "newArchiveStatus": "Cloud 21: both signed-export gates passed; macOS 0.5.0 (21) Ready to Submit. iOS 21 failed processing because MinimumOSVersion is missing (90208/90360/90530). Producer and verifier corrected; 40 Apple host fixtures pass. Fresh signed archive and Apple processing pending.",
+    "nextCloudBuild": 22,
     "workflow": "Bonsai 2 App Store",
     "workflowEnabled": true,
     "workflowActions": [
@@ -29,7 +30,12 @@
     "draftMacOSAutomaticRelease": true,
     "manualBranch": "codex/native-050-20261019",
     "cloudBuild20Id": "3a9921e6-cae7-4b7e-ae0e-6bb5b70ab328",
-    "cloudBuild20Source": "3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2"
+    "cloudBuild20Source": "3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2",
+    "cloudAllowanceObservedBeforeBuild": 22,
+    "cloudBuild21Id": "832ad65c-7113-4685-a758-a39ddcb120e9",
+    "cloudBuild21Source": "f891f2c07ff832d46f996a9bc3ca2cdbb18f1184",
+    "iosBuild21Processing": "Failed: 90208 / 90360 / 90530, QuenderinDiffusion.framework MinimumOSVersion missing",
+    "macOSBuild21Processing": "Complete / Ready to Submit"
   },
   "android": {
     "latestUploadedCode": 2,
@@ -58,7 +64,8 @@
       "passedJobs": 18,
       "totalJobs": 18
     },
-    "signedImageAndPrismVerifiers": "36 fixtures passed; actual signed Mac metadata case and malformed/wrong build, identity, payload and unsigned rejection checks; independent review passed"
+    "signedImageAndPrismVerifiers": "40 fixtures passed: target-aware CMake plist generation, strict deployment/platform metadata against every Mach-O slice, app minimum compatibility, exact signed Mac build synchronization and retained signature/payload/provenance rejection checks.",
+    "desktopDiffusion": "23 host fixtures passed after Apple-only CMake metadata change."
   },
   "review": "Independent Sol 6.1 xhigh review: material findings resolved; final self-closing resource edge fixed with regression fixture."
 }

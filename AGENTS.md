@@ -24,6 +24,7 @@ Secrets and private keys never belong in this file or release documentation.
 
 - **App Store Connect / Xcode Cloud:** Chrome profile **Apple Developer**.
 - **Google Play Console:** Chrome profile **Albert - Main - CMax**.
+- **Cloudflare publishing:** Chrome profile **Albert - Main - CMax**, approved by the user on 19 October 2026.
 - Confirm the profile name and reuse its signed-in tab before any store work.
   Browser and tab IDs are ephemeral, not account identifiers. Do not open Play
   Console in Apple Developer or App Store Connect in the general browsing profile.
