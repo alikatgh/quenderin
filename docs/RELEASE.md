@@ -20,80 +20,70 @@ known profiles instead of starting new sign-in or account/terms setup flows.
 Store-console access and access to the private Android upload key are separate
 prerequisites; a public certificate is not a recovered private key.
 
-## 19 October 2026 — native 0.5.0 preparation
+## 19 October 2026 — native 0.5.0 submissions
 
-The new release source includes the October model workflows described below.
-Version preparation and store publication are separate states.
+- **iOS and macOS:** both **0.5.0 (22) Waiting for Review**, submitted on
+  19 October with **Automatically release this version** selected. Public 0.4.0
+  remains separate from the pending update. [iOS submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/3df425d2-02fa-47d1-a257-515b76f6e3c3)
+  and [Mac submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/93d5cd80-87d5-4df6-ac28-53277255116f).
+- **Exact release source:** `53994b799eb021bed10e2b58a727539283f02559`.
+  [CI 39201633327](https://github.com/alikatgh/quenderin/actions/runs/39201633327)
+  passed **all 18 jobs**, including the actual Android APK/unsigned AAB package
+  checks, Apple runtime/SDK compilation and desktop package checks. Documentation
+  recorded afterward does not alter the signed release source.
+- **Signed Apple artifacts:** [Cloud build 22](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/cd511bc1-d650-405b-99d4-44a106bee5cd/summary)
+  succeeded for iOS and universal macOS. The actual signed exports passed runtime,
+  payload, signature and deployment-metadata gates, then both completed App Store
+  Connect processing. Build 22 is selected in both submitted versions.
+- **Existing Cloud workflow:** `Bonsai 2 App Store` still uses Prism and its
+  iOS/macOS Archive actions. A manual-only start condition permits exactly
+  `codex/native-050-20261019`; automatic pushes still target the old Bonsai branch.
+  Before build 22, the included 25-hour plan showed 4h36 used / 20h24 available,
+  resetting October 28 at 15:02 local. No plan change or paid upgrade was made.
+- **Packaging defects repaired:** Cloud 20's Mac export synchronized the image
+  framework build number to the app. The verifier now permits exactly that signed
+  Mac case while keeping source identity, payload and signature checks strict.
+  Cloud 21 passed that gate, and its Mac build processed successfully. Its iOS
+  upload failed Apple processing with **90208 / 90360 / 90530**, because CMake's
+  stock framework plist omitted `MinimumOSVersion`. The target-aware template now
+  supplies minimum OS and supported platform; the verifier checks every Mach-O
+  architecture and the app's deployment minimum. Forty Apple host fixtures pass,
+  including malformed/missing metadata, wrong platform, mismatched slice minima,
+  signature/payload tampering and the exact signed Mac exception. Independent
+  review caught and resolved an older-CMake template-variable incompatibility.
+  Twenty-three desktop diffusion fixtures also pass.
+  [Cloud 20 artifact evidence](releases/2026-10-19-native-050/xcode-cloud-20-image-framework-evidence.json).
+- **Google Play:** highest uploaded code remains **2 (0.2.0)**, at 100% on
+  **Closed testing – Alpha**, with seven opted-in testers and production access
+  unavailable. Source **0.5.0 / code 5** and hosted unsigned AAB compilation are
+  prepared. The registered private upload key is still required: canonical
+  `android/keystore.properties` is absent and no repository signing secret is
+  configured. Console access and the public upload certificate do not provide
+  that private key. No replacement key, reset or Play upload was performed.
+- **Privacy and private storage:** native copy, canonical translations and the
+  policy distinguish local inference from optional Step 5 transmission to the
+  user's configured CUDA host. The host controls its retained copies. Apple
+  system backups remain user-controlled; Android excludes approved memories from
+  legacy backup, cloud backup and device transfer. Eight focused backup/resource
+  fixtures pass, including negative exclusions and preservation of unmanaged
+  Android translations. Canonical localization regeneration is deterministic.
+- **Privacy page live:** [quenderin.org/privacy](https://quenderin.org/privacy)
+  is deployed as Worker version `84a87b78-310e-4ecf-86fe-ad259374d6cb` at 100%.
+  Exact existing Worker modules, runtime configuration, ASSETS binding, domain
+  and subdomain settings were preserved. Only `/privacy.html` needed uploading;
+  live policy/home/detail hashes and security headers passed. The existing model
+  API returned JSON successfully. The user approved the official CLI's Account
+  Read, Workers Scripts Write and mandatory Background Access permissions on
+  Main - CMax. [Publication evidence](releases/2026-10-19-native-050/privacy-deployment.json).
+- **Validation limits:** no local weights, local native builds, simulator runs or
+  physical-device runs were performed. Full-weight inference, image quality,
+  measured peak memory/speed and rendered native journeys remain unverified.
+  Submission is not Apple approval or public availability. Android remains
+  unsigned for store distribution. Windows/Linux distribution is separate.
 
-- **Apple live state refreshed:** iOS and macOS **0.4.0 Ready for Distribution**
-  in App Store Connect. The iOS version selects build **19** and has automatic
-  release selected. This supersedes the October 16 pending-review snapshot.
-- **Next release:** both native Apple targets and Android are prepared as
-  **0.5.0**, with source build floor **20**. The active existing workflow
-  archives iOS and universal macOS only, with `QUENDERIN_RUNTIME=prism`; its
-  automatic trigger still targets the old Bonsai branch. A manual-only start
-  condition now permits exactly `codex/native-050-20261019`; select that branch
-  explicitly for this update. The included Cloud plan is 25 hours, with
-  4h36 used and 20h24 available after build 21; no plan change was made.
-- **Apple drafts:** iOS and macOS **0.5.0 Prepare for Submission** were created
-  with updated description, release notes and review notes. Automatic release
-  after approval is selected on both. No 0.5.0 build has been selected or submitted.
-- **Hosted engineering:** all 18 jobs in [CI 39198059943](https://github.com/alikatgh/quenderin/actions/runs/39198059943)
-  passed at `3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2`, including Android APK/unsigned
-  AAB package checks and Apple runtime/SDK compilation.
-- **Cloud build 20:** iOS compiled, exported, passed the final signed-payload
-  gate and reached App Store Connect processing, which subsequently failed.
-  macOS compiled
-  and exported, but its final gate rejected a framework build-number mismatch.
-  The actual Mac export retained the image framework identity, short version
-  and sealed binary payload, with only framework build `1` synchronized to
-  enclosing app build `20`. The correction accepts exactly that signed Mac
-  case while retaining source, identity, payload and signature checks; 36
-  positive/negative fixtures pass and independent review has no remaining findings.
-  Cloud build 21 established the corrected final gate on its actual signed export.
-  [Artifact evidence](releases/2026-10-19-native-050/xcode-cloud-20-image-framework-evidence.json).
-- **Cloud build 21:** both signed-payload gates passed at
-  `f891f2c07ff832d46f996a9bc3ca2cdbb18f1184`. macOS **0.5.0 (21)** completed
-  App Store Connect processing and is **Ready to Submit**. iOS upload processing
-  failed with **90208 / 90360 / 90530**: the manually assembled
-  `QuenderinDiffusion.framework` lacks `MinimumOSVersion`. Compilation, signature
-  verification and upload preparation did not establish acceptance by Apple.
-  The producer now supplies platform and deployment metadata from the same CMake
-  target used by the compiler. The release verifier checks this against every
-  Mach-O architecture and the app's deployment target. Forty Apple host fixtures
-  pass, including missing/malformed metadata, wrong platform, mismatched slice
-  minima and the existing signature/payload checks. A fresh signed archive and
-  successful Apple processing are still required before selecting the iOS build.
-- **Google Play live state:** highest uploaded code **2 (0.2.0)** remains at
-  100% on **Closed testing – Alpha**. There are seven opted-in testers and
-  production access is not enabled. Candidate code **5** is available; preserve
-  the existing closed-test track.
-- **Android signing:** the canonical `android/keystore.properties` is absent,
-  and the repository has no signing secrets. The existing registered upload
-  key is required; no replacement key or reset is implied by release preparation.
-- **Privacy-page publication:** the source now explains optional Step 5 host
-  processing and system backups. Cloudflare authentication remains unfinished:
-  the user approved Main - CMax with Account Read and Workers Scripts Write,
-  but the provider also requires Background Access. Approval for that additional
-  permission is pending. Expired device codes must not be reused. Preserve the
-  deployed Worker module and configuration when publishing the static asset;
-  do not activate the different local Worker implementation.
-- **Validation scope:** source/fixture checks and hosted compilation only. The
-  user's exclusion of local weights, simulators and physical-device runs remains
-  in effect. The signed Cloud exports are established above; no
-  0.5.0 store submission or public availability has been established. iOS build
-  processing remains failed; macOS 21 is accepted for build selection.
-
-The Android backup rules now exclude approved memories as well as conversations
-from legacy backup, cloud backup and device transfer. Host fixtures fail if any
-approved-memory exclusion is removed. Apple system backups remain controlled by
-the user; the privacy policy distinguishes them from app-provided cloud sync.
-The localization generators retain unmanaged Android resources and are checked
-against repeated generation.
-
-The Mac source preserves its existing quit-on-last-window-close lifecycle and
-prior native teardown remedy. Settings-only/window recovery in a signed candidate
-has not been rendered under this update’s explicit no-device-run constraint.
+The Mac source preserves its quit-on-last-window-close lifecycle and prior native
+teardown remedy. Settings-only/window recovery in a signed candidate has not been
+rendered under this update's explicit no-device-run constraint.
 
 ## October 18 source candidate — not a store release
 
