@@ -416,7 +416,13 @@ class ApplePrismTests(unittest.TestCase):
         self.assertTrue((native / "llama").is_symlink())
 
     def test_cli_distribution_and_legacy_archive_both_keep_signed_release_checks(self):
-        stamp, app, _, _ = self.packaged_app("ios")
+        stamp, app, contents, _ = self.packaged_app("ios")
+        # CLI verification reads the repository's release settings, not self.root.
+        version, build = prism.release_version()
+        info_path = contents / "Info.plist"
+        info = plistlib.loads(info_path.read_bytes())
+        info.update(CFBundleShortVersionString=version, CFBundleVersion=str(build))
+        info_path.write_bytes(plistlib.dumps(info))
         package = self.ipa(app)
         archive = self.root / "Quenderin.xcarchive"
         archived_app = archive / "Products/Applications/Quenderin.app"

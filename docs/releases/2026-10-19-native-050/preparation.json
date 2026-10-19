@@ -26,7 +26,8 @@
     "draftIOS": "0.5.0 Prepare for Submission",
     "draftIOSAutomaticRelease": true,
     "draftMacOS": "0.5.0 Prepare for Submission",
-    "draftMacOSAutomaticRelease": true
+    "draftMacOSAutomaticRelease": true,
+    "manualBranch": "codex/native-050-20261019"
   },
   "android": {
     "latestUploadedCode": 2,
@@ -47,7 +48,8 @@
     "beamManifest": "four parts match",
     "androidPrivateBackup": "2 positive checks passed; removing approved-memory exclusion fails each of legacy/cloud/device-transfer checks",
     "androidLocalization": "6 generator preservation fixtures passed; five locale resources deterministic",
-    "appleLocalization": "353 catalog entries match canonical TSV; deterministic regeneration"
+    "appleLocalization": "353 catalog entries match canonical TSV; deterministic regeneration",
+    "signedArchiveVerifier": "29 fixtures passed after updating CLI fixture metadata for current release; production verifier unchanged"
   },
   "review": "Independent Sol 6.1 xhigh review: material findings resolved; final self-closing resource edge fixed with regression fixture."
 }

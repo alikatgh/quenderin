@@ -30,8 +30,9 @@ Version preparation and store publication are separate states.
 - **Next release:** both native Apple targets and Android are prepared as
   **0.5.0**. Xcode Cloud reports next build **20**. The active existing workflow
   archives iOS and universal macOS only, with `QUENDERIN_RUNTIME=prism`; its
-  automatic trigger still targets the old Bonsai branch. Select the release
-  branch explicitly for this update. The included Cloud plan is 25 hours, with
+  automatic trigger still targets the old Bonsai branch. A manual-only start
+  condition now permits exactly `codex/native-050-20261019`; select that branch
+  explicitly for this update. The included Cloud plan is 25 hours, with
   4h03 used and 20h57 available in the current period; no plan change was made.
 - **Apple drafts:** iOS and macOS **0.5.0 Prepare for Submission** were created
   with updated description, release notes and review notes. Automatic release
