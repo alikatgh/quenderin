@@ -28,7 +28,7 @@ Version preparation and store publication are separate states.
   in App Store Connect. The iOS version selects build **19** and has automatic
   release selected. This supersedes the October 16 pending-review snapshot.
 - **Next release:** both native Apple targets and Android are prepared as
-  **0.5.0**. Xcode Cloud reports next build **20**. The active existing workflow
+  **0.5.0**, with source build floor **20**. The active existing workflow
   archives iOS and universal macOS only, with `QUENDERIN_RUNTIME=prism`; its
   automatic trigger still targets the old Bonsai branch. A manual-only start
   condition now permits exactly `codex/native-050-20261019`; select that branch
@@ -37,6 +37,19 @@ Version preparation and store publication are separate states.
 - **Apple drafts:** iOS and macOS **0.5.0 Prepare for Submission** were created
   with updated description, release notes and review notes. Automatic release
   after approval is selected on both. No 0.5.0 build has been selected or submitted.
+- **Hosted engineering:** all 18 jobs in [CI 39198059943](https://github.com/alikatgh/quenderin/actions/runs/39198059943)
+  passed at `3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2`, including Android APK/unsigned
+  AAB package checks and Apple runtime/SDK compilation.
+- **Cloud build 20:** iOS compiled, exported, passed the final signed-payload
+  gate and completed preparation/upload to App Store Connect. macOS compiled
+  and exported, but its final gate rejected a framework build-number mismatch.
+  The actual Mac export retained the image framework identity, short version
+  and sealed binary payload, with only framework build `1` synchronized to
+  enclosing app build `20`. The correction accepts exactly that signed Mac
+  case while retaining source, identity, payload and signature checks; 36
+  positive/negative fixtures pass and independent review has no remaining findings.
+  A fresh Cloud run must establish the corrected final gate before Mac submission.
+  [Artifact evidence](releases/2026-10-19-native-050/xcode-cloud-20-image-framework-evidence.json).
 - **Google Play live state:** highest uploaded code **2 (0.2.0)** remains at
   100% on **Closed testing – Alpha**. There are seven opted-in testers and
   production access is not enabled. Candidate code **5** is available; preserve
@@ -46,8 +59,9 @@ Version preparation and store publication are separate states.
   key is required; no replacement key or reset is implied by release preparation.
 - **Validation scope:** source/fixture checks and hosted compilation only. The
   user's exclusion of local weights, simulators and physical-device runs remains
-  in effect. No 0.5.0 signed archive, store submission or public availability is
-  established by this preparation record.
+  in effect. The iOS signed Cloud export/upload is established above; no
+  0.5.0 store submission or public availability has been established. The Mac
+  signed-export gate still needs a successful fresh Cloud run.
 
 The Android backup rules now exclude approved memories as well as conversations
 from legacy backup, cloud backup and device transfer. Host fixtures fail if any

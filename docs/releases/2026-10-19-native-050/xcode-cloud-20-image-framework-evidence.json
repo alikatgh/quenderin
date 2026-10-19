@@ -1,0 +1,74 @@
+{
+  "recordedAt": "2026-10-19T04:28:24.885427+00:00",
+  "sourceRevision": "3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2",
+  "xcodeCloudBuildNumber": 20,
+  "xcodeCloudBuildId": "3a9921e6-cae7-4b7e-ae0e-6bb5b70ab328",
+  "artifacts": [
+    {
+      "platform": "macos",
+      "downloadFileName": "Quenderin 0.5.0 app-store (1).zip",
+      "downloadBytes": 60424824,
+      "downloadSha256": "718a8da7eec1d1623e9132f018e2bda7f6e8908558c0d3122512b706bfdb71b5",
+      "packageSha256": "0584f208282091eacb3376c2047314823cdf8a4f3fcaa3691d7efbf6c3c33566",
+      "appMetadata": {
+        "CFBundleIdentifier": "ai.quenderin.Quenderin",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": "0.5.0",
+        "CFBundleVersion": "20"
+      },
+      "frameworkMetadata": {
+        "CFBundleIdentifier": "org.quenderin.diffusion",
+        "CFBundlePackageType": "FMWK",
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "20"
+      },
+      "embeddedSealFrameworkMetadata": {
+        "CFBundleIdentifier": "org.quenderin.diffusion",
+        "CFBundlePackageType": "FMWK",
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1"
+      },
+      "frameworkBinarySha256": "543728275af19acd3f546aa3d692e8f1d606b15dd8f7d12e26fc80b206c61418",
+      "embeddedSealSha256": "20582d11a06b3f90fcdc7a6b4198616ce9a2f42a5df0d3f56827e7406b60e7eb",
+      "frameworkPayloadMatchesEmbeddedSeal": true,
+      "managedAppVersionAndBuildNumberExportOption": false,
+      "updatedMetadataGuard": "passed"
+    },
+    {
+      "platform": "ios",
+      "downloadFileName": "Quenderin 0.5.0 app-store (2).zip",
+      "downloadBytes": 30892637,
+      "downloadSha256": "e08f3cbdb87c3824881c533efc7c489805ec2e165612040331c375b10d56933b",
+      "packageSha256": "da8a04ddc919c4395b074463a44fe87d3de0f0496835264d4fd68aedfdafeb48",
+      "appMetadata": {
+        "CFBundleIdentifier": "ai.quenderin.Quenderin",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": "0.5.0",
+        "CFBundleVersion": "20"
+      },
+      "frameworkMetadata": {
+        "CFBundleIdentifier": "org.quenderin.diffusion",
+        "CFBundlePackageType": "FMWK",
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1"
+      },
+      "embeddedSealFrameworkMetadata": {
+        "CFBundleIdentifier": "org.quenderin.diffusion",
+        "CFBundlePackageType": "FMWK",
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1"
+      },
+      "frameworkBinarySha256": "7dc6913241d4e2e2bd138bd01e6b64d739a36dab52300adf42fdc3b097ddfc9f",
+      "embeddedSealSha256": "20582d11a06b3f90fcdc7a6b4198616ce9a2f42a5df0d3f56827e7406b60e7eb",
+      "frameworkPayloadMatchesEmbeddedSeal": true,
+      "managedAppVersionAndBuildNumberExportOption": false,
+      "updatedMetadataGuard": "passed"
+    }
+  ],
+  "conclusion": "The macOS signed export synchronizes only image framework CFBundleVersion from source build 1 to enclosing app build 20; iOS retains source build 1. The exact stage of the macOS transformation was not established.",
+  "localSignatureVerification": {
+    "status": "blocked",
+    "reason": "macOS host reports CSSMERR_TP_NOT_TRUSTED for framework and untrusted installer certificate for PKG; no trust settings changed and no checks bypassed."
+  },
+  "verificationScope": "Read-only exported plist, embedded seal, Mach-O payload, and updated metadata guard inspection. Full production source seal/signature/native-probe verification still requires Xcode Cloud; no app launch, model inference, or native compilation performed."
+}

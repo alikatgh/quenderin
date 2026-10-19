@@ -18,13 +18,18 @@ prism = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prism)
 
 
-def framework_metadata(directory: Path) -> dict:
+def framework_metadata(directory: Path, app_build: str | None = None) -> dict:
     info_path = directory / 'Info.plist'
     if not info_path.is_file(): info_path = directory / 'Resources/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
     expected = {'CFBundleIdentifier':'org.quenderin.diffusion', 'CFBundlePackageType':'FMWK',
                 'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1'}
-    if any(str(info.get(key, '')) != value for key, value in expected.items()):
+    actual = {key: info.get(key) for key in expected}
+    if any(not isinstance(value, str) for value in actual.values()):
+        raise ValueError('Image framework bundle identity/version is invalid')
+    if app_build is not None and app_build.isdigit() and actual['CFBundleVersion'] == app_build:
+        actual['CFBundleVersion'] = expected['CFBundleVersion']
+    if actual != expected:
         raise ValueError('Image framework bundle identity/version is invalid')
     return expected
 
@@ -94,13 +99,15 @@ def verify_app(app: Path, target: str, root: Path = ROOT, signed: bool = False) 
     contents = app / 'Contents' if target == 'macos' else app
     resources = contents / 'Resources' if target == 'macos' else contents
     native = contents / 'Frameworks/QuenderinDiffusion.framework'
-    if framework_metadata(native) != expected['bundleMetadata']:
+    info = plistlib.loads((contents / 'Info.plist').read_bytes())
+    # Managed macOS export may sync the framework build to the signed app build.
+    app_build = str(info.get('CFBundleVersion', '')) if signed and target == 'macos' else None
+    if framework_metadata(native, app_build) != expected['bundleMetadata']:
         raise ValueError('App image framework bundle metadata differs')
     binary = native / ('Versions/A/QuenderinDiffusion' if target == 'macos' else 'QuenderinDiffusion')
     payload = prism.macho_payload(binary)
     if payload != expected['payload']:
         raise ValueError('App image framework payload/architectures differ from verified source')
-    info = plistlib.loads((contents / 'Info.plist').read_bytes())
     executable = contents / ('MacOS/' + info['CFBundleExecutable'] if target == 'macos' else info['CFBundleExecutable'])
     app_payload = prism.macho_payload(executable)
     if set(app_payload) != set(payload) or any(v['platform'] != (1 if target == 'macos' else 2)
