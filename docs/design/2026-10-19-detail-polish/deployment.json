@@ -1,0 +1,221 @@
+{
+  "verifiedAtUTC": "2026-10-18T20:55:42.468582+00:00",
+  "revision": "874c8edf3e3b98a1f1e278869e74a145faa328cc",
+  "workerVersion": "0fff4c28-5e74-4346-8978-98e777d26cdc",
+  "previousVersion": "a493be9a-b250-483e-8d1e-b7d3323955df",
+  "workerSourceSha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5",
+  "scriptETag": "ccc8088b6e4695c2bc08433dbb5053035ca4934ba5da683ff6c8372c0d7c7ba4",
+  "exactWorkerResourcesPreserved": true,
+  "releaseFileCount": 110,
+  "assetManifestSha256": "8f230f39e75ffcbdef8891564e64ce923822679903e1310da21c8670d6f79d55",
+  "routes": [
+    {
+      "path": "/detail-page.css",
+      "status": 200,
+      "sha256": "5fbee204da4592ea867d16463929e86c13c3ac39a07a6c9a64a40b9cc47464ea",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/beam.svg",
+      "status": 200,
+      "sha256": "11e6ef9919c792f44072f1ce6018007efe77569d289c37ba325a6e093f05e0dc",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/bonsai.svg",
+      "status": 200,
+      "sha256": "ac05651aa2116b8d98968a4f9f0fd007aa1ae6b611cdd2183f78ee3a73a5e955",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/jais.svg",
+      "status": 200,
+      "sha256": "180701e033278234636ad13f87bedea9f8e3fa3213aa976dd5fa8dffc3ab0117",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/lfm.svg",
+      "status": 200,
+      "sha256": "06abfcc10eaf0ad150584076f366a6d00ded9db6a6ddf120ce2ecc96a2345e1a",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/minicpm.svg",
+      "status": 200,
+      "sha256": "f39ef3ebaf7866756327a8e4606667cd1c53a9d7339b5c4d2bfa6c8bc5e4cddb",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/icons/nemotron.svg",
+      "status": 200,
+      "sha256": "77f55ec1a24a821d6ed54cfc4b8c852122f4fd4668b2d1dac6855b807b03bf27",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "responseSha256": "baf6dae18c224b560a9994de184bb96f48b5b096e56350afbf219fd9b1b77868",
+      "sourceSha256": "efa47cc57a6397054b24427cb31a97f78214320786f35a809258c21b4d49fe87",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/models",
+      "status": 200,
+      "responseSha256": "29a9dd6eb60badc9ba2918e7140db76601a30581b2cb1d54481430aae116bd6c",
+      "sourceSha256": "bfa1e6da8ac74eb5ca91b4cd98f481649481b42defbdc68b2779570a88740f85",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/simple-home.css",
+      "status": 200,
+      "sha256": "0eef269b61d098f7844019f1b241c8ab6237c5c358dae4559f23d4d0ea51e4e1",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/styles.css",
+      "status": 200,
+      "sha256": "678d5ef1070ad53c7f2b5608e4ee4f29debe45d80a5e5ef7cab11b56736e1b91",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/tell-me-more",
+      "status": 200,
+      "responseSha256": "2bb2848d354a82e94aa1aa6b8f973719f0735ee93dbd48c69f92fa6f063a7a0b",
+      "sourceSha256": "c928f8fb5d2e579411005c2e9b0e89acb08cc42f4e61e0360c0203b70ddade11",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/i18n/ar.json",
+      "status": 200,
+      "sha256": "79dd55076bc5062d29f77d9718902a3bee6f563a9d993f2e04e687a855196875",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/i18n/ru.json",
+      "status": 200,
+      "sha256": "f9ea3d01116100a0ee72c5608dd1950e43fa3bd5d5ac4be702ea8e25e9890d78",
+      "exactAssetMatch": true,
+      "securityHeadersPreserved": true,
+      "cacheStatus": "HIT"
+    },
+    {
+      "path": "/blog-open-models-october-2026",
+      "status": 200,
+      "responseSha256": "f996422020607cc2a6e3a5917371981b1a22a10f19e35b13cb30c95eb16b2394",
+      "sourceSha256": "cd3cc2165c39e7589bfc1f291c452d4659f01cb00de07338f1e197c128ce24e7",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/changelog",
+      "status": 200,
+      "responseSha256": "09e78aa688aa5d09b2c89f07fa009577db1a7afda93d9aa597698b9c7ccf9d5e",
+      "sourceSha256": "a0bc8528812aa5886485d1b25b957fd5866064e199b3b07acc1e10dc765e1faa",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    },
+    {
+      "path": "/download",
+      "status": 200,
+      "responseSha256": "7c669e5d7eab24e4cd3a49ccac94fd72f94c1ecbc1d35b8d41ee7db04b47df6b",
+      "sourceSha256": "cc59e43cae1efb7ac72674a1e2ad2b7024d732e4cebed43dfe9c0ddd81081868",
+      "exactSourceMatch": true,
+      "cloudflareAnalyticsTagsRemovedForHashComparison": 1,
+      "analyticsScriptBlockedByExistingCSP": true,
+      "securityHeadersPreserved": true
+    }
+  ],
+  "existingApi": {
+    "path": "/api/model-releases",
+    "status": 200,
+    "sha256": "25fe3691f28ff7462251eb2238b99609de1022ed30491cc6647165e2c5e282ed",
+    "existingJsonApiAvailable": true
+  },
+  "deployment": {
+    "id": "e25b7dc1-c054-4750-bcf1-49e268836bb3",
+    "created_on": "2026-10-18T20:50:17.566512Z",
+    "versions": [
+      {
+        "version_id": "0fff4c28-5e74-4346-8978-98e777d26cdc",
+        "percentage": 100
+      }
+    ]
+  },
+  "deliveryNote": "Cloudflare adds a Web Analytics script and newline to HTML responses. Its source is blocked by the preserved CSP. Exact source hashes are checked after removing only that injected tag and newline; no analytics settings were changed.",
+  "site": "https://quenderin.org",
+  "releaseScope": "Tracked website assets only. Exact existing Worker source, resource configuration, bindings, routes and non-versioned settings preserved. No native release, model inference, CI dispatch or mirror publication.",
+  "releaseSafety": {
+    "newBillableBehavior": false,
+    "runtimeChanges": false,
+    "externalSideEffectChanges": false,
+    "dataMutationChanges": false,
+    "rollbackVersion": "a493be9a-b250-483e-8d1e-b7d3323955df"
+  },
+  "browserVerification": {
+    "url": "https://quenderin.org/tell-me-more?lang=en",
+    "viewport": [
+      1497,
+      790
+    ],
+    "documentWidth": 1497,
+    "lightBodyBackground": "rgb(255, 255, 255)",
+    "lightHeadingColor": "rgb(21, 35, 40)",
+    "darkBodyBackground": "rgb(16, 25, 29)",
+    "darkHeadingColor": "rgb(239, 246, 248)",
+    "featureIcons": 7,
+    "curatedModelIcons": 28,
+    "faqPaddingBlockStart": "32px",
+    "themeToggle": "passed in both directions, restored light mode",
+    "homepageToDetailsNavigation": "passed",
+    "screenshots": [
+      {
+        "file": "homepage-live.png",
+        "bytes": 47045,
+        "sha256": "a73104abf48516bc71dc9354511c969eb55b0350b1e93066a3616664d9fdb693"
+      },
+      {
+        "file": "detail-live.jpg",
+        "bytes": 91780,
+        "sha256": "5f6a9d5de51cb60c9feed8b9b7fef79cbf630a6260bc83072f9a0512ab73b432"
+      },
+      {
+        "file": "detail-dark-live.jpg",
+        "bytes": 89921,
+        "sha256": "3ef9a07c8367563966a44648445e043a6743d4629449789a1a3af9d79e3e24e4"
+      }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "recordedAtUTC": "2026-10-19T05:27:58.622969+00:00",
+  "evidenceSource": "Successful CLI comparisons and live HTTP verification in this session; record reconstructed after temporary scratch disappeared.",
+  "source": "53994b799eb021bed10e2b58a727539283f02559",
+  "site": "https://quenderin.org",
+  "workerVersion": "84a87b78-310e-4ecf-86fe-ad259374d6cb",
+  "previousVersion": "f9e7bf5e-5273-4e1d-a792-18f1b4c20f24",
+  "deploymentId": "b2128484-580c-4217-875a-9abaa72d890e",
+  "trafficPercent": 100,
+  "moduleMap": {
+    "site.js": {
+      "contentType": "application/javascript+module",
+      "sha256": "682c69608c1949528898ee319660f0d3850905d4c805a5d16829c75efde1c7c5"
+    },
+    "_headers": {
+      "contentType": "text/plain",
+      "sha256": "08dc60cccf539c5373b0d411a41a53d7bad2c78ffec6c7bd812e4ca355a746a0"
+    }
+  },
+  "versionConfigurationPreserved": true,
+  "workerConfigurationPreservedExceptUpdateDeployTimestamps": true,
+  "assetFilesPrepared": 112,
+  "newOrModifiedAssetsUploaded": [
+    "/privacy.html"
+  ],
+  "privacyAssetSha256": "c33a229ef9c51e280d325f039a3a4f0443d31a987e95e296fc2114adbfda421e",
+  "customDomains": [
+    "quenderin.org"
+  ],
+  "workersDevAndPreviewFlagsPreserved": true,
+  "liveChecks": {
+    "privacyExactPreparedAsset": true,
+    "homepageExactPreparedAsset": true,
+    "detailExactPreparedAsset": true,
+    "htmlSecurityHeadersPreserved": true,
+    "modelReleaseAPIStatus": 200,
+    "modelReleaseAPIJson": true
+  },
+  "verificationNote": "HTML source comparison removed only the existing Cloudflare Analytics script injection and its single added newline. API data is time-dependent; its response hash is not claimed unchanged.",
+  "releaseSafety": {
+    "runtimeCodeChanged": false,
+    "bindingsChanged": false,
+    "newProvisionedResources": false,
+    "paidPlanOrMeterChanges": false,
+    "triggersOrMappingsWritten": false,
+    "recoveryVersion": "f9e7bf5e-5273-4e1d-a792-18f1b4c20f24"
+  }
+}

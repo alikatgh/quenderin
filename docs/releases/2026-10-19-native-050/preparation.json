@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-19",
+  "releaseVersion": "0.5.0",
+  "storeProfiles": {
+    "apple": "Apple Developer",
+    "googlePlay": "Albert - Main - CMax",
+    "cloudflare": "Albert - Main - CMax (user-approved)"
+  },
+  "apple": {
+    "currentIOSVersion": "0.4.0",
+    "currentMacOSVersion": "0.4.0",
+    "currentStatuses": "Ready for Distribution",
+    "selectedIOSBuild": 19,
+    "automaticReleaseIOS": true,
+    "cloudPlanHours": 25,
+    "cloudUsedMinutes": 276,
+    "cloudAvailableMinutes": 1224,
+    "cloudResetsLocal": "2026-10-28 15:02",
+    "newArchiveStatus": "Cloud 22 succeeded for iOS and universal macOS. Both signed exports passed updated gates and completed Apple processing; both selected 0.5.0 (22) versions are submitted and Waiting for Review with automatic release after approval.",
+    "nextCloudBuild": 23,
+    "workflow": "Bonsai 2 App Store",
+    "workflowEnabled": true,
+    "workflowActions": [
+      "Archive - macOS / QuenderinMac / Any Mac / App Store Connect",
+      "Archive - iOS / Quenderin / App Store Connect"
+    ],
+    "draftIOS": "0.5.0 Waiting for Review",
+    "draftIOSAutomaticRelease": true,
+    "draftMacOS": "0.5.0 Waiting for Review",
+    "draftMacOSAutomaticRelease": true,
+    "manualBranch": "codex/native-050-20261019",
+    "cloudBuild20Id": "3a9921e6-cae7-4b7e-ae0e-6bb5b70ab328",
+    "cloudBuild20Source": "3e9d1c3a3a203aa0d431dbf1b41d49239c28acd2",
+    "cloudAllowanceObservedBeforeBuild": 22,
+    "cloudBuild21Id": "832ad65c-7113-4685-a758-a39ddcb120e9",
+    "cloudBuild21Source": "f891f2c07ff832d46f996a9bc3ca2cdbb18f1184",
+    "iosBuild21Processing": "Failed: 90208 / 90360 / 90530, QuenderinDiffusion.framework MinimumOSVersion missing",
+    "macOSBuild21Processing": "Complete / Ready to Submit",
+    "cloudBuild22Id": "cd511bc1-d650-405b-99d4-44a106bee5cd",
+    "cloudBuild22Source": "53994b799eb021bed10e2b58a727539283f02559",
+    "draftIOSSelectedBuild": 22,
+    "draftMacOSSelectedBuild": 22,
+    "iosSubmissionId": "3df425d2-02fa-47d1-a257-515b76f6e3c3",
+    "macOSSubmissionId": "93d5cd80-87d5-4df6-ac28-53277255116f"
+  },
+  "android": {
+    "latestUploadedCode": 2,
+    "latestUploadedVersion": "0.2.0",
+    "track": "Closed testing - Alpha",
+    "currentRolloutPercent": 100,
+    "testersOptedIn": 7,
+    "productionEligible": false,
+    "candidateCode": 5,
+    "candidateCodeAvailable": true,
+    "signingStatus": "Existing private upload key not established by console access; canonical local signing configuration absent.",
+    "uploadCertificateSHA256": "8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D"
+  },
+  "verificationLimits": "No local weights, simulator or physical-device runs authorized. App Store signing, build selection, submission and availability require their own evidence.",
+  "hostChecks": {
+    "catalogParity": "28 models match TypeScript/Swift/Kotlin",
+    "museManifest": "22 parts match",
+    "beamManifest": "four parts match",
+    "androidPrivateBackup": "2 positive checks passed; removing approved-memory exclusion fails each of legacy/cloud/device-transfer checks",
+    "androidLocalization": "6 generator preservation fixtures passed; five locale resources deterministic",
+    "appleLocalization": "353 catalog entries match canonical TSV; deterministic regeneration",
+    "signedArchiveVerifier": "29 fixtures passed after updating CLI fixture metadata for current release; production verifier unchanged",
+    "engineeringCI": {
+      "run": 39201633327,
+      "source": "53994b799eb021bed10e2b58a727539283f02559",
+      "passedJobs": 18,
+      "totalJobs": 18
+    },
+    "signedImageAndPrismVerifiers": "40 fixtures passed, including actual CMake plist generation, every-architecture deployment/platform checks and retained signature, payload, provenance and signed-Mac synchronization checks. Exact Cloud22 signed exports and Apple processing also passed.",
+    "desktopDiffusion": "23 host fixtures passed after Apple-only CMake metadata change."
+  },
+  "review": "Fresh independent Sol 6.1 xhigh reviews passed after resolving resource-generator edge cases and the older-CMake template incompatibility; root verified the final host fixtures, all18CI results and exact signed Cloud22 processing.",
+  "websitePublication": {
+    "workerVersion": "84a87b78-310e-4ecf-86fe-ad259374d6cb",
+    "deploymentId": "b2128484-580c-4217-875a-9abaa72d890e",
+    "privacyURL": "https://quenderin.org/privacy",
+    "status": "Deployed and live verified; exact Worker code/configuration preserved",
+    "evidence": "privacy-deployment.json"
+  },
+  "recoveryNote": "Temporary session scratch disappeared between turns. Complete tracked source was restored at its original path from intact Git commit/index 53994b7. All three original Downloads archives retained their saved SHA256 values. Publication proof below is reconstructed from this session's successful CLI/readback/live-verification outputs; no disappearance is claimed as intentional cleanup."
+}

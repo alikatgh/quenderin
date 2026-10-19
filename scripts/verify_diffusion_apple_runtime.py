@@ -8,24 +8,54 @@ import importlib.util
 import json
 from pathlib import Path
 import plistlib
+import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 STAMP = 'quenderin-diffusion-runtime.json'
 DEFAULT = ROOT / 'apple/QuenderinKit/Frameworks/QuenderinDiffusion.xcframework'
+APPLE_TARGETS = {'ios': (2, 'iPhoneOS', 'MinimumOSVersion', '16.4'),
+                 'macos': (1, 'MacOSX', 'LSMinimumSystemVersion', '13.3')}
 spec = importlib.util.spec_from_file_location('prism_payload', ROOT / 'scripts/verify_prism_apple_runtime.py')
 prism = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prism)
 
 
-def framework_metadata(directory: Path) -> dict:
+def deployment_version(value: str) -> int:
+    if not isinstance(value, str) or re.fullmatch(r'[0-9]+\.[0-9]+(?:\.[0-9]+)?', value) is None:
+        raise ValueError('Image deployment minimum is missing or malformed')
+    parts = list(map(int, value.split('.')))
+    major, minor, patch = parts + [0] * (3 - len(parts))
+    if not 0 < major <= 65535 or not 0 <= minor <= 255 or not 0 <= patch <= 255:
+        raise ValueError('Image deployment minimum is outside the Mach-O version range')
+    return major << 16 | minor << 8 | patch
+
+
+def framework_metadata(directory: Path, target: str, payload: dict, app_build: str | None = None) -> dict:
     info_path = directory / 'Info.plist'
     if not info_path.is_file(): info_path = directory / 'Resources/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
     expected = {'CFBundleIdentifier':'org.quenderin.diffusion', 'CFBundlePackageType':'FMWK',
-                'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1'}
-    if any(str(info.get(key, '')) != value for key, value in expected.items()):
+                'CFBundleShortVersionString':'1.0.0', 'CFBundleVersion':'1',
+                'CFBundleExecutable':'QuenderinDiffusion', 'CFBundleName':'QuenderinDiffusion',
+                'CFBundleInfoDictionaryVersion':'6.0'}
+    actual = {key: info.get(key) for key in expected}
+    if any(not isinstance(value, str) for value in actual.values()):
         raise ValueError('Image framework bundle identity/version is invalid')
+    if app_build is not None and app_build.isdigit() and actual['CFBundleVersion'] == app_build:
+        actual['CFBundleVersion'] = expected['CFBundleVersion']
+    if actual != expected:
+        raise ValueError('Image framework bundle identity/version is invalid')
+    if target not in APPLE_TARGETS:
+        raise ValueError('Unexpected image framework platform')
+    platform, supported, minimum_key, minimum = APPLE_TARGETS[target]
+    if info.get('CFBundleSupportedPlatforms') != [supported]:
+        raise ValueError('Image framework supported platforms differ from its target')
+    declared_minimum = deployment_version(info.get(minimum_key))
+    if declared_minimum != deployment_version(minimum) or not payload or any(
+            value['platform'] != platform or value['minimumOS'] != declared_minimum for value in payload.values()):
+        raise ValueError('Image framework platform or deployment minimum differs from its compiled target')
+    expected.update(CFBundleSupportedPlatforms=[supported], **{minimum_key: minimum})
     return expected
 
 
@@ -54,7 +84,7 @@ def description(framework: Path, execute: bool = False) -> dict:
             raise ValueError('Image framework is missing its public C/Swift module')
         slices.append({'id': item['LibraryIdentifier'], 'platform': item['SupportedPlatform'],
                        'payload': payload, 'headerSha256': hashlib.sha256(header.read_bytes()).hexdigest(),
-                       'bundleMetadata': framework_metadata(directory)})
+                       'bundleMetadata': framework_metadata(directory, item['SupportedPlatform'], payload)})
         if execute and item['SupportedPlatform'] == 'macos':
             library = ctypes.CDLL(str(binary))
             library.quenderin_diffusion_abi.restype = ctypes.c_uint32
@@ -94,17 +124,20 @@ def verify_app(app: Path, target: str, root: Path = ROOT, signed: bool = False) 
     contents = app / 'Contents' if target == 'macos' else app
     resources = contents / 'Resources' if target == 'macos' else contents
     native = contents / 'Frameworks/QuenderinDiffusion.framework'
-    if framework_metadata(native) != expected['bundleMetadata']:
-        raise ValueError('App image framework bundle metadata differs')
+    info = plistlib.loads((contents / 'Info.plist').read_bytes())
+    # Managed macOS export may sync the framework build to the signed app build.
+    app_build = str(info.get('CFBundleVersion', '')) if signed and target == 'macos' else None
     binary = native / ('Versions/A/QuenderinDiffusion' if target == 'macos' else 'QuenderinDiffusion')
     payload = prism.macho_payload(binary)
+    if framework_metadata(native, target, payload, app_build) != expected['bundleMetadata']:
+        raise ValueError('App image framework bundle metadata differs')
     if payload != expected['payload']:
         raise ValueError('App image framework payload/architectures differ from verified source')
-    info = plistlib.loads((contents / 'Info.plist').read_bytes())
     executable = contents / ('MacOS/' + info['CFBundleExecutable'] if target == 'macos' else info['CFBundleExecutable'])
     app_payload = prism.macho_payload(executable)
+    app_minimum = deployment_version(info.get(APPLE_TARGETS[target][2]))
     if set(app_payload) != set(payload) or any(v['platform'] != (1 if target == 'macos' else 2)
-            or v['minimumOS'] < payload[a]['minimumOS'] for a, v in app_payload.items()):
+            or v['minimumOS'] != app_minimum or app_minimum < payload[a]['minimumOS'] for a, v in app_payload.items()):
         raise ValueError('App/image framework platform, architecture or minimum OS differs')
     linked = prism.run('xcrun', 'otool', '-L', str(executable))
     if '@rpath/QuenderinDiffusion.framework/' not in linked:

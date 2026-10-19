@@ -43,7 +43,7 @@
     <string name="tab_agent">에이전트</string>
     <string name="tab_settings">설정</string>
     <string name="chat_empty_title">%1$s에게 무엇이든 물어보세요</string>
-    <string name="chat_empty_body">전부 당신의 휴대폰에서 실행됩니다. 입력한 어떤 것도 기기를 벗어나지 않습니다.</string>
+    <string name="chat_empty_body">이 채팅은 휴대폰에서 실행됩니다. 메시지는 기기에서 처리됩니다.</string>
     <string name="chat_composer_placeholder">메시지</string>
     <string name="chat_day_today">오늘</string>
     <string name="chat_send">메시지 보내기</string>
@@ -88,7 +88,7 @@
     <string name="profile_precision_bits">%1$s 비트/가중치</string>
     <string name="profile_reasoning_on">모델이 답하기 전에 단계별로 추론합니다 — 어려운 질문에 더 좋지만 눈에 띄게 느립니다.</string>
     <string name="profile_reasoning_off">꺼짐: 빠르고 직접적인 답변. 켜면 모델이 단계별로 추론합니다(더 느림).</string>
-    <string name="profile_privacy_body">llama.cpp를 통해 전부 기기에서 실행됩니다. 계정도, 클라우드도, 추적도 없습니다 — 다운로드 후에는 완전히 오프라인으로 작동하며 입력한 어떤 것도 휴대폰을 벗어나지 않습니다.</string>
+    <string name="profile_privacy_body">이 모델은 llama.cpp로 기기에서 실행되며 다운로드 후 오프라인으로 작동합니다. Step 5는 선택한 CUDA 호스트에 연결하는 별도의 선택 기능입니다.</string>
     <string name="blurb_qwen3">Alibaba의 Qwen3 — 강력하고 폭넓게 다국어를 지원하는 올라운더.</string>
     <string name="blurb_qwen25_coder">Qwen2.5 Coder — 프로그래밍과 코드 추론에 맞춰 조정됨.</string>
     <string name="blurb_deepseek_r1">DeepSeek-R1 증류 — 답하기 전에 생각하는 추론 중심 모델.</string>
@@ -106,9 +106,9 @@
     <string name="picker_not_enough_memory">메모리 부족</string>
     <string name="picker_memory_shortfall">로드하려면 ~%1$s GB 필요 — 이 휴대폰은 %2$s GB 여유.</string>
     <string name="welcome_title">Quenderin을 만나보세요</string>
-    <string name="welcome_tagline">클라우드가 아닌 당신의 휴대폰 안에 사는 개인 AI.</string>
+    <string name="welcome_tagline">휴대폰에서 로컬 모델을 실행하는 개인 AI.</string>
     <string name="welcome_private_title">설계부터 프라이버시</string>
-    <string name="welcome_private_body">대화는 이 휴대폰을 떠나지 않습니다. 계정도, 추적도 없습니다.</string>
+    <string name="welcome_private_body">로컬 대화는 이 휴대폰에 보관됩니다. 선택 기능인 Step 5는 사용자가 승인한 경우에만 선택한 호스트로 텍스트를 보냅니다.</string>
     <string name="welcome_offline_title">오프라인에서 작동</string>
     <string name="welcome_offline_body">모델을 한 번만 다운로드하면 비행기 모드에서도 어디서나 답합니다.</string>
     <string name="welcome_oss_title">오픈 소스</string>
@@ -122,7 +122,7 @@
     <string name="consent_charge_body">모든 답변의 생성과 활용은 당신의 위험과 판단에 달려 있습니다 — 그것으로 무엇을 할지는 오직 당신의 결정입니다.</string>
     <string name="consent_legal">계속하면 다음에 동의하는 것입니다: Quenderin은 “있는 그대로” 제공되며, 법이 허용하는 최대 범위에서 Quenderin 프로젝트와 기여자들은 소프트웨어 및 AI 모델이 생성하는 어떤 것에 대해서도, 누구에게도, 어떤 상황에서도 책임을 지지 않습니다.</string>
     <string name="onboarding_tagline">오프라인에서도 당신의 휴대폰에서 실행되는 AI.</string>
-    <string name="onboarding_private_line">설계부터 프라이버시 — 계정, 클라우드, 추적이 없습니다.</string>
+    <string name="onboarding_private_line">로컬 채팅은 오프라인으로 작동합니다. 선택 기능인 Step 5는 사용자가 승인하면 선택한 호스트를 사용합니다.</string>
     <string name="onboarding_checking">기기를 확인하는 중…</string>
     <string name="onboarding_recommended_overline">이 기기에 추천</string>
     <string name="onboarding_free_up_storage">또는 저장 공간을 확보한 후 다시 시도하세요.</string>
@@ -194,7 +194,7 @@
     <string name="settings_active">사용 중</string>
     <string name="settings_no_models_yet">아직 다운로드한 모델이 없습니다.</string>
     <string name="settings_delete_model_hint">모델을 삭제해 공간을 확보하세요 — 활성 모델은 보호됩니다.</string>
-    <string name="settings_on_device_llama">llama.cpp로 완전 기기 내 실행 — 클라우드 없음.</string>
+    <string name="settings_on_device_llama">이 채팅 모델은 llama.cpp로 기기에서 실행되며 오프라인으로 작동합니다.</string>
     <string name="settings_speed_fast">빠름</string>
     <string name="settings_speed_balanced">균형</string>
     <string name="settings_speed_quality">품질</string>
@@ -234,7 +234,7 @@
     <string name="picker_too_big">너무 큼</string>
     <string name="agent_may_read_files">에이전트가 첨부 파일을 읽을 수 있습니다</string>
     <string name="agent_may_organize_workspace">에이전트가 작업 폴더를 정리할 수 있습니다</string>
-    <string name="settings_about_on_device">Quenderin은 기기에서만 실행됩니다. 계정·클라우드·추적 없음 — 다운로드 후 완전 오프라인이며 입력 내용은 기기를 떠나지 않습니다.</string>
+    <string name="settings_about_on_device">로컬 채팅, 이미지, 메모리는 기기에서 처리됩니다. 선택 기능인 Step 5는 사용자가 승인한 경우에만 별도 대화를 선택한 CUDA 호스트로 보냅니다. 계정이나 자동 클라우드 동기화는 없습니다.</string>
     <string name="router_task_coding">코딩 질문</string>
     <string name="router_task_reasoning">단계별 문제</string>
     <string name="router_task_multilingual">다국어 프롬프트</string>

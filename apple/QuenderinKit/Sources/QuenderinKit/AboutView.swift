@@ -70,7 +70,7 @@ struct AboutView: View {
                 .padding(.horizontal, 32)
 
                 // Where other apps put "Log out": the promise, stated where they'd expect the button.
-                Text("No account, no log-out — your chats never leave this Mac.")
+                Text("No account required. Local chats stay on this Mac; Step 5 sends text to your chosen host with your approval.")
                     .font(.callout)
                     .foregroundStyle(p.onSurfaceVariant)
                     .padding(.top, 24)

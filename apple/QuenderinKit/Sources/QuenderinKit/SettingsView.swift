@@ -466,7 +466,7 @@ public struct SettingsView: View {
                 Button { showPicker = true } label: {
                     Label("Change model…", systemImage: "arrow.triangle.2.circlepath")
                 }
-                Text("Runs entirely on-device via llama.cpp — no cloud.")
+                Text("This chat model runs on-device via llama.cpp and works offline.")
                     .font(.footnote).foregroundStyle(.secondary)
         } header: {
             Text("Model")
@@ -602,7 +602,7 @@ public struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-                Text("Quenderin runs entirely on your device. No account, no cloud, no tracking — once a model is downloaded it works fully offline, and nothing you type leaves your \(deviceNoun).")
+                Text("Local chat, images, and memory run on your device. Optional Step 5 sends its separate conversation to your chosen CUDA host only with your approval. No account or automatic cloud sync.")
                     .font(.footnote).foregroundStyle(.secondary)
                 // Open source is a feature — say so where users look for "who made this".
                 if let url = URL(string: SupportContact.githubURL) {

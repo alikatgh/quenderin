@@ -25,7 +25,7 @@ public struct WelcomeView: View {
                     .font(.largeTitle.weight(.semibold))
                     .foregroundStyle(p.onSurface)
                     .padding(.top, 18)
-                Text("A personal AI that lives on your \(deviceNoun) — not in someone's cloud.")
+                Text("A personal AI that runs local models on your \(deviceNoun).")
                     .font(.body)
                     .foregroundStyle(p.onSurfaceVariant)
                     .multilineTextAlignment(.center)
@@ -33,7 +33,7 @@ public struct WelcomeView: View {
 
                 VStack(alignment: .leading, spacing: 18) {
                     WelcomeRow(icon: "lock.shield", title: "Private by design",
-                               detail: "Conversations never leave this \(deviceNoun). No account, no tracking.",
+                               detail: String(localized: "Local conversations stay on this \(deviceNoun). Optional Step 5 sends text to your chosen host only with your approval."),
                                palette: p)
                     WelcomeRow(icon: "wifi.slash", title: "Works offline",
                                detail: "Download a model once — then it answers anywhere, airplane mode included.",

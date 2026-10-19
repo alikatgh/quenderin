@@ -28,6 +28,16 @@
   <h1>What's new</h1>
   <p class="legal-updated">Updates to the app and website, newest first. See the <a href="https://github.com/alikatgh/quenderin/commits/main" rel="noopener">git history</a> for technical changes.</p>
 
+  <h2 id="2026-10-19">19 October 2026 &middot; Website update</h2>
+  <ul>
+    <li><strong>A minimal homepage with a current update.</strong> Kept the brief introduction and download links, added a visible GitHub icon, and linked the latest post from one update row.</li>
+    <li><strong>A more compact detailed page.</strong> Reduced section gaps, added feature icons, and replaced the wide-screen screenshot carousel with a four-view gallery. Smaller screens keep an adapted gallery.</li>
+    <li><strong>Clearer light and dark themes.</strong> Revised backgrounds, text, borders and feature details so the page reads consistently in both modes.</li>
+    <li><strong>Icons throughout the curated model catalog.</strong> All 28 text-model entries now include a family or publisher icon alongside their download size, memory estimate and experimental status.</li>
+    <li><strong>Android beta access up front.</strong> Added direct beta links and a prominent two-step testing section: join the group, then opt in on Google Play with the same Google account.</li>
+  </ul>
+  <p>The website update is live. Website tests and catalog checks passed; both themes, narrow layouts and the deployed assets were checked. This is a website publication, not a new app or store release. <a href="blog-website-update-october-2026">Read the website update</a>.</p>
+
   <h2 id="2026-10-18">18 October 2026 &middot; Open-model engineering candidate</h2>
   <ul>
     <li><strong>28 text-model choices.</strong> MiniCPM-V 4.7, LFM2.5, Jais 3 and Nemotron 3.5 Bolt join the experimental library. Beam and Muse have native and desktop chat adapters with complete multipart installation: all four Beam parts (133,885,310,500 bytes; 160 GiB memory floor) and all 22 Muse parts (304,080,474,208 bytes).</li>
@@ -46,7 +56,7 @@
     <li><strong>Separate memory estimates.</strong> The smaller models no longer inherit the 27B model’s memory floor. Runtime checks, memory headroom, and the 4,096-token context cap remain in place.</li>
     <li><strong>Model discovery in development.</strong> Added source support for PrismML releases, with runtime and memory checks before selection.</li>
     <li><strong>Muse Spark Open native integration.</strong> Added an experimental text-runtime backport, compiled capability checks, a verified 22-part installer, and final-answer channel filtering. The approximately 304 GB model requires a high-memory machine; it stays out of automatic recommendations.</li>
-    <li><strong>Clear capability limits.</strong> Muse tools, structured-output grammar, vision/audio, distributed execution, and the Electron/CLI adapter remain unavailable. See <a href="blog-muse-engineering">the engineering post and improvement plan</a>.</li>
+    <li><strong>Capability limits at this stage.</strong> Muse tools, structured-output grammar, vision/audio, distributed execution, and the Electron/CLI adapter were unavailable. Desktop text adapters followed in the October 18 candidate. See <a href="blog-muse-engineering">the October 16 engineering post</a>.</li>
   </ul>
   <p>No weights were downloaded locally and no simulator or device was run for this update. New signed binaries and store availability are not yet verified. <a href="blog-bonsai-small-muse-spark">Read the blog post</a>.</p>
 

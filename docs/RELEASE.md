@@ -4,6 +4,87 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## Store browser profiles — verified 19 October 2026
+
+| Service | Chrome profile |
+|---|---|
+| App Store Connect and Xcode Cloud | **Apple Developer** |
+| Google Play Console | **Albert - Main - CMax** |
+| Cloudflare publishing | **Albert - Main - CMax** (user-approved) |
+
+Confirm the profile name and reuse the existing signed-in tab before store work.
+Browser and tab IDs change between sessions; do not save an ID as the account
+mapping. Do not open Play Console in Apple Developer: that profile's Google
+account does not establish access to the registered Play developer. Reuse these
+known profiles instead of starting new sign-in or account/terms setup flows.
+Store-console access and access to the private Android upload key are separate
+prerequisites; a public certificate is not a recovered private key.
+
+## 19 October 2026 — native 0.5.0 submissions
+
+- **iOS and macOS:** both **0.5.0 (22) Waiting for Review**, submitted on
+  19 October with **Automatically release this version** selected. Public 0.4.0
+  remains separate from the pending update. [iOS submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/3df425d2-02fa-47d1-a257-515b76f6e3c3)
+  and [Mac submission](https://appstoreconnect.apple.com/apps/6789854363/distribution/reviewsubmissions/details/93d5cd80-87d5-4df6-ac28-53277255116f).
+- **Exact release source:** `53994b799eb021bed10e2b58a727539283f02559`.
+  [CI 39201633327](https://github.com/alikatgh/quenderin/actions/runs/39201633327)
+  passed **all 18 jobs**, including the actual Android APK/unsigned AAB package
+  checks, Apple runtime/SDK compilation and desktop package checks. Documentation
+  recorded afterward does not alter the signed release source.
+- **Signed Apple artifacts:** [Cloud build 22](https://appstoreconnect.apple.com/teams/f68608a6-96f8-4330-b123-b99c104eec71/xcode-cloud/products/4F96019F-D3C2-4ECE-AA57-12D901AC24A3/builds/cd511bc1-d650-405b-99d4-44a106bee5cd/summary)
+  succeeded for iOS and universal macOS. The actual signed exports passed runtime,
+  payload, signature and deployment-metadata gates, then both completed App Store
+  Connect processing. Build 22 is selected in both submitted versions.
+- **Existing Cloud workflow:** `Bonsai 2 App Store` still uses Prism and its
+  iOS/macOS Archive actions. A manual-only start condition permits exactly
+  `codex/native-050-20261019`; automatic pushes still target the old Bonsai branch.
+  Before build 22, the included 25-hour plan showed 4h36 used / 20h24 available,
+  resetting October 28 at 15:02 local. No plan change or paid upgrade was made.
+- **Packaging defects repaired:** Cloud 20's Mac export synchronized the image
+  framework build number to the app. The verifier now permits exactly that signed
+  Mac case while keeping source identity, payload and signature checks strict.
+  Cloud 21 passed that gate, and its Mac build processed successfully. Its iOS
+  upload failed Apple processing with **90208 / 90360 / 90530**, because CMake's
+  stock framework plist omitted `MinimumOSVersion`. The target-aware template now
+  supplies minimum OS and supported platform; the verifier checks every Mach-O
+  architecture and the app's deployment minimum. Forty Apple host fixtures pass,
+  including malformed/missing metadata, wrong platform, mismatched slice minima,
+  signature/payload tampering and the exact signed Mac exception. Independent
+  review caught and resolved an older-CMake template-variable incompatibility.
+  Twenty-three desktop diffusion fixtures also pass.
+  [Cloud 20 artifact evidence](releases/2026-10-19-native-050/xcode-cloud-20-image-framework-evidence.json).
+- **Google Play:** highest uploaded code remains **2 (0.2.0)**, at 100% on
+  **Closed testing – Alpha**, with seven opted-in testers and production access
+  unavailable. Source **0.5.0 / code 5** and hosted unsigned AAB compilation are
+  prepared. The registered private upload key is still required: canonical
+  `android/keystore.properties` is absent and no repository signing secret is
+  configured. Console access and the public upload certificate do not provide
+  that private key. No replacement key, reset or Play upload was performed.
+- **Privacy and private storage:** native copy, canonical translations and the
+  policy distinguish local inference from optional Step 5 transmission to the
+  user's configured CUDA host. The host controls its retained copies. Apple
+  system backups remain user-controlled; Android excludes approved memories from
+  legacy backup, cloud backup and device transfer. Eight focused backup/resource
+  fixtures pass, including negative exclusions and preservation of unmanaged
+  Android translations. Canonical localization regeneration is deterministic.
+- **Privacy page live:** [quenderin.org/privacy](https://quenderin.org/privacy)
+  is deployed as Worker version `84a87b78-310e-4ecf-86fe-ad259374d6cb` at 100%.
+  Exact existing Worker modules, runtime configuration, ASSETS binding, domain
+  and subdomain settings were preserved. Only `/privacy.html` needed uploading;
+  live policy/home/detail hashes and security headers passed. The existing model
+  API returned JSON successfully. The user approved the official CLI's Account
+  Read, Workers Scripts Write and mandatory Background Access permissions on
+  Main - CMax. [Publication evidence](releases/2026-10-19-native-050/privacy-deployment.json).
+- **Validation limits:** no local weights, local native builds, simulator runs or
+  physical-device runs were performed. Full-weight inference, image quality,
+  measured peak memory/speed and rendered native journeys remain unverified.
+  Submission is not Apple approval or public availability. Android remains
+  unsigned for store distribution. Windows/Linux distribution is separate.
+
+The Mac source preserves its quit-on-last-window-close lifecycle and prior native
+teardown remedy. Settings-only/window recovery in a signed candidate has not been
+rendered under this update's explicit no-device-run constraint.
+
 ## October 18 source candidate — not a store release
 
 [PR 163](https://github.com/alikatgh/quenderin/pull/163) expands the shared text
@@ -90,9 +171,10 @@ No local weights, simulator runs or physical-device runs are authorized for this
 update. Full-weight inference, image quality, measured memory/speed and native
 rendered UI and ARMv7 support remain unverified. The existing hosted Bonsai CPU
 generation check does not validate full-weight inference for the new models.
-No new archive, signing, store submission or public
-app availability has been established. The dated October 16 store record below is
-historical until refreshed in the consoles. Keep its pending reviews intact.
+At that engineering revision, no 0.5.0 archive, signing, store submission or public
+app availability had been established. The October 19 record above carries the
+subsequent native archive and processing results. The dated October 16 store record below is historical; the
+October 19 refresh above supersedes its pending-review status.
 Windows/Linux desktop packages and their distribution channels remain separate
 from the native Apple and Android store releases.
 
@@ -185,14 +267,11 @@ Inspect public certificate metadata with `keytool -list -v -keystore /path/to/ke
 enter passwords interactively, never in committed commands or task output.
 
 ### 2. Point the build at it — WITHOUT committing secrets
-Create `android/keystore.properties` (already gitignored — `keystore.properties`, `*.jks`, `*.keystore`):
-```properties
-storeFile=/absolute/path/to/upload.jks
-storePassword=••••••
-keyAlias=quenderin
-keyPassword=••••••
-```
-`app/build.gradle.kts` loads this and signs the **release** build automatically. With no file present,
+The established build reads the human-managed `android/keystore.properties`
+(gitignored, together with `*.jks` and `*.keystore`). Restore the existing secure
+signing setup; do not print, copy or create credential contents in an agent
+session. A path or existing signing-job name is enough to locate the setup.
+`app/build.gradle.kts` loads it and signs the **release** build automatically. With no file present,
 release still *builds* (unsigned) — so CI and contributors are never blocked.
 
 ### 3. Build the release bundle
@@ -202,9 +281,16 @@ is preferable when this Mac cannot fit native build output.
 
 ```sh
 python3 scripts/prepare_prism_runtime.py fetch --destination /absolute/new/prism-source
+ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" \
+  bash scripts/build_android_diffusion.sh /absolute/new/android-diffusion
 cd android
 ./gradlew :app:bundleRelease --no-daemon --console=plain \
-  -Pquenderin.runtime=prism -Pquenderin.llamaDir=/absolute/new/prism-source
+  -Pquenderin.runtime=prism -Pquenderin.llamaDir=/absolute/new/prism-source \
+  -Pquenderin.diffusionLibDir=/absolute/new/android-diffusion/jniLibs
+cd ..
+python3 scripts/verify_diffusion_android_package.py \
+  --libraries /absolute/new/android-diffusion/jniLibs \
+  --package android/app/build/outputs/bundle/release/app-release.aab
 ```
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`. Without the
@@ -222,7 +308,11 @@ require API 36 for updates after 31 August 2026.
   report that runtime validation has not been performed.
 - **Data safety form:** review against the public privacy policy. Network activity includes
   user-selected Hugging Face downloads, optional model search, and public release metadata
-  from quenderin.org when model selection is opened. These requests carry no chats or files.
+  from quenderin.org when model selection is opened. Those catalog/download
+  requests carry no chats or files. In versions with the optional Step 5 workflow,
+  an approved request sends its prompt and selected conversation to the user's
+  configured CUDA host. Review the actual destination and consent behavior
+  separately; a local-chat disclosure alone does not describe this workflow.
   Declare the **`dataSync`** foreground-service type used for model downloads.
 - **Content rating (IARC):** file **Mature 17+** — an unrestricted local LLM can emit mature text.
 - **Privacy policy URL:** `https://quenderin.org/privacy` (already hosted + in-app).

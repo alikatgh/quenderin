@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){try{var m=localStorage.getItem('quenderin_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);}catch(e){}})();</script>
 <title>Privacy Policy — Quenderin</title>
-<meta name="description" content="Quenderin's privacy policy. The app runs fully on your device and collects nothing; the website uses no cookies, analytics, or trackers." />
+<meta name="description" content="How Quenderin handles local chats, optional requests to your own Step 5 CUDA host, model downloads, and website requests." />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0F1B1E" media="(prefers-color-scheme: dark)" />
 <link rel="canonical" href="https://quenderin.org/privacy" />
@@ -26,10 +26,10 @@
 
 <main class="container legal" id="main">
   <h1>Privacy Policy</h1>
-  <p class="legal-updated">Last updated: 16 July 2026</p>
+  <p class="legal-updated">Last updated: 19 October 2026</p>
 
   <div class="legal-note">
-    <p><strong>The short version.</strong> Quenderin is built so there is nothing to collect. The <strong>app runs entirely on your device</strong>, uses <strong>no third-party AI service</strong>, and sends your conversations to no one. This <strong>website uses no cookies, no analytics, no third-party trackers, and no forms</strong>. We collect <strong>no personal data at all</strong>; following the project happens on GitHub, under GitHub&rsquo;s own policy.</p>
+    <p><strong>The short version.</strong> Quenderin&rsquo;s <strong>local chat, image, and memory features process content on your device</strong>. In app versions with the optional <strong>Step 5 CUDA-host feature</strong>, text entered in its separate conversation is sent to the host you configure only after you approve sending. Quenderin does not provide a hosted AI service or automatically upload your local conversations. Model discovery, downloads, and this website make the network requests described below.</p>
   </div>
 
   <p>This policy explains what data we process, why, and your rights under the EU General Data Protection Regulation (GDPR), the UK GDPR, the California Consumer Privacy Act (CCPA/CPRA), and the requirements of the Apple App Store and Google Play.</p>
@@ -43,15 +43,21 @@
     <li>Data protection contact: <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a></li>
   </ul>
 
-  <h2>2. The app: on-device, zero collection</h2>
-  <p>The Quenderin application performs all AI inference <strong>locally on your device</strong> using a model you download once. After that one-time download:</p>
+  <h2>2. The app: local features and an optional host</h2>
+  <p>Optional features described here apply only to app versions that include them.</p>
   <ul>
-    <li>Your prompts, conversations, and any files you use are processed <strong>only on your device</strong> and are never transmitted to us or any third party.</li>
-    <li>The app <strong>does not use, integrate, or send data to any third-party AI service</strong>. Inference is performed by the open-source llama.cpp engine compiled into the app itself.</li>
-    <li>We operate <strong>no servers</strong> that receive your content. There are no accounts, no sign-in, and no cloud sync.</li>
-    <li>We collect <strong>no usage analytics, no telemetry, and no crash data</strong> from the app.</li>
+    <li><strong>Local chat.</strong> Installed local models process prompts and conversations on your device. After the required model files are installed, local inference can run offline.</li>
+    <li><strong>Images and attachments.</strong> Local image generation and image or attachment processing happen on your device. Step 5 accepts text entered in its separate conversation; it does not automatically attach your local chats, images, files, or memory bank.</li>
+    <li><strong>Hy-Memory.</strong> This local feature proposes facts from the conversation you choose to review. Proposals start unselected; only those you select and approve are saved in the app&rsquo;s private local memory storage. Nothing is saved automatically.</li>
+    <li><strong>No Quenderin cloud account.</strong> There is no app account, sign-in, or automatic cloud sync. Quenderin does not provide or provision a cloud AI service.</li>
+    <li><strong>App diagnostics.</strong> Quenderin does not send app usage analytics, telemetry, or crash reports to the Quenderin Project.</li>
   </ul>
-  <p>For app-store disclosures, our "data collected" is <strong>None</strong>. Model discovery and downloads use these network requests:</p>
+  <p>User-enabled operating-system or device backups may include local app data on Apple devices; these are separate from Quenderin, which does not provide automatic cloud sync.</p>
+  <h3>Optional Step 5 CUDA host</h3>
+  <p>You configure the gateway origin for your own CUDA host. Checking its backend contacts that host without sending conversation content. If you enable the consent control and choose <strong>Send to CUDA host</strong>, the request contains your current prompt and the preceding messages in that separate Step 5 conversation. Local chat history is not automatically copied into it. The configured origin and Step 5 conversation are held in app memory rather than saved as local chat history.</p>
+  <p>The host receives that text and ordinary connection information, such as your IP address. Its operator controls how it processes, logs, retains, or deletes received data under its own policies and configuration. Quenderin does not control that host. You can disable consent to prevent further sends; changing the host resets consent. Clearing the conversation in the app does not delete copies the host may already hold.</p>
+  <h3>Model discovery and downloads</h3>
+  <p>These features use network requests independently of local inference:</p>
   <ul>
     <li><strong>Model downloads.</strong> Model files are downloaded from a public model host (Hugging Face, <code>huggingface.co</code>) over a standard request; that host may log the request per its <a href="https://huggingface.co/privacy" rel="noopener">own policy</a>. We do not receive that data.</li>
     <li><strong>Model-catalog search (optional).</strong> If you search for a model to download, the search term you type is sent to Hugging Face&rsquo;s public model index to find matching files. Nothing else is attached to that request &mdash; no conversation content, no account, and no identifiers beyond what any web request carries (such as an IP address). Search terms are used only to return catalog results and are never stored by us.</li>
@@ -59,21 +65,21 @@
   </ul>
 
   <h2>3. This website</h2>
-  <p>This marketing website is a static site that loads <strong>no third-party resources, cookies, fonts, analytics, or trackers</strong>. We do not set cookies and we do not profile visitors. Standard, transient server logs may be kept by our hosting provider for security and operation (e.g. IP address, time, page requested); we do not use these to identify you.</p>
+  <p>This website stores an appearance preference in your browser&rsquo;s local storage. It has no sign-up form. Our hosting provider, Cloudflare, processes ordinary request information such as IP address, time, and page requested for delivery, security, and operation under its <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">privacy policy</a>. The site&rsquo;s current Content Security Policy blocks third-party analytics scripts and outbound analytics connections. We do not use this site to build advertising profiles.</p>
 
-  <h2>4. Following the project (no data collected)</h2>
-  <p>This site has <strong>no sign-up form and collects no email addresses</strong>. To hear when the mobile apps launch, you can star or watch the project on <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>. Any data involved in that is processed by GitHub under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub&rsquo;s own privacy statement</a>; we only ever see the public star/watch count, never your email or identity.</p>
+  <h2>4. Following the project</h2>
+  <p>This site collects no newsletter email addresses. You can follow the project on <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>. GitHub processes activity there under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">its own privacy statement</a>; public activity, such as starring the repository, may be visible to others.</p>
 
   <h2>5. Your rights</h2>
   <p>Under the GDPR/UK GDPR you have the right to: access your data; rectify it; erase it; restrict or object to processing; data portability; and to <strong>withdraw consent</strong> at any time. You also have the right to lodge a complaint with your local data protection supervisory authority.</p>
   <p>Under the CCPA/CPRA, California residents have the right to know, delete, correct, and opt out of "sale"/"sharing" of personal information. We do not sell or share personal information.</p>
-  <p>To exercise any right, contact us at <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a>. Because the app holds your data only on your own device, you control that data directly — deleting the app removes it.</p>
+  <p>To exercise any right, contact us at <a href="mailto:quenderin@aulenor.com">quenderin@aulenor.com</a>. You control data stored locally on your device through the app&rsquo;s storage and deletion controls. For content you send to a Step 5 host, contact that host&rsquo;s operator about its retained copies; clearing local app data does not remove them.</p>
 
   <h2>6. Children</h2>
   <p>Quenderin is not directed to children under 16 (or the applicable age in your country), and we do not knowingly collect personal data from them.</p>
 
   <h2>7. International transfers</h2>
-  <p>We collect no personal data, so we carry out no international transfers. Your conversations and files stay on your device; this website has no forms or trackers.</p>
+  <p>Local inference does not transfer your content for processing. Website requests, model discovery, and downloads may be processed outside your country by the providers described above. If you choose a Step 5 host in another country, the prompt and preceding Step 5 messages you approve sending are transferred there. The location and handling of that data depend on the host you choose and its operator&rsquo;s policies.</p>
 
   <h2>8. Changes</h2>
   <p>We may update this policy; the "Last updated" date will change accordingly. Material changes will be reflected here.</p>

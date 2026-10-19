@@ -16,7 +16,8 @@
 <link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=model-catalog-20260930-2" />
+<link rel="stylesheet" href="styles.css?v=model-icons-20261019" />
+<link rel="stylesheet" href="detail-page.css?v=20261019-density" />
 <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <style>
   /* RTL content alignment (language-picker styling now lives in styles.css) */
@@ -152,7 +153,7 @@
 </script>
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
-<body>
+<body class="detail-page">
 <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
 
 <header class="site-header" id="top">
@@ -188,8 +189,9 @@
         <span class="nav-toggle-bar"></span>
       </button>
       <ul class="nav-menu" id="nav-menu">
-        <li><a href="download" data-i18n="nav.download">Download</a></li>
-        <li><a href="blog" data-i18n="nav.blog">Blog</a></li>
+        <li><a href="download" data-language-link data-i18n="nav.download">Download</a></li>
+        <li><a href="#android-beta" data-i18n="beta.badge">Android · Closed beta</a></li>
+        <li><a href="blog" data-i18n="nav.blog" data-language-link>Blog</a></li>
         <li><a class="btn btn-primary" href="https://github.com/alikatgh/quenderin" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:16px;height:16px;margin-right:.45rem"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.575.106.785-.25.785-.555 0-.273-.01-.998-.015-1.96-3.196.694-3.87-1.54-3.87-1.54-.523-1.33-1.276-1.683-1.276-1.683-1.043-.713.08-.699.08-.699 1.153.082 1.76 1.184 1.76 1.184 1.025 1.757 2.69 1.25 3.345.955.103-.743.4-1.25.728-1.538-2.552-.29-5.236-1.276-5.236-5.677 0-1.254.448-2.28 1.183-3.083-.119-.29-.513-1.46.112-3.043 0 0 .965-.309 3.163 1.178a11 11 0 0 1 5.76 0c2.196-1.487 3.16-1.178 3.16-1.178.626 1.583.232 2.753.114 3.043.737.803 1.182 1.829 1.182 3.083 0 4.412-2.688 5.384-5.248 5.668.413.357.78 1.06.78 2.137 0 1.543-.014 2.787-.014 3.166 0 .308.207.668.79.554A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>GitHub</a></li>
       </ul>
     </nav>
@@ -217,7 +219,8 @@
             </a>
           </div>
           <div class="hero-secondary">
-            <a href="download" data-i18n="hero.ctaDownload">Other platforms</a>
+            <a class="detail-beta-link" href="#android-beta"><img src="icons/android.svg" width="20" height="20" alt="" /><span data-i18n="beta.badge">Android · Closed beta</span><span aria-hidden="true">↗</span></a>
+            <a href="download" data-language-link data-i18n="hero.ctaDownload">Other platforms</a>
             <a href="https://github.com/alikatgh/quenderin" rel="noopener" data-i18n="hero.ctaGithub">View the source</a>
           </div>
           <ul class="spec-strip" aria-label="Measured facts">
@@ -260,8 +263,52 @@
     </div>
   </section>
 
+  <nav class="detail-index container" aria-label="On this page">
+    <a href="#how" data-i18n="nav.how">How it works</a>
+    <a href="#screens" data-i18n="screens.eyebrow">Screenshots</a>
+    <a href="#features" data-i18n="nav.features">Features</a>
+    <a href="#models" data-i18n="nav.models">Models</a>
+    <a href="#privacy" data-i18n="nav.privacy">Privacy</a>
+    <a href="#october-2026-update" lang="en" dir="ltr">18 Oct update ↗</a>
+  </nav>
+
+  <!-- ANDROID CLOSED BETA — recruitment callout: join group → opt in on Play → install.
+       Placed right after the real-UI screens: value shown, now here's the way in. -->
+  <section class="section" id="android-beta">
+    <div class="container">
+      <div class="beta-card reveal">
+        <div class="beta-card__head">
+          <div class="detail-beta-heading"><img src="icons/android.svg" width="32" height="32" alt="" /><p class="beta-badge" data-i18n="beta.badge">Android · Closed beta</p></div>
+          <h2 data-i18n="beta.title">Android testing</h2>
+          <p class="beta-sub" data-i18n="beta.sub">The Android app is available through a closed test on Google Play. Join the testing group, then opt in to install it.</p>
+        </div>
+        <ol class="beta-steps">
+          <li>
+            <span class="beta-step-num">1</span>
+            <div>
+              <h3 data-i18n="beta.s1t">Join the testers group</h3>
+              <p data-i18n="beta.s1b">Use the same Google account for the testing group and Google Play.</p>
+              <a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener" data-i18n="beta.s1cta">Join the group &rarr;</a>
+            </div>
+          </li>
+          <li>
+            <span class="beta-step-num">2</span>
+            <div>
+              <h3 data-i18n="beta.s2t">Opt in on Google Play</h3>
+              <p data-i18n="beta.s2b">After joining the group, accept the test on Google Play and install the app. Access may take a few minutes to appear.</p>
+              <a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener" data-i18n="beta.s2cta">Become a tester &rarr;</a>
+            </div>
+          </li>
+        </ol>
+        <p class="beta-foot" data-i18n-html="beta.foot">The Android app is an early build. See the <a href="blog-android-beta" data-language-link>beta guide</a> for setup instructions and known differences.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
+
   <div class="container container-wide">
-    <a class="launch-note" href="blog-apple-launch">
+    <a class="launch-note" href="blog-apple-launch" data-language-link>
       <img src="assets/app/icon-ios.png" width="48" height="48" alt="" />
       <span><strong data-i18n="launch.title">Mac and iPhone apps</strong><span data-i18n="launch.body">Read the release notes and setup instructions.</span></span>
       <span class="launch-arrow" aria-hidden="true">&rarr;</span>
@@ -286,7 +333,7 @@
     <div class="container">
       <div class="band-inner reveal">
         <h2 data-i18n="problem.title">Local chat, including when you’re offline.</h2>
-        <p data-i18n-html="problem.body">Quenderin runs the model on your device and stores your conversations there. It can help with drafts, explanations, and code. Response quality and speed depend on the model and your hardware; answers can be incorrect. See the <a href="reality">measurements and limitations</a>.</p>
+        <p data-i18n-html="problem.body">Quenderin runs the model on your device and stores your conversations there. It can help with drafts, explanations, and code. Response quality and speed depend on the model and your hardware; answers can be incorrect. See the <a href="reality" data-language-link>measurements and limitations</a>.</p>
       </div>
     </div>
   </section>
@@ -302,7 +349,7 @@
           <li><span class="step-num">02</span><div><h3 data-i18n="how.s2t">Download</h3><p data-i18n="how.s2b">Choose a model and download it over an internet connection. File sizes are listed before you download.</p></div></li>
           <li><span class="step-num">03</span><div><h3 data-i18n="how.s3t">Chat offline</h3><p data-i18n="how.s3b">After the model is installed, you can start and continue conversations without internet access.</p></div></li>
         </ol>
-        <a class="btn btn-ghost" href="blog-setup" data-i18n="how.cta">Read the setup guide →</a>
+        <a class="btn btn-ghost" href="blog-setup" data-i18n="how.cta" data-language-link>Read the setup guide →</a>
       </div>
       <div class="split-visual reveal">
         <figure class="app-window app-window-tall">
@@ -313,77 +360,6 @@
       </div>
     </div>
   </section>
-
-  <!-- ENGLISH ENGINEERING UPDATE — separate from installed store versions. -->
-  <section class="section tint" id="october-2026-update" lang="en">
-    <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow">18 October 2026 &middot; engineering candidate</p>
-        <h2>More models, with separate workflows for different jobs.</h2>
-        <p>The source candidate has 28 curated text choices, including Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks the runtime, complete files and available memory before loading.</p>
-        <p>This describes current source engineering, separate from the versions already installed from the App Store, Google Play or desktop downloads. Hosted native builds and desktop package checks have passed. Full-weight inference for these additions has not been run, and this is not a store-release announcement.</p>
-      </header>
-      <div class="table-wrap reveal">
-        <table class="spec-table model-spec-table">
-          <caption>New workflows in the desktop, Apple and Android source</caption>
-          <thead><tr><th scope="col">Workflow</th><th scope="col">What you can prepare and use in the candidate</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Complete Beam and Muse text chat</th><td>Install and verify every part before chatting: Beam needs all 4 files (133.89 GB) and a 160 GiB memory floor before context overhead; Muse needs all 22 files (304.08 GB). Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</td></tr>
-            <tr><th scope="row">Ask about an image</th><td>Choose one JPEG or PNG and ask a text question on desktop or in the native apps. Each installation includes the complete model and projector. MiniCPM-V 4.7 1B, MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL require at least 8, 32 and 96 GiB of available app memory respectively. Video, audio and tools are unavailable.</td></tr>
-            <tr><th scope="row">Hy-Memory proposals</th><td>Paste a selected conversation, review proposed facts, then explicitly choose which to save in private app storage. Nothing watches conversations or saves generated facts automatically. This separate memory-writing workflow requires at least 32 GiB of available app memory.</td></tr>
-            <tr><th scope="row">Granite Switch 4.1 8B chat</th><td>Import the converted official 8B GGUF together with its matching conversion record. The app verifies the complete pair and reuses an already verified import. Dedicated text chat requires at least 32 GiB of available app memory. Speech, guardian decisions and tools are unavailable; the older 3B preview is not a substitute.</td></tr>
-            <tr><th scope="row">Step 5 on your CUDA host</th><td>Connect to your own prepared Linux GPU host through its secured gateway. You explicitly approve sending the selected conversation there. This is remote text chat on your hardware; Quenderin does not provision a server or run this model on a phone.</td></tr>
-            <tr><th scope="row">Local image generation</th><td>Use the separate Images workspace for FLUX 3 Image Klein or MOSS Image Base/SFT. Complete component sets and at least 24 GiB of available memory are required. FLUX files need your own publisher access and license decision. Generation writes a new PNG and preserves existing files.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="models-foot">Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage. Answer quality, speed and rendered native journeys still need full runtime validation.</p>
-      <p class="models-foot">Nemotron Bolt E4B remains unavailable: there is no verified public artifact in this candidate, so no placeholder download is offered.</p>
-      <p class="learn-more"><a href="blog-open-models-october-2026" data-language-link>Read this week’s model update and verification limits &rarr;</a></p>
-    </div>
-  </section>
-
-  <!-- THE COMPUTER-USE AGENT -->
-  <section class="section" id="agent">
-    <div class="container split">
-      <div class="split-copy reveal">
-        <p class="eyebrow" data-i18n="agent.eyebrow">Advanced &middot; source CLI</p>
-        <p data-i18n="agent.channel">The App Store apps include local tools. The broader computer-control workflow below runs from the source CLI on macOS.</p>
-        <h2 data-i18n="agent.title">Computer tools through the macOS CLI</h2>
-        <p data-i18n-html="agent.body">The source CLI can use a local model to organize files, interact with Mac apps, and run Apple Shortcuts. These tools have permissions and controls for reviewing actions:</p>
-        <ul class="agent-points">
-          <li data-i18n-html="agent.p1"><strong>Action approval.</strong> The CLI asks before changes by default. App control requires approval even when auto-approve is enabled.</li>
-          <li data-i18n-html="agent.p2"><strong>Task history.</strong> Review the local log with <code>quenderin history</code>. Use <code>quenderin undo</code> to reverse supported file operations.</li>
-          <li data-i18n-html="agent.p3"><strong>Preview.</strong> Use <code>--dry-run</code> to inspect proposed actions before running them.</li>
-          <li data-i18n-html="agent.p4"><strong>Local processing.</strong> The model runs on your Mac. Apps and Shortcuts it interacts with may use their own network connections.</li>
-        </ul>
-        <a class="btn btn-ghost" href="why-local-agent" data-i18n="agent.cta">Read about the local agent →</a>
-      </div>
-      <div class="split-visual reveal">
-        <figure class="app-window">
-          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title">quenderin — zsh</span></div>
-          <div class="codeblock"><pre>$ quenderin do "organize my downloads" \
-      --workspace ~/Downloads
-
-  · listed 42 files
-  ● Move "invoice.pdf" into "Finance/"?
-    Allow? [y/N] y
-  ✓ Moved "invoice.pdf" into "Finance/".
-  ● Move "IMG_2291.HEIC" into "Photos/"?
-    Allow? [y/N] y
-  ✓ Moved "IMG_2291.HEIC" into "Photos/".
-  ● Rename "draft.pdf" → "report-2026.pdf"?
-    Allow? [y/N] y
-  ✓ Renamed → "report-2026.pdf".
-
-  Undo everything this task changed? [y/N] n
-  Later? Run `quenderin undo` to reverse it.</pre></div>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
 
   <!-- REAL SCREENS -->
   <section class="section" id="screens">
@@ -414,45 +390,10 @@
           </figure>
         </div>
         <button class="shots-btn shots-next" type="button" aria-label="Next screen">&rsaquo;</button>
-        <div class="shots-dots" id="shots-dots" role="tablist" aria-label="Choose screen"></div>
+        <div class="shots-dots" id="shots-dots" role="group" aria-label="Choose screen"></div>
       </div>
     </div>
   </section>
-
-  <!-- ANDROID CLOSED BETA — recruitment callout: join group → opt in on Play → install.
-       Placed right after the real-UI screens: value shown, now here's the way in. -->
-  <section class="section" id="android-beta">
-    <div class="container">
-      <div class="beta-card reveal">
-        <div class="beta-card__head">
-          <p class="beta-badge" data-i18n="beta.badge">Android · Closed beta</p>
-          <h2 data-i18n="beta.title">Android testing</h2>
-          <p class="beta-sub" data-i18n="beta.sub">The Android app is available through a closed test on Google Play. Join the testing group, then opt in to install it.</p>
-        </div>
-        <ol class="beta-steps">
-          <li>
-            <span class="beta-step-num">1</span>
-            <div>
-              <h3 data-i18n="beta.s1t">Join the testers group</h3>
-              <p data-i18n="beta.s1b">Use the same Google account for the testing group and Google Play.</p>
-              <a class="btn btn-primary" href="https://groups.google.com/g/quenderin-testers" rel="noopener" data-i18n="beta.s1cta">Join the group &rarr;</a>
-            </div>
-          </li>
-          <li>
-            <span class="beta-step-num">2</span>
-            <div>
-              <h3 data-i18n="beta.s2t">Opt in on Google Play</h3>
-              <p data-i18n="beta.s2b">After joining the group, accept the test on Google Play and install the app. Access may take a few minutes to appear.</p>
-              <a class="btn btn-ghost" href="https://play.google.com/apps/testing/ai.quenderin.app" rel="noopener" data-i18n="beta.s2cta">Become a tester &rarr;</a>
-            </div>
-          </li>
-        </ol>
-        <p class="beta-foot" data-i18n-html="beta.foot">The Android app is an early build. See the <a href="blog-android-beta">beta guide</a> for setup instructions and known differences.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class="container container-wide"><div class="section-rule" aria-hidden="true"><i></i></div></div>
 
   <!-- FEATURES -->
   <section class="section" id="features">
@@ -467,7 +408,7 @@
            leave the hard-coded text (see i18n.js). -->
       <div class="bento" id="feat-acc">
         <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><span data-i18n="feat.offline.t">Offline chat</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-offline"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 3 18 18M8 8a7 7 0 0 0-5 2m9-7a18 18 0 0 1 10 4M5 15a10 10 0 0 1 10-2m-7 5a5 5 0 0 1 4-1"/><circle cx="12" cy="21" r="1"/></svg><span data-i18n="feat.offline.t">Offline chat</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.offline.b">Once your model is installed, chat works without an internet connection. Model discovery and downloads need a connection.</p>
           <div class="cell-visual"><span class="airplane-chip"><span class="dot dot-live"></span> <span data-i18n="feat.offline.chip">Works in airplane mode</span></span></div>
           <div class="acc-panel" id="feat-more-offline" role="region" aria-label="More about offline chat"><div class="acc-inner">
@@ -476,14 +417,14 @@
         </article>
         <article class="cell reveal acc">
           <div class="bignum">$0</div>
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><span data-i18n="feat.free.t">Free to use</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-free"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8m4-10v12"/></svg><span data-i18n="feat.free.t">Free to use</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.free.b">The app has no subscription or per-message charge.</p>
           <div class="acc-panel" id="feat-more-free" role="region" aria-label="More about cost"><div class="acc-inner">
             <p data-i18n="feat.free.m">Replies are generated on your hardware, without a paid inference service. The app’s source code is available under the MIT license.</p>
           </div></div>
         </article>
         <article class="cell span-2 reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><span data-i18n="feat.agent.t">Local tools</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-agent"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 4 5 8-5 8m8 0h6"/></svg><span data-i18n="feat.agent.t">Local tools</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.agent.b">The apps include local tools. Broader Mac app control is available through the source CLI. Safety checks restrict sensitive actions involving:</p>
           <div class="cell-visual chips">
             <span class="chip chip-x" data-i18n="feat.agent.c1">Pay</span><span class="chip chip-x" data-i18n="feat.agent.c2">Delete</span><span class="chip chip-x" data-i18n="feat.agent.c3">Password</span><span class="chip chip-x" data-i18n="feat.agent.c4">Transfer</span>
@@ -493,14 +434,14 @@
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><span data-i18n="feat.priv.t">Local conversations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-priv"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg><span data-i18n="feat.priv.t">Local conversations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.priv.b">Chat history stays on your device. No account is required.</p>
           <div class="acc-panel" id="feat-more-priv" role="region" aria-label="More about local conversations"><div class="acc-inner">
             <p data-i18n="feat.priv.m">Quenderin does not send conversations to an inference service or collect analytics and telemetry. Model downloads, optional search, and release information use network requests.</p>
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><span data-i18n="feat.hw.t">Model recommendations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-hw"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4M10 10h4v4h-4z"/></svg><span data-i18n="feat.hw.t">Model recommendations</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.hw.b">Memory estimates help you choose a model for your device.</p>
           <div class="cell-visual tier-scale"><b>Pi</b><span class="bar"></span><b>M-series</b></div>
           <div class="acc-panel" id="feat-more-hw" role="region" aria-label="More about model recommendations"><div class="acc-inner">
@@ -508,14 +449,14 @@
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-os"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 4l-4 16"/></svg><span data-i18n="feat.os.t">Open source</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.os.b">The source code is available under the MIT license.</p>
           <div class="acc-panel" id="feat-more-os" role="region" aria-label="More about Open source"><div class="acc-inner">
             <p><span data-i18n="feat.os.m">The repository contains the app code, model integration, and tool safety checks, along with build instructions.</span> <a href="https://github.com/alikatgh/quenderin" rel="noopener">github.com/alikatgh/quenderin</a></p>
           </div></div>
         </article>
         <article class="cell reveal acc">
-          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
+          <h3 class="acc-h"><button class="acc-btn" type="button" aria-expanded="false" aria-controls="feat-more-resume"><svg class="detail-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg><span data-i18n="feat.resume.t">Resumable downloads</span><svg class="acc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></h3>
           <p data-i18n="feat.resume.b">Interrupted model downloads can be resumed.</p>
           <div class="acc-panel" id="feat-more-resume" role="region" aria-label="More about Resumable downloads"><div class="acc-inner">
             <p data-i18n="feat.resume.m">Quenderin supports resuming interrupted downloads and checks model files before loading them. Background download behavior depends on the platform.</p>
@@ -575,7 +516,7 @@
           <li data-i18n="priv.c4">Conversations stored only on your device</li>
           <li data-i18n="priv.c5">Public source code under the MIT license</li>
         </ul>
-        <p class="learn-more"><a href="privacy" data-i18n="priv.link">Read the full Privacy Policy &rarr;</a></p>
+        <p class="learn-more"><a href="privacy" data-i18n="priv.link" data-language-link>Read the full Privacy Policy &rarr;</a></p>
       </div>
       <div class="split-visual reveal">
         <div class="netpanel" aria-hidden="true">
@@ -623,7 +564,7 @@
         <noscript><p>Showing the saved release snapshot. Enable JavaScript for live updates.</p></noscript>
         <p class="catalog-caveat" data-i18n="catalog.discoverycaveat">These are newly discovered files, not tested app recommendations. A download size is not a RAM requirement; engine support, memory and speed vary by device. Multimodal model cards do not imply image or audio support in Quenderin.</p>
       </div>
-      <p class="learn-more"><a href="models" data-i18n="catalog.explore">Explore the full catalog and device guide →</a></p>
+      <p class="learn-more"><a href="models" data-i18n="catalog.explore" data-language-link>Explore the full catalog and device guide →</a></p>
       <h3 class="catalog-heading" data-i18n="catalog.curated">Curated choices</h3>
       <div class="table-wrap reveal">
         <table class="spec-table model-spec-table">
@@ -633,38 +574,107 @@
           <tbody>
 <!-- BEGIN GENERATED: website-models -->
 <tr data-model-id="qwen3-4b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen3-4B-GGUF" rel="noopener">Qwen3 4B</a></td><td data-i18n="catalog.role.everyday">Everyday chat</td><td>2.4 GB</td><td>~3.6 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="muse-spark-open-q2-k"><td><a href="https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF" rel="noopener">Muse Spark Open Q2_K</a></td><td>Experimental, text only</td><td>304.08 GB · 22 files</td><td>~330 GB</td><td>Q2_K</td></tr>
-<tr data-model-id="beam-1.0-501b-a23b-ud-iq2-xxs"><td><a href="https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF" rel="noopener">Beam 1.0 501B-A23B</a></td><td>Experimental, text only</td><td>133.89 GB · 4 files</td><td>~160 GB</td><td>UD-IQ2_XXS</td></tr>
-<tr data-model-id="nemotron35-bolt-74b-a9b"><td><a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a></td><td>Experimental, text only</td><td>22.02 GB</td><td>~28 GB</td><td>IQ2_XXS-mixed</td></tr>
-<tr data-model-id="jais3-mova-36b-a4b"><td><a href="https://huggingface.co/IFM/Jais-3-MoVA-36B-A4B-GGUF" rel="noopener">Jais 3 MoVA 36B-A4B</a></td><td>Experimental, text only</td><td>22.37 GB</td><td>~30 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="minicpm-v47-35b-a3b"><td><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf" rel="noopener">MiniCPM-V 4.7 35B-A3B</a></td><td>Experimental, text only</td><td>21.17 GB</td><td>~25 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="muse-spark-open-q2-k"><td><span class="model-fam fam-muse" aria-hidden="true"></span><a href="https://huggingface.co/ggml-org/Muse-Spark-Open-816B-A42B-GGUF" rel="noopener">Muse Spark Open Q2_K</a></td><td>Experimental, text only</td><td>304.08 GB · 22 files</td><td>~330 GB</td><td>Q2_K</td></tr>
+<tr data-model-id="beam-1.0-501b-a23b-ud-iq2-xxs"><td><span class="model-fam fam-beam" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Beam-1.0-501B-A23B-GGUF" rel="noopener">Beam 1.0 501B-A23B</a></td><td>Experimental, text only</td><td>133.89 GB · 4 files</td><td>~160 GB</td><td>UD-IQ2_XXS</td></tr>
+<tr data-model-id="nemotron35-bolt-74b-a9b"><td><span class="model-fam fam-nemotron" aria-hidden="true"></span><a href="https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB-GGUF" rel="noopener">Nemotron 3.5 Bolt 74B-A9B</a></td><td>Experimental, text only</td><td>22.02 GB</td><td>~28 GB</td><td>IQ2_XXS-mixed</td></tr>
+<tr data-model-id="jais3-mova-36b-a4b"><td><span class="model-fam fam-jais" aria-hidden="true"></span><a href="https://huggingface.co/IFM/Jais-3-MoVA-36B-A4B-GGUF" rel="noopener">Jais 3 MoVA 36B-A4B</a></td><td>Experimental, text only</td><td>22.37 GB</td><td>~30 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="minicpm-v47-35b-a3b"><td><span class="model-fam fam-minicpm" aria-hidden="true"></span><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf" rel="noopener">MiniCPM-V 4.7 35B-A3B</a></td><td>Experimental, text only</td><td>21.17 GB</td><td>~25 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen36-35b-a3b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF" rel="noopener">Qwen3.6 35B MoE</a></td><td data-i18n="catalog.role.agent">Agent tasks · fast SSD</td><td>13.2 GB</td><td>~5.5 GB resident*</td><td>UD-IQ3_XXS</td></tr>
-<tr data-model-id="jais3-32b"><td><a href="https://huggingface.co/IFM/Jais-3-32B-GGUF" rel="noopener">Jais 3 32B</a></td><td>Experimental, text only</td><td>21.08 GB</td><td>~28 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="bonsai2-27b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf" rel="noopener">Bonsai 2 27B</a></td><td>Experimental · Prism runtime</td><td>5.95 GB</td><td>~7 GB</td><td>PTQ1_0</td></tr>
-<tr data-model-id="lfm25-24b-a2b"><td><a href="https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5 24B-A2B</a></td><td>Experimental, text only</td><td>14.53 GB</td><td>~18 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="jais3-32b"><td><span class="model-fam fam-jais" aria-hidden="true"></span><a href="https://huggingface.co/IFM/Jais-3-32B-GGUF" rel="noopener">Jais 3 32B</a></td><td>Experimental, text only</td><td>21.08 GB</td><td>~28 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="bonsai2-27b"><td><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf" rel="noopener">Bonsai 2 27B</a></td><td>Experimental · Prism runtime</td><td>5.95 GB</td><td>~7 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="lfm25-24b-a2b"><td><span class="model-fam fam-lfm" aria-hidden="true"></span><a href="https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF" rel="noopener">LFM2.5 24B-A2B</a></td><td>Experimental, text only</td><td>14.53 GB</td><td>~18 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen3-14b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen3-14B-GGUF" rel="noopener">Qwen3 14B</a></td><td data-i18n="catalog.role.desktop">Desktop chat</td><td>9.0 GB</td><td>~11 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="gemma4-12b"><td><span class="model-fam fam-gemma" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/gemma-4-12b-it-GGUF" rel="noopener">Gemma 4 12B</a></td><td data-i18n="catalog.role.multilingual">Multilingual</td><td>7.1 GB</td><td>~9 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="jais3-7b"><td><a href="https://huggingface.co/IFM/Jais-3-7B-GGUF" rel="noopener">Jais 3 7B</a></td><td>Experimental, text only</td><td>5.59 GB</td><td>~9 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="bonsai2-9b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Bonsai 2 9B</a></td><td>Experimental · Prism runtime</td><td>2.00 GB</td><td>~4 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="jais3-7b"><td><span class="model-fam fam-jais" aria-hidden="true"></span><a href="https://huggingface.co/IFM/Jais-3-7B-GGUF" rel="noopener">Jais 3 7B</a></td><td>Experimental, text only</td><td>5.59 GB</td><td>~9 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="bonsai2-9b"><td><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf" rel="noopener">Bonsai 2 9B</a></td><td>Experimental · Prism runtime</td><td>2.00 GB</td><td>~4 GB</td><td>PTQ1_0</td></tr>
 <tr data-model-id="llama3-8b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF" rel="noopener">Llama 3 8B</a></td><td data-i18n="catalog.role.desktop">Desktop chat</td><td>4.7 GB</td><td>~6.75 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="deepseek-r1-7b"><td><span class="model-fam fam-deepseek" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF" rel="noopener">DeepSeek-R1 7B</a></td><td data-i18n="catalog.role.reasoning">Reasoning</td><td>4.7 GB</td><td>~6.5 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="mistral-7b"><td><span class="model-fam fam-mistral" aria-hidden="true"></span><a href="https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF" rel="noopener">Mistral 7B</a></td><td data-i18n="catalog.role.allrounder">All-rounder</td><td>4.1 GB</td><td>~6 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="qwen25-coder-7b"><td><span class="model-fam fam-qwen" aria-hidden="true"></span><a href="https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF" rel="noopener">Qwen2.5 Coder 7B</a></td><td data-i18n="catalog.role.coding">Coding</td><td>4.7 GB</td><td>~6.5 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="jais3-3.7b"><td><a href="https://huggingface.co/IFM/Jais-3-3.7B-GGUF" rel="noopener">Jais 3 3.7B</a></td><td>Experimental, text only</td><td>3.16 GB</td><td>~6 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="bonsai2-4b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Bonsai 2 4B</a></td><td>Experimental · Prism runtime</td><td>0.95 GB</td><td>~2.5 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="jais3-3.7b"><td><span class="model-fam fam-jais" aria-hidden="true"></span><a href="https://huggingface.co/IFM/Jais-3-3.7B-GGUF" rel="noopener">Jais 3 3.7B</a></td><td>Experimental, text only</td><td>3.16 GB</td><td>~6 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="bonsai2-4b"><td><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf" rel="noopener">Bonsai 2 4B</a></td><td>Experimental · Prism runtime</td><td>0.95 GB</td><td>~2.5 GB</td><td>PTQ1_0</td></tr>
 <tr data-model-id="gemma3-4b"><td><span class="model-fam fam-gemma" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/gemma-3-4b-it-GGUF" rel="noopener">Gemma 3 4B</a></td><td data-i18n="catalog.role.multilingual">Multilingual</td><td>2.5 GB</td><td>~3.8 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="phi4-mini"><td><span class="model-fam fam-phi" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF" rel="noopener">Phi-4 Mini 3.8B</a></td><td data-i18n="catalog.role.efficient">Efficient</td><td>2.3 GB</td><td>~3.4 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-3b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Llama-3.2-3B-Instruct-GGUF" rel="noopener">Llama 3.2 3B</a></td><td data-i18n="catalog.role.balanced">Balanced chat</td><td>2.0 GB</td><td>~3 GB</td><td>Q4_K_M</td></tr>
-<tr data-model-id="bonsai2-2b"><td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Bonsai 2 2B</a></td><td>Experimental · Prism runtime</td><td>0.43 GB</td><td>~1.5 GB</td><td>PTQ1_0</td></tr>
-<tr data-model-id="jais3-0.9b"><td><a href="https://huggingface.co/IFM/Jais-3-0.9B-GGUF" rel="noopener">Jais 3 0.9B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="bonsai2-2b"><td><span class="model-fam fam-bonsai" aria-hidden="true"></span><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf" rel="noopener">Bonsai 2 2B</a></td><td>Experimental · Prism runtime</td><td>0.43 GB</td><td>~1.5 GB</td><td>PTQ1_0</td></tr>
+<tr data-model-id="jais3-0.9b"><td><span class="model-fam fam-jais" aria-hidden="true"></span><a href="https://huggingface.co/IFM/Jais-3-0.9B-GGUF" rel="noopener">Jais 3 0.9B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-1b"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/lmstudio-community/Llama-3.2-1B-Instruct-GGUF" rel="noopener">Llama 3.2 1B</a></td><td data-i18n="catalog.role.light">Lightweight chat</td><td>0.8 GB</td><td>~1.5 GB</td><td>Q4_K_M</td></tr>
 <tr data-model-id="llama32-1b-q2"><td><span class="model-fam fam-llama" aria-hidden="true"></span><a href="https://huggingface.co/unsloth/Llama-3.2-1B-Instruct-GGUF" rel="noopener">Llama 3.2 1B Ultra-Light</a></td><td data-i18n="catalog.role.lowram">Low memory</td><td>0.4 GB</td><td>~0.7 GB</td><td>Q2_K</td></tr>
-<tr data-model-id="minicpm-v47-1b"><td><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf" rel="noopener">MiniCPM-V 4.7 1B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
+<tr data-model-id="minicpm-v47-1b"><td><span class="model-fam fam-minicpm" aria-hidden="true"></span><a href="https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf" rel="noopener">MiniCPM-V 4.7 1B</a></td><td>Experimental, text only</td><td>0.67 GB</td><td>~2 GB</td><td>Q4_K_M</td></tr>
 <!-- END GENERATED: website-models -->
 </tbody>
         </table>
       </div>
       <p class="models-foot" data-i18n="catalog.note">RAM figures are estimates, not minimum device memory. The app checks your chip, free memory and storage. *Paged MoE needs a fast SSD and a much larger download; installed app versions may offer different built-in choices.</p>
+    </div>
+  </section>
+
+  <!-- ENGLISH ENGINEERING UPDATE — separate from installed store versions. -->
+  <section class="section tint" id="october-2026-update" lang="en" dir="ltr">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">18 October 2026 &middot; engineering candidate</p>
+        <h2>More models, with separate workflows for different jobs.</h2>
+        <p>The source candidate has 28 curated text choices, including Bonsai 2, LFM2.5 24B-A2B, five Jais 3 sizes, Nemotron 3.5 Bolt and MiniCPM-V 4.7. Experimental choices are manual; the app checks the runtime, complete files and available memory before loading.</p>
+        <p>This describes current source engineering, separate from the versions already installed from the App Store, Google Play or desktop downloads. Hosted native builds and desktop package checks have passed. Full-weight inference for these additions has not been run, and this is not a store-release announcement.</p>
+      </header>
+      <div class="table-wrap reveal">
+        <table class="spec-table model-spec-table workflow-table">
+          <caption>New workflows in the desktop, Apple and Android source</caption>
+          <thead><tr><th scope="col">Workflow</th><th scope="col">What you can prepare and use in the candidate</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Complete Beam and Muse text chat</th><td>Install and verify every part before chatting: Beam needs all 4 files (133.89 GB) and a 160 GiB memory floor before context overhead; Muse needs all 22 files (304.08 GB). Both have desktop and native text adapters. Tools and multimodal requests are unavailable in these chat paths.</td></tr>
+            <tr><th scope="row">Ask about an image</th><td>Choose one JPEG or PNG and ask a text question on desktop or in the native apps. Each installation includes the complete model and projector. MiniCPM-V 4.7 1B, MiniCPM-V 4.7 35B-A3B and Nemotron 3.5 Super VL require at least 8, 32 and 96 GiB of available app memory respectively. Video, audio and tools are unavailable.</td></tr>
+            <tr><th scope="row">Hy-Memory proposals</th><td>Paste a selected conversation, review proposed facts, then explicitly choose which to save in private app storage. Nothing watches conversations or saves generated facts automatically. This separate memory-writing workflow requires at least 32 GiB of available app memory.</td></tr>
+            <tr><th scope="row">Granite Switch 4.1 8B chat</th><td>Import the converted official 8B GGUF together with its matching conversion record. The app verifies the complete pair and reuses an already verified import. Dedicated text chat requires at least 32 GiB of available app memory. Speech, guardian decisions and tools are unavailable; the older 3B preview is not a substitute.</td></tr>
+            <tr><th scope="row">Step 5 on your CUDA host</th><td>Connect to your own prepared Linux GPU host through its secured gateway. You explicitly approve sending the selected conversation there. This is remote text chat on your hardware; Quenderin does not provision a server or run this model on a phone.</td></tr>
+            <tr><th scope="row">Local image generation</th><td>Use the separate Images workspace for FLUX 3 Image Klein or MOSS Image Base/SFT. Complete component sets and at least 24 GiB of available memory are required. FLUX files need your own publisher access and license decision. Generation writes a new PNG and preserves existing files.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="models-foot">Specialist and image work temporarily release the ordinary text model, keeping its selection and conversation for restoration. Memory floors are conservative checks, not measured peak usage. Answer quality, speed and rendered native journeys still need full runtime validation.</p>
+      <p class="models-foot">Nemotron Bolt E4B remains unavailable: there is no verified public artifact in this candidate, so no placeholder download is offered.</p>
+      <p class="learn-more"><a href="blog-open-models-october-2026" data-language-link>Read this week’s model update and verification limits &rarr;</a></p>
+    </div>
+  </section>
+
+  <!-- THE COMPUTER-USE AGENT -->
+  <section class="section" id="agent">
+    <div class="container split">
+      <div class="split-copy reveal">
+        <p class="eyebrow" data-i18n="agent.eyebrow">Advanced &middot; source CLI</p>
+        <p data-i18n="agent.channel">The App Store apps include local tools. The broader computer-control workflow below runs from the source CLI on macOS.</p>
+        <h2 data-i18n="agent.title">Computer tools through the macOS CLI</h2>
+        <p data-i18n-html="agent.body">The source CLI can use a local model to organize files, interact with Mac apps, and run Apple Shortcuts. These tools have permissions and controls for reviewing actions:</p>
+        <ul class="agent-points">
+          <li data-i18n-html="agent.p1"><strong>Action approval.</strong> The CLI asks before changes by default. App control requires approval even when auto-approve is enabled.</li>
+          <li data-i18n-html="agent.p2"><strong>Task history.</strong> Review the local log with <code>quenderin history</code>. Use <code>quenderin undo</code> to reverse supported file operations.</li>
+          <li data-i18n-html="agent.p3"><strong>Preview.</strong> Use <code>--dry-run</code> to inspect proposed actions before running them.</li>
+          <li data-i18n-html="agent.p4"><strong>Local processing.</strong> The model runs on your Mac. Apps and Shortcuts it interacts with may use their own network connections.</li>
+        </ul>
+        <a class="btn btn-ghost" href="why-local-agent" data-i18n="agent.cta" data-language-link>Read about the local agent →</a>
+      </div>
+      <div class="split-visual reveal">
+        <figure class="app-window">
+          <div class="app-window-bar" aria-hidden="true"><span class="wdot"></span><span class="wdot"></span><span class="wdot"></span><span class="app-window-title">quenderin — zsh</span></div>
+          <div class="codeblock"><pre>$ quenderin do "organize my downloads" \
+      --workspace ~/Downloads
+
+  · listed 42 files
+  ● Move "invoice.pdf" into "Finance/"?
+    Allow? [y/N] y
+  ✓ Moved "invoice.pdf" into "Finance/".
+  ● Move "IMG_2291.HEIC" into "Photos/"?
+    Allow? [y/N] y
+  ✓ Moved "IMG_2291.HEIC" into "Photos/".
+  ● Rename "draft.pdf" → "report-2026.pdf"?
+    Allow? [y/N] y
+  ✓ Renamed → "report-2026.pdf".
+
+  Undo everything this task changed? [y/N] n
+  Later? Run `quenderin undo` to reverse it.</pre></div>
+        </figure>
+      </div>
     </div>
   </section>
 
@@ -719,7 +729,7 @@
         <li><span>03</span><h3 data-i18n="start.offline.title">Start a conversation</h3><p data-i18n="start.offline.body">Ask a question or work with a piece of text. You can also check that the model works in airplane mode.</p></li>
       </ol>
       <p class="gs-platforms" data-i18n-html="gs.platforms"><strong>Mac + iPhone</strong> on the App Store &middot; <strong>Windows + Linux</strong> previews &middot; <strong>Android</strong> closed beta</p>
-      <p class="start-more"><a href="download" data-i18n="start.more">Downloads and setup details &rarr;</a></p>
+      <p class="start-more"><a href="download" data-i18n="start.more" data-language-link>Downloads and setup details &rarr;</a></p>
     </div>
   </section>
 
@@ -738,7 +748,7 @@
               <img src="assets/app-store-badge.svg" alt="Download on the App Store" width="150" height="50" />
             </a>
           </div>
-      <p class="form-consent" data-i18n-html="cta.consent">No account, no subscription, no telemetry. See our <a href="privacy">Privacy Policy</a>.</p>
+      <p class="form-consent" data-i18n-html="cta.consent">No account, no subscription, no telemetry. See our <a href="privacy" data-language-link>Privacy Policy</a>.</p>
     </div>
   </section>
 
@@ -755,98 +765,93 @@
     <nav class="footer-cols" aria-label="Footer">
       <div class="footer-col">
         <h3 data-i18n="foot.col.product">Product</h3>
-        <a href="how-it-works" data-i18n="nav.how">How it works</a>
-        <a href="features" data-i18n="nav.features">Features</a>
-        <a href="models" data-i18n="nav.models">Models</a>
-        <a href="blog" data-i18n="nav.blog">Blog</a>
+        <a href="how-it-works" data-i18n="nav.how" data-language-link>How it works</a>
+        <a href="features" data-i18n="nav.features" data-language-link>Features</a>
+        <a href="models" data-i18n="nav.models" data-language-link>Models</a>
+        <a href="blog" data-i18n="nav.blog" data-language-link>Blog</a>
       </div>
       <div class="footer-col">
         <h3 data-i18n="foot.col.project">Project</h3>
-        <a href="download" data-i18n="nav.download">Download</a>
+        <a href="download" data-i18n="nav.download" data-language-link>Download</a>
         <a href="https://github.com/alikatgh/quenderin" rel="noopener">GitHub</a>
         <a href="https://github.com/alikatgh/quenderin/releases" rel="noopener" data-i18n="foot.releases">Releases</a>
         <a href="https://github.com/alikatgh/quenderin/blob/main/LICENSE" rel="noopener" data-i18n="foot.license">License (MIT)</a>
       </div>
       <div class="footer-col">
         <h3 data-i18n="foot.col.learn">Learn</h3>
-        <a href="reality" data-i18n="nav.reality">Measurements and limitations</a>
-        <a href="roadmap" data-i18n="nav.roadmap">Roadmap</a>
-        <a href="why-local-agent" data-i18n="nav.whylocal">Local agents</a>
-        <a href="research">Research &amp; hiring</a>
-        <a href="privacy" data-i18n="nav.privacy">Privacy</a>
-        <a href="faq" data-i18n="nav.faq">FAQ</a>
-        <a href="help" data-i18n="nav.help">Get help</a>
-        <a href="changelog" data-i18n="nav.changelog">What's new</a>
+        <a href="reality" data-i18n="nav.reality" data-language-link>Measurements and limitations</a>
+        <a href="roadmap" data-i18n="nav.roadmap" data-language-link>Roadmap</a>
+        <a href="why-local-agent" data-i18n="nav.whylocal" data-language-link>Local agents</a>
+        <a href="research" data-language-link>Research &amp; hiring</a>
+        <a href="privacy" data-i18n="nav.privacy" data-language-link>Privacy</a>
+        <a href="faq" data-i18n="nav.faq" data-language-link>FAQ</a>
+        <a href="help" data-i18n="nav.help" data-language-link>Get help</a>
+        <a href="changelog" data-i18n="nav.changelog" data-language-link>What's new</a>
       </div>
     </nav>
   </div>
   <div class="container container-wide footer-base">
     <p>&copy; <span id="year">2026</span> <span data-i18n="foot.copyright">Quenderin. MIT licensed.</span></p>
     <nav class="footer-legal" aria-label="Legal">
-      <a href="privacy" data-i18n="foot.legal.privacy">Privacy</a>
-      <a href="terms" data-i18n="foot.legal.terms">Terms</a>
-      <a href="legal" data-i18n="foot.legal.legal">Legal Notice</a>
-      <a href="accessibility" data-i18n="foot.legal.a11y">Accessibility</a>
+      <a href="privacy" data-i18n="foot.legal.privacy" data-language-link>Privacy</a>
+      <a href="terms" data-i18n="foot.legal.terms" data-language-link>Terms</a>
+      <a href="legal" data-i18n="foot.legal.legal" data-language-link>Legal Notice</a>
+      <a href="accessibility" data-i18n="foot.legal.a11y" data-language-link>Accessibility</a>
     </nav>
     <p class="footer-note" data-i18n="foot.note">No cookies, analytics, or trackers&mdash;nothing loads from a third party.</p>
   </div>
 </footer>
 
 <script>
-/* Hero phone: tilt toward the pointer for a real-3D feel. Sets --ry/--rx on the
-   tilt layer; the float animation owns translateY separately, so they compose.
-   Skipped entirely under reduced-motion and on coarse (touch) pointers. */
-(function () {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (matchMedia('(pointer: coarse)').matches) return;
-  var stage = document.querySelector('.hero-visual');
-  var tilt = stage && stage.querySelector('.hero-phone__tilt');
-  if (!tilt) return;
-  var raf = 0;
-  stage.addEventListener('pointermove', function (e) {
-    if (raf) return;
-    raf = requestAnimationFrame(function () {
-      raf = 0;
-      var r = stage.getBoundingClientRect();
-      var px = (e.clientX - r.left) / r.width - 0.5;   // -0.5 … 0.5
-      var py = (e.clientY - r.top) / r.height - 0.5;
-      tilt.style.setProperty('--ry', (-16 + px * 10).toFixed(2) + 'deg');
-      tilt.style.setProperty('--rx', (5 - py * 8).toFixed(2) + 'deg');
-    });
-  });
-  stage.addEventListener('pointerleave', function () {
-    tilt.style.setProperty('--ry', '-16deg');
-    tilt.style.setProperty('--rx', '5deg');
-  });
-})();
-
-/* Screens carousel: prev/next arrows + dots over a native scroll-snap track. */
+/* Real app screenshots, one at a time. Native scrolling also supports touch. */
 (function () {
   var track = document.getElementById('shots-track');
   var dotsWrap = document.getElementById('shots-dots');
   if (!track || !dotsWrap) return;
   var shots = [].slice.call(track.querySelectorAll('.shot'));
-  shots.forEach(function (s, i) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', 'Screen ' + (i + 1));
-    b.addEventListener('click', function () { s.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); });
-    dotsWrap.appendChild(b);
+  var prev = track.parentNode.querySelector('.shots-prev');
+  var next = track.parentNode.querySelector('.shots-next');
+  var active = 0, raf = 0;
+  function show(i) {
+    var shot = shots[Math.max(0, Math.min(shots.length - 1, i))];
+    var target = shot.getBoundingClientRect(), viewport = track.getBoundingClientRect();
+    track.scrollTo({ left: track.scrollLeft + target.left + target.width / 2 - viewport.left - viewport.width / 2, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+  shots.forEach(function (shot, i) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Screen ' + (i + 1));
+    button.setAttribute('aria-controls', 'shots-track');
+    button.addEventListener('click', function () { show(i); });
+    dotsWrap.appendChild(button);
   });
   var dots = [].slice.call(dotsWrap.children);
-  function step(dir) { track.scrollBy({ left: dir * (shots[0].offsetWidth + 22), behavior: 'smooth' }); }
-  var wrap = track.parentNode;
-  var prev = wrap.querySelector('.shots-prev'), next = wrap.querySelector('.shots-next');
-  if (prev) prev.addEventListener('click', function () { step(-1); });
-  if (next) next.addEventListener('click', function () { step(1); });
-  var active = -1, raf = 0;
   function update() {
-    var c = track.scrollLeft + track.clientWidth / 2, best = 0, bd = 1e9;
-    shots.forEach(function (s, i) { var m = s.offsetLeft + s.offsetWidth / 2, d = Math.abs(m - c); if (d < bd) { bd = d; best = i; } });
-    if (best !== active) { active = best; dots.forEach(function (d, i) { d.classList.toggle('is-active', i === best); }); }
+    var r = track.getBoundingClientRect(), center = r.left + r.width / 2;
+    var distance = Infinity;
+    shots.forEach(function (shot, i) {
+      var s = shot.getBoundingClientRect(), d = Math.abs(s.left + s.width / 2 - center);
+      if (d < distance) { distance = d; active = i; }
+    });
+    dots.forEach(function (dot, i) {
+      dot.classList.toggle('is-active', i === active);
+      dot.setAttribute('aria-pressed', String(i === active));
+    });
+    if (prev) prev.disabled = active === 0;
+    if (next) next.disabled = active === shots.length - 1;
   }
-  track.addEventListener('scroll', function () { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; update(); }); });
+  if (prev) prev.addEventListener('click', function () { show(active - 1); });
+  if (next) next.addEventListener('click', function () { show(active + 1); });
+  track.addEventListener('keydown', function (event) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    var direction = getComputedStyle(track).direction === 'rtl' ? -1 : 1;
+    show(active + (event.key === 'ArrowRight' ? direction : -direction));
+  });
+  function schedule() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; update(); }); }
+  track.addEventListener('scroll', schedule);
+  window.addEventListener('resize', schedule);
+  document.addEventListener('quenderin:language', schedule);
   update();
 })();
 </script>

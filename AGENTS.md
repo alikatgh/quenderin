@@ -19,3 +19,14 @@ GitHub Pages and `quenderin.pages.dev` are separate mirrors. Preserve the curren
 plain homepage and `tell-me-more.html` when updating generated catalog content.
 
 Secrets and private keys never belong in this file or release documentation.
+
+## Store browser profiles — verified 19 October 2026
+
+- **App Store Connect / Xcode Cloud:** Chrome profile **Apple Developer**.
+- **Google Play Console:** Chrome profile **Albert - Main - CMax**.
+- **Cloudflare publishing:** Chrome profile **Albert - Main - CMax**, approved by the user on 19 October 2026.
+- Confirm the profile name and reuse its signed-in tab before any store work.
+  Browser and tab IDs are ephemeral, not account identifiers. Do not open Play
+  Console in Apple Developer or App Store Connect in the general browsing profile.
+- See `docs/RELEASE.md` for exact app/track identifiers and signing prerequisites.
+  Store access and possession of the Android upload key are separate facts.

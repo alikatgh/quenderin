@@ -472,6 +472,10 @@ jobs:
           # packages used by this app so SDK setup can reach the compile gate.
           packages: 'platform-tools platforms;android-36 build-tools;35.0.0 ndk;26.3.11579264 cmake;3.22.1'
           log-accepted-android-sdk-licenses: false
+      - name: Verify private backup and localization resource preservation
+        run: |
+          python3 -m unittest scripts.tests.test_android_private_backup
+          python3 -B android/tools/test_gen_strings.py
       - name: Prepare verified Prism source
         run: python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
       - name: Build the isolated image runtime and JNI bridge

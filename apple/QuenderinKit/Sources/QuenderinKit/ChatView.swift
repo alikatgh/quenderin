@@ -838,7 +838,7 @@ private struct EmptyChatState: View {
                     .font(.title3.weight(.medium))
                     .foregroundStyle(palette.onSurface)
             }
-            Text("Runs entirely on your \(deviceNoun). Nothing you type leaves the device.")
+            Text("This chat runs on your \(deviceNoun). Its messages are processed locally.")
                 .font(.subheadline)
                 .foregroundStyle(palette.onSurfaceVariant)
                 .multilineTextAlignment(.center)

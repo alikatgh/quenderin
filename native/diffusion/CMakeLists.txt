@@ -52,9 +52,11 @@ if(WIN32)
     target_compile_options(quenderin_diffusion PRIVATE /utf-8 /EHsc)
   endif()
 elseif(APPLE)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/AppleFrameworkMetadata.cmake")
   target_sources(quenderin_diffusion PRIVATE module.modulemap)
   set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
   set_target_properties(quenderin_diffusion PROPERTIES FRAMEWORK TRUE FRAMEWORK_VERSION A
+    MACOSX_FRAMEWORK_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
     MACOSX_FRAMEWORK_IDENTIFIER org.quenderin.diffusion PUBLIC_HEADER quenderin_diffusion.h
     MACOSX_FRAMEWORK_BUNDLE_NAME QuenderinDiffusion
     MACOSX_FRAMEWORK_BUNDLE_VERSION 1 MACOSX_FRAMEWORK_SHORT_VERSION_STRING 1.0.0

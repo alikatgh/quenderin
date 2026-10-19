@@ -1,0 +1,7 @@
+interface:
+  display_name: "Quenderin Reference Design"
+  short_description: "Purposeful references and restrained Quenderin UI"
+  default_prompt: "Use $quenderin-reference-design to refine this Quenderin interface around its real user task."
+
+policy:
+  allow_implicit_invocation: true

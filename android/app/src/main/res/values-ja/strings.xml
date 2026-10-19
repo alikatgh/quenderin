@@ -43,7 +43,7 @@
     <string name="tab_agent">エージェント</string>
     <string name="tab_settings">設定</string>
     <string name="chat_empty_title">%1$sに何でも聞いてください</string>
-    <string name="chat_empty_body">すべてスマートフォン上で動作します。入力した内容は端末から出ません。</string>
+    <string name="chat_empty_body">このチャットはスマートフォン上で動作します。メッセージは端末内で処理されます。</string>
     <string name="chat_composer_placeholder">メッセージ</string>
     <string name="chat_day_today">今日</string>
     <string name="chat_send">メッセージを送信</string>
@@ -88,7 +88,7 @@
     <string name="profile_precision_bits">%1$s ビット/重み</string>
     <string name="profile_reasoning_on">モデルは答える前に段階的に推論します — 難しい質問には有利ですが、明らかに遅くなります。</string>
     <string name="profile_reasoning_off">オフ: 速く直接的な回答。オンにするとモデルが段階的に推論します（遅くなります）。</string>
-    <string name="profile_privacy_body">llama.cpp によりすべて端末上で動作します。アカウントもクラウドも追跡もなし — ダウンロード後は完全にオフラインで動作し、入力した内容は端末から出ません。</string>
+    <string name="profile_privacy_body">このモデルは llama.cpp により端末上で動作し、ダウンロード後はオフラインで使えます。Step 5 は、指定した CUDA ホストへの独立した任意の接続機能です。</string>
     <string name="blurb_qwen3">AlibabaのQwen3 — 強力で幅広い多言語対応のオールラウンダー。</string>
     <string name="blurb_qwen25_coder">Qwen2.5 Coder — プログラミングとコード推論に最適化。</string>
     <string name="blurb_deepseek_r1">DeepSeek-R1 蒸留 — 答える前に考える推論重視のモデル。</string>
@@ -106,9 +106,9 @@
     <string name="picker_not_enough_memory">メモリ不足</string>
     <string name="picker_memory_shortfall">読み込みに~%1$s GB必要 — この端末の空きは%2$s GB。</string>
     <string name="welcome_title">Quenderinへようこそ</string>
-    <string name="welcome_tagline">誰かのクラウドではなく、あなたのスマートフォンに住むパーソナルAI。</string>
+    <string name="welcome_tagline">スマートフォン上でローカルモデルを実行するパーソナル AI。</string>
     <string name="welcome_private_title">設計からプライバシー重視</string>
-    <string name="welcome_private_body">会話はこのスマートフォンから出ません。アカウントも追跡もなし。</string>
+    <string name="welcome_private_body">ローカルの会話はこのスマートフォン内に保存されます。任意の Step 5 機能は、承認した場合にのみ指定したホストへテキストを送信します。</string>
     <string name="welcome_offline_title">オフラインで動作</string>
     <string name="welcome_offline_body">モデルを一度ダウンロードすれば、機内モードでもどこでも答えます。</string>
     <string name="welcome_oss_title">オープンソース</string>
@@ -122,7 +122,7 @@
     <string name="consent_charge_body">すべての回答は、あなた自身のリスクと判断で生成・利用されます — それをどう使うかはあなただけの決定です。</string>
     <string name="consent_legal">続行することで同意したことになります: Quenderinは「現状のまま」提供され、法律が許す最大限の範囲で、Quenderinプロジェクトとその貢献者は、ソフトウェアおよびAIモデルが生成するいかなるものについても、誰に対しても、いかなる状況でも責任を負いません。</string>
     <string name="onboarding_tagline">オフラインでもスマートフォン上で動くAI。</string>
-    <string name="onboarding_private_line">プライバシー最優先の設計 — アカウントもクラウドも追跡もなし。</string>
+    <string name="onboarding_private_line">ローカルのチャットはオフラインで使えます。任意の Step 5 機能は、承認した場合に指定したホストを使います。</string>
     <string name="onboarding_checking">デバイスを確認中…</string>
     <string name="onboarding_recommended_overline">このデバイスへのおすすめ</string>
     <string name="onboarding_free_up_storage">または空き容量を確保してからもう一度。</string>
@@ -194,7 +194,7 @@
     <string name="settings_active">使用中</string>
     <string name="settings_no_models_yet">まだモデルがありません。</string>
     <string name="settings_delete_model_hint">モデルを削除して容量を空けられます — 使用中のモデルは保護されます。</string>
-    <string name="settings_on_device_llama">llama.cppで完全オンデバイス — クラウドなし。</string>
+    <string name="settings_on_device_llama">このチャットモデルは llama.cpp により端末上で動作し、オフラインで使えます。</string>
     <string name="settings_speed_fast">高速</string>
     <string name="settings_speed_balanced">バランス</string>
     <string name="settings_speed_quality">品質</string>
@@ -234,7 +234,7 @@
     <string name="picker_too_big">大きすぎ</string>
     <string name="agent_may_read_files">エージェントは添付ファイルを読めます</string>
     <string name="agent_may_organize_workspace">エージェントは作業フォルダを整理できます</string>
-    <string name="settings_about_on_device">Quenderinは端末上だけで動きます。アカウント・クラウド・追跡なし — ダウンロード後は完全オフラインで、入力は端末外に出ません。</string>
+    <string name="settings_about_on_device">ローカルのチャット・画像・メモリーは端末上で処理されます。任意の Step 5 機能は、承認した場合にのみ、専用の会話を指定した CUDA ホストへ送信します。アカウントや自動クラウド同期はありません。</string>
     <string name="router_task_coding">コーディングの質問</string>
     <string name="router_task_reasoning">段階的な問題</string>
     <string name="router_task_multilingual">多言語のプロンプト</string>

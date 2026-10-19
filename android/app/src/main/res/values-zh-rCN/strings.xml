@@ -43,7 +43,7 @@
     <string name="tab_agent">智能体</string>
     <string name="tab_settings">设置</string>
     <string name="chat_empty_title">向 %1$s 提问任何问题</string>
-    <string name="chat_empty_body">完全在你的手机上运行。你输入的任何内容都不会离开设备。</string>
+    <string name="chat_empty_body">此聊天在你的手机上运行，消息在本地处理。</string>
     <string name="chat_composer_placeholder">消息</string>
     <string name="chat_day_today">今天</string>
     <string name="chat_send">发送消息</string>
@@ -88,7 +88,7 @@
     <string name="profile_precision_bits">%1$s 位/权重</string>
     <string name="profile_reasoning_on">模型在回答前逐步推理——难题上更好，但明显更慢。</string>
     <string name="profile_reasoning_off">关闭：快速、直接的回答。开启后模型会逐步推理（更慢）。</string>
-    <string name="profile_privacy_body">通过 llama.cpp 完全在设备上运行。无账号、无云端、无跟踪——下载后完全离线工作，你输入的任何内容都不会离开手机。</string>
+    <string name="profile_privacy_body">此模型通过 llama.cpp 在本地运行，下载后可离线使用。Step 5 是连接到你所选 CUDA 主机的独立可选功能。</string>
     <string name="blurb_qwen3">阿里巴巴的 Qwen3——强大、广泛多语言的全能选手。</string>
     <string name="blurb_qwen25_coder">Qwen2.5 Coder——专为编程和代码推理调优。</string>
     <string name="blurb_deepseek_r1">DeepSeek-R1 蒸馏版——注重推理、先思考再回答。</string>
@@ -106,9 +106,9 @@
     <string name="picker_not_enough_memory">内存不足</string>
     <string name="picker_memory_shortfall">加载需要 ~%1$s GB——本手机剩余 %2$s GB。</string>
     <string name="welcome_title">认识 Quenderin</string>
-    <string name="welcome_tagline">住在你手机上的个人 AI——而不是别人的云端。</string>
+    <string name="welcome_tagline">在你的手机上运行本地模型的个人 AI。</string>
     <string name="welcome_private_title">隐私为本</string>
-    <string name="welcome_private_body">对话绝不离开这部手机。无账号，无跟踪。</string>
+    <string name="welcome_private_body">本地对话保留在这台手机上。可选的 Step 5 仅在你批准后将文本发送到你选择的主机。</string>
     <string name="welcome_offline_title">离线可用</string>
     <string name="welcome_offline_body">模型只需下载一次——随处可答，飞行模式也不例外。</string>
     <string name="welcome_oss_title">开源</string>
@@ -122,7 +122,7 @@
     <string name="consent_charge_body">每个回答的生成与使用都由你自担风险、自行判断——如何处置完全由你决定。</string>
     <string name="consent_legal">继续即表示你同意：Quenderin 按“现状”提供，在法律允许的最大范围内，Quenderin 项目及其贡献者不对本软件或其 AI 模型生成的任何内容，在任何情况下对任何人承担责任。</string>
     <string name="onboarding_tagline">即使离线也能在你的手机上运行的 AI。</string>
-    <string name="onboarding_private_line">隐私为本——无账号、无云端、无跟踪。</string>
+    <string name="onboarding_private_line">本地聊天可离线使用。可选的 Step 5 会在你批准后使用你选择的主机。</string>
     <string name="onboarding_checking">正在检查你的设备…</string>
     <string name="onboarding_recommended_overline">为你的设备推荐</string>
     <string name="onboarding_free_up_storage">或者清理存储空间后再试。</string>
@@ -194,7 +194,7 @@
     <string name="settings_active">使用中</string>
     <string name="settings_no_models_yet">尚未下载模型。</string>
     <string name="settings_delete_model_hint">删除模型可释放空间——当前模型受保护。</string>
-    <string name="settings_on_device_llama">完全通过 llama.cpp 在设备端运行——无云端。</string>
+    <string name="settings_on_device_llama">此聊天模型通过 llama.cpp 在设备上运行，可离线使用。</string>
     <string name="settings_speed_fast">快速</string>
     <string name="settings_speed_balanced">均衡</string>
     <string name="settings_speed_quality">质量</string>
@@ -234,7 +234,7 @@
     <string name="picker_too_big">过大</string>
     <string name="agent_may_read_files">智能体可读取附加文件</string>
     <string name="agent_may_organize_workspace">智能体可整理工作区文件夹</string>
-    <string name="settings_about_on_device">Quenderin 完全在你的设备上运行。无账号、无云端、无跟踪——下载后完全离线，输入内容不会离开手机。</string>
+    <string name="settings_about_on_device">本地聊天、图像和记忆在你的设备上处理。可选的 Step 5 仅在你批准后将其独立对话发送到你选择的 CUDA 主机。无需账号，也没有自动云同步。</string>
     <string name="router_task_coding">编程问题</string>
     <string name="router_task_reasoning">分步问题</string>
     <string name="router_task_multilingual">多语言提示</string>

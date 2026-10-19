@@ -10,6 +10,7 @@ so the two can never silently fork.
 Emits: app/src/main/res/values{,-ru,-ko,-ja,-zh-rCN}/strings.xml
    and: app/src/main/res/xml/locales_config.xml (from LANGS — the per-app language
         picker can't drift from the shipped resource locales).
+Existing resource rows outside RES are preserved verbatim when regenerating.
 Resource ids come from RES (id -> english). %1$s/%1$d format strings are declared
 here verbatim so aapt/lint validate specifier parity across every locale.
 
@@ -18,6 +19,7 @@ but writes nothing (generation lives under main()); codemod_stringres.py derives
 english->id map from RES this way, so the two never drift.
 """
 import os, re, html
+import xml.etree.ElementTree as ET
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 TSV = os.path.join(ROOT, "scripts", "translations.tsv")
@@ -71,7 +73,7 @@ RES = {
     "tab_settings": "Settings",
     # in-conversation chat screen (empty state, composer, day divider, send/stop a11y)
     "chat_empty_title": "Ask %1$s anything",
-    "chat_empty_body": "Runs entirely on your phone. Nothing you type leaves the device.",
+    "chat_empty_body": "This chat runs on your phone. Its messages are processed locally.",
     "chat_composer_placeholder": "Message",   # resolves from the shared TSV "Message" row
     "chat_day_today": "Today",
     "chat_send": "Send message",
@@ -119,7 +121,7 @@ RES = {
     "profile_precision_bits": "%1$s bits/weight",
     "profile_reasoning_on": "The model reasons step-by-step before answering — better on hard questions, but noticeably slower.",
     "profile_reasoning_off": "Off: fast, direct answers. Turn on to let the model reason step-by-step (slower).",
-    "profile_privacy_body": "Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — once downloaded it works fully offline and nothing you type leaves your phone.",
+    "profile_privacy_body": "This model runs locally via llama.cpp and works offline after download. Step 5 is a separate, optional connection to your chosen CUDA host.",
     "blurb_qwen3": "Alibaba's Qwen3 — a strong, broadly multilingual all-rounder.",
     "blurb_qwen25_coder": "Qwen2.5 Coder — tuned for programming and code reasoning.",
     "blurb_deepseek_r1": "DeepSeek-R1 distilled — a reasoning-focused model that thinks before it answers.",
@@ -139,9 +141,9 @@ RES = {
     "picker_memory_shortfall": "Needs ~%1$s GB to load — this phone has %2$s GB free.",
     # first-run flow: welcome page (EXTRAS: phone-baked wording; iOS twin uses %@ device word)
     "welcome_title": "Meet Quenderin",
-    "welcome_tagline": "A personal AI that lives on your phone — not in someone's cloud.",
+    "welcome_tagline": "A personal AI that runs local models on your phone.",
     "welcome_private_title": "Private by design",
-    "welcome_private_body": "Conversations never leave this phone. No account, no tracking.",
+    "welcome_private_body": "Local conversations stay on this phone. Optional Step 5 sends text to your chosen host only with your approval.",
     "welcome_offline_title": "Works offline",
     "welcome_offline_body": "Download a model once — then it answers anywhere, airplane mode included.",
     "welcome_oss_title": "Open source",
@@ -157,7 +159,7 @@ RES = {
     "consent_legal": "By continuing you agree: Quenderin is provided “as is”, and to the maximum extent permitted by law, the Quenderin project and its contributors accept no liability, to anyone, under any circumstances, for the software or anything its AI models produce.",
     # first-run flow: onboarding hero + phases
     "onboarding_tagline": "An AI that runs on your phone — even offline.",
-    "onboarding_private_line": "Private by design — no account, no cloud, no tracking.",
+    "onboarding_private_line": "Local chat works offline. Optional Step 5 uses your chosen host with your approval.",
     "onboarding_checking": "Checking your device…",
     "onboarding_recommended_overline": "RECOMMENDED FOR YOUR DEVICE",
     "onboarding_free_up_storage": "Or free up storage and come back.",
@@ -177,23 +179,25 @@ RES = {
     "chat_remove_named": "Remove %1$s",
     "chat_about_model": "About %1$s",
     "settings_delete_named": "Delete %1$s",
+    "settings_on_device_llama": "This chat model runs on-device via llama.cpp and works offline.",
+    "settings_about_on_device": "Local chat, images, and memory run on your device. Optional Step 5 sends its separate conversation to your chosen CUDA host only with your approval. No account or automatic cloud sync.",
 }
 
 # Android-only strings (or wording that differs from any iOS key) — full 4-lang set.
 EXTRAS = {
     # first-run flow (phone-baked variants of the iOS %@-device rows + format-string conversions)
-    "A personal AI that lives on your phone — not in someone's cloud.":
-        ("Персональный ИИ, который живёт на вашем телефоне — а не в чужом облаке.",
-         "클라우드가 아닌 당신의 휴대폰 안에 사는 개인 AI.",
-         "誰かのクラウドではなく、あなたのスマートフォンに住むパーソナルAI。",
-         "住在你手机上的个人 AI——而不是别人的云端。"),
+    "A personal AI that runs local models on your phone.":
+        ("Персональный ИИ с локальными моделями на вашем телефоне.",
+         "휴대폰에서 로컬 모델을 실행하는 개인 AI.",
+         "スマートフォン上でローカルモデルを実行するパーソナル AI。",
+         "在你的手机上运行本地模型的个人 AI。"),
     "Private by design":
         ("Приватность по умолчанию", "설계부터 프라이버시", "設計からプライバシー重視", "隐私为本"),
-    "Conversations never leave this phone. No account, no tracking.":
-        ("Беседы не покидают этот телефон. Без аккаунта, без слежки.",
-         "대화는 이 휴대폰을 떠나지 않습니다. 계정도, 추적도 없습니다.",
-         "会話はこのスマートフォンから出ません。アカウントも追跡もなし。",
-         "对话绝不离开这部手机。无账号，无跟踪。"),
+    "Local conversations stay on this phone. Optional Step 5 sends text to your chosen host only with your approval.":
+        ("Локальные беседы остаются на этом телефоне. Необязательный Step 5 отправляет текст на выбранный вами хост только с вашего разрешения.",
+         "로컬 대화는 이 휴대폰에 보관됩니다. 선택 기능인 Step 5는 사용자가 승인한 경우에만 선택한 호스트로 텍스트를 보냅니다.",
+         "ローカルの会話はこのスマートフォン内に保存されます。任意の Step 5 機能は、承認した場合にのみ指定したホストへテキストを送信します。",
+         "本地对话保留在这台手机上。可选的 Step 5 仅在你批准后将文本发送到你选择的主机。"),
     "Works offline":
         ("Работает офлайн", "오프라인에서 작동", "オフラインで動作", "离线可用"),
     "Download a model once — then it answers anywhere, airplane mode included.":
@@ -213,11 +217,11 @@ EXTRAS = {
          "오프라인에서도 당신의 휴대폰에서 실행되는 AI.",
          "オフラインでもスマートフォン上で動くAI。",
          "即使离线也能在你的手机上运行的 AI。"),
-    "Private by design — no account, no cloud, no tracking.":
-        ("Приватность по умолчанию — без аккаунта, облака и слежки.",
-         "설계부터 프라이버시 — 계정, 클라우드, 추적이 없습니다.",
-         "プライバシー最優先の設計 — アカウントもクラウドも追跡もなし。",
-         "隐私为本——无账号、无云端、无跟踪。"),
+    "Local chat works offline. Optional Step 5 uses your chosen host with your approval.":
+        ("Локальный чат работает офлайн. Необязательный Step 5 использует выбранный вами хост с вашего разрешения.",
+         "로컬 채팅은 오프라인으로 작동합니다. 선택 기능인 Step 5는 사용자가 승인하면 선택한 호스트를 사용합니다.",
+         "ローカルのチャットはオフラインで使えます。任意の Step 5 機能は、承認した場合に指定したホストを使います。",
+         "本地聊天可离线使用。可选的 Step 5 会在你批准后使用你选择的主机。"),
     "Or free up storage and come back.":
         ("Или освободите место и вернитесь.", "또는 저장 공간을 확보한 후 다시 시도하세요.",
          "または空き容量を確保してからもう一度。", "或者清理存储空间后再试。"),
@@ -248,14 +252,11 @@ EXTRAS = {
     "Ask %1$s anything":
         ("Спросите %1$s о чём угодно", "%1$s에게 무엇이든 물어보세요",
          "%1$sに何でも聞いてください", "向 %1$s 提问任何问题"),
-    "Runs entirely on your phone. Nothing you type leaves the device.":
-        ("Работает полностью на вашем телефоне. Ничего из введённого не покидает устройство.",
-         "전부 당신의 휴대폰에서 실행됩니다. 입력한 어떤 것도 기기를 벗어나지 않습니다.",
-         "すべてスマートフォン上で動作します。入力した内容は端末から出ません。",
-         "完全在你的手机上运行。你输入的任何内容都不会离开设备。"),
-    "Today":            ("Сегодня", "오늘", "今日", "今天"),
-    "Send message":     ("Отправить сообщение", "메시지 보내기", "メッセージを送信", "发送消息"),
-    "Stop generating":  ("Остановить генерацию", "생성 중지", "生成を停止", "停止生成"),
+    "This chat runs on your phone. Its messages are processed locally.":
+        ("Этот чат работает на вашем телефоне. Сообщения обрабатываются локально.",
+         "이 채팅은 휴대폰에서 실행됩니다. 메시지는 기기에서 처리됩니다.",
+         "このチャットはスマートフォン上で動作します。メッセージは端末内で処理されます。",
+         "此聊天在你的手机上运行，消息在本地处理。"),
     "Report this response":
         ("Пожаловаться на этот ответ", "이 응답 신고", "この応答を報告", "举报此回复"),
     "Couldn't generate a reply: %1$s":
@@ -331,11 +332,6 @@ EXTRAS = {
          "꺼짐: 빠르고 직접적인 답변. 켜면 모델이 단계별로 추론합니다(더 느림).",
          "オフ: 速く直接的な回答。オンにするとモデルが段階的に推論します（遅くなります）。",
          "关闭：快速、直接的回答。开启后模型会逐步推理（更慢）。"),
-    "Runs entirely on-device via llama.cpp. No account, no cloud, no tracking — once downloaded it works fully offline and nothing you type leaves your phone.":
-        ("Работает полностью на устройстве через llama.cpp. Без аккаунта, облака и слежки — после загрузки работает полностью офлайн, и ничто из введённого не покидает ваш телефон.",
-         "llama.cpp를 통해 전부 기기에서 실행됩니다. 계정도, 클라우드도, 추적도 없습니다 — 다운로드 후에는 완전히 오프라인으로 작동하며 입력한 어떤 것도 휴대폰을 벗어나지 않습니다.",
-         "llama.cpp によりすべて端末上で動作します。アカウントもクラウドも追跡もなし — ダウンロード後は完全にオフラインで動作し、入力した内容は端末から出ません。",
-         "通过 llama.cpp 完全在设备上运行。无账号、无云端、无跟踪——下载后完全离线工作，你输入的任何内容都不会离开手机。"),
     "Alibaba's Qwen3 — a strong, broadly multilingual all-rounder.":
         ("Qwen3 от Alibaba — сильная, широко многоязычная универсальная модель.",
          "Alibaba의 Qwen3 — 강력하고 폭넓게 다국어를 지원하는 올라운더.",
@@ -469,15 +465,53 @@ def translations_for(en):
 def write_xml(path, pairs):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lang = os.path.basename(os.path.dirname(path)).replace("values-", "") or "en"
-    out = ['<?xml version="1.0" encoding="utf-8"?>', "<resources>"]
+    generated = {}
     for rid, val in pairs:
         _check_percent(rid, lang, val)
         # formatted="false" only for display strings with NO positional args (suppresses aapt's
         # lone-percent lint); positional strings stay formatted (the default) so args validate.
         fmt = ' formatted="false"' if (not _POSITIONAL.search(val) and "%" in val) else ""
-        out.append(f'    <string name="{rid}"{fmt}>{esc(val)}</string>')
-    out.append("</resources>\n")
-    open(path, "w", encoding="utf-8").write("\n".join(out))
+        generated[rid] = f'<string name="{rid}"{fmt}>{esc(val)}</string>'
+    try:
+        with open(path, encoding="utf-8") as source:
+            existing = source.read()
+    except FileNotFoundError:
+        existing = None
+    if existing is None:
+        out = ['<?xml version="1.0" encoding="utf-8"?>', "<resources>"]
+        out.extend("    " + node for node in generated.values())
+        out.append("</resources>\n")
+        content = "\n".join(out)
+    else:
+        # Later app strings also live in these files. Update only the named rows this
+        # generator owns, preserving other resources, comments and formatting exactly.
+        if ET.fromstring(existing).tag != "resources":
+            raise SystemExit(f"gen_strings: expected a resources document: {path}")
+        seen = set()
+        def replace_node(match):
+            node = match.group(0)
+            if node.startswith("<!--"):
+                return node
+            name = re.search(r"""\sname\s*=\s*(["'])(.*?)\1""", node.split(">", 1)[0])
+            rid = name.group(2) if name else None
+            if rid not in generated:
+                return node
+            if rid in seen:
+                raise SystemExit(f"gen_strings: duplicate managed resource {rid}: {path}")
+            seen.add(rid)
+            return generated[rid]
+        content = re.sub(r"<!--.*?-->|<string(?=\s|>)[^>]*?(?:/\s*>|>.*?</string\s*>)",
+                         replace_node, existing, flags=re.DOTALL)
+        missing = [node for rid, node in generated.items() if rid not in seen]
+        if missing:
+            closing = re.search(r"</resources\s*>", content)
+            if closing is None:
+                raise SystemExit(f"gen_strings: cannot append rows without a resources closing tag: {path}")
+            content = (content[:closing.start()] + "".join("    " + node + "\n" for node in missing)
+                       + content[closing.start():])
+    ET.fromstring(content)  # Reject invalid output before touching the existing file.
+    with open(path, "w", encoding="utf-8") as destination:
+        destination.write(content)
 
 def _bcp47(qualifier):
     # Android resource qualifier -> BCP-47 for <locale-config>: "zh-rCN" -> "zh-CN".
@@ -517,7 +551,7 @@ def main():
         for m in sorted(set(missing)):
             print("   ", repr(m))
     else:
-        print(f"wrote en + {len(LANGS)} locales, {len(RES)} strings each (+ locales_config.xml)")
+        print(f"updated {len(RES)} managed strings in en + {len(LANGS)} locales (+ locales_config.xml)")
 
 if __name__ == "__main__":
     main()
