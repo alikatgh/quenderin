@@ -57,27 +57,37 @@ not a replacement for a qualified professional.
   Everything else (violence, sexuality, gambling, drugs as FEATURED content): No.
 - **Target audience**: 18+ only (do NOT tick any child ages — avoids Families policy).
 - **News app**: No. **COVID-19 tracing**: No.
-- **Data safety**: Data collected: NONE. Data shared: NONE. Encrypted in transit:
-  N/A (no collection). Deletion request: N/A. The only egress is the user-initiated
-  Hugging Face model GET. Declare the `dataSync` foreground service type
-  (model download) where asked about FGS permissions.
+- **Data safety**: Review the live form against the exact release. Local chats,
+  approved memories and local image workflows stay on-device. In 0.5.0, optional
+  Step 5 sends the separate text conversation to the user's configured CUDA host
+  after explicit consent and Send. Do not reuse the old blanket "NONE / only model
+  download egress" answers. Assess Messages → Other in-app messages, optional
+  collection for app functionality, and Google's user-initiated sharing exception
+  separately. Remote requests require HTTPS; HTTP is limited to literal loopback.
+  Host retention is not guaranteed ephemeral and local Clear does not delete host
+  copies. See [the privacy policy](../../docs/legal/privacy-policy.md) and
+  [Google's current definitions](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en).
+  Verify the actual console preview before submission. Declare the `dataSync`
+  foreground service type (model download) where asked about FGS permissions.
 - **Government app**: No. **Financial features**: None.
 - **Health**: None.
 - **Generative AI**: Yes, app generates AI content; in-app reporting present
   (long-press any AI message → report via email). Safety: on-device model, no
-  server; first-launch consent screen states outputs can be wrong.
+  server for local inference; optional Step 5 uses the user's selected host.
+  First-launch consent screen states outputs can be wrong.
 
 ## Closed testing (the 12-tester / 14-day gate)
-1. Create release on track **Closed testing → Alpha**: upload
-   `android/app/build/outputs/bundle/release/app-release.aab`.
-2. Release name `0.2.0 (2)`, notes: "First Android build: on-device AI chat,
-   5-language UI, offline after model download."
-3. Testers tab → create email list "quenderin-testers" (12+ Google-account emails)
-   OR enable "anyone with the link". Copy the **opt-in URL** and send it out.
-4. Testers: open opt-in link → Accept → install from Play. They should open the
-   app a few times across the 14 days (Play measures engagement).
-5. Day 15+: Dashboard → "Apply for production access" → questionnaire → then
-   promote the release to Production.
+1. Reuse the existing **Closed testing → Alpha** track, tester configuration and
+   saved **5 (0.5.0)** draft. Exact console links and the registered upload
+   certificate are in [docs/RELEASE.md](../../docs/RELEASE.md).
+2. Attach the verified 0.5.0 / code 5 AAB signed by the matching registered upload
+   key. The GitHub draft export is unsigned and must be signed before Play upload.
+   Do not include 0.2.0 as a substitute for the update.
+3. Preserve the existing testers and opt-in URL. Resolve release validation and
+   Data safety changes, submit the update, and verify its actual review/rollout
+   state. A saved draft is not an update available to testers.
+4. Production eligibility is a separate Play Console gate; a beta update does
+   not establish production access or completed tester participation.
 
 ## GitHub release (parallel channel)
 Signed APK (`:app:assembleRelease`) attached to `v0.2.0` tag — lets anyone
