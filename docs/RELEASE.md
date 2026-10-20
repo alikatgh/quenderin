@@ -27,14 +27,35 @@ password checks or asking for credential contents.
 
 CI 39201633327 built the candidate but retained no downloadable AAB. A dedicated
 **draft**, [Android 0.5.0 unsigned build export](https://github.com/alikatgh/quenderin/releases/tag/untagged-3afab393fd54dd936274),
-ID **418062490**, now targets exact source
-`eecf089ff328f7303a7d4a64358252e8913e32f5`. Its manual hosted export is being
-prepared; this draft is neither a signed bundle nor a Play release. The export
+ID **418062490**, targets exact app source
+`eecf089ff328f7303a7d4a64358252e8913e32f5`.
+[Export run 39380404019](https://github.com/alikatgh/quenderin/actions/runs/39380404019)
+**passed** from workflow revision `3143e514771d79b1cd0cb893d2907a9274e5b2b8`.
+The draft retains the **35,187,551-byte unsigned AAB**, checksum and provenance
+receipt. SHA-256 is
+`5c40d38862aacd84d7c8aabdff983fb5ed7ca91b6357c4fbc2479c93837dc8da`.
+Real Prism JNI compilation, both image DSO pairs, dependency closure, 16 KiB
+alignment, private backup/localization fixtures and core tests all passed. The
+receipt agrees with GitHub's asset digest and exact source/version; its downloaded
+bytes also match GitHub's receipt digest. A local AAB fetch failed with ENOSPC;
+only that fetch's incomplete file was removed. Download the retained remote AAB
+before signing; there is no completed local AAB in the attempted output folder.
+This draft is neither a signed bundle nor a Play release. The export
 uses standard public-repository Ubuntu compute and included Release binary
 storage, with no Actions artifacts, persistent cache, Packages or LFS. This free
 route avoids private billing access. Intended bounds are one job, 40 minutes,
 three exported files, an AAB ceiling of 512 MiB and no automatic retries or asset
 replacement. [Evidence](releases/2026-10-20-android-beta/preparation.json).
+
+The Play Data safety form's previous **No collection/sharing** answer was reviewed
+against optional Step 5. Updated answers are saved **as a draft**, not sent for
+review: **Messages / Other in-app messages**, optional collection for app
+functionality, no ephemeral-retention assertion, and no remote-deletion claim.
+The user-initiated sharing exception is based on the initially unchecked consent,
+visible host destination and explicit Send action. Remote origins require HTTPS;
+plain HTTP is restricted to literal loopback. The console preview shows encrypted
+transit and `https://quenderin.org/privacy`. Submit the declaration with the new
+binary rather than representing its draft as a published update.
 
 ## Store browser profiles — verified 19 October 2026
 
