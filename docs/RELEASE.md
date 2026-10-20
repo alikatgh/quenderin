@@ -25,6 +25,14 @@ do not establish that the original Quenderin key is lost. No private key was
 exported, generated or reset. Reuse these results instead of repeating the same
 password checks or asking for credential contents.
 
+The user then directed recovery to the macOS keys application. An escalated,
+attributes-only Keychain key search found no accessible label/tag match or public
+key identifier matching the verified Play upload certificate. This is limited to
+the current process's keychain search list and access groups. Native app control
+failed before Keychain Access or Passwords opened; the Passwords vault's UI is
+**not verified**. The pending human step is a Passwords search for Quenderin,
+offgrid or alias_name and its non-secret entry title/path, not a credential value.
+
 CI 39201633327 built the candidate but retained no downloadable AAB. A dedicated
 **draft**, [Android 0.5.0 unsigned build export](https://github.com/alikatgh/quenderin/releases/tag/untagged-3afab393fd54dd936274),
 ID **418062490**, targets exact app source

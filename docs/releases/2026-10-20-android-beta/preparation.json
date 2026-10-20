@@ -66,7 +66,14 @@
     "uploadKeyResetRequested": false,
     "historyExactRemainingStoreReferences": 0,
     "historyQuenderinEntriesWithSigningLeads": 0,
-    "pendingInformation": "The specific existing folder, password-manager item or previous release job meant by the user remains unidentified. Only a non-secret locator was requested."
+    "publicUploadCertificateFileVerified": true,
+    "accessibleKeychainKeyMetadataMatch": false,
+    "keychainKeyQueryEscalated": true,
+    "keychainKeyQueryReturnedAttributesOnly": true,
+    "keychainKeyCoverage": "Current keychain search list, process identity, permitted access groups and accessible items; no absence claim for inaccessible vaults.",
+    "nativePasswordsUIVerified": false,
+    "nativeAppControl": "Connection failed before Keychain Access or Passwords opened.",
+    "pendingInformation": "User directed recovery to the macOS keys application. Direct key metadata yielded no accessible match; requested a human Passwords search for Quenderin/offgrid/alias_name and only the non-secret entry title or keystore path."
   },
   "hostedExport": {
     "status": "Passed; exactly three remote assets retained and verified. Unsigned, no Play upload.",
