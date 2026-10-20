@@ -1,0 +1,87 @@
+name: Android unsigned beta candidate
+
+# Manual staging only. This workflow never signs, publishes, or uploads to Play.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-beta-candidate-eecf089
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  export:
+    if: github.repository == 'alikatgh/quenderin' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # Only this manual job may upload to the precreated draft.
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/quenderin-gradle
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - name: Check out reviewed export tools
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: export-tools
+          persist-credentials: false
+      - name: Check out the exact app candidate
+        uses: actions/checkout@v4
+        with:
+          ref: eecf089ff328f7303a7d4a64358252e8913e32f5
+          path: source
+          persist-credentials: false
+      - name: Assert source and precreated draft before building
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD)" = eecf089ff328f7303a7d4a64358252e8913e32f5
+          python3 ../export-tools/scripts/android_beta_candidate.py preflight
+          python3 -m unittest discover -s ../export-tools/scripts/tests -p test_android_beta_candidate.py
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Android SDK
+        timeout-minutes: 10
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v3; same pin and packages as CI
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0 ndk;26.3.11579264 cmake;3.22.1'
+          log-accepted-android-sdk-licenses: false
+      - name: Verify private backup and localization resource preservation
+        run: |
+          timeout 120 python3 -m unittest scripts.tests.test_android_private_backup
+          timeout 120 python3 -B android/tools/test_gen_strings.py
+      - name: Prepare verified Prism source (no model weights)
+        run: timeout 600 python3 scripts/prepare_prism_runtime.py fetch --destination "$RUNNER_TEMP/prism-llama"
+      - name: Build the isolated image runtime and JNI bridge
+        run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" timeout 900 bash scripts/build_android_diffusion.sh "$RUNNER_TEMP/android-diffusion"
+      - name: Build the debug APK and unsigned release bundle with the actual Prism JNI runtime
+        working-directory: source/android
+        run: timeout 1200 ./gradlew :app:assembleDebug :app:bundleRelease --no-daemon --console=plain -Pquenderin.runtime=prism -Pquenderin.llamaDir="$RUNNER_TEMP/prism-llama" -Pquenderin.diffusionLibDir="$RUNNER_TEMP/android-diffusion/jniLibs"
+      - name: Verify both packaged image DSO pairs, dependency closure and 16 KiB alignment
+        run: |
+          timeout 300 python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/apk/debug/app-debug.apk
+          timeout 300 python3 scripts/verify_diffusion_android_package.py --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" --package android/app/build/outputs/bundle/release/app-release.aab
+      - name: Run native runtime and memory guard unit tests
+        working-directory: source/android
+        run: timeout 300 ./gradlew :quenderin-core:test --no-daemon --console=plain
+      - name: Export three verified assets to the fixed existing draft
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          timeout 900 python3 ../export-tools/scripts/android_beta_candidate.py export \
+            --source "$GITHUB_WORKSPACE/source" \
+            --libraries "$RUNNER_TEMP/android-diffusion/jniLibs" \
+            --prism "$RUNNER_TEMP/prism-llama" \
+            --output "$RUNNER_TEMP/android-beta-export"

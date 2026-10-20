@@ -4,6 +4,38 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 20 October 2026 — Android Alpha recovery and bundle export
+
+The live Quenderin App signing page still registers upload SHA-256
+`8B:38:F4:E5:85:88:3A:B7:37:F2:91:8F:49:90:BA:40:17:67:A0:39:37:EB:2A:68:72:88:BD:E3:E9:49:CF:3D`.
+The existing Alpha draft, release ID **2**, retains name **5 (0.5.0)** and its
+English notes. No new bundle is attached; the previous **2 (0.2.0)** is excluded
+from that draft. Do not include the old bundle to present it as the new version.
+
+With explicit user authorization, seven previously unresolved release stores were
+opened using each store's own existing signing properties. All seven saved
+passwords authenticated, each store exposed one public certificate, and **none
+matched Quenderin**. Four distinct SDK debug stores also authenticated without a
+match. The separately checked user-referenced PKCS12 contained one other-app
+certificate and no Quenderin certificate. One remaining generic encrypted store
+has no established credential source and is **not ruled out**. Existing Keychain
+public certificates and Quenderin-labelled credential metadata yielded no match;
+no second local home or mounted external backup was available. These observations
+do not establish that the original Quenderin key is lost. No private key was
+exported, generated or reset. Reuse these results instead of repeating the same
+password checks or asking for credential contents.
+
+CI 39201633327 built the candidate but retained no downloadable AAB. A dedicated
+**draft**, [Android 0.5.0 unsigned build export](https://github.com/alikatgh/quenderin/releases/tag/untagged-3afab393fd54dd936274),
+ID **418062490**, now targets exact source
+`eecf089ff328f7303a7d4a64358252e8913e32f5`. Its manual hosted export is being
+prepared; this draft is neither a signed bundle nor a Play release. The export
+uses standard public-repository Ubuntu compute and included Release binary
+storage, with no Actions artifacts, persistent cache, Packages or LFS. This free
+route avoids private billing access. Intended bounds are one job, 40 minutes,
+three exported files, an AAB ceiling of 512 MiB and no automatic retries or asset
+replacement. [Evidence](releases/2026-10-20-android-beta/preparation.json).
+
 ## Store browser profiles — verified 19 October 2026
 
 | Service | Chrome profile |
