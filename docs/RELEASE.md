@@ -45,9 +45,11 @@ receipt. SHA-256 is
 Real Prism JNI compilation, both image DSO pairs, dependency closure, 16 KiB
 alignment, private backup/localization fixtures and core tests all passed. The
 receipt agrees with GitHub's asset digest and exact source/version; its downloaded
-bytes also match GitHub's receipt digest. A local AAB fetch failed with ENOSPC;
-only that fetch's incomplete file was removed. Download the retained remote AAB
-before signing; there is no completed local AAB in the attempted output folder.
+bytes also match GitHub's receipt digest. The initial local fetch failed with
+ENOSPC and only its incomplete file was removed. After measured headroom recovered,
+all three assets downloaded successfully and matched their server digests. The
+actual AAB passed unsigned ZIP/CRC/required-JNI structure checks locally. Retained
+files are in canonical `android/app/build/outputs/verified-beta-0.5.0-5-eecf089/`.
 This draft is neither a signed bundle nor a Play release. The export
 uses standard public-repository Ubuntu compute and included Release binary
 storage, with no Actions artifacts, persistent cache, Packages or LFS. This free
