@@ -103,6 +103,8 @@ public struct ModelsLibraryView: View {
             .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
         // Drag a .gguf you already have straight onto the page — the power-user import.
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
             for provider in providers {

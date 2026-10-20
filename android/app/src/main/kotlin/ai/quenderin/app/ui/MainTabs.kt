@@ -78,14 +78,15 @@ fun MainTabs(
     var deepThinking by remember { mutableStateOf(engine.thinkingEnabled()) }
     LaunchedEffect(deepThinking) { engine.setThinkingEnabled(deepThinking) }
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             // A custom bar instead of Material's NavigationBar: its content band is a hard-coded 80dp
             // (too tall vs WhatsApp's ~56dp), and it merges the system-nav inset INTO that height, so
             // shrinking the total via a height() modifier just crushes the icons. Here the content is a
             // fixed 56dp band and navigationBarsPadding() adds the system-nav inset BELOW it — tight
             // like a messaging app, and correct on gesture- and 3-button-nav devices alike.
-            // M3 NavigationBar look (tonal container, no drop shadow) on the compact 60dp band.
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+            // Keep dark navigation on the shared canvas; light mode retains its tonal container.
+            Surface(color = Quenderin.colors.navigationBar) {
                 Row(
                     Modifier.fillMaxWidth().navigationBarsPadding().height(60.dp),
                     verticalAlignment = Alignment.CenterVertically,

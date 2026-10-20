@@ -166,7 +166,7 @@ export function Metrics({ onBack }: { onBack: () => void }) {
     const stepsValues = recent.map(m => m.total_steps);
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-[#18181b] overflow-y-auto">
+        <div className="flex flex-col h-full bg-white dark:bg-background overflow-y-auto">
             <div className="max-w-5xl mx-auto w-full p-8">
 
                 {/* Header */}

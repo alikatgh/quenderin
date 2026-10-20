@@ -222,7 +222,7 @@ export function ChatArea({ logs, status, goal, setGoal, onStart, setCurrentView,
                 </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white dark:from-[#18181b] dark:via-[#18181b] to-transparent pt-12 pb-6 px-4 pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white dark:from-background dark:via-background to-transparent pt-12 pb-6 px-4 pointer-events-none">
                 <div className="chat-input-wrapper pointer-events-auto">
                     <textarea
                         ref={textareaRef}

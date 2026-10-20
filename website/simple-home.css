@@ -6,6 +6,7 @@
   flex-direction: column;
   background: var(--surface-tint);
 }
+html[data-theme-mode="dark"] .simple-home { background: var(--canvas); }
 .simple-wrap {
   width: min(100%, 66rem);
   margin-inline: auto;

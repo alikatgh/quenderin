@@ -79,6 +79,8 @@ struct AboutView: View {
             .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
     }
 
     private func open(_ urlString: String) {

@@ -24,6 +24,7 @@ import ai.quenderin.core.StorageCheckResult
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -294,7 +295,8 @@ fun OnboardingScreen(
 
     Surface(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
-            AmbientGlow()   // slow-breathing background wash so the screen is never dead-static
+            // Keep the dark screen canvas uniformly black, including setup/loading/error phases.
+            if (!isSystemInDarkTheme()) AmbientGlow()
 
             val isDownloading = phase is OnboardingPhase.Downloading
             Column(

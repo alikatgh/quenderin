@@ -155,6 +155,8 @@ struct ModelProfileView: View {
                 .padding(18)
             }
             .background(p.background)
+            .quenderinDarkCanvas()
+            .quenderinDarkChrome()
             .navigationTitle("Model")
             .inlineNavTitle()
             .dismissesOnOutsideClick { dismiss() }
@@ -173,8 +175,10 @@ struct ModelProfileView: View {
                         ToolbarItem(placement: .confirmationAction) { Button("Done") { showPicker = false } }
                     }
                 }
+                .quenderinSheetWindowCanvas()
             }
         }
+        .quenderinSheetWindowCanvas()
     }
 }
 

@@ -144,8 +144,11 @@ struct ConversationListView: View {
                         for id in ids { coordinator.delete(id) }
                     }
                 }
+                .quenderinDarkScrollCanvas()
             }
         }
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
         .navigationTitle("Chats")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

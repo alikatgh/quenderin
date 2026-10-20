@@ -73,7 +73,7 @@ export function Sidebar({ isOpen, wsReady, readinessStage, readinessReady, curre
 
     return (
         <div
-            className={`flex-shrink-0 bg-zinc-50 dark:bg-[#141416] border-r border-zinc-200/80 dark:border-zinc-800/80 transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 xl:sticky xl:top-0 xl:self-stretch xl:inset-auto z-40 shadow-[8px_0_24px_rgba(0,0,0,0.06)] dark:shadow-[8px_0_24px_rgba(0,0,0,0.3)] xl:shadow-none
+            className={`flex-shrink-0 bg-zinc-50 dark:bg-background border-r border-zinc-200/80 dark:border-zinc-800/80 transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 xl:sticky xl:top-0 xl:self-stretch xl:inset-auto z-40 shadow-[8px_0_24px_rgba(0,0,0,0.06)] dark:shadow-[8px_0_24px_rgba(0,0,0,0.3)] xl:shadow-none
             ${isOpen ? 'w-[250px] translate-x-0' : 'w-0 -translate-x-full overflow-hidden'}`}
         >
             <div className="p-3 flex flex-col h-full min-w-[250px]">

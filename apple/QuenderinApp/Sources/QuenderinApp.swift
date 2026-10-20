@@ -48,6 +48,7 @@ struct QuenderinApp: App {
     @StateObject private var onboarding: OnboardingModel
     @StateObject private var conversations: ConversationCoordinator
     @StateObject private var agent: AgentSession
+    @ObservedObject private var settings = AppSettings.shared
 
     init() {
         // Pass the device's app-memory budget (jetsam headroom) so the engine sizes n_ctx from it +
@@ -126,6 +127,8 @@ struct QuenderinApp: App {
                 }
             }
             .frame(minWidth: 680, minHeight: 440)
+            .quenderinWindowCanvas()
+            .preferredColorScheme(settings.theme.colorScheme)
         }
         #endif
     }

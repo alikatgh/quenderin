@@ -38,7 +38,7 @@ struct QuenderinPalette {
     // warm braid strands, warm paper + leather in the light theme. Sampled 2026-07-03
     // (scripts/generate_icons.py's source image); change the art → resample, don't guess.
     static let dark = QuenderinPalette(
-        background: Color(hex: 0x0B0F10),
+        background: Color(hex: 0x000000),
         surface: Color(hex: 0x141A1B),
         surfaceVariant: Color(hex: 0x1C2426),
         onSurface: Color(hex: 0xE8EDEA),
@@ -84,6 +84,157 @@ struct QuenderinPalette {
     )
 
     static func of(_ scheme: ColorScheme) -> QuenderinPalette { scheme == .dark ? dark : light }
+}
+
+/// A page's canvas is black in dark appearance; light appearance keeps its existing fill.
+/// Keep this separate from cards, fields, bubbles and other raised surfaces.
+private struct QuenderinDarkCanvas: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.background {
+            if scheme == .dark {
+                QuenderinPalette.dark.background.ignoresSafeArea()
+            }
+        }
+    }
+}
+
+private struct QuenderinDarkScrollCanvas: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(scheme == .dark ? .hidden : .automatic)
+            .quenderinDarkCanvas()
+    }
+}
+
+/// Keep the content's identity stable when appearance changes. Only this transparent
+/// background child adds/removes toolbar and presentation preferences; specialist views
+/// must not disappear (and cancel their work) merely because the user changes theme.
+private struct QuenderinDarkChrome: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.background {
+            if scheme == .dark {
+                #if os(macOS)
+                Color.clear
+                    .allowsHitTesting(false)
+                    .toolbarBackground(QuenderinPalette.dark.background, for: .windowToolbar)
+                    .toolbarBackground(.visible, for: .windowToolbar)
+                    .presentationBackground(QuenderinPalette.dark.background)
+                #else
+                Color.clear
+                    .allowsHitTesting(false)
+                    .toolbarBackground(QuenderinPalette.dark.background, for: .navigationBar, .tabBar)
+                    .toolbarBackground(.visible, for: .navigationBar, .tabBar)
+                    .presentationBackground(QuenderinPalette.dark.background)
+                #endif
+            }
+        }
+    }
+}
+
+private struct QuenderinWindowCanvas: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content
+            .quenderinDarkCanvas()
+            .background(WindowCanvasBackground(isDark: scheme == .dark))
+    }
+}
+
+/// One adapter per window/presentation root also covers transition edges and the Mac title bar.
+/// Original native values are restored when the user returns to light appearance.
+#if os(macOS)
+private struct WindowCanvasBackground: NSViewRepresentable {
+    let isDark: Bool
+
+    func makeNSView(context: Context) -> WindowCanvasView { WindowCanvasView() }
+    func updateNSView(_ view: WindowCanvasView, context: Context) { view.isDark = isDark }
+
+    final class WindowCanvasView: NSView {
+        var isDark = false { didSet { applyAppearance() } }
+        private weak var styledWindow: NSWindow?
+        private var originalBackground: NSColor?
+        private var originalTitlebarTransparency = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            applyAppearance()
+        }
+
+        private func applyAppearance() {
+            guard let window else { return }
+            if isDark {
+                if styledWindow !== window {
+                    styledWindow = window
+                    originalBackground = window.backgroundColor
+                    originalTitlebarTransparency = window.titlebarAppearsTransparent
+                }
+                window.backgroundColor = .black
+                window.titlebarAppearsTransparent = true
+            } else if styledWindow === window {
+                if let originalBackground { window.backgroundColor = originalBackground }
+                window.titlebarAppearsTransparent = originalTitlebarTransparency
+                styledWindow = nil
+            }
+        }
+    }
+}
+#else
+private struct WindowCanvasBackground: UIViewRepresentable {
+    let isDark: Bool
+
+    func makeUIView(context: Context) -> WindowCanvasView { WindowCanvasView() }
+    func updateUIView(_ view: WindowCanvasView, context: Context) { view.isDark = isDark }
+
+    final class WindowCanvasView: UIView {
+        var isDark = false { didSet { applyAppearance() } }
+        private weak var styledWindow: UIWindow?
+        private var originalBackground: UIColor?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            applyAppearance()
+        }
+
+        private func applyAppearance() {
+            guard let window else { return }
+            if isDark {
+                if styledWindow !== window {
+                    styledWindow = window
+                    originalBackground = window.backgroundColor
+                }
+                window.backgroundColor = .black
+            } else if styledWindow === window {
+                window.backgroundColor = originalBackground
+                styledWindow = nil
+            }
+        }
+    }
+}
+#endif
+
+extension View {
+    func quenderinDarkCanvas() -> some View { modifier(QuenderinDarkCanvas()) }
+    func quenderinDarkScrollCanvas() -> some View { modifier(QuenderinDarkScrollCanvas()) }
+    func quenderinDarkChrome() -> some View { modifier(QuenderinDarkChrome()) }
+
+    /// Attach once to each scene or sheet root, rather than to nested cards/controls.
+    public func quenderinWindowCanvas() -> some View { modifier(QuenderinWindowCanvas()) }
+
+    /// Mac sheets own a window. iOS sheets share the scene's already-styled window.
+    @ViewBuilder func quenderinSheetWindowCanvas() -> some View {
+        #if os(macOS)
+        self.quenderinWindowCanvas()
+        #else
+        self
+        #endif
+    }
 }
 
 /// What this device is called in user-facing copy — the same QuenderinKit UI now ships on the

@@ -560,7 +560,7 @@ function AppContent() {
         </div>
       )}
 
-      <div className={`relative flex h-screen w-full bg-white dark:bg-[#09090b] overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
+      <div className={`relative flex h-screen w-full bg-white dark:bg-background overflow-hidden selection:bg-purple-500/30 font-sans text-zinc-900 dark:text-zinc-200 transition-all duration-700 motion-reduce:transition-none ${showOnboarding || (!['images', 'vision'].includes(currentView) && requiredAction && (requiredAction.code !== 'OOM_PREVENTION' || forceShowTroubleshooter)) || missionApproval ? 'blur-xl pointer-events-none opacity-50 scale-[0.99] translate-y-2' : ''}`}>
 
         {/* Mobile Scrims */}
         {isSidebarOpen && (
@@ -607,7 +607,7 @@ function AppContent() {
           hardwareTier={healthData?.hardware?.tier}
         />
 
-        <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-[#18181b] transition-colors">
+        <div className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden bg-white dark:bg-background transition-colors">
 
           {showRecoveryBanner && (
             <div role="status" aria-live="polite" className="absolute top-3 right-4 z-30 px-3 py-2 rounded-lg border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
@@ -627,7 +627,7 @@ function AppContent() {
           )}
 
           {/* Top Header */}
-          <header className="h-12 flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
+          <header className="h-12 flex-shrink-0 flex items-center justify-between px-4 sm:px-5 bg-white/80 dark:bg-background backdrop-blur-xl z-20 border-b border-zinc-200/50 dark:border-zinc-800/50 transition-all">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -775,7 +775,7 @@ function ConsentGate({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-100 dark:bg-zinc-950 p-4" role="dialog" aria-modal="true" aria-label="Use with judgement">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-zinc-100 dark:bg-background p-4" role="dialog" aria-modal="true" aria-label="Use with judgement">
       <div className="w-full max-w-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Use with judgement</h1>
         <dl className="mt-6 space-y-4 text-sm">

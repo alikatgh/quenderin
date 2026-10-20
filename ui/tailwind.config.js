@@ -12,7 +12,7 @@ export default {
         mono: ['SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
       },
       colors: {
-        background: '#09090b', // zinc-950 but slightly darker
+        background: 'var(--surface-page-dark)', // Shared dark page and navigation canvas
         surface: '#18181b',    // zinc-900
         border: '#27272a',     // zinc-800
         primary: '#fafafa',    // zinc-50

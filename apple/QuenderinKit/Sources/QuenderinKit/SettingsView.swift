@@ -96,6 +96,8 @@ public struct SettingsView: View {
 
     public var body: some View {
         content
+            .quenderinDarkCanvas()
+            .quenderinDarkChrome()
             // Settings is its OWN window (scene) — RootView's preferredColorScheme doesn't
             // reach it, so picking "Light" used to change the app but not this window
             // (owner screenshot: Light selected, Settings still dark).
@@ -124,6 +126,7 @@ public struct SettingsView: View {
                         ToolbarItem(placement: .confirmationAction) { Button("Done") { showPicker = false } }
                     }
                 }
+                .quenderinSheetWindowCanvas()
             }
     }
 
@@ -136,6 +139,7 @@ public struct SettingsView: View {
                 Label(p.rawValue, systemImage: p.icon).tag(p)
             }
             .listStyle(.sidebar)
+            .quenderinDarkScrollCanvas()
             .navigationSplitViewColumnWidth(min: 150, ideal: 170)
             // System Settings has no collapse chevron — a settings sidebar that can vanish is a trap.
             .removeSidebarToggle()
@@ -170,6 +174,7 @@ public struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .quenderinDarkScrollCanvas()
         }
         // Brand accent on selection/controls (the default system blue reads as someone else's app),
         // and a floor under the window so it can never shrink into a sidebar-only sliver.
@@ -195,6 +200,7 @@ public struct SettingsView: View {
             supportSection
             aboutSection
         }
+        .quenderinDarkScrollCanvas()
         #endif
     }
 

@@ -64,13 +64,13 @@ public struct AgentView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Agent")
             .accessibilityHint(showAgentInfo ? "Hide agent details" : "Show agent details")
-            .background(p.surface)
+            .background(scheme == .dark ? p.background : p.surface)
 
             if showAgentInfo {
                 AgentInfoPanel(palette: p, consentStore: consentStore)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
-                    .background(p.surface)
+                    .background(scheme == .dark ? p.background : p.surface)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             Divider()
@@ -230,6 +230,8 @@ public struct AgentView: View {
                 .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
         // The ONLY door into fs.read's granted map: an explicit user pick (§7 — the model can
         // name attached files, never mint paths).
         .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in

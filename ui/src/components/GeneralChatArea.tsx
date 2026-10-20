@@ -386,7 +386,7 @@ export function GeneralChatArea({ logs, status, requiredAction, onOpenSettings, 
             </div>
 
             {/* ── Composer ── */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 dark:from-[#18181b] dark:via-[#18181b]/95 to-transparent pt-8 pb-4 px-4 pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 dark:from-background dark:via-background to-transparent pt-8 pb-4 px-4 pointer-events-none">
                 <div className="max-w-3xl mx-auto pointer-events-auto">
                     {/* Preset chips — compact row above input */}
                     <div className="flex items-center gap-1 mb-2 px-1 overflow-x-auto scrollbar-hide">

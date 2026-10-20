@@ -198,6 +198,8 @@ public struct ImageGenerationView: View {
                     }
                 }
             }
+            .quenderinDarkScrollCanvas()
+            .quenderinDarkChrome()
             .navigationTitle("Images")
             .toolbar {
                 if showsDoneButton {

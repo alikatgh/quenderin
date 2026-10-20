@@ -125,6 +125,8 @@ public struct ModelPickerView: View {
             .padding(16)
         }
         .background(p.background)
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
     }
 
     @ViewBuilder
