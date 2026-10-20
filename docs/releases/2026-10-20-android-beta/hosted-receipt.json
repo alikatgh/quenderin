@@ -1,0 +1,45 @@
+{
+  "applicationId": "ai.quenderin.app",
+  "asset": "quenderin-android-0.5.0-5-eecf089-unsigned.aab",
+  "digest": "sha256:5c40d38862aacd84d7c8aabdff983fb5ed7ca91b6357c4fbc2479c93837dc8da",
+  "draft": true,
+  "playUploadReady": false,
+  "releaseId": 418062490,
+  "releaseTag": "android-beta-0.5.0-candidate-eecf089",
+  "repository": "alikatgh/quenderin",
+  "runtimeProvenance": {
+    "image": {
+      "alignment": 16384,
+      "revision": "f0aac524d3f29140e60ba78f3cfb16d6acea87db",
+      "verified": [
+        "libquenderin_diffusion.so",
+        "libquenderin_diffusion_jni.so"
+      ]
+    },
+    "prism": {
+      "beamABI": 1,
+      "beamPatchId": "beam-text-v1",
+      "beamPatchSha256": "e98d4d58833d466c43afa888b856f1ec8ef064ce4b8b3a7e215c5e3d287ac033",
+      "graniteConverterPatchId": "granite41-official-converter-v1",
+      "graniteConverterPatchSha256": "301fbf51eb833e8481b4f516b28a23cd374f25db88c3e6e8af8277ecad826248",
+      "museSparkABI": 1,
+      "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
+      "revision": "e8fd209c975c80aa7fb36a8423571ff3b1b7e955",
+      "sourcePatchId": "muse-spark-open-v1",
+      "sourcePatchSha256": "9e9a58a113332a9062c222633fa411f9b000a790a1ba1cb5c1ec989615ea0cf9",
+      "version": 1,
+      "visionABI": 1,
+      "visionPatchId": "vision-minicpm47-supervl-v1",
+      "visionPatchSha256": "417a4d19ed4e05625cd4bc3ec269bf1a4331e8dd9263956b95e86b6158f938a9",
+      "weeklyTextABI": 1,
+      "weeklyTextPatchId": "weekly-text-k2-nemotron-v1",
+      "weeklyTextPatchSha256": "962eb2afaa72f211bc9f6dd24c1e9946c0e61ca9c2b662268f99c97982c8348d"
+    }
+  },
+  "schemaVersion": 1,
+  "signed": false,
+  "size": 35187551,
+  "sourceCommit": "eecf089ff328f7303a7d4a64358252e8913e32f5",
+  "versionCode": 5,
+  "versionName": "0.5.0"
+}
