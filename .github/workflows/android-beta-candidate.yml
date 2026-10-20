@@ -22,8 +22,6 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write # Only this manual job may upload to the precreated draft.
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/quenderin-gradle
     defaults:
       run:
         working-directory: source
@@ -44,6 +42,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          printf 'GRADLE_USER_HOME=%s/quenderin-gradle\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           test "$(git rev-parse HEAD)" = eecf089ff328f7303a7d4a64358252e8913e32f5
           python3 ../export-tools/scripts/android_beta_candidate.py preflight
           python3 -m unittest discover -s ../export-tools/scripts/tests -p test_android_beta_candidate.py
