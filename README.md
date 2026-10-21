@@ -1,144 +1,196 @@
 <p align="center">
-  <img src="brand/icon-square-1024.png" width="150" alt="Quenderin — the forest elf" />
+  <img src="brand/icon-square-1024.png" width="128" alt="Quenderin — the forest elf" />
 </p>
 
 <h1 align="center">Quenderin</h1>
 
-<p align="center"><strong>An AI that runs on your device — and can run it for you.</strong></p>
-<p align="center">Private on-device chat, and a local computer-use agent — a governed, private alternative to cloud agents like Cowork.</p>
+<p align="center"><strong>AI on your device.</strong></p>
+<p align="center">Run open models, keep conversations local, and choose what the assistant can do.</p>
 
 <p align="center">
-  <a href="https://apps.apple.com/app/id6789854363"><strong>📱 Download on the App Store</strong></a> — free, on Mac and iPhone
+  <a href="https://apps.apple.com/app/id6789854363"><strong>Get the free Mac and iPhone apps</strong></a> ·
+  <a href="https://quenderin.org/download.html">All downloads</a> ·
+  <a href="https://quenderin.org">Website</a> ·
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="LICENSE">MIT license</a>
 </p>
+
+Quenderin is an open-source assistant for running AI on hardware you own. Download
+a model once, then use local chat offline: draft, study, work through code, or keep
+personal notes without sending the conversation to an AI provider. No Quenderin
+account, subscription, or API key is needed for local chat.
+
+The project includes native **SwiftUI apps for macOS and iOS**, a native
+**Kotlin / Jetpack Compose Android app**, and an **Electron desktop client and
+TypeScript CLI**. They share model definitions, safety rules, and regression
+fixtures, with automated checks to catch drift between implementations.
 
 <p align="center">
-  <a href="https://quenderin.org">quenderin.org</a> ·
-  <a href="https://quenderin.org/download.html">download</a> ·
-  <a href="https://quenderin.org/roadmap.html">roadmap</a> ·
-  <a href="https://quenderin.org/reality.html">the real numbers</a> ·
-  <a href="docs/README.md">docs</a> ·
-  <a href="LICENSE">MIT</a>
+  <img src="website/assets/app/chat.png" width="720" alt="Quenderin chat showing a Python lesson with formatted code" />
 </p>
 
----
+## What you can do
 
-Quenderin downloads an open model (0.4–4.7 GB, your pick) and runs **every token locally**
-via [llama.cpp](https://github.com/ggml-org/llama.cpp). After the one-time download there
-are zero network calls: no account, no API keys, no telemetry, nothing you type leaves the
-device. We've measured ~15 tok/s on an iPhone 12 and ~157–177 tok/s on an M-series Mac —
-quick enough to be useful, and the app is honest about the rest (our lightest model ships
-graded **Quality: Low**, in the UI, on purpose).
+- **Chat with a local model.** Streaming replies, Markdown and highlighted code,
+  saved conversations, export, and model switching. Replies stay readable when
+  you scroll back through a conversation during generation.
+- **Choose a model that fits.** The library checks device memory and explains
+  model fit. The task router suggests an installed model for coding or reasoning;
+  you decide whether to switch. Catalog downloads are checked against pinned hashes.
+- **Use the terminal.** Have an interactive conversation or pipe text into a
+  single-answer command, using the same local model catalog.
+- **Run governed tasks on a Mac through the CLI.** Grant a workspace folder,
+  preview a task with `--dry-run`, approve changes, and review its local history.
+  Reversible file tasks have an undo journal. App control through Accessibility
+  is an explicit desktop option; the store mobile apps do not drive other apps.
 
-<p align="center">
-  <img src="website/assets/app/chat.png" width="640" alt="The real chat: a Python lesson answered on-device with syntax-highlighted code" />
-</p>
+The [capability guide](docs/ADDING_A_CAPABILITY.md) explains the agent's permission
+tiers and testing seams. A [shared safety blocklist](shared/safety-blocklist.json)
+blocks prohibited autonomous actions. Available tools and permissions differ by
+platform; the [integration record](docs/bonsai-2.md) describes the current workflows
+and their boundaries.
 
-## What's inside
+## New in the October source update
 
-- **Chat** with streaming replies, Markdown + syntax highlighting, per-conversation
-  appearance settings, and a transcript that follows generation (and stops following the
-  moment you scroll up).
-- **A model library** — Llama, Qwen, DeepSeek-R1, Mistral, Gemma, Phi — with live
-  fits-your-RAM badges, one-tap "download the complete library" for big disks, and
-  drag-a-GGUF-in import.
-- **A task router** that suggests the best *installed* model for each new chat (code →
-  the coder model, reasoning → the reasoning model) — a one-tap suggestion, never a
-  silent switch.
-- **A local computer-use agent** — on a Mac, `quenderin do "<goal>"` organizes files, drives
-  any app (via accessibility), and runs your Apple Shortcuts, all governed by a trust loop a
-  cloud agent can't match: it asks before every change, keeps a reviewable per-task log
-  (`quenderin history`), can undo a whole task even in a new session (`quenderin undo`), and
-  previews without touching anything (`--dry-run`) — plus a hard safety blocklist it can't
-  override (never autonomously pay, delete, transfer, or touch credentials). [Why local beats
-  the cloud here](https://quenderin.org/why-local-agent.html).
-- **Guardrails that respect you**: repetition-loop detection, split-character-safe
-  streaming (Cyrillic and emoji arrive intact), honest empty-reply notices, and a
-  [public ledger of every failure mode we know about](docs/KNOWN_FAILURE_MODES.md).
+These workflows are **already integrated into `main`**, alongside a 28-entry text
+catalog. They extend the project beyond ordinary text chat:
 
-## The apps
+| Workflow | What is implemented |
+|---|---|
+| **More text models** | Pinned Prism runtime extensions and complete-artifact installers for Bonsai 2, Beam and Muse, plus adapters for additional October releases. Beam requires all 4 parts; Muse requires all 22. |
+| **Ask about an image** | Separate still-image workflows for MiniCPM-V 4.7 and Nemotron 3.5 Super VL, with verified language-model/projector pairs and bounded JPEG/PNG input. |
+| **Review proposed memories** | Hy-Memory proposes facts from a conversation you select. Every proposal starts unchecked; only facts you explicitly approve enter a separate private local store. |
+| **Generate images locally** | Isolated FLUX 3 Image Klein and MOSS Image Base/SFT workflows, complete-component verification, and native import or desktop prepared-folder setup. Gated files require your own publisher access. |
+| **Import Granite Switch 4.1 8B** | An offline converter and explicit chat workflow verify the complete official checkpoint, converted GGUF, and conversion receipt. |
+| **Use your own CUDA host** | A separate Step 5 Preview text conversation connects to an existing host you configure, after explicit consent. Quenderin does not provision a server. |
 
-| Platform | Where | Status |
+**Integration is not inference validation or store availability.** Hosted builds,
+package checks, and synthetic runtime fixtures have passed; full-weight inference,
+image quality, peak memory, speed, and rendered native journeys for these additions
+remain unverified. Hardware requirements vary substantially: some specialists
+need workstation-class memory, and Step 5 runs on your separate GPU host.
+
+Read the [October integration record](docs/bonsai-2.md) for exact artifacts,
+licenses, memory floors, supported inputs, and reproduction commands. The
+[release record](docs/RELEASE.md) ties builds and submissions to their source.
+
+## Apps and availability
+
+The repository moves ahead of the stores. The latest recorded release checks
+are **19–20 October 2026**; follow the download links for current availability.
+
+| Platform | Client | Distribution and recorded status |
 |---|---|---|
-| **macOS** | `apple/` (SwiftUI — `QuenderinKit` + `QuenderinApp`) | The most complete client: rail navigation, model library, router, agent, deep settings |
-| **iOS** | the same shared `QuenderinKit` | Builds from the same code; on-device inference via the llama.cpp xcframework |
-| **Android** | `android/` (Compose + shared Kotlin core) | Core logic at parity (machine-enforced); UI catching up |
-| **Windows / Linux** | `src/` + `ui/` (Electron + node-llama-cpp) | **Downloadable preview** — installers built in public by CI: [quenderin.org/download](https://quenderin.org/download.html). Strategy: [docs/WINDOWS_LINUX_STRATEGY.md](docs/WINDOWS_LINUX_STRATEGY.md) |
-| **Desktop prototype** | same codebase | The research testbed additionally explores an autonomous device-driver agent that is deliberately **never** shipped in the store apps — see [docs/PRODUCT.md](docs/PRODUCT.md) |
+| **macOS** | Native SwiftUI, shared `QuenderinKit` | Free [Mac App Store app](https://apps.apple.com/app/id6789854363). Version 0.5.0 (22) was submitted on 19 October; submission does not mean approval. |
+| **iOS** | Native SwiftUI, shared `QuenderinKit` | Free [App Store app](https://apps.apple.com/app/id6789854363). Version 0.5.0 (22) was submitted on 19 October. |
+| **Android** | Kotlin / Jetpack Compose | Existing Google Play closed Alpha. The 0.5.0 bundle is built and verified but unsigned for store distribution; its upload is blocked on the existing upload key. |
+| **Windows / Linux** | Electron and TypeScript | [Preview downloads](https://quenderin.org/download.html). Published installers have their own release history; they do not automatically include every change on `main`. |
 
-Cross-platform logic (model catalog, agent parser, router, safety blocklist) is hand-ported
-Swift ↔ Kotlin and **machine-enforced against drift**: shared canonical vectors + CI checks
-(`scripts/check_*_parity.py`) fail the build if one platform tests a case the other doesn't.
+The Electron macOS build is a development testbed; the public Mac product is the
+native App Store app. See [release evidence](docs/RELEASE.md) and the
+[desktop distribution strategy](docs/WINDOWS_LINUX_STRATEGY.md).
 
-## The CLI
+## Privacy and control
 
-For programmers: chat with a local model without leaving the terminal, and pipe anything
-into it — same catalog, same SHA-256-verified downloads, zero network calls after setup.
+**Installed local models process your prompts on your device and can run offline.**
+Quenderin does not send app analytics, telemetry, or crash reports to the project,
+and has no app account or automatic cloud sync.
 
-```bash
-npm install && npm run build:tsc && npm link   # once; then `quenderin` is on your PATH
+There are specific network uses: model downloads, optional Hugging Face catalog
+search, and public release-metadata checks. These do not send local conversations.
+The optional Step 5 workflow sends the prompt and history from its **separate
+conversation** to your configured host only after you approve sending. That host's
+operator controls its own logging and retention. User-enabled Apple system
+backups can also include local app data.
 
-quenderin chat                      # interactive REPL (slash commands: /model /models /clear)
-quenderin models                    # what's installed / downloadable
-quenderin download llama32-1b       # fetch a model
-git diff | quenderin chat -p "review this change"    # pipe mode: one answer, plain stdout
-```
+See the [privacy policy](docs/legal/privacy-policy.md) for the complete boundaries.
 
-And on a Mac, the **computer-use agent** — every change asks first, and nothing leaves the machine:
+## Build and try the CLI
 
-```bash
-quenderin capabilities                                  # everything it can do, by tier
-quenderin do "organize this" --workspace ~/Downloads    # governed file tasks (undoable)
-quenderin do "reply to the top email" --gui             # click/type in any app via accessibility
-quenderin do "..." --dry-run                            # rehearse: show what it would do, change nothing
-quenderin history                                       # a per-task audit log of what it did
-quenderin undo                                          # reverse the last task — even in a new session
-```
-
-## Getting started
-
-**macOS / iOS** — requires Xcode:
+Requires **Node.js 20+ and npm 9+**. Model downloads are separate from installing
+the source; choose one that fits your available memory and storage.
 
 ```bash
-cd apple/QuenderinApp
-xcodegen                      # brew install xcodegen (generates Quenderin.xcodeproj)
-open Quenderin.xcodeproj      # run "QuenderinMac" or "Quenderin" (iOS)
+git clone https://github.com/alikatgh/quenderin.git
+cd quenderin
+npm ci
+npm run build
+npm link
+
+quenderin models
+quenderin download llama32-1b
+quenderin chat
+git diff | quenderin chat -p "Review this change"
 ```
 
-Real inference needs the llama.cpp xcframework once — see
-[apple/QuenderinKit/INTEGRATION.md](apple/QuenderinKit/INTEGRATION.md). Without it the app
-still builds and runs against a mock engine.
-
-**Android** — open `android/` in Android Studio; the pure-JVM core self-verifies via
-`android/quenderin-core` (see [docs/BUILD_MOBILE.md](docs/BUILD_MOBILE.md)).
-
-**Desktop prototype:**
+On macOS, inspect capabilities and preview a workspace task:
 
 ```bash
-npm install
-npm run dashboard        # React dashboard at http://localhost:3000
-npm run electron:dev     # or as a desktop app
+quenderin capabilities
+quenderin do "organize this folder" --workspace ~/Downloads --dry-run
+quenderin history
 ```
 
-## Show your homework
+After an actual reversible task, `quenderin undo` reverses the last recorded task.
+A dry run makes no changes and does not replace an earlier task's undo journal.
 
-We publish the material most projects keep private — that's the point:
+For the desktop interface, run `npm run dashboard` or `npm run electron:dev`
+after building. Experimental models require their pinned runtimes and complete
+artifacts; a standard install is not sufficient for every specialist workflow.
+Follow [the integration guide](docs/bonsai-2.md) for those prerequisites.
 
-- [REALITY.md](apple/REALITY.md) — can phones actually run this? Measured, sourced, caveated.
-- [On-device LLM research](docs/research/on-device-llm.md) — 28 sources, adversarially verified; the refuted claims are listed too.
-- [Similar projects](docs/research/similar-projects.md) — who else does this well, and what we took from each.
-- [The bug journal](docs/BUG_JOURNAL.md) — every bug, its cause, its lesson.
-- [Known failure modes](docs/KNOWN_FAILURE_MODES.md) — everything we know can go wrong: fixed, planned, or accepted, each with a reason.
-- [The brand guide](docs/BRAND.md) — why the whole design derives from the artwork, and the anti-slop rules.
+For native development, start with [the release/build record](docs/RELEASE.md),
+which documents the pinned Prism build, existing Xcode Cloud workflow, Android
+packaging, and signed-export checks. Apple project generation lives in
+`apple/QuenderinApp/project.yml`; Android's Gradle project lives in `android/`.
+A mock engine build is not evidence of model inference.
 
-Full documentation map: [docs/README.md](docs/README.md) · architecture:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · mobile stack:
-[apple/ARCHITECTURE.md](apple/ARCHITECTURE.md)
+## Engineering you can inspect
 
-## Contributing
+- **Runtime work, beyond a catalog entry.** Pinned source patches, native bridges,
+  publisher prompt adapters, and artifact manifests are versioned together. See
+  [runtime provenance](shared/prism-runtime.json) and the
+  [complete Muse manifest](shared/muse-spark-artifacts.json).
+- **Resource ownership.** Ordinary text and specialist workflows use an exclusive
+  memory lease. Cancellation and shutdown join active native work before releasing
+  shared resources. Full-model size, available memory, and complete component sets
+  gate loading; active-parameter counts do not stand in for memory requirements.
+- **Cross-platform contracts.** Canonical catalogs and fixtures check the Swift,
+  Kotlin, and TypeScript implementations. The
+  [CI workflow](.github/workflows/ci.yml) includes native compilation, runtime
+  fixtures, packaged desktop checks, Android library checks, and parity gates.
+- **Published evidence and limitations.** All 18 engineering CI jobs passed for
+  [release source `53994b7`](https://github.com/alikatgh/quenderin/actions/runs/39201633327).
+  The [release record](docs/RELEASE.md) distinguishes that result from signed Apple
+  exports, pending reviews, and the unsigned Android candidate.
 
-PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Run the focused source checks without downloading model weights:
+
+```bash
+python3 scripts/check_catalog_parity.py
+python3 scripts/check_agent_parity.py
+python3 scripts/check_router_parity.py
+python3 scripts/check_sampling_parity.py
+python3 scripts/check_safety_parity.py
+python3 scripts/generate_website_catalog.py --check
+```
+
+## Contribute
+
+Useful contributions include reproducible device results, model/runtime
+compatibility fixes, accessibility, translations, and regression tests. Report
+the model, quantization, hardware, build, and reproduction steps with an issue.
+Label measurements as physical-device, simulator, or host results.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md), the [architecture](docs/ARCHITECTURE.md),
+and the [documentation map](docs/README.md). The
+[known failure modes](docs/KNOWN_FAILURE_MODES.md), [bug journal](docs/BUG_JOURNAL.md),
+and [on-device research](docs/research/on-device-llm.md) document limitations and
+prior investigations. For security reports, use [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE). The elf artwork and the Quenderin name identify this project — please
-don't use them to mark derived works as official.
+Quenderin's code is [MIT-licensed](LICENSE). Model weights, runtimes, and other
+third-party components retain their own licenses; check the relevant manifest and
+publisher terms. The elf artwork and Quenderin name identify this project;
+please do not present derived works as official Quenderin releases.
