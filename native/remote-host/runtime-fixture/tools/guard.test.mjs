@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { boundedProcess, processEnvironment, runtimeEnvironment } from './bounded-process.mjs';
-import { assertUnprivilegedStatus } from './run.mjs';
+import { assertUnprivilegedStatus, assertSeparateNetworkNamespace } from './run.mjs';
 import { createNpmConfigs } from './bootstrap.mjs';
 
 const configScratchParent = process.env.QUENDERIN_GUARD_SCRATCH || process.env.RUNNER_TEMP;
@@ -38,7 +38,17 @@ test('runtime environment has only the explicit fixture allowlist', () => {
   assert.deepEqual(Object.keys(result).sort(), ['CI', 'DSH_HOME', 'GITHUB_ACTIONS', 'LANG', 'LC_ALL', 'PATH', 'QUENDERIN_FIXTURE_FACTS', 'QUENDERIN_FIXTURE_ROOT', 'QUENDERIN_HOST_SOURCE', 'TMPDIR', 'TZ'].sort());
   assert.equal(result.DSH_HOME, '/tmp/fixture');
   assert.equal(result.TMPDIR, '/tmp/fixture');
-  for (const key of ['HOME', 'XDG_CONFIG_HOME', 'NODE_OPTIONS', 'CODEX_HOME', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY']) assert.equal(Object.hasOwn(result, key), false);
+  for (const key of ['HOME', 'XDG_CONFIG_HOME', 'NODE_OPTIONS', 'CODEX_HOME', 'DEEPSEEK_API_KEY', 'OPENAI_API_KEY', 'QUENDERIN_PARENT_NETNS']) assert.equal(Object.hasOwn(result, key), false);
+});
+
+test('network namespace guard requires a valid parent baseline and a different valid current identity', () => {
+  const error = { message: 'STOP: distinct valid parent and fixture network namespaces required' };
+  for (const missing of [undefined, null, '']) assert.throws(() => assertSeparateNetworkNamespace(missing, 'net:[2]'), error);
+  for (const malformed of ['net:[]', 'net:[-1]', 'net:1', 'mnt:[1]', ' net:[1]', 'net:[1]\n', 1]) assert.throws(() => assertSeparateNetworkNamespace(malformed, 'net:[2]'), error);
+  assert.throws(() => assertSeparateNetworkNamespace('net:[1]', 'net:[1]'), error);
+  assert.throws(() => assertSeparateNetworkNamespace('net:[1]', undefined), error);
+  assert.throws(() => assertSeparateNetworkNamespace('net:[1]', 'net:[invalid]'), error);
+  assert.doesNotThrow(() => assertSeparateNetworkNamespace('net:[1]', 'net:[2]'));
 });
 
 test('privilege guard rejects root, retained capabilities and escalation', () => {

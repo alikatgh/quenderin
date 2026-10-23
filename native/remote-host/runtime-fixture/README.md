@@ -102,11 +102,13 @@ source check. User/system Git config and Git replacement objects are disabled.
 ```sh
 cd native/remote-host/runtime-fixture
 env -i GITHUB_ACTIONS=true PATH="$PATH" node tools/bootstrap.mjs "$REVIEWED_SHA256"
+fixture_parent_netns="$(readlink /proc/self/ns/net)"
 sudo -n unshare --net -- setpriv \
   --reuid "$(id -u)" --regid "$(id -g)" --clear-groups \
   --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs \
   -- env -i \
   GITHUB_ACTIONS=true \
+  QUENDERIN_PARENT_NETNS="$fixture_parent_netns" \
   QUENDERIN_HOST_SOURCE="$GITHUB_WORKSPACE/upstream" \
   PATH="$PATH" \
   node tools/run.mjs "$REVIEWED_SHA256"
@@ -121,14 +123,18 @@ allows at most two model calls and eight
 chunks; the tool allows exactly one execution. Captured output is capped at
 128 frames, 48 KiB per frame and 256 KiB total. A fresh temporary root holds
 every Session, Workspace and domain artifact; the runner removes it in
-`finally`. No input comes from a user's home or projects. The Linux network
+`finally`. No input comes from a user's home or projects. The trusted workflow
+shell captures its own Linux network namespace before `sudo`/`unshare` and
+passes that nonsecret `net:[digits]` baseline only to the supervisor. The new
 namespace is created under `sudo`, then `setpriv` drops to the original runner
 UID/GID, clears supplementary groups and every bounding, inheritable and
 ambient capability, and enables no-new-privileges before Node starts. Before
 loading package code, the runner requires nonroot real/effective/saved/fs UIDs,
 zero effective/permitted/bounding/inheritable/ambient capabilities,
-`NoNewPrivs: 1`, a distinct network namespace and loopback-only interfaces and
-routes. Dependencies cannot use `sudo` or retained capabilities to rejoin the
+`NoNewPrivs: 1`, a valid current namespace different from the captured parent,
+and loopback-only interfaces and routes. It reads only `/proc/self/ns/net`;
+access to a privileged process's namespace is unnecessary. The parent baseline
+is not inherited by the fixture child. Dependencies cannot use `sudo` or retained capabilities to rejoin the
 parent namespace. If `sudo`/`unshare`/`setpriv` is unavailable or any guard
 fails, this check is blocked; do not weaken it to a promise or monkeypatch.
 The async supervisor enforces time and aggregate output limits on ordinary

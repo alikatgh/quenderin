@@ -73,11 +73,13 @@ jobs:
       - name: Exercise the real Harness Gateway Agent approval journey without network access
         working-directory: native/remote-host/runtime-fixture
         run: |
+          fixture_parent_netns="$(readlink /proc/self/ns/net)"
           sudo -n unshare --net -- setpriv \
             --reuid "$(id -u)" --regid "$(id -g)" --clear-groups \
             --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs \
             -- env -i \
             GITHUB_ACTIONS=true \
+            QUENDERIN_PARENT_NETNS="$fixture_parent_netns" \
             QUENDERIN_HOST_SOURCE="$GITHUB_WORKSPACE/upstream" \
             PATH="$PATH" \
             node tools/run.mjs b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1

@@ -17,6 +17,13 @@ export function assertUnprivilegedStatus(status) {
   }
 }
 
+export function assertSeparateNetworkNamespace(parent, current) {
+  const valid = value => typeof value === 'string' && /^net:\[[0-9]+\]$/.test(value);
+  if (!valid(parent) || !valid(current) || parent === current) {
+    throw new Error('STOP: distinct valid parent and fixture network namespaces required');
+  }
+}
+
 async function run() {
   const deadline = performance.now() + 29_000;
   const reviewed = process.argv[2];
@@ -26,10 +33,11 @@ async function run() {
   if (process.getuid() === 0) throw new Error('STOP: unprivileged capability-free no-new-privs runner required');
   assertUnprivilegedStatus(readFileSync('/proc/self/status', 'utf8'));
   // A separate network namespace with only loopback has no external transport.
+  assertSeparateNetworkNamespace(process.env.QUENDERIN_PARENT_NETNS, readlinkSync('/proc/self/ns/net'));
   const interfaces = readFileSync('/proc/net/dev', 'utf8').trim().split('\n').slice(2).map(line => line.split(':')[0].trim());
   const ipv4 = readFileSync('/proc/net/route', 'utf8').trim().split('\n').slice(1);
   const ipv6 = readFileSync('/proc/net/ipv6_route', 'utf8').trim().split('\n').filter(Boolean);
-  if (readlinkSync('/proc/self/ns/net') === readlinkSync('/proc/1/ns/net') || interfaces.some(name => name !== 'lo')
+  if (interfaces.some(name => name !== 'lo')
       || ipv4.some(line => line.trim().split(/\s+/)[0] !== 'lo') || ipv6.some(line => line.trim().split(/\s+/).at(-1) !== 'lo')) {
     throw new Error('STOP: run inside a separate loopback-only Linux network namespace');
   }
