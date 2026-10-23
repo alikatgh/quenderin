@@ -158,6 +158,29 @@ data class ConversationBinding(
     }
 }
 
+/** Ephemeral authenticated transport scope; never serialized into conversation history.
+ * A discovery scope references a local enrollment draft, not a persisted profile/workspace. */
+data class RemoteHarnessTransportBinding(
+    val scopeReference: String, val origin: String, val hostID: String,
+    val hostFingerprint: String, val workspaceID: String? = null,
+) {
+    init {
+        identifier(scopeReference); identifier(hostID); digest(hostFingerprint)
+        connectionCheck(origin == ConnectionOrigins.canonicalize(origin), "noncanonical-origin")
+        workspaceID?.let(::identifier)
+    }
+    override fun toString() = "RemoteHarnessTransportBinding(redacted)"
+    companion object {
+        fun discovery(enrollmentDraftID: String, origin: String, hostID: String, hostFingerprint: String) =
+            RemoteHarnessTransportBinding(enrollmentDraftID, ConnectionOrigins.canonicalize(origin), hostID, hostFingerprint)
+        fun from(binding: ConversationBinding): RemoteHarnessTransportBinding {
+            connectionCheck(binding.kind == ConnectionKind.REMOTE_HARNESS, "invalid-binding")
+            return RemoteHarnessTransportBinding(binding.profileID, binding.origin!!, binding.hostID!!,
+                binding.hostFingerprint!!, binding.workspaceID)
+        }
+    }
+}
+
 data class ProviderSelection(val providerID: String, val modelID: String, val reasoningEffort: ReasoningEffort) {
     init { identifier(providerID); identifier(modelID) }
     override fun toString() = "ProviderSelection(redacted)"
