@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "origin": "Original native link ownership contract inferred from pinned upstream protocol; no upstream code or fixture content copied.",
+  "scope": "Source-only Swift MainActor / Kotlin enforced constructor-thread owner around injected Noise and typed decoded packet handoff; no authentication, cryptography, network, vault, FFI linkage, UI, services, models, retries or reconnect.",
+  "trustPrerequisites": [
+    "Caller has verified account membership, enrolled Client identity, Host role, pinned Host identity and durable trust before constructing enrollment.",
+    "Typed enrollment and packet-port connectionInfo are contextual inputs, not evidence enrollment or authentication actually occurred.",
+    "All connection/client/host identifiers are nonempty, NUL-free, at most 1024 UTF-8 bytes; malformed Kotlin UTF-16 is rejected.",
+    "Prepared inner local Client / remote Host IDs and business binding Host must match enrollment before Noise factory. Kotlin authenticated context also binds connection ID and caller Client ID.",
+    "Identifiers are opaque exact UTF-8 byte strings: composed/decomposed Unicode sequences never compare equal. Business binding identity also uses byte-exact optional workspace/session matching."
+  ],
+  "noise": {
+    "pattern": "Noise_IK_25519_ChaChaPoly_SHA256",
+    "prologueUTF8": "DSH-REMOTE\u0000v=1\u0000connection=<connectionID>\u0000host=<hostDeviceID>\u0000client=<clientDeviceID>",
+    "trailingNUL": false,
+    "role": "initiator",
+    "handshakePayload": "empty",
+    "handshake": "Send step 1; accept exactly step 2 with matching connection/Client target; provider must complete with empty application payload and no response.",
+    "deadlineMilliseconds": 10000,
+    "deadlineStart": "After connection info/factory/counter preflight, immediately before initiate; monotonic 9999ms accepted, 10000ms expired.",
+    "counterRange": [
+      0,
+      9007199254740991
+    ],
+    "initialSending": 0,
+    "initialReceiving": 0,
+    "counterRules": "Packet counter is sampled before encrypt. Provider send/receive must advance exactly one, with complete state and exact owner-expected counters checked before and after each operation. Counter maximum cannot be used when its successor would exceed the safe range. No nonce setters.",
+    "ciphertextMaximumBytes": 65535,
+    "faultPolicy": "Every active-generation decrypt/tag, counter, fragment or business-observer failure retires the whole link, even if the injected primitive permits tag-failure continuation."
+  },
+  "packetSeam": {
+    "outboundHandshake": [
+      "connectionID",
+      "targetDeviceID=Host",
+      "step=1",
+      "decoded bytes"
+    ],
+    "inboundHandshake": [
+      "connectionID",
+      "targetDeviceID=Client",
+      "step=2",
+      "decoded bytes"
+    ],
+    "outboundRelay": [
+      "connectionID",
+      "targetDeviceID=Host",
+      "counter",
+      "ciphertext bytes"
+    ],
+    "inboundRelay": [
+      "connectionID",
+      "targetDeviceID=Client",
+      "counter",
+      "ciphertext bytes"
+    ],
+    "futureAdapterOwns": "Actual packet JSON, canonical unpadded Base64URL, 64 KiB control / 1 MiB relay JSON caps, authenticated WSS, bounded socket backpressure and asynchronous failure callbacks retaining exact original generation.",
+    "sendMeaning": "Synchronous bounded handoff only, not evidence bytes reached a network or peer. A handoff may accept then throw; retire without replay."
+  },
+  "business": {
+    "outbound": "Existing business port -> whole-message FIFO -> existing DSHF framing -> injected encrypt each frame -> typed relay handoff.",
+    "inbound": "Validate generation, connection, Client target and exact receive counter -> injected decrypt -> existing DSHF assembly -> business observer.",
+    "queueMaximumMessagesIncludingActive": 256,
+    "queueMaximumBytesIncludingActive": 8388608,
+    "messageMaximumBytes": 4194304,
+    "framingContract": "remote-harness-fragments-contract.json",
+    "partialAssemblyDeadlineMilliseconds": 120000,
+    "serialization": "A reentrant send reserves and enqueues its complete message; active fragment batches never interleave.",
+    "authenticatedCallback": "Ready state is reserved before invoking observer, allowing immediate coordinator connect/describe/send."
+  },
+  "lifecycle": {
+    "generation": "Strictly increasing positive local generation; reserve watermark before old retirement. Kotlin uses signed Long; Swift caps UInt64 generation at Int64.max for fragment compatibility.",
+    "reentrancy": "Session reference identity is checked after injected factory/Noise/packet/clock/active-observer calls. An old continuation cannot retire or deliver into a replacement.",
+    "retirement": "Clear session, queues and fragments before shutdown, exact-generation port retirement and retired observer. Idempotent; injected diagnostic text is never propagated.",
+    "teardownUnconfirmed": "Set pending generation before cleanup callbacks. A throwing mandatory port retirement blocks begin. Trusted confirmRetired accepts only the exact pending local generation after actual channel/Host cleanup, is ignored during cleanup, and is never sourced from peer packet fields. No automatic retries.",
+    "deadlines": "Caller must invoke checkDeadlines with original generation during idle periods. Reject monotonic regressions and handshake-addition overflow. Stale handshake/data/timer/close/send/invalidate cannot alter replacement.",
+    "privacy": "Swift descriptions, debug descriptions and CustomMirror redact stored IDs/bytes/business values. Kotlin ordinary descriptions redact values; privileged JVM reflection is not a confidentiality boundary. Errors expose stable local codes only. Explicit byte/value getters are private-data exports.",
+    "serialization": "Swift MainActor isolation; Kotlin captures constructor Thread and rejects every public state API/getter on any other thread before state access. Packet callbacks and coordinator calls must dispatch to the same owner thread. No secure-link monitor is held across coordinator callbacks; wrong-thread failure does not retire a link."
+  },
+  "verification": {
+    "fixtures": "remote-harness-secure-link-fixtures.json",
+    "marker": "REMOTE_HARNESS_SECURE_LINK_FIXTURE_PASS <id>",
+    "provider": "Original deterministic fake: plaintext plus sixteen zero marker bytes. It is not cryptography.",
+    "proof": "Native source-only lifecycle, ordering, counter, fault and coordinator seam assertions. Markers appear once only after every case assertion succeeds.",
+    "remaining": "Hosted Swift execution, maintained Rust facade linkage, real Noise interoperability, enrollment/vault/account trust, actual JSON/Base64URL/WSS/backpressure, simulator/device UI and inference remain separate checks."
+  }
+}

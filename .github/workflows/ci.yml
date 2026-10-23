@@ -110,6 +110,7 @@ jobs:
           python3 ../../scripts/check_deepseek_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_remote_harness_carrier.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_remote_harness_fragments.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
+          python3 ../../scripts/check_remote_harness_secure_link.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
       - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
         run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
@@ -447,6 +448,15 @@ jobs:
             android/quenderin-core/src/verify/RemoteHarnessFragmentsVerify.kt -include-runtime -d "$RUNNER_TEMP/remote-harness-fragments.jar"
           java -jar "$RUNNER_TEMP/remote-harness-fragments.jar" shared/remote-harness-fragments-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-fragments.log"
           python3 -B scripts/check_remote_harness_fragments.py --results "$RUNNER_TEMP/quenderin-kotlin-fragments.log"
+      - name: Verify native secure-link lifecycle (fake Noise and packet ports only)
+        run: |
+          set -o pipefail
+          python3 -B -m unittest scripts.tests.test_remote_harness_secure_link
+          python3 -B scripts/check_remote_harness_secure_link.py
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/RemoteHarnessSecureLinkVerify.kt -include-runtime -d "$RUNNER_TEMP/remote-harness-secure-link.jar"
+          java -jar "$RUNNER_TEMP/remote-harness-secure-link.jar" shared/remote-harness-secure-link-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-secure-link.log"
+          python3 -B scripts/check_remote_harness_secure_link.py --results "$RUNNER_TEMP/quenderin-kotlin-secure-link.log"
       - name: Verify Beam framing and specialist native capability gates with tiny fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \

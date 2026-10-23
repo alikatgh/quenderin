@@ -188,8 +188,33 @@ all state, including delayed retirement. Forty-eight original shared cases cover
 literal nonuniform byte positions, boundaries, interleaving, replay, malformed
 frames, expiry, exhaustion and replacement generations. Kotlin executes all 48;
 the exact-marker guard, 13 Python tests and Swift parsing pass. Fresh independent
-review is complete; hosted Swift compilation/XCTest remains pending. This layer
-is not yet wired to a Noise session or network socket.
+review is complete. At source `a4e6ec678a7a4f7a9bd0464bb6bb5e893bef60e6`,
+[hosted Swift and Android core checks](https://github.com/alikatgh/quenderin/actions/runs/39907251522)
+execute all 48 cases exactly once; Swift runs 669 tests with six skipped and no
+failures. This layer is not yet wired to a Noise session or network socket.
+
+The next secure-link owner implements the native business-port seam around
+injected Noise and decoded packet ports. It checks the exact suite/prologue,
+opaque UTF-8 identities, empty handshake, 10-second deadline and counter
+advancement. Whole fragment batches are serialized within an eight-MiB/256-message
+queue. Failed mandatory retirement blocks replacement until the adapter confirms
+cleanup of that exact generation. Swift uses MainActor; Kotlin enforces its
+constructor thread before state access, avoiding a reproduced coordinator/link
+monitor deadlock. The future adapter must dispatch both owners on that thread.
+Twenty-eight original shared scenarios pass Kotlin host execution, including a
+bounded two-thread regression and a prepared mutation whose accepted-then-failed
+handoff remains outcome unknown. Seventeen Python evidence-guard tests, Swift
+parsing and fresh independent review pass. Hosted Swift compilation/XCTest is
+pending for this owner. These fake-provider tests establish no real Noise,
+JSON/Base64URL, WSS, enrollment, identity-vault or Host integration.
+
+Native crypto packaging will reuse UniFFI's documented
+[Swift module/XCFramework](https://github.com/mozilla/uniffi-rs/blob/7bc621ee9d0d15371d792612707ba5ed4111f950/docs/manual/src/swift/module.md)
+and [Gradle/JNA AAR](https://github.com/mozilla/uniffi-rs/blob/7bc621ee9d0d15371d792612707ba5ed4111f950/docs/manual/src/kotlin/gradle.md)
+integration. Generate bindings from the same locked library metadata; preserve
+the generated C header and use `module.modulemap` in XCFramework headers. The
+host JNA JAR probe does not establish Android AAR loading, ABI/16 KiB alignment,
+minimum-OS behavior or signed app linking. Those remain separate build gates.
 
 ## 4. Device trust, approvals and recovery
 
