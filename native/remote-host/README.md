@@ -135,6 +135,17 @@ an agent spending cap, a terminal sandbox, or approval recovery across Host
 restart. Native command journals prevent automatic mutation replay. These
 remaining execution/recovery controls stay explicit in the delivery checklist.
 
+The source-inspected Harness baseline is `dsh-v0.2.1-rc.1`, commit
+`1600d8a1e140dcde43a1a0941940a0480712c011`. Its
+[prompt handler](https://github.com/deepseek-ai/deepseek-harness/blob/1600d8a1e140dcde43a1a0941940a0480712c011/packages/api/session-controller/src/commands.ts#L319-L362)
+returns `{accepted:true}` after admission, including sequential duplicate request
+IDs. It checks pending inbox items and recorded user messages, so existing
+persisted admission can be recognized after recovery. This is useful existing
+support, not an atomic payload-bound reservation: concurrent admission and
+acknowledgement-before-flush outcomes remain uncertain. Quenderin therefore keeps
+automatic replay disabled. Source inspection is separate from the new isolated
+official-runtime fixture, whose execution has not yet been verified.
+
 ## Verification
 
 ```sh

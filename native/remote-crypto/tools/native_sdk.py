@@ -63,7 +63,8 @@ SAFE_VALIDATION_DIAGNOSTICS = {
     "Duplicate packaged remote library": "PACKAGE_REMOTE_DUPLICATE: Duplicate packaged remote library.",
     "Packaged Noise bytes differ from verified SDK": "PACKAGE_NOISE_BYTES: Packaged Noise bytes differ from verified SDK.",
     "Packaged JNA bytes differ from verified SDK": "PACKAGE_JNA_BYTES: Packaged JNA bytes differ from verified SDK.",
-    "Android package is missing the real Noise or JNA library": "PACKAGE_REMOTE_MISSING: Android package is missing the real Noise or JNA library.",
+    "Android package is missing the real Noise library": "PACKAGE_NOISE_MISSING: Android package is missing the real Noise library.",
+    "Android package is missing the real JNA library": "PACKAGE_JNA_MISSING: Android package is missing the real JNA library.",
     "Android NDK pin differs": "SDK_NDK_PIN: Android NDK pin differs.",
     "Pinned Android arm64 API28 compiler/archiver is unavailable": "SDK_NDK_TOOLS: Pinned Android arm64 API28 compiler/archiver is unavailable.",
     "Native SDK compilation is restricted to the bounded hosted workflow": "SDK_HOSTED_ONLY: Native SDK compilation is restricted to the bounded hosted workflow.",
@@ -242,8 +243,10 @@ def verify_package(sdk: Path, package: Path) -> None:
                         raise ValueError("Packaged Noise bytes differ from verified SDK")
                     raise ValueError("Packaged JNA bytes differ from verified SDK")
                 found.add(name)
-    if found != expected.keys():
-        raise ValueError("Android package is missing the real Noise or JNA library")
+    if "libquenderin_remote_crypto.so" not in found:
+        raise ValueError("Android package is missing the real Noise library")
+    if "libjnidispatch.so" not in found:
+        raise ValueError("Android package is missing the real JNA library")
 
 
 def run(arguments: list[str], env: dict[str, str], timeout: int = 600) -> None:

@@ -217,10 +217,12 @@ class NativeSDKPackageTests(unittest.TestCase):
             self.check_package(self.package(compression=zipfile.ZIP_STORED))
 
     def test_missing_remote_library_remains_rejected(self):
-        entries = dict(self.entries)
-        del entries["lib/arm64-v8a/libjnidispatch.so"]
-        with self.assertRaisesRegex(ValueError, "missing the real Noise or JNA library"):
-            self.check_package(self.package(entries))
+        for library, label in [("libquenderin_remote_crypto.so", "Noise"), ("libjnidispatch.so", "JNA")]:
+            with self.subTest(library=library):
+                entries = dict(self.entries)
+                del entries["lib/arm64-v8a/" + library]
+                with self.assertRaisesRegex(ValueError, f"missing the real {label} library"):
+                    self.check_package(self.package(entries))
 
 
 class NativeSDKDiagnosticTests(unittest.TestCase):
@@ -235,6 +237,9 @@ class NativeSDKDiagnosticTests(unittest.TestCase):
         self.assertEqual(self.cli_failure(ValueError("Packaged Noise bytes differ from verified SDK")),
                          "Native SDK check failed: PACKAGE_NOISE_BYTES: Packaged Noise bytes differ from verified SDK.\n")
         self.assertIn("PACKAGE_DEPENDENCY_ELF_ALIGNMENT", self.cli_failure(ValueError("Another packaged dependency lacks 16 KiB ELF load alignment")))
+        for library, code in [("Noise", "PACKAGE_NOISE_MISSING"), ("JNA", "PACKAGE_JNA_MISSING")]:
+            with self.subTest(library=library):
+                self.assertIn(code, self.cli_failure(ValueError(f"Android package is missing the real {library} library")))
 
     def test_unknown_exception_data_is_never_printed(self):
         private = "synthetic-private-value-must-not-appear"

@@ -344,15 +344,21 @@ history and Stop remain available.
 
 Pre-publication evidence: Android controller journey 51 checks; production pinned
 OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
-the 12 shared canonical digest cases; SDK receipt/source tests 22. Swift frontend
-syntax parsing passes. These are synthetic/source checks. Hosted Swift tests,
-real SDK/app builds and patched Host integration tests are still pending on this
-candidate. The [real-crypto hosted job](https://github.com/alikatgh/quenderin/actions/runs/39968738735)
+the 12 shared canonical digest cases; SDK receipt/package tests 31. Hosted Swift
+tests pass **682 tests, six skipped, zero failures**, including the complete
+synthetic controller journey. The [Apple SDK job](https://github.com/alikatgh/quenderin/actions/runs/39973923157/job/120484184703)
+passes real five-target SDK generation and unsigned iPhone, simulator-SDK and Mac
+app compilation. Android's real SDK/app also compiles; strict final APK library
+presence/bytes/alignment verification remains a gate. The
+[patched Host run](https://github.com/alikatgh/quenderin/actions/runs/39973923220)
+passes source preparation, actual bundle compilation and three bridge/controller
+integration tests with a synthetic Gateway. The
+[real-crypto hosted job](https://github.com/alikatgh/quenderin/actions/runs/39968738735)
 passed nine Rust tests, both generated-binding probes, both linked carrier probes,
-and both production backend probes at `26df619`. The first patched Host bundle
-also compiled; its isolated test configuration is being corrected before signoff.
-A fresh independent review covers the
-integrated source and its material fixes before publication.
+and both production backend probes at `26df619`. An isolated actual official
+Harness runtime fixture is being prepared separately; it is not yet execution
+evidence. Fresh independent reviews cover the integrated source and material
+fixes before publication.
 
 The initial companion targets macOS/Linux Hosts. Native Windows Host trust,
 durable Host command deduplication, Host execution/spending ceilings, interactive
@@ -373,8 +379,9 @@ cancellation. Store and real-provider activation gates remain separate.
 
 ## 4. Device trust, approvals and recovery
 
-- [ ] Reuse the fixed upstream Noise suite through maintained implementations;
-  establish native interoperability with upstream golden vectors.
+- [x] Reuse the fixed upstream Noise suite through maintained implementations;
+  establish native interoperability with upstream golden vectors and real linked
+  Swift/Kotlin backend probes (recorded above).
 - [ ] Add explicit Host confirmation and QR/fingerprint comparison for enrollment.
   Upstream's account-authorized first-use pinning alone is not bilateral pairing.
 - [ ] Version-gate any required Host changes for pairing, scopes and deduplication.
@@ -385,7 +392,8 @@ cancellation. Store and real-provider activation gates remain separate.
 - [ ] Reconcile lost acknowledgements against authoritative Host state.
 - [ ] Recover using current history snapshots and reopened streams; deduplicate
   events and detect gaps without replaying uncertain mutations.
-- [ ] Distinguish stop requested, stop confirmed and stop outcome unknown.
+- [x] Distinguish stop requested, receipt, confirmed stopped and outcome unknown
+  in both native controllers, with synthetic journey/regression coverage.
 - [ ] Define controller ownership when multiple devices attach to one session.
 - [ ] Recover on foreground return/relaunch while Host work can continue.
 - [ ] Keep any later notifications content-minimal and optional for correctness.

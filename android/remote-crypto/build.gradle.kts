@@ -5,11 +5,13 @@ plugins {
     kotlin("android") version "2.2.21"
 }
 
-val sdkDirectory = providers.gradleProperty("quenderin.remoteCryptoDir").orNull?.let { file(it) }
+// Avoid AGP's sdkDirectory property, which shadows that name inside android {}.
+val remoteCryptoSdkDirectory = providers.gradleProperty("quenderin.remoteCryptoDir").orNull?.let { file(it) }
     ?: throw GradleException("The real remote crypto module requires quenderin.remoteCryptoDir")
+val remoteCryptoJniDirectory = remoteCryptoSdkDirectory.resolve("jniLibs")
 val verifier = rootProject.file("../native/remote-crypto/tools/native_sdk.py")
 val verification = providers.exec {
-    commandLine("python3", verifier.absolutePath, "verify", "--platform", "android", "--sdk", sdkDirectory.absolutePath)
+    commandLine("python3", verifier.absolutePath, "verify", "--platform", "android", "--sdk", remoteCryptoSdkDirectory.absolutePath)
 }.result.get()
 require(verification.exitValue == 0) { "Remote crypto SDK provenance verification failed" }
 
@@ -28,16 +30,20 @@ android {
     kotlinOptions { jvmTarget = "17" }
     // Expose the generated source root in Android's model. Register the binding
     // directly with the external Kotlin compiler tasks below as well.
-    sourceSets["main"].java.srcDir(sdkDirectory.resolve("kotlin"))
-    sourceSets["main"].jniLibs.srcDir(sdkDirectory.resolve("jniLibs"))
+    sourceSets["main"].java.srcDir(remoteCryptoSdkDirectory.resolve("kotlin"))
+    sourceSets["main"].jniLibs.srcDir(remoteCryptoJniDirectory)
     packaging.jniLibs.keepDebugSymbols += setOf("**/libquenderin_remote_crypto.so", "**/libjnidispatch.so")
+}
+
+require(android.sourceSets["main"].jniLibs.srcDirs.any { it.canonicalFile == remoteCryptoJniDirectory.canonicalFile }) {
+    "Verified remote crypto JNI source root is absent from the Android packaging model"
 }
 
 // Check the actual compiler inputs, so lost source registration fails clearly
 // before unresolved UniFFI symbols rather than only checking the SDK's files.
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     if (name == "compileDebugKotlin" || name == "compileReleaseKotlin") {
-        val generatedBinding = sdkDirectory.resolve("kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt")
+        val generatedBinding = remoteCryptoSdkDirectory.resolve("kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt")
         source(generatedBinding)
         doFirst {
             val generated = generatedBinding.canonicalFile
