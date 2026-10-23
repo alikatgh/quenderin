@@ -261,7 +261,9 @@ impl NoiseIkSession {
         }
     }
 
-    pub fn close(&self) -> Result<(), NoiseError> { self.lock()?.close(); Ok(()) }
+    /// Close protocol state while retaining the language wrapper. Kotlin's
+    /// generated AutoCloseable.close() separately releases its object handle.
+    pub fn shutdown(&self) -> Result<(), NoiseError> { self.lock()?.close(); Ok(()) }
 }
 
 impl NoiseIkSession {

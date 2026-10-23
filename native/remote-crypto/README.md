@@ -18,7 +18,14 @@ The synchronous UniFFI surface is deliberately narrow:
   nonempty payloads before a response or transport state is created. Responders
   emit empty message 2 in `response`. It returns `complete = true` only after
   successful finalization. No application plaintext crosses the handshake API.
-- `encrypt`, `decrypt`, `counters`, and idempotent `close`.
+- `encrypt`, `decrypt`, `counters`, and idempotent `shutdown`.
+
+`shutdown` closes protocol state while retaining a usable language wrapper that
+returns a typed Closed error. Kotlin's generated `AutoCloseable.close()`/`use`
+releases its object handle separately; Swift releases the wrapper through ARC.
+Do not export a Rust method named `close`: it collides with UniFFI's generated
+Kotlin lifecycle method. Call `shutdown` when ending a session and then release
+the wrapper using its language's normal ownership rules.
 
 There is no public nonce setter, private-key generator/export, split-key access,
 deterministic entropy, caller-provided suite, or async task/callback. Generated
@@ -43,7 +50,7 @@ X25519 provider is wrapped only to reject an all-zero shared result; no primitiv
 is implemented here. Snow 0.10 does **not** promise erasure of all its internal
 DH/cipher/handshake copies, nor can UniFFI erase foreign-language caller copies.
 Closing drops Snow state and clears facade-owned buffers; complete process-memory
-erasure is not claimed. Callers must protect input lifetimes and close abandoned
+erasure is not claimed. Callers must protect input lifetimes and shut down abandoned
 sessions. A poisoned state lock fails closed.
 
 ## Source and fixture provenance
@@ -72,8 +79,8 @@ The path-limited/manual `.github/workflows/remote-crypto.yml` uses one public
 standard Ubuntu job, read-only checkout with credentials removed, no artifact
 uploads/cache/service provisioning, no retries, and a 15-minute timeout. It never
 loads actual user keys or contacts a provider, Host, relay, or production endpoint.
-Its only upstream input fetches are pinned source/dependency metadata and the
-2,960-byte public synthetic fixture.
+Its upstream input fetches are pinned source/dependencies, the 2,960-byte public
+synthetic fixture, and the hash-pinned host Kotlin compiler/JNA described below.
 
 If `Cargo.lock` is absent, the first hosted run may only resolve metadata and
 emit the complete lock between `BEGIN_QUENDERIN_REMOTE_CARGO_LOCK` and
@@ -99,8 +106,17 @@ cryptographic test or native compatibility result.
 
 After locked checks pass, generated Swift/Kotlin/header/module-map source is
 emitted as bounded gzip/base64 log blocks with filename, byte count and SHA-256.
+Before emitting it, the workflow compiles the actual generated Kotlin with the
+existing Kotlin 2.0.21 pin and JNA 5.19.1 (SHA-256
+`4fb141dd8ef6b0585ffceea4bc49602fbc6312fa977e2c488794ea3e6aafecae`), and the
+actual generated Swift/header/module map with the runner's included Linux Swift
+compiler. Both host probes call the same built `.so` for both-role empty IK,
+bidirectional encryption, counters, typed errors, tamper/replay continuation,
+shutdown and language-wrapper disposal. No generated template is patched to
+make a probe pass. Missing included Swift/JDK tools stop the workflow before
+downloads/builds; there is no Swift/JDK installation or substituted fake binding.
 Review, decode and retain those sources before integrating native consumers.
-The generated files are not themselves a platform binary compatibility check.
+These Linux host checks are not platform binary compatibility or Apple SDK checks.
 iOS 16.4/macOS 13.3, Android API 28, Android ABI/16 KiB alignment, matching UniFFI
 runtime dependencies, app linking and signed-device behavior remain unverified.
 No local native build, simulator/device run, model download, or real credential
