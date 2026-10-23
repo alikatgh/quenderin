@@ -187,6 +187,30 @@ def write_copy(source: Path, destination: Path) -> None:
         shutil.copyfileobj(src, dst)
 
 
+def android_toolchain_env(ndk: Path) -> dict[str, str]:
+    properties = {}
+    for line in (ndk / "source.properties").read_text().splitlines():
+        key, separator, value = line.partition("=")
+        if separator:
+            properties[key.strip()] = value.strip()
+    if properties.get("Pkg.Revision") != "26.3.11579264":
+        raise ValueError("Android NDK pin differs")
+    tools = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+    compiler = tools / "aarch64-linux-android28-clang"
+    archiver = tools / "llvm-ar"
+    for tool in (compiler, archiver):
+        if not tool.is_file() or not os.access(tool, os.X_OK):
+            raise ValueError("Pinned Android arm64 API28 compiler/archiver is unavailable")
+    # Cargo's linker setting does not configure cc-rs C dependencies such as ring.
+    # Scope both tools to this target, preserving the host bindgen build settings.
+    return {
+        "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER": str(compiler),
+        "CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS": "-C link-arg=-Wl,-z,max-page-size=16384",
+        "CC_aarch64_linux_android": str(compiler),
+        "AR_aarch64_linux_android": str(archiver),
+    }
+
+
 def build(out: Path, platform: str) -> None:
     if os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("CI") != "true":
         raise ValueError("Native SDK compilation is restricted to the bounded hosted workflow")
@@ -229,13 +253,7 @@ def build(out: Path, platform: str) -> None:
         run(command + ["-output", str(out / "QuenderinRemoteCryptoFFI.xcframework")], env, 180)
     else:
         ndk = Path(os.environ["ANDROID_NDK_HOME"])
-        if (ndk / "source.properties").read_text().find("Pkg.Revision = 26.3.11579264") < 0:
-            raise ValueError("Android NDK pin differs")
-        linker = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
-        if not linker.is_file():
-            raise ValueError("Pinned Android arm64 API28 linker is unavailable")
-        env.update(CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=str(linker),
-                   CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384")
+        env.update(android_toolchain_env(ndk))
         run(["cargo", "+1.90.0", "build", "--locked", "--release", "--lib", "--target", "aarch64-linux-android"], env)
         write_copy(work / "target/aarch64-linux-android/release/libquenderin_remote_crypto.so", out / "jniLibs/arm64-v8a/libquenderin_remote_crypto.so")
         write_copy(generated / KOTLIN, out / "kotlin" / KOTLIN)

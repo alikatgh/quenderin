@@ -97,4 +97,53 @@ class NativeSDKELFTests(unittest.TestCase):
         with self.assertRaises(ValueError): sdk.elf(self.fixture()[:80])
 
 
+class NativeSDKAndroidToolchainTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.ndk = Path(self.directory.name)
+        (self.ndk / "source.properties").write_text("Pkg.Desc = Android NDK\nPkg.Revision = 26.3.11579264\n")
+        tools = self.ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin"
+        tools.mkdir(parents=True)
+        self.compiler = tools / "aarch64-linux-android28-clang"
+        self.archiver = tools / "llvm-ar"
+        for tool in (self.compiler, self.archiver):
+            # Configuration-only fixture: no compiler or native build is executed.
+            tool.touch()
+            tool.chmod(0o755)
+
+    def test_c_dependencies_use_the_same_pinned_api28_compiler_and_ndk_archiver(self):
+        env = sdk.android_toolchain_env(self.ndk)
+        self.assertEqual(env["CC_aarch64_linux_android"], str(self.compiler))
+        self.assertEqual(env["CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"], env["CC_aarch64_linux_android"])
+        self.assertEqual(env["AR_aarch64_linux_android"], str(self.archiver))
+        self.assertIn("max-page-size=16384", env["CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS"])
+        self.assertNotIn("CC", env)
+        self.assertNotIn("AR", env)
+
+    def test_missing_compiler_or_archiver_fails_instead_of_falling_back_to_path(self):
+        for tool in (self.compiler, self.archiver):
+            with self.subTest(tool=tool.name):
+                tool.unlink()
+                with self.assertRaisesRegex(ValueError, "compiler/archiver is unavailable"):
+                    sdk.android_toolchain_env(self.ndk)
+                tool.touch()
+                tool.chmod(0o755)
+
+    def test_nonexecutable_tool_fails(self):
+        for tool in (self.compiler, self.archiver):
+            with self.subTest(tool=tool.name):
+                tool.chmod(0o644)
+                with self.assertRaisesRegex(ValueError, "compiler/archiver is unavailable"):
+                    sdk.android_toolchain_env(self.ndk)
+                tool.chmod(0o755)
+
+    def test_changed_or_similarly_prefixed_ndk_revision_fails(self):
+        for revision in ["27.0.12077973", "26.3.115792640"]:
+            with self.subTest(revision=revision):
+                (self.ndk / "source.properties").write_text(f"Pkg.Revision = {revision}\n")
+                with self.assertRaisesRegex(ValueError, "NDK pin differs"):
+                    sdk.android_toolchain_env(self.ndk)
+
+
 if __name__ == "__main__": unittest.main()

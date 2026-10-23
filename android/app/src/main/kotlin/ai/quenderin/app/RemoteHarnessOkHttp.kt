@@ -23,7 +23,7 @@ internal fun remoteHarnessHTTPClient() = OkHttpClient.Builder()
     .readTimeout(15, TimeUnit.SECONDS).writeTimeout(10, TimeUnit.SECONDS).build()
 
 class RemoteHarnessOkHttpAPI internal constructor(private val calls: (Request) -> Call) : RemoteHarnessClientAPI {
-    constructor() : this(run { val client = remoteHarnessHTTPClient(); { request: Request -> client.newCall(request) } })
+    constructor() : this(kotlin.run { val client = remoteHarnessHTTPClient(); { request: Request -> client.newCall(request) } })
     override fun login(origin: String, email: String, password: CharArray): RemoteHarnessClientLogin {
         val result = request(origin, "/api/v1/auth/login", "POST", RemoteHarnessJSON.obj(
             "email" to RemoteHarnessJSON.str(email), "password" to RemoteHarnessJSON.str(password.concatToString())))
@@ -108,7 +108,7 @@ class RemoteHarnessOkHttpSockets internal constructor(
     private val open: (Request, WebSocketListener) -> WebSocket,
 ) : RemoteHarnessClientSocketFactory {
     constructor(dispatch: (() -> Unit) -> Unit, now: () -> Long) : this(dispatch, now,
-        run { val client = remoteHarnessHTTPClient().newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+        kotlin.run { val client = remoteHarnessHTTPClient().newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build()
             val factory: (Request, WebSocketListener) -> WebSocket = { request, listener -> client.newWebSocket(request, listener) }
             factory })
     override fun connect(origin: String, listener: RemoteHarnessClientSocketListener): RemoteHarnessClientSocket {

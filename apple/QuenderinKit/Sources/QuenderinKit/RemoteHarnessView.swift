@@ -196,7 +196,10 @@ public struct RemoteHarnessView: View {
             if !controller.approvals.isEmpty { approvalControls }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                TextField("Task for this computer", text: Binding(get: { controller.journal.draft }, set: controller.updateDraft), axis: .vertical)
+                TextField("Task for this computer", text: Binding(
+                    get: { controller.journal.draft },
+                    set: { value in controller.updateDraft(value) }
+                ), axis: .vertical)
                     .lineLimit(2...8).textFieldStyle(.roundedBorder).accessibilityIdentifier("remote-composer")
                 HStack {
                     Text(stopLabel).font(.caption).foregroundStyle(.secondary)

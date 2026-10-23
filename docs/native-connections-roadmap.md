@@ -344,10 +344,14 @@ history and Stop remain available.
 
 Pre-publication evidence: Android controller journey 51 checks; production pinned
 OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
-the 12 shared canonical digest cases; SDK receipt/source tests 18. Swift frontend
+the 12 shared canonical digest cases; SDK receipt/source tests 22. Swift frontend
 syntax parsing passes. These are synthetic/source checks. Hosted Swift tests,
-real SDK/app builds, linked production backend probes and patched Host compilation
-are still pending on this candidate. A fresh independent review covers the
+real SDK/app builds and patched Host integration tests are still pending on this
+candidate. The [real-crypto hosted job](https://github.com/alikatgh/quenderin/actions/runs/39968738735)
+passed nine Rust tests, both generated-binding probes, both linked carrier probes,
+and both production backend probes at `26df619`. The first patched Host bundle
+also compiled; its isolated test configuration is being corrected before signoff.
+A fresh independent review covers the
 integrated source and its material fixes before publication.
 
 The initial companion targets macOS/Linux Hosts. Native Windows Host trust,

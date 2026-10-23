@@ -43,6 +43,7 @@ jobs:
           python3 -B native/remote-host/tools/prepare_host.py upstream
           python3 -B native/remote-host/tools/prepare_host.py upstream --apply
           cp native/remote-host/tests/bridge.integration.test.ts upstream/packages/plugin/tests/quenderin-host.integration.test.ts
+          cp native/remote-host/tests/vitest.config.mjs upstream/packages/plugin/tests/quenderin-vitest.config.mjs
       - name: Select the upstream locked package manager
         run: |
           corepack enable
@@ -55,4 +56,4 @@ jobs:
         run: timeout 480 pnpm --filter './packages/**' -r build
       - name: Verify actual Gateway integration tests
         working-directory: upstream/packages/plugin
-        run: timeout 120 pnpm exec vitest run tests/quenderin-host.integration.test.ts
+        run: timeout 120 pnpm exec vitest run --config tests/quenderin-vitest.config.mjs
