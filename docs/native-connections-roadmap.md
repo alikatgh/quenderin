@@ -26,7 +26,7 @@ Native Quenderin (SwiftUI / Kotlin Compose)
         -> Host Remote plugin -> DeepSeek Harness -> Host tools / model provider
 ```
 
-## 1. Native connection and conversation contracts — current work
+## 1. Native connection and conversation contracts — foundation complete
 
 Acceptance: both native cores represent all three destinations, preserve complete
 provider messages and remote recovery identities, reject unsafe profiles and
@@ -47,17 +47,17 @@ these contracts. The existing local engine remains the local adapter.
   changing their execution destination.
 - [x] Require a new conversation/explicit transfer for a destination change;
   define a fail-closed matching check before dispatch.
-- [ ] Test round trips, migrations, unknown schema versions, malformed data,
+- [x] Test round trips, migrations, unknown schema versions, malformed data,
   unsafe endpoints and cross-destination/approval identity mismatches.
 - [x] Wire the contract fixtures and parity check into bounded hosted checks.
-- [ ] Obtain independent review, resolve findings and publish the verified
+- [x] Obtain independent review, resolve findings and publish the verified
   foundation increment for online review.
 
 Principal seams: `apple/QuenderinKit`, `apple/QuenderinApp`,
 `android/quenderin-core`, `android/app` and `shared/`. Keep UI bubbles as a
 projection; their user/assistant-only shape cannot replace provider history.
 
-## 2. First-class native DeepSeek provider
+## 2. First-class native DeepSeek provider — next work
 
 - [ ] Add provider setup, secure credential entry, connection validation and
   actionable authentication/quota/network errors.
@@ -251,17 +251,36 @@ Refresh account-specific facts before release; use `docs/RELEASE.md`.
   original local path until the next integration step. Supported histories can
   migrate in memory; role-incompatible legacy attachments fail with their
   original bytes retained, rather than being dropped or relabelled.
-- Local host evidence before independent review: 97 canonical Kotlin fixtures,
-  16 additional behavior checks, 337 existing Kotlin core checks and 14 Python
-  evidence-guard tests passed. Swift source syntax parsing passed; hosted Swift
-  compilation/execution is still pending. Staged JavaScript and Python secret
-  pattern scans passed. Independent review and final evidence follow below.
+- Local host evidence: 104 canonical Kotlin fixtures, 16 additional behavior
+  checks, 337 existing Kotlin core checks and 14 Python evidence-guard tests
+  passed. Swift source syntax parsing passed. Staged JavaScript and Python
+  secret pattern scans passed before publication.
 - Independent review found two platform differences: unnamed attachments on
   Kotlin and malformed/leading-zero IPv6 forms on Swift. Both were fixed and
   regression fixtures added. Final targeted review reported no remaining
-  material findings for this inactive foundation. Primary Kotlin verification
-  passed all 104 canonical fixtures and 16 behavior checks. Hosted Swift
-  compilation/tests remain the next required foundation check.
+  material findings for this inactive foundation.
+- Published foundation source: `2a73344e6310d5abffe14432c524868ce9d59a40`,
+  [review PR 170](https://github.com/alikatgh/quenderin/pull/170).
+  [Hosted CI 39894029320](https://github.com/alikatgh/quenderin/actions/runs/39894029320)
+  passed the full QuenderinKit job: 624 tests, 6 skipped, zero failures, including
+  23 foundation test methods and all 104 canonical fixture executions. The iOS
+  app SDK build also passed; no simulator was booted or exercised. Android's
+  hosted core job passed, including its existing core suite, all 104 canonical
+  fixtures, 16 behavior checks and the evidence guard. The separate hosted
+  [secret scan](https://github.com/alikatgh/quenderin/actions/runs/39894029240)
+  passed. The broader CI dependency audit still fails on unchanged dependencies;
+  that release prerequisite remains open in section 9.
+- This is a source foundation, not connected inference, remote Host control,
+  rendered native validation or an App Store/Play submission. Next: section 2,
+  native secure credential storage and fake-transport DeepSeek streaming, before
+  enabling the remote-only native setup/chat journey.
+- Session storage: reused the existing source checkout (69,832,704 allocated
+  bytes, up 307,200 from this task's baseline) and installed no dependencies.
+  Nine verified disposable compiler outputs/logs (20,244,214 apparent bytes)
+  were removed; registered scratch cleanup completed with no retained scratch.
+  The source checkout remains for online/local review and is removed only on
+  explicit request. Volume-wide free-space/swap changes are separate from these
+  measured task paths.
 
 ### Foundation publication classification
 
