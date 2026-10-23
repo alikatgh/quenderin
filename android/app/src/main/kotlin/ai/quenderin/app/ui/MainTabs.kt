@@ -71,6 +71,7 @@ fun MainTabs(
     model: ModelEntry,
     conversations: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
+    onOpenDeepSeek: () -> Unit = {},
 ) {
     var tab by remember { mutableIntStateOf(0) }
     // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
@@ -133,6 +134,7 @@ fun MainTabs(
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 2)) {
                 SettingsScreen(
+                    onOpenDeepSeek = onOpenDeepSeek,
                     active = tab == 2,
                     suspendForSpecialist = engine::suspendForSpecialist,
                     model = model,

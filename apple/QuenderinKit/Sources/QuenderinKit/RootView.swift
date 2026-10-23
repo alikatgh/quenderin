@@ -14,6 +14,7 @@ public struct RootView: View {
     /// iOS tab selection — programmatic so the chat→agent handoff can jump to the Agent tab.
     @State private var tab = 0
     @State private var showImagesBeforeChat = false
+    @State private var showDeepSeek = false
     @State private var showStep5BeforeChat = false
     @StateObject private var step5BeforeChat = Step5Controller()
     @State private var showVisionBeforeChat = false
@@ -51,20 +52,31 @@ public struct RootView: View {
                     .task(id: model.id) { conversations.activeModelID = model.id }
             } else {
                 OnboardingView(model: onboarding)
-                    .overlay(alignment: .topTrailing) {
-                        Menu {
-                            Button { showVisionBeforeChat = true } label: { Label("Still image", systemImage: "photo.viewfinder") }
-                            Button { showStep5BeforeChat = true } label: { Label("Step 5", systemImage: "server.rack") }
-                            Button { showImagesBeforeChat = true } label: { Label("Images", systemImage: "photo") }
-                            Button { showGraniteBeforeChat = true } label: { Label("Granite 4.1", systemImage: "text.bubble") }
-                        } label: { Label("More models", systemImage: "square.stack") }
-                            .padding()
+                    .safeAreaInset(edge: .top) {
+                        VStack(alignment: .trailing, spacing: 8) {
+                            Button { showDeepSeek = true } label: {
+                                Label("Chat with DeepSeek · no model download", systemImage: "network")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("deepseek-before-download")
+                            Menu {
+                                Button { showVisionBeforeChat = true } label: { Label("Still image", systemImage: "photo.viewfinder") }
+                                Button { showStep5BeforeChat = true } label: { Label("Step 5", systemImage: "server.rack") }
+                                Button { showImagesBeforeChat = true } label: { Label("Images", systemImage: "photo") }
+                                Button { showGraniteBeforeChat = true } label: { Label("Granite 4.1", systemImage: "text.bubble") }
+                            } label: { Label("More models", systemImage: "square.stack") }
+                        }.padding(.horizontal).padding(.vertical, 8)
                     }
             }
         }
         .quenderinWindowCanvas()
         // Appearance → Theme (nil = follow the system, the default).
         .preferredColorScheme(settings.theme.colorScheme)
+        .sheet(isPresented: $showDeepSeek) {
+            DeepSeekView(showsDoneButton: true)
+                .quenderinSheetWindowCanvas()
+        }
         .sheet(isPresented: $showImagesBeforeChat) {
             ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
                 .quenderinSheetWindowCanvas()
@@ -115,6 +127,9 @@ public struct RootView: View {
                     })
                         .tabItem { Label("Chat", systemImage: "bubble.left") }
                         .tag(0)
+                    DeepSeekView()
+                        .tabItem { Label("DeepSeek", systemImage: "network") }
+                        .tag(6)
                     if let agent {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }

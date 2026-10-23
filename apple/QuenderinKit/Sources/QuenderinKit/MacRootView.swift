@@ -62,6 +62,8 @@ public struct MacRootView: View {
                 ModelsLibraryView(activeModelID: model.id, onSelectModel: { onboarding.beginInstall($0) })
             case .images:
                 ImageGenerationView(suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
+            case .deepseek:
+                DeepSeekView()
             case .about:
                 AboutView()
             }
@@ -334,7 +336,7 @@ private struct SidebarChatRow: View {
 /// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
 /// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
 enum RailSection: Hashable {
-    case chats, agent, search, models, images, about
+    case chats, agent, search, models, images, deepseek, about
 }
 
 extension MacRootView {
@@ -349,6 +351,10 @@ extension MacRootView {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
             railButton(.search, icon: "magnifyingglass", label: "Search (⌘F)", palette: p)
+            VStack(spacing: 0) {
+                railButton(.deepseek, icon: "network", label: "DeepSeek cloud chat", palette: p)
+                Text("DeepSeek").font(.system(size: 10)).foregroundStyle(p.onSurfaceVariant)
+            }
             railButton(.images, icon: "photo", label: "Images (⌘5)", palette: p)
             railButton(.models, icon: "books.vertical", label: "Model library (⌘4)", palette: p)
                 .overlay(alignment: .topTrailing) {

@@ -9,4 +9,6 @@
     <exclude domain="file" path="models/" />
     <exclude domain="file" path="conversations/" />
     <exclude domain="file" path="approved-memories/" />
+    <exclude domain="sharedpref" path="deepseek_credentials.xml" />
+    <exclude domain="sharedpref" path="deepseek_profile.xml" />
 </full-backup-content>

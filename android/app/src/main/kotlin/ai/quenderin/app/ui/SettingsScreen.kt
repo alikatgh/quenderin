@@ -70,6 +70,7 @@ fun SettingsScreen(
     model: ModelEntry,
     persistence: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
+    onOpenDeepSeek: () -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
     active: Boolean = true,
@@ -117,6 +118,10 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
         )
+        SettingsGroup("Cloud connections") {
+            Text("DeepSeek text chat uses your API account and separate cloud conversations.", style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = onOpenDeepSeek) { Text("Open DeepSeek") }
+        }
         SettingsGroup(stringResource(R.string.settings_speed)) {
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control
             // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
