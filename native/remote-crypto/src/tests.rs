@@ -224,7 +224,7 @@ fn rejects_invalid_context_keys_order_and_message_bounds() {
     let max = vec![0x5a; MAX_MESSAGE - TAG];
     let encrypted = initiator.encrypt(max.clone()).unwrap();
     assert!(encrypted.len() == MAX_MESSAGE && responder.decrypt(encrypted).unwrap() == max);
-    initiator.close().unwrap(); initiator.close().unwrap();
+    initiator.shutdown().unwrap(); initiator.shutdown().unwrap();
     assert_eq!(initiator.encrypt(vec![]), Err(NoiseError::Closed));
 }
 
