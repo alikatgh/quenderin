@@ -56,5 +56,13 @@
     "packages/plugin/src/rpc-router.ts",
     "packages/plugin/src/connection-controller.ts",
     "apps/server/src/store.ts"
+  ],
+  "extensions": [
+    {
+      "capability": "quenderin.approvals.v1",
+      "callEndpoint": "quenderin/approval",
+      "implementation": "native/remote-host",
+      "scope": "Explicit authenticated client/Host public pins; Host supplies quenderinBinding for a live workspace/session/turn/action/event, at most120s, and consumes once before official result dispatch. Native compares current scope and pending event. Legacy $events/result remains encoding-only and cannot dispatch. Missing extension/context requires computer approval."
+    }
   ]
 }

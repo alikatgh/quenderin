@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "origin": "Original Quenderin fixtures; canonical strings and SHA-256 verified against native/remote-host/quenderin-host-policy.mjs actionDigest with Node JSON enumeration.",
+  "numericPolicy": "Android fails closed outside finite IEEE-754 fixed decimal values within safe integer magnitude. Swift supports finite Double normalization, including scientific notation, unsafe integer normalization and subnormals; nonfinite values fail closed on both platforms.",
+  "expectationPolicy": "nativeExpectation retains the conservative Android/default expectation; swiftExpectation, when present, explicitly overrides it for Swift canonicalization and digest tests.",
+  "cases": [
+    {
+      "id": "numeric-index-enumeration",
+      "wireJSON": "{\"2\":\"b\",\"10\":\"a\"}",
+      "canonicalJSON": "{\"2\":\"b\",\"10\":\"a\"}",
+      "sha256": "b6e3a5de6007a9d717e70a63d7a5925fbad17a4c8b911a64354b0adf21956d06",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "numeric-index-boundaries",
+      "wireJSON": "{\"4294967295\":\"ordinary\",\"01\":\"leading\",\"10\":\"ten\",\"4294967294\":\"last-index\",\"0\":\"zero\",\"2\":\"two\",\"a\":\"tail\"}",
+      "canonicalJSON": "{\"0\":\"zero\",\"2\":\"two\",\"10\":\"ten\",\"4294967294\":\"last-index\",\"01\":\"leading\",\"4294967295\":\"ordinary\",\"a\":\"tail\"}",
+      "sha256": "dfd522c0bac2a08d338cfdd027471b47d5abf7da6e4a0db4b61918bd92b164b2",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "number-normalization",
+      "wireJSON": "{\"decimal\":1.0,\"negativeZero\":-0,\"rounded\":1.0000000000000001,\"exponent\":1e-6}",
+      "canonicalJSON": "{\"decimal\":1,\"exponent\":0.000001,\"negativeZero\":0,\"rounded\":1}",
+      "sha256": "aa6e9401dad67a5f7a26a8a77a3c24db8ba85bed983e04b0864dc9b4319f350e",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "minimum-fixed-decimal",
+      "wireJSON": "{\"value\":0.000001}",
+      "canonicalJSON": "{\"value\":0.000001}",
+      "sha256": "bc1c982dd4e677d72ff5821cc67554e045e838a31ddc55fa0fdb1a32d5a1dce9",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "large-exponent-unsupported",
+      "swiftExpectation": "digest",
+      "wireJSON": "{\"value\":1e21}",
+      "canonicalJSON": "{\"value\":1e+21}",
+      "sha256": "776bf0d292f3767fdfca3fdc9683d0ba51886b8e6e79cd228a41bafcfa9a1a6f",
+      "hostExpectation": "digest",
+      "nativeExpectation": "reject"
+    },
+    {
+      "id": "small-exponent-unsupported",
+      "swiftExpectation": "digest",
+      "wireJSON": "{\"value\":1e-7}",
+      "canonicalJSON": "{\"value\":1e-7}",
+      "sha256": "910750038eb30a40d06da88009b6259aabaf3751b3cb212c616d51abb6b008a4",
+      "hostExpectation": "digest",
+      "nativeExpectation": "reject"
+    },
+    {
+      "id": "unsafe-integer-unsupported",
+      "swiftExpectation": "digest",
+      "wireJSON": "{\"value\":9007199254740992}",
+      "canonicalJSON": "{\"value\":9007199254740992}",
+      "sha256": "3b0d9a238f369ef1d4cb7182e6ca467e10b5501cbab84e9c80d1d91053253504",
+      "hostExpectation": "digest",
+      "nativeExpectation": "reject"
+    },
+    {
+      "id": "subnormal-unsupported",
+      "swiftExpectation": "digest",
+      "wireJSON": "{\"value\":5e-324}",
+      "canonicalJSON": "{\"value\":5e-324}",
+      "sha256": "8f275eb622ce665f3cf21739b40600308dcea7c36627451f1c210a4152343c85",
+      "hostExpectation": "digest",
+      "nativeExpectation": "reject"
+    },
+    {
+      "id": "nonfinite-rejected",
+      "wireJSON": "{\"value\":1e309}",
+      "hostExpectation": "reject",
+      "nativeExpectation": "reject"
+    },
+    {
+      "id": "zero-exponent-normalization",
+      "wireJSON": "{\"value\":0e999999}",
+      "canonicalJSON": "{\"value\":0}",
+      "sha256": "23d7b286bd429460b92a2a1c21b6afc34110446c5034c17363fda363aa0a7c5d",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "utf16-unicode-and-slashes",
+      "wireJSON": "{\"😀\":\"emoji\",\"\":\"private\",\"a\":\"https://example.org/a/b\",\"/\":\"\\u2028\"}",
+      "canonicalJSON": "{\"/\":\" \",\"a\":\"https://example.org/a/b\",\"😀\":\"emoji\",\"\":\"private\"}",
+      "sha256": "3887c46aac0058b6f980b544b0f5fa71a9a8db85b05165bcc56d1979f0ffdb93",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    },
+    {
+      "id": "nested-numeric-keys",
+      "wireJSON": "{\"request\":{\"10\":\"a\",\"2\":\"b\"},\"array\":[{\"3\":-0,\"1\":1.0}]}",
+      "canonicalJSON": "{\"array\":[{\"1\":1,\"3\":0}],\"request\":{\"2\":\"b\",\"10\":\"a\"}}",
+      "sha256": "303d66e724d7c5781f561bdf078883cdc3f8f0bfc0e30dabe7a78d3c4adc8159",
+      "hostExpectation": "digest",
+      "nativeExpectation": "digest"
+    }
+  ]
+}

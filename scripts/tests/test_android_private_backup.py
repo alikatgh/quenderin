@@ -29,7 +29,7 @@ class PrivateBackupTests(unittest.TestCase):
                                for prefix in exclusions)
                 for path in ("approved-memories/facts.json", "approved-memories/nested/fact.json",
                              "conversations/index.json", "conversations/chat/messages.json",
-                             "models/model.gguf"):
+                             "models/model.gguf", "remote-harness/credentials.bin", "remote-harness/session.json"):
                     self.assertTrue(excluded(path), f"{name} would back up {path}")
                 self.assertFalse(excluded("ordinary-app-state.json"))
 

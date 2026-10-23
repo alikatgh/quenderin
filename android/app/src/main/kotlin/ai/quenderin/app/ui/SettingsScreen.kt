@@ -71,6 +71,7 @@ fun SettingsScreen(
     persistence: ConversationPersistence,
     onSelectModel: (ModelEntry) -> Unit,
     onOpenDeepSeek: () -> Unit = {},
+    onOpenComputer: () -> Unit = {},
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
     active: Boolean = true,
@@ -121,6 +122,7 @@ fun SettingsScreen(
         SettingsGroup("Cloud connections") {
             Text("DeepSeek text chat uses your API account and separate cloud conversations.", style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(onClick = onOpenDeepSeek) { Text("Open DeepSeek") }
+            OutlinedButton(onClick = onOpenComputer) { Text("My computer · DeepSeek Harness") }
         }
         SettingsGroup(stringResource(R.string.settings_speed)) {
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control

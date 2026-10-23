@@ -32,13 +32,27 @@ Android discovery: [PR #177](https://github.com/alikatgh/quenderin/pull/177),
 source `d937e79bd058f415eb0565b5def0880448a38aa6`, merged as
 `518af0679d3157809a5f3adc9f828b230df07a39` after all 18 CI jobs, crypto
 host checks and secret scan passed.
-Next milestone: native crypto SDK packaging, origin-scoped enrollment, Host trust
-confirmation and the native remote-session interface. No live relay/Host target
-has been supplied. App Store Connect is signed out in the required Apple Developer
-profile, so current Xcode Cloud capacity remains unverified; its login tab is open.
+Current mission: operate a DeepSeek Harness on the user's computer through a
+complete native task/session interface. Store submission is deferred by the user.
+The active `codex/native-remote-journey-20261023` candidate adds SDK packaging,
+origin-scoped enrollment, full identity confirmation, the native Apple/Android
+session interfaces, and a pinned Host approval companion. Source review and
+hosted compilation are separate gates below; a live relay/Host target has not
+been supplied.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
+
+The immediate completion sequence is:
+
+1. Integrate enrollment, actual native crypto SDK and the complete session flow.
+2. Independently review trust, credential recovery, approvals and history recovery.
+3. Pass synthetic controller/network/Host journeys and compile both real apps
+   with the actual generated SDKs on bounded public hosted runners.
+4. Publish the reviewed passing source to `main` with secret scans.
+5. Verify a user-operated relay/Host separately, then address rendered/signed
+   native validation through an authorized route. Existing no-device/no-simulator
+   constraints remain in force. Store submission follows later.
 
 | Destination | Model execution | Tool execution | Credentials |
 | --- | --- | --- | --- |
@@ -312,6 +326,47 @@ confirmation. Keep that gate open and negotiate its support before enabling the
 approval journey. Remote-service credential bundles need their own origin/device/
 role-scoped secure format, separate from the direct DeepSeek API-key format.
 
+### Native application journey candidate
+
+The active candidate connects the earlier carrier/Noise work to actual native
+entry points, account/device enrollment, bounded REST/WebSocket transports,
+workspace/session/model selection, a text/tool timeline, bound approvals, Stop,
+and isolated draft/session recovery. It also adds real generated SDK packaging
+and unsigned hosted Apple/Android app-link checks. Missing SDKs report
+unavailable; production never substitutes fixture cryptography.
+
+The [Host companion](../native/remote-host/README.md) is pinned to Remote 0.5.17
+at the revision above. It requires explicit public identity pins, rejects legacy
+approval and alternate privileged RPC routes, and binds a decision to the exact
+device/workspace/session/turn/action/event with a finite lifetime. The native
+apps keep Create/Send/Model read-only until that capability is authenticated;
+history and Stop remain available.
+
+Pre-publication evidence: Android controller journey 51 checks; production pinned
+OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
+the 12 shared canonical digest cases; SDK receipt/source tests 18. Swift frontend
+syntax parsing passes. These are synthetic/source checks. Hosted Swift tests,
+real SDK/app builds, linked production backend probes and patched Host compilation
+are still pending on this candidate. A fresh independent review covers the
+integrated source and its material fixes before publication.
+
+The initial companion targets macOS/Linux Hosts. Native Windows Host trust,
+durable Host command deduplication, Host execution/spending ceilings, interactive
+questions and later file/terminal parity remain separate unchecked work. Android
+leaves approval actions outside its supported canonical numeric range unavailable
+remotely. Host-restart approval recovery may require answering on the computer.
+No provider call, relay activation, native-device/simulator run or store submission
+has occurred in this increment.
+
+Publication classification: source pushes run the existing checks plus bounded,
+read-only public standard Ubuntu/macOS compilation jobs. The repository's public
+visibility was refreshed on 23 October. GitHub's current
+[standard-runner policy](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
+includes these public-repository runners without minute charges. The new jobs use
+no provider/app credentials, funded service, cache/artifact upload, signing,
+deployment, or store action; each has a finite timeout and superseded-run
+cancellation. Store and real-provider activation gates remain separate.
+
 ## 4. Device trust, approvals and recovery
 
 - [ ] Reuse the fixed upstream Noise suite through maintained implementations;
@@ -415,14 +470,16 @@ test targets/plans/actions without silently starting prohibited runs.
 These are dated repository observations, not freshly verified store states.
 Refresh account-specific facts before release; use `docs/RELEASE.md`.
 
-- [ ] Repair the existing dependency-audit failure and restore relevant CI.
+- [x] Repair the existing dependency-audit failure and restore relevant CI
+  (PR #170; later merged source also passed all 18 jobs).
 - [ ] Refresh Apple's submitted 0.5.0 (22) status, build counters and messages.
 - [ ] Update the existing Xcode Cloud workflow's source/branch selection; preserve
   Prism provenance, payload, signing and deployment-metadata gates.
 - [ ] Verify included Cloud capacity and effective spending controls before runs.
 - [ ] Recover the matching Android private upload key or perform an explicitly
   authorized official reset; do not repeat disproven password/store searches.
-- [ ] Repin/validate Android export source: existing workflow hardcodes `eecf089`.
+- [x] Replace the hardcoded Android export source with a validated immutable
+  source input and verified provenance (PR #172); this is not a new signed AAB.
 - [ ] Verify Android signed certificate, source receipt, real JNI payload and
   16 KiB alignment. Existing API 36 target needs no speculative target bump.
 - [ ] Refresh Alpha/production eligibility and fulfill actual closed-test gates.

@@ -35,6 +35,7 @@ require(runtimeName in listOf("standard", "prism")) { "quenderin.runtime must be
 val llamaSource = providers.gradleProperty("quenderin.llamaDir").orNull?.let { file(it) }
     ?: file("../jni/llama.cpp")
 val nativeLlama = llamaSource.resolve("include/llama.h").isFile
+val nativeRemoteCrypto = providers.gradleProperty("quenderin.remoteCryptoDir").isPresent
 val diffusionLibDir = providers.gradleProperty("quenderin.diffusionLibDir").orNull?.let { file(it) }
 if (diffusionLibDir != null) {
     val stamp = JsonSlurper().parse(diffusionLibDir.resolve("quenderin-diffusion-runtime.json")) as Map<*, *>
@@ -72,6 +73,8 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "0.5.0"
+
+        if (nativeRemoteCrypto) ndk { abiFilters += listOf("arm64-v8a") }
         
         buildConfigField("boolean", "QUENDERIN_VULKAN", if (enableVulkan) "true" else "false")
         // Compile-time mirror of "will this APK load libquenderin_llama.so?" — UI/Settings read it.
@@ -113,7 +116,8 @@ android {
             // (bug journal 2026-07-02: 0 devices until useLegacyPackaging=true).
             useLegacyPackaging = true
             // The image builder strips and seals these bytes before packaging.
-            keepDebugSymbols += setOf("**/libquenderin_diffusion.so", "**/libquenderin_diffusion_jni.so")
+            keepDebugSymbols += setOf("**/libquenderin_diffusion.so", "**/libquenderin_diffusion_jni.so",
+                "**/libquenderin_remote_crypto.so", "**/libjnidispatch.so")
         }
     }
 
@@ -176,6 +180,7 @@ gradle.taskGraph.whenReady {
 
 dependencies {
     implementation(project(":quenderin-core"))
+    if (nativeRemoteCrypto) implementation(project(":remote-crypto"))
 
     val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
     implementation(composeBom)

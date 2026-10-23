@@ -28,3 +28,9 @@ include(":quenderin-core")
 // The Jetpack Compose app over the brain. Boots on the mock engine; the JNI llama.cpp
 // build is opt-in (see android/INTEGRATION.md). Needs the Android SDK + AGP to build.
 include(":app")
+
+// No generated bindings/JNA in the portable JVM core. Explicit native artifacts
+// add the real Android provider; absent artifacts expose an unavailable backend.
+if (providers.gradleProperty("quenderin.remoteCryptoDir").isPresent) {
+    include(":remote-crypto")
+}

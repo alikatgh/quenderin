@@ -8,12 +8,15 @@ public struct RemoteHarnessBinding: Sendable, Equatable, NativeConnectionPrivate
     public let hostID: String
     public let workspaceID: String?
     public let sessionID: String?
-    public init(generation: UInt64, hostID: String, workspaceID: String? = nil, sessionID: String? = nil) throws {
+    public let clientDeviceID: String?
+    public init(generation: UInt64, hostID: String, workspaceID: String? = nil, sessionID: String? = nil, clientDeviceID: String? = nil) throws {
         guard generation > 0, !hostID.isEmpty, hostID.utf8.count <= 1_024,
               workspaceID == nil || !(workspaceID?.isEmpty ?? true), sessionID == nil || workspaceID != nil,
               sessionID == nil || !(sessionID?.isEmpty ?? true), (workspaceID?.utf8.count ?? 0) <= 1_024,
-              (sessionID?.utf8.count ?? 0) <= 1_024 else { throw RemoteHarnessError.bindingMismatch }
+              (sessionID?.utf8.count ?? 0) <= 1_024,
+              clientDeviceID == nil || !(clientDeviceID?.isEmpty ?? true), (clientDeviceID?.utf8.count ?? 0) <= 1_024 else { throw RemoteHarnessError.bindingMismatch }
         self.generation = generation; self.hostID = hostID; self.workspaceID = workspaceID; self.sessionID = sessionID
+        self.clientDeviceID = clientDeviceID
     }
 }
 
@@ -68,6 +71,9 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     /// Preserves tool arguments, nested data, and unknown fields. Upstream does
     /// not establish run/digest/expiry binding, so it cannot authorize either decision.
     public let request: RemoteHarnessJSON
+    public let extensionBinding: RemoteHarnessApprovalBinding?
+    /// Authenticated Host carrier timestamp, never the phone's wall clock.
+    public let hostTimestamp: Int64
 }
 
 /// Serialized deterministic carrier. The adapter must call expireDeadlines on
@@ -105,9 +111,13 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     private var maximumGeneration: UInt64 = 0
     private var everConnected = false
     private var negotiated = false
+    private var approvalExtension = false
+    private var activeRunID: String?
     private var recoveryRequired = false
     private var eventClientID: String?
     private var approvals: [String: RemoteHarnessPendingApproval] = [:]
+    private var seenApprovalIDs = Set<String>()
+    private var approvalDeadlines: [String: Int64] = [:]
     private var stopOrdinal: UInt64?
     public private(set) var binding: RemoteHarnessBinding?
     public private(set) var stopState: RemoteHarnessStopState = .notRequested
@@ -129,6 +139,8 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         if binding != nil { disconnect() }
         guard maximumGeneration == authenticatedBinding.generation, binding == nil else { throw RemoteHarnessError.bindingMismatch }
         binding = authenticatedBinding; negotiated = false; recoveryRequired = everConnected; everConnected = true
+        activeRunID = nil
+        seenApprovalIDs.removeAll(); approvalDeadlines.removeAll()
         ordinal = 0; streamOrdinal = 0; usedStreams.removeAll(); stopOrdinal = nil; stopState = .notRequested
     }
     public func nextStreamID() throws -> String {
@@ -150,6 +162,16 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         // session/run/digest/expiry binding. Both approval decisions remain
         // encoding-only until a negotiated Host extension establishes it.
         if operation.endpoint == "$events/result" { throw RemoteHarnessError.approvalBindingUnavailable }
+        if operation.endpoint == "quenderin/approval" {
+            guard approvalExtension, let eventID = operation.approvalEventID, let pending = approvals[eventID],
+                  let clientID = operation.approvalClientID, pending.clientID.utf8.elementsEqual(clientID.utf8), let extended = operation.approvalBinding,
+                  let original = pending.extensionBinding, extended.exactlyMatches(original), extended.runID == activeRunID,
+                  let expiry = approvalDeadlines[eventID], clock.monotonicMilliseconds >= 0, clock.monotonicMilliseconds < expiry,
+                  extended.matches(binding, referenceTime: pending.hostTimestamp) else { throw RemoteHarnessError.approvalBindingUnavailable }
+            // Consume locally before any journal/port callback can reenter.
+            approvals.removeValue(forKey: eventID)
+            approvalDeadlines.removeValue(forKey: eventID)
+        }
         if operation.isMutation { guard let commandID, !commandID.isEmpty, commandID.utf8.count <= 1_024 else { throw RemoteHarnessError.invalidMessage } }
         else if commandID != nil { throw RemoteHarnessError.invalidMessage }
         if let promptID = operation.promptCommandID { guard promptID == commandID else { throw RemoteHarnessError.bindingMismatch } }
@@ -234,7 +256,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
                 }
             case .event(let name, let data, _, let sessionID):
                 if let sessionID, authenticatedBinding.sessionID != sessionID { return }
-                try route(name: name, data: data, binding: authenticatedBinding)
+                try route(name: name, data: data, binding: authenticatedBinding, timestamp: message.timestamp)
             case .request: throw RemoteHarnessError.invalidMessage
             }
         } catch {
@@ -246,6 +268,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
     public func expireDeadlines() {
         guard let expectedBinding = binding else { return }
         let now = clock.monotonicMilliseconds
+        for (id, deadline) in approvalDeadlines where now < 0 || now >= deadline { approvalDeadlines.removeValue(forKey: id); approvals.removeValue(forKey: id) }
         guard binding == expectedBinding, pending.values.contains(where: { now >= $0.deadline }) else { return }
         // Retiring the channel also releases Host stream slots whose open ack
         // timed out. Nothing is resent; other sent mutations remain uncertain.
@@ -274,6 +297,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
             guard Set(capabilities).count == capabilities.count else { throw RemoteHarnessError.invalidMessage }
             guard !(capabilities.contains("harness.remote.v1") && capabilities.contains("harness.remote.v3")) else { throw RemoteHarnessError.conflictingCapabilities }
             guard capabilities.contains("harness.remote.v3") else { throw RemoteHarnessError.unsupportedCapability }
+            approvalExtension = capabilities.contains("quenderin.approvals.v1")
             negotiated = true; request.completion(.response(result))
         case .open, .close:
             let fields = try result.fields()
@@ -315,7 +339,7 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
         }
         request.completion(completion)
     }
-    private func route(name: String, data: RemoteHarnessJSON, binding: RemoteHarnessBinding) throws {
+    private func route(name: String, data: RemoteHarnessJSON, binding: RemoteHarnessBinding, timestamp: Int64) throws {
         guard name == "harness.remote.frame" || name == "harness.remote.stream.closed" else { return }
         let fields = try data.fields(), streamID = try fields.text("streamId")
         guard let stream = streams[streamID], stream.binding == binding else { return }
@@ -324,7 +348,8 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
             try fields.requireKeys(["streamId", "hasValue"], optional: ["value"])
             guard try fields.required("hasValue").booleanValue() else { throw RemoteHarnessError.invalidMessage }
             let value = fields["value"]
-            if stream.endpoint == "$events", let value { try routeApproval(value, binding: binding) }
+            if stream.endpoint == "session/follow", let value { try routeRun(value) }
+            if stream.endpoint == "$events", let value { try routeApproval(value, binding: binding, timestamp: timestamp) }
             stream.receive(.value(value))
         } else {
             try fields.requireKeys(["streamId", "reason"], optional: ["failure"])
@@ -335,25 +360,66 @@ public struct RemoteHarnessPendingApproval: Sendable, Equatable, NativeConnectio
             if !stream.closing { stream.receive(.closed(reason, failure)) }
         }
     }
-    private func routeApproval(_ value: RemoteHarnessJSON, binding: RemoteHarnessBinding) throws {
+    private func routeRun(_ value: RemoteHarnessJSON) throws {
+        guard let fields = try? value.fields(), let type = try? fields.text("type") else { return }
+        if type == "snapshot" {
+            activeRunID = nil
+            if let records = try? fields["records"]?.elements() {
+                for record in records {
+                    guard let item = try? record.fields(), (try? item.text("type")) == "event", let event = item["event"] else { continue }
+                    try routeRun(.object(["type": .string("event"), "event": event]))
+                }
+            }
+            if let stream = try? fields["assistantStream"]?.fields(), let active = try? stream["activeAttempt"]?.fields(),
+               let turn = try? active.required("turn").integerValue() { activeRunID = "turn:\(turn)" }
+            approvals.removeAll()
+        } else if type == "event", let event = try? fields.required("event").fields(), let name = try? event.text("type") {
+            if name == "turn/start", let data = try? event.required("data").fields(), let turn = try? data.required("turn").integerValue() {
+                activeRunID = "turn:\(turn)"; approvals.removeAll()
+            }
+            if name == "turn/end" {
+                activeRunID = nil; approvals.removeAll()
+                if stopState == .requested || stopState == .receiptReceived { stopState = .confirmedStopped }
+            }
+        }
+    }
+    private func routeApproval(_ value: RemoteHarnessJSON, binding: RemoteHarnessBinding, timestamp: Int64) throws {
         // The upstream event router ignores non-record/unknown values. Keep
         // forwarding their exact bytes without treating JSON null as a request.
         guard let fields = try? value.fields(), let rawType = fields["type"],
               let type = try? rawType.stringValue() else { return }
         if type == "ready" { clearApprovals(); eventClientID = try fields.text("clientId"); return }
-        if type == "cancel" { approvals.removeValue(forKey: try fields.text("eventId")); return }
+        if type == "cancel" { let id = try fields.text("eventId"); approvals.removeValue(forKey: id); approvalDeadlines.removeValue(forKey: id); return }
         guard type == "waterfall", try fields["event"]?.stringValue() == "approval/request" else { return }
+        let eventID = try fields.text("eventId")
+        // A replacement, including an unbound or differently scoped one,
+        // invalidates the old action before any early return or parsing failure.
+        approvals.removeValue(forKey: eventID); approvalDeadlines.removeValue(forKey: eventID)
+        guard seenApprovalIDs.count < 4096 || seenApprovalIDs.contains(eventID) else { throw RemoteHarnessError.limitExceeded }
+        let repeated = !seenApprovalIDs.insert(eventID).inserted
         guard let clientID = eventClientID, try fields.text("agentId") == binding.sessionID else { return }
-        let eventID = try fields.text("eventId"), request = try fields.required("request")
+        let request = try fields.required("request")
         _ = try request.fields()
-        guard approvals[eventID] == nil, approvals.count < 16 else { throw RemoteHarnessError.limitExceeded }
-        approvals[eventID] = RemoteHarnessPendingApproval(clientID: clientID, eventID: eventID, binding: binding, request: request)
+        guard approvals.count < 16 else { throw RemoteHarnessError.limitExceeded }
+        var extended: RemoteHarnessApprovalBinding?
+        if approvalExtension, !repeated, let raw = fields["quenderinBinding"] {
+            let parsed = try RemoteHarnessApprovalBinding(raw)
+            guard parsed.eventID.utf8.elementsEqual(eventID.utf8), parsed.matches(binding, referenceTime: timestamp) else { throw RemoteHarnessError.bindingMismatch }
+            // Independent streams may deliver a permission before its turn
+            // baseline; keep it visible but require approval on the computer.
+            if parsed.runID == activeRunID, let digest = try? RemoteHarnessApprovalDigest.digest(request), digest.utf8.elementsEqual(parsed.actionDigest.utf8) {
+                let mono = clock.monotonicMilliseconds, delta = parsed.expiresAt - timestamp
+                guard mono >= 0, mono <= Int64.max - delta else { throw RemoteHarnessError.invalidMessage }
+                extended = parsed; approvalDeadlines[eventID] = mono + delta
+            }
+        }
+        approvals[eventID] = RemoteHarnessPendingApproval(clientID: clientID, eventID: eventID, binding: binding, request: request, extensionBinding: extended, hostTimestamp: timestamp)
     }
-    private func clearApprovals() { eventClientID = nil; approvals.removeAll() }
+    private func clearApprovals() { eventClientID = nil; approvals.removeAll(); approvalDeadlines.removeAll() }
     private func retireConnection(reason: RemoteHarnessError, expectedBinding: RemoteHarnessBinding? = nil, additional: Pending? = nil) {
         guard let previousBinding = binding else { return }
         if let expectedBinding, previousBinding != expectedBinding { return }
-        binding = nil; negotiated = false; clearApprovals()
+        binding = nil; negotiated = false; approvalExtension = false; activeRunID = nil; clearApprovals()
         let requests = (Array(pending.values) + (additional.map { [$0] } ?? [])).sorted { $0.ordinal < $1.ordinal }
         let liveStreams = streams.keys.sorted().compactMap { streams[$0] }.filter { !$0.closing }
         pending.removeAll(); streams.removeAll()

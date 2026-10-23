@@ -64,6 +64,8 @@ public struct MacRootView: View {
                 ImageGenerationView(suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
             case .deepseek:
                 DeepSeekView()
+            case .computer:
+                RemoteHarnessView()
             case .about:
                 AboutView()
             }
@@ -336,7 +338,7 @@ private struct SidebarChatRow: View {
 /// The rail's destinations. Settings deliberately isn't one — the gear at the rail's foot
 /// opens the standard macOS Settings scene (⌘,), the Mac-idiomatic home for preferences.
 enum RailSection: Hashable {
-    case chats, agent, search, models, images, deepseek, about
+    case chats, agent, search, models, images, deepseek, computer, about
 }
 
 extension MacRootView {
@@ -351,6 +353,10 @@ extension MacRootView {
                 railButton(.agent, icon: "sparkles", label: "Agent (⌘2)", palette: p)
             }
             railButton(.search, icon: "magnifyingglass", label: "Search (⌘F)", palette: p)
+            VStack(spacing: 0) {
+                railButton(.computer, icon: "desktopcomputer", label: "My computer · Remote Harness", palette: p)
+                Text("Computer").font(.system(size: 10)).foregroundStyle(p.onSurfaceVariant)
+            }
             VStack(spacing: 0) {
                 railButton(.deepseek, icon: "network", label: "DeepSeek cloud chat", palette: p)
                 Text("DeepSeek").font(.system(size: 10)).foregroundStyle(p.onSurfaceVariant)

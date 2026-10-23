@@ -90,6 +90,7 @@ class RemoteHarnessCoordinator(
     private val streams = linkedMapOf<String, Stream>()
     // A locally removed stream still consumes a Host slot until acknowledged cleanup or teardown.
     private val hostSlots = linkedSetOf<String>()
+    private val approvalGate = RemoteHarnessClientApprovalGate(clock)
 
     @Synchronized fun beginConnection(authenticated: RemoteHarnessAuthenticatedContext) {
         rhCheck(!teardownUnconfirmed, "transport-teardown-unconfirmed")
@@ -110,6 +111,7 @@ class RemoteHarnessCoordinator(
         rhCheck(!operation.streaming, "invalid-operation")
         // Upstream approval packets lack Host/workspace/run/action/expiry authorization binding.
         rhCheck(operation.endpoint != "\$events/result", "approval-binding-unavailable")
+        if (operation.endpoint == RemoteHarnessClientApprovalGate.ENDPOINT) approvalGate.consume(operation, requireConnected())
         if (operation.mutating) {
             rhCheck(logicalCommandID != null, "command-id-required"); rhID(logicalCommandID!!)
             rhCheck(operation.logicalCommandID == null || operation.logicalCommandID == logicalCommandID, "command-id-mismatch")
@@ -167,7 +169,7 @@ class RemoteHarnessCoordinator(
         try {
             when (request.kind) {
                 Kind.DESCRIBE -> {
-                    RemoteHarnessCodec.requireV3(result!!); ready = true
+                    RemoteHarnessCodec.requireV3(result!!); approvalGate.enable(result); ready = true
                     deliver(request, RemoteHarnessOutcomeKind.RESULT, result, frame)
                 }
                 Kind.CALL -> {
@@ -199,6 +201,8 @@ class RemoteHarnessCoordinator(
     }
     @Synchronized fun expire() = expireLocked()
     @Synchronized fun isReady() = ready
+    @Synchronized fun approvalSupported() = approvalGate.available()
+    @Synchronized fun pendingApprovals() = approvalGate.approvals()
     @Synchronized fun pendingCount() = pending.size
     @Synchronized fun streamCount() = streams.size
     @Synchronized fun hostSlotCount() = hostSlots.size
@@ -258,6 +262,7 @@ class RemoteHarnessCoordinator(
             if (!hostSlots.remove(frame.streamID)) return false
             if (stream != null) {
                 streams.remove(stream.id)
+                if (stream.operation.endpoint in setOf("workspace/follow", "session/follow", "\$events")) approvalGate.streamClosed()
                 notify(stream, RemoteHarnessStreamNotice(RemoteHarnessStreamNoticeKind.CLOSED, stream.id, authenticated, frame = frame, reason = data.rhString("reason")))
             }
         } else {
@@ -270,6 +275,7 @@ class RemoteHarnessCoordinator(
                     if (declared !is RemoteHarnessJSON.StringValue || declared.value != scoped) return false
                 }
             }
+            approvalGate.observe(stream.operation.endpoint, value, authenticated, frame.timestamp)
             notify(stream, RemoteHarnessStreamNotice(RemoteHarnessStreamNoticeKind.VALUE, stream.id, authenticated, value, frame))
         }
         return true
@@ -329,6 +335,7 @@ class RemoteHarnessCoordinator(
         val oldPending = pending.values.toList(); val oldStreams = streams.values.toList()
         val oldContext = context
         pending.clear(); streams.clear(); hostSlots.clear(); context = null; ready = false
+        approvalGate.reset()
         var deliveredReason = reason
         if (invalidateTransport && oldContext != null) {
             retiringConnection = true
