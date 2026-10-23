@@ -26,8 +26,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    // AGP 8 + the external Kotlin plugin collect Kotlin files from Java source
-    // roots; AndroidSourceSet.kotlin is the separate built-in Kotlin model.
+    // Expose the generated source root in Android's model. Register the binding
+    // directly with the external Kotlin compiler tasks below as well.
     sourceSets["main"].java.srcDir(sdkDirectory.resolve("kotlin"))
     sourceSets["main"].jniLibs.srcDir(sdkDirectory.resolve("jniLibs"))
     packaging.jniLibs.keepDebugSymbols += setOf("**/libquenderin_remote_crypto.so", "**/libjnidispatch.so")
@@ -37,9 +37,14 @@ android {
 // before unresolved UniFFI symbols rather than only checking the SDK's files.
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     if (name == "compileDebugKotlin" || name == "compileReleaseKotlin") {
+        val generatedBinding = sdkDirectory.resolve("kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt")
+        source(generatedBinding)
         doFirst {
-            val generated = sdkDirectory.resolve("kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt").canonicalFile
-            require(sources.files.any { it.canonicalFile == generated }) { "Generated UniFFI binding is absent from Kotlin compiler inputs" }
+            val generated = generatedBinding.canonicalFile
+            val compilerSources = sources.asFileTree.files
+            require(compilerSources.any { it.canonicalFile == generated }) {
+                "Generated UniFFI binding is absent from $path compiler inputs: expected=$generated, exists=${generated.isFile}, sourceCount=${compilerSources.size}"
+            }
         }
     }
 }
