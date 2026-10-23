@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "origin": "Original Quenderin contract from pinned upstream schema and producer facts; no implementation or fixture copied.",
+  "types": ["secure.handshake", "relay"],
+  "envelope": {
+    "requiredExactly": ["v", "id", "type", "timestamp", "payload"],
+    "version": 1,
+    "id": "Nonempty opaque NUL-free string, at most 1024 UTF-8 bytes; no Unicode normalization.",
+    "timestamp": "Positive lexical unsigned integer at most 9007199254740991."
+  },
+  "payload": {
+    "unknownKeys": "Accept and discard, matching upstream payload schemas.",
+    "identities": "connectionId and targetDeviceId use the same bound as envelope id.",
+    "handshakeRequired": ["connectionId", "targetDeviceId", "step", "data"],
+    "handshakeSteps": [1, 2],
+    "relayRequired": ["connectionId", "targetDeviceId", "counter", "ciphertext"],
+    "relayCounterRange": [0, 9007199254740991]
+  },
+  "binary": {
+    "encoding": "Canonical unpadded Base64URL. Decode with maintained platform library, then reencode and compare exactly.",
+    "decodedByteRange": [1, 65535],
+    "encodedCharacterMaximum": 87380,
+    "reject": ["padding", "whitespace", "standard Base64 alphabet", "non-ASCII", "length modulo four equals one", "nonzero unused pad bits"]
+  },
+  "limits": {
+    "handshakeWholeUTF8JSONBytes": 65536,
+    "relayWholeUTF8JSONBytes": 1048576,
+    "inclusive": true,
+    "includesWhitespace": true,
+    "configured": "Optional positive safe integers; clamp each independently to its own default; reject invalid values.",
+    "decodeOrder": "Bound input to 1 MiB before strict UTF-8/JSON parsing, then apply type-specific configured bound.",
+    "encodeOrder": "Validate typed input, serialize, measure complete UTF-8 output."
+  },
+  "generation": "Channel-supplied local metadata only; never encoded or accepted in the envelope.",
+  "intentionalHardening": [
+    "Only handshake steps 1 and 2; upstream schema accepts any positive integer.",
+    "Safe-integer timestamp; upstream only requires a positive integer.",
+    "Reject duplicate keys and decimal/exponent integer spellings through the existing strict parser.",
+    "Canonical binary decoding is stricter than upstream permissive decoding.",
+    "Bounded NUL-free exact-UTF8 identities and decoded binary."
+  ],
+  "nonGoals": ["Account authentication", "WebSocket or relay activation", "Enrollment or vault", "Provider execution", "Native UI", "Model weights"]
+}

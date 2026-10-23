@@ -149,6 +149,7 @@ jobs:
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCoordinator.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessFragments.swift \
             ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessSecureLink.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessControlWire.swift \
             tools/LinkedHarnessSmoke.swift \
             -L "$CARGO_TARGET_DIR/debug" -lquenderin_remote_crypto \
             -Xlinker -rpath -Xlinker "$CARGO_TARGET_DIR/debug" \

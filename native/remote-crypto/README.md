@@ -135,8 +135,14 @@ The Swift dependency closure uses the unchanged common privacy protocol/defaults
 extracted into `NativeConnectionPrivateValue.swift`; concrete domain conformances
 stay in their original file. No production models or bindings are stubbed. Local
 Kotlin type compilation (installed 2.4.0), Swift parsing and existing Python guards
-pass; pinned Kotlin 2.0.21 compilation and actual linked execution remain pending
-the bounded Ubuntu run. Real platform artifacts and enrollment are separate gates.
+pass. At source `f91b138a0d27fa0e4abb70969e55716c6a21240c`,
+[run 39911672366](https://github.com/alikatgh/quenderin/actions/runs/39911672366)
+passes all nine Rust tests, clippy, both original generated-binding probes and
+both linked probes with pinned Kotlin 2.0.21 and Linux Swift. The success markers
+are `NATIVE_LINKED_HARNESS_PASS kotlin` and `NATIVE_LINKED_HARNESS_PASS swift`.
+That run uses the typed in-memory packet seam; the next Control JSON codec still
+needs its own runtime evidence. Real platform artifacts and enrollment remain
+separate gates.
 
 Review, decode and retain those sources before integrating native consumers.
 These Linux host checks are not platform binary compatibility or Apple SDK checks.
