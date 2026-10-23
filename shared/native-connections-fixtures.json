@@ -1,0 +1,2743 @@
+{
+  "schemaVersion": 1,
+  "profilesValid": [
+    {
+      "id": "profile-local",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": "On this device"
+      }
+    },
+    {
+      "id": "profile-deepseek",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://api.deepseek.com",
+        "credentialReference": "qcred:deepseek-personal"
+      }
+    },
+    {
+      "id": "profile-deepseek-no-credential",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://api.deepseek.com"
+      }
+    },
+    {
+      "id": "profile-remote",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-origin-canonical",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "HTTPS://RELAY.EXAMPLE:443/",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-remote-custom-port",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example:8443",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-remote-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[2001:db8::1]:8443",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-remote-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://192.0.2.10",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-remote-loopback-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[::1]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "profile-remote-mapped-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[::ffff:192.0.2.1]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    }
+  ],
+  "profilesInvalid": [
+    {
+      "id": "reject-local-endpoint",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": "On this device",
+        "endpoint": "https://api.deepseek.com"
+      }
+    },
+    {
+      "id": "reject-local-credential",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": "On this device",
+        "credentialReference": "qcred:local"
+      }
+    },
+    {
+      "id": "reject-local-host",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": "On this device",
+        "hostID": "host-a"
+      }
+    },
+    {
+      "id": "reject-deepseek-other-origin",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://other.example",
+        "credentialReference": "qcred:deepseek-personal"
+      }
+    },
+    {
+      "id": "reject-deepseek-missing-endpoint",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "credentialReference": "qcred:deepseek-personal"
+      }
+    },
+    {
+      "id": "reject-deepseek-host",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://api.deepseek.com",
+        "credentialReference": "qcred:deepseek-personal",
+        "hostID": "host-a"
+      }
+    },
+    {
+      "id": "reject-unknown-kind",
+      "input": {
+        "id": "local-default",
+        "kind": "cloud",
+        "displayName": "On this device"
+      }
+    },
+    {
+      "id": "reject-empty-id",
+      "input": {
+        "id": "",
+        "kind": "local",
+        "displayName": "On this device"
+      }
+    },
+    {
+      "id": "reject-unsafe-id",
+      "input": {
+        "id": "../local",
+        "kind": "local",
+        "displayName": "On this device"
+      }
+    },
+    {
+      "id": "reject-empty-display-name",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": ""
+      }
+    },
+    {
+      "id": "reject-raw-credential-reference",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://api.deepseek.com",
+        "credentialReference": "not-a-credential-reference"
+      }
+    },
+    {
+      "id": "reject-null-credential-reference",
+      "input": {
+        "id": "deepseek-personal",
+        "kind": "deepseek",
+        "displayName": "DeepSeek",
+        "endpoint": "https://api.deepseek.com",
+        "credentialReference": null
+      }
+    },
+    {
+      "id": "reject-remote-missing-host",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-remote-missing-workspace",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": "reject-remote-short-fingerprint",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "abc",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-remote-uppercase-fingerprint",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-http",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "http://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-userinfo",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://user@relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-query",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example?x=1",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-fragment",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example#anchor",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-path",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example/api",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-port-zero",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example:0",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-port-high",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example:65536",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-whitespace",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": " https://relay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-backslash",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example\\evil",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-encoded-host",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay%2eexample",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-unicode-host",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://rélay.example",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-empty-host",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https:///",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-profile-unknown-field",
+      "input": {
+        "id": "local-default",
+        "kind": "local",
+        "displayName": "On this device",
+        "apiKey": "not-a-credential"
+      }
+    },
+    {
+      "id": "reject-profile-duplicate-key",
+      "rawJSON": "{\"id\":\"local-default\",\"id\":\"other\",\"kind\":\"local\",\"displayName\":\"Local\"}"
+    },
+    {
+      "id": "reject-profile-unpaired-surrogate",
+      "rawJSON": "{\"id\":\"local-default\",\"kind\":\"local\",\"displayName\":\"\\ud800\"}"
+    },
+    {
+      "id": "reject-origin-short-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://127.1",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-leading-zero-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://192.000.2.1",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-large-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://999.0.0.1",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-numeric-host",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://2130706433",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-leading-zero-embedded-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[::ffff:192.0.002.1]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-overlong-port",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://relay.example:000443",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-ipv6-zone",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[fe80::1%25en0]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-invalid-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[1:2:3:4:5:6:7:8::]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-whitespace-display-name",
+      "input": {
+        "id": "a",
+        "kind": "local",
+        "displayName": " \t\n"
+      }
+    },
+    {
+      "id": "reject-origin-leading-colon-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[:1::2]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-trailing-colon-ipv6",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[1::2:]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-ipv4-before-compression",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[192.0.2.1::]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-embedded-ipv4-before-compression",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[1:192.0.2.1::]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    },
+    {
+      "id": "reject-origin-embedded-four-digit-ipv4",
+      "input": {
+        "id": "computer-home",
+        "kind": "remoteHarness",
+        "displayName": "My computer",
+        "endpoint": "https://[::ffff:0192.0.2.1]",
+        "credentialReference": "qcred:remote-device",
+        "hostID": "host-a",
+        "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "workspaceID": "workspace-a"
+      }
+    }
+  ],
+  "envelopesValid": [
+    {
+      "id": "envelope-local-documents",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-local",
+        "binding": {
+          "profileID": "local-default",
+          "kind": "local"
+        },
+        "messages": [
+          {
+            "id": "m-local",
+            "role": "user",
+            "content": "Keep this local.",
+            "documents": [
+              {
+                "name": "notes.txt",
+                "text": "Document line one.\nLine two: \t café 🚀"
+              }
+            ]
+          },
+          {
+            "id": "m-answer",
+            "role": "assistant",
+            "content": "Retained on this device."
+          }
+        ]
+      }
+    },
+    {
+      "id": "envelope-deepseek-tools-reasoning",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "envelope-remote-approval",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "envelope-empty",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "empty",
+        "binding": {
+          "profileID": "local-default",
+          "kind": "local"
+        },
+        "messages": []
+      }
+    },
+    {
+      "id": "envelope-system",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "system-1",
+            "role": "system",
+            "content": "Use selected documents only."
+          },
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "envelope-unnamed-document",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-local",
+        "binding": {
+          "profileID": "local-default",
+          "kind": "local"
+        },
+        "messages": [
+          {
+            "id": "m-local",
+            "role": "user",
+            "content": "Keep this local.",
+            "documents": [
+              {
+                "name": "",
+                "text": "Document line one.\nLine two: \t café 🚀"
+              }
+            ]
+          },
+          {
+            "id": "m-answer",
+            "role": "assistant",
+            "content": "Retained on this device."
+          }
+        ]
+      }
+    }
+  ],
+  "envelopesInvalid": [
+    {
+      "id": "reject-future-schema",
+      "input": {
+        "schemaVersion": 2,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-fractional-schema",
+      "input": {
+        "schemaVersion": 1.5,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-duplicate-message-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-1",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-unknown-role",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "developer",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-user-reasoning",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes.",
+            "reasoningContent": "not assistant"
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-user-tool-calls",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes.",
+            "toolCalls": [
+              {
+                "id": "call-x",
+                "name": "read",
+                "argumentsJSON": "{}"
+              }
+            ]
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-tool-missing-call-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\."
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-assistant-tool-result-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples.",
+            "toolCallID": "call-1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-assistant-documents",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples.",
+            "documents": [
+              {
+                "name": "a",
+                "text": "b"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-null-content",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": null
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-null-selection",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": null,
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-unknown-effort",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "ultra"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-binding-local-origin",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "local-default",
+          "kind": "local",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-binding-deepseek-other-origin",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://other.example"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-remote-session-on-deepseek",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-message-empty-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-message-unknown-field",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes.",
+            "extra": "bad"
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-tool-call-duplicate-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              },
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-null-messages",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": null
+      }
+    },
+    {
+      "id": "reject-negative-schema",
+      "input": {
+        "schemaVersion": -1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-remote-wrong-host",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-b",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-remote-wrong-workspace",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-b",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-approval-wrong-device",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-b",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-approval-wrong-run",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-b",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-approval-bad-digest",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "short",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-approval-negative-expiry",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": -1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-duplicate-request-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-send-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-duplicate-approval-id",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            },
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-unknown-session-status",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "complete",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-unknown-command-state",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "send",
+              "state": "retryMe"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-unknown-command-kind",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": {
+          "hostID": "host-a",
+          "deviceID": "device-a",
+          "workspaceID": "workspace-a",
+          "sessionID": "session-a",
+          "runID": "run-a",
+          "lastConfirmedEventID": "event-42",
+          "status": "awaitingApproval",
+          "pendingCommands": [
+            {
+              "requestID": "request-send-a",
+              "kind": "delete",
+              "state": "acknowledged"
+            },
+            {
+              "requestID": "request-stop-a",
+              "kind": "stop",
+              "state": "prepared"
+            }
+          ],
+          "pendingApprovals": [
+            {
+              "approvalID": "approval-a",
+              "requestID": "request-approval-a",
+              "hostID": "host-a",
+              "deviceID": "device-a",
+              "workspaceID": "workspace-a",
+              "sessionID": "session-a",
+              "runID": "run-a",
+              "actionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "expiresAtEpochMs": 1800000000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "reject-null-remote-session",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-host",
+        "binding": {
+          "profileID": "computer-home",
+          "kind": "remoteHarness",
+          "origin": "https://relay.example",
+          "hostID": "host-a",
+          "hostFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspaceID": "workspace-a"
+        },
+        "selection": {
+          "providerID": "deepseek-account",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "max"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          }
+        ],
+        "remoteSession": null
+      }
+    },
+    {
+      "id": "reject-envelope-duplicate-key",
+      "rawJSON": "{\"schemaVersion\":1,\"schemaVersion\":2,\"conversationID\":\"a\",\"binding\":{\"profileID\":\"local-default\",\"kind\":\"local\"},\"messages\":[]}"
+    },
+    {
+      "id": "reject-envelope-trailing-json",
+      "rawJSON": "{\"schemaVersion\":1,\"conversationID\":\"conversation-local\",\"binding\":{\"profileID\":\"local-default\",\"kind\":\"local\"},\"messages\":[{\"id\":\"m-local\",\"role\":\"user\",\"content\":\"Keep this local.\",\"documents\":[{\"name\":\"notes.txt\",\"text\":\"Document line one.\\nLine two: \\t café 🚀\"}]},{\"id\":\"m-answer\",\"role\":\"assistant\",\"content\":\"Retained on this device.\"}]} {}"
+    },
+    {
+      "id": "reject-envelope-invalid-surrogate",
+      "rawJSON": "{\"schemaVersion\":1,\"conversationID\":\"a\",\"binding\":{\"profileID\":\"local-default\",\"kind\":\"local\"},\"messages\":[{\"id\":\"a\",\"role\":\"user\",\"content\":\"\\udfff\"}]}"
+    },
+    {
+      "id": "reject-inexact-schema-lexeme",
+      "rawJSON": "{\"schemaVersion\":1.0,\"conversationID\":\"a\",\"binding\":{\"profileID\":\"local-default\",\"kind\":\"local\"},\"messages\":[]}"
+    },
+    {
+      "id": "reject-exponent-schema-lexeme",
+      "rawJSON": "{\"schemaVersion\":1e0,\"conversationID\":\"a\",\"binding\":{\"profileID\":\"local-default\",\"kind\":\"local\"},\"messages\":[]}"
+    },
+    {
+      "id": "reject-user-empty-tool-calls",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes.",
+            "toolCalls": []
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject-assistant-empty-documents",
+      "input": {
+        "schemaVersion": 1,
+        "conversationID": "conversation-ds",
+        "binding": {
+          "profileID": "deepseek-personal",
+          "kind": "deepseek",
+          "origin": "https://api.deepseek.com"
+        },
+        "selection": {
+          "providerID": "deepseek",
+          "modelID": "deepseek-flash",
+          "reasoningEffort": "high"
+        },
+        "messages": [
+          {
+            "id": "m-1",
+            "role": "user",
+            "content": "Please inspect the selected notes."
+          },
+          {
+            "id": "m-2",
+            "role": "assistant",
+            "content": "",
+            "reasoningContent": "Preserve this provider reasoning exactly.\nSecond line.",
+            "toolCalls": [
+              {
+                "id": "call-1",
+                "name": "read_selected_document",
+                "argumentsJSON": "{\"document\":\"notes.txt\",\"format\":\"text\"}"
+              }
+            ]
+          },
+          {
+            "id": "m-3",
+            "role": "tool",
+            "content": "Selected notes: café, 雪, 🚀.\nLiteral slash: \\\\.",
+            "toolCallID": "call-1"
+          },
+          {
+            "id": "m-4",
+            "role": "assistant",
+            "content": "The notes contain three examples.",
+            "documents": []
+          }
+        ]
+      }
+    }
+  ],
+  "legacy": [
+    {
+      "id": "legacy-empty",
+      "conversationID": "legacy-empty",
+      "swiftSource": "",
+      "kotlinSource": "",
+      "expectedMessages": []
+    },
+    {
+      "id": "legacy-documents-unicode",
+      "conversationID": "legacy-documents",
+      "swiftSource": "[{\"role\":\"user\",\"text\":\"Hello\\n雪\\t🚀\",\"documents\":[{\"name\":\"notes.txt\",\"text\":\"First\\\\second\\nline\"}]},{\"role\":\"assistant\",\"text\":\"Saved locally.\"}]",
+      "kotlinSource": "USER\tHello\\n雪\\t🚀\tnotes.txt\tFirst\\\\second\\nline\nASSISTANT\tSaved locally.",
+      "expectedMessages": [
+        {
+          "id": "legacy-0",
+          "role": "user",
+          "content": "Hello\n雪\t🚀",
+          "documents": [
+            {
+              "name": "notes.txt",
+              "text": "First\\second\nline"
+            }
+          ]
+        },
+        {
+          "id": "legacy-1",
+          "role": "assistant",
+          "content": "Saved locally."
+        }
+      ]
+    },
+    {
+      "id": "legacy-unknown-role-dropped",
+      "conversationID": "legacy-role",
+      "swiftSource": "[{\"role\":\"narrator\",\"text\":\"drop\"},{\"role\":\"user\",\"text\":\"keep\"}]",
+      "kotlinSource": "NARRATOR\tdrop\nUSER\tkeep",
+      "expectedMessages": [
+        {
+          "id": "legacy-0",
+          "role": "user",
+          "content": "keep"
+        }
+      ]
+    },
+    {
+      "id": "legacy-unnamed-document",
+      "conversationID": "legacy-unnamed",
+      "swiftSource": "[{\"role\":\"user\",\"text\":\"message\",\"documents\":[{\"name\":\"\",\"text\":\"Preserved attached text\"}]}]",
+      "kotlinSource": "USER\tmessage\t\tPreserved attached text",
+      "expectedMessages": [
+        {
+          "id": "legacy-0",
+          "role": "user",
+          "content": "message",
+          "documents": [
+            {
+              "name": "",
+              "text": "Preserved attached text"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

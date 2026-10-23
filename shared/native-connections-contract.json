@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "status": "foundation-only; no networking or credential capture",
+  "destinations": ["local", "deepseek", "remoteHarness"],
+  "profile": {
+    "required": ["id", "kind", "displayName"],
+    "optional": ["endpoint", "credentialReference", "hostID", "hostFingerprint", "workspaceID"],
+    "local": "No endpoint, credential reference or Host/workspace fields.",
+    "deepseek": "endpoint must be canonical https://api.deepseek.com; credentialReference is an opaque qcred: identifier, never a key. No Host/workspace fields.",
+    "remoteHarness": "endpoint is an HTTPS relay origin; hostID, a 64-lowercase-hex hostFingerprint and workspaceID are required. credentialReference is an optional opaque qcred: identifier."
+  },
+  "originPolicy": {
+    "schemes": ["https"],
+    "allowUserInfo": false,
+    "allowQuery": false,
+    "allowFragment": false,
+    "allowNonRootPath": false,
+    "canonicalization": "lowercase ASCII hostname/scheme, omit explicit port 443 and trailing root slash; do not resolve DNS or follow redirects. Origins are at most 2048 ASCII bytes; decimal ports have 1-5 digits and value 1-65535. All-numeric/dot hosts are four IPv4 octets (0-255, no leading zeros); embedded IPv4 in bracketed IPv6 uses the same rule. Numeric IPv6 has no zone identifier. Display names must not be whitespace-only.",
+    "credentialReferencePattern": "^qcred:[A-Za-z0-9._-]{1,128}$",
+    "identifierPattern": "^[A-Za-z0-9._-]{1,128}$"
+  },
+  "conversationEnvelope": {
+    "required": ["schemaVersion", "conversationID", "binding", "messages"],
+    "optional": ["selection", "remoteSession"],
+    "binding": {
+      "required": ["profileID", "kind"],
+      "optional": ["origin", "hostID", "hostFingerprint", "workspaceID"],
+      "dispatchRule": "All binding fields must match the validated connection profile. A destination change requires a separate conversation and explicit user transfer; display names/credential rotation do not change the binding."
+    },
+    "selection": {
+      "required": ["providerID", "modelID", "reasoningEffort"],
+      "reasoningEfforts": ["off", "low", "high", "max"]
+    },
+    "message": {
+      "required": ["id", "role", "content"],
+      "optional": ["reasoningContent", "toolCalls", "toolCallID", "documents"],
+      "roles": ["system", "user", "assistant", "tool"],
+      "toolCall": {"required": ["id", "name", "argumentsJSON"]},
+      "document": {"required": ["name", "text"]},
+      "constraints": "Only assistant messages carry reasoningContent/toolCalls; only tool messages carry a nonempty toolCallID; document attachments belong to user messages. On decode, role-inapplicable fields are rejected even if they contain an empty array/string; encoders omit empty optional arrays. Tool-call argument strings are lossless data, never executed by decoding. Empty content is valid for assistant tool calls."
+    },
+    "remoteSession": {
+      "required": ["hostID", "deviceID", "workspaceID", "sessionID", "status", "pendingCommands", "pendingApprovals"],
+      "optional": ["runID", "lastConfirmedEventID"],
+      "statuses": ["disconnected", "connecting", "ready", "running", "awaitingApproval", "stopRequested", "stopped", "outcomeUnknown"],
+      "pendingCommand": {
+        "required": ["requestID", "kind", "state"],
+        "kinds": ["send", "approve", "deny", "stop"],
+        "states": ["prepared", "sent", "acknowledged", "outcomeUnknown"]
+      },
+      "approval": {
+        "required": ["approvalID", "requestID", "hostID", "deviceID", "workspaceID", "sessionID", "runID", "actionDigest", "expiresAtEpochMs"],
+        "constraints": "Digest is 64 lowercase hex characters. Identity must match the attached session including runID; expiration is validated against a caller-supplied time. A decision compares the complete approval object shown to the user, including requestID/expiry, then consumes it once. This contract does not replace authoritative Host enforcement."
+      },
+      "recoveryRule": "A lost connection marks sent unacknowledged commands outcomeUnknown. Prepared commands were not sent. Stop remains stopRequested until matching acknowledgement; disconnect makes its outcome unknown. Mutations are not automatically replayed. Event IDs are opaque confirmed positions, not claims that upstream provides resumable replay.",
+      "transitionRules": "prepare send/stop only in ready/running/awaitingApproval. consumeApproval only in awaitingApproval. markSent only in ready/running/awaitingApproval/stopRequested, and stopRequested admits only the stop command. Non-stop markSent becomes running if no approvals remain, otherwise awaitingApproval. Lost connection becomes outcomeUnknown if running/awaitingApproval/stopRequested/outcomeUnknown or any sent/unknown command exists; otherwise disconnected. Already confirmed stopped remains stopped. New/replayed actions are rejected while disconnected/connecting/stopped/outcomeUnknown until authoritative state reconciliation."
+    },
+    "legacyMigration": "Decode the platform's existing local transcript with its existing decoder, then import it in memory with local profileID local-default, no selection/remoteSession and message IDs legacy-0, legacy-1, etc. Retain document content/order. Never overwrite the legacy input while reading it. Empty legacy input is an empty local conversation. Unknown versioned formats fail instead of falling back to legacy. Technically decodable legacy rows outside the new role rules (such as assistant document attachments) fail migration with original content retained, rather than dropping or relabelling attachments; the existing app's legacy reader remains available unchanged."
+  },
+  "bounds": {
+    "maxEnvelopeBytes": 8388608,
+    "maxMessages": 1024,
+    "maxTextBytes": 1048576,
+    "maxToolCallsPerMessage": 128,
+    "maxDocumentsPerMessage": 32,
+    "maxPendingCommands": 128,
+    "maxPendingApprovals": 128,
+    "maxJSONDepth": 32,
+    "maxContainerEntries": 1024,
+    "maxCounter": 9007199254740991
+  },
+  "validation": "Reject unknown schema versions, invalid enum values, invalid identifiers, duplicate object keys, duplicate message/command/approval IDs, invalid destination fields, mismatched remote-session binding, malformed JSON, unsafe endpoints, over-limit payloads and invalid message-role fields. Raw JSON preflight rejects more than 1024 entries in any container before allocating the decoded object tree. Root value depth is 1; maximum value depth is 32, including primitive leaves. Reject unpaired Unicode surrogates. Every numeric wire field is a bounded integer and uses integer JSON syntax (no fraction/exponent). Preserve complete valid content and reasoning exactly. Optional absent arrays default empty; null is not an alternate spelling for a typed field.",
+  "providerBoundary": {
+    "capabilities": ["reasoning", "toolCalls", "documents", "cancellation", "usage"],
+    "request": "Requires a requestID, envelope with non-null persisted selection, matching validated profile, capabilities, tool definitions, positive output/deadline limits and caller-supplied nowEpochMs strictly before the deadline. Selection comes from the envelope, never an override. tools=false rejects tool definitions and historical tool calls/results; reasoning=false rejects non-off selection or historical reasoning fields; documents=false rejects attached document history. Preflight aggregate UTF-8 payload sizes before encoding, then enforce the exact envelope byte bound. No networking is activated.",
+    "events": "Validated text/reasoning deltas have messageID and bounded delta; tool-call fragments have messageID, optional callID/name, index 0-127 and bounded argumentsDelta; usage has bounded nonnegative integer input/output tokens; completion reason is end/toolCalls/outputLimit; cancellation and fixed-code failure are distinct. Payload-bearing values must not automatically disclose content in diagnostics.",
+    "failureCodes": ["unavailable", "unauthorized", "rateLimited", "deadlineExceeded", "invalidResponse", "connectionLost", "rejected", "limitExceeded", "outcomeUnknown"]
+  },
+  "sensitiveData": "Credential values and remote raw diagnostics never belong in profiles/envelopes. Credential references are opaque labels only. Provider content/reasoning/tool results remain sensitive local data and are not safe diagnostics or automatic exports."
+}
