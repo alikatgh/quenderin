@@ -5,6 +5,12 @@ on:
   pull_request:
     paths:
       - 'native/remote-crypto/**'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionJSON.swift'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionPrivateValue.swift'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionPrivacy.swift'
+      - 'apple/QuenderinKit/Sources/QuenderinKit/RemoteHarness*.swift'
+      - 'android/quenderin-core/src/main/kotlin/ai/quenderin/core/NativeConnections.kt'
+      - 'android/quenderin-core/src/main/kotlin/ai/quenderin/core/RemoteHarness*.kt'
       - '.github/workflows/remote-crypto.yml'
 
 permissions:
@@ -118,6 +124,36 @@ jobs:
             -Xlinker -rpath -Xlinker "$CARGO_TARGET_DIR/debug" \
             -o "$RUNNER_TEMP/remote-swift-binding-smoke"
           timeout 30s "$RUNNER_TEMP/remote-swift-binding-smoke"
+      - name: Link Kotlin native owner, fragments and coordinator to actual generated Rust Noise
+        run: |
+          timeout 180s env JAVA_HOME="$JAVA_HOME_17_X64" "$RUNNER_TEMP/remote-kotlin-toolchain/kotlinc/bin/kotlinc" \
+            ../../android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            "$RUNNER_TEMP/remote-crypto-bindings/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt" \
+            tools/LinkedHarnessSmoke.kt -classpath "$RUNNER_TEMP/remote-jna-5.19.1.jar" \
+            -jvm-target 1.8 -include-runtime -d "$RUNNER_TEMP/remote-kotlin-linked-harness.jar"
+          timeout 30s "$JAVA_HOME_17_X64/bin/java" \
+            -Duniffi.component.quenderin_remote_crypto.libraryOverride="$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so" \
+            -Djna.tmpdir="$RUNNER_TEMP/remote-jna" \
+            -classpath "$RUNNER_TEMP/remote-kotlin-linked-harness.jar:$RUNNER_TEMP/remote-jna-5.19.1.jar" \
+            ai.quenderin.remote.crypto.LinkedHarnessSmokeKt
+      - name: Link Swift native owner, fragments and coordinator to actual generated Rust Noise
+        run: |
+          timeout 180s swiftc -parse-as-library -module-name QuenderinRemoteCrypto \
+            -I "$RUNNER_TEMP/remote-crypto-bindings" \
+            -Xcc "-fmodule-map-file=$RUNNER_TEMP/remote-crypto-bindings/QuenderinRemoteCryptoFFI.modulemap" \
+            "$RUNNER_TEMP/remote-crypto-bindings/QuenderinRemoteCrypto.swift" \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionPrivateValue.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/NativeConnectionJSON.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCodec.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessOperations.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessCoordinator.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessFragments.swift \
+            ../../apple/QuenderinKit/Sources/QuenderinKit/RemoteHarnessSecureLink.swift \
+            tools/LinkedHarnessSmoke.swift \
+            -L "$CARGO_TARGET_DIR/debug" -lquenderin_remote_crypto \
+            -Xlinker -rpath -Xlinker "$CARGO_TARGET_DIR/debug" \
+            -o "$RUNNER_TEMP/remote-swift-linked-harness"
+          timeout 30s "$RUNNER_TEMP/remote-swift-linked-harness"
       - name: Emit verified generated sources and host library digest
         run: |
           sha256sum "$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so"

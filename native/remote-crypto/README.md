@@ -118,6 +118,26 @@ bidirectional encryption, counters, typed errors, tamper/replay continuation,
 shutdown and language-wrapper disposal. No generated template is patched to
 make a probe pass. Missing included Swift/JDK tools stop the workflow before
 downloads/builds; there is no Swift/JDK installation or substituted fake binding.
+
+The next linked probes compile the production native secure-link, fragment and
+business-coordinator sources with those actual generated bindings. A test-only
+in-memory peer uses the same Rust library as responder: synchronous empty
+96/48-byte handshakes, a fragmented describe response and 60 KiB prompt, exact
+business bytes/counters and correlated completions. Fresh sessions exercise real
+handshake/tag tampering and require queues, partial assemblies and both language
+wrappers to retire. Test keys are generated in memory from OS-backed randomness;
+only fixed pass/fail messages are printed. No provider, relay or actual Host is
+contacted. Each linked compile is capped at 180 seconds and each process at 30
+seconds within the unchanged 15-minute job. Relevant production source paths
+also trigger this integration gate.
+
+The Swift dependency closure uses the unchanged common privacy protocol/defaults
+extracted into `NativeConnectionPrivateValue.swift`; concrete domain conformances
+stay in their original file. No production models or bindings are stubbed. Local
+Kotlin type compilation (installed 2.4.0), Swift parsing and existing Python guards
+pass; pinned Kotlin 2.0.21 compilation and actual linked execution remain pending
+the bounded Ubuntu run. Real platform artifacts and enrollment are separate gates.
+
 Review, decode and retain those sources before integrating native consumers.
 These Linux host checks are not platform binary compatibility or Apple SDK checks.
 iOS 16.4/macOS 13.3, Android API 28, Android ABI/16 KiB alignment, matching UniFFI
