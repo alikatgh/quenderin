@@ -2,6 +2,11 @@ package ai.quenderin.core
 
 import java.security.MessageDigest
 
+/** Connection-local evidence from one authoritative durable tool/call, never a request preview. */
+class RemoteHarnessClientApprovalAction internal constructor(val toolName: String, val callID: String, val arguments: String) {
+    override fun toString() = "RemoteHarnessClientApprovalAction(redacted)"
+}
+
 class RemoteHarnessClientApproval internal constructor(
     val binding: RemoteHarnessJSON.ObjectValue, val clientID: String, val request: RemoteHarnessJSON,
     internal val deadline: Long,

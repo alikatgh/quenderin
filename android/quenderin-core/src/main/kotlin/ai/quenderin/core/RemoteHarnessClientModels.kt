@@ -92,10 +92,6 @@ data class RemoteHarnessClientModel(val provider: String, val id: String, val na
 data class RemoteHarnessClientTimelineItem(val id: String, val kind: String, val text: String, val reasoning: String = "") {
     override fun toString() = "RemoteHarnessClientTimelineItem(redacted)"
 }
-/** Connection-local evidence from one authoritative durable tool/call, never a request preview. */
-class RemoteHarnessClientApprovalAction internal constructor(val toolName: String, val callID: String, val arguments: String) {
-    override fun toString() = "RemoteHarnessClientApprovalAction(redacted)"
-}
 enum class RemoteHarnessClientPhase { SETUP, AUTHORIZING, HOSTS, CONFIRM_PIN, CONNECTING, WORKSPACES, SESSIONS, SESSION, DISCONNECTED, BLOCKED }
 
 data class RemoteHarnessClientSnapshot(
