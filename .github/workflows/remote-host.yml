@@ -54,6 +54,30 @@ jobs:
       - name: Compile and bundle the actual patched Host
         working-directory: upstream
         run: timeout 480 pnpm --filter './packages/**' -r build
-      - name: Verify actual Gateway integration tests
+      - name: Verify patched Host bridge against the synthetic Gateway
         working-directory: upstream/packages/plugin
         run: timeout 120 pnpm exec vitest run --config tests/quenderin-vitest.config.mjs
+      - name: Verify isolated official-runtime lock and source/process/environment guards
+        working-directory: native/remote-host/runtime-fixture
+        run: |
+          node tools/check-lock.mjs b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1
+          node --test tools/guard.test.mjs
+          fixture_guard_root="$(mktemp -d "${RUNNER_TEMP:?}/quenderin-runtime-guards.XXXXXX")"
+          trap 'rmdir "$fixture_guard_root"' EXIT
+          QUENDERIN_GUARD_SCRATCH="$fixture_guard_root" python3 -B tools/check_host_test.py
+          env -i PATH="$PATH" python3 -B tools/check_host.py "$GITHUB_WORKSPACE/upstream"
+      - name: Install the reviewed isolated official-runtime closure without lifecycle hooks
+        working-directory: native/remote-host/runtime-fixture
+        run: |
+          env -i GITHUB_ACTIONS=true PATH="$PATH" node tools/bootstrap.mjs b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1
+      - name: Exercise the real Harness Gateway Agent approval journey without network access
+        working-directory: native/remote-host/runtime-fixture
+        run: |
+          sudo -n unshare --net -- setpriv \
+            --reuid "$(id -u)" --regid "$(id -g)" --clear-groups \
+            --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs \
+            -- env -i \
+            GITHUB_ACTIONS=true \
+            QUENDERIN_HOST_SOURCE="$GITHUB_WORKSPACE/upstream" \
+            PATH="$PATH" \
+            node tools/run.mjs b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1

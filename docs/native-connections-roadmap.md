@@ -348,16 +348,22 @@ the 12 shared canonical digest cases; SDK receipt/package tests 31. Hosted Swift
 tests pass **682 tests, six skipped, zero failures**, including the complete
 synthetic controller journey. The [Apple SDK job](https://github.com/alikatgh/quenderin/actions/runs/39973923157/job/120484184703)
 passes real five-target SDK generation and unsigned iPhone, simulator-SDK and Mac
-app compilation. Android's real SDK/app also compiles; strict final APK library
-presence/bytes/alignment verification remains a gate. The
+app compilation. Android's
+[actual SDK/app packaging check](https://github.com/alikatgh/quenderin/actions/runs/39981265354/job/120508856149)
+passes at `4db5179`, including exact Noise/JNA library bytes and ELF/ZIP 16 KiB
+alignment verification. These are unsigned hosted checks. The
 [patched Host run](https://github.com/alikatgh/quenderin/actions/runs/39973923220)
 passes source preparation, actual bundle compilation and three bridge/controller
 integration tests with a synthetic Gateway. The
 [real-crypto hosted job](https://github.com/alikatgh/quenderin/actions/runs/39968738735)
 passed nine Rust tests, both generated-binding probes, both linked carrier probes,
 and both production backend probes at `26df619`. An isolated actual official
-Harness runtime fixture is being prepared separately; it is not yet execution
-evidence. Fresh independent reviews cover the integrated source and material
+[Harness runtime fixture](../native/remote-host/runtime-fixture/README.md) is
+source-prepared and wired after the existing patched Host tests in the same
+bounded public Ubuntu job. Its lock/source/process/environment guard checks
+pass; the first hosted real Gateway/Agent/approval journey is pending and is
+not yet execution evidence. Cold persistence reads, stop/recovery and live
+native interoperability remain separate gates. Fresh independent reviews cover the integrated source and material
 fixes before publication.
 
 The initial companion targets macOS/Linux Hosts. Native Windows Host trust,
