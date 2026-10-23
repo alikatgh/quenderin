@@ -20,6 +20,20 @@ plain homepage and `tell-me-more.html` when updating generated catalog content.
 
 Secrets and private keys never belong in this file or release documentation.
 
+## Social publishing and artwork
+
+Post as the existing Quenderin Pages: [Facebook](https://www.facebook.com/quenderin)
+and [LinkedIn](https://www.linkedin.com/company/quenderin/) (company 135196272).
+Reuse the original [Quenderin image conversation](https://chatgpt.com/c/6acc6673-0a78-83e8-9b0e-fa8c3c6b013a)
+in the signed-in ChatGPT website. Its title is **Generate Header Image Prompt**;
+the original brief describes the elf sharing local-model devices, without naming
+Quenderin, so a search for the project name does not find it.
+Keep the teal/copper elf, modern clothing, warm cinematic light and waterfall-city
+setting consistent. See [October 16 publication record](docs/social/2026-10-16-muse-bonsai/README.md)
+for published links, verified original artwork and proof. Preserve platform AI
+content credentials. Separate experimental engine support from tested inference
+and public store availability in every announcement.
+
 ## Store browser profiles — verified 19 October 2026
 
 - **App Store Connect / Xcode Cloud:** Chrome profile **Apple Developer**.
