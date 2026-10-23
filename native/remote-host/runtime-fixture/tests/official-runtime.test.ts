@@ -12,7 +12,7 @@ import WorkspaceController from '@deepseek-ai/dsh-api-workspace-controller';
 import { TYPERT as WORKSPACE } from '@deepseek-ai/dsh-api-workspace-controller/typert';
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry';
 import DefaultModel from '@deepseek-ai/dsh-agent-default-model';
-import { AttachmentStore } from '@deepseek-ai/dsh-attachment';
+import { AttachmentStore, type ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment';
 import Commands from '@deepseek-ai/dsh-commands';
 import { HostConnectionService } from '@deepseek-ai/dsh-client-connection';
 import FileUploads from '@deepseek-ai/dsh-client-file-upload';
@@ -37,7 +37,9 @@ import { homedir } from 'node:os';
 // production admission, exact-read, list, follow and projection methods run.
 // No fixture search index or media implementation pretends to be a backend.
 class TextOnlyAttachments extends AttachmentStore {
-  readonly imageLimits = { maxImageBytes: 1, maxImagesPerMessage: 0, maxMessageImageBytes: 0, maxImagePixels: 1, maxImageDimension: 1, mediaTypes: [] };
+  // Production projection metadata requires five positive integer bounds.
+  // No media type is admitted, and every media operation below still rejects.
+  readonly imageLimits: ImageAttachmentLimits = { maxImageBytes: 1, maxImagesPerMessage: 1, maxMessageImageBytes: 1, maxImagePixels: 1, maxImageDimension: 1, mediaTypes: [] };
   async validateImage(): Promise<never> { throw new Error('Media outside this fixture'); }
   async saveImage(): Promise<never> { throw new Error('Media outside this fixture'); }
   async readImage(): Promise<never> { throw new Error('Media outside this fixture'); }
