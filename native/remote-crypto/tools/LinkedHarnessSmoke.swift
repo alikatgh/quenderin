@@ -127,19 +127,40 @@ private enum Mode: CaseIterable { case roundTrip, handshakeTamper, tagTamper }
             hostDeviceId: info.remoteDeviceID, clientDeviceId: info.localDeviceID))
         adapter = value; return value
     }
+    private var wireFrames = 0
+    private func wire(_ original: RemoteHarnessSecureHandshake) throws -> RemoteHarnessSecureHandshake {
+        wireFrames += 1; let id = "linked-synthetic-wire-\(wireFrames)"
+        let envelope = try RemoteHarnessControlWire().decode(RemoteHarnessControlWire().encode(.handshake(original), id: id, timestamp: 1))
+        try require(envelope.id.utf8.elementsEqual(id.utf8) && envelope.timestamp == 1)
+        guard case let .handshake(decoded) = envelope.packet else { throw LinkedFailure.failed }
+        try require(decoded.connectionID.utf8.elementsEqual(original.connectionID.utf8) && decoded.targetDeviceID.utf8.elementsEqual(original.targetDeviceID.utf8) &&
+            decoded.step == original.step && decoded.bytes == original.bytes)
+        return decoded
+    }
+    private func wire(_ original: RemoteHarnessSecureRelay) throws -> RemoteHarnessSecureRelay {
+        wireFrames += 1; let id = "linked-synthetic-wire-\(wireFrames)"
+        let envelope = try RemoteHarnessControlWire().decode(RemoteHarnessControlWire().encode(.relay(original), id: id, timestamp: 1))
+        try require(envelope.id.utf8.elementsEqual(id.utf8) && envelope.timestamp == 1)
+        guard case let .relay(decoded) = envelope.packet else { throw LinkedFailure.failed }
+        try require(decoded.connectionID.utf8.elementsEqual(original.connectionID.utf8) && decoded.targetDeviceID.utf8.elementsEqual(original.targetDeviceID.utf8) &&
+            decoded.counter == original.counter && decoded.ciphertext == original.ciphertext)
+        return decoded
+    }
     func connectionInfo() throws -> RemoteHarnessSecureConnectionInfo {
         try RemoteHarnessSecureConnectionInfo(connectionID: connection, localDeviceID: client, remoteDeviceID: host)
     }
     func sendHandshake(_ payload: RemoteHarnessSecureHandshake, generation: UInt64) throws {
+        let payload = try wire(payload)
         try require(generation == binding.generation && payload.step == 1 && payload.connectionID == connection && payload.targetDeviceID == host && payload.bytes.count == 96)
         let result = try peer().readHandshake(message: payload.bytes)
         guard var reply = result.response else { throw LinkedFailure.failed }
         try require(result.complete && reply.count == 48)
         if mode == .handshakeTamper { reply[reply.endIndex - 1] ^= 1 }
         // Intentionally synchronous, exercising readiness reservation before send.
-        try link.receiveHandshake(try RemoteHarnessSecureHandshake(connectionID: connection, targetDeviceID: client, step: 2, bytes: reply), generation: generation)
+        try link.receiveHandshake(wire(RemoteHarnessSecureHandshake(connectionID: connection, targetDeviceID: client, step: 2, bytes: reply)), generation: generation)
     }
     func sendRelay(_ payload: RemoteHarnessSecureRelay, generation: UInt64) throws {
+        let payload = try wire(payload)
         try require(generation == binding.generation && payload.connectionID == connection && payload.targetDeviceID == host && payload.counter == Int64(outgoingFrames))
         try require(outgoingFrames < 8 && (16...RemoteHarnessSecureLink.ciphertextBytes).contains(payload.ciphertext.count))
         outgoingFrames += 1
@@ -152,7 +173,7 @@ private enum Mode: CaseIterable { case roundTrip, handshakeTamper, tagTamper }
             let fragment = try peerFragments.encode(describeResponse("synthetic-rpc"), authenticatedGeneration: generation)[0].data
             var bad = try peer().encrypt(plaintext: fragment)
             bad[bad.endIndex - 1] ^= 1
-            try link.receiveRelay(try RemoteHarnessSecureRelay(connectionID: connection, targetDeviceID: client, counter: 0, ciphertext: bad), generation: generation)
+            try link.receiveRelay(wire(RemoteHarnessSecureRelay(connectionID: connection, targetDeviceID: client, counter: 0, ciphertext: bad)), generation: generation)
             throw LinkedFailure.failed
         }
         guard let bytes else { return }
@@ -196,7 +217,7 @@ private enum Mode: CaseIterable { case roundTrip, handshakeTamper, tagTamper }
             try require(counter == UInt64(incomingFrames) && counter <= UInt64(RemoteHarnessSecureLink.maximumCounter))
             let ciphertext = try peer().encrypt(plaintext: fragment.data)
             incomingFrames += 1
-            try link.receiveRelay(try RemoteHarnessSecureRelay(connectionID: connection, targetDeviceID: client, counter: Int64(counter), ciphertext: ciphertext), generation: generation)
+            try link.receiveRelay(wire(RemoteHarnessSecureRelay(connectionID: connection, targetDeviceID: client, counter: Int64(counter), ciphertext: ciphertext)), generation: generation)
         }
     }
     func authenticated(binding: RemoteHarnessBinding) throws {

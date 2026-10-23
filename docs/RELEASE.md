@@ -116,7 +116,9 @@ All 28 original Kotlin host scenarios, 17 Python evidence-guard tests, Swift
 parsing and fresh independent review pass after the fixes. At PR #174 source
 `004661bda9b06eaeed6c50075756d6eb5d480688`, hosted Swift executes 670 tests,
 six skipped with no failures; both native suites execute all 28 secure-link
-cases exactly once. Full CI remains pending. Fake-provider behavior is not evidence of
+cases exactly once. All 18 CI jobs and the separate secret scan pass before
+PR #174 merges as `f7bc727eabdf89777f57dfc162bb893413c9e1d4`.
+Fake-provider behavior is not evidence of
 maintained Rust linkage, encrypted network interoperability, durable trust,
 native interaction or signed release readiness.
 
@@ -128,9 +130,25 @@ pins, read-only public Ubuntu permissions, no-cache/no-artifact policy and
 15-minute job cap remain; each new compile/process has a 180/30-second bound.
 The only production extraction moves the unchanged privacy protocol/defaults to
 a Foundation-only file. Local Kotlin type compilation, Swift parsing and three
-crypto build-guard tests pass. Actual linked execution, pinned Kotlin 2.0.21 and
-hosted Apple regression checks remain pending. This source preparation supplies
+crypto build-guard tests pass. At PR #175 source
+`f91b138a0d27fa0e4abb70969e55716c6a21240c`,
+[hosted crypto run 39911672366](https://github.com/alikatgh/quenderin/actions/runs/39911672366)
+passes nine Rust tests, clippy, both original generated-binding probes and both
+linked Swift/Kotlin probes. The pinned Kotlin 2.0.21 build and actual runtime
+markers pass; hosted Apple/Android core regressions and all 18 CI jobs pass too.
+PR #175 merges as `765f1e6be0bbbcb494e0309808fdcab8d25c1850`.
+This source preparation supplies
 no platform-signed artifact, account trust or store submission.
+
+The next secure Control JSON increment uses the exact upstream handshake/relay
+types and type-specific inclusive UTF-8 limits. Platform Base64 libraries provide
+encoding/decoding; re-encoding rejects aliases, padding and noncanonical trailing
+bits. Native safe integers, duplicate rejection and bounded IDs are documented
+hardening. All 41 Kotlin cases / 150 steps, 50 combined Python gate tests, Swift
+parsing and fresh independent review pass. Every linked-probe packet now uses
+the JSON codec, retaining the original local generation. Hosted Swift fixtures
+and real-Rust execution of this new JSON path remain pending; no network,
+enrollment, provider activation or store action is established.
 
 ## 23 October 2026 — Android unsigned export source gate
 

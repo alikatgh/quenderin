@@ -106,17 +106,38 @@ private class LinkedRig(private val mode: Mode) : AutoCloseable, RemoteHarnessSe
     private fun fragmentsFor(bytes: ByteArray) = maxOf(1, (bytes.size + RemoteHarnessFragments.CHUNK_BYTES - 1) / RemoteHarnessFragments.CHUNK_BYTES)
     private fun promptOperation() = RemoteHarnessOperations.sessionPrompt(SESSION, COMMAND, prompt)
 
+    private var wireFrames = 0
+    private fun wireHandshake(original: RemoteHarnessSecureHandshake): RemoteHarnessSecureHandshake {
+        val id = "linked-synthetic-wire-${++wireFrames}"
+        val envelope = RemoteHarnessControlWire.decode(RemoteHarnessControlWire.encode(RemoteHarnessControlPacket.Handshake(original), id, 1))
+        check(envelope.id == id && envelope.timestamp == 1L)
+        val decoded = (envelope.packet as RemoteHarnessControlPacket.Handshake).value
+        check(decoded.connectionID == original.connectionID && decoded.targetDeviceID == original.targetDeviceID &&
+            decoded.step == original.step && decoded.bytes.contentEquals(original.bytes))
+        return decoded
+    }
+    private fun wireRelay(original: RemoteHarnessSecureRelay): RemoteHarnessSecureRelay {
+        val id = "linked-synthetic-wire-${++wireFrames}"
+        val envelope = RemoteHarnessControlWire.decode(RemoteHarnessControlWire.encode(RemoteHarnessControlPacket.Relay(original), id, 1))
+        check(envelope.id == id && envelope.timestamp == 1L)
+        val decoded = (envelope.packet as RemoteHarnessControlPacket.Relay).value
+        check(decoded.connectionID == original.connectionID && decoded.targetDeviceID == original.targetDeviceID &&
+            decoded.counter == original.counter && decoded.ciphertext.contentEquals(original.ciphertext))
+        return decoded
+    }
     override fun connectionInfo() = RemoteHarnessSecureConnectionInfo(CONNECTION, CLIENT, HOST)
     override fun sendHandshake(payload: RemoteHarnessSecureHandshake, generation: Long) {
+        val payload = wireHandshake(payload)
         check(generation == GENERATION && payload.step == 1 && payload.connectionID == CONNECTION && payload.targetDeviceID == HOST && payload.bytes.size == 96)
         val read = responder.readHandshake(payload.bytes)
         val reply = checkNotNull(read.response)
         check(read.complete && reply.size == 48)
         if (mode == Mode.HANDSHAKE_TAMPER) reply[reply.lastIndex] = (reply.last().toInt() xor 1).toByte()
         // Intentionally synchronous, exercising readiness reservation before send.
-        link.receiveHandshake(RemoteHarnessSecureHandshake(CONNECTION, CLIENT, 2, reply), generation)
+        link.receiveHandshake(wireHandshake(RemoteHarnessSecureHandshake(CONNECTION, CLIENT, 2, reply)), generation)
     }
     override fun sendRelay(payload: RemoteHarnessSecureRelay, generation: Long) {
+        val payload = wireRelay(payload)
         check(generation == GENERATION && payload.connectionID == CONNECTION && payload.targetDeviceID == HOST && payload.counter == outgoingFrames.toLong())
         check(outgoingFrames < 8 && payload.ciphertext.size in 16..RemoteHarnessSecureLink.CIPHERTEXT_BYTES)
         outgoingFrames++
@@ -129,7 +150,7 @@ private class LinkedRig(private val mode: Mode) : AutoCloseable, RemoteHarnessSe
             val fragment = peerFragments.encode(describeResponse("synthetic-rpc"), GENERATION).first().data
             val bad = responder.encrypt(fragment)
             bad[bad.lastIndex] = (bad.last().toInt() xor 1).toByte()
-            link.receiveRelay(RemoteHarnessSecureRelay(CONNECTION, CLIENT, 0, bad), generation)
+            link.receiveRelay(wireRelay(RemoteHarnessSecureRelay(CONNECTION, CLIENT, 0, bad)), generation)
             error("Tampered tag was accepted")
         }
         if (bytes == null) return
@@ -165,7 +186,7 @@ private class LinkedRig(private val mode: Mode) : AutoCloseable, RemoteHarnessSe
             check(counter == incomingFrames.toULong())
             val ciphertext = responder.encrypt(fragment.data)
             incomingFrames++
-            link.receiveRelay(RemoteHarnessSecureRelay(CONNECTION, CLIENT, counter.toLong(), ciphertext), GENERATION)
+            link.receiveRelay(wireRelay(RemoteHarnessSecureRelay(CONNECTION, CLIENT, counter.toLong(), ciphertext)), GENERATION)
         }
     }
     override fun authenticated(context: RemoteHarnessAuthenticatedContext) {
