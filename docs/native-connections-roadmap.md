@@ -181,17 +181,27 @@ them. The [server documentation](https://github.com/liguobao/ds-harness-remote/b
 describes a separately deployed single-account relay, not a Quenderin-hosted
 multi-account service. Pinning an inspection target does not establish support.
 
-- [ ] Pin supported Harness/Remote revisions and maintain a compatibility matrix.
-- [ ] Verify applicable MIT and dependency notices before reusing code.
-- [ ] Implement native server enrollment, discovery and connection lifecycle.
+- [x] Pin the implemented Harness/Remote baseline and record its tested scope.
+- [x] Preserve MIT notices for reused Host/runtime source and record dependency
+  license inventories.
+- [ ] Package and verify required notices in the final distribution artifacts.
+- [x] Implement native server enrollment, discovery and connection lifecycle.
 - [x] Isolate current `harness.remote.*` / Session V3 carrier details behind the
   Quenderin adapter; reject retired RPCs such as `sync.from`.
-- [ ] Implement workspace/session lists, creation, selection, history and streams.
-- [ ] Add native composer, timeline, model/effort selection and interactive questions.
-- [ ] Present Host approvals without starting a second local agent loop.
-- [ ] Implement Host-acknowledged stop and truthful disconnected/unknown states.
-- [ ] Preserve drafts, reading position, search and favorites with Host provenance.
+- [x] Implement workspace/session lists, creation, selection, history and streams.
+- [x] Add native composer, timeline and model/effort selection.
+- [ ] Add interactive questions.
+- [x] Present bound Host approvals without starting a second local agent loop.
+- [ ] Resolve each approval to one durable tool call and show its exact
+  arguments inside the approval card before enabling a decision.
+- [x] Implement Host-acknowledged stop and truthful disconnected/unknown states.
+- [x] Preserve drafts and exact workspace/session recovery references.
+- [ ] Add reading position, search and favorites with Host provenance.
 - [ ] Verify the complete journey against an actual pinned Host when authorized.
+
+Checked implementation items use source, native controller fixtures and the real
+in-process Harness evidence below. The final enrolled native/relay journey is
+still open; no device/simulator interaction or provider inference is implied.
 
 Carrier source preparation uses 39 shared request/frame fixtures in
 `shared/remote-harness-carrier-fixtures.json`. The adapters keep raw RPC results
@@ -345,6 +355,14 @@ device/workspace/session/turn/action/event with a finite lifetime. The native
 apps keep Create/Send/Model read-only until that capability is authenticated;
 history and Stop remain available.
 
+The real capture exposed an additional native approval gate: upstream deliberately
+omits arguments from `approval/request`, linking the immutable execution by
+`callId`. Its approval arrives at captured frame 22, before any argument-bearing
+frame (26) and the durable tool call (31). Both native cards currently show only
+the request metadata. Matching and displaying the exact tool call before remote
+decisions is therefore an open correctness gate, independent of the Host's
+existing trusted-runtime binding by reference.
+
 Pre-publication evidence: Android controller journey 51 checks; production pinned
 OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
 the 12 shared canonical digest cases; SDK receipt/package tests 31. Hosted Swift
@@ -373,9 +391,23 @@ relay/Noise or model-provider test. The exact 47 pre-teardown business frames
 and unary results are preserved in
 [`shared/remote-harness-official-runtime-facts.json`](../shared/remote-harness-official-runtime-facts.json)
 with [capture provenance](../shared/remote-harness-official-runtime-provenance.json)
-and an executable byte-integrity gate. Native conformance replays are being
-added from those observed DTOs. Cold persistence reads, stop/recovery and live
-native interoperability remain separate gates. Fresh independent reviews cover the integrated source and material
+and an executable byte-integrity gate. The captured DTOs exposed the empty-session
+`cursor: -1`/first event `seq: 0` boundary and Android's durable-message-before-
+attempt-end ordering. Native fixes and regressions pass **685 Swift tests, six
+skipped, zero failures**, and **77 Kotlin controller checks** including all 47
+captured frames at source `5bf2bcc`. Fresh hosted compilation establishes those
+results; synthetic enrollment/relay/crypto and explicit replay identity/clock
+adapters remain separate from the real Gateway evidence.
+
+The [Stop/cold recovery job](https://github.com/alikatgh/quenderin/actions/runs/39989853605/job/120538500799)
+passes both official-runtime tests at `19a41fb`: one stalled model call receives
+the production cancellation signal, authoritative history records an aborted
+turn, reopened streams recover it, and a new Context reads the flushed JSONL
+session. Resubmitting its persisted request ID sequentially produces zero cold
+model calls, one original user message and one turn. This proves the existing
+sequential deduplication path after a flush; crash consistency and concurrent
+atomic admission remain open. Live native interoperability also remains open.
+Fresh independent reviews cover the integrated source and material
 fixes before publication.
 
 The initial companion targets macOS/Linux Hosts. Native Windows Host trust,
@@ -400,16 +432,20 @@ cancellation. Store and real-provider activation gates remain separate.
 - [x] Reuse the fixed upstream Noise suite through maintained implementations;
   establish native interoperability with upstream golden vectors and real linked
   Swift/Kotlin backend probes (recorded above).
-- [ ] Add explicit Host confirmation and QR/fingerprint comparison for enrollment.
+- [x] Implement explicit Host confirmation and full fingerprint comparison.
   Upstream's account-authorized first-use pinning alone is not bilateral pairing.
-- [ ] Version-gate any required Host changes for pairing, scopes and deduplication.
-- [ ] Bind approvals to Host/device, workspace, session/run, exact action, expiry
+- [x] Negotiate the Host companion's pairing/approval capability before mutations.
+- [ ] Version-gate stronger durable, concurrent command admission before retries.
+- [x] Bind approvals to Host/device, workspace, session/run, exact action, expiry
   and approval ID; reject stale, duplicate and mismatched approvals.
-- [ ] Persist command identifiers before sending and require Host deduplication
-  before claiming retry safety for mutations.
+- [x] Persist native command identifiers before sending; fail before dispatch
+  when durable journaling fails.
+- [ ] Require stronger Host deduplication before claiming automatic retry safety
+  for uncertain mutations. Current clients never replay them automatically.
 - [ ] Reconcile lost acknowledgements against authoritative Host state.
-- [ ] Recover using current history snapshots and reopened streams; deduplicate
-  events and detect gaps without replaying uncertain mutations.
+- [x] Recover using current history snapshots and reopened streams with strict
+  session/sequence checks and no replay of uncertain mutations.
+- [ ] Complete duplicate/replacement history and live lifecycle recovery tests.
 - [x] Distinguish stop requested, receipt, confirmed stopped and outcome unknown
   in both native controllers, with synthetic journey/regression coverage.
 - [ ] Define controller ownership when multiple devices attach to one session.
@@ -439,7 +475,7 @@ cancellation. Store and real-provider activation gates remain separate.
   notifications, storage and CI. Recheck announced 1 November search/fetch fees.
 - [ ] Make terminal access a distinct Host opt-in; disclose Host-user privileges.
   Agent approvals and a working directory are not a terminal sandbox.
-- [ ] Run exact staged/tree secret scans before every authorized publication.
+- [x] Run both staged secret scans before each source publication in this work.
 
 ## 6. Full feature parity, in dependency order
 
@@ -477,7 +513,7 @@ cancellation. Store and real-provider activation gates remain separate.
 
 ## 8. Native and failure verification
 
-- [ ] Shared Swift/Kotlin provider/protocol fixtures and history round trips.
+- [x] Shared Swift/Kotlin provider/protocol fixtures and captured-history replays.
 - [ ] Wrong keys, revoked devices, malformed/oversized frames and replay rejection.
 - [ ] Cross-origin credentials and destination isolation.
 - [ ] Duplicate approvals, lost acknowledgements, process death and reconnect.
