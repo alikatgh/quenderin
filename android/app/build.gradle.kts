@@ -11,8 +11,8 @@ import groovy.json.JsonSlurper
 
 plugins {
     id("com.android.application") version "8.10.1"
-    kotlin("android") version "2.2.21"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
+    kotlin("android") version "2.4.21"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.21"
 }
 
 // Release signing credentials come from GITIGNORED android/keystore.properties — never git.
@@ -189,11 +189,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0") // Explicit no-auth/no-cookie Step 5 gateway transport.
     // Background, resumable model downloads (ModelDownloadWorker + WorkManagerModelDownloader).
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
-    implementation("androidx.core:core-ktx:1.13.1") // NotificationCompat for the download notification
-    implementation("androidx.documentfile:documentfile:1.0.1") // SAF workspace fs.* (DocWorkspace.kt)
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("androidx.core:core-ktx:1.19.1") // NotificationCompat for the download notification
+    implementation("androidx.documentfile:documentfile:1.1.0") // SAF workspace fs.* (DocWorkspace.kt)
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
