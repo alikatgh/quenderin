@@ -25,8 +25,6 @@ jobs:
       CARGO_NET_RETRY: '0'
       CARGO_HTTP_TIMEOUT: '30'
       CARGO_BUILD_JOBS: '2'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/quenderin-remote-target
-      DSH_NOISE_VECTOR_PATH: ${{ runner.temp }}/dsh-noise-ik.json
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     defaults:
       run:
@@ -36,6 +34,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - name: Set disposable host paths after runner allocation
+        run: |
+          printf 'CARGO_TARGET_DIR=%s\nDSH_NOISE_VECTOR_PATH=%s\n' \
+            "$RUNNER_TEMP/quenderin-remote-target" "$RUNNER_TEMP/dsh-noise-ik.json" >> "$GITHUB_ENV"
       - name: Check source pins and bootstrap guards without compiling
         run: |
           python3 -B tools/verify_build_gate.py --manifest-only

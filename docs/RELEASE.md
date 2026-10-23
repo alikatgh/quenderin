@@ -6,11 +6,21 @@ or already-authorized signing configuration. A debug build is not a signed store
 
 ## 23 October 2026 — native DeepSeek source preparation
 
-The `codex/native-connections-20261023` candidate adds a separate native DeepSeek
+The reviewed `codex/native-connections-20261023` change adds a separate native DeepSeek
 destination before local model setup and in the existing Apple/Android shell.
 The delivery checklist is [native-connections-roadmap.md](native-connections-roadmap.md).
 This is source preparation, not an uploaded or submitted app version. Store
 versions/counters and review states below remain dated evidence until refreshed.
+
+[PR #170](https://github.com/alikatgh/quenderin/pull/170) merged as
+`3c096da43fcb6414655946f41476647bf8da3b78`. Its exact feature source
+`4abdd1f1794d1fe9e732d2737acc410a2fb7c9a6` passed
+[all 18 CI jobs](https://github.com/alikatgh/quenderin/actions/runs/39899498601)
+and the separate secret scan. This includes 644 Swift tests (six skipped), all
+104 connection and 30 DeepSeek fixture executions, Android core/APK/unsigned AAB,
+iOS SDK compilation and desktop packaging. Independent source review findings
+were resolved before merge. No signed store artifact or native interaction result
+is established by this source merge.
 
 The direct API route uses the user's DeepSeek account and the fixed official
 origin. Setup validates `/models`; each explicit Send starts one streaming Chat
@@ -50,12 +60,32 @@ UI updates pass 27 tests and a production bundle build, but its separate audit
 still reports 5 high/2 moderate findings in the Tailwind 3 glob/braces chain and
 selector parser. A Tailwind migration needs its own rendered verification.
 
-Before any native store submission, complete hosted compilation/tests, refresh
+Before any native store submission, refresh
 the exact release source and store state, validate the signed Keychain/Keystore
 and changed native journeys through an authorized route, update privacy/store
 disclosures for direct third-party AI transmission, and resolve applicable policy
 and release gates. The current prohibition on simulator/device runs leaves
 rendered native interaction unverified. No source/test result substitutes for it.
+
+## 23 October 2026 — remote Harness source preparation
+
+The next source increment isolates the pinned V3 decrypted business carrier in
+both native cores. Shared request/frame fixtures cover current RPCs, opaque
+results, stream acknowledgements and strict contextual numbers. Fake coordinators
+bound pending requests, deadlines and Host stream reservations; stale callbacks
+cannot retire newer connections. Lost mutation acknowledgements remain unknown
+and are never replayed. Both approval decisions fail closed until a negotiated
+Host extension binds device/workspace/run/action/expiry.
+
+This source does not connect to a Host. Enrollment, relay/WebSocket framing,
+durable journal integration, native session UI and real Host verification remain
+pending. The isolated Rust Noise facade has exact Snow/UniFFI source pins but no
+app activation. Its new bounded public Ubuntu workflow deliberately stops after
+metadata-only lockfile generation when the reviewed complete lock is absent;
+compilation requires a committed lock and `cargo --locked`. No credentials,
+provider/relay services, caches or artifact uploads are used by that workflow.
+Locked golden-vector tests, generated binding inspection, native linking/ABI
+checks and export-compliance review remain gates before encrypted remote release.
 
 ## 20 October 2026 — Android Alpha recovery and bundle export
 

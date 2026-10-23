@@ -7,7 +7,10 @@ destination, model, workspace and tool execution location. Changing a destinatio
 never silently transmits an existing local conversation or attached documents.
 
 Created: 23 October 2026. Baseline: `fb9389d82fc8e8b3486897af3f4585c17d928fcc`.
-Implementation branch: `codex/native-connections-20261023`.
+DeepSeek source: `4abdd1f1794d1fe9e732d2737acc410a2fb7c9a6`,
+[PR #170](https://github.com/alikatgh/quenderin/pull/170).
+Merged to `main` as `3c096da43fcb6414655946f41476647bf8da3b78`.
+Next increment: `codex/native-remote-harness-20261023`.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -57,7 +60,7 @@ Principal seams: `apple/QuenderinKit`, `apple/QuenderinApp`,
 `android/quenderin-core`, `android/app` and `shared/`. Keep UI bubbles as a
 projection; their user/assistant-only shape cannot replace provider history.
 
-## 2. First-class native DeepSeek provider — implementation in progress
+## 2. First-class native DeepSeek provider — source implemented
 
 Acceptance: a fresh install can open a separate DeepSeek conversation, consent
 to transmission, securely validate/save its API key, choose a supported model and
@@ -67,26 +70,39 @@ with local tools disabled; Flash's image capability is recorded for later work.
 Fake-transport evidence, signed secure-storage evidence, live inference and
 rendered native interaction are separate checks.
 
-- [ ] Add provider setup, secure credential entry, connection validation and
+- [x] Add provider setup, secure credential entry, connection validation and
   actionable authentication/quota/network errors.
-- [ ] Add Apple Keychain and Android Keystore-backed credential storage; profiles
+- [x] Add Apple Keychain and Android Keystore-backed credential storage; profiles
   hold opaque references, never secret values.
-- [ ] Add a dedicated streaming Chat Completions transport on each platform.
-- [ ] Add a versioned capability catalog and deliberate refresh policy.
-- [ ] Support `deepseek-flash` (default, text/images) and `deepseek-v4-pro`
+- [x] Add a dedicated streaming Chat Completions transport on each platform.
+- [x] Add a versioned capability catalog and deliberate refresh policy.
+- [x] Support `deepseek-flash` (default, text/images) and `deepseek-v4-pro`
   (optional text reasoning) using refreshed official capability evidence.
-- [ ] Implement Off/Low/High/Max reasoning and faithful `reasoning_content`,
+- [x] Implement Off/Low/High/Max reasoning and faithful `reasoning_content`,
   tool-call ID and result preservation across turns.
-- [ ] Handle split/truncated streaming frames, context/output limits, usage,
+- [x] Handle split/truncated streaming frames, context/output limits, usage,
   cancellation, 401/402/429/5xx and bounded safe retries.
-- [ ] Enforce client/Host execution limits; provider compatibility must not imply
+- [x] Enforce direct-client execution limits; provider compatibility must not imply
   support for ignored Responses API controls such as `max_tool_calls`.
-- [ ] Expose destination/model/effort/usage in native conversation UI.
-- [ ] Permit DeepSeek setup and use before any local model download.
-- [ ] Keep remote Harness account authentication distinct from direct API keys;
+- [x] Expose destination/model/effort/usage in native conversation UI.
+- [x] Permit DeepSeek setup and use before any local model download.
+- [x] Keep remote Harness account authentication distinct from direct API keys;
   Host credentials are not copied to the phone.
 - [ ] Verify local tools disclose any resulting transmission to DeepSeek.
-- [ ] Test the provider with fake transports, then bounded authorized live calls.
+- [x] Test the provider with fake transports, including actual pinned OkHttp
+  follow-up behavior, cancellation admission and uncertain credential writes.
+- [ ] Validate signed Keychain/Keystore persistence, rendered native interaction
+  and bounded authorized live inference. Source checks do not complete this gate.
+
+Checked items above record implemented source and synthetic verification. Flash
+image support is capability metadata; the initial composer sends text only.
+Local tools remain disabled, so their disclosure journey is still unchecked.
+Hosted checks at the exact source above pass the Swift suite (644 tests, six
+skipped), Android core checks, Android APK/unsigned AAB build and iOS SDK compile.
+The [full CI run](https://github.com/alikatgh/quenderin/actions/runs/39899498601)
+passed all 18 jobs, including desktop packaging; the separate secret scan passed.
+The reviewed source is merged to main through PR #170.
+No native simulator/device journey, signed store build or real API call is claimed.
 
 The reviewed API contract and dated catalog live in
 `shared/deepseek-provider-contract.json`. Both native suites must execute the
@@ -111,8 +127,8 @@ Candidate compatibility baseline, refreshed from upstream source on 23 October:
 | Remote source | `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Source inspected; no native interoperability yet |
 | Host plugin | `ds-harness-remote` 0.5.17 at that revision | Not installed or connected by Quenderin |
 | Harness development API | `0.2.1-rc.1` in plugin dev dependencies | Candidate only; not a tested support range |
-| Wire envelope | Protocol version 1 | Native carrier implementation pending |
-| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Native library selection and golden vectors pending |
+| Wire envelope | Protocol version 1 | Native codec/builders and fake coordinators implemented; hosted verification pending |
+| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Snow 0.10 / UniFFI 0.32.2 source pinned; locked host and native interoperability pending |
 
 The [plugin manifest](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/package.json)
 and [plugin MIT notice](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/LICENSE)
@@ -134,6 +150,30 @@ multi-account service. Pinning an inspection target does not establish support.
 - [ ] Implement Host-acknowledged stop and truthful disconnected/unknown states.
 - [ ] Preserve drafts, reading position, search and favorites with Host provenance.
 - [ ] Verify the complete journey against an actual pinned Host when authorized.
+
+Carrier source preparation uses 39 shared request/frame fixtures in
+`shared/remote-harness-carrier-fixtures.json`. The adapters keep raw RPC results
+opaque until the appropriate operation parser, register streams before sending,
+bind callbacks to a connection generation and workspace/session, and preserve
+uncertain mutation outcomes without automatic replay. Approval decision dispatch
+remains blocked until a Host extension supplies the required exact-action/run/
+expiry binding. A stop receipt alone cannot confirm that execution stopped.
+These are fake decrypted-port coordinators, not an enrolled or encrypted network
+connection. Authentication, WebSocket/fragment transport, durable journal and
+native UI integration remain work to do.
+
+Source checks: Kotlin compiles with all existing core files and passes all 39
+fixture executions plus 23 behavioral groups. Swift source parsing and seven
+Python evidence-guard tests pass. Fresh independent review findings are resolved;
+hosted Swift compilation/test execution remains required before this source
+increment can be merged.
+
+The isolated [remote crypto preparation](../native/remote-crypto/README.md) has
+no app/network activation. Its first permitted hosted run generates dependency
+metadata only and deliberately fails before compilation if `Cargo.lock` is
+missing. Review/commit the complete lock before locked tests or generated Swift/
+Kotlin bindings. Golden-vector source, native linking and a real Host journey
+must pass before calling this a supported remote destination.
 
 ## 4. Device trust, approvals and recovery
 

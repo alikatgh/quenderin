@@ -1,0 +1,677 @@
+{
+  "schemaVersion": 1,
+  "requests": [
+    {
+      "id": "describe",
+      "method": "harness.transport.describe",
+      "params": {},
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.transport.describe",
+          "params": {}
+        }
+      }
+    },
+    {
+      "id": "session-list",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/list",
+        "payload": {
+          "args": {
+            "_request": {}
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/list",
+            "payload": {
+              "args": {
+                "_request": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "session-create",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/create",
+        "payload": {
+          "args": {
+            "request": {
+              "workspaceId": "workspace-fixture"
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/create",
+            "payload": {
+              "args": {
+                "request": {
+                  "workspaceId": "workspace-fixture"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "workspace-follow",
+      "method": "harness.remote.stream.open",
+      "params": {
+        "streamId": "stream-fixture",
+        "endpoint": "workspace/follow",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.stream.open",
+          "params": {
+            "streamId": "stream-fixture",
+            "endpoint": "workspace/follow",
+            "payload": {
+              "args": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "session-follow",
+      "method": "harness.remote.stream.open",
+      "params": {
+        "streamId": "stream-fixture",
+        "endpoint": "session/follow",
+        "payload": {
+          "args": {
+            "request": {
+              "address": {
+                "kind": "session",
+                "sessionId": "session-fixture"
+              },
+              "maxMessages": 60,
+              "assistantStream": true
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.stream.open",
+          "params": {
+            "streamId": "stream-fixture",
+            "endpoint": "session/follow",
+            "payload": {
+              "args": {
+                "request": {
+                  "address": {
+                    "kind": "session",
+                    "sessionId": "session-fixture"
+                  },
+                  "maxMessages": 60,
+                  "assistantStream": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "history-page",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/page",
+        "payload": {
+          "args": {
+            "request": {
+              "address": {
+                "kind": "session",
+                "sessionId": "session-fixture"
+              },
+              "throughSeq": 42,
+              "beforeSeq": 21,
+              "maxMessages": 60
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/page",
+            "payload": {
+              "args": {
+                "request": {
+                  "address": {
+                    "kind": "session",
+                    "sessionId": "session-fixture"
+                  },
+                  "throughSeq": 42,
+                  "beforeSeq": 21,
+                  "maxMessages": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "prompt",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/prompt",
+        "payload": {
+          "args": {
+            "request": {
+              "requestId": "command-fixture",
+              "sessionId": "session-fixture",
+              "mode": "queue",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Explain 世界"
+                }
+              ],
+              "clientTimeZone": "Asia/Ulaanbaatar"
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/prompt",
+            "payload": {
+              "args": {
+                "request": {
+                  "requestId": "command-fixture",
+                  "sessionId": "session-fixture",
+                  "mode": "queue",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Explain 世界"
+                    }
+                  ],
+                  "clientTimeZone": "Asia/Ulaanbaatar"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stop",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/cancel",
+        "payload": {
+          "args": {
+            "request": {
+              "sessionId": "session-fixture"
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/cancel",
+            "payload": {
+              "args": {
+                "request": {
+                  "sessionId": "session-fixture"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "control-follow",
+      "method": "harness.remote.stream.open",
+      "params": {
+        "streamId": "stream-fixture",
+        "endpoint": "session/control",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.stream.open",
+          "params": {
+            "streamId": "stream-fixture",
+            "endpoint": "session/control",
+            "payload": {
+              "args": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approval-events",
+      "method": "harness.remote.stream.open",
+      "params": {
+        "streamId": "stream-fixture",
+        "endpoint": "$events",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.stream.open",
+          "params": {
+            "streamId": "stream-fixture",
+            "endpoint": "$events",
+            "payload": {
+              "args": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approval-encoding-only",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "$events/result",
+        "payload": {
+          "args": {
+            "clientId": "event-client-fixture",
+            "eventId": "approval-fixture",
+            "outcome": {
+              "kind": "result",
+              "value": "allowed-once"
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "$events/result",
+            "payload": {
+              "args": {
+                "clientId": "event-client-fixture",
+                "eventId": "approval-fixture",
+                "outcome": {
+                  "kind": "result",
+                  "value": "allowed-once"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "model-catalog",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/modelCatalog",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/modelCatalog",
+            "payload": {
+              "args": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "model-selection",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/selectModel",
+        "payload": {
+          "args": {
+            "request": {
+              "sessionId": "session-fixture",
+              "provider": "deepseek",
+              "model": "deepseek-flash",
+              "reasoningEffort": "high"
+            }
+          }
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.call",
+          "params": {
+            "endpoint": "session/selectModel",
+            "payload": {
+              "args": {
+                "request": {
+                  "sessionId": "session-fixture",
+                  "provider": "deepseek",
+                  "model": "deepseek-flash",
+                  "reasoningEffort": "high"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stream-close",
+      "method": "harness.remote.stream.close",
+      "params": {
+        "streamId": "stream-fixture"
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "expectedFrame": {
+        "v": 1,
+        "id": "rpc-fixture",
+        "type": "rpc.request",
+        "timestamp": 1,
+        "payload": {
+          "method": "harness.remote.stream.close",
+          "params": {
+            "streamId": "stream-fixture"
+          }
+        }
+      }
+    },
+    {
+      "id": "reject-retired-sync",
+      "method": "sync.from",
+      "params": {},
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "error": "rejected"
+    },
+    {
+      "id": "reject-invented-subscribe",
+      "method": "harness.remote.subscribe",
+      "params": {},
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "error": "rejected"
+    },
+    {
+      "id": "reject-terminal-endpoint",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "terminal/execute",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "error": "rejected"
+    },
+    {
+      "id": "reject-stream-as-call",
+      "method": "harness.remote.call",
+      "params": {
+        "endpoint": "session/follow",
+        "payload": {
+          "args": {}
+        }
+      },
+      "frameID": "rpc-fixture",
+      "timestamp": 1,
+      "error": "rejected"
+    }
+  ],
+  "frames": [
+    {
+      "id": "response-success",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"ok\":true,\"value\":{\"items\":[],\"opaque\":{\"ratio\":1.25,\"reasoning_content\":\"retain exact\"}}}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "response-inner-error",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"ok\":false,\"error\":{\"code\":\"UNAVAILABLE\",\"message\":\"private diagnostic not displayed\",\"details\":{\"private\":\"fixture\"}}}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "response-outer-error",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.error\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"code\":\"RESPONSE_TOO_LARGE\",\"message\":\"private diagnostic not displayed\",\"retryable\":true}}",
+      "expected": {
+        "type": "rpc.error",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "early-snapshot",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.frame\",\"data\":{\"streamId\":\"stream-fixture\",\"hasValue\":true,\"value\":{\"type\":\"snapshot\",\"cursor\":42,\"records\":[],\"hasMore\":false,\"projections\":{}}}}}",
+      "expected": {
+        "type": "event",
+        "eventName": "harness.remote.frame",
+        "streamID": "stream-fixture"
+      }
+    },
+    {
+      "id": "transient-assistant",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.frame\",\"data\":{\"streamId\":\"stream-fixture\",\"hasValue\":true,\"value\":{\"type\":\"assistant-stream\",\"frame\":{\"type\":\"chunk\",\"attemptId\":\"attempt-fixture\",\"revision\":1,\"index\":0,\"time\":2,\"chunk\":{\"content\":\"Hi\"}}}}}}",
+      "expected": {
+        "type": "event",
+        "eventName": "harness.remote.frame",
+        "streamID": "stream-fixture"
+      }
+    },
+    {
+      "id": "stream-closed",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.stream.closed\",\"data\":{\"streamId\":\"stream-fixture\",\"reason\":\"peer-disconnected\"}}}",
+      "expected": {
+        "type": "event",
+        "eventName": "harness.remote.stream.closed",
+        "streamID": "stream-fixture"
+      }
+    },
+    {
+      "id": "wrong-version",
+      "rawJSON": "{\"v\":2,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"ok\":true,\"value\":null}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "missing-correlation",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"result\":{\"ok\":true,\"value\":{}}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "opaque-result-preserved",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"ok\":\"true\",\"value\":{}}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "unknown-message-type",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"mystery\",\"timestamp\":2,\"payload\":{}}",
+      "error": "rejected"
+    },
+    {
+      "id": "negative-timestamp",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.error\",\"timestamp\":-1,\"payload\":{\"requestId\":\"rpc-fixture\",\"code\":\"ERROR\",\"message\":\"private\"}}",
+      "error": "rejected"
+    },
+    {
+      "id": "duplicate-outer-key",
+      "rawJSON": "{\"v\":1,\"v\":2,\"id\":\"f\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"ok\":true,\"value\":{}}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "describe-raw-response",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"capabilities\":[\"harness.remote.v3\",\"transport.relay\"]}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "stream-open-raw-ack",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"opened\":true,\"streamId\":\"stream-fixture\"}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "stream-close-raw-ack",
+      "rawJSON": "{\"v\":1,\"id\":\"host-frame-fixture\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{\"closed\":true,\"streamId\":\"stream-fixture\"}}}",
+      "expected": {
+        "type": "rpc.response",
+        "requestID": "rpc-fixture"
+      }
+    },
+    {
+      "id": "fractional-protocol-version",
+      "rawJSON": "{\"v\":1.0000000000000001,\"id\":\"f\",\"type\":\"rpc.response\",\"timestamp\":2,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "fractional-timestamp",
+      "rawJSON": "{\"v\":1,\"id\":\"f\",\"type\":\"rpc.response\",\"timestamp\":2.0,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "exponent-timestamp",
+      "rawJSON": "{\"v\":1,\"id\":\"f\",\"type\":\"rpc.response\",\"timestamp\":2e0,\"payload\":{\"requestId\":\"rpc-fixture\",\"result\":{}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "fractional-event-sequence",
+      "rawJSON": "{\"v\":1,\"id\":\"f\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.frame\",\"seq\":1.0000000000000001,\"data\":{\"streamId\":\"stream-fixture\",\"hasValue\":true,\"value\":{}}}}",
+      "error": "rejected"
+    },
+    {
+      "id": "stream-value-omitted",
+      "rawJSON": "{\"v\":1,\"id\":\"f\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.frame\",\"data\":{\"streamId\":\"stream-fixture\",\"hasValue\":true}}}",
+      "expected": {
+        "type": "event",
+        "eventName": "harness.remote.frame",
+        "streamID": "stream-fixture"
+      }
+    },
+    {
+      "id": "stream-value-explicit-null",
+      "rawJSON": "{\"v\":1,\"id\":\"f\",\"type\":\"event\",\"timestamp\":2,\"payload\":{\"event\":\"harness.remote.frame\",\"data\":{\"streamId\":\"stream-fixture\",\"hasValue\":true,\"value\":null}}}",
+      "expected": {
+        "type": "event",
+        "eventName": "harness.remote.frame",
+        "streamID": "stream-fixture"
+      }
+    }
+  ]
+}

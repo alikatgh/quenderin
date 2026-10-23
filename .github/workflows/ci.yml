@@ -108,6 +108,7 @@ jobs:
           swift test 2>&1 | tee "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_native_connections_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_deepseek_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
+          python3 ../../scripts/check_remote_harness_carrier.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
       - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
         run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
@@ -427,6 +428,15 @@ jobs:
             android/quenderin-core/src/verify/DeepSeekVerify.kt -include-runtime -d "$RUNNER_TEMP/deepseek.jar"
           java -jar "$RUNNER_TEMP/deepseek.jar" shared/deepseek-provider-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-deepseek.log"
           python3 -B scripts/check_deepseek_contract.py --results "$RUNNER_TEMP/quenderin-kotlin-deepseek.log"
+      - name: Verify native Harness carrier and failure recovery (fake Host only)
+        run: |
+          set -o pipefail
+          python3 -B -m unittest scripts.tests.test_remote_harness_carrier
+          python3 -B scripts/check_remote_harness_carrier.py
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/RemoteHarnessVerify.kt -include-runtime -d "$RUNNER_TEMP/remote-harness.jar"
+          java -jar "$RUNNER_TEMP/remote-harness.jar" shared/remote-harness-carrier-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-harness.log"
+          python3 -B scripts/check_remote_harness_carrier.py --results "$RUNNER_TEMP/quenderin-kotlin-harness.log"
       - name: Verify Beam framing and specialist native capability gates with tiny fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
