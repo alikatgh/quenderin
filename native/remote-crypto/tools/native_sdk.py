@@ -34,6 +34,62 @@ MODULEMAP = "QuenderinRemoteCryptoFFI.modulemap"
 KOTLIN = "ai/quenderin/remote/crypto/quenderin_remote_crypto.kt"
 RECEIPT = "quenderin-remote-sdk.json"
 
+# Only these fixed validation messages may reach the CLI. Parser, filesystem,
+# subprocess and unexpected exception data can contain arbitrary input values.
+SAFE_VALIDATION_DIAGNOSTICS = {
+    "SDK symlinks are forbidden": "SDK_SYMLINK: SDK symlinks are forbidden.",
+    "Expected Android arm64 ELF64": "ELF_ABI: Expected Android arm64 ELF64.",
+    "Invalid ELF program header table": "ELF_HEADER: Invalid ELF program header table.",
+    "Android ELF does not satisfy 16 KiB load alignment": "ELF_ALIGNMENT: Android ELF does not satisfy 16 KiB load alignment.",
+    "ELF has no loadable segments": "ELF_LOAD: ELF has no loadable segments.",
+    "Official Android JNA AAR size/digest differs": "JNA_DIGEST: Official Android JNA AAR size/digest differs.",
+    "JNA Android archive structure differs": "JNA_LAYOUT: JNA Android archive structure differs.",
+    "SDK receipt is stale, incomplete, or from different sources/targets": "SDK_RECEIPT: SDK receipt is stale, incomplete, or from different sources/targets.",
+    "SDK is missing generated bindings or native libraries": "SDK_COMPONENT: SDK is missing generated bindings or native libraries.",
+    "Native SDK directory is unavailable": "SDK_DIRECTORY: Native SDK directory is unavailable.",
+    "Android SDK target contract differs": "SDK_ANDROID_TARGET: Android SDK target contract differs.",
+    "Apple deployment targets differ": "SDK_APPLE_TARGET: Apple deployment targets differ.",
+    "Invalid XCFramework slice identifier": "SDK_APPLE_SLICE_ID: Invalid XCFramework slice identifier.",
+    "XCFramework library/header layout differs": "SDK_APPLE_LAYOUT: XCFramework library/header layout differs.",
+    "XCFramework native slice is missing": "SDK_APPLE_COMPONENT: XCFramework native slice is missing.",
+    "XCFramework module map differs from the generated map": "SDK_APPLE_MODULE_MAP: XCFramework module map differs from the generated map.",
+    "Apple SDK slices differ from supported targets": "SDK_APPLE_SLICES: Apple SDK slices differ from supported targets.",
+    "Duplicate Android package entries": "PACKAGE_DUPLICATE: Duplicate Android package entries.",
+    "Unexpected packaged Android ABI": "PACKAGE_ABI: Unexpected packaged Android ABI.",
+    "Packaged Noise ELF lacks 16 KiB load alignment": "PACKAGE_NOISE_ELF_ALIGNMENT: Packaged Noise ELF lacks 16 KiB load alignment.",
+    "Packaged JNA ELF lacks 16 KiB load alignment": "PACKAGE_JNA_ELF_ALIGNMENT: Packaged JNA ELF lacks 16 KiB load alignment.",
+    "Another packaged dependency lacks 16 KiB ELF load alignment": "PACKAGE_DEPENDENCY_ELF_ALIGNMENT: Another packaged dependency lacks 16 KiB ELF load alignment.",
+    "Stored APK native library lacks 16 KiB ZIP alignment": "PACKAGE_ZIP_ALIGNMENT: Stored APK native library lacks 16 KiB ZIP alignment.",
+    "Duplicate packaged remote library": "PACKAGE_REMOTE_DUPLICATE: Duplicate packaged remote library.",
+    "Packaged Noise bytes differ from verified SDK": "PACKAGE_NOISE_BYTES: Packaged Noise bytes differ from verified SDK.",
+    "Packaged JNA bytes differ from verified SDK": "PACKAGE_JNA_BYTES: Packaged JNA bytes differ from verified SDK.",
+    "Android package is missing the real Noise or JNA library": "PACKAGE_REMOTE_MISSING: Android package is missing the real Noise or JNA library.",
+    "Android NDK pin differs": "SDK_NDK_PIN: Android NDK pin differs.",
+    "Pinned Android arm64 API28 compiler/archiver is unavailable": "SDK_NDK_TOOLS: Pinned Android arm64 API28 compiler/archiver is unavailable.",
+    "Native SDK compilation is restricted to the bounded hosted workflow": "SDK_HOSTED_ONLY: Native SDK compilation is restricted to the bounded hosted workflow.",
+    "Preserve existing SDK output; choose a new path": "SDK_EXISTING_OUTPUT: Preserve existing SDK output; choose a new path.",
+    "Built Apple archive architecture differs": "SDK_APPLE_ARCHITECTURE: Built Apple archive architecture differs.",
+    "Unexpected Maven redirect": "SDK_MAVEN_REDIRECT: Unexpected Maven redirect.",
+}
+
+
+def failure_diagnostic(error: Exception) -> str:
+    if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str:
+        return SAFE_VALIDATION_DIAGNOSTICS.get(error.args[0], "SDK_VALIDATION: Unrecognized validation failure.")
+    if isinstance(error, json.JSONDecodeError):
+        return "SDK_JSON: SDK metadata is not valid JSON."
+    if isinstance(error, zipfile.BadZipFile):
+        return "SDK_ARCHIVE: SDK or Android package archive is invalid."
+    if isinstance(error, OSError):
+        return "SDK_IO: A required SDK or package file could not be read."
+    if isinstance(error, KeyError):
+        return "SDK_METADATA: Required SDK metadata is missing."
+    if isinstance(error, subprocess.TimeoutExpired):
+        return "SDK_TIMEOUT: A bounded build command exceeded its deadline."
+    if isinstance(error, subprocess.SubprocessError):
+        return "SDK_COMMAND: A required build command failed."
+    return "SDK_UNEXPECTED: Unexpected SDK verification failure."
+
 
 def digest(path: Path, algorithm: str = "sha256") -> str:
     with path.open("rb") as stream:
@@ -159,7 +215,17 @@ def verify_package(sdk: Path, package: Path) -> None:
             if "/arm64-v8a/" not in item.filename:
                 raise ValueError("Unexpected packaged Android ABI")
             data = archive.read(item)
-            elf(data)
+            name = Path(item.filename).name
+            try:
+                elf(data)
+            except ValueError as error:
+                if error.args == ("Android ELF does not satisfy 16 KiB load alignment",):
+                    if name == "libquenderin_remote_crypto.so":
+                        raise ValueError("Packaged Noise ELF lacks 16 KiB load alignment") from None
+                    if name == "libjnidispatch.so":
+                        raise ValueError("Packaged JNA ELF lacks 16 KiB load alignment") from None
+                    raise ValueError("Another packaged dependency lacks 16 KiB ELF load alignment") from None
+                raise
             # Compressed libraries are extracted by Android; stored libraries must
             # be directly mmap-able at 16 KiB boundaries in APKs.
             if package.suffix == ".apk" and item.compress_type == zipfile.ZIP_STORED:
@@ -168,10 +234,13 @@ def verify_package(sdk: Path, package: Path) -> None:
                 name_size, extra_size = struct.unpack_from("<HH", header, 26)
                 if (item.header_offset + 30 + name_size + extra_size) % 16384:
                     raise ValueError("Stored APK native library lacks 16 KiB ZIP alignment")
-            name = Path(item.filename).name
             if name in expected:
-                if data != expected[name] or name in found:
-                    raise ValueError("Packaged remote library differs from verified SDK")
+                if name in found:
+                    raise ValueError("Duplicate packaged remote library")
+                if data != expected[name]:
+                    if name == "libquenderin_remote_crypto.so":
+                        raise ValueError("Packaged Noise bytes differ from verified SDK")
+                    raise ValueError("Packaged JNA bytes differ from verified SDK")
                 found.add(name)
     if found != expected.keys():
         raise ValueError("Android package is missing the real Noise or JNA library")
@@ -300,8 +369,8 @@ def main() -> int:
         if args.command == "build": build(sdk, args.platform)
         elif args.command == "verify": verify(sdk, args.platform)
         else: verify_package(sdk, Path(os.path.abspath(args.package)))
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError, zipfile.BadZipFile) as error:
-        print(f"Native SDK check failed: {type(error).__name__}", file=sys.stderr)
+    except Exception as error:
+        print(f"Native SDK check failed: {failure_diagnostic(error)}", file=sys.stderr)
         return 1
     return 0
 

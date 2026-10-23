@@ -1,8 +1,12 @@
 import copy
+import contextlib
+import io
 from pathlib import Path
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
+import zipfile
 
 import native_sdk as sdk
 
@@ -144,6 +148,101 @@ class NativeSDKAndroidToolchainTests(unittest.TestCase):
                 (self.ndk / "source.properties").write_text(f"Pkg.Revision = {revision}\n")
                 with self.assertRaisesRegex(ValueError, "NDK pin differs"):
                     sdk.android_toolchain_env(self.ndk)
+
+
+class NativeSDKPackageTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.sdk = self.root / "sdk"
+        self.noise = NativeSDKELFTests().fixture()
+        self.jna = self.noise[:-1] + b"\x01"
+        library = self.sdk / "jniLibs/arm64-v8a/libquenderin_remote_crypto.so"
+        library.parent.mkdir(parents=True)
+        library.write_bytes(self.noise)
+        aar = self.sdk / "jna/jna-5.19.1.aar"
+        aar.parent.mkdir()
+        with zipfile.ZipFile(aar, "w") as archive:
+            archive.writestr("jni/arm64-v8a/libjnidispatch.so", self.jna)
+        self.entries = {"lib/arm64-v8a/libquenderin_remote_crypto.so": self.noise,
+                        "lib/arm64-v8a/libjnidispatch.so": self.jna}
+
+    def package(self, entries=None, compression=zipfile.ZIP_DEFLATED):
+        package = self.root / "synthetic.apk"
+        with zipfile.ZipFile(package, "w", compression=compression) as archive:
+            for name, data in (self.entries if entries is None else entries).items():
+                archive.writestr(name, data)
+        return package
+
+    def check_package(self, package):
+        # These synthetic ELF/ZIP fixtures exercise the package gate only. SDK
+        # receipt/JNA provenance validation is a separate, unchanged precondition.
+        with patch.object(sdk, "verify") as prerequisite:
+            sdk.verify_package(self.sdk, package)
+        prerequisite.assert_called_once_with(self.sdk, "android")
+
+    def test_unchanged_sealed_libraries_in_compressed_apk_pass(self):
+        self.check_package(self.package())
+
+    def test_changed_noise_and_jna_bytes_remain_rejected_with_distinct_diagnostics(self):
+        for library, label in [("libquenderin_remote_crypto.so", "Noise"), ("libjnidispatch.so", "JNA")]:
+            with self.subTest(library=library):
+                entries = dict(self.entries)
+                name = "lib/arm64-v8a/" + library
+                entries[name] = entries[name][:-1] + b"\x02"
+                with self.assertRaisesRegex(ValueError, f"Packaged {label} bytes differ from verified SDK"):
+                    self.check_package(self.package(entries))
+
+    def test_other_dependency_elf_alignment_remains_enforced(self):
+        entries = dict(self.entries, **{"lib/arm64-v8a/libsynthetic_dependency.so": NativeSDKELFTests().fixture(alignment=4096)})
+        with self.assertRaisesRegex(ValueError, "Another packaged dependency lacks 16 KiB ELF load alignment"):
+            self.check_package(self.package(entries))
+
+    def test_noise_and_jna_elf_alignment_failures_are_distinguished(self):
+        for library, label in [("libquenderin_remote_crypto.so", "Noise"), ("libjnidispatch.so", "JNA")]:
+            with self.subTest(library=library):
+                entries = dict(self.entries)
+                entries["lib/arm64-v8a/" + library] = NativeSDKELFTests().fixture(alignment=4096)
+                with self.assertRaisesRegex(ValueError, f"Packaged {label} ELF lacks 16 KiB load alignment"):
+                    self.check_package(self.package(entries))
+
+    def test_unexpected_abi_remains_rejected(self):
+        entries = dict(self.entries, **{"lib/x86_64/libsynthetic_dependency.so": NativeSDKELFTests().fixture(machine=62)})
+        with self.assertRaisesRegex(ValueError, "Unexpected packaged Android ABI"):
+            self.check_package(self.package(entries))
+
+    def test_stored_apk_library_without_zip_alignment_remains_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Stored APK native library lacks 16 KiB ZIP alignment"):
+            self.check_package(self.package(compression=zipfile.ZIP_STORED))
+
+    def test_missing_remote_library_remains_rejected(self):
+        entries = dict(self.entries)
+        del entries["lib/arm64-v8a/libjnidispatch.so"]
+        with self.assertRaisesRegex(ValueError, "missing the real Noise or JNA library"):
+            self.check_package(self.package(entries))
+
+
+class NativeSDKDiagnosticTests(unittest.TestCase):
+    def cli_failure(self, error):
+        output = io.StringIO()
+        with patch("sys.argv", ["native_sdk.py", "verify-package", "--sdk", "/synthetic/sdk", "--package", "/synthetic/app.apk"]), \
+                patch.object(sdk, "verify_package", side_effect=error), contextlib.redirect_stderr(output):
+            self.assertEqual(sdk.main(), 1)
+        return output.getvalue()
+
+    def test_known_package_failure_has_a_fixed_actionable_diagnostic(self):
+        self.assertEqual(self.cli_failure(ValueError("Packaged Noise bytes differ from verified SDK")),
+                         "Native SDK check failed: PACKAGE_NOISE_BYTES: Packaged Noise bytes differ from verified SDK.\n")
+        self.assertIn("PACKAGE_DEPENDENCY_ELF_ALIGNMENT", self.cli_failure(ValueError("Another packaged dependency lacks 16 KiB ELF load alignment")))
+
+    def test_unknown_exception_data_is_never_printed(self):
+        private = "synthetic-private-value-must-not-appear"
+        for error in [ValueError(private), RuntimeError(private), KeyError(private), OSError(private), zipfile.BadZipFile(private)]:
+            with self.subTest(kind=type(error).__name__):
+                output = self.cli_failure(error)
+                self.assertNotIn(private, output)
+                self.assertIn("Native SDK check failed: SDK_", output)
 
 
 if __name__ == "__main__": unittest.main()
