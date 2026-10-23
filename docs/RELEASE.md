@@ -103,6 +103,8 @@ independent review pass. Hosted Swift and Android core checks at
 `a4e6ec678a7a4f7a9bd0464bb6bb5e893bef60e6` execute all 48 cases exactly
 once. The Swift suite runs 669 tests, six skipped, no failures. No network,
 enrollment, identity generation or app activation is added by this layer.
+All 18 CI jobs and the separate crypto host and secret-scan workflows pass at
+that source. PR #173 is merged as `843d36f7fe19d7685d78262ca54ae9366445b770`.
 
 A further source increment supplies the secure-link owner around injected Noise
 and decoded packet ports. It bounds handshake time, counters and queued message
@@ -111,10 +113,24 @@ and blocks replacement after failed transport cleanup. Kotlin requires the same
 owner thread for link/coordinator interactions; its regression reproduces the
 previous monitor inversion and proves off-thread rejection breaks that cycle.
 All 28 original Kotlin host scenarios, 17 Python evidence-guard tests, Swift
-parsing and fresh independent review pass after the fixes. Hosted Swift
-compilation/XCTest remains pending. Fake-provider behavior is not evidence of
+parsing and fresh independent review pass after the fixes. At PR #174 source
+`004661bda9b06eaeed6c50075756d6eb5d480688`, hosted Swift executes 670 tests,
+six skipped with no failures; both native suites execute all 28 secure-link
+cases exactly once. Full CI remains pending. Fake-provider behavior is not evidence of
 maintained Rust linkage, encrypted network interoperability, durable trust,
 native interaction or signed release readiness.
+
+The following host integration increment adds actual-Rust linked Swift/Kotlin
+probes through the production owner, fragments and coordinator. They use only
+memory-local synthetic traffic and ephemeral test keys, with fixed diagnostic
+messages. No provider/Host/relay or funded service is activated. Existing source
+pins, read-only public Ubuntu permissions, no-cache/no-artifact policy and
+15-minute job cap remain; each new compile/process has a 180/30-second bound.
+The only production extraction moves the unchanged privacy protocol/defaults to
+a Foundation-only file. Local Kotlin type compilation, Swift parsing and three
+crypto build-guard tests pass. Actual linked execution, pinned Kotlin 2.0.21 and
+hosted Apple regression checks remain pending. This source preparation supplies
+no platform-signed artifact, account trust or store submission.
 
 ## 23 October 2026 — Android unsigned export source gate
 
@@ -142,6 +158,12 @@ preflight/export tests cover rejected inputs, off-main source, old/mismatched
 drafts, changed source, packaged metadata mismatch and upload collisions. No
 workflow run, new draft, signing operation or Play upload is established by this
 source repair; upload-key recovery and native interaction gaps remain above.
+
+[PR #172](https://github.com/alikatgh/quenderin/pull/172) merged as
+`8c50911ac7d4627c87524c1a35dc26fbab4ba4ac`; source
+`ad8b80bbd74393f8129632e53d399443efbb3c8a` passes
+[all 18 CI jobs](https://github.com/alikatgh/quenderin/actions/runs/39907181848)
+and the separate secret scan. No manual candidate export was dispatched.
 
 Independent source review and all 29 no-network fixtures pass. A separate host
 inspection used that exact hash-verified Google JAR against the retained October

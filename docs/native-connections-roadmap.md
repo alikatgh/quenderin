@@ -12,7 +12,13 @@ DeepSeek source: `4abdd1f1794d1fe9e732d2737acc410a2fb7c9a6`,
 Merged to `main` as `3c096da43fcb6414655946f41476647bf8da3b78`.
 Remote foundation: [PR #171](https://github.com/alikatgh/quenderin/pull/171), merged
 as `94ee6e0766081d3fbf75b4cdb5423e6d8e84b0f5`.
-Next increment: `codex/native-harness-link-20261023`.
+Native fragments: [PR #173](https://github.com/alikatgh/quenderin/pull/173), merged
+as `843d36f7fe19d7685d78262ca54ae9366445b770`.
+Android export repair: [PR #172](https://github.com/alikatgh/quenderin/pull/172),
+merged as `8c50911ac7d4627c87524c1a35dc26fbab4ba4ac`.
+Secure-link owner: [PR #174](https://github.com/alikatgh/quenderin/pull/174),
+source `004661bda9b06eaeed6c50075756d6eb5d480688`, hosted checks pending.
+Next increment: `codex/native-linked-harness-20261023`.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -192,6 +198,8 @@ review is complete. At source `a4e6ec678a7a4f7a9bd0464bb6bb5e893bef60e6`,
 [hosted Swift and Android core checks](https://github.com/alikatgh/quenderin/actions/runs/39907251522)
 execute all 48 cases exactly once; Swift runs 669 tests with six skipped and no
 failures. This layer is not yet wired to a Noise session or network socket.
+The complete fragment source run passes all 18 CI jobs and the separate crypto
+host and secret-scan workflows before its merge through PR #173.
 
 The next secure-link owner implements the native business-port seam around
 injected Noise and decoded packet ports. It checks the exact suite/prologue,
@@ -204,8 +212,10 @@ monitor deadlock. The future adapter must dispatch both owners on that thread.
 Twenty-eight original shared scenarios pass Kotlin host execution, including a
 bounded two-thread regression and a prepared mutation whose accepted-then-failed
 handoff remains outcome unknown. Seventeen Python evidence-guard tests, Swift
-parsing and fresh independent review pass. Hosted Swift compilation/XCTest is
-pending for this owner. These fake-provider tests establish no real Noise,
+parsing and fresh independent review pass. At source
+`004661bda9b06eaeed6c50075756d6eb5d480688`, hosted Swift runs 670 tests
+(six skipped, no failures), and Swift/Kotlin each execute all 28 cases exactly
+once. The complete CI run remains pending. These fake-provider tests establish no real Noise,
 JSON/Base64URL, WSS, enrollment, identity-vault or Host integration.
 
 Native crypto packaging will reuse UniFFI's documented
@@ -215,6 +225,16 @@ integration. Generate bindings from the same locked library metadata; preserve
 the generated C header and use `module.modulemap` in XCFramework headers. The
 host JNA JAR probe does not establish Android AAR loading, ABI/16 KiB alignment,
 minimum-OS behavior or signed app linking. Those remain separate build gates.
+
+The next hosted integration increment compiles the production secure-link,
+fragment and coordinator sources against the actual generated UniFFI bindings
+and the locked Rust library. Its peer transport and journal are explicitly
+memory-only, while both Noise roles use real cryptography and ephemeral in-memory
+test keys. It checks encrypted multi-frame describe/prompt traffic, correlation,
+exact bytes/counters, tampered handshakes/tags and retirement. Local Kotlin type
+compilation and Swift parsing pass. Actual linked runtime and pinned toolchain
+verification remain pending hosted CI; this does not create an enrolled Host,
+network connection, durable journal or native platform binary.
 
 ## 4. Device trust, approvals and recovery
 
