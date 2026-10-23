@@ -5,13 +5,16 @@ import ai.quenderin.core.RemoteHarnessJSON.Companion.str
 
 /** Supplied by a future authenticated native bridge, never inferred from a business packet. */
 data class RemoteHarnessAuthenticatedContext(
-    val binding: ConversationBinding, val callerDeviceID: String, val connectionID: String,
+    val binding: RemoteHarnessTransportBinding, val callerDeviceID: String, val connectionID: String,
     val generation: Long, val sessionID: String? = null,
 ) {
+    constructor(binding: ConversationBinding, callerDeviceID: String, connectionID: String,
+        generation: Long, sessionID: String? = null) : this(RemoteHarnessTransportBinding.from(binding),
+        callerDeviceID, connectionID, generation, sessionID)
     init {
-        rhCheck(binding.kind == ConnectionKind.REMOTE_HARNESS, "invalid-binding")
         rhID(callerDeviceID); rhID(connectionID); sessionID?.let(::rhID)
         rhCheck(generation > 0, "invalid-generation")
+        rhCheck(sessionID == null || binding.workspaceID != null, "invalid-binding")
     }
     override fun toString() = "RemoteHarnessAuthenticatedContext(redacted)"
 }
@@ -205,6 +208,9 @@ class RemoteHarnessCoordinator(
     private fun requireConnected() = context ?: throw RemoteHarnessException("disconnected")
     private fun requireReady(operation: RemoteHarnessOperation) {
         val c = requireConnected(); rhCheck(ready, "capabilities-required")
+        if (c.binding.workspaceID == null) rhCheck(!operation.mutating && operation.streaming &&
+            operation.endpoint == "workspace/follow" && operation.sessionID == null && operation.workspaceID == null,
+            "workspace-binding-required")
         rhCheck(operation.sessionID == null || operation.sessionID == c.sessionID, "session-binding-mismatch")
         rhCheck(operation.workspaceID == null || operation.workspaceID == c.binding.workspaceID, "workspace-binding-mismatch")
     }

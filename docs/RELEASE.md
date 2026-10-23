@@ -146,9 +146,23 @@ encoding/decoding; re-encoding rejects aliases, padding and noncanonical trailin
 bits. Native safe integers, duplicate rejection and bounded IDs are documented
 hardening. All 41 Kotlin cases / 150 steps, 50 combined Python gate tests, Swift
 parsing and fresh independent review pass. Every linked-probe packet now uses
-the JSON codec, retaining the original local generation. Hosted Swift fixtures
-and real-Rust execution of this new JSON path remain pending; no network,
+the JSON codec, retaining the original local generation. At source
+`6ef4362a603fed34e3a025bd5246a5d3314248c0`, hosted Swift runs 671 tests,
+six skipped with no failures, and executes all 41 cases exactly once. Both
+actual-Rust linked JSON probes pass in crypto run 39914626417. All 18 CI jobs
+and the secret scan pass before PR #176 merges as
+`b1637ae914a0f4f45789efed7154cf58ab61cd9b`; no network,
 enrollment, provider activation or store action is established.
+
+The following Android scope fix removes a first-run dead end without changing
+persisted history: an ephemeral authenticated transport binding permits genuine
+workspace discovery before a saved profile exists. Discovery permits only
+describe and the read-only workspace stream; all other operations fail before
+send/journal/slot reservation. The 104 persisted contract fixtures remain strict.
+Kotlin host checks pass 104 foundation fixtures/16 groups, 39 carrier fixtures/
+28 groups and 28 secure-link cases. Integrated actual-generated/JNA linked source
+compiles; fresh independent review passes. Hosted runtime and full CI for this
+scope change remain pending. No service, credential entry or app activation occurs.
 
 ## 23 October 2026 — Android unsigned export source gate
 

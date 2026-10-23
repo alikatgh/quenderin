@@ -17,6 +17,10 @@ private fun rhRejected(code: String? = null, block: () -> Unit) {
     val error = try { block(); null } catch (error: RemoteHarnessException) { error }
     check(error != null && (code == null || error.code == code))
 }
+private fun connectionRejected(code: String, block: () -> Unit) {
+    val error = try { block(); null } catch (error: NativeConnectionException) { error }
+    check(error?.code == code)
+}
 private class HarnessFakeClock : RemoteHarnessClock {
     var now = 1L
     override fun epochMilliseconds() = now
@@ -34,11 +38,12 @@ private class HarnessFakeJournal : RemoteHarnessMutationJournal {
         commands.add(command); onPrepare?.invoke(command); return true
     }
 }
-private class HarnessFake {
+private class HarnessFake(initialContext: RemoteHarnessAuthenticatedContext = RemoteHarnessAuthenticatedContext(
+    ConversationBinding.create("remote", ConnectionKind.REMOTE_HARNESS,
+        "https://relay.example", "host-a", "a".repeat(64), "workspace-a"), "device-a", "connection-a", 1, "session-a")) {
     val clock = HarnessFakeClock()
     val journal = HarnessFakeJournal()
-    var context = RemoteHarnessAuthenticatedContext(ConversationBinding.create("remote", ConnectionKind.REMOTE_HARNESS,
-        "https://relay.example", "host-a", "a".repeat(64), "workspace-a"), "device-a", "connection-a", 1, "session-a")
+    var context = initialContext
     val sent = arrayListOf<RemoteHarnessFrame>()
     val invalidated = arrayListOf<RemoteHarnessAuthenticatedContext>()
     val hostSlots = linkedSetOf<String>()
@@ -141,6 +146,122 @@ fun main(args: Array<String>) {
                 check(rhCanonical(RemoteHarnessJSON.parse(frame.rawJSON)) == rhCanonical(RemoteHarnessJSON.parse(raw)))
             }
         }
+    }
+    case("behavior-discovery-binding-validation") {
+        val binding = RemoteHarnessTransportBinding.discovery("enrollment-draft-a", "HTTPS://Relay.Example:443/", "Host-A", "a".repeat(64))
+        check(binding.scopeReference == "enrollment-draft-a" && binding.origin == "https://relay.example" &&
+            binding.hostID == "Host-A" && binding.hostFingerprint == "a".repeat(64) && binding.workspaceID == null)
+        check(binding.toString() == "RemoteHarnessTransportBinding(redacted)")
+        for (origin in listOf("http://relay.example", "https://relay.example/path", "https://user@relay.example", "https://relay.example?x=1")) {
+            connectionRejected("invalid-origin") { RemoteHarnessTransportBinding.discovery("draft", origin, "host-a", "a".repeat(64)) }
+        }
+        connectionRejected("noncanonical-origin") { binding.copy(origin = "HTTPS://Relay.Example/") }
+        for (invalid in listOf("", "a b", "a".repeat(129))) {
+            connectionRejected("invalid-identifier") { binding.copy(scopeReference = invalid) }
+            connectionRejected("invalid-identifier") { binding.copy(hostID = invalid) }
+            connectionRejected("invalid-identifier") { binding.copy(workspaceID = invalid) }
+        }
+        for (pin in listOf("", "a".repeat(63), "a".repeat(65), "A".repeat(64), "g".repeat(64))) {
+            connectionRejected("invalid-digest") { binding.copy(hostFingerprint = pin) }
+        }
+        connectionRejected("invalid-destination") { ConversationBinding.create("remote", ConnectionKind.REMOTE_HARNESS,
+            binding.origin, binding.hostID, binding.hostFingerprint) }
+        connectionRejected("invalid-destination") { ConversationBinding("remote", ConnectionKind.REMOTE_HARNESS,
+            binding.origin, binding.hostID, binding.hostFingerprint, null) }
+        connectionRejected("invalid-destination") { ConnectionProfile.create("remote", ConnectionKind.REMOTE_HARNESS,
+            "Remote", binding.origin, hostID = binding.hostID, hostFingerprint = binding.hostFingerprint) }
+        connectionRejected("invalid-destination") { ConnectionProfile("remote", ConnectionKind.REMOTE_HARNESS,
+            "Remote", binding.origin, null, binding.hostID, binding.hostFingerprint, null) }
+        val context = RemoteHarnessAuthenticatedContext(binding, "device-a", "connection-a", 1)
+        check(context.sessionID == null && context.toString() == "RemoteHarnessAuthenticatedContext(redacted)")
+        rhRejected("invalid-binding") { context.copy(sessionID = "session-a") }
+        rhRejected("invalid-id") { context.copy(callerDeviceID = "") }
+        rhRejected("invalid-id") { context.copy(connectionID = "") }
+        rhRejected("invalid-generation") { context.copy(generation = 0) }
+    }
+    case("behavior-transport-conversation-conversion") {
+        val original = ConversationBinding.create("profile-original", ConnectionKind.REMOTE_HARNESS,
+            "https://relay.example:8443", "Host-Exact_A", "b".repeat(64), "Workspace-A")
+        val binding = RemoteHarnessTransportBinding.from(original)
+        check(binding.scopeReference == original.profileID && binding.origin == original.origin && binding.hostID == original.hostID &&
+            binding.hostFingerprint == original.hostFingerprint && binding.workspaceID == original.workspaceID)
+        val context = RemoteHarnessAuthenticatedContext(binding, "device-original", "connection-original", 1, "session-original")
+        check(context == RemoteHarnessAuthenticatedContext(original, "device-original", "connection-original", 1, "session-original"))
+        for (other in listOf(ConversationBinding.from(ConnectionProfile.localDefault()),
+            ConversationBinding.create("provider", ConnectionKind.DEEPSEEK, "https://api.deepseek.com"))) {
+            connectionRejected("invalid-binding") { RemoteHarnessTransportBinding.from(other) }
+            connectionRejected("invalid-binding") { RemoteHarnessAuthenticatedContext(other, "device-a", "connection-a", 1) }
+        }
+        val f = HarnessFake(context); f.ready(); val outcomes = arrayListOf<RemoteHarnessOutcome>()
+        val id = f.owner.call(RemoteHarnessOperations.sessionCancel("session-original"), "cancel-original", outcomes::add)
+        check(f.journal.commands.single().context == context && f.journal.commands.single().context.binding == binding)
+        check(f.gateway(id, obj("accepted" to RemoteHarnessJSON.BooleanValue(true))))
+        check(outcomes.single().kind == RemoteHarnessOutcomeKind.STOP_RECEIPT)
+        rhRejected("workspace-binding-mismatch") { f.owner.call(RemoteHarnessOperations.sessionCreate("workspace-other"), "create-other") {} }
+    }
+    case("behavior-discovery-workspace-follow") {
+        val f = HarnessFake(RemoteHarnessAuthenticatedContext(RemoteHarnessTransportBinding.discovery("draft-first-run",
+            "https://relay.example", "host-a", "a".repeat(64)), "device-a", "connection-a", 1))
+        rhRejected("capabilities-required") { f.owner.open(RemoteHarnessOperations.workspaceFollow(), {}) }
+        f.ready(); check(f.sent.single().payload.values.rhString("method") == RemoteHarnessCodec.DESCRIBE)
+        val order = arrayListOf<String>(); val values = arrayListOf<RemoteHarnessJSON?>()
+        val snapshot = obj("workspaces" to RemoteHarnessJSON.ArrayValue(listOf(obj("id" to str("workspace-real")))))
+        f.onSend = { frame ->
+            if (frame.payload.values.rhString("method") == RemoteHarnessCodec.OPEN) {
+                val stream = frame.payload.values.rhRequired("params").objectValue().rhString("streamId")
+                check(f.event(stream, snapshot))
+            }
+            check(f.acknowledgeStream(frame))
+        }
+        val stream = f.owner.open(RemoteHarnessOperations.workspaceFollow(), { values.add(it.value); order.add("value") }, {
+            check(it.kind == RemoteHarnessOutcomeKind.RESULT); order.add("ack")
+        })
+        check(order == listOf("value", "ack") && rhCanonical(values.single()!!) == rhCanonical(snapshot) &&
+            f.owner.pendingCount() == 0 && f.owner.streamCount() == 1)
+        check(f.context.binding.workspaceID == null && f.context.sessionID == null && f.journal.commands.isEmpty())
+        f.owner.closeStream(stream)
+        check(f.owner.hostSlotCount() == 0 && f.owner.streamCount() == 0 && f.journal.commands.isEmpty())
+    }
+    case("behavior-discovery-rejects-scoped-operations-before-journal") {
+        val f = HarnessFake(RemoteHarnessAuthenticatedContext(RemoteHarnessTransportBinding.discovery("draft-first-run",
+            "https://relay.example", "host-a", "a".repeat(64)), "device-a", "connection-a", 1)); f.ready()
+        val initial = f.sent.size
+        val operations = listOf(RemoteHarnessOperations.sessionList(), RemoteHarnessOperations.modelCatalog(),
+            RemoteHarnessOperations.sessionCreate("workspace-real"), RemoteHarnessOperations.sessionFollow("session-a"),
+            RemoteHarnessOperations.sessionPage("session-a", 42, 21), RemoteHarnessOperations.sessionPrompt("session-a", "prompt-a", "hello"),
+            RemoteHarnessOperations.sessionCancel("session-a"), RemoteHarnessOperations.selectModel("session-a", "deepseek", "deepseek-flash"),
+            RemoteHarnessOperations.sessionControl(), RemoteHarnessOperations.approvalEvents(),
+            RemoteHarnessOperations.approvalEncodingOnly("client-a", "event-a", true),
+            RemoteHarnessOperation("workspace/follow", obj(), true, true, null, null))
+        for (operation in operations) {
+            rhRejected("workspace-binding-required") {
+                if (operation.streaming) f.owner.open(operation, {})
+                else f.owner.call(operation, if (operation.mutating) operation.logicalCommandID ?: "command-a" else null) {}
+            }
+            check(f.sent.size == initial && f.journal.commands.isEmpty() && f.owner.pendingCount() == 0 && f.owner.hostSlotCount() == 0)
+        }
+    }
+    case("behavior-discovery-context-isolation") {
+        val f = HarnessFake(RemoteHarnessAuthenticatedContext(RemoteHarnessTransportBinding.discovery("draft-first-run",
+            "https://relay.example", "host-a", "a".repeat(64)), "device-a", "connection-a", 1)); f.ready()
+        var values = 0
+        val stream = f.owner.open(RemoteHarnessOperations.workspaceFollow(), { values++ })
+        val wrong = listOf(f.context.copy(callerDeviceID = "other"), f.context.copy(connectionID = "other"), f.context.copy(generation = 2),
+            f.context.copy(binding = f.context.binding.copy(scopeReference = "draft-other")),
+            f.context.copy(binding = f.context.binding.copy(origin = "https://other.example")),
+            f.context.copy(binding = f.context.binding.copy(hostID = "other")),
+            f.context.copy(binding = f.context.binding.copy(hostFingerprint = "b".repeat(64))),
+            f.context.copy(binding = f.context.binding.copy(workspaceID = "workspace-real")))
+        wrong.forEach { check(!f.owner.receive(it, byteArrayOf(0xff.toByte()))) }
+        check(f.owner.pendingCount() == 1 && f.owner.streamCount() == 1 && values == 0)
+        check(!f.event(stream, obj(), "session-other"))
+        check(f.event(stream, obj()) && values == 1)
+        val old = f.context; val sends = f.sent.size
+        f.reconnect()
+        check(f.sent.size == sends && f.invalidated.single() == old && !f.owner.isReady())
+        check(!f.owner.receive(old, byteArrayOf(0xff.toByte())) && f.owner.pendingCount() == 0 && f.owner.streamCount() == 0)
+        f.owner.disconnected(old); f.ready(); check(f.owner.isReady())
+        rhRejected("stale-generation") { f.owner.beginConnection(old) }
     }
     case("behavior-capability-negotiation") {
         val f = HarnessFake()
