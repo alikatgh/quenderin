@@ -4,6 +4,12 @@
      never a light flash under the dark scheme's light text (2026-09-05). -->
 <resources>
     <style name="Theme.Quenderin" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#FF0B0F10</item>
+        <item name="android:windowBackground">#FF000000</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 </resources>

@@ -50,9 +50,9 @@ export function Docs({ onBack }: DocsProps) {
     const activeItem = MENU_ITEMS.find(i => i.file === activeFile) || MENU_ITEMS[0];
 
     return (
-        <div className="flex-1 w-full flex bg-white dark:bg-[#18181b] overflow-hidden">
+        <div className="flex-1 w-full flex bg-white dark:bg-background overflow-hidden">
             {/* Left Sidebar Navigation */}
-            <aside className="hidden md:flex flex-col w-[250px] flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-[#18181b] overflow-y-auto">
+            <aside className="hidden md:flex flex-col w-[250px] flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-background overflow-y-auto">
                 <div className="p-4 pt-6 border-b border-zinc-200 dark:border-zinc-800">
                     <button
                         onClick={onBack}
@@ -82,10 +82,10 @@ export function Docs({ onBack }: DocsProps) {
             </aside>
 
             {/* Right Pane Reader */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#18181b] overflow-y-auto relative">
+            <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-background overflow-y-auto relative">
 
                 {/* Mobile Header (Hidden on Desktop) */}
-                <div className="md:hidden sticky top-0 bg-white/90 dark:bg-[#18181b]/90 backdrop-blur-md z-10 border-b border-zinc-200 dark:border-zinc-800 p-4 shrink-0">
+                <div className="md:hidden sticky top-0 bg-white/90 dark:bg-background backdrop-blur-md z-10 border-b border-zinc-200 dark:border-zinc-800 p-4 shrink-0">
                     <button
                         onClick={onBack}
                         className="flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-400"

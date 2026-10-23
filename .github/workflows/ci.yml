@@ -551,6 +551,8 @@ jobs:
         run: python3 scripts/generate_website_catalog.py --check
       - name: Model discovery, freshness and fallback tests
         run: node --test scripts/tests/model-releases.test.mjs
+      - name: Website appearance preference and browser chrome tests
+        run: node --test scripts/tests/website-theme.test.mjs
       - name: Agent-logic parity suites cover the same vectors (iOS + Android + Desktop)
         run: python3 scripts/check_agent_parity.py
       - name: Model-router parity suites cover the same vectors (iOS + Android)

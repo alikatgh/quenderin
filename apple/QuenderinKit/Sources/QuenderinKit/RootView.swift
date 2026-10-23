@@ -62,29 +62,42 @@ public struct RootView: View {
                     }
             }
         }
+        .quenderinWindowCanvas()
         // Appearance → Theme (nil = follow the system, the default).
         .preferredColorScheme(settings.theme.colorScheme)
-        .sheet(isPresented: $showImagesBeforeChat) { ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() }) }
+        .sheet(isPresented: $showImagesBeforeChat) {
+            ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
+                .quenderinSheetWindowCanvas()
+        }
         .sheet(isPresented: $showVisionBeforeChat) {
             NavigationStack {
                 ScrollView { VisionView(controller: visionBeforeChat).padding() }
+                    .quenderinDarkCanvas()
+                    .quenderinDarkChrome()
                     .navigationTitle("Still-image questions")
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showVisionBeforeChat = false } } }
             }
+            .quenderinSheetWindowCanvas()
         }
         .sheet(isPresented: $showGraniteBeforeChat) {
             NavigationStack {
                 ScrollView { GraniteChatView(controller: graniteBeforeChat).padding() }
+                    .quenderinDarkCanvas()
+                    .quenderinDarkChrome()
                     .navigationTitle("Granite Switch 4.1 8B")
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showGraniteBeforeChat = false } } }
             }
+            .quenderinSheetWindowCanvas()
         }
         .sheet(isPresented: $showStep5BeforeChat) {
             NavigationStack {
                 ScrollView { Step5View(controller: step5BeforeChat).padding() }
+                    .quenderinDarkCanvas()
+                    .quenderinDarkChrome()
                     .navigationTitle("Step 5 CUDA host")
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showStep5BeforeChat = false } } }
             }
+            .quenderinSheetWindowCanvas()
         }
     }
 

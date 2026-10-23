@@ -333,6 +333,8 @@ public struct ChatView: View {
                 .frame(maxWidth: .infinity)
         }
         .background(p.background)
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
         .toolbar {
             if !model.messages.isEmpty {
                 ToolbarItem(placement: .primaryAction) {

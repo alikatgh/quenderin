@@ -66,6 +66,7 @@ public struct MacRootView: View {
                 AboutView()
             }
         }
+        .quenderinDarkCanvas()
         .onAppear {
             if selection.isEmpty, let id = conversations.currentID {
                 selection = [id]
@@ -157,6 +158,8 @@ public struct MacRootView: View {
             }
         }
         .listStyle(.sidebar)
+        .quenderinDarkScrollCanvas()
+        .quenderinDarkChrome()
         .navigationSplitViewColumnWidth(min: 200, ideal: 240)
         // ⌫ deletes the selection — one chat or many (with the same confirmation).
         .onDeleteCommand { if !selection.isEmpty { confirmBulkDelete = true } }
@@ -389,7 +392,7 @@ extension MacRootView {
         // 78pt, not 64: the traffic lights span ~x12–68 — at 64 the green light straddled
         // the rail/list color seam (owner screenshot). All three now sit on one surface.
         .frame(width: 78)
-        .background(p.surface)
+        .background(scheme == .dark ? p.background : p.surface)
     }
 
     @ViewBuilder

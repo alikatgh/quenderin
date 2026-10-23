@@ -215,7 +215,7 @@ export function SettingsArea({ onBack, currentSettings, onSave, onReset, onTheme
     };
 
     return (
-        <div className="flex-1 overflow-y-auto bg-[#fafafa] dark:bg-[#09090b] animate-in fade-in duration-500">
+        <div className="flex-1 overflow-y-auto bg-[#fafafa] dark:bg-background animate-in fade-in duration-500">
             <div className="max-w-3xl mx-auto px-6 py-12">
 
                 {/* Header */}

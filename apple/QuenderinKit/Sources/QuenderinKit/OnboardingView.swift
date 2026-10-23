@@ -59,6 +59,7 @@ public struct OnboardingView: View {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showPicker = false } }
                 }
             }
+            .quenderinSheetWindowCanvas()
             #if os(macOS)
             .frame(minWidth: 480, minHeight: 440)
             #endif

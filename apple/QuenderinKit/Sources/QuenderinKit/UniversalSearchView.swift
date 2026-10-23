@@ -108,6 +108,8 @@ public struct UniversalSearchView: View {
             }
             .background(p.background)
         }
+        .quenderinDarkCanvas()
+        .quenderinDarkChrome()
         .onAppear { fieldFocused = true }
     }
 

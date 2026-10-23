@@ -5,8 +5,9 @@
 @layer base {
     :root {
         --surface-page: #fafafa;
-        --surface-page-dark: #09090b;
+        --surface-page-dark: #000000;
         --surface-card-dark: #1c1c1f;
+        color-scheme: light;
     }
 
     html,
@@ -23,8 +24,15 @@
         overflow: hidden;
     }
 
+    html.dark,
+    .dark body,
+    .dark #root {
+        @apply bg-background;
+        color-scheme: dark;
+    }
+
     .dark body {
-        @apply bg-[var(--surface-page-dark)] text-zinc-100;
+        @apply text-zinc-100;
     }
 
     code,
@@ -92,7 +100,7 @@
     }
 
     .glass-effect {
-        @apply backdrop-blur-md bg-white/80 dark:bg-[var(--surface-page-dark)]/80 border-b border-zinc-200/50 dark:border-zinc-800/50;
+        @apply backdrop-blur-md bg-white/80 dark:bg-background border-b border-zinc-200/50 dark:border-zinc-800/50;
     }
 
     .chat-textarea {

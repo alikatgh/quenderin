@@ -25,6 +25,7 @@ import androidx.core.view.WindowCompat
 // change the art → resample, don't guess. Twin of iOS QuenderinPalette.
 private val Brand = Color(0xFF2E7680)         // teal (light-theme primary)
 private val BrandBright = Color(0xFF52939A)   // teal (dark-theme primary)
+private val DarkCanvas = Color.Black
 
 // ── Dark palette (the primary experience — a private, focused, "at night" feel) ──
 private val DarkScheme = darkColorScheme(
@@ -36,21 +37,22 @@ private val DarkScheme = darkColorScheme(
     onSecondary = Color(0xFF04150E),
     secondaryContainer = Color(0xFF244249),   // selected bottom-tab pill (teal-tinted, on-brand)
     onSecondaryContainer = Color(0xFFCDEBEE), // its icon — ~8:1 on the pill (was primary ≈2.65:1)
-    background = Color(0xFF0B0F10),           // chat canvas
+    background = DarkCanvas,                // the same black canvas on every screen
     onBackground = Color(0xFFE8EDEA),
-    surface = Color(0xFF141A1B),             // top bar, sheets
+    surface = DarkCanvas,                   // default full-screen Surface, matching Scaffold
+    surfaceTint = DarkCanvas,               // tonal elevation must not tint the black canvas
     onSurface = Color(0xFFE8EDEA),
     surfaceVariant = Color(0xFF1C2426),       // assistant bubble, input pill, cards
     onSurfaceVariant = Color(0xFF93A19E),     // muted labels
-    // Warm teal-charcoal surface ladder — set so NOTHING falls back to M3's cool-grey baseline
-    // (bottom bar, dropdown menus, sheets, dialogs all read from this family).
+    // Raised containers stay distinct from the black screen canvas.
+    // Dropdown menus, partial sheets and dialogs retain the warm teal-charcoal surface ladder.
     surfaceContainerLowest = Color(0xFF070B0C),
     surfaceContainerLow = Color(0xFF101618),
-    surfaceContainer = Color(0xFF151B1C),     // bottom nav bar
+    surfaceContainer = Color(0xFF151B1C),
     surfaceContainerHigh = Color(0xFF1F2627), // menus, dialogs
     surfaceContainerHighest = Color(0xFF29302F),
     surfaceBright = Color(0xFF31383A),
-    surfaceDim = Color(0xFF0B0F10),
+    surfaceDim = DarkCanvas,
     inverseSurface = Color(0xFFE8EDEA),
     inverseOnSurface = Color(0xFF1C2224),
     inversePrimary = Brand,
@@ -103,12 +105,14 @@ private val LightScheme = lightColorScheme(
 )
 
 /**
- * App-specific design tokens Material's ColorScheme doesn't model — chat bubble colors, the live
- * status accent, and the asymmetric bubble shapes (the flat corner is the "tail" toward the speaker).
+ * App-specific design tokens Material's ColorScheme doesn't model — navigation chrome, raised
+ * controls, chat bubble colors, and the live status accent.
  * Exposed through [LocalQuenderinColors] so every screen reads ONE source of truth. Twin of the iOS
  * `Theme` tokens.
  */
 data class QuenderinColors(
+    val navigationBar: Color,
+    val raisedSurface: Color,
     val userBubble: Color,
     val onUserBubble: Color,
     val userTimestamp: Color,
@@ -122,6 +126,8 @@ data class QuenderinColors(
 )
 
 private val DarkQuenderinColors = QuenderinColors(
+    navigationBar = DarkCanvas,
+    raisedSurface = Color(0xFF141A1B),
     userBubble = Color(0xFF245A62),
     onUserBubble = Color(0xFFEAF6F4),
     userTimestamp = Color(0xFFA8CDD1),
@@ -135,6 +141,8 @@ private val DarkQuenderinColors = QuenderinColors(
 )
 
 private val LightQuenderinColors = QuenderinColors(
+    navigationBar = LightScheme.surfaceContainer,
+    raisedSurface = LightScheme.surface,
     userBubble = Color(0xFF2E7680),
     onUserBubble = Color(0xFFFFFFFF),
     userTimestamp = Color(0xFFC9E4E6),

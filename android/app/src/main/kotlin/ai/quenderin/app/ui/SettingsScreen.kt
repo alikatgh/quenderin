@@ -412,7 +412,7 @@ fun SettingsScreen(
 @Composable
 private fun PresetChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Quenderin.colors.raisedSurface,
         shape = QuenderinShapes.pill,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
