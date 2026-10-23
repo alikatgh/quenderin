@@ -1,0 +1,1625 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "origin": "Original Quenderin synthetic fixtures; protocol facts only, no upstream fixture or implementation copied.",
+  "cases": [
+    {
+      "id": "handshake-step-1",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        }
+      ]
+    },
+    {
+      "id": "handshake-step-2",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":2,\"data\":\"_w\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 2,
+            "hex": "ff",
+            "base64": "_w"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 2,
+            "hex": "ff",
+            "base64": "_w"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relay-counter-zero",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relay-counter-maximum",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":9007199254740991,\"ciphertext\":\"-_8\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 9007199254740991,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 9007199254740991,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "opaque-identities-roundtrip",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque / 🦉 é\",\"type\":\"relay\",\"timestamp\":9007199254740991,\"payload\":{\"connectionId\":\"é\",\"targetDeviceId\":\"é\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "expected": {
+            "id": "opaque / 🦉 é",
+            "timestamp": 9007199254740991,
+            "type": "relay",
+            "connectionId": "é",
+            "targetDeviceId": "é",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque / 🦉 é",
+            "timestamp": 9007199254740991,
+            "type": "relay",
+            "connectionId": "é",
+            "targetDeviceId": "é",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "missing-envelope-v",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "missing-envelope-id",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "missing-envelope-type",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "missing-envelope-timestamp",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "missing-envelope-payload",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "extra-envelope-field",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"},\"unexpected\":true}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"},\"generation\":1}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "wrong-envelope-types",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":\"1\",\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":1,\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":false,\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":\"1\",\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":[]}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-version",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":0,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":2,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":-1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":true,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":9007199254740992,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-timestamps",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":0,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":-1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":9007199254740992,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":true,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "integer-lexemes",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1.0,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1e0,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":9007199254740993,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":9223372036854775808,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1.0,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "duplicate-fields",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "unsupported-control-type",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"rpc.request\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.unknown\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-handshake-payload",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":[],\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":[],\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":[],\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":[]}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "strip-unknown-handshake-payload",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\",\"unknown\":{\"nested\":[\"private-synthetic\",1.5]}}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-relay-payload",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":[],\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":[],\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":[],\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":[]}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "strip-unknown-relay-payload",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\",\"unknown\":{\"nested\":[\"private-synthetic\",1.5]}}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-handshake-steps",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":0,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":3,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":-1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":9007199254740992,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":true,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1.0,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1e0,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-relay-counters",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":-1,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":9007199254740992,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":true,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0.0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0e0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":9223372036854775808,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "noncanonical-base64url",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"A\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"AB\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"AA==\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"+w\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"/w\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"_w=\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"AA\\n\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\" AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"AA \"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"é\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_9\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-identifiers",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"a\\u0000b\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"a\\u0000b\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"a\\u0000b\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "utf8-identity-limit",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "expected": {
+            "id": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-utf8",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "appendHex": "ff"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "",
+            "appendHex": "c080"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "invalid-unicode-json",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"\\ud800\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"\\udc00\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "handshake-whole-frame-boundary",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "padTo": 65536
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "padTo": 65537
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "handshake-multibyte-frame-boundary",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"🦉\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "padTo": 65536
+          },
+          "expected": {
+            "id": "🦉",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"🦉\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "padTo": 65537
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "relay-whole-frame-boundary",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}",
+            "padTo": 1048576
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}",
+            "padTo": 1048577
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "relay-multibyte-frame-boundary",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"🦉\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}",
+            "padTo": 1048576
+          },
+          "expected": {
+            "id": "🦉",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"🦉\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}",
+            "padTo": 1048577
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "oversized-encoded-binary",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "prefix": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"",
+            "token": "A",
+            "count": 87381,
+            "suffix": "\"}}"
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "prefix": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"",
+            "token": "A",
+            "count": 87382,
+            "suffix": "\"}}"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "maximum-decoded-binary",
+      "steps": [
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "count": 65535,
+            "byte": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "oversized-decoded-binary",
+      "steps": [
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "count": 65536,
+            "byte": 0
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "encode-invalid-values",
+      "steps": [
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 0,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 3,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 0,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 9007199254740992,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "a\u0000b",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "",
+            "base64": "AA"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": -1,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 9007199254740992,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "configured-limits",
+      "steps": [
+        {
+          "action": "config",
+          "config": {
+            "handshake": 9007199254740991,
+            "relay": 9007199254740991
+          },
+          "expectedHandshake": 65536,
+          "expectedRelay": 1048576
+        },
+        {
+          "action": "config",
+          "config": {
+            "handshake": 200,
+            "relay": 300
+          },
+          "expectedHandshake": 200,
+          "expectedRelay": 300
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "reject": true,
+          "config": {
+            "handshake": 1
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "reject": true,
+          "config": {
+            "relay": 1
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "config": {
+            "handshake": 1
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "config": {
+            "relay": 1
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "config": {
+            "relay": 1
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "config": {
+            "handshake": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-configured-limits",
+      "steps": [
+        {
+          "action": "config",
+          "config": {
+            "handshake": 0
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "handshake": -1
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "handshake": 9007199254740992
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "handshake": 9223372036854775807
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "relay": 0
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "relay": -1
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "relay": 9007199254740992
+          },
+          "reject": true
+        },
+        {
+          "action": "config",
+          "config": {
+            "relay": 9223372036854775807
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "configured-whole-frame-boundaries",
+      "steps": [
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}"
+          },
+          "config": {
+            "handshake": 169
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"secure.handshake\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"step\":1,\"data\":\"AA\"}}",
+            "padTo": 170
+          },
+          "config": {
+            "handshake": 169
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "config": {
+            "handshake": 169
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "hex": "00",
+            "base64": "AA"
+          },
+          "config": {
+            "handshake": 168
+          },
+          "reject": true
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}"
+          },
+          "config": {
+            "relay": 168
+          },
+          "expected": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          }
+        },
+        {
+          "action": "decode",
+          "wire": {
+            "text": "{\"v\":1,\"id\":\"opaque-header\",\"type\":\"relay\",\"timestamp\":1,\"payload\":{\"connectionId\":\"opaque-connection\",\"targetDeviceId\":\"opaque-target\",\"counter\":0,\"ciphertext\":\"-_8\"}}",
+            "padTo": 169
+          },
+          "config": {
+            "relay": 168
+          },
+          "reject": true
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "config": {
+            "relay": 168
+          }
+        },
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "relay",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "counter": 0,
+            "hex": "fbff",
+            "base64": "-_8"
+          },
+          "config": {
+            "relay": 167
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "encode-handshake-whole-frame-limit",
+      "steps": [
+        {
+          "action": "roundTrip",
+          "packet": {
+            "id": "opaque-header",
+            "timestamp": 1,
+            "type": "secure.handshake",
+            "connectionId": "opaque-connection",
+            "targetDeviceId": "opaque-target",
+            "step": 1,
+            "count": 65535,
+            "byte": 0
+          },
+          "reject": true
+        }
+      ]
+    },
+    {
+      "id": "ownership-and-privacy",
+      "steps": [
+        {
+          "action": "privacy"
+        }
+      ]
+    }
+  ]
+}

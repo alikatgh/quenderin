@@ -17,8 +17,14 @@ as `843d36f7fe19d7685d78262ca54ae9366445b770`.
 Android export repair: [PR #172](https://github.com/alikatgh/quenderin/pull/172),
 merged as `8c50911ac7d4627c87524c1a35dc26fbab4ba4ac`.
 Secure-link owner: [PR #174](https://github.com/alikatgh/quenderin/pull/174),
-source `004661bda9b06eaeed6c50075756d6eb5d480688`, hosted checks pending.
-Next increment: `codex/native-linked-harness-20261023`.
+merged as `f7bc727eabdf89777f57dfc162bb893413c9e1d4` after all 18 CI jobs
+and the separate secret scan passed at source
+`004661bda9b06eaeed6c50075756d6eb5d480688`.
+Linked real-crypto probes: [PR #175](https://github.com/alikatgh/quenderin/pull/175),
+source `f91b138a0d27fa0e4abb70969e55716c6a21240c`, merged as
+`765f1e6be0bbbcb494e0309808fdcab8d25c1850` after all 18 CI jobs, crypto
+host checks and secret scan passed.
+Next increment: `codex/native-control-wire-20261023`.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -215,7 +221,8 @@ handoff remains outcome unknown. Seventeen Python evidence-guard tests, Swift
 parsing and fresh independent review pass. At source
 `004661bda9b06eaeed6c50075756d6eb5d480688`, hosted Swift runs 670 tests
 (six skipped, no failures), and Swift/Kotlin each execute all 28 cases exactly
-once. The complete CI run remains pending. These fake-provider tests establish no real Noise,
+once. All 18 CI jobs and the separate secret scan passed before PR #174 merged.
+These fake-provider tests establish no real Noise,
 JSON/Base64URL, WSS, enrollment, identity-vault or Host integration.
 
 Native crypto packaging will reuse UniFFI's documented
@@ -232,9 +239,27 @@ and the locked Rust library. Its peer transport and journal are explicitly
 memory-only, while both Noise roles use real cryptography and ephemeral in-memory
 test keys. It checks encrypted multi-frame describe/prompt traffic, correlation,
 exact bytes/counters, tampered handshakes/tags and retirement. Local Kotlin type
-compilation and Swift parsing pass. Actual linked runtime and pinned toolchain
-verification remain pending hosted CI; this does not create an enrolled Host,
+compilation and Swift parsing pass. At source
+`f91b138a0d27fa0e4abb70969e55716c6a21240c`, the
+[hosted crypto run](https://github.com/alikatgh/quenderin/actions/runs/39911672366)
+passes nine Rust tests, clippy, both original generated-binding probes and both
+linked probes using the pinned Kotlin 2.0.21 and included Linux Swift compiler.
+Each linked probe emits its success marker only after all scenarios pass.
+Hosted Apple and Android core regressions and all 18 CI jobs pass before merge.
+This does not create an enrolled Host,
 network connection, durable journal or native platform binary.
+
+The secure Control JSON codec source now wraps the typed seam using the exact
+`secure.handshake` and `relay` envelope types, inclusive 64 KiB/1 MiB UTF-8 caps
+and canonical unpadded Base64URL through platform libraries. It rejects duplicate
+fields and unsafe numeric spellings; metadata IDs are bounded and NUL-free.
+These are deliberate native restrictions on upstream's more permissive decoder.
+Envelope extensions fail; payload extensions are discarded. Generation remains
+outside all wire metadata. Forty-one original shared cases (150 steps), 50
+combined Python gate tests, Swift parsing and fresh independent review pass.
+The linked probes now serialize and parse every handshake/relay direction;
+hosted Swift fixture execution and real-Rust runtime through this JSON path
+remain pending. No socket or authentication flow is activated.
 
 ## 4. Device trust, approvals and recovery
 
