@@ -99,8 +99,22 @@ assemblies to eight/8 MiB aggregate, lifetime to 120 seconds and used identifier
 to 4,096 per authenticated generation. Invalid active-generation input retires
 the layer; stale-generation callbacks cannot retire a replacement. Kotlin runs
 all 48 cases; exact-marker validation, 13 Python tests, Swift parsing and fresh
-independent review pass. Hosted Swift compilation/XCTest remains pending. No
-network, enrollment, identity generation or app activation is added by this layer.
+independent review pass. Hosted Swift and Android core checks at
+`a4e6ec678a7a4f7a9bd0464bb6bb5e893bef60e6` execute all 48 cases exactly
+once. The Swift suite runs 669 tests, six skipped, no failures. No network,
+enrollment, identity generation or app activation is added by this layer.
+
+A further source increment supplies the secure-link owner around injected Noise
+and decoded packet ports. It bounds handshake time, counters and queued message
+work, checks exact UTF-8 identity binding, serializes complete fragment batches,
+and blocks replacement after failed transport cleanup. Kotlin requires the same
+owner thread for link/coordinator interactions; its regression reproduces the
+previous monitor inversion and proves off-thread rejection breaks that cycle.
+All 28 original Kotlin host scenarios, 17 Python evidence-guard tests, Swift
+parsing and fresh independent review pass after the fixes. Hosted Swift
+compilation/XCTest remains pending. Fake-provider behavior is not evidence of
+maintained Rust linkage, encrypted network interoperability, durable trust,
+native interaction or signed release readiness.
 
 ## 20 October 2026 — Android Alpha recovery and bundle export
 

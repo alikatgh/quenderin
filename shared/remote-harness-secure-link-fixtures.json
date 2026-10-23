@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "origin": "Original synthetic native secure-link owner scenarios; injected provider uses plaintext with a fixed 16-byte marker and provides no cryptographic or network evidence.",
+  "cases": [
+    {
+      "id": "synchronous-step2-auth-send",
+      "steps": [
+        {
+          "action": "synchronous-step2-auth-send"
+        }
+      ]
+    },
+    {
+      "id": "reentrant-fragment-order",
+      "steps": [
+        {
+          "action": "reentrant-fragment-order"
+        }
+      ]
+    },
+    {
+      "id": "partial-send-throws",
+      "steps": [
+        {
+          "action": "partial-send-throws"
+        }
+      ]
+    },
+    {
+      "id": "decrypt-fault-retires",
+      "steps": [
+        {
+          "action": "decrypt-fault-retires"
+        }
+      ]
+    },
+    {
+      "id": "handshake-deadline-boundary",
+      "steps": [
+        {
+          "action": "handshake-deadline-boundary"
+        }
+      ]
+    },
+    {
+      "id": "identity-preflight",
+      "steps": [
+        {
+          "action": "identity-preflight"
+        }
+      ]
+    },
+    {
+      "id": "identifier-validation",
+      "steps": [
+        {
+          "action": "identifier-validation"
+        }
+      ]
+    },
+    {
+      "id": "handshake-step-target-duplicate",
+      "steps": [
+        {
+          "action": "handshake-step-target-duplicate"
+        }
+      ]
+    },
+    {
+      "id": "packet-binding-counter",
+      "steps": [
+        {
+          "action": "packet-binding-counter"
+        }
+      ]
+    },
+    {
+      "id": "provider-counter-state",
+      "steps": [
+        {
+          "action": "provider-counter-state"
+        }
+      ]
+    },
+    {
+      "id": "handshake-payload-response",
+      "steps": [
+        {
+          "action": "handshake-payload-response"
+        }
+      ]
+    },
+    {
+      "id": "fragment-expiry-idle",
+      "steps": [
+        {
+          "action": "fragment-expiry-idle"
+        }
+      ]
+    },
+    {
+      "id": "fragment-error-retires",
+      "steps": [
+        {
+          "action": "fragment-error-retires"
+        }
+      ]
+    },
+    {
+      "id": "queue-message-budget",
+      "steps": [
+        {
+          "action": "queue-message-budget"
+        }
+      ]
+    },
+    {
+      "id": "queue-byte-budget",
+      "steps": [
+        {
+          "action": "queue-byte-budget"
+        }
+      ]
+    },
+    {
+      "id": "stale-callbacks-after-replacement",
+      "steps": [
+        {
+          "action": "stale-callbacks-after-replacement"
+        }
+      ]
+    },
+    {
+      "id": "replacement-during-factory",
+      "steps": [
+        {
+          "action": "replacement-during-factory"
+        }
+      ]
+    },
+    {
+      "id": "replacement-during-clock-info",
+      "steps": [
+        {
+          "action": "replacement-during-clock-info"
+        }
+      ]
+    },
+    {
+      "id": "replacement-during-shutdown",
+      "steps": [
+        {
+          "action": "replacement-during-shutdown"
+        }
+      ]
+    },
+    {
+      "id": "replacement-during-observers",
+      "steps": [
+        {
+          "action": "replacement-during-observers"
+        }
+      ]
+    },
+    {
+      "id": "replacement-during-encrypt-send",
+      "steps": [
+        {
+          "action": "replacement-during-encrypt-send"
+        }
+      ]
+    },
+    {
+      "id": "observer-and-cleanup-failure",
+      "steps": [
+        {
+          "action": "observer-and-cleanup-failure"
+        }
+      ]
+    },
+    {
+      "id": "clock-regression-overflow",
+      "steps": [
+        {
+          "action": "clock-regression-overflow"
+        }
+      ]
+    },
+    {
+      "id": "ciphertext-size-and-reentrant-decrypt",
+      "steps": [
+        {
+          "action": "ciphertext-size-and-reentrant-decrypt"
+        }
+      ]
+    },
+    {
+      "id": "privacy-and-byte-ownership",
+      "steps": [
+        {
+          "action": "privacy-and-byte-ownership"
+        }
+      ]
+    },
+    {
+      "id": "coordinator-roundtrip-unknown",
+      "steps": [
+        {
+          "action": "coordinator-roundtrip-unknown"
+        }
+      ]
+    },
+    {
+      "id": "opaque-unicode-identities",
+      "steps": [
+        {
+          "action": "opaque-unicode-identities"
+        }
+      ]
+    },
+    {
+      "id": "serialized-owner-confinement",
+      "steps": [
+        {
+          "action": "serialized-owner-confinement"
+        }
+      ]
+    }
+  ]
+}
