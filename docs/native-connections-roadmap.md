@@ -28,7 +28,14 @@ Secure Control JSON: [PR #176](https://github.com/alikatgh/quenderin/pull/176),
 source `6ef4362a603fed34e3a025bd5246a5d3314248c0`, merged as
 `b1637ae914a0f4f45789efed7154cf58ab61cd9b` after all 18 CI jobs, crypto
 host checks and secret scan passed.
-Next increment: `codex/android-remote-discovery-20261023`.
+Android discovery: [PR #177](https://github.com/alikatgh/quenderin/pull/177),
+source `d937e79bd058f415eb0565b5def0880448a38aa6`, merged as
+`518af0679d3157809a5f3adc9f828b230df07a39` after all 18 CI jobs, crypto
+host checks and secret scan passed.
+Next milestone: native crypto SDK packaging, origin-scoped enrollment, Host trust
+confirmation and the native remote-session interface. No live relay/Host target
+has been supplied. App Store Connect is signed out in the required Apple Developer
+profile, so current Xcode Cloud capacity remains unverified; its login tab is open.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -277,8 +284,13 @@ journaling or slot reservation. Saved profiles/conversations retain their strict
 workspace requirement. Kotlin host checks pass 104 foundation fixtures plus 16
 behavior groups, 39 carrier fixtures plus 28 groups and 28 secure-link cases.
 The actual generated-binding/JNA linked source compiles after integration with
-the Control JSON source. Fresh independent review passes; hosted native runtime
-and full CI for this scope adjustment remain pending.
+the Control JSON source. Fresh independent review passes. At source
+`d937e79bd058f415eb0565b5def0880448a38aa6`,
+[all 18 CI jobs](https://github.com/alikatgh/quenderin/actions/runs/39920672622),
+the secret scan and [crypto host job](https://github.com/alikatgh/quenderin/actions/runs/39920672609)
+pass. Both actual-Rust linked probes pass through Control JSON with the adjusted
+Android binding. PR #177 is merged; platform/device and live Host evidence remain
+separate requirements.
 
 The inspected self-hosted enrollment path uses account password login at
 `/api/v1/auth/login`, client registration at `/api/v1/devices/register`, device

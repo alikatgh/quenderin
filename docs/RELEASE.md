@@ -161,8 +161,21 @@ describe and the read-only workspace stream; all other operations fail before
 send/journal/slot reservation. The 104 persisted contract fixtures remain strict.
 Kotlin host checks pass 104 foundation fixtures/16 groups, 39 carrier fixtures/
 28 groups and 28 secure-link cases. Integrated actual-generated/JNA linked source
-compiles; fresh independent review passes. Hosted runtime and full CI for this
-scope change remain pending. No service, credential entry or app activation occurs.
+compiles; fresh independent review passes. At source
+`d937e79bd058f415eb0565b5def0880448a38aa6`, all 18 CI jobs, secret scan
+and crypto host run 39920672609 pass, including both actual-Rust linked probes
+through Control JSON. PR #177 merges as
+`518af0679d3157809a5f3adc9f828b230df07a39`. No service, credential entry
+or app activation occurs.
+
+Current release preparation limits: no live relay/Host target has been supplied.
+On 23 October the required Chrome Apple Developer profile redirected Quenderin's
+Cloud page to App Store Connect login with `authResult=FAILED`. A login tab is
+prepared for private human sign-in; Cloud workflow/capacity, live version counters
+and review state were not refreshed. No Cloud build or store submission started.
+Native crypto platform packaging, enrollment/trust, the remote-session UI and
+signed/native interaction gates still precede a store release. The October
+simulator/device prohibition remains in force.
 
 ## 23 October 2026 — Android unsigned export source gate
 
