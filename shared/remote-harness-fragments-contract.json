@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "upstreamRepository": "liguobao/ds-harness-remote",
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "scope": "Source-only DSHF business-plaintext fragmentation before per-fragment Noise encryption and reassembly after authenticated decryption. No sockets, authentication, handshake, encryption, Host integration, UI, activation, deployment, or inference. Distinct RTCH WebRTC ciphertext chunking is excluded.",
+  "sourcePaths": [
+    "packages/protocol/src/index.ts",
+    "packages/plugin/src/client-secure-transport.ts"
+  ],
+  "sourceFacts": {
+    "codec": "SecureMessageCodec",
+    "magicHex": "44534846",
+    "version": 1,
+    "headerBytes": 17,
+    "byteOrder": "big-endian",
+    "fields": [
+      {
+        "name": "magic",
+        "offset": 0,
+        "bytes": 4
+      },
+      {
+        "name": "version",
+        "offset": 4,
+        "bytes": 1
+      },
+      {
+        "name": "messageID",
+        "offset": 5,
+        "bytes": 4
+      },
+      {
+        "name": "index",
+        "offset": 9,
+        "bytes": 2
+      },
+      {
+        "name": "total",
+        "offset": 11,
+        "bytes": 2
+      },
+      {
+        "name": "totalBytes",
+        "offset": 13,
+        "bytes": 4
+      }
+    ],
+    "chunkBytes": 49152,
+    "messageBytes": 4194304,
+    "inFlightMessages": 8,
+    "rawThresholdInclusive": 49152,
+    "index": "Zero-based. Every nonfinal payload has 49152 bytes. Final payload has exactly totalBytes-index*49152 bytes. total=ceil(totalBytes/49152), total>=2; messageID!=0; totalBytes>49152.",
+    "layer": "ClientSecureTransport sends outgoing.encode(data) plaintext through noise.encrypt per fragment; receives incoming.decode(noise.decrypt(data))."
+  },
+  "nativeStrengthening": {
+    "declaredBytes": 8388608,
+    "assemblyDeadlineMilliseconds": 120000,
+    "receivedIDsPerGeneration": 4096,
+    "deadline": "Absolute from first fragment using caller-supplied nonnegative monotonic milliseconds; not extended by later traffic. Owner calls checkExpiry from idle timer. Backwards clock or any expired assembly retires the whole codec.",
+    "replay": "A bounded set remembers every admitted fragment messageID for that authenticated generation, including completed messages. First-fragment IDs may arrive nonmonotonically. Chunk indices within each message are exactly-once/in-order. Reuse or a 4097th distinct ID retires the connection. Unfragmented raw messages carry no messageID; exactly-once/authenticity at that layer belongs to the maintained Noise facade.",
+    "counter": "Sender begins at 1; IDs increase only for fragmented messages; no u32 wrapping. After sending 0xffffffff, the next encode fails closed. New authenticated generation resets sender and receiver state. Generation cannot wrap or be reused.",
+    "raw": "Unknown raw bytes up to 49152 are preserved with no text decoding. A complete DSHF prefix is reserved for a fragment header; ambiguous small outbound raw payloads with this prefix are rejected. Partial magic prefixes are raw as upstream specifies.",
+    "retirement": "Any active-generation frame/limit/clock/counter error immediately clears assemblies, received IDs and declared-byte reservations, then retires the codec. Owner must close the authenticated connection; do not skip malformed frames and continue. Disconnect requires explicit retire with its authenticated generation; current-generation retirement is idempotent. A delayed old-generation teardown rejects without clearing replacement assemblies. Reset accepts only a strictly larger authenticated generation. Stale-generation calls reject without mutating a replacement connection. A generation is supplied by the authenticated owner, never peer bytes."
+  },
+  "implementation": "Original native code using Foundation Data unaligned BE integer loads/writes and JVM ByteBuffer/ByteOrder.BIG_ENDIAN; existing NativeConnectionPrivateValue redaction and RemoteHarnessException fixed codes. Existing business JSON helpers do not implement DSHF. No new dependencies, upstream TypeScript implementation, crypto implementation or upstream test fixtures vendored. The unresolved upstream project license remains a separate integration/release gate.",
+  "fixtures": "shared/remote-harness-fragments-fixtures.json uses original synthetic payloads and literal wire headers; both native suites execute every case and emit REMOTE_HARNESS_FRAGMENT_FIXTURE_PASS <id>. Fixture success establishes native byte/assembly behavior only, not actual Host interoperability or maintained Noise integration.",
+  "privacy": "Private payload is exposed only by explicit data access. Kotlin byte arrays are defensively copied on ingress and export; Swift uses Data value semantics. Public descriptions/debug dumps are redacted using the native platform's existing pattern. Payload bytes are never converted to text or logged."
+}

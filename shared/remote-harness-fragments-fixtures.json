@@ -1,0 +1,1553 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "origin": "Original synthetic Quenderin wire examples derived from documented byte layout; no upstream test/implementation copied.",
+  "cases": [
+    {
+      "id": "raw-empty",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 0,
+            "byte": 97
+          },
+          "expectedFrames": [
+            {
+              "hex": ""
+            }
+          ]
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "hex": ""
+          },
+          "result": {
+            "count": 0,
+            "byte": 97
+          }
+        }
+      ]
+    },
+    {
+      "id": "raw-opaque-binary",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "hex": "ff008061"
+          },
+          "expectedFrames": [
+            {
+              "hex": "ff008061"
+            }
+          ]
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "hex": "ff008061"
+          },
+          "result": {
+            "hex": "ff008061"
+          }
+        }
+      ]
+    },
+    {
+      "id": "raw-magic-prefix-short",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "hex": "445348"
+          },
+          "result": {
+            "hex": "445348"
+          }
+        }
+      ]
+    },
+    {
+      "id": "raw-threshold",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 49152,
+            "byte": 97
+          },
+          "expectedFrames": [
+            {
+              "payload": {
+                "count": 49152,
+                "byte": 97
+              }
+            }
+          ]
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49152,
+            "byte": 97
+          }
+        }
+      ]
+    },
+    {
+      "id": "golden-two-fragment",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 49153,
+            "byte": 97
+          },
+          "expectedFrames": [
+            {
+              "headerHex": "445348460101020304000000020000c001",
+              "payload": {
+                "count": 49152,
+                "byte": 97
+              }
+            },
+            {
+              "headerHex": "445348460101020304000100020000c001",
+              "payload": {
+                "count": 1,
+                "byte": 97
+              }
+            }
+          ]
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460101020304000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 1,
+          "declared": 49153,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460101020304000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        }
+      ],
+      "initialMessageID": 16909060
+    },
+    {
+      "id": "maximum-message",
+      "steps": [
+        {
+          "action": "roundTrip",
+          "message": {
+            "count": 4194304,
+            "byte": 165
+          },
+          "frameCount": 86,
+          "firstHeaderHex": "4453484601000000010000005600400000",
+          "lastHeaderHex": "4453484601000000010055005600400000"
+        }
+      ]
+    },
+    {
+      "id": "oversize-message",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 4194305,
+            "byte": 97
+          },
+          "error": "messageLimit"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "reserved-magic-encode",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "hex": "4453484601"
+          },
+          "error": "reservedPrefix"
+        }
+      ]
+    },
+    {
+      "id": "interleaved-nonmonotonic-ids",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000009000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000003000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 2,
+          "declared": 98306,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000003000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000009000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        }
+      ]
+    },
+    {
+      "id": "eight-assemblies",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000002000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000003000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000004000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000005000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000006000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000007000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000008000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 8,
+          "declared": 393224,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000009000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "assemblyLimit"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "declared-byte-budget",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010000005600400000",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000020000005600400000",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 2,
+          "declared": 8388608,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000003000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "assemblyLimit"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "completed-frees-budget",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000020000005600400000",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000030000005600400000",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 2,
+          "declared": 8388608,
+          "retired": false
+        }
+      ]
+    },
+    {
+      "id": "absolute-expiry",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010000000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010001000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "now": 119999
+        },
+        {
+          "action": "expire",
+          "now": 120000,
+          "error": "expired"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "missing-tail-expiry",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "expire",
+          "now": 120000,
+          "error": "expired"
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "retired"
+        }
+      ]
+    },
+    {
+      "id": "clock-backwards",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "now": 10
+        },
+        {
+          "action": "expire",
+          "now": 9,
+          "error": "clock"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "clock-negative",
+      "steps": [
+        {
+          "action": "expire",
+          "now": -1,
+          "error": "clock"
+        }
+      ]
+    },
+    {
+      "id": "counter-no-wrap",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 49153,
+            "byte": 97
+          },
+          "expectedFrames": [
+            {
+              "headerHex": "4453484601ffffffff000000020000c001",
+              "payload": {
+                "count": 49152,
+                "byte": 97
+              }
+            },
+            {
+              "headerHex": "4453484601ffffffff000100020000c001",
+              "payload": {
+                "count": 1,
+                "byte": 97
+              }
+            }
+          ]
+        },
+        {
+          "action": "encode",
+          "message": {
+            "count": 49153,
+            "byte": 97
+          },
+          "error": "counterExhausted"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ],
+      "initialMessageID": 4294967295
+    },
+    {
+      "id": "generation-reset",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "reset",
+          "generation": 2
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "generation": 2
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "generation"
+        },
+        {
+          "action": "state",
+          "assemblies": 1,
+          "declared": 49153,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          },
+          "generation": 2
+        },
+        {
+          "action": "encode",
+          "generation": 2,
+          "message": {
+            "count": 49153,
+            "byte": 97
+          },
+          "expectedFrames": [
+            {
+              "headerHex": "445348460100000001000000020000c001",
+              "payload": {
+                "count": 49152,
+                "byte": 97
+              }
+            },
+            {
+              "headerHex": "445348460100000001000100020000c001",
+              "payload": {
+                "count": 1,
+                "byte": 97
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "same-generation-reset",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "reset",
+          "generation": 1,
+          "error": "generation"
+        },
+        {
+          "action": "state",
+          "assemblies": 1,
+          "declared": 49153,
+          "retired": false
+        }
+      ]
+    },
+    {
+      "id": "reset-after-retirement",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        },
+        {
+          "action": "reset",
+          "generation": 2
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "generation": 2
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          },
+          "generation": 2
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        }
+      ]
+    },
+    {
+      "id": "disconnect-retirement",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "retire"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        },
+        {
+          "action": "encode",
+          "message": {
+            "count": 1,
+            "byte": 97
+          },
+          "error": "retired"
+        }
+      ]
+    },
+    {
+      "id": "completed-replay",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "duplicate-first",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "duplicate-middle",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010000000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010001000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010001000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        }
+      ]
+    },
+    {
+      "id": "missing-first",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        }
+      ]
+    },
+    {
+      "id": "out-of-order",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010000000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010002000300018001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        }
+      ]
+    },
+    {
+      "id": "changed-declared-size",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c002",
+            "payload": {
+              "count": 2,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        }
+      ]
+    },
+    {
+      "id": "changed-total",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010001000300018001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "sequence"
+        }
+      ]
+    },
+    {
+      "id": "truncated-header",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "hex": "445348460100000001"
+          },
+          "error": "header"
+        }
+      ]
+    },
+    {
+      "id": "magic-only",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "hex": "44534846"
+          },
+          "error": "header"
+        }
+      ]
+    },
+    {
+      "id": "wrong-version",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460200000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "header"
+        }
+      ]
+    },
+    {
+      "id": "zero-id",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000000000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "metadata"
+        }
+      ]
+    },
+    {
+      "id": "noncanonical-total",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000030000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "metadata"
+        }
+      ]
+    },
+    {
+      "id": "index-out-of-range",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000200020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "error": "metadata"
+        }
+      ]
+    },
+    {
+      "id": "fragment-below-threshold",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c000",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "metadata"
+        }
+      ]
+    },
+    {
+      "id": "declared-oversize",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601000000010000005600400001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "error": "metadata"
+        }
+      ]
+    },
+    {
+      "id": "short-chunk",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49151,
+              "byte": 97
+            }
+          },
+          "error": "length"
+        }
+      ]
+    },
+    {
+      "id": "long-tail",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 2,
+              "byte": 97
+            }
+          },
+          "error": "length"
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "unfragmented-too-large",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "payload": {
+              "count": 49153,
+              "byte": 97
+            }
+          },
+          "error": "rawLimit"
+        }
+      ]
+    },
+    {
+      "id": "frame-too-large",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "payload": {
+              "count": 49170,
+              "byte": 97
+            }
+          },
+          "error": "frameLimit"
+        }
+      ]
+    },
+    {
+      "id": "received-id-budget",
+      "steps": [
+        {
+          "action": "receivedIDLimit",
+          "count": 4096
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "caller-ownership-and-privacy",
+      "steps": [
+        {
+          "action": "ownershipAndPrivacy"
+        }
+      ]
+    },
+    {
+      "id": "empty-tail",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 0,
+              "byte": 97
+            }
+          },
+          "error": "length"
+        }
+      ]
+    },
+    {
+      "id": "deadline-last-valid-millisecond",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          },
+          "now": 119999
+        }
+      ]
+    },
+    {
+      "id": "raw-interleaving",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "hex": "ff008061"
+          },
+          "result": {
+            "hex": "ff008061"
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 1,
+          "declared": 49153,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        }
+      ]
+    },
+    {
+      "id": "unsigned-id-decode",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601ffffffff000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "4453484601ffffffff000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          }
+        }
+      ]
+    },
+    {
+      "id": "delayed-retirement-preserves-replacement",
+      "steps": [
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          }
+        },
+        {
+          "action": "reset",
+          "generation": 2
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000000020000c001",
+            "payload": {
+              "count": 49152,
+              "byte": 97
+            }
+          },
+          "generation": 2
+        },
+        {
+          "action": "retire",
+          "generation": 1,
+          "error": "generation"
+        },
+        {
+          "action": "state",
+          "assemblies": 1,
+          "declared": 49153,
+          "retired": false
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "445348460100000001000100020000c001",
+            "payload": {
+              "count": 1,
+              "byte": 97
+            }
+          },
+          "result": {
+            "count": 49153,
+            "byte": 97
+          },
+          "generation": 2
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        },
+        {
+          "action": "retire",
+          "generation": 2
+        },
+        {
+          "action": "retire",
+          "generation": 2
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": true
+        }
+      ]
+    },
+    {
+      "id": "golden-cross-boundary-pattern",
+      "note": "Independent phase literals: first phase0, middle phase5, final phase3 of seven-byte binary pattern. Expected frames are compared byte-for-byte and separately assembled.",
+      "steps": [
+        {
+          "action": "encode",
+          "message": {
+            "count": 100000,
+            "patternHex": "00017f80feff42"
+          },
+          "expectedFrames": [
+            {
+              "headerHex": "44534846010000000100000003000186a0",
+              "payload": {
+                "count": 49152,
+                "patternHex": "00017f80feff42"
+              }
+            },
+            {
+              "headerHex": "44534846010000000100010003000186a0",
+              "payload": {
+                "count": 49152,
+                "patternHex": "ff4200017f80fe"
+              }
+            },
+            {
+              "headerHex": "44534846010000000100020003000186a0",
+              "payload": {
+                "count": 1696,
+                "patternHex": "80feff4200017f"
+              }
+            }
+          ]
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "44534846010000000100000003000186a0",
+            "payload": {
+              "count": 49152,
+              "patternHex": "00017f80feff42"
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "44534846010000000100010003000186a0",
+            "payload": {
+              "count": 49152,
+              "patternHex": "ff4200017f80fe"
+            }
+          }
+        },
+        {
+          "action": "decode",
+          "frame": {
+            "headerHex": "44534846010000000100020003000186a0",
+            "payload": {
+              "count": 1696,
+              "patternHex": "80feff4200017f"
+            }
+          },
+          "result": {
+            "count": 100000,
+            "patternHex": "00017f80feff42"
+          }
+        },
+        {
+          "action": "state",
+          "assemblies": 0,
+          "declared": 0,
+          "retired": false
+        }
+      ]
+    }
+  ]
+}
