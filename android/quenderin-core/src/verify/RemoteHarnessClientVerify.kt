@@ -3,7 +3,6 @@ package ai.quenderin.core
 import ai.quenderin.core.RemoteHarnessJSON.Companion.num
 import ai.quenderin.core.RemoteHarnessJSON.Companion.obj
 import ai.quenderin.core.RemoteHarnessJSON.Companion.str
-import java.security.MessageDigest
 
 /** Synthetic self-hosted relay + official Gateway-shaped frames. No provider, Host, TLS or native
  * crypto claims: the deliberately fake Noise exists only in this verification source set. */
@@ -123,6 +122,8 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
         "sessionIds" to RemoteHarnessJSON.ArrayValue(sessions.map(::str)))
     inner class FixtureSocket(val listener: RemoteHarnessClientSocketListener, val connectionID: String) : RemoteHarnessClientSocket {
         var ended = false; var sending = 0L
+        var officialEvidenceReleased = false
+        val hostFragments = RemoteHarnessFragments(1)
         val streams = linkedMapOf<String, String>()
         override fun send(bytes: ByteArray) {
             check(!ended)
@@ -214,7 +215,7 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
                         }
                         response(captured) // Exact official success wrapper, including approval's absent value.
                         if (endpoint == "session/prompt") replayCaptured(7..22)
-                        if (endpoint == "quenderin/approval") replayCaptured(23..46)
+                        if (endpoint == "quenderin/approval") { check(officialEvidenceReleased); replayCaptured(33..46) }
                         return
                     }
                     val result = when (endpoint) {
@@ -231,7 +232,7 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
                         "session/prompt" -> { prompts++; promptResult }
                         "session/cancel" -> { cancellations++; obj("accepted" to RemoteHarnessJSON.BooleanValue(true)) }
                         "session/page" -> { pages++; obj("records" to RemoteHarnessJSON.ArrayValue(pageRecords), "hasMore" to RemoteHarnessJSON.BooleanValue(false)) }
-                        "quenderin/approval" -> obj("accepted" to RemoteHarnessJSON.BooleanValue(true))
+                        "quenderin/approval" -> { approvalDecisions++; obj("accepted" to RemoteHarnessJSON.BooleanValue(true)) }
                         else -> error("fixture unexpected endpoint $endpoint")
                     }
                     response(obj("ok" to RemoteHarnessJSON.BooleanValue(true), "value" to result))
@@ -255,9 +256,8 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
             "seq" to num(seq), "time" to num(clock.now), "data" to data))
         fun assistant(value: RemoteHarnessJSON) = event("session/follow", obj("type" to str("assistant-stream"), "frame" to value))
         fun approval(id: String, session: String = "session-b") {
-            val request = obj("reason" to str("Read current directory"), "toolName" to str("shell"))
-            val digest = MessageDigest.getInstance("SHA-256").digest("{\"reason\":\"Read current directory\",\"toolName\":\"shell\"}".toByteArray())
-                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            val request = obj("reason" to str("Read current directory"), "toolName" to str("shell"), "callId" to str("tool-a"))
+            val digest = RemoteHarnessClientApprovalGate.actionDigest(request)
             event("\$events", obj("type" to str("waterfall"), "event" to str("approval/request"), "eventId" to str(id), "agentId" to str(session),
                 "request" to request, "quenderinBinding" to obj("hostDeviceId" to str("host-a"), "clientDeviceId" to str(clientDeviceID),
                     "workspaceId" to str("workspace-a"), "sessionId" to str(session), "runId" to str("turn:1"), "eventId" to str(id),
@@ -285,12 +285,19 @@ private class ClientFixture(val clock: ClientClock = ClientClock(), val credenti
                 sendBusiness("event", obj("event" to captured.rhRequired("event"), "data" to data)) { capturedFrameOrder.add(index) }
             }
         }
+        fun releaseOfficialEvidence() {
+            check(!officialEvidenceReleased); officialEvidenceReleased = true
+            replayCaptured(23..32)
+        }
         fun sendBusiness(type: String, payload: RemoteHarnessJSON, delivered: () -> Unit = {}) {
             val plain = RemoteHarnessJSON.write(obj("v" to num(1), "id" to str("business-${++eventCounter}"), "type" to str(type),
                 "timestamp" to num(clock.now + hostClockOffset), "payload" to payload)).toByteArray()
-            val packet = RemoteHarnessControlPacket.Relay(RemoteHarnessSecureRelay(connectionID, clientDeviceID, sending++, ByteArray(16) + plain))
-            val bytes = RemoteHarnessControlWire.encode(packet, "wire-${++eventCounter}", clock.now)
-            queue.add { if (!ended) { delivered(); listener.received(bytes) } }
+            val fragments = hostFragments.encode(plain, 1)
+            fragments.forEachIndexed { index, fragment ->
+                val packet = RemoteHarnessControlPacket.Relay(RemoteHarnessSecureRelay(connectionID, clientDeviceID, sending++, ByteArray(16) + fragment.data))
+                val bytes = RemoteHarnessControlWire.encode(packet, "wire-${++eventCounter}", clock.now)
+                queue.add { if (!ended) { if (index == fragments.lastIndex) delivered(); listener.received(bytes) } }
+            }
         }
         override fun checkDeadline(now: Long) {}
         override fun close() { ended = true }
@@ -333,6 +340,7 @@ fun main(args: Array<String>) {
     verify(client.snapshot.timeline.any { it.text == "Streaming answer" && it.reasoning == "Visible reasoning" }, "stream text and reasoning")
     verify(client.snapshot.timeline.any { it.kind == "tool" && it.text.contains("pwd") }, "native tool timeline")
     verify(client.snapshot.approvals.single().eventID == "approval-a", "bound approval admitted")
+    verify(client.snapshot.approvalActions["approval-a"]?.arguments == "{\"command\":\"pwd\"}", "durable call before approval resolves when approval stream advances")
     client.decideApproval("approval-a", true); fixture.pump()
     verify(client.snapshot.approvals.isEmpty(), "approval consumed once")
     fixture.current!!.approval("approval-b"); fixture.pump(); client.decideApproval("approval-b", false); fixture.pump()
@@ -429,6 +437,21 @@ fun main(args: Array<String>) {
     official.pump()
     verify(officialNative.snapshot.historyReady && officialNative.snapshot.approvals.single().eventID == "fixture-event" &&
         officialNative.snapshot.status == RemoteSessionStatus.AWAITING_APPROVAL, "official zero-based events and bound finite-TTL approval admitted")
+    val originalBinding = RemoteHarnessJSON.write(officialNative.snapshot.approvals.single().binding)
+    val commandsBeforeEvidence = official.saved.read()!!.commands.size
+    verify(officialNative.snapshot.approvalActions.isEmpty() && official.capturedFrameOrder.last() == 22, "official approval precedes all argument evidence")
+    officialNative.decideApproval("fixture-event", true); officialNative.decideApproval("fixture-event", false); official.pump()
+    verify(official.approvalDecisions == 0 && official.saved.read()!!.commands.size == commandsBeforeEvidence &&
+        officialNative.snapshot.approvals.single().eventID == "fixture-event" && officialNative.snapshot.historyReady &&
+        officialNative.snapshot.phase == RemoteHarnessClientPhase.SESSION && officialNative.snapshot.status == RemoteSessionStatus.AWAITING_APPROVAL &&
+        !official.current!!.ended, "both premature decisions fail before mutation reservation or socket dispatch while connection and Stop remain available")
+    official.current!!.releaseOfficialEvidence(); official.pump()
+    val verifiedAction = officialNative.snapshot.approvalActions["fixture-event"]
+    verify(verifiedAction?.toolName == "fixture_echo" && verifiedAction.callID == "fixture-call-1" &&
+        verifiedAction.arguments == "{\"text\":\"synthetic action\"}" &&
+        RemoteHarnessJSON.write(officialNative.snapshot.approvals.single().binding) == originalBinding && official.capturedFrameOrder.last() == 32,
+        "durable call automatically resolves exact arguments for the same approval without another approval event")
+    verify(!verifiedAction.toString().contains("synthetic action") && !officialNative.snapshot.toString().contains("synthetic action"), "matched arguments stay redacted in default descriptions")
     officialNative.decideApproval("fixture-event", true); official.pump()
     verify(official.approvalDecisions == 1 && officialNative.snapshot.approvals.isEmpty(), "official exact allow-once dispatch and empty success wrapper")
     verify(officialNative.snapshot.historyReady && officialNative.snapshot.error == null && officialNative.snapshot.status == RemoteSessionStatus.READY,
@@ -441,6 +464,158 @@ fun main(args: Array<String>) {
     verify(official.capturedFrameOrder == (0..46).toList() &&
         listOf("session/create", "session/list", "session/prompt", "quenderin/approval").all { it in official.capturedUnary },
         "all 47 official business frames retain captured cross-stream order with exact available unary results")
+    verify(!RemoteHarnessClientRecords.state(official.saved.read()!!).contains("approvalActions"), "connection-local matched action is absent from saved-state codec")
+
+    fun pendingOfficial(transform: (Int, RemoteHarnessJSON) -> RemoteHarnessJSON = { _, value -> value }): Pair<ClientFixture, RemoteHarnessClient> {
+        val f = ClientFixture(official = facts); f.transformCapturedValue = transform
+        val c = officialClient(f)
+        c.draft("Run the synthetic fixture tool once."); c.send(); f.pump()
+        f.current!!.releaseOfficialEvidence(); f.pump()
+        return f to c
+    }
+    fun newPendingApproval(f: ClientFixture, eventID: String, turn: Long = 1) {
+        val value = f.current!!.capturedValue(22).objectValue()
+        val binding = value.rhRequired("quenderinBinding").objectValue()
+        f.current!!.event("\$events", RemoteHarnessJSON.ObjectValue(value + mapOf("eventId" to str(eventID),
+            "quenderinBinding" to RemoteHarnessJSON.ObjectValue(binding + mapOf("eventId" to str(eventID), "runId" to str("turn:$turn"))))))
+    }
+    fun unavailableAction(label: String, change: (Map<String, RemoteHarnessJSON>) -> Map<String, RemoteHarnessJSON>) {
+        val (f, c) = pendingOfficial { position, value ->
+            if (position != 31) value else {
+                val data = value.objectValue().rhRequired("event").objectValue().rhRequired("data").objectValue()
+                replaceCapturedField(value, listOf("event", "data"), RemoteHarnessJSON.ObjectValue(change(data)))
+            }
+        }
+        verify(c.snapshot.historyReady && c.snapshot.approvals.single().eventID == "fixture-event" && c.snapshot.approvalActions.isEmpty(), "$label withholds resolved action without closing valid history")
+        val commands = f.saved.read()!!.commands.size
+        c.decideApproval("fixture-event", true); c.decideApproval("fixture-event", false); f.pump()
+        verify(f.approvalDecisions == 0 && f.saved.read()!!.commands.size == commands, "$label rejects both decisions before reservation or dispatch")
+        c.stop(); f.pump()
+        verify(c.snapshot.historyReady && f.cancellations == 1 && c.snapshot.status == RemoteSessionStatus.STOP_REQUESTED, "$label retains Stop")
+    }
+    unavailableAction("missing call ID") { it - "callId" }
+    unavailableAction("wrong call ID") { it + ("callId" to str("other-call")) }
+    unavailableAction("wrong tool name") { it + ("name" to str("other-tool")) }
+    unavailableAction("wrong turn") { it + ("turn" to num(2)) }
+    unavailableAction("wrong session") { it + ("sessionId" to str("other-session")) }
+    unavailableAction("malformed raw arguments") { it + ("arguments" to str("{invalid")) }
+    unavailableAction("missing raw arguments") { it - "arguments" }
+    unavailableAction("oversized raw arguments") { it + ("arguments" to str(RemoteHarnessJSON.write(obj("text" to str("a".repeat(65_536)))))) }
+
+    val (missing, missingNative) = pendingOfficial { position, value -> if (position == 31)
+        replaceCapturedField(value, listOf("event", "type"), str("fixture/no-tool-call")) else value }
+    val missingCommands = missing.saved.read()!!.commands.size
+    missingNative.decideApproval("fixture-event", true); missing.pump()
+    verify(missingNative.snapshot.historyReady && missingNative.snapshot.approvalActions.isEmpty() && missing.approvalDecisions == 0 &&
+        missing.saved.read()!!.commands.size == missingCommands, "missing durable call cannot be substituted by earlier tool argument chunks")
+
+    for (conflict in listOf(false, true)) {
+        val (f, c) = pendingOfficial()
+        val stale = c.snapshot
+        f.current!!.event("session/follow", f.current!!.record(12, "tool/call", obj("turn" to num(1), "step" to num(1), "callId" to str("fixture-call-1"),
+            "name" to str("fixture_echo"), "arguments" to str(if (conflict) "{\"text\":\"changed\"}" else "{\"text\":\"synthetic action\"}"))))
+        f.pump(); val commands = f.saved.read()!!.commands.size
+        c.decideApproval(stale.approvals.single().eventID, true); c.decideApproval(stale.approvals.single().eventID, false); f.pump()
+        verify(stale.approvalActions.isNotEmpty() && c.snapshot.historyReady && c.snapshot.approvalActions.isEmpty() && f.approvalDecisions == 0 &&
+            f.saved.read()!!.commands.size == commands, "${if (conflict) "conflicting" else "duplicate identical"} call IDs invalidate stale UI decisions")
+        f.current!!.event("session/follow", f.current!!.record(13, "turn/start", obj("turn" to num(1))))
+        f.current!!.event("session/follow", f.current!!.record(14, "tool/call", obj("turn" to num(1), "step" to num(1), "callId" to str("fixture-call-1"),
+            "name" to str("fixture_echo"), "arguments" to str("{\"text\":\"synthetic action\"}"))))
+        newPendingApproval(f, "approval-after-duplicate-start"); f.pump()
+        c.decideApproval("approval-after-duplicate-start", true); f.pump()
+        verify(c.snapshot.historyReady && c.snapshot.approvals.any { it.eventID == "approval-after-duplicate-start" } && c.snapshot.approvalActions.isEmpty() &&
+            f.approvalDecisions == 0 && f.saved.read()!!.commands.size == commands, "same-run start and new pending approval cannot clear ${if (conflict) "conflicting" else "duplicate"} call ambiguity")
+    }
+
+    // Adversarial accepted compatibility shape, not a claim about the official captured runtime.
+    for (replacementIsCall in listOf(false, true)) {
+        val (f, c) = pendingOfficial(); val stale = c.snapshot
+        var publishedStaleMatch = false
+        c.onChange = { state -> if (state.timeline.none { it.id == "event-10" } && state.approvalActions.isNotEmpty()) publishedStaleMatch = true }
+        val data = if (replacementIsCall) obj("turn" to num(1), "step" to num(1), "callId" to str("fixture-call-1"),
+            "name" to str("fixture_echo"), "arguments" to str("{\"text\":\"replacement\"}")) else obj()
+        val record = f.current!!.record(12, if (replacementIsCall) "tool/call" else "fixture/history-replacement", data)
+        val replaced = replaceCapturedField(record, listOf("event", "surfaceOp"), obj("op" to str("replace"), "startSeq" to num(10), "endSeq" to num(10)))
+        f.current!!.event("session/follow", replaced); f.pump()
+        val commands = f.saved.read()!!.commands.size
+        c.decideApproval(stale.approvals.single().eventID, true); c.decideApproval(stale.approvals.single().eventID, false); f.pump()
+        verify(stale.approvalActions.isNotEmpty() && c.snapshot.historyReady && c.snapshot.timeline.none { it.id == "event-10" } &&
+            c.snapshot.approvals.single().eventID == "fixture-event" && c.snapshot.approvalActions.isEmpty() && !publishedStaleMatch &&
+            f.approvalDecisions == 0 && f.saved.read()!!.commands.size == commands, "accepted object replacement invalidates removed call before indexing or publishing ${if (replacementIsCall) "a replacement call" else "its removal"}")
+        c.stop(); f.pump()
+        verify(c.snapshot.historyReady && f.cancellations == 1 && c.snapshot.status == RemoteSessionStatus.STOP_REQUESTED, "accepted history replacement keeps Stop live")
+    }
+    val (closed, closedNative) = pendingOfficial(); val closedUI = closedNative.snapshot
+    closed.current!!.event("session/follow", closed.current!!.record(12, "turn/end", obj("turn" to num(1), "reason" to obj("kind" to str("aborted")))))
+    closed.pump(); val closedCommands = closed.saved.read()!!.commands.size
+    closedNative.decideApproval(closedUI.approvals.single().eventID, true); closed.pump()
+    verify(closedNative.snapshot.historyReady && closedNative.snapshot.approvals.isEmpty() && closedNative.snapshot.approvalActions.isEmpty() &&
+        closed.approvalDecisions == 0 && closed.saved.read()!!.commands.size == closedCommands, "closed turn invalidates stale approval action before dispatch")
+
+    val exactArguments = " \n{ \"text\" : \"" + "a".repeat(40_000) + "終\", \"n\" : 1.00 }\t"
+    val (_, exactNative) = pendingOfficial { position, value -> if (position == 31)
+        replaceCapturedField(value, listOf("event", "data", "arguments"), str(exactArguments)) else value }
+    verify(exactNative.snapshot.historyReady && exactNative.snapshot.approvalActions["fixture-event"]?.arguments == exactArguments,
+        "long raw arguments preserve all bytes, whitespace, Unicode and numeric spelling without truncation or reserialization")
+
+    val (expired, expiredNative) = pendingOfficial()
+    expired.clock.mono += 60_001; expiredNative.tick(); expired.pump()
+    verify(expiredNative.snapshot.historyReady && expiredNative.snapshot.approvals.isEmpty() && expiredNative.snapshot.approvalActions.isEmpty(), "expiry clears matched action without retaining duplicate arguments")
+
+    val capturedApproval = facts.frames[22].objectValue().rhRequired("value").objectValue()
+    val actionApproval = RemoteHarnessClientApproval(capturedApproval.rhRequired("quenderinBinding") as RemoteHarnessJSON.ObjectValue,
+        "fixture-event-client", capturedApproval.rhRequired("request"), 120_000)
+    fun evidenceData(call: String, arguments: String = "{}", turn: Long = 1) = obj("turn" to num(turn), "step" to num(1),
+        "callId" to str(call), "name" to str("fixture_echo"), "arguments" to str(arguments)).values
+    fun evidenceIndex() = RemoteHarnessClientApprovalActions().apply {
+        reset("fixture-session"); observe("fixture-session", 1, "turn/start", obj("turn" to num(1)).values, true)
+    }
+    val countBound = evidenceIndex()
+    countBound.observe("fixture-session", 2, "tool/call", evidenceData("fixture-call-1"), true)
+    verify(countBound.resolve(actionApproval, "fixture-session") != null, "bounded index resolves a unique durable call")
+    for (i in 1..128) countBound.observe("fixture-session", i + 2L, "tool/call", evidenceData("extra-$i"), true)
+    countBound.observe("fixture-session", 200, "tool/call", evidenceData("fixture-call-1"), true)
+    verify(countBound.resolve(actionApproval, "fixture-session") == null, "129th call disables matching for the run and later reused IDs cannot recover it")
+    countBound.observe("fixture-session", 201, "turn/start", obj("turn" to num(2)).values, true)
+    countBound.observe("fixture-session", 202, "tool/call", evidenceData("fixture-call-1", turn = 2), true)
+    val nextApproval = RemoteHarnessClientApproval(RemoteHarnessJSON.ObjectValue(actionApproval.binding.values + ("runId" to str("turn:2"))),
+        actionApproval.clientID, actionApproval.request, 120_000)
+    verify(countBound.resolve(nextApproval, "fixture-session") != null && countBound.resolve(actionApproval, "fixture-session") == null,
+        "a new scoped run resets unavailable evidence without reviving the old run")
+    countBound.observe("fixture-session", 203, "turn/end", obj("turn" to num(2)).values, true)
+    countBound.observe("fixture-session", 204, "turn/start", obj("turn" to num(2)).values, true)
+    countBound.observe("fixture-session", 205, "tool/call", evidenceData("fixture-call-1", turn = 2), true)
+    verify(countBound.resolve(nextApproval, "fixture-session") == null, "a closed turn ID cannot reopen as a fresh evidence scope")
+    countBound.observe("fixture-session", 206, "turn/start", obj("turn" to num(1)).values, true)
+    countBound.observe("fixture-session", 207, "tool/call", evidenceData("fixture-call-1"), true)
+    verify(countBound.resolve(actionApproval, "fixture-session") == null, "a lower reused turn ID cannot recover unavailable evidence")
+    val byteBound = evidenceIndex(); val maximumArguments = "{\"x\":\"" + "x".repeat(65_528) + "\"}"
+    byteBound.observe("fixture-session", 2, "tool/call", evidenceData("fixture-call-1", maximumArguments), true)
+    verify(byteBound.resolve(actionApproval, "fixture-session")?.arguments == maximumArguments, "64 KiB raw arguments are retained exactly at the per-call limit")
+    for (i in 1..4) byteBound.observe("fixture-session", i + 2L, "tool/call", evidenceData("large-$i", maximumArguments), true)
+    verify(byteBound.resolve(actionApproval, "fixture-session") == null, "aggregate call evidence exceeding 256 KiB disables matching")
+    val unknownPrior = evidenceIndex()
+    unknownPrior.observe("fixture-session", 2, "tool/call", evidenceData("missing") - "callId", true)
+    unknownPrior.observe("fixture-session", 3, "tool/call", evidenceData("fixture-call-1"), true)
+    verify(unknownPrior.resolve(actionApproval, "fixture-session") == null, "unknown prior call identity cannot be overwritten by a later apparent match")
+    countBound.reset("other-session")
+    verify(countBound.resolve(nextApproval, "fixture-session") == null, "profile or session reset clears all connection-local evidence")
+
+    for ((label, count, arguments) in listOf(Triple("call-count bound", 129, "{}"), Triple("aggregate byte bound", 4, maximumArguments))) {
+        val (f, c) = pendingOfficial()
+        for (i in 1..count) f.current!!.event("session/follow", f.current!!.record(11 + i.toLong(), "tool/call",
+            obj("turn" to num(1), "step" to num(1), "callId" to str("additional-$i"), "name" to str("fixture_echo"), "arguments" to str(arguments))))
+        f.current!!.event("session/follow", f.current!!.record(12 + count.toLong(), "turn/start", obj("turn" to num(1))))
+        f.current!!.event("session/follow", f.current!!.record(13 + count.toLong(), "tool/call", obj("turn" to num(1), "step" to num(1),
+            "callId" to str("fixture-call-1"), "name" to str("fixture_echo"), "arguments" to str("{\"text\":\"synthetic action\"}"))))
+        newPendingApproval(f, "approval-after-overflow-start")
+        f.pump(); val commands = f.saved.read()!!.commands.size
+        c.decideApproval("fixture-event", true); c.decideApproval("approval-after-overflow-start", true); f.pump(); c.stop(); f.pump()
+        verify(c.snapshot.historyReady && c.snapshot.approvalActions.isEmpty() && f.approvalDecisions == 0 &&
+            c.snapshot.approvals.any { it.eventID == "approval-after-overflow-start" } && f.saved.read()!!.commands.size == commands + 1 &&
+            f.cancellations == 1 && c.snapshot.status == RemoteSessionStatus.STOP_REQUESTED,
+            "$label stays unavailable after same-run start and new pending approval while history and Stop remain live")
+    }
 
     fun officialRejects(label: String, index: Int, path: List<String>, replacement: RemoteHarnessJSON) {
         val f = ClientFixture(official = facts)
@@ -448,6 +623,7 @@ fun main(args: Array<String>) {
         val c = officialClient(f)
         if (c.snapshot.historyReady) {
             c.draft("Run the synthetic fixture tool once."); c.send(); f.pump()
+            if (c.snapshot.historyReady) { f.current!!.releaseOfficialEvidence(); f.pump() }
             if (c.snapshot.approvals.isNotEmpty()) { c.decideApproval("fixture-event", true); f.pump() }
         }
         verify(!c.snapshot.historyReady && c.snapshot.error != null, label)
@@ -498,6 +674,7 @@ fun main(args: Array<String>) {
     stoppedNative.stop(); stoppedOfficial.pump()
     verify(stoppedOfficial.cancellations == 1 && stoppedNative.snapshot.historyReady && stoppedNative.snapshot.approvals.single().eventID == "fixture-event" &&
         stoppedNative.snapshot.status == RemoteSessionStatus.STOP_REQUESTED, "official turn start and approval retain visible pending Stop")
+    stoppedOfficial.current!!.releaseOfficialEvidence(); stoppedOfficial.pump()
     stoppedNative.decideApproval("fixture-event", true); stoppedOfficial.pump()
     verify(stoppedNative.snapshot.historyReady && stoppedNative.snapshot.status == RemoteSessionStatus.READY,
         "official completed turn settles pending Stop without fabricating an aborted outcome")

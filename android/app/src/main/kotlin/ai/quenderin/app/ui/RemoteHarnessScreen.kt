@@ -177,14 +177,26 @@ private fun status(s: RemoteHarnessClientSnapshot): String = when (s.status) {
             }
             if (!state.approvalSupported) item { Text("Tool approval requires the Quenderin Remote companion extension on your computer.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(state.approvals, key = { "approval-${it.eventID}" }) { approval ->
+                val action = state.approvalActions[approval.eventID]
                 Column(Modifier.fillMaxWidth().testTag("remote.approval.${approval.eventID}")) {
                     Text("Allow this computer action?", style = MaterialTheme.typography.titleSmall)
+                    if (action == null) {
+                        Text("Waiting for full action details from your computer. You can stop the task while waiting.",
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("remote.approvalWaiting.${approval.eventID}"))
+                    } else {
+                        Text("Tool: ${action.toolName}", style = MaterialTheme.typography.labelLarge)
+                        SelectionContainer { Text("Call ID: ${action.callID}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
+                        Text("Exact arguments", style = MaterialTheme.typography.labelMedium)
+                        SelectionContainer { Text(action.arguments, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.testTag("remote.approvalArguments.${approval.eventID}")) }
+                    }
+                    Text("Approval request metadata", style = MaterialTheme.typography.labelMedium)
                     SelectionContainer { Text(RemoteHarnessJSON.write(approval.request), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace) }
                     Text("Applies once to this device, workspace, session and active turn. Expires in at most two minutes.", style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { controller.decideApproval(approval.eventID, true) }, enabled = state.historyReady && !state.busy,
+                        Button(onClick = { controller.decideApproval(approval.eventID, true) }, enabled = action != null && state.historyReady && !state.busy,
                             modifier = Modifier.testTag("remote.approve.${approval.eventID}")) { Text("Allow once") }
-                        OutlinedButton(onClick = { controller.decideApproval(approval.eventID, false) }, enabled = state.historyReady && !state.busy,
+                        OutlinedButton(onClick = { controller.decideApproval(approval.eventID, false) }, enabled = action != null && state.historyReady && !state.busy,
                             modifier = Modifier.testTag("remote.deny.${approval.eventID}")) { Text("Deny") }
                     }
                 }

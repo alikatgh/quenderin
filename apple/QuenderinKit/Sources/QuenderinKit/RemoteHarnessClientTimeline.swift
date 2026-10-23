@@ -37,6 +37,21 @@ public struct RemoteHarnessClientTimelineRow: Identifiable, NativeConnectionPriv
     public let raw: Data
 }
 
+/// Ephemeral execution evidence from one authoritative durable tool/call. This
+/// is deliberately separate from approval/request metadata and journal data.
+public struct RemoteHarnessClientApprovalAction: Sendable, Equatable, NativeConnectionPrivateValue {
+    public let sessionID: String
+    public let runID: String
+    public let callID: String
+    public let toolName: String
+    public let arguments: String
+    public let sequence: Int64
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.sequence == rhs.sequence && zip([lhs.sessionID, lhs.runID, lhs.callID, lhs.toolName, lhs.arguments],
+            [rhs.sessionID, rhs.runID, rhs.callID, rhs.toolName, rhs.arguments]).allSatisfy { $0.0.utf8.elementsEqual($0.1.utf8) }
+    }
+}
+
 /// Authoritative durable records and transient attempt/index frames keep separate
 /// identities. Raw bounded records are retained for unknown fields and tool data.
 public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
@@ -50,8 +65,20 @@ public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
     private var transient: [RemoteHarnessClientTimelineRow] = []
     private var seenSequences = Set<Int64>()
     private var liveCursor: Int64?
+    private enum CallEvidence { case unique(RemoteHarnessClientApprovalAction), ambiguous }
+    private var actionSessionID: String?
+    private var actionRunID: String?
+    private var maximumActionTurn: Int64?
+    private var calls: [String: CallEvidence] = [:]
+    private var callCount = 0, callBytes = 0
+    private var actionEvidenceInvalid = false
+    static let maximumApprovalCalls = 128
+    static let maximumApprovalArgumentBytes = 65_536
+    static let maximumApprovalEvidenceBytes = 262_144
+    public var hasActiveTurn: Bool { actionRunID != nil }
     public init() {}
     public mutating func restore(_ values: [Data]) throws {
+        clearApprovalEvidence()
         attempt = nil; transient = []; revision = 0; nextIndex = 0; cursor = nil; liveCursor = nil; hasMore = false
         records = values; seenSequences = Set(values.compactMap { try? RemoteHarnessJSON(data: $0).fields().required("event").fields().required("seq").integerValue() })
         rows = Self.compact(try values.enumerated().flatMap { try Self.rows(RemoteHarnessJSON(data: $0.element), key: "saved-\($0.offset)") })
@@ -94,6 +121,8 @@ public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
                     else { throw RemoteHarnessClientFailure.protocolMismatch }
                 }
             }
+            let activeTurn = try? f["assistantStream"]?.fields()["activeAttempt"]?.fields().required("turn").integerValue()
+            rebuildApprovalEvidence(sessionID: expectedSessionID, snapshotTurn: activeTurn)
         } else if type == "event" || type == "chunks" {
             let event = try f.required("event").fields(), seq = try event.required("seq").integerValue()
             guard let liveCursor else { throw RemoteHarnessClientFailure.protocolMismatch }
@@ -108,11 +137,15 @@ public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
                 records = try records.filter { bytes in
                     let old = try RemoteHarnessJSON(data: bytes).fields().required("event").fields().required("seq").integerValue(); return old < start || old > end
                 }
+                // A previously shown immutable call cannot be silently replaced
+                // with different arguments under an outstanding approval.
+                invalidateApprovalEvidence()
             }
             guard records.count < 1024 else { throw RemoteHarnessClientFailure.limit }; records.append(value.data); seenSequences.insert(seq)
             self.liveCursor = range.upperBound
             let eventType = try event.text("type")
             if eventType.hasPrefix("chunkrow/") || eventType == "assistant/chunk" || eventType == "assistant/message" { transient = [] }
+            indexApprovalRecord(value)
         } else if type == "assistant-stream" {
             guard let liveCursor else { throw RemoteHarnessClientFailure.protocolMismatch }
             let frame = try f.required("frame").fields(), frameType = try frame.text("type"), id = try frame.text("attemptId")
@@ -149,6 +182,106 @@ public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
         records = page.map(\.data) + records; hasMore = try f.required("hasMore").booleanValue()
         seenSequences.formUnion(page.compactMap { try? $0.fields().required("event").fields().required("seq").integerValue() })
         rows = Self.compact(try records.enumerated().flatMap { try Self.rows(RemoteHarnessJSON(data: $0.element), key: "record-\($0.offset)") } + transient)
+        // Earlier records may disclose another use of a call ID. Never let a
+        // page turn a previously invalid current run back into valid evidence.
+        let wasInvalid = actionEvidenceInvalid, activeRun = actionRunID
+        if let sessionID = actionSessionID {
+            actionSessionID = sessionID; resetActionRun(activeRun)
+            for bytes in records { if let record = try? RemoteHarnessJSON(data: bytes) { indexToolCall(record) } }
+            if wasInvalid { invalidateApprovalEvidence() }
+        }
+    }
+    public mutating func clearApprovalEvidence() {
+        actionSessionID = nil; maximumActionTurn = nil; resetActionRun(nil)
+    }
+    public func approvalAction(for approval: RemoteHarnessPendingApproval) -> RemoteHarnessClientApprovalAction? {
+        guard !actionEvidenceInvalid, let binding = approval.extensionBinding,
+              binding.sessionID == actionSessionID, approval.binding.sessionID == actionSessionID,
+              binding.workspaceID == approval.binding.workspaceID, binding.runID == actionRunID,
+              let request = try? approval.request.fields(), let callID = try? request.text("callId"),
+              let toolName = try? request.text("toolName"), case .unique(let action)? = calls[callID],
+              action.callID.utf8.elementsEqual(callID.utf8), action.toolName.utf8.elementsEqual(toolName.utf8) else { return nil }
+        return action
+    }
+    private mutating func resetActionRun(_ runID: String?) {
+        actionRunID = runID; calls = [:]; callCount = 0; callBytes = 0; actionEvidenceInvalid = false
+    }
+    private mutating func invalidateApprovalEvidence() {
+        calls = [:]; callBytes = 0; actionEvidenceInvalid = true
+    }
+    private mutating func startActionTurn(_ turn: Int64) {
+        guard maximumActionTurn == nil || turn > maximumActionTurn! else {
+            actionRunID = "turn:\(turn)"; invalidateApprovalEvidence(); return
+        }
+        maximumActionTurn = turn; resetActionRun("turn:\(turn)")
+    }
+    private mutating func rebuildApprovalEvidence(sessionID: String, snapshotTurn: Int64?) {
+        let sameSession = actionSessionID == sessionID, priorRun = actionRunID, priorMaximum = maximumActionTurn, wasInvalid = actionEvidenceInvalid
+        let priorCalls = calls
+        actionSessionID = sessionID; maximumActionTurn = nil; resetActionRun(nil)
+        for bytes in records { if let record = try? RemoteHarnessJSON(data: bytes) { indexApprovalRecord(record) } }
+        if let turn = snapshotTurn, actionRunID != "turn:\(turn)" {
+            startActionTurn(turn)
+            for bytes in records { if let record = try? RemoteHarnessJSON(data: bytes) { indexToolCall(record) } }
+        }
+        // A shorter same-connection snapshot cannot erase a poisoned/reused
+        // run or lower the scope's turn watermark. Reconnect clears both.
+        if sameSession, let priorMaximum, maximumActionTurn == nil || maximumActionTurn! <= priorMaximum {
+            maximumActionTurn = priorMaximum
+            if actionRunID != nil, actionRunID != priorRun || wasInvalid { invalidateApprovalEvidence() }
+        }
+        if sameSession, actionRunID != nil, actionRunID == priorRun, !actionEvidenceInvalid {
+            // The same durable call is immutable across snapshots. A shorter
+            // snapshot must not forget it and later authorize changed arguments
+            // or an identical-looking call at a different durable sequence.
+            for (callID, evidence) in priorCalls {
+                guard case .unique(let old) = evidence, case .unique(let current)? = calls[callID], current == old else {
+                    invalidateApprovalEvidence(); break
+                }
+            }
+        }
+    }
+    private mutating func indexApprovalRecord(_ record: RemoteHarnessJSON) {
+        guard let fields = try? record.fields(), (try? fields.text("type")) == "event",
+              let event = try? fields.required("event").fields(), let name = try? event.text("type") else { return }
+        if name == "turn/start" {
+            guard let turn = try? event.required("data").fields().required("turn").integerValue() else { invalidateApprovalEvidence(); return }
+            startActionTurn(turn)
+        } else if name == "turn/end" {
+            if let turn = try? event.required("data").fields().required("turn").integerValue() {
+                maximumActionTurn = max(maximumActionTurn ?? turn, turn)
+            }
+            resetActionRun(nil)
+        }
+        else if name == "tool/call" { indexToolCall(record) }
+    }
+    private mutating func indexToolCall(_ record: RemoteHarnessJSON) {
+        guard !actionEvidenceInvalid, let sessionID = actionSessionID, let runID = actionRunID,
+              let fields = try? record.fields(), (try? fields.text("type")) == "event",
+              let event = try? fields.required("event").fields(), (try? event.text("type")) == "tool/call" else { return }
+        guard let data = try? event.required("data").fields(), let turn = try? data.required("turn").integerValue(),
+              let sequence = try? event.required("seq").integerValue() else { invalidateApprovalEvidence(); return }
+        guard runID == "turn:\(turn)" else { return }
+        callCount += 1
+        guard callCount <= Self.maximumApprovalCalls else { invalidateApprovalEvidence(); return }
+        guard let callID = try? data.text("callId"), callID.utf8.count <= 1024 else { invalidateApprovalEvidence(); return }
+        if case .unique(_)? = calls[callID] { invalidateApprovalEvidence(); return }
+        if calls[callID] != nil { return }
+        guard let toolName = try? data.text("name"), toolName.utf8.count <= 1024,
+              let arguments = try? data.required("arguments").stringValue(), arguments.utf8.count <= Self.maximumApprovalArgumentBytes,
+              (try? RemoteHarnessJSON(data: Data(arguments.utf8))) != nil else { retainAmbiguousCall(callID); return }
+        for scope in [fields["sessionId"], event["sessionId"], data["sessionId"]].compactMap({ $0 }) {
+            guard (try? scope.stringValue()) == sessionID else { retainAmbiguousCall(callID); return }
+        }
+        let retainedBytes = sessionID.utf8.count + runID.utf8.count + callID.utf8.count + toolName.utf8.count + arguments.utf8.count
+        guard callBytes <= Self.maximumApprovalEvidenceBytes - retainedBytes else { invalidateApprovalEvidence(); return }
+        calls[callID] = .unique(.init(sessionID: sessionID, runID: runID, callID: callID, toolName: toolName, arguments: arguments, sequence: sequence))
+        callBytes += retainedBytes
+    }
+    private mutating func retainAmbiguousCall(_ callID: String) {
+        guard callBytes <= Self.maximumApprovalEvidenceBytes - callID.utf8.count else { invalidateApprovalEvidence(); return }
+        calls[callID] = .ambiguous; callBytes += callID.utf8.count
+        actionEvidenceInvalid = true
     }
     public var earliestSequence: Int64? { records.compactMap { try? RemoteHarnessJSON(data: $0).fields().required("event").fields().required("seq").integerValue() }.min() }
     private static func sequenceRange(_ record: RemoteHarnessJSON) throws -> ClosedRange<Int64> {

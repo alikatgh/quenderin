@@ -40,8 +40,9 @@ The native journey source is merged through
 source `4db5179`. It adds SDK packaging, origin-scoped enrollment, full identity
 confirmation, native Apple/Android session interfaces and a pinned Host approval
 companion. A live relay/Host target has not been supplied. The separate
-official-runtime verification work continues in
-[PR #179](https://github.com/alikatgh/quenderin/pull/179).
+official-runtime verification and parser repairs are recorded in
+[PR #179](https://github.com/alikatgh/quenderin/pull/179); Stop/cold recovery is
+recorded in [PR #180](https://github.com/alikatgh/quenderin/pull/180).
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -192,7 +193,7 @@ multi-account service. Pinning an inspection target does not establish support.
 - [x] Add native composer, timeline and model/effort selection.
 - [ ] Add interactive questions.
 - [x] Present bound Host approvals without starting a second local agent loop.
-- [ ] Resolve each approval to one durable tool call and show its exact
+- [x] Resolve each approval to one durable tool call and show its exact
   arguments inside the approval card before enabling a decision.
 - [x] Implement Host-acknowledged stop and truthful disconnected/unknown states.
 - [x] Preserve drafts and exact workspace/session recovery references.
@@ -358,10 +359,17 @@ history and Stop remain available.
 The real capture exposed an additional native approval gate: upstream deliberately
 omits arguments from `approval/request`, linking the immutable execution by
 `callId`. Its approval arrives at captured frame 22, before any argument-bearing
-frame (26) and the durable tool call (31). Both native cards currently show only
-the request metadata. Matching and displaying the exact tool call before remote
-decisions is therefore an open correctness gate, independent of the Host's
-existing trusted-runtime binding by reference.
+frame (26) and the durable tool call (31). Both native cards now resolve the
+request against exactly one durable call in the authenticated session/current
+run, show its exact arguments separately from approval metadata, and recheck
+that match before journaling or dispatch. Missing, malformed, conflicting,
+stale, replaced or oversized evidence withholds decisions while preserving Stop
+and valid history. Same-run evidence remains immutable across repeated events
+and snapshots. The ephemeral index permits at most 128 calls, 64 KiB of
+arguments per call and 256 KiB of retained action strings. The Host continues
+to bind its trusted immutable execution by reference. Hosted native tests and
+app compilation remain required before this source increment merges; rendered
+interaction and live enrolled-client verification are separate open gates.
 
 Pre-publication evidence: Android controller journey 51 checks; production pinned
 OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
