@@ -122,7 +122,7 @@ public struct DeepSeekFileJournalStorage: DeepSeekJournalStorage {
             let staged = directory.appendingPathComponent(".history-" + UUID().uuidString + ".tmp")
             defer { try? FileManager.default.removeItem(at: staged) }
             #if os(iOS)
-            try data.write(to: staged, options: [.atomic, .completeUntilFirstUserAuthentication])
+            try data.write(to: staged, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             #else
             try data.write(to: staged, options: .atomic)
             #endif
