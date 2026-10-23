@@ -1,0 +1,75 @@
+name: Remote crypto host fixtures
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'native/remote-crypto/**'
+      - '.github/workflows/remote-crypto.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remote-crypto-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-fixtures:
+    # Public standard Linux compute only. This workflow never provisions services,
+    # uploads artifacts, accesses app/provider credentials, or links native apps.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CARGO_NET_RETRY: '0'
+      CARGO_HTTP_TIMEOUT: '30'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/quenderin-remote-target
+      DSH_NOISE_VECTOR_PATH: ${{ runner.temp }}/dsh-noise-ik.json
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+    defaults:
+      run:
+        working-directory: native/remote-crypto
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check source pins and bootstrap guards without compiling
+        run: |
+          python3 -B tools/verify_build_gate.py --manifest-only
+          python3 -B -m unittest discover -s tools -p 'test_*.py'
+      - name: Select the reviewed Rust toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+      - name: Bootstrap missing lock using metadata only, then stop for review
+        run: |
+          if [[ ! -f Cargo.lock ]]; then
+            timeout 180s cargo +1.90.0 generate-lockfile
+            python3 -I - <<'PY'
+          from pathlib import Path
+          data = Path('Cargo.lock').read_bytes()
+          if len(data) > 1_048_576:
+              raise SystemExit('Lockfile exceeds review limit.')
+          print('BEGIN_QUENDERIN_REMOTE_CARGO_LOCK')
+          print(data.decode('utf-8'), end='')
+          print('END_QUENDERIN_REMOTE_CARGO_LOCK')
+          PY
+            echo '::error::Commit and review the complete emitted Cargo.lock before any compilation. This bootstrap is intentionally not a crypto pass.'
+            exit 1
+          fi
+      - name: Require reviewed lock and obtain the exact synthetic test input
+        run: |
+          python3 -B tools/verify_build_gate.py
+          python3 -B tools/fetch_fixture.py "$DSH_NOISE_VECTOR_PATH"
+      - name: Locked host crypto fixtures and negative cases
+        run: cargo +1.90.0 test --locked --lib
+      - name: Locked lint check
+        run: cargo +1.90.0 clippy --locked --lib --tests -- -D warnings
+      - name: Compile the host library and emit generated Swift and Kotlin sources
+        run: |
+          cargo +1.90.0 build --locked --lib
+          cargo +1.90.0 run --locked --features bindgen --bin quenderin-remote-bindgen -- generate \
+            --library "$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so" \
+            --language swift --language kotlin --no-format --out-dir "$RUNNER_TEMP/remote-crypto-bindings"
+          python3 -B tools/emit_sources.py "$RUNNER_TEMP/remote-crypto-bindings"
