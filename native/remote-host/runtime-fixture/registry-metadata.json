@@ -1,0 +1,3182 @@
+{
+  "schema": 1,
+  "verifiedOn": "2026-10-23",
+  "method": "Read exact-version public npm manifests and compare name, version, tarball and sha512 with every lock package; no installation or package execution.",
+  "lockSHA256": "b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1",
+  "artifactSourceCommitLimitation": "Harness exact-version registry manifests provide the official repository URL but no gitHead or npm build attestations. The pinned source is inspected separately; an exact build-to-source attestation is not established.",
+  "packages": [
+    {
+      "name": "@deepseek-ai/cordis",
+      "version": "4.0.5",
+      "integrity": "sha512-Sktq5axy0owk9PdnivBRNOJjHEVEibCt0+TDDZcv0+UH2KS1M910fX4kn5y45YFsrpZIi1mJf/1s5VzywMUnyg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis/-/cordis-4.0.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/cordis"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-group",
+      "version": "1.0.5",
+      "integrity": "sha512-PGYqImAydmAjmy5fl1Js6qDmk0Ivt1fipa3fOj1KyyRd0tZ9i61a2rhzHc7LaSeBb/spJ1LF4k3Pcppaq+w8fw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-group/-/cordis-plugin-group-1.0.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/group"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-include",
+      "version": "1.0.10",
+      "integrity": "sha512-Rdo6Uqf9WfDbfN3dsYkYj/EW+SGuWCSfthz1PoOtZYUr6qrRpqD7ND4Gj3nUYj8XhSGIo8E3xpsck6J5nM5BYQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-include/-/cordis-plugin-include-1.0.10.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/include"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-loader",
+      "version": "1.0.6",
+      "integrity": "sha512-fr011A782oEjkJXCY4pePt2qaPpkGvem7Rmst6Rhwgg6icgwI4eN9QBRb6S/q9XOYGVQUdvL0wXUWyNxO8WipA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-loader/-/cordis-plugin-loader-1.0.6.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/loader"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/cosmokit",
+      "version": "1.8.6",
+      "integrity": "sha512-ZSD/fN52L498LBIOYwjIOlaLv5veY6ZEwI2yzvZUKQtctn0QAPqu8tKdJ+OF5+Tv6NBq1U+wJWH+QI6OGy5EvQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cosmokit/-/cosmokit-1.8.6.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/cosmokit"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-lwnLPKbEixZdMfYgTWmeUiDaQIKgYjdhjNxF7DRDVljaknanivsSAwSUqyJ6ze3xnsBU36CZ365faeEduNEGdQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-agent/-/dsh-agent-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/agent"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-default-model",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-/Pv10PDX50g+iVJN6FjcdPzMHSsaTBWTsNs8/Peiv0av1cGz7q4vLiHOjRCR1XmUQhNDWNl1EJPHoXDnsptwsA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-agent-default-model/-/dsh-agent-default-model-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/agent-default-model"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-loop",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-FiSNfvpoMP9XSFUirQchRG4mDhNvQx/Ia5OdbkJzEDMUckZ+ecailEmvLn7bcl6EhfmEmAKvzUyuNs4C9qHM1Q==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-agent-loop/-/dsh-agent-loop-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/agent-loop"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-loop-testkit",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-jIbQhDUhcxiNbQsWxp968s6tO9OYMEtBvqQsYTEooh1dLV1vKhP6CEHUqH5RRse9Rwvba+a4NWtJJ0Lmib6SxQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-agent-loop-testkit/-/dsh-agent-loop-testkit-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/test-support/agent-loop-testkit"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-preset-registry",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-ZgGKXKZb3YeRq2kfCVhOKSBdi6DhXWWJJr9jY2qlI15E7PZ55Se1LMpD6zdMrDhm0CVOLIPOGY/n1obFsz8b0A==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-agent-preset-registry/-/dsh-agent-preset-registry-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/preset/agent-preset-registry"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-gateway",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-iCdUHe8/kgoE7L+0ElRRYV6LkNW21CJTStJS8nPyhcB71l27iiQOvuuRNlyptndyj9mFAr09MYV+fqHnMwI70Q==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-api-gateway/-/dsh-api-gateway-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/api/gateway"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-remote-access",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-B3+a21GsbdBLM99ke5ZQNnMSmqwobowI/THgzuUhJKul+yDF7wbaXlSd0rebLUkES9BbdxgJuSA2vkcH9zY1Lw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-api-remote-access/-/dsh-api-remote-access-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/api/remote-access"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-remotes",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-jnrdTsFs7TKbhFH53WmC6cFc+Ai/DCCYhZ06/yr9DHqDUg+FuZL3ESdwA7xTmBfyIRe9B1m16g5ON0EKOYTjfA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-api-remotes/-/dsh-api-remotes-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/api/remotes"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-session-controller",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-pow1DEJhYvbYvgJwlaynS5WZgtRL2H5EmU/n49oXLmd30d4NU/4gK6h9i/+P2+wOm4ZZrOB26sJgLgEDj2dHKA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-api-session-controller/-/dsh-api-session-controller-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/api/session-controller"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-workspace-controller",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-UgifKGTa1vBNMgOfAvIJtsbWU4vwtn7t83ZDVJiWMlVN+72+lqdupV/gDl6Vz+aHn72oGG4W7uANIjHP3plckQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-api-workspace-controller/-/dsh-api-workspace-controller-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/api/workspace-controller"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-app-boot",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-gdmfJnLRBxXcYDcOFylikAJNm6/Ufw/uajjxpZskYX+RbKXEFzjWg0qRjlpUIbMqwBTCZZKUjijmuJNFYDb4zA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-app-boot/-/dsh-app-boot-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/boot/app-boot"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-atomic-write",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Evl8o5uv2st9kjBzs9L/E8EqdmTfplvQ3UjPFzHQLef7+bBkj40pRzhziwg4eD2iWbIZMAxHF6gxa6INL4wbqg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-atomic-write/-/dsh-atomic-write-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/atomic-write"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-attachment",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-CWiS0AVziuTU7WMTKdO3IcGQQyoW6TLhJYdSuT1UteXPtw5fa3mzD97IihRGUi9YPz77g2t0Y79BpBTMGA5BWg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-attachment/-/dsh-attachment-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/attachment/attachment"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-brand",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-24PMiFxG2CxszA8ApwgVi+GTlmEd0aDYclyzHh2bED6vqiiiByrSCJ/GiEOGiZC73kSZIYN8LBlJhYqq6O+Jdg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-brand/-/dsh-brand-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/brand"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-chunked-list",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-9429sR0n/2Rt0P5XMolhZGToV4R0KS1P8qSJ0b3scxHMlco+a55M8TJrnYuGo0weo9FAABulKYZ6PW9XmUVMBw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-chunked-list/-/dsh-chunked-list-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/chunked-list"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-connection",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-V/85e7+jPTUI7s1vAO8E4xhp8XmUlF9OuDXhiwYOyp83YvQ1ueG5yAM+ME7rul11ed9Tgy2FSlIffUYfMKdDXQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-connection/-/dsh-client-connection-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/client/connection"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-file-upload",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-cU4UJHryGTSN6cSMks8K1afzKr/IZwQVfInWj2iGQQ/6fS3xyY5nZ6tJFrC0a08jPhxHShx5AA3bo5wlpxHKxA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-file-upload/-/dsh-client-file-upload-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/client/file-upload"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-commands",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Mki5XPWyS/h/SUO7P5mxaUkqQFyZHaQJABe0vmVru5vqNtHyJ8BmWiMNKBE3ORaaE5ikfq4nrzoyv6/XZGUH0g==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-commands/-/dsh-commands-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/interaction/commands"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-compaction",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-qhiHY0AGsq7z6pcqKI6az7yJitgnObVMCniLCGZDGO31hA1AgC0r+0XYzphmccYn62uAadeM624+bkMAWOS4Wg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-compaction/-/dsh-compaction-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/compaction/compaction"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-compaction-image-offload",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Lrw5qvMALrm6InGjqJAXsHOg/ryg7bLwrJE+uw62KZ8ZxE5n/i7dAqVsDpVHQOtEQDaQzKFqKhWm4CaNHfFT5Q==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-compaction-image-offload/-/dsh-compaction-image-offload-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/compaction/compaction-image-offload"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-config-editor",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-DtlPgfH1Q85K96z0F+pHLSTjmLRjHW0HsbZ4F2CrRXPefK9sBv7ptkBG1RqHDfqAuQ/3Z7ozcg4XI84J2JDxLQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-config-editor/-/dsh-config-editor-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/boot/config-editor"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-credentials",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-4M0g475PSUXRaO5ZEx7TAiGd1Uvwxs3PSWtjXH6xYI7a+Q14lA9hWRjkZ2Xzy0qsVMXs48ZUbnB8iVqX0khJjg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-credentials/-/dsh-credentials-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/credentials/credentials"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-deque",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-fgXnwBbM4bNk59VELe3cbHD3siVD+6tbgFSqzFovisqD1he1du18yAvMK8vlJe/twLwBcbZRVB9SQ4C33v1MdA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-deque/-/dsh-deque-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/deque"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-file-reference",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-FUhQx8GJAxbWGAVHqZf+Vnn2J+j4ZOZCzIEOnuMF0tVgBgoFrowSZVKbQWHkGfAio5MFDWYK/L6bYppuJoXd3Q==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-file-reference/-/dsh-file-reference-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/context/file-reference"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-fs",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-eRavy+AaUaQdty3382ZbDu/nBqj1BI316qTNpytOtEuC3D4/6ugFrCcOIWiWs/dYkULQaZVpejEY1XpFXVKcjA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-fs/-/dsh-fs-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/fs/fs"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-fs-local",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-89DEnSN+55UARpyBy6tqgHzPKXYrn5PWzIlA4CvHYQl9KAKvUS3WRJhUXkJZswtayFjgV1Q3At5JEq4qOrF12g==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-fs-local/-/dsh-fs-local-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/fs/fs-local"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-home-paths",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-WjLUeJHetJVHzDrWFHIMLzzMBWGbz7YUTeAbu2hAc/EyB9NUCE+BJ6OP2pZukb1VOMDT4mq+ZnJvPqnPcNr0fg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-home-paths/-/dsh-home-paths-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/home-paths"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-host-directory-picker",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-IwcdGP9fj0aUmcH4bUohxOa5UbVV2Sa5pATUHwzLtrGR8UrRYl8DidEiBqwEPglpSWyyisy+lK4en5noVJQkfA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-host-directory-picker/-/dsh-host-directory-picker-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/host/directory-picker"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-launch-environment",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-pQG3k+UIh2eKsPc2Em0DBZWrpLO/IWEEOqfYIloubFp3T1clu9V8sDKF6Sm11kqkkWInSsKtbcicor3/ZS78tQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-launch-environment/-/dsh-launch-environment-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/launch-environment"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-llm",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-4yIQJlXxZ8vabIo5nmYdqUlk4FFgICq3bCTieTKCNmqNEYU3NrlHwGXDXWgK+w7JuJqh3ofO3RaLMxVjNCEu6w==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-llm/-/dsh-llm-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/llm/llm"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-native-command",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Poal3O5feAqaW4rkm/80bDSkkMaPwYULw29ObDwAZEgIAg4pd8qTi/qubnCyMwNKL3i5Qi0PWb6iBBFjnZAQBQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-native-command/-/dsh-native-command-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/native-command"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-package-manifest",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Zo2Nqtz3Coxo/KrZUUDYukVp4b9QQfeI5pa6BsDUCGbw9LV+i5OFfrfGd10D4U1aDSK3G0m0ccF4z/IbWCB7Lw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-package-manifest/-/dsh-package-manifest-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/package-manifest"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-ptc-runtime",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Ond3UUZ4WoNStU3BbmaZ6P/RKN6+awwKHrjMcW0z1c0W+qSUJgbpT4LM1xWhUFZxnTknSHKujUZCLGDvBE4EmQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-ptc-runtime/-/dsh-ptc-runtime-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/ptc-runtime/ptc-runtime"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-sandbox",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-hlLmOO5BUCIgoTGmUENTXSaox1WBGCwGMFOUc0aGs3p0YGyruGHmrF5hNSWf0hO9Kz0v6jZJTvTjMu6kbUMLuQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-sandbox/-/dsh-sandbox-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/sandbox/sandbox"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-sandbox-policy",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-rhyakT4g9Dgim7l0WCXFXyhZr8S1vuuBBK+tRcj2DPwFE5sXBbJ1HZxVVzRMZaKSz29JxEXwGgLwkxIhEWKhxw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-sandbox-policy/-/dsh-sandbox-policy-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/sandbox/sandbox-policy"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-scope",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-kfydrdwGt8epXANWo4jTu2+tNFzKGTmAOJvGP9+E76nc1IMQoAaYsFh/+oX5KnTHaepC0AW+RIHUJrLlLd+/rg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-scope/-/dsh-scope-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/scope"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-gQpJnWJU2b5xbVtzT9BXhPG+o8DpGsmcfmsSqnVcDCfgg1MmzQ9rJAgG1rbGmBmQXjap2i+KrEjFdiiabzjDnQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session/-/dsh-session-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/session"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-CV6/UbW9udVBOwxaydPW356w9v7lJUGk9JE7+tXANH6nYsa+4XyJA2RB1ftJ50q4rYz0xW0ySkpfwoyrd986Dg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format/-/dsh-session-format-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format-catalog",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-/I5kUwxBcnr2TlX4ZAz5yCiN0B9UB66+D1UVZBYv31YTViZVmLyltC04Y8qT3psjwSFzlSWI4j6718IrGFF+HA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format-catalog/-/dsh-session-format-catalog-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format-catalog"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format-v0-to-v1",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-9FKTdyAy2ljsspA6Ya54DgOeLBZ1ZClcY3nI1WvHs3IqeI1ytbndDlUaRmFRUWvJn+zDbc+TQnECRZro9mVz9g==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format-v0-to-v1/-/dsh-session-format-v0-to-v1-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format-v0-to-v1"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format-v1-to-v2",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-FkFLKxMzPMNQ2Qt3ftekseOQloxTVyaOrrPahtHAeeGLAImiffdPVBqgljo6KUrMAr/gi0F6cpjQwBE6Mu837w==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format-v1-to-v2/-/dsh-session-format-v1-to-v2-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format-v1-to-v2"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format-v2-to-v3",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-xXZe9do+OEkdRPxqdj7fpy3ccTcwWU0g6DHbvXeI/LlTl6DP5FCvgNW0Z8SmRX6GiLpI31KJ77RhzKn6Vmv+bQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format-v2-to-v3/-/dsh-session-format-v2-to-v3-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format-v2-to-v3"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-format-v3-to-v4",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-NEZPguXe/IDMqh1GdP4jlZHkuLgUfg1nIz+fU6K7x/FNy8m2XBzv0E0dkB9wvps+LKftj0CjFbpWBTvlLjBj3A==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-format-v3-to-v4/-/dsh-session-format-v3-to-v4-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-format-v3-to-v4"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-persistence",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-f6+CksrLMo/9gaKQ9OXueAOGzoJyrBp5oLYfjD8jAwrUdTAlELs1rmBSbu4Q+aPEdzgMbhGKfo/xZMGXucFHqQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-persistence/-/dsh-session-persistence-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-persistence"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-persistence-jsonl",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-gAlqiUoMi/MjNMYclh3eLZKjeci69GGx90GePh0HXdMYXPCqKw0VpMj+ZpHqu1NO5t7OGwr0K5tb8+8IBwgVsw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-persistence-jsonl/-/dsh-session-persistence-jsonl-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-persistence-jsonl"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-projection",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-IKAfQtARFppQhQbJQXclcCCaEpo4/vlDp1V6uT7dXl9ExB8e7Au/uytkWc7GikyKn/UnjZvN8+WWIsdshJatig==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-projection/-/dsh-session-projection-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-projection"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-query",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-bg1ZYUUNFtMWZ33NrZs6sNHesS4Ogj0M7pd/r89maHGwjWlVaLzRhZGf+PhQsjIKEaBPazQAmx+52cK0iegGWg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-query/-/dsh-session-query-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session-query/session-query"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-title",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-X0umuW2pwbdEAC0w8f3I/QpjoP1u/wQGVDQPPOXARTSElBr9gixzUtwGcyqKOxydbrbueSUYEOK1hlhTkrSWAg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-session-title/-/dsh-session-title-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/session-title"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-settings",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-rfRsMkiB1umuXADpxRiKFZqsGL5yOENHe8jj+t0ck8MC4O2QKBpqqIDoNiZpn4GrUzRuq3E8LlRs7sNypXcR4A==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-settings/-/dsh-settings-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/settings/settings"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-skill",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-5eq2OHrzB5LSgcJoQh2lIRBwLasWpu/SVffudpuD1xcrpD0hbMDPlZKDCKhWTu+GuaVXRapp811gF8oPDcILJw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-skill/-/dsh-skill-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/skill/skill"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-storage",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-0X4WTtWEqBev5h8lbWmiiBZe4PyQrJnithoHU1+dd24sCs6e6KN2KuTYyJI/DIlQHaygx7Z9co58DcvdzBWxNg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-storage/-/dsh-storage-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/storage/storage"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-storage-domain",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-U7mz43RqRMk8EypkwgvHt3waqflk5a0Sno/iYzdJ6aODYhCsXPjg0pW28EIqpQXzvVNwTa2NSMRzyXni70cLaQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-storage-domain/-/dsh-storage-domain-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/storage/storage-domain"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-storage-json",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-SrjsOziFHJ/dzGxpChh6PMPLLbRd4n3Rlp65IA7QP2nxQ6XzWa6/Zm8BVHo0oJwO1wPtbq6OaJue02xJhng5Fw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-storage-json/-/dsh-storage-json-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/storage/storage-json"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-subagent",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-24b6Zg2SMkYh/7pOh7RRKocXS7B35E6zu8KHQnA8k6n2WL3rztUEk9HyyweQCLAoUIVkVKn5tgaT49IpR+LUgQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-subagent/-/dsh-subagent-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/subagent/subagent"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-system-prompt",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-eN3FLgoRWIYyqSbe98PbutYbS7JDfhJDdD6BfCV6uObc70qWdP+g7XUvRIbw+JjMZpZVPCP2MHwK43ETmU9k6g==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-system-prompt/-/dsh-system-prompt-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/system-prompt"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-timeout",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-LLwlrSe6NXvz5fmKgmRsmQYZYZq2EsZkGEys937JD9wi7b81oOYhEq0YEgIQ0KsdUs/4O52JyTon0zLif21XKQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-timeout/-/dsh-timeout-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/timeout"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-tool-todo",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-mMnjHgvxqY8D8ALBXYK+o4ALboObb6oHm4xgIuaWPL8UPqfRCnmTecmY5KDauO4hTjfHBqQcReBEdYhj5Gx1Fg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-tool-todo/-/dsh-tool-todo-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/todo/tool-todo"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-tools",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-A2pVzQkEXusF/o5ZFsUc4pMQKCSvJC1bYVbelTHFbfwGFba/PHz1Dg0v6nNOwHR8DdRxGDAxiyYu7qm708e8Ig==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-tools/-/dsh-tools-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/core/tools"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-typert-protocol",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-G9dG7nTptaaHBlItIzsxyWU5Kpq/x9XpH8p2xpnYD0mD0Y8rYbxd/V6E2sOwPaIftfAgHKGuVVwt1AJcfJ572Q==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-typert-protocol/-/dsh-typert-protocol-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/typert/protocol"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-typert-registry",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-60zG9CHGnaG6YWt1Dppb2vP8Tp7UJrYMeFjbfx78z99jtKvfthiFLCH2oiUJFmuJaBsE2Gfia7Rl5rbo0sz+yg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-typert-registry/-/dsh-typert-registry-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/typert/registry"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-user-approval",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-omAw3DX3QbnZNi9SCLHbpzCFVwBzLiqMWJX7LYa9aW5IXyq/+/utVX6o7E1RujgtoBAmLm0t2OB5Kc2kblnamw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-user-approval/-/dsh-user-approval-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/interaction/user-approval"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-util-crypto",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-3NbsPwY1j60STJfFGshqToX/ei/fbwR9b+WAfZ7IhvSUlkEB2EECqCilvajvh0gbuQiQ4+glN30U9OiRPxYtUg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-util-crypto/-/dsh-util-crypto-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/crypto"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-util-time",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-0LxxsgEbNHwSiFpXbYCSNaMsbU2oUdPfY+w1lZguo7yj6D38rcnfyCm3iyJXAirU4HVT4AUnLp2u+kFaKwLByw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-util-time/-/dsh-util-time-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/time"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-util-values",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-MFCazvkLRIaPLQp3x5FzqkGURS9yvquLGmH8Ip+qCWFidXa12NcffPibwPdfGY393/0NVI4Coi9hpc7UbL6H/A==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-util-values/-/dsh-util-values-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/values"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-util-workspace-path",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-2N6TRB5zyfMjKxsSk6UZpvAkc4Lca788H3z7p19beh4Ln7HUZiFtKugqwPmlr9qoDvkaaFlOUXBDe7S8MiRlmg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-util-workspace-path/-/dsh-util-workspace-path-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/util/workspace-path"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-working-directory",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-Kwy3JzW9Dvw1rT4cEKHRMl/MWcbifj4U2l8V6TC1SOc2jatVQiiCVMpvQOT3vzaMW56opR215hpxlyO0FO1rNA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-working-directory/-/dsh-working-directory-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/session/working-directory"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/dsh-workspace",
+      "version": "0.2.1-rc.1",
+      "integrity": "sha512-yoiOyhTs+1t7O6NPaG62VCcjDPqwV0f6XBxbh1zDprsndefUPT4yZYQXCxwyNieSSMuC1iw0jrhUtj6dhAhRlw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-workspace/-/dsh-workspace-0.2.1-rc.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "packages/workspace/workspace"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/node-addon-system",
+      "version": "0.1.2",
+      "integrity": "sha512-EFn8K+mXIXiw6s3rxX+cgp2hZTEAQdVIsURhrXnBxycSXvtQ1EQpsSVzoNKtKAQI0I0VqkEcVEjHzS/PeaGsvw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/node-addon-system/-/node-addon-system-0.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+        "type": "git",
+        "directory": "native/system/packages/entry"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/node-addon-system-darwin-arm64",
+      "version": "0.1.2",
+      "integrity": "sha512-IR0cx8um19mLCZaJ+H5PLblKr6Eg3PWvVo8eTQBr/SwH2nh5tM9CD9/5fHweNS9Pjt15UdFlGqnvLSd/w+O6Rw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/node-addon-system-darwin-arm64/-/node-addon-system-darwin-arm64-0.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+        "type": "git",
+        "directory": "native/system/packages/darwin-arm64"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/node-addon-system-darwin-x64",
+      "version": "0.1.2",
+      "integrity": "sha512-XDbmquNapk9aT28y4EKn9lbONVr9YNs1NM/GKH1Gi5gUhjOT9wgRaTv72FJdNaVIInbPAYbPoyn7/y+MzQMNNg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/node-addon-system-darwin-x64/-/node-addon-system-darwin-x64-0.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+        "type": "git",
+        "directory": "native/system/packages/darwin-x64"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/node-addon-system-linux-arm64",
+      "version": "0.1.2",
+      "integrity": "sha512-Z/DQtqgEYzjBzb2ocHGjMzx51W7xDILkJKKj89nyErr8gZMNiLs+JNL1uKzJqc3VLZB+vYCPaHGyQ3oX6EzEmA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/node-addon-system-linux-arm64/-/node-addon-system-linux-arm64-0.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+        "type": "git",
+        "directory": "native/system/packages/linux-arm64"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/node-addon-system-linux-x64",
+      "version": "0.1.2",
+      "integrity": "sha512-S2aPVHvYCpNCppCFyNlooMYuTB7ucK5lvD9oXQQ42v5Z2s5AoaiCdjz9r2l+ED2rI5oS1x0cUZmKjJH2dxV0pg==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/node-addon-system-linux-x64/-/node-addon-system-linux-x64-0.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-harness/deepseek-harness.git",
+        "type": "git",
+        "directory": "native/system/packages/linux-x64"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@deepseek-ai/schemastery",
+      "version": "3.18.5",
+      "integrity": "sha512-Mnobvqf9rHsZYv4g5edj5ddxS1oF1kIdSlz0DunUgnY3LWG5F26MqvH3YOOsSaodCgyzJ16OMN9O99/s5Crtdw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/schemastery/-/schemastery-3.18.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "type": "git",
+        "directory": "vendor/schemastery"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/aix-ppc64",
+      "version": "0.21.5",
+      "integrity": "sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==",
+      "tarball": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/android-arm",
+      "version": "0.21.5",
+      "integrity": "sha512-vCPvzSjpPHEi1siZdlvAlsPxXl7WbOVUBBAowWug4rJHb68Ox8KualB+1ocNvT5fjv6wpkX6o/iEpbDrf68zcg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/android-arm64",
+      "version": "0.21.5",
+      "integrity": "sha512-c0uX9VAUBQ7dTDCjq+wdyGLowMdtR/GoC2U5IYk/7D1H1JYC0qseD7+11iMP2mRLN9RcCMRcjC4YMclCzGwS/A==",
+      "tarball": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/android-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-D7aPRUUNHRBwHxzxRvp856rjUHRFW1SdQATKXH2hqA0kAZb1hKmi02OpYRacl0TxIGz/ZmXWlbZgjwWYaCakTA==",
+      "tarball": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/darwin-arm64",
+      "version": "0.21.5",
+      "integrity": "sha512-DwqXqZyuk5AiWWf3UfLiRDJ5EDd49zg6O9wclZ7kUMv2WRFr4HKjXp/5t8JZ11QbQfUS6/cRCKGwYhtNAY88kQ==",
+      "tarball": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/darwin-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-se/JjF8NlmKVG4kNIuyWMV/22ZaerB+qaSi5MdrXtd6R08kvs2qCN4C09miupktDitvh8jRFflwGFBQcxZRjbw==",
+      "tarball": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/freebsd-arm64",
+      "version": "0.21.5",
+      "integrity": "sha512-5JcRxxRDUJLX8JXp/wcBCy3pENnCgBR9bN6JsY4OmhfUtIHe3ZW0mawA7+RDAcMLrMIZaf03NlQiX9DGyB8h4g==",
+      "tarball": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/freebsd-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-J95kNBj1zkbMXtHVH29bBriQygMXqoVQOQYA+ISs0/2l3T9/kj42ow2mpqerRBxDJnmkUDCaQT/dfNXWX/ZZCQ==",
+      "tarball": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-arm",
+      "version": "0.21.5",
+      "integrity": "sha512-bPb5AHZtbeNGjCKVZ9UGqGwo8EUu4cLq68E95A53KlxAPRmUyYv2D6F0uUI65XisGOL1hBP5mTronbgo+0bFcA==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-arm64",
+      "version": "0.21.5",
+      "integrity": "sha512-ibKvmyYzKsBeX8d8I7MH/TMfWDXBF3db4qM6sy+7re0YXya+K1cem3on9XgdT2EQGMu4hQyZhan7TeQ8XkGp4Q==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-ia32",
+      "version": "0.21.5",
+      "integrity": "sha512-YvjXDqLRqPDl2dvRODYmmhz4rPeVKYvppfGYKSNGdyZkA01046pLWyRKKI3ax8fbJoK5QbxblURkwK/MWY18Tg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-loong64",
+      "version": "0.21.5",
+      "integrity": "sha512-uHf1BmMG8qEvzdrzAqg2SIG/02+4/DHB6a9Kbya0XDvwDEKCoC8ZRWI5JJvNdUjtciBGFQ5PuBlpEOXQj+JQSg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-mips64el",
+      "version": "0.21.5",
+      "integrity": "sha512-IajOmO+KJK23bj52dFSNCMsz1QP1DqM6cwLUv3W1QwyxkyIWecfafnI555fvSGqEKwjMXVLokcV5ygHW5b3Jbg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-ppc64",
+      "version": "0.21.5",
+      "integrity": "sha512-1hHV/Z4OEfMwpLO8rp7CvlhBDnjsC3CttJXIhBi+5Aj5r+MBvy4egg7wCbe//hSsT+RvDAG7s81tAvpL2XAE4w==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-riscv64",
+      "version": "0.21.5",
+      "integrity": "sha512-2HdXDMd9GMgTGrPWnJzP2ALSokE/0O5HhTUvWIbD3YdjME8JwvSCnNGBnTThKGEB91OZhzrJ4qIIxk/SBmyDDA==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-s390x",
+      "version": "0.21.5",
+      "integrity": "sha512-zus5sxzqBJD3eXxwvjN1yQkRepANgxE9lgOW2qLnmr8ikMTphkjgXu1HR01K4FJg8h1kEEDAqDcZQtbrRnB41A==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/linux-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-1rYdTpyv03iycF1+BhzrzQJCdOuAOtaqHTWJZCWvijKD2N5Xu0TtVC8/+1faWqcP9iBCWOmjmhoH94dH82BxPQ==",
+      "tarball": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/netbsd-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-Woi2MXzXjMULccIwMnLciyZH4nCIMpWQAs049KEeMvOcNADVxo0UBIQPfSmxB3CWKedngg7sWZdLvLczpe0tLg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/openbsd-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-HLNNw99xsvx12lFBUwoT8EVCsSvRNDVxNpjZ7bPn947b8gJPzeHWyNVhFsaerc0n3TsbOINvRP2byTZ5LKezow==",
+      "tarball": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/sunos-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-6+gjmFpfy0BHU5Tpptkuh8+uw3mnrvgs+dSPQXQOv3ekbordwnzTVEb4qnIvQcYXq6gzkyTnoZ9dZG+D4garKg==",
+      "tarball": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/win32-arm64",
+      "version": "0.21.5",
+      "integrity": "sha512-Z0gOTd75VvXqyq7nsl93zwahcTROgqvuAcYDUr+vOv8uHhNSKROyU961kgtCD1e95IqPKSQKH7tBTslnS3tA8A==",
+      "tarball": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/win32-ia32",
+      "version": "0.21.5",
+      "integrity": "sha512-SWXFF1CL2RVNMaVs+BBClwtfZSvDgtL//G/smwAc5oVK/UPu2Gu9tIaRgFmYFFKrmg3SyAjSrElf0TiJ1v8fYA==",
+      "tarball": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@esbuild/win32-x64",
+      "version": "0.21.5",
+      "integrity": "sha512-tQd/1efJuzPC6rCFwEvLtci/xNFcTZknmXs98FYDfGE4wP9ClFV98nyKrzJKVPMhdDnjzLhdUyMX4PsQAPjwIw==",
+      "tarball": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@eslint-community/regexpp",
+      "version": "4.12.2",
+      "integrity": "sha512-EriSTlt5OC9/7SXkRSCAhfSxxoSUgBm33OH+IkwbdpgoqsSsUg7y3uh+IICI/Qg4BBWr3U2i39RpmycbxMq4ew==",
+      "tarball": "https://registry.npmjs.org/@eslint-community/regexpp/-/regexpp-4.12.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/eslint-community/regexpp.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "11f93e01a21638fc2b95dfcd750ff1385ed9c5f1",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@jridgewell/sourcemap-codec",
+      "version": "1.6.0",
+      "integrity": "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==",
+      "tarball": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.6.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/jridgewell/sourcemaps.git",
+        "type": "git",
+        "directory": "packages/sourcemap-codec"
+      },
+      "license": "MIT",
+      "gitHead": "94c82a925ca79d5eb193ce45d7f0824a4d91e77d",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-darwin-arm64",
+      "version": "3.1.1",
+      "integrity": "sha512-+Dl0zQDh1Wb55AWOn9hp7K30qgkODvrvN+ZNkFOh81Q0oFX/rpJQtocgjAuYk2zFAcajSeVDumkcHMPwnKSXzA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-darwin-arm64/-/koffi-darwin-arm64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-darwin-x64",
+      "version": "3.1.1",
+      "integrity": "sha512-cDFAKn1qdZBFLrp7dAc9QUDw3l4xAhTJbOdPWWb0LxssVicUdHcRCLZGrDsmPW2tpH6LGNNeLgqRpAoD2Mo8iA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-darwin-x64/-/koffi-darwin-x64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-freebsd-arm64",
+      "version": "3.1.1",
+      "integrity": "sha512-zaP7FJISI/scQW9Wa5QicY3a09WmtKBWSbmC+5nfCqPzwWe7Hx2so74Er7mPsDfCiMMR0Ya+evKbJQDkfyXicg==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-freebsd-arm64/-/koffi-freebsd-arm64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-freebsd-ia32",
+      "version": "3.1.1",
+      "integrity": "sha512-7GejVb688TLM8rbjfc0oezJrATxZc0dn801xWEDJekN2DgmRXu7HquGqWQ6z3NeSq7ZxEggz4T3xtlbCysQapA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-freebsd-ia32/-/koffi-freebsd-ia32-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-freebsd-x64",
+      "version": "3.1.1",
+      "integrity": "sha512-XLiCFP9OFCyOoGTjAimtDKLhzhfo34WcP1ShVWxRzNCWDGjfz8BYjwd69cp/cDSUXZbxamqs4+/6vmkePq9wxA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-freebsd-x64/-/koffi-freebsd-x64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-linux-arm64",
+      "version": "3.1.1",
+      "integrity": "sha512-HA9xINK7G4dRAkpfnBWD9VfuyIBgW1SuK+KPHjksUwRMOnhgqP8J/JqgrAzdzcDiefGBkqEacIP776OUwz7knQ==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-linux-arm64/-/koffi-linux-arm64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-linux-ia32",
+      "version": "3.1.1",
+      "integrity": "sha512-jG7IFytmP8K5Qtbx0ro0ZeuX3JjSsLxmYhq+nmXDdrtOAlxIsWGynuiDLS6Jk3vOchVii2m6Y2f/L3GLG2fG5A==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-linux-ia32/-/koffi-linux-ia32-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-linux-loong64",
+      "version": "3.1.1",
+      "integrity": "sha512-CIsT1cNnih8FuU52Me/IVlJBpH28SQfoDeYPctJswgJzaARktusF7m4MUbtR1PBDjuquCVM4/vFyNdOzfPonvA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-linux-loong64/-/koffi-linux-loong64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-linux-riscv64",
+      "version": "3.1.1",
+      "integrity": "sha512-9D6RmqeKsSvs3U6jILJU9PcAjMwKKyn7yLxNBb5k6z9PCoUoGJ3/BrhXAX0qjrLLwEiIpP/hS/40RuXvH8Lc3Q==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-linux-riscv64/-/koffi-linux-riscv64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-linux-x64",
+      "version": "3.1.1",
+      "integrity": "sha512-pyTcX5fePeYbt7TZAwRby69wdlRx3PT+g15ra5IYdat/Pgh3qAKEYeZ+uu7WpPGOy43p/oSRqqZoa2kORzozlA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-linux-x64/-/koffi-linux-x64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-openbsd-ia32",
+      "version": "3.1.1",
+      "integrity": "sha512-iPnPzvG2HOfdzaiG1drdkt86sAqmTPDv9mAf+5gL7mRzkeeQC88EVGboRy7eXwdXn7R+v0ntA3iQxdHrBn6yXw==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-openbsd-ia32/-/koffi-openbsd-ia32-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-openbsd-x64",
+      "version": "3.1.1",
+      "integrity": "sha512-/Xqc3R0SVoMCYjMPZnJ9bULtRo364+dKmnQhfDrI83tSpxUHRw7HRNf12vBeL+hPgKxSBjtMpWfQ/ZIyVyLFag==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-openbsd-x64/-/koffi-openbsd-x64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-win32-arm64",
+      "version": "3.1.1",
+      "integrity": "sha512-JhqHauEwQvdcWUERxrV5HH/DT9W7hY1A1eU6/o8tB+yck+D3kt5elpRDBt9KjpW6h+vHPy3V0sjDvO0CXyabTA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-win32-arm64/-/koffi-win32-arm64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-win32-ia32",
+      "version": "3.1.1",
+      "integrity": "sha512-ZRuyYmlGS/rCc966qqs0qREXDW4FRdul7rDF1VgSWHbVmdc196PUgUT+blq/GjZgTwqzeEXtMRgM+cU8krHjvA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-win32-ia32/-/koffi-win32-ia32-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@koromix/koffi-win32-x64",
+      "version": "3.1.1",
+      "integrity": "sha512-KqHPmvj6QILhNyI/To8QSihHsijeVGIYYPBOUnXEpcnH2LuLbargY4Hd6dDeTN3Z90uUUxN+1FWz1UnhVzFOiA==",
+      "tarball": "https://registry.npmjs.org/@koromix/koffi-win32-x64/-/koffi-win32-x64-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@napi-rs/lzma-linux-x64-gnu",
+      "version": "1.5.1",
+      "integrity": "sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==",
+      "tarball": "https://registry.npmjs.org/@napi-rs/lzma-linux-x64-gnu/-/lzma-linux-x64-gnu-1.5.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Brooooooklyn/lzma.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "f164df92d83e095f195d628b1a68a141ae2eb638",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-android-arm-eabi",
+      "version": "4.65.0",
+      "integrity": "sha512-t2AnVba25baFdq7gczzS13JyVcdubLVbFX1X04mxrggDrTQPUXNv3XM0k9H1hr5tqvg7AVvtQ720QHAj0iYqhg==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-android-arm64",
+      "version": "4.65.0",
+      "integrity": "sha512-dNONUaEwPGhl/nuO2KV8VABWlcjYyU6KtZGN8dQv5OS5JU7JSCxPijVNKXbRJd0iuTzTiJ4TjPt/4bbvDRNiMQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-android-arm64/-/rollup-android-arm64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-darwin-arm64",
+      "version": "4.65.0",
+      "integrity": "sha512-zWQqUH+9zavr2Bxuzfpuv2SIF3X31cr58TvSQC9o1GhpOvkqRwr60GkZdQcudyT/BEgdpdSafjgd2I13MbTL7g==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-darwin-arm64/-/rollup-darwin-arm64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-darwin-x64",
+      "version": "4.65.0",
+      "integrity": "sha512-RQYreBFWtO4//hIuOaZkYUnF/lPU4lz35dveDimDshWCJvVisVtJ/shmT9bkXK8wFJY+FJF89X6F3Cq1qI3LCw==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-darwin-x64/-/rollup-darwin-x64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-freebsd-arm64",
+      "version": "4.65.0",
+      "integrity": "sha512-A0NfMj6Cuh/9BE5k3awJKv6HoxFVXIcLAb6SZqAMoxUHPA1ZNNK4RsGuUPD/vL7nEAm9LG+ZzXWWTrnC0XtkpA==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-freebsd-arm64/-/rollup-freebsd-arm64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-freebsd-x64",
+      "version": "4.65.0",
+      "integrity": "sha512-BI6/H7q3aP0I7S7GOrjyxTjgEJlSnovXE38+bdxBpuKN6z+d//uF+T+VQ3Q7ltJL/71p17ufartARX9Ja5gOGQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-freebsd-x64/-/rollup-freebsd-x64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-arm-gnueabihf",
+      "version": "4.65.0",
+      "integrity": "sha512-W1vUprf09RWaVWnsFP1vlUkEWJzTZlpObOEAYZXt9Fq0UVAOYEkeGr7wBX7McKqqIQskXdBnpiOMgwPujordgA==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-arm-gnueabihf/-/rollup-linux-arm-gnueabihf-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-arm-musleabihf",
+      "version": "4.65.0",
+      "integrity": "sha512-s8QTcZWgrl9haFzEGIqyE5BWyo89pFDGLMBFZ752WYxk8DJwNU/O1X6pZgPw829d9/sm6CCHyrMP3aurt76p1Q==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-arm-musleabihf/-/rollup-linux-arm-musleabihf-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-arm64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-ke1f6dLRzkqveyjjF2fkEwQYZvxHtNNwjegY8nJrwcO0Bdqr8CzFO/pKE0Bns13cx0qz2Ba2Y0Hs3dSwMdnHxA==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-arm64-gnu/-/rollup-linux-arm64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-arm64-musl",
+      "version": "4.65.0",
+      "integrity": "sha512-926SMeUcy4y18Rz/w2aJiUKOnyAnm6czg72bXkQEaeemsll+Wr0hnsjb2BGRpHvWgwAMYy5ACJCotbvfLCfj0A==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-arm64-musl/-/rollup-linux-arm64-musl-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-loong64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-6T7JNRP1hc4hqF2dUsEoVLOt9K8tmODoCLldtQRYnrddGGQY8Gqe2pM/qMMUo7EMowpP7oa2N95k0/8sYK/ipw==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-loong64-gnu/-/rollup-linux-loong64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-loong64-musl",
+      "version": "4.65.0",
+      "integrity": "sha512-SImGFl1Je5kpyAgOCPONVT7h6ASV8mAUwGRjY7eZvVjPg//PfHOXgI+P241RF/+HqsA4PP3qD527ysWFKNQyhQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-loong64-musl/-/rollup-linux-loong64-musl-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-ppc64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-XeDTbmPF1Yu5asfXGPrMkWoxTDhgryQbmw5Q1+R582O51VNCk23J6f2pDrsAp5YkneBVBwtExx6ZGOb9D2aQ6A==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-ppc64-gnu/-/rollup-linux-ppc64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-ppc64-musl",
+      "version": "4.65.0",
+      "integrity": "sha512-VS55JUI/1nsljmV/jfqNkLZXFw8uMO8nNlfoHmSevNf6fO3neuhyDvx9dv3c/Ytt8r/431SL8Qax1dpYvOMZTg==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-ppc64-musl/-/rollup-linux-ppc64-musl-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-riscv64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-Vblw84TbX7RS4la1Y4+yQ7aore/oSyaNtFbppuBr5Vs/4LfBeXKq9dIfoExw6zOvRERqd2rRAjnZRaMhH/0x5w==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-riscv64-gnu/-/rollup-linux-riscv64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-riscv64-musl",
+      "version": "4.65.0",
+      "integrity": "sha512-7+gHjtONvKgwR9InTKFaLq53f6YzBJkgeMRBENdWTsQr+spahGqQm8HF5aXpq8i4JaRrOqYyv6Zn1WltDTxaZQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-riscv64-musl/-/rollup-linux-riscv64-musl-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-s390x-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-KvNDC0J6s4vVHhtJ6KrDXU0Er0au/hmRIBq/+1maCV8TseGupeKizq0bWcrbp2HE1T8xoknvN0Q/KZ/YF0qX3w==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-s390x-gnu/-/rollup-linux-s390x-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-x64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-GExdD15WPvu/x/drELjVam7vX8EsPgvTMOa/iJL/p/4m/oOqzbb7JXZg8fXR4hlXtg/sF2zyTZ3bR0AEtEMlhQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-linux-x64-musl",
+      "version": "4.65.0",
+      "integrity": "sha512-8sT9PemIZfIMED4Vd4KGoOXVDj5CMSWNcGdbheRUx9TYS03yOWdT2Q0lXPyEyNBB9YTilwewIQKNIBk6Nxi0Kg==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-openbsd-x64",
+      "version": "4.65.0",
+      "integrity": "sha512-pO6Ehi0jo5yE0R6PltKhJhv9mlIiyzBJk5N5NUF2OF6xtVKI+1bdXxj/rb0jGXy3hck1ELVT0QPY3tzkAm360w==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-openbsd-x64/-/rollup-openbsd-x64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-openharmony-arm64",
+      "version": "4.65.0",
+      "integrity": "sha512-vo7N3/+cjjPDYr8vtxC+qSNgWa9sDvJ7g8N8R5SWqFY4WiNH1ULcAU70SKVyHeiIZOYYwNP9pTipmhN5sl1NPw==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-openharmony-arm64/-/rollup-openharmony-arm64-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-win32-arm64-msvc",
+      "version": "4.65.0",
+      "integrity": "sha512-ArwvgFAbjKcDM7qqotZ4OVYf+UMT9xH2YzkCzK4+AuZSDihMlz1Ekoe4INwBVXzn2mnJzuIYOcSx07iTBijGRQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-win32-arm64-msvc/-/rollup-win32-arm64-msvc-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-win32-ia32-msvc",
+      "version": "4.65.0",
+      "integrity": "sha512-QGMmK4/cxKE/36FoLMSHQBCyymv/eFTnsCvvsBF0rgmOvVbvX78VWZRerL3dHa77f4pM6Xcc2iGDhJ10w/svKQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-win32-ia32-msvc/-/rollup-win32-ia32-msvc-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-win32-x64-gnu",
+      "version": "4.65.0",
+      "integrity": "sha512-XfKYFWHIPs4HPODIMsGF1IKlS3H1e3WokUZIgpmn4+uNnZBlnRDDHEylNyazbQXwhMKZre68OjtRYbKqb5+j8w==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-win32-x64-gnu/-/rollup-win32-x64-gnu-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@rollup/rollup-win32-x64-msvc",
+      "version": "4.65.0",
+      "integrity": "sha512-wPWi++K4Bs1VR4XihOhfGi4IGX6Cub7FlerTf8X2v+2BtDHddgSqWCXwGD+h2yAe4/niIhNDwAltioOC+wEogQ==",
+      "tarball": "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@standard-schema/spec",
+      "version": "1.1.0",
+      "integrity": "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==",
+      "tarball": "https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/standard-schema/standard-schema.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@types/estree",
+      "version": "1.0.9",
+      "integrity": "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==",
+      "tarball": "https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz",
+      "repository": {
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "type": "git",
+        "directory": "types/estree"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/expect",
+      "version": "2.1.9",
+      "integrity": "sha512-UJCIkTBenHeKT1TTlKMJWy1laZewsRIzYighyYiJKZreqtdxSos/S1t+ktRMQWu2CKqaarrkeszJx1cgC5tGZw==",
+      "tarball": "https://registry.npmjs.org/@vitest/expect/-/expect-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/expect"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/mocker",
+      "version": "2.1.9",
+      "integrity": "sha512-tVL6uJgoUdi6icpxmdrn5YNo3g3Dxv+IHJBr0GXHaEdTcw3F+cPKnsXFhli6nO+f/6SDKPHEK1UN+k+TQv0Ehg==",
+      "tarball": "https://registry.npmjs.org/@vitest/mocker/-/mocker-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/mocker"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/pretty-format",
+      "version": "2.1.9",
+      "integrity": "sha512-KhRIdGV2U9HOUzxfiHmY8IFHTdqtOhIzCpd8WRdJiE7D/HUcZVD0EgQCVjm+Q9gkUXWgBvMmTtZgIG48wq7sOQ==",
+      "tarball": "https://registry.npmjs.org/@vitest/pretty-format/-/pretty-format-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/pretty-format"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/runner",
+      "version": "2.1.9",
+      "integrity": "sha512-ZXSSqTFIrzduD63btIfEyOmNcBmQvgOVsPNPe0jYtESiXkhd8u2erDLnMxmGrDCwHCCHE7hxwRDCT3pt0esT4g==",
+      "tarball": "https://registry.npmjs.org/@vitest/runner/-/runner-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/runner"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/snapshot",
+      "version": "2.1.9",
+      "integrity": "sha512-oBO82rEjsxLNJincVhLhaxxZdEtV0EFHMK5Kmx5sJ6H9L183dHECjiefOAdnqpIgT5eZwT04PoggUnW88vOBNQ==",
+      "tarball": "https://registry.npmjs.org/@vitest/snapshot/-/snapshot-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/snapshot"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/spy",
+      "version": "2.1.9",
+      "integrity": "sha512-E1B35FwzXXTs9FHNK6bDszs7mtydNi5MIfUWpceJ8Xbfb1gBMscAnwLbEu+B44ed6W3XjL9/ehLPHR1fkf1KLQ==",
+      "tarball": "https://registry.npmjs.org/@vitest/spy/-/spy-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/spy"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@vitest/utils",
+      "version": "2.1.9",
+      "integrity": "sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==",
+      "tarball": "https://registry.npmjs.org/@vitest/utils/-/utils-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/utils"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@xterm/addon-serialize",
+      "version": "0.14.0",
+      "integrity": "sha512-uteyTU1EkrQa2Ux6P/uFl2fzmXI46jy5uoQMKEOM0fKTyiW7cSn0WrFenHm5vO5uEXX/GpwW/FgILvv3r0WbkA==",
+      "tarball": "https://registry.npmjs.org/@xterm/addon-serialize/-/addon-serialize-0.14.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/xtermjs/xterm.js.git#master",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "f447274f430fd22513f6adbf9862d19524471c04",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "@xterm/headless",
+      "version": "6.0.0",
+      "integrity": "sha512-5Yj1QINYCyzrZtf8OFIHi47iQtI+0qYFPHmouEfG8dHNxbZ9Tb9YGSuLcsEwj9Z+OL75GJqPyJbyoFer80a2Hw==",
+      "tarball": "https://registry.npmjs.org/@xterm/headless/-/headless-6.0.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/xtermjs/xterm.js.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "f447274f430fd22513f6adbf9862d19524471c04",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "ajv",
+      "version": "8.20.0",
+      "integrity": "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==",
+      "tarball": "https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/ajv-validator/ajv.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "0fba0b8e649909613cfce0999b149cd08f4a4987",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "argparse",
+      "version": "2.0.1",
+      "integrity": "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==",
+      "tarball": "https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/nodeca/argparse.git",
+        "type": "git"
+      },
+      "license": "Python-2.0",
+      "gitHead": "e373563876f1c049826c21bd1c9388f6a5737a3e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "assertion-error",
+      "version": "2.0.1",
+      "integrity": "sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==",
+      "tarball": "https://registry.npmjs.org/assertion-error/-/assertion-error-2.0.1.tgz",
+      "repository": {
+        "url": "git+ssh://git@github.com/chaijs/assertion-error.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "08a1f16ece0c5d4b916c9ce1479a776df0e203e0",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "cac",
+      "version": "6.7.14",
+      "integrity": "sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==",
+      "tarball": "https://registry.npmjs.org/cac/-/cac-6.7.14.tgz",
+      "repository": {
+        "url": "git+https://github.com/egoist/cac.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "8342919821fbffa733c6ab9558f4d60fc43f9ff0",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "chai",
+      "version": "5.3.3",
+      "integrity": "sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==",
+      "tarball": "https://registry.npmjs.org/chai/-/chai-5.3.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/chaijs/chai.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "445243d5e769c6b155e2a35e25a5f747afd2da88",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "check-error",
+      "version": "2.1.3",
+      "integrity": "sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==",
+      "tarball": "https://registry.npmjs.org/check-error/-/check-error-2.1.3.tgz",
+      "repository": {
+        "url": "git+ssh://git@github.com/chaijs/check-error.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc30ec40ec6e0702935cecbdf68d4f3fd2a657eb",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "chokidar",
+      "version": "5.0.0",
+      "integrity": "sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==",
+      "tarball": "https://registry.npmjs.org/chokidar/-/chokidar-5.0.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/paulmillr/chokidar.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "c0c8d20e49d337491891078d1081bf91bd178de6",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "debug",
+      "version": "4.4.3",
+      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
+      "tarball": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+      "repository": {
+        "url": "git://github.com/debug-js/debug.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "6b2c5fbdb7d414483d9e306ef234acb4cd7ea67c",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "deep-eql",
+      "version": "5.0.2",
+      "integrity": "sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==",
+      "tarball": "https://registry.npmjs.org/deep-eql/-/deep-eql-5.0.2.tgz",
+      "repository": {
+        "url": "git+ssh://git@github.com/chaijs/deep-eql.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "8c140402693a23991e1d604a7a5a100a1795a190",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "es-module-lexer",
+      "version": "1.7.0",
+      "integrity": "sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==",
+      "tarball": "https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.7.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/guybedford/es-module-lexer.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "dceaab846b11fbd77b39056088a734d9f774b070",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "esbuild",
+      "version": "0.21.5",
+      "integrity": "sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw==",
+      "tarball": "https://registry.npmjs.org/esbuild/-/esbuild-0.21.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/evanw/esbuild.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "fc37c2fa9de2ad77476a6d4a8f1516196b90187e",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "estree-walker",
+      "version": "3.0.3",
+      "integrity": "sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==",
+      "tarball": "https://registry.npmjs.org/estree-walker/-/estree-walker-3.0.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/Rich-Harris/estree-walker.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "baab849875bee41211bd60493eaad88cfaee1620",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "expect-type",
+      "version": "1.4.0",
+      "integrity": "sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==",
+      "tarball": "https://registry.npmjs.org/expect-type/-/expect-type-1.4.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/mmkal/expect-type.git",
+        "type": "git"
+      },
+      "license": "Apache-2.0",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "fast-deep-equal",
+      "version": "3.1.3",
+      "integrity": "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==",
+      "tarball": "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/epoberezkin/fast-deep-equal.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "d807ffc5013e710deb1c63d463a03f729bcd144d",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "fast-uri",
+      "version": "3.1.9",
+      "integrity": "sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==",
+      "tarball": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/fastify/fast-uri.git",
+        "type": "git"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": "0def70338a0fa2f12a10c83ae8eafc2139ae9a07",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "fsevents",
+      "version": "2.3.3",
+      "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+      "tarball": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/fsevents/fsevents.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "2db891e51aa0f2975c5eaaf6aa30f13d720a830a",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "js-yaml",
+      "version": "4.3.2",
+      "integrity": "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==",
+      "tarball": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/nodeca/js-yaml.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "79ca68d90f333fbe6d9e42827527e62636200191",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "json-schema-traverse",
+      "version": "1.0.0",
+      "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==",
+      "tarball": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/epoberezkin/json-schema-traverse.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "6b45983cd76270042cc79527da5c8972f13599ec",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "koffi",
+      "version": "3.1.1",
+      "integrity": "sha512-mRX6AMeeKCxSOeOopqAcLAl5jcNvge7NAG8l7rF/8gGJATI0tdHFYjteIdE0mGOtWdsrJOij+PjnP8Q9c1gwgA==",
+      "tarball": "https://registry.npmjs.org/koffi/-/koffi-3.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/Koromix/koffi.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "loupe",
+      "version": "3.2.1",
+      "integrity": "sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==",
+      "tarball": "https://registry.npmjs.org/loupe/-/loupe-3.2.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/chaijs/loupe.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "020f283a90fac8a799baba76ee55ec4a62cf5ba9",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "magic-string",
+      "version": "0.30.21",
+      "integrity": "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==",
+      "tarball": "https://registry.npmjs.org/magic-string/-/magic-string-0.30.21.tgz",
+      "repository": {
+        "url": "git+https://github.com/Rich-Harris/magic-string.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "mime-db",
+      "version": "1.54.0",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "tarball": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/jshttp/mime-db.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "5207a32f76e77ed2f63421641449f8addeacb0a5",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "mime-types",
+      "version": "3.0.2",
+      "integrity": "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==",
+      "tarball": "https://registry.npmjs.org/mime-types/-/mime-types-3.0.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/jshttp/mime-types.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "29a0302d799933a45384892df0722f3c5bb1b033",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+      "tarball": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/vercel/ms.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "1c6264b795492e8fdecbc82cb8802fcfbfc08d26",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "nanoid",
+      "version": "3.3.20",
+      "integrity": "sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==",
+      "tarball": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.20.tgz",
+      "repository": {
+        "url": "git+https://github.com/ai/nanoid.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "d76f633e0201c1299d735a6544c4c4a05c882f0b",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-native-custom-loader",
+      "version": "0.1.9",
+      "integrity": "sha512-Zh87aubSc1UF8CzZsRws1KtSwXiPDH0tbcg8V/2OA8Tcq9yGJRESFcEOC5NGLFama5IGfC3aJhubZbrj9Un2qA==",
+      "tarball": "https://registry.npmjs.org/node-addon-native-custom-loader/-/node-addon-native-custom-loader-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/loader"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin",
+      "version": "0.1.9",
+      "integrity": "sha512-BCxXCMZDs/VLLh64SwKNw/me7Qx1I7Be4qxWwYVRRm8tJoOB8fL7qg6CmXhSXeUqsKt72t8RaKCX4EN+5nocVg==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin/-/node-addon-require-builtin-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/entry"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-darwin-arm64",
+      "version": "0.1.9",
+      "integrity": "sha512-n45xEILQVOLZ2hVhzRXesTMYS4odHquyI/B/IkPMPUCONa8PjNfBag6lYBH4wDrhgpLNNBwMsUD8d8O/13QPPA==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-darwin-arm64/-/node-addon-require-builtin-darwin-arm64-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/darwin-arm64"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-darwin-x64",
+      "version": "0.1.9",
+      "integrity": "sha512-Sm4Liqh1uo9zgJB2F/pACPPZdHu+fj9Qniyr1Q99dDQB0v71VgZgkAgv3K0/E1iPQBlZq9rakFkY7MGUIfWc0A==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-darwin-x64/-/node-addon-require-builtin-darwin-x64-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/darwin-x64"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-linux-arm64-gnu",
+      "version": "0.1.9",
+      "integrity": "sha512-ToU4wGtOD/069i2y4fJ3cjDJiiWtcjSQTZMf0YKlotb5BmTM7FjhR3X1aub8J/YjlOwl6665J/XAYuvCaDO5sA==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-linux-arm64-gnu/-/node-addon-require-builtin-linux-arm64-gnu-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/linux-arm64-gnu"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-linux-arm64-musl",
+      "version": "0.1.9",
+      "integrity": "sha512-85Z5Avp++wfa9iiTIH8LC/r6qvlC/CiwpifiwIz0gYQ9PzajTSkz06gX7YDqf1oUqWYxU9uwNEOmo7mktHOOfA==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-linux-arm64-musl/-/node-addon-require-builtin-linux-arm64-musl-0.1.9.tgz",
+      "repository": null,
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-linux-x64-gnu",
+      "version": "0.1.9",
+      "integrity": "sha512-fh3K3/JvBfSYwU8vEOpp4Wdp4N/jX0EnZYq5GsaftlQin1FVqgve/yDNoh+asxBMOQyHOG8F4dXlV1WCierrfg==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-linux-x64-gnu/-/node-addon-require-builtin-linux-x64-gnu-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/linux-x64-gnu"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-linux-x64-musl",
+      "version": "0.1.9",
+      "integrity": "sha512-B6fu/5xmbRxnifM7nWz0IESkYnUl8dwFZmRDMsxdhzv2nb+EtBRFAXg4lf73qhX3yoZD4SnWJILBQMlIAwBCzw==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-linux-x64-musl/-/node-addon-require-builtin-linux-x64-musl-0.1.9.tgz",
+      "repository": null,
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-win32-arm64-msvc",
+      "version": "0.1.9",
+      "integrity": "sha512-FOQuzNe8B1BANu886rJgdbQuRxPGUQmewkykw87wSr32U0ibQ3AWGuUM/Gh7LG4RekjFaifj7gEI/tq2+6GU6g==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-win32-arm64-msvc/-/node-addon-require-builtin-win32-arm64-msvc-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/win32-arm64-msvc"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-win32-ia32-msvc",
+      "version": "0.1.9",
+      "integrity": "sha512-N29P0kmIBT6hnkNNFYzxn+o9ydT6OYZe9RFAi8dSxV1rNSul1FlxtuKWYe8w2sQpbQGYuGDEtpOwdeFtq2iFTg==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-win32-ia32-msvc/-/node-addon-require-builtin-win32-ia32-msvc-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/win32-ia32-msvc"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "node-addon-require-builtin-win32-x64-msvc",
+      "version": "0.1.9",
+      "integrity": "sha512-+i6N4A7m7txjbw8pDYESdWXiKO9EEVq0SzTzwPS0WZuV4F1MzQnaDJwJJnO7T6zAc0BvqHXBOkpharCrUjFhbQ==",
+      "tarball": "https://registry.npmjs.org/node-addon-require-builtin-win32-x64-msvc/-/node-addon-require-builtin-win32-x64-msvc-0.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/deepseek-ai/dsh-node-addon-require-builtin.git",
+        "type": "git",
+        "directory": "packages/require-builtin/win32-x64-msvc"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "p-limit",
+      "version": "7.3.3",
+      "integrity": "sha512-SKgVvDU5TNIxQ4r30U75BNLC6a+6GOEjngrk/ysM5+Zu3oJuk1SC5ApzIzY/7PjCEjoVPMWJ0zho/4QUiEB7TQ==",
+      "tarball": "https://registry.npmjs.org/p-limit/-/p-limit-7.3.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/sindresorhus/p-limit.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "4d4ec71803d8736567249c3dde06ea82795ae7c7",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "pathe",
+      "version": "1.1.2",
+      "integrity": "sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==",
+      "tarball": "https://registry.npmjs.org/pathe/-/pathe-1.1.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/unjs/pathe.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "pathval",
+      "version": "2.0.1",
+      "integrity": "sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==",
+      "tarball": "https://registry.npmjs.org/pathval/-/pathval-2.0.1.tgz",
+      "repository": {
+        "url": "git+ssh://git@github.com/chaijs/pathval.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "35c829e6648f068ade959c17afd28a9eaee31524",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "picocolors",
+      "version": "1.1.1",
+      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+      "tarball": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/alexeyraspopov/picocolors.git",
+        "type": "git"
+      },
+      "license": "ISC",
+      "gitHead": "6f0a4638348ed20633d623ee973f9c9a96f65104",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.31",
+      "integrity": "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg==",
+      "tarball": "https://registry.npmjs.org/postcss/-/postcss-8.5.31.tgz",
+      "repository": {
+        "url": "git+https://github.com/postcss/postcss.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "d1908579d6af4155ee5f759030184fb4c2b575ec",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "readdirp",
+      "version": "5.1.1",
+      "integrity": "sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==",
+      "tarball": "https://registry.npmjs.org/readdirp/-/readdirp-5.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/paulmillr/readdirp.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "5dba3694a1de891ea6edb0301240326f8f8c81f1",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "integrity": "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==",
+      "tarball": "https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/floatdrop/require-from-string.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "d1575a49065eb7a49b86b4de963f04f1a14dfd60",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "resolve.exports",
+      "version": "2.0.4",
+      "integrity": "sha512-zepuGL0ulf+nt+XaFrlKeaiTJeyPFPLLY62+ncq1/VTHBdt3HsfXOH60priZ6tnXQozdGcDeIF5JVTanvIcYWQ==",
+      "tarball": "https://registry.npmjs.org/resolve.exports/-/resolve.exports-2.0.4.tgz",
+      "repository": {
+        "url": "git+https://github.com/lukeed/resolve.exports.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "415bd6ab2fcf05a35df031c19d78bc12b9eb9042",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "rollup",
+      "version": "4.65.0",
+      "integrity": "sha512-QVCvQUTGDN6JRwi3jVGCY3H4aTHvi9rX0LyoBMkGUvdh/Z6O51CzcLz85BWZaTCDGhl6ySGqYZs+xI1jmPqGcw==",
+      "tarball": "https://registry.npmjs.org/rollup/-/rollup-4.65.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/rollup/rollup.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "9aac09a39dc1fa297a7b06f1ad6907f7bd41b310",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "semver",
+      "version": "7.8.5",
+      "integrity": "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==",
+      "tarball": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz",
+      "repository": {
+        "url": "git+https://github.com/npm/node-semver.git",
+        "type": "git"
+      },
+      "license": "ISC",
+      "gitHead": "6e05b7637396ac66522cff8731f07cfe0ef49a29",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "siginfo",
+      "version": "2.0.0",
+      "integrity": "sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==",
+      "tarball": "https://registry.npmjs.org/siginfo/-/siginfo-2.0.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/emilbayes/siginfo.git",
+        "type": "git"
+      },
+      "license": "ISC",
+      "gitHead": "d2a7721a36967f4e477ee6161a0331837aa41b91",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "source-map-js",
+      "version": "1.2.2",
+      "integrity": "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==",
+      "tarball": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/7rulnik/source-map-js.git",
+        "type": "git"
+      },
+      "license": "BSD-3-Clause",
+      "gitHead": "0a1d334fd1e55a47df97fcd60a7915d46df3b08a",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "stackback",
+      "version": "0.0.2",
+      "integrity": "sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==",
+      "tarball": "https://registry.npmjs.org/stackback/-/stackback-0.0.2.tgz",
+      "repository": {
+        "url": "git://github.com/shtylman/node-stackback.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "std-env",
+      "version": "3.10.0",
+      "integrity": "sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==",
+      "tarball": "https://registry.npmjs.org/std-env/-/std-env-3.10.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/unjs/std-env.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "6b691372c3670df1ef6fb826086abba4ef6964e3",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "tinybench",
+      "version": "2.9.0",
+      "integrity": "sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==",
+      "tarball": "https://registry.npmjs.org/tinybench/-/tinybench-2.9.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/tinylibs/tinybench.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "40b95e7bfd7aecda8d19900c748d2f0da01b66bc",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "tinyexec",
+      "version": "0.3.2",
+      "integrity": "sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==",
+      "tarball": "https://registry.npmjs.org/tinyexec/-/tinyexec-0.3.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/tinylibs/tinyexec.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "2adbaf722a3a3f252345ad3609c67a6165badd42",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "tinypool",
+      "version": "1.1.1",
+      "integrity": "sha512-Zba82s87IFq9A9XmjiX5uZA/ARWDrB03OHlq+Vw1fSdt0I+4/Kutwy8BP4Y/y/aORMo61FQ0vIb5j44vSo5Pkg==",
+      "tarball": "https://registry.npmjs.org/tinypool/-/tinypool-1.1.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/tinylibs/tinypool.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "565655f8c8956b3779f54671e6679b07f08ea3ee",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "tinyrainbow",
+      "version": "1.2.0",
+      "integrity": "sha512-weEDEq7Z5eTHPDh4xjX789+fHfF+P8boiFB+0vbWzpbnbsEr/GRaohi/uMKxg8RZMXnl1ItAi/IUHWMsjDV7kQ==",
+      "tarball": "https://registry.npmjs.org/tinyrainbow/-/tinyrainbow-1.2.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/tinylibs/tinyrainbow.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "c8202ffc00d9f7f039ebdc2af52d08c6376fb6c0",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "tinyspy",
+      "version": "3.0.2",
+      "integrity": "sha512-n1cw8k1k0x4pgA2+9XrOkFydTerNcJ1zWCO5Nn9scWHTD+5tp8dghT2x1uduQePZTZgd3Tupf+x9BxJjeJi77Q==",
+      "tarball": "https://registry.npmjs.org/tinyspy/-/tinyspy-3.0.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/tinylibs/tinyspy.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "2650a4a2cc68e68c245f82da1fcb6351f4f8fe6c",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "vite",
+      "version": "5.4.21",
+      "integrity": "sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw==",
+      "tarball": "https://registry.npmjs.org/vite/-/vite-5.4.21.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitejs/vite.git",
+        "type": "git",
+        "directory": "packages/vite"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "vite-node",
+      "version": "2.1.9",
+      "integrity": "sha512-AM9aQ/IPrW/6ENLQg3AGY4K1N2TGZdR5e4gu/MmmR2xR3Ll1+dib+nook92g4TV3PXVyeyxdWwtaCAiUL0hMxA==",
+      "tarball": "https://registry.npmjs.org/vite-node/-/vite-node-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/vite-node"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "vitest",
+      "version": "2.1.9",
+      "integrity": "sha512-MSmPM9REYqDGBI8439mA4mWhV5sKmDlBKWIYbA3lRb2PTHACE0mgKwA8yQ2xq9vxDTuk4iPrECBAEW2aoFXY0Q==",
+      "tarball": "https://registry.npmjs.org/vitest/-/vitest-2.1.9.tgz",
+      "repository": {
+        "url": "git+https://github.com/vitest-dev/vitest.git",
+        "type": "git",
+        "directory": "packages/vitest"
+      },
+      "license": "MIT",
+      "gitHead": null,
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "why-is-node-running",
+      "version": "2.3.0",
+      "integrity": "sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==",
+      "tarball": "https://registry.npmjs.org/why-is-node-running/-/why-is-node-running-2.3.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/mafintosh/why-is-node-running.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "93efc6ac4cbe33bd1dfa638e33019abc71190dd1",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "ws",
+      "version": "8.22.0",
+      "integrity": "sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==",
+      "tarball": "https://registry.npmjs.org/ws/-/ws-8.22.0.tgz",
+      "repository": {
+        "url": "git+https://github.com/websockets/ws.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "297202cdae9b0590629821373b3b679c407f3431",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.1",
+      "integrity": "sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==",
+      "tarball": "https://registry.npmjs.org/yaml/-/yaml-2.9.1.tgz",
+      "repository": {
+        "url": "git+https://github.com/eemeli/yaml.git",
+        "type": "git"
+      },
+      "license": "ISC",
+      "gitHead": "1440ecd3d1bff41e4ac399f8f6839e810328bd16",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "yocto-queue",
+      "version": "1.2.2",
+      "integrity": "sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==",
+      "tarball": "https://registry.npmjs.org/yocto-queue/-/yocto-queue-1.2.2.tgz",
+      "repository": {
+        "url": "git+https://github.com/sindresorhus/yocto-queue.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "b07eac099753833b29d06c614149904445739776",
+      "npmAttestationsPresent": false,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "zod",
+      "version": "3.25.76",
+      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
+      "tarball": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
+      "repository": {
+        "url": "git+https://github.com/colinhacks/zod.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "50606616c0d291caf3210a7521da51271b918333",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "zod",
+      "version": "4.4.3",
+      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==",
+      "tarball": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz",
+      "repository": {
+        "url": "git+https://github.com/colinhacks/zod.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "f3c9ec03ba7a28ae72d25cc295f38674bee0f559",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    },
+    {
+      "name": "zod",
+      "version": "4.6.7",
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "tarball": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz",
+      "repository": {
+        "url": "git+https://github.com/colinhacks/zod.git",
+        "type": "git"
+      },
+      "license": "MIT",
+      "gitHead": "b500a2ee95134f81d74da7911d7378dd2853d042",
+      "npmAttestationsPresent": true,
+      "npmSignaturesPresent": true
+    }
+  ]
+}

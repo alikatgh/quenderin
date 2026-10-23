@@ -40,13 +40,15 @@ class RemoteHarnessClient(
     private var workspaceBaseline = false
     private var scopedStarted = false
     private var historyCursor = 0L
-    private var pageCursor = 0L
+    private var pageCursor: Long? = null
     private var historyThrough = 0L
     private var historyBytes = 0
     private var activeAttempt: String? = null
+    private var attemptCommitted = false
     private var attemptRevision = 0L
     private var attemptIndex = 0L
     private var knownCommands = linkedSetOf<String>()
+    private val approvalActionEvidence = RemoteHarnessClientApprovalActions()
 
     init {
         try {
@@ -95,6 +97,7 @@ class RemoteHarnessClient(
             "client-deadline" -> "The computer did not complete the connection in time. Check that the Host is online and accepts this device."
             "client-protocol" -> "This Host returned an unsupported response. Update its Remote companion and reconnect."
             "client-history" -> "History changed or could not be verified. Reconnect to load an authoritative snapshot before sending."
+            "approval-action-unverified" -> "The computer's full tool action is not verified yet. Wait for its authoritative call and arguments, or stop the task."
             else -> "The computer connection failed. Check your server and computer, then reconnect explicitly."
         }
         update(snapshot.copy(busy = false, error = message,
@@ -345,7 +348,8 @@ class RemoteHarnessClient(
                 if (g == generation) coordinator?.receive(context, bytes)
             }
             override fun retired(context: RemoteHarnessAuthenticatedContext, reason: RemoteHarnessSecureRetirement) {
-                if (g == generation) { coordinator?.disconnected(context); update(snapshot.copy(phase = RemoteHarnessClientPhase.DISCONNECTED,
+                if (g == generation) { coordinator?.disconnected(context); approvalActionEvidence.reset(null)
+                    update(snapshot.copy(phase = RemoteHarnessClientPhase.DISCONNECTED, approvals = emptyList(), approvalActions = emptyMap(),
                     historyReady = false, status = RemoteSessionStatus.OUTCOME_UNKNOWN, error = "Computer disconnected. Reconnect to verify the latest session state.")) }
             }
         })
@@ -379,16 +383,18 @@ class RemoteHarnessClient(
             } }
             c.call(RemoteHarnessOperations.modelCatalog()) { outcome -> if (g == generation) guardedSocket { receiveModels(requireResult(outcome)) } }
             if (snapshot.sessionID != null) {
-                historyCursor = 0; pageCursor = 0; historyThrough = 0; historyBytes = 0; activeAttempt = null
+                historyCursor = 0; pageCursor = null; historyThrough = 0; historyBytes = 0
+                activeAttempt = null; attemptCommitted = false; attemptRevision = 0; attemptIndex = 0
                 c.open(RemoteHarnessOperations.sessionFollow(snapshot.sessionID!!), { notice -> if (g == generation) guardedSocket {
-                    if (notice.kind == RemoteHarnessStreamNoticeKind.VALUE) receiveHistory(notice.value ?: throw RemoteHarnessException("client-history"))
+                    if (notice.kind == RemoteHarnessStreamNoticeKind.VALUE) {
+                        receiveHistory(notice.value ?: throw RemoteHarnessException("client-history")); refreshApprovalReadiness()
+                    }
                     else update(snapshot.copy(historyReady = false, error = "Session stream closed. Reconnect to load its latest state."))
                 } })
                 c.open(RemoteHarnessOperations.sessionControl(), { notice -> if (g == generation && notice.kind == RemoteHarnessStreamNoticeKind.VALUE)
                     guardedSocket { receiveSessionControl(notice.value ?: throw RemoteHarnessException("client-history")) } })
                 c.open(RemoteHarnessOperations.approvalEvents(), { notice -> if (g == generation) guardedSocket {
-                    update(snapshot.copy(approvals = c.pendingApprovals(),
-                        status = if (c.pendingApprovals().isNotEmpty()) RemoteSessionStatus.AWAITING_APPROVAL else snapshot.status))
+                    refreshApprovalReadiness(markAwaiting = true)
                 } })
             }
         }
@@ -499,13 +505,21 @@ class RemoteHarnessClient(
     fun decideApproval(eventID: String, allowedOnce: Boolean) = action {
         val business = coordinator ?: throw RemoteHarnessException("client-history")
         val approval = business.pendingApprovals().singleOrNull { it.eventID == eventID } ?: throw RemoteHarnessException("approval-expired")
+        rhCheck(snapshot.historyReady && approvalActionEvidence.resolve(approval, snapshot.sessionID) != null, "approval-action-unverified")
         val g = generation
         business.call(RemoteHarnessOperations.approval(approval, allowedOnce), identifier()) { outcome -> if (g == generation) guardedSocket {
             requireSuccess(outcome)
-            update(snapshot.copy(approvals = business.pendingApprovals(),
-                status = if (snapshot.status == RemoteSessionStatus.AWAITING_APPROVAL) RemoteSessionStatus.RUNNING else snapshot.status)); persist()
+            update(snapshot.copy(status = if (snapshot.status == RemoteSessionStatus.AWAITING_APPROVAL) RemoteSessionStatus.RUNNING else snapshot.status,
+                error = null)); refreshApprovalReadiness(); persist()
         } }
-        update(snapshot.copy(approvals = business.pendingApprovals()))
+        refreshApprovalReadiness()
+    }
+    private fun refreshApprovalReadiness(markAwaiting: Boolean = false) {
+        val approvals = coordinator?.pendingApprovals() ?: emptyList()
+        update(snapshot.copy(approvals = approvals,
+            approvalActions = if (snapshot.historyReady) approvalActionEvidence.resolved(approvals, snapshot.sessionID) else emptyMap(),
+            status = if (markAwaiting && snapshot.status != RemoteSessionStatus.STOP_REQUESTED && approvals.isNotEmpty())
+                RemoteSessionStatus.AWAITING_APPROVAL else snapshot.status))
     }
     fun stop() = action {
         if (snapshot.status == RemoteSessionStatus.STOP_REQUESTED) return@action
@@ -519,31 +533,39 @@ class RemoteHarnessClient(
         } }
     }
     fun earlierHistory() = action {
-        rhCheck(snapshot.historyReady && snapshot.hasMore && pageCursor > 0, "client-history")
+        val before = pageCursor ?: throw RemoteHarnessException("client-history")
+        rhCheck(snapshot.historyReady && snapshot.hasMore && before > 0, "client-history")
         val session = snapshot.sessionID ?: throw RemoteHarnessException("client-history"); val g = generation
         update(snapshot.copy(busy = true))
-        coordinator!!.call(RemoteHarnessOperations.sessionPage(session, historyThrough, pageCursor)) { outcome -> if (g == generation) guardedSocket {
+        coordinator!!.call(RemoteHarnessOperations.sessionPage(session, historyThrough, before)) { outcome -> if (g == generation) guardedSocket {
             val result = requireResult(outcome).objectValue(); val records = array(result.rhRequired("records"))
             val previous = snapshot.timeline; update(snapshot.copy(timeline = emptyList()))
             records.forEach { historyRecord(it, historical = true) }
             val earlier = snapshot.timeline; update(snapshot.copy(timeline = (earlier + previous).distinctBy { it.id }.takeLast(512),
-                hasMore = result.rhRequired("hasMore").booleanValue(), busy = false)); persist()
+                hasMore = result.rhRequired("hasMore").booleanValue(), busy = false)); refreshApprovalReadiness(); persist()
         } }
     }
     private fun array(value: RemoteHarnessJSON): List<RemoteHarnessJSON> = (value as? RemoteHarnessJSON.ArrayValue)?.values
         ?: throw RemoteHarnessException("client-protocol")
+    // The official empty JSONL session uses -1; transport counters remain unsigned.
+    private fun sessionCursor(value: RemoteHarnessJSON): Long =
+        if (value is RemoteHarnessJSON.NumberValue && value.token == "-1") -1 else value.integerValue()
     private fun receiveHistory(value: RemoteHarnessJSON) {
         val p = value.objectValue()
         when (p.rhString("type")) {
             "snapshot" -> {
                 rhCheck(!snapshot.historyReady && p.rhRequired("header").objectValue().rhString("id") == snapshot.sessionID, "client-history")
-                historyCursor = p.rhRequired("cursor").integerValue(); historyThrough = historyCursor
+                historyCursor = sessionCursor(p.rhRequired("cursor")); historyThrough = historyCursor
+                approvalActionEvidence.reset(snapshot.sessionID)
                 update(snapshot.copy(timeline = emptyList(), hasMore = p.rhRequired("hasMore").booleanValue()))
-                array(p.rhRequired("records")).forEach { historyRecord(it, historical = true) }
-                p["assistantStream"]?.objectValue()?.get("activeAttempt")?.objectValue()?.let { attempt ->
+                array(p.rhRequired("records")).forEach { historyRecord(it, historical = true, snapshotRecord = true) }
+                val stream = p["assistantStream"]?.objectValue()
+                attemptRevision = stream?.get("revision")?.integerValue() ?: 0
+                stream?.get("activeAttempt")?.objectValue()?.let { attempt ->
                     update(snapshot.copy(status = RemoteSessionStatus.RUNNING))
-                    activeAttempt = attempt.rhString("attemptId"); attemptIndex = attempt.rhRequired("nextIndex").integerValue()
-                    p["assistantStream"]?.objectValue()?.get("revision")?.let { attemptRevision = it.integerValue() }
+                    activeAttempt = attempt.rhString("attemptId").also(::rhID); attemptIndex = attempt.rhRequired("nextIndex").integerValue()
+                    approvalActionEvidence.activeTurn(attempt.rhRequired("turn").integerValue(true))
+                    rhCheck(sessionCursor(attempt.rhRequired("startedAfterSeq")) <= historyCursor, "client-history")
                     array(attempt.rhRequired("stream")).forEach { compactChunk(it) }
                 }
                 projections(p.rhRequired("projections"))
@@ -554,20 +576,25 @@ class RemoteHarnessClient(
             else -> throw RemoteHarnessException("client-history")
         }
     }
-    private fun historyRecord(value: RemoteHarnessJSON, historical: Boolean) {
+    private fun historyRecord(value: RemoteHarnessJSON, historical: Boolean, snapshotRecord: Boolean = false) {
         val root = value.objectValue(); rhCheck(root.rhString("type") == "event", "client-history")
-        val event = root.rhRequired("event").objectValue(); val seq = event.rhRequired("seq").integerValue(true)
+        val event = root.rhRequired("event").objectValue(); val seq = event.rhRequired("seq").integerValue()
         if (!historical) { rhCheck(seq == historyCursor + 1, "client-history"); historyCursor = seq }
         else rhCheck(seq <= historyThrough, "client-history")
-        if (pageCursor == 0L || seq < pageCursor) pageCursor = seq
+        pageCursor = pageCursor?.let { minOf(it, seq) } ?: seq
         val type = event.rhString("type"); val data = event.rhRequired("data").objectValue()
         val replace = event["surfaceOp"] as? RemoteHarnessJSON.ObjectValue
         if (replace != null) {
             rhCheck(replace.values.rhString("op") == "replace", "client-history")
             val start = replace.values.rhRequired("startSeq").integerValue(); val end = replace.values.rhRequired("endSeq").integerValue()
             rhCheck(start <= end, "client-history")
-            update(snapshot.copy(timeline = snapshot.timeline.filter { item -> item.id.removePrefix("event-").toLongOrNull()?.let { it !in start..end } ?: true }))
+            // This accepted compatibility shape may remove a previously matched call. Invalidate
+            // before publishing the replacement or indexing its new event; the capture uses append.
+            approvalActionEvidence.historyReplaced()
+            update(snapshot.copy(approvalActions = emptyMap(), timeline = snapshot.timeline.filter { item ->
+                item.id.removePrefix("event-").toLongOrNull()?.let { it !in start..end } ?: true }))
         }
+        approvalActionEvidence.observe(snapshot.sessionID, seq, type, data, advanceRun = !historical || snapshotRecord)
         when (type) {
             "user/message", "assistant/message", "tool/result" -> {
                 val message = if (type == "user/message") data else data.rhRequired("message").objectValue()
@@ -577,11 +604,21 @@ class RemoteHarnessClient(
                     "reasoning" -> reasoning.append(b.rhString("text"))
                     "tool-call" -> text.append("\nTool: ").append(b["name"]?.stringValue() ?: "Requested tool")
                     else -> {} } }
-                if (type == "assistant/message") clearLiveAttempt()
+                if (type == "assistant/message" && !historical) {
+                    // Durable output precedes assistant-stream.end in the official runtime.
+                    // Retire its display now, while retaining attempt/index validation until end.
+                    clearLiveDisplay()
+                    if (activeAttempt != null) attemptCommitted = true
+                }
                 append(RemoteHarnessClientTimelineItem("event-$seq", type.substringBefore('/'), text.toString(), reasoning.toString()))
             }
-            "tool/call" -> append(RemoteHarnessClientTimelineItem("event-$seq", "tool", data.rhString("name") + "\n" + data.rhString("arguments")))
-            "turn/start" -> if (!historical) update(snapshot.copy(status = RemoteSessionStatus.RUNNING))
+            "tool/call" -> {
+                val name = (data["name"] as? RemoteHarnessJSON.StringValue)?.value
+                val arguments = (data["arguments"] as? RemoteHarnessJSON.StringValue)?.value
+                append(RemoteHarnessClientTimelineItem("event-$seq", "tool", if (name != null && arguments != null) "$name\n$arguments"
+                    else "Tool call details could not be verified. Stop the task or inspect it on your computer."))
+            }
+            "turn/start" -> if (!historical) update(snapshot.copy(status = runningStatus()))
             "turn/end" -> if (!historical) {
                 clearLiveAttempt()
                 val reason = data.rhRequired("reason").objectValue().rhString("kind")
@@ -598,22 +635,32 @@ class RemoteHarnessClient(
         rhCheck(next.size <= 512 && historyBytes <= 2_097_152, "client-bounds")
         update(snapshot.copy(timeline = next))
     }
-    private fun clearLiveAttempt() {
-        val id = activeAttempt; activeAttempt = null
-        if (id != null) update(snapshot.copy(timeline = snapshot.timeline.filter { !it.id.startsWith("live-$id") }))
+    private fun clearLiveDisplay() {
+        val id = activeAttempt ?: return
+        update(snapshot.copy(timeline = snapshot.timeline.filter { it.id != "live-$id" && !it.id.startsWith("live-$id-tool-") }))
     }
+    private fun clearLiveAttempt() {
+        clearLiveDisplay(); activeAttempt = null; attemptCommitted = false
+    }
+    private fun runningStatus() = if (snapshot.status in setOf(RemoteSessionStatus.STOP_REQUESTED, RemoteSessionStatus.AWAITING_APPROVAL))
+        snapshot.status else RemoteSessionStatus.RUNNING
     private fun assistantFrame(value: RemoteHarnessJSON) {
         val p = value.objectValue(); val type = p.rhString("type"); val id = p.rhString("attemptId").also(::rhID)
         val revision = p.rhRequired("revision").integerValue()
         if (type == "start") {
-            rhCheck(revision > attemptRevision && activeAttempt == null, "client-history")
-            activeAttempt = id; attemptRevision = revision; attemptIndex = 0
-            update(snapshot.copy(status = RemoteSessionStatus.RUNNING)); return
+            rhCheck(revision > attemptRevision && activeAttempt == null &&
+                sessionCursor(p.rhRequired("startedAfterSeq")) <= historyCursor, "client-history")
+            activeAttempt = id; attemptCommitted = false; attemptRevision = revision; attemptIndex = 0
+            update(snapshot.copy(status = runningStatus())); return
         }
         rhCheck(id == activeAttempt && revision > attemptRevision && p.rhRequired("index").integerValue() == attemptIndex, "client-history")
         attemptRevision = revision
-        if (type == "chunk") { renderChunk(p.rhRequired("chunk")); attemptIndex++ }
-        else rhCheck(type == "end", "client-history")
+        if (type == "chunk") {
+            rhCheck(!attemptCommitted, "client-history")
+            renderChunk(p.rhRequired("chunk")); attemptIndex++
+        } else {
+            rhCheck(type == "end", "client-history"); clearLiveAttempt()
+        }
     }
     private fun compactChunk(value: RemoteHarnessJSON) {
         val p = value.objectValue()
@@ -660,8 +707,7 @@ class RemoteHarnessClient(
             if (stage == "hello") rhCheck(now <= helloDeadline, "client-deadline")
             if (stage in setOf("opening", "hello", "accepting")) rhCheck(now <= setupDeadline, "client-deadline")
             link?.checkDeadlines(generation); coordinator?.expire(); socket?.checkDeadline(now)
-            coordinator?.let { business -> val approvals = business.pendingApprovals()
-                if (snapshot.approvals.map { it.eventID } != approvals.map { it.eventID }) update(snapshot.copy(approvals = approvals)) }
+            if (coordinator != null) refreshApprovalReadiness()
             if (pingNonce != null) rhCheck(now <= pingDeadline, "client-deadline")
             if (nextPing > 0 && now >= nextPing && pingNonce == null) {
                 val nonce = identifier(); pingNonce = nonce; pingDeadline = now + 50_000; nextPing = now + 25_000
@@ -675,9 +721,10 @@ class RemoteHarnessClient(
         generation++; stage = "idle"; pingNonce = null; nextPing = 0
         val oldCoordinator = coordinator; coordinator = null
         val oldContext = context; context = null
+        approvalActionEvidence.reset(null)
         if (oldContext != null) oldCoordinator?.disconnected(oldContext)
         link?.activeGeneration()?.let { link?.close(it) }; link = null; socket?.close(); socket = null
-        if (hadConnection) update(snapshot.copy(phase = RemoteHarnessClientPhase.DISCONNECTED, busy = false, historyReady = false, approvals = emptyList(),
+        if (hadConnection) update(snapshot.copy(phase = RemoteHarnessClientPhase.DISCONNECTED, busy = false, historyReady = false, approvals = emptyList(), approvalActions = emptyMap(),
             status = if (snapshot.status in setOf(RemoteSessionStatus.RUNNING, RemoteSessionStatus.STOP_REQUESTED) || snapshot.busy)
                 RemoteSessionStatus.OUTCOME_UNKNOWN else RemoteSessionStatus.DISCONNECTED))
     }

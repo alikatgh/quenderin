@@ -106,6 +106,7 @@ data class RemoteHarnessClientSnapshot(
     val busy: Boolean = false, val error: String? = null, val historyReady: Boolean = false,
     val hasMore: Boolean = false, val approvalSupported: Boolean = false,
     val approvals: List<RemoteHarnessClientApproval> = emptyList(),
+    val approvalActions: Map<String, RemoteHarnessClientApprovalAction> = emptyMap(),
     val clientPublicIdentity: String? = null, val clientFingerprint: String? = null,
 ) {
     override fun toString() = "RemoteHarnessClientSnapshot(redacted)"

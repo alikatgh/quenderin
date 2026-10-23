@@ -4,6 +4,23 @@ import Foundation
 
 public enum RemoteHarnessClientScreen: String { case setup, computers, trust, workspaces, sessions, session, disconnected }
 
+public struct RemoteHarnessClientApprovalCard: Identifiable, NativeConnectionPrivateValue {
+    public var id: String { approval.eventID }
+    public let approval: RemoteHarnessPendingApproval
+    public let toolName: String
+    public let callID: String?
+    public let reason: String?
+    public let metadata: String
+    public let action: RemoteHarnessClientApprovalAction?
+    init(_ approval: RemoteHarnessPendingApproval, action: RemoteHarnessClientApprovalAction?) {
+        self.approval = approval; self.action = action
+        let fields = try? approval.request.fields()
+        toolName = (try? fields?.text("toolName")) ?? "Computer tool approval"
+        callID = try? fields?.text("callId"); reason = try? fields?.text("reason")
+        metadata = String(decoding: approval.request.data, as: UTF8.self)
+    }
+}
+
 @MainActor public final class RemoteHarnessClientController: ObservableObject, RemoteHarnessCommandJournal {
     public static let shared = RemoteHarnessClientController()
     @Published public private(set) var journal = RemoteHarnessClientJournal()
@@ -21,6 +38,7 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
     @Published public private(set) var timeline = RemoteHarnessClientTimeline()
     @Published public private(set) var stopState = RemoteHarnessStopState.notRequested
     @Published public private(set) var approvals: [RemoteHarnessPendingApproval] = []
+    @Published public private(set) var approvalCards: [RemoteHarnessClientApprovalCard] = []
     @Published public private(set) var running = false
     @Published public private(set) var snapshotReady = false
     @Published public private(set) var companionAvailable = false
@@ -43,9 +61,9 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
         value.onDisconnected = { [weak self] failure in
             guard let self else { return }; self.failure = failure; self.screen = .disconnected; self.snapshotReady = false; self.companionAvailable = false
             self.workspaceSnapshotWaiter?.resume(throwing: failure); self.workspaceSnapshotWaiter = nil
-            self.stopState = self.gateway.stopState; self.approvals = []
+            self.stopState = self.gateway.stopState; self.approvals = []; self.approvalCards = []; self.timeline.clearApprovalEvidence()
         }
-        value.onStateChanged = { [weak self] in guard let self else { return }; self.stopState = self.gateway.stopState; self.approvals = self.gateway.approvals; self.companionAvailable = self.gateway.supportsCompanion }
+        value.onStateChanged = { [weak self] in guard let self else { return }; self.stopState = self.gateway.stopState; self.approvals = self.gateway.approvals; self.companionAvailable = self.gateway.supportsCompanion; self.refreshApprovalCards() }
         return value
     }()
     public init(backend: (any RemoteHarnessCryptoBackend)? = nil, http: (any RemoteHarnessClientHTTP)? = nil,
@@ -215,7 +233,9 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
             try self.checkOperation()
             var next = self.journal; if next.draft == text { next.draft = "" }; try self.commit(next)
             let listed = try await self.sessionList(); try self.checkOperation()
-            if let session = listed.first(where: { $0.sessionID == sessionID }) { self.running = session.running }
+            // An earlier list receipt cannot erase a validated live turn that
+            // has already arrived on session/follow while prompt was pending.
+            if let session = listed.first(where: { $0.sessionID == sessionID }) { self.running = session.running || self.timeline.hasActiveTurn }
         }
     }
     /// Foundation reports zero-offset system zones as GMT, whereas the remote
@@ -254,7 +274,7 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
             try self.timeline.prependPage(page); var next = self.journal; next.history = self.timeline.records; try self.commit(next)
         }
     }
-    public func disconnect() { operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = [] }
+    public func disconnect() { operationID = nil; workTask?.cancel(); workTask = nil; busy = false; snapshotDeadline?.cancel(); snapshotDeadline = nil; workspaceSnapshotWaiter?.resume(throwing: RemoteHarnessClientFailure.connection); workspaceSnapshotWaiter = nil; gateway.disconnect(); screen = journal.origin == nil ? .setup : .disconnected; snapshotReady = false; companionAvailable = false; approvals = []; approvalCards = []; timeline.clearApprovalEvidence() }
     public func showSetup() { disconnect(); screen = .setup; failure = nil }
     public func showComputers() { disconnect(); screen = .computers }
     public func refreshSessionState() async {
@@ -264,13 +284,25 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
         }
     }
     public func decide(_ approval: RemoteHarnessPendingApproval, allow: Bool) async {
-        guard let binding = approval.extensionBinding else { failure = .protocolMismatch; return }
+        guard let binding = approval.extensionBinding, approvalAction(for: approval) != nil else { return }
         await work {
+            // Recheck after work's task boundary. A stale card, turn closure or
+            // conflicting durable call must fail before journal/port callbacks.
+            guard self.approvalAction(for: approval) != nil else { return }
             _ = try await self.gateway.call(.boundApproval(clientID: approval.clientID, binding: binding, allow: allow), commandID: UUID().uuidString)
             try self.checkOperation()
         }
     }
+    public func approvalAction(for approval: RemoteHarnessPendingApproval) -> RemoteHarnessClientApprovalAction? {
+        guard snapshotReady, screen == .session, gateway.binding == approval.binding,
+              gateway.approvals.contains(approval) else { return nil }
+        return timeline.approvalAction(for: approval)
+    }
+    private func refreshApprovalCards() {
+        approvalCards = approvals.map { RemoteHarnessClientApprovalCard($0, action: approvalAction(for: $0)) }
+    }
     private func connect(workspaceID: String?, sessionID: String?) async throws {
+        timeline.clearApprovalEvidence(); approvalCards = []
         companionAvailable = false
         guard let origin = journal.origin, let deviceID = journal.deviceID, let host else { throw RemoteHarnessClientFailure.reauthorize }
         let credential = try await account.credential(origin: origin, deviceID: deviceID); self.credential = credential

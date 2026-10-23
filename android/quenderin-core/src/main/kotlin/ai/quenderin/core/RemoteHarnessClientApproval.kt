@@ -2,6 +2,11 @@ package ai.quenderin.core
 
 import java.security.MessageDigest
 
+/** Connection-local evidence from one authoritative durable tool/call, never a request preview. */
+class RemoteHarnessClientApprovalAction internal constructor(val toolName: String, val callID: String, val arguments: String) {
+    override fun toString() = "RemoteHarnessClientApprovalAction(redacted)"
+}
+
 class RemoteHarnessClientApproval internal constructor(
     val binding: RemoteHarnessJSON.ObjectValue, val clientID: String, val request: RemoteHarnessJSON,
     internal val deadline: Long,
@@ -9,6 +14,77 @@ class RemoteHarnessClientApproval internal constructor(
     val eventID: String get() = binding.values.rhString("eventId")
     val expiresAt: Long get() = binding.values.rhRequired("expiresAt").integerValue(true)
     override fun toString() = "RemoteHarnessClientApproval(redacted)"
+}
+
+/** Owner-thread, connection-local join. The trusted runtime's immutable execution call ID/name
+ * associates request metadata with exactly one durable call; transient chunks are never evidence.
+ * Conflicting/duplicate calls cannot recover in this turn. No evidence enters saved-state codecs. */
+internal class RemoteHarnessClientApprovalActions {
+    private data class Key(val session: String, val run: String, val call: String)
+    private class Evidence(val sequence: Long, val action: RemoteHarnessClientApprovalAction, val bytes: Int) {
+        override fun toString() = "RemoteHarnessClientCallEvidence(redacted)"
+    }
+    private var session: String? = null
+    private var run: String? = null
+    private var latestTurn = 0L
+    private var blocked = false
+    private var bytes = 0
+    private val calls = linkedMapOf<Key, Evidence?>()
+    fun reset(sessionID: String?) { session = sessionID; run = null; latestTurn = 0; blocked = false; bytes = 0; calls.clear() }
+    private fun invalidate() { blocked = true; bytes = 0; calls.clear() }
+    fun historyReplaced() = invalidate()
+    fun activeTurn(turn: Long) {
+        val next = "turn:$turn"
+        if (run != next) {
+            run = next
+            if (turn <= latestTurn) { invalidate(); return }
+            latestTurn = turn; blocked = false
+            calls.entries.removeAll { (key, value) -> if (key.run != next) { bytes -= value?.bytes ?: 0; true } else false }
+        }
+    }
+    fun observe(sessionID: String?, sequence: Long, type: String, data: Map<String, RemoteHarnessJSON>, advanceRun: Boolean) {
+        if (sessionID == null || sessionID != session) { invalidate(); return }
+        if (type == "turn/start" && advanceRun) {
+            val turn = data.rhRequired("turn").integerValue(true)
+            activeTurn(turn)
+            return
+        }
+        if (type == "turn/end" && advanceRun) { run = null; calls.clear(); bytes = 0; blocked = false; return }
+        if (type != "tool/call" || blocked) return
+        try {
+            val call = data.rhString("callId").also(::rhID)
+            val callRun = "turn:${data.rhRequired("turn").integerValue(true)}"
+            val key = Key(sessionID, callRun, call)
+            if (run != null && callRun != run) return
+            val name = data.rhString("name").also(::rhID)
+            val arguments = data.rhString("arguments")
+            val size = arguments.toByteArray(Charsets.UTF_8).size + name.toByteArray(Charsets.UTF_8).size + call.toByteArray(Charsets.UTF_8).size
+            rhCheck(arguments.toByteArray(Charsets.UTF_8).size <= 65_536, "approval-action")
+            // Validate once on the owner, retaining the exact argument string for review.
+            RemoteHarnessJSON.parse(arguments)
+            for (scope in listOf("sessionId", "agentId")) data[scope]?.let { rhCheck(it.stringValue() == sessionID, "approval-action") }
+            if (calls.containsKey(key)) {
+                val previous = calls[key]
+                if (previous != null && previous.sequence == sequence && previous.action.toolName == name && previous.action.arguments == arguments) return
+                bytes -= previous?.bytes ?: 0; calls[key] = null; return
+            }
+            rhCheck(calls.size < 128 && bytes + size <= 262_144, "approval-action")
+            calls[key] = Evidence(sequence, RemoteHarnessClientApprovalAction(name, call, arguments), size); bytes += size
+        } catch (_: RemoteHarnessException) { invalidate() }
+    }
+    fun resolve(approval: RemoteHarnessClientApproval, sessionID: String?): RemoteHarnessClientApprovalAction? {
+        if (blocked || sessionID == null || sessionID != session || run == null) return null
+        return try {
+            val binding = approval.binding.values; val request = approval.request.objectValue()
+            if (binding.rhString("sessionId") != sessionID || binding.rhString("runId") != run) return null
+            val call = request.rhString("callId").also(::rhID); val name = request.rhString("toolName").also(::rhID)
+            calls[Key(sessionID, run!!, call)]?.action?.takeIf { it.toolName == name }
+        } catch (_: RemoteHarnessException) { null }
+    }
+    fun resolved(approvals: List<RemoteHarnessClientApproval>, sessionID: String?): Map<String, RemoteHarnessClientApprovalAction> =
+        java.util.Collections.unmodifiableMap(linkedMapOf<String, RemoteHarnessClientApprovalAction>().apply {
+            approvals.forEach { approval -> resolve(approval, sessionID)?.let { put(approval.eventID, it) } }
+        })
 }
 
 /** Exact extension gate, fed only from correlated authenticated streams. Legacy $events/result

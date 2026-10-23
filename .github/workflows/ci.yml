@@ -442,9 +442,10 @@ jobs:
           python3 -B scripts/check_remote_harness_carrier.py --results "$RUNNER_TEMP/quenderin-kotlin-harness.log"
       - name: Verify complete native remote client journey (synthetic account, Host and crypto)
         run: |
+          python3 -B scripts/check_remote_harness_official_facts.py
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
             android/quenderin-core/src/verify/RemoteHarnessClientVerify.kt -include-runtime -d "$RUNNER_TEMP/remote-client-journey.jar"
-          java -jar "$RUNNER_TEMP/remote-client-journey.jar" shared/remote-harness-approval-digest-fixtures.json
+          java -jar "$RUNNER_TEMP/remote-client-journey.jar" shared/remote-harness-approval-digest-fixtures.json shared/remote-harness-official-runtime-facts.json
       - name: Verify native Harness fragments (synthetic byte fixtures only)
         run: |
           set -o pipefail

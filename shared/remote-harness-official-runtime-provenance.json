@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "factsFile": "remote-harness-official-runtime-facts.json",
+  "factsSHA256": "4ad0d40adc6cd89f03522673d0639820d757220bb00e16636cb1ace56ad21a8b",
+  "factsBytes": 30900,
+  "capturedFrames": 47,
+  "repository": "alikatgh/quenderin",
+  "sourceRevision": "8f3081ccea8d8159f55504df5c07059aa34de560",
+  "sourceRevisionRole": "Pull-request head; the merge checkout below has the same source tree.",
+  "checkoutRevision": "039f5ce8cee825e58632e32c81e01c5d9bb856ae",
+  "workflowRun": "https://github.com/alikatgh/quenderin/actions/runs/39986442942",
+  "workflowJob": "https://github.com/alikatgh/quenderin/actions/runs/39986442942/job/120526738753",
+  "capturedAtUTC": "2026-10-23T16:24:50Z",
+  "harnessVersion": "0.2.1-rc.1",
+  "harnessSourceInspection": "1600d8a1e140dcde43a1a0941940a0480712c011",
+  "remoteSourceRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "packageLockSHA256": "b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1",
+  "evidence": "Real official Gateway, strict descriptors, controllers, Agent loop, approval service and JSONL persistence with two scripted model calls and one inert tool execution. In-process authenticated owner Peer; no relay, Noise, provider inference or mobile execution.",
+  "normalization": "The passing fixture replaced selected identities, home/root path fields and named timestamp fields before emitting these exact bytes. Embedded synthetic runtime-context paths, some generated message IDs and compact-stream time0 fields remain as captured. These contain fixture-owned ephemeral data. The 47 frames were frozen before teardown; the later console count of 51 includes teardown activity.",
+  "replay": "Native tests may rewrap RPC/stream IDs and explicitly rebind synthetic device identities and reference clock. Such transformations are test setup, not additional observed runtime facts.",
+  "sourceAttestation": "Registry integrity and source inspection are recorded; npm artifacts have no verified exact source-commit build attestation."
+}

@@ -38,6 +38,47 @@ import XCTest
     func save(_ journal: RemoteHarnessClientJournal) throws { if failWrites { throw RemoteHarnessClientFailure.storage }; try journal.validate(); value = journal }
 }
 @MainActor private func journeyJSON(_ value: Any) throws -> RemoteHarnessJSON { try .init(data: JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])) }
+
+/// Recorded by the pinned official Gateway/controllers/AgentLoop, with only the
+/// model boundary scripted and one inert synthetic tool. Load the shared source
+/// fixture as the existing digest tests do; no duplicated/corrected wire data.
+@MainActor private final class JourneyOfficialRuntime {
+    let frames: [[String: Any]]
+    let unary: [String: [String: Any]]
+    let hostTimestamp: Int64 = 2_000_000_000_000 - 60_000
+    var nextFrame = 0
+    var emittedFrames: [Int] = []
+    init() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("shared/remote-harness-official-runtime-facts.json"))
+        let document = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(document["schema"] as? Int, 1)
+        XCTAssertEqual(document["runtime"] as? String, "official-0.2.1-rc.1")
+        XCTAssertEqual(document["source"] as? String, "1600d8a1e140dcde43a1a0941940a0480712c011")
+        XCTAssertEqual(document["scriptedModelCalls"] as? Int, 2)
+        XCTAssertEqual(document["inertToolExecutions"] as? Int, 1)
+        frames = try XCTUnwrap(document["frames"] as? [[String: Any]])
+        let calls = try XCTUnwrap(document["unary"] as? [[String: Any]])
+        unary = try Dictionary(uniqueKeysWithValues: calls.map {
+            (try XCTUnwrap($0["endpoint"] as? String), try XCTUnwrap($0["result"] as? [String: Any]))
+        })
+        XCTAssertEqual(frames.count, 47)
+    }
+    func result(_ endpoint: String) throws -> [String: Any] { try XCTUnwrap(unary[endpoint], endpoint) }
+    func value(_ index: Int, hostID: String, clientID: String) throws -> [String: Any] {
+        var value = try XCTUnwrap(frames[index]["value"] as? [String: Any])
+        // Captured synthetic labels are not valid enrollment UUIDs. Rebind only
+        // the two transport identities, outside the digested approval request.
+        if var binding = value["quenderinBinding"] as? [String: Any] {
+            XCTAssertEqual(binding["hostDeviceId"] as? String, "fixture-host")
+            XCTAssertEqual(binding["clientDeviceId"] as? String, "fixture-native")
+            binding["hostDeviceId"] = hostID; binding["clientDeviceId"] = clientID
+            value["quenderinBinding"] = binding
+        }
+        return value
+    }
+}
 @MainActor private final class JourneyServer: RemoteHarnessClientHTTP {
     let hostID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     let hostKey = RemoteHarnessClientEncoding.base64(Data(repeating: 9, count: 32))
@@ -50,9 +91,10 @@ import XCTest
     var loseRefresh = false, running = false, created = false
     var credentials: JourneyCredentials?
     var sockets: [JourneySocket] = []
+    var official: JourneyOfficialRuntime?
     var now: Int64 = 1_000_000
     var lastPromptTimeZone: String?
-    func pair(_ suffix: String = "a") -> [String: Any] { ["accessToken": "synthetic-access-token-" + suffix, "refreshToken": "synthetic-refresh-token-" + suffix, "accessTokenExpiresAt": now + 3_600_000, "refreshTokenExpiresAt": 2_593_000_000] }
+    func pair(_ suffix: String = "a") -> [String: Any] { ["accessToken": "synthetic-access-token-" + suffix, "refreshToken": "synthetic-refresh-token-" + suffix, "accessTokenExpiresAt": now + 3_600_000, "refreshTokenExpiresAt": now + 2_592_000_000] }
     func host(descriptor: Bool) -> [String: Any] {
         var value: [String: Any] = ["deviceId": hostID, "name": "Synthetic computer", "role": "host", "platform": "linux", "membershipId": "synthetic-membership", "online": true, "clientVersion": "0.3.20", "lastSeenAt": now]
         if descriptor { value["identityKey"] = hostKey }; return value
@@ -85,6 +127,8 @@ import XCTest
     var closed = false
     var relaySelected = false
     var receivedCount = 0
+    var officialFrameLimit = 7
+    var emittedOfficialFrames: [Int] { server.official?.emittedFrames ?? [] }
     init(server: JourneyServer) { self.server = server }
     func start(origin: String) throws { XCTAssertTrue(origin.hasPrefix("https://")) }
     func receive() async throws -> Data { var iterator = pair.stream.makeAsyncIterator(); guard let bytes = try await iterator.next() else { throw RemoteHarnessClientFailure.connection }; receivedCount += 1; return bytes }
@@ -99,6 +143,19 @@ import XCTest
     func frame(_ endpoint: String, _ value: [String: Any]) throws {
         guard let stream = streams[endpoint] else { return }
         try business("event", ["event": "harness.remote.frame", "data": ["streamId": stream, "hasValue": true, "value": value]])
+    }
+    func drainOfficialFrames() throws {
+        guard let official = server.official else { return }
+        let endpoints = ["workspace-feed": "workspace/follow", "session-history": "session/follow", "session-control": "session/control", "remote-events": "$events"]
+        while official.nextFrame < officialFrameLimit {
+            let captured = official.frames[official.nextFrame]
+            let endpoint = try XCTUnwrap(endpoints[try XCTUnwrap(captured["streamId"] as? String)])
+            guard streams[endpoint] != nil else { return }
+            XCTAssertEqual(captured["event"] as? String, "harness.remote.frame")
+            XCTAssertEqual(captured["hasValue"] as? Bool, true)
+            try frame(endpoint, official.value(official.nextFrame, hostID: server.hostID, clientID: server.deviceID))
+            official.emittedFrames.append(official.nextFrame); official.nextFrame += 1
+        }
     }
     func enqueue(_ bytes: Data, failed: @escaping @MainActor () -> Void) throws {
         let f = try RemoteHarnessJSON(data: bytes).fields(), type = try f.text("type"), p = try f.required("payload").fields()
@@ -122,6 +179,24 @@ import XCTest
             }
             if method == "harness.remote.stream.open" {
                 let endpoint = try params.text("endpoint"), stream = try params.text("streamId"); streams[endpoint] = stream
+                if let official = server.official {
+                    if endpoint == "workspace/follow", official.nextFrame >= 4 {
+                        // Native selection opens a fresh scoped connection.
+                        // The capture's initial empty baseline predates workspace
+                        // creation, so supply a fixture-only current baseline from
+                        // its exact final upsert. Captured frames replay once.
+                        let workspace = try XCTUnwrap(official.frames[3]["value"] as? [String: Any])["workspace"]
+                        try frame(endpoint, ["type": "baseline", "value": ["items": [try XCTUnwrap(workspace)], "archivedSessionIds": []]])
+                    }
+                    if endpoint == "session/follow" {
+                        let request = try params.required("payload").fields().required("args").fields().required("request").fields()
+                        XCTAssertEqual(try request.required("address").fields().text("sessionId"), "fixture-session")
+                        XCTAssertEqual(try request.required("maxMessages").integerValue(), 60)
+                        XCTAssertTrue(try request.required("assistantStream").booleanValue())
+                    }
+                    try drainOfficialFrames()
+                    try business("rpc.response", ["requestId": rpcID, "result": ["streamId": stream, "opened": true]]); return
+                }
                 if endpoint == "workspace/follow" { try frame(endpoint, ["type": "baseline", "value": ["items": [server.workspace], "archivedSessionIds": []]]) }
                 if endpoint == "session/follow" {
                     let sessionID = try params.required("payload").fields().required("args").fields().required("request").fields().required("address").fields().text("sessionId")
@@ -138,6 +213,29 @@ import XCTest
                 try business("rpc.response", ["requestId": rpcID, "result": ["streamId": stream, "opened": true]]); return
             }
             let endpoint = try params.text("endpoint")
+            if let official = server.official, ["session/list", "session/prompt", "quenderin/approval"].contains(endpoint) {
+                // Repeat the exact captured discovery list for the controller's
+                // extra reconciliation reads. Model catalog/enrollment remain
+                // fixture-only setup, separate from official runtime evidence.
+                let args = try params.required("payload").fields().required("args").fields()
+                if endpoint == "session/prompt" {
+                    let request = try args.required("request").fields()
+                    XCTAssertEqual(try request.text("sessionId"), "fixture-session")
+                    XCTAssertEqual(try request.required("content").elements().first?.fields().text("text"), "Run the synthetic fixture tool once.")
+                    server.prompts += 1; officialFrameLimit = 23
+                } else if endpoint == "quenderin/approval" {
+                    XCTAssertEqual(try args.text("clientId"), "fixture-event-client")
+                    let binding = try args.required("binding").fields()
+                    XCTAssertEqual(try binding.text("hostDeviceId"), server.hostID)
+                    XCTAssertEqual(try binding.text("clientDeviceId"), server.deviceID)
+                    XCTAssertEqual(try binding.text("eventId"), "fixture-event")
+                    XCTAssertEqual(try binding.text("actionDigest"), "b632e1a5465329596c354592f48935e41ea8bea2035485211190ddaf0607f813")
+                    XCTAssertEqual(try args.required("outcome").fields().text("value"), "allowed-once")
+                    server.approvals += 1; officialFrameLimit = official.frames.count
+                }
+                try drainOfficialFrames()
+                try business("rpc.response", ["requestId": rpcID, "result": official.result(endpoint)]); return
+            }
             var value: Any = NSNull()
             switch endpoint {
             case "session/list": value = ["items": server.created ? [server.sessionRow, ["sessionId": "session-created", "updatedAt": server.now, "running": false, "blank": true, "title": "New synthetic session"]] : [server.sessionRow]]
@@ -151,7 +249,8 @@ import XCTest
                 try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "start", "revision": 1, "attemptId": "attempt-real", "startedAfterSeq": 2, "turn": 1, "step": 0]])
                 try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "chunk", "revision": 2, "attemptId": "attempt-real", "index": 0, "time": server.now, "chunk": ["type": "reasoning-delta", "text": "Synthetic reasoning"]]])
                 try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "chunk", "revision": 3, "attemptId": "attempt-real", "index": 1, "time": server.now, "chunk": ["type": "text-delta", "text": "Synthetic streamed answer"]]])
-                let request = ["toolName": "read_file", "reason": "Synthetic tool"]
+                try frame("session/follow", ["type": "event", "event": ["type": "tool/call", "seq": 3, "time": server.now, "data": ["turn": 1, "callId": "synthetic-call", "name": "read_file", "arguments": "{}"]]])
+                let request = ["toolName": "read_file", "callId": "synthetic-call", "reason": "Synthetic tool"]
                 let digest = try RemoteHarnessApprovalDigest.digest(journeyJSON(request))
                 try frame("$events", ["type": "waterfall", "event": "approval/request", "eventId": "approval-real", "agentId": "session-real", "request": request, "quenderinBinding": ["hostDeviceId": server.hostID, "clientDeviceId": server.deviceID, "workspaceId": "workspace-real", "sessionId": "session-real", "runId": "turn:1", "eventId": "approval-real", "actionDigest": digest, "expiresAt": server.now + 60_000]])
             case "quenderin/approval": server.approvals += 1; value = ["recorded": true]
@@ -165,6 +264,169 @@ import XCTest
 }
 
 @MainActor final class RemoteHarnessClientJourneyTests: XCTestCase {
+    private func actionApproval(sessionID: String = "session-real", runID: String = "turn:1", callID: String = "call-real", toolName: String = "read_file") throws -> RemoteHarnessPendingApproval {
+        let binding = try RemoteHarnessBinding(generation: 1, hostID: "host", workspaceID: "workspace-real", sessionID: sessionID, clientDeviceID: "client")
+        let extended = try RemoteHarnessApprovalBinding(journeyJSON(["hostDeviceId": "host", "clientDeviceId": "client", "workspaceId": "workspace-real", "sessionId": sessionID,
+            "runId": runID, "eventId": "approval-real", "actionDigest": String(repeating: "a", count: 64), "expiresAt": 1_060_000]))
+        return .init(clientID: "event-client", eventID: "approval-real", binding: binding,
+            request: try journeyJSON(["toolName": toolName, "callId": callID]), extensionBinding: extended, hostTimestamp: 1_000_000)
+    }
+    private func actionCall(_ arguments: String = "{}", callID: String = "call-real", name: String = "read_file", turn: Int = 1) -> [String: Any] {
+        ["turn": turn, "callId": callID, "name": name, "arguments": arguments]
+    }
+    private func actionTimeline(_ calls: [[String: Any]]) throws -> RemoteHarnessClientTimeline {
+        var timeline = RemoteHarnessClientTimeline()
+        var records: [[String: Any]] = [["type": "event", "event": ["type": "turn/start", "seq": 0, "time": 1, "data": ["turn": 1]]]]
+        for (index, call) in calls.enumerated() { records.append(["type": "event", "event": ["type": "tool/call", "seq": index + 1, "time": 1, "data": call]]) }
+        try timeline.receive(journeyJSON(["type": "snapshot", "header": ["id": "session-real"], "cursor": records.count - 1, "hasMore": false, "records": records]), expectedSessionID: "session-real")
+        return timeline
+    }
+    func testApprovalActionRequiresExactlyOneDurableCallInTheActiveScope() throws {
+        let arguments = "{ \"path\": \"/synthetic/" + String(repeating: "long file ", count: 600) + "\", \"nested\": [1, 2] }\n"
+        let approval = try actionApproval()
+        var timeline = try actionTimeline([actionCall(arguments)])
+        XCTAssertEqual(timeline.approvalAction(for: approval)?.arguments, arguments, "presentation preserves every argument byte without truncation/reformatting")
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval(callID: "missing")))
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval(toolName: "write_file")))
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval(runID: "turn:2")))
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval(sessionID: "another-session")))
+        XCTAssertNil(try actionTimeline([]).approvalAction(for: approval))
+        for calls in [
+            [actionCall("{}"), actionCall("{}")],
+            [actionCall("{}"), actionCall("{\"changed\":true}")],
+            [actionCall("{}"), actionCall("{}", name: "write_file")],
+            [actionCall("not-json")], [actionCall("{}", turn: 2)],
+            [["turn": 1, "callId": "call-real", "name": "read_file"]],
+            [["turn": 1, "callId": "call-real", "name": "read_file", "arguments": 4]],
+            [["turn": 1, "callId": "call-real", "name": "read_file", "arguments": "{}", "sessionId": "another-session"]]
+        ] {
+            XCTAssertNil(try actionTimeline(calls).approvalAction(for: approval))
+        }
+        try timeline.receive(journeyJSON(["type": "event", "event": ["type": "turn/end", "seq": 2, "time": 1, "data": ["turn": 1]]]), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: approval)); XCTAssertFalse(timeline.hasActiveTurn)
+        timeline = try actionTimeline([actionCall(arguments)])
+        let saved = timeline.records; try timeline.restore(saved)
+        XCTAssertNil(timeline.approvalAction(for: approval), "saved history is not fresh approval evidence")
+        timeline = try actionTimeline([actionCall(arguments)]); timeline.clearApprovalEvidence()
+        XCTAssertNil(timeline.approvalAction(for: approval))
+    }
+    func testApprovalEvidenceBoundsWithholdActionWithoutDiscardingHistoryOrActiveTurn() throws {
+        let approval = try actionApproval()
+        let oversized = "{\"text\":\"" + String(repeating: "x", count: RemoteHarnessClientTimeline.maximumApprovalArgumentBytes) + "\"}"
+        let malformedThenValid = try actionTimeline([actionCall(oversized), actionCall("{}")])
+        XCTAssertNil(malformedThenValid.approvalAction(for: approval)); XCTAssertTrue(malformedThenValid.hasActiveTurn)
+        XCTAssertEqual(malformedThenValid.records.count, 3)
+        let tooMany = (0...RemoteHarnessClientTimeline.maximumApprovalCalls).map { actionCall("{}", callID: "call-\($0)") }
+        let countLimited = try actionTimeline(tooMany)
+        XCTAssertNil(countLimited.approvalAction(for: try actionApproval(callID: "call-0"))); XCTAssertTrue(countLimited.hasActiveTurn)
+        XCTAssertEqual(countLimited.records.count, tooMany.count + 1)
+        let large = "{\"text\":\"" + String(repeating: "x", count: 65_000) + "\"}"
+        let byteLimited = try actionTimeline((0..<5).map { actionCall(large, callID: "call-\($0)") })
+        XCTAssertNil(byteLimited.approvalAction(for: try actionApproval(callID: "call-0"))); XCTAssertTrue(byteLimited.hasActiveTurn)
+        XCTAssertEqual(byteLimited.records.count, 6)
+    }
+    func testRepeatedAndLowerTurnsCannotResetDuplicateOrOverflowEvidence() throws {
+        let overflow = (0...RemoteHarnessClientTimeline.maximumApprovalCalls).map { actionCall("{}", callID: "call-\($0)") }
+        for calls in [[actionCall(), actionCall()], overflow] {
+            var timeline = try actionTimeline(calls)
+            var seq = calls.count + 1
+            func event(_ type: String, _ data: [String: Any]) throws -> RemoteHarnessJSON {
+                defer { seq += 1 }
+                return try journeyJSON(["type": "event", "event": ["type": type, "seq": seq, "time": 1, "data": data]])
+            }
+            XCTAssertNil(timeline.approvalAction(for: try actionApproval()))
+            try timeline.receive(event("turn/start", ["turn": 1]), expectedSessionID: "session-real")
+            try timeline.receive(event("tool/call", actionCall()), expectedSessionID: "session-real")
+            XCTAssertNil(timeline.approvalAction(for: try actionApproval()), "repeating the same run cannot erase previous evidence")
+            try timeline.receive(event("turn/start", ["turn": 0]), expectedSessionID: "session-real")
+            try timeline.receive(event("tool/call", actionCall(turn: 0)), expectedSessionID: "session-real")
+            XCTAssertNil(timeline.approvalAction(for: try actionApproval(runID: "turn:0")), "a lower run identifier cannot reset the scope")
+            try timeline.receive(event("turn/start", ["turn": 1]), expectedSessionID: "session-real")
+            try timeline.receive(event("tool/call", actionCall()), expectedSessionID: "session-real")
+            XCTAssertNil(timeline.approvalAction(for: try actionApproval()))
+            XCTAssertTrue(timeline.hasActiveTurn); XCTAssertEqual(timeline.records.count, calls.count + 7)
+            try timeline.receive(event("turn/start", ["turn": 2]), expectedSessionID: "session-real")
+            try timeline.receive(event("tool/call", actionCall(turn: 2)), expectedSessionID: "session-real")
+            XCTAssertNotNil(timeline.approvalAction(for: try actionApproval(runID: "turn:2")), "a strictly newer run starts a fresh bounded scope")
+            try timeline.receive(event("turn/end", ["turn": 2]), expectedSessionID: "session-real")
+            try timeline.receive(event("turn/start", ["turn": 2]), expectedSessionID: "session-real")
+            try timeline.receive(event("tool/call", actionCall(turn: 2)), expectedSessionID: "session-real")
+            XCTAssertNil(timeline.approvalAction(for: try actionApproval(runID: "turn:2")), "closing a turn cannot permit reuse of its identifier")
+        }
+    }
+    func testApprovalAggregateBoundChargesCallIdentityAndToolNameBytes() throws {
+        let name = String(repeating: "n", count: 1024)
+        let arguments = "{\"v\":\"" + String(repeating: "x", count: 2040) + "\"}"
+        func callID(_ index: Int) -> String { let suffix = String(index); return String(repeating: "i", count: 1024 - suffix.utf8.count) + suffix }
+        var timeline = try actionTimeline((0..<63).map { actionCall(arguments, callID: callID($0), name: name) })
+        let approval = try actionApproval(callID: callID(0), toolName: name)
+        XCTAssertNotNil(timeline.approvalAction(for: approval))
+        try timeline.receive(journeyJSON(["type": "event", "event": ["type": "tool/call", "seq": 64, "time": 1,
+            "data": actionCall(arguments, callID: callID(63), name: name)]]), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: approval), "identities plus arguments exceed 256 KiB well below 128 calls")
+        XCTAssertTrue(timeline.hasActiveTurn); XCTAssertEqual(timeline.records.count, 65)
+    }
+    func testSameRunSnapshotCannotErasePoisonedEvidence() throws {
+        var timeline = try actionTimeline([actionCall(), actionCall()])
+        let records: [[String: Any]] = [
+            ["type": "event", "event": ["type": "turn/start", "seq": 3, "time": 1, "data": ["turn": 1]]],
+            ["type": "event", "event": ["type": "tool/call", "seq": 4, "time": 1, "data": actionCall()]]
+        ]
+        try timeline.receive(journeyJSON(["type": "snapshot", "header": ["id": "session-real"], "cursor": 4, "hasMore": true, "records": records]), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval())); XCTAssertTrue(timeline.hasActiveTurn)
+        let earlier: [String: Any] = ["type": "event", "event": ["type": "user/message", "seq": 2, "time": 1, "data": ["text": "Earlier"]]]
+        try timeline.prependPage(journeyJSON(["records": [earlier], "hasMore": false]))
+        XCTAssertNil(timeline.approvalAction(for: try actionApproval()), "paging must retain the same-run poison latch")
+    }
+    func testSameRunSnapshotPreservesImmutableCallIdentitySequenceAndExactArguments() throws {
+        func snapshot(_ arguments: String?, sequence: Int = 1, name: String = "read_file", callID: String = "call-real") throws -> RemoteHarnessJSON {
+            var records: [[String: Any]] = [["type": "event", "event": ["type": "turn/start", "seq": 0, "time": 1, "data": ["turn": 1]]]]
+            if let arguments { records.append(["type": "event", "event": ["type": "tool/call", "seq": sequence, "time": 1, "data": actionCall(arguments, callID: callID, name: name)]]) }
+            return try journeyJSON(["type": "snapshot", "header": ["id": "session-real"], "cursor": max(1, sequence), "hasMore": false, "records": records])
+        }
+        let approval = try actionApproval()
+        var timeline = try actionTimeline([actionCall()])
+        let original = try XCTUnwrap(timeline.approvalAction(for: approval))
+        XCTAssertEqual(original.sequence, 1)
+        try timeline.receive(snapshot("{}"), expectedSessionID: "session-real")
+        XCTAssertEqual(timeline.approvalAction(for: approval), original, "identical call fields at the same durable sequence are idempotent")
+        for (arguments, sequence, name, callID) in [
+            ("{\"changed\":true}", 1, "read_file", "call-real"),
+            ("{}", 2, "read_file", "call-real"),
+            ("{}", 1, "write_file", "call-real"),
+            ("{}", 1, "read_file", "another-call")
+        ] {
+            var changed = try actionTimeline([actionCall()])
+            try changed.receive(snapshot(arguments, sequence: sequence, name: name, callID: callID), expectedSessionID: "session-real")
+            XCTAssertNil(changed.approvalAction(for: try actionApproval(callID: callID, toolName: name)))
+            XCTAssertTrue(changed.hasActiveTurn); XCTAssertEqual(changed.records.count, 2)
+        }
+        try timeline.receive(snapshot(nil), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: approval))
+        try timeline.receive(snapshot("{\"changed\":true}"), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: approval), "removal cannot erase immutable-call continuity")
+        try timeline.receive(snapshot("{}"), expectedSessionID: "session-real")
+        XCTAssertNil(timeline.approvalAction(for: approval), "returning the original payload cannot erase the poison latch")
+        let composed = "{\"text\":\"\u{e9}\"}", decomposed = "{\"text\":\"e\u{301}\"}"
+        XCTAssertEqual(composed, decomposed); XCTAssertFalse(composed.utf8.elementsEqual(decomposed.utf8))
+        var unicode = try actionTimeline([actionCall(composed)])
+        try unicode.receive(snapshot(decomposed), expectedSessionID: "session-real")
+        XCTAssertNil(unicode.approvalAction(for: approval), "argument comparison uses exact UTF-8 rather than Unicode-normalized String equality")
+    }
+    func testHistoricalPagePreservesSnapshotActiveRunAndFindsDuplicateCalls() throws {
+        var timeline = RemoteHarnessClientTimeline()
+        let call: [String: Any] = ["type": "event", "event": ["type": "tool/call", "seq": 10, "time": 1, "data": actionCall()]]
+        try timeline.receive(journeyJSON(["type": "snapshot", "header": ["id": "session-real"], "cursor": 10, "hasMore": true, "records": [call],
+            "assistantStream": ["revision": 1, "activeAttempt": ["attemptId": "active", "nextIndex": 0, "startedAfterSeq": 10, "turn": 1, "step": 1, "stream": []]]]), expectedSessionID: "session-real")
+        let approval = try actionApproval()
+        XCTAssertNotNil(timeline.approvalAction(for: approval))
+        let earlier: [String: Any] = ["type": "event", "event": ["type": "user/message", "seq": 9, "time": 1, "data": ["text": "Earlier"]]]
+        try timeline.prependPage(journeyJSON(["records": [earlier], "hasMore": true]))
+        XCTAssertNotNil(timeline.approvalAction(for: approval)); XCTAssertTrue(timeline.hasActiveTurn)
+        let duplicate: [String: Any] = ["type": "event", "event": ["type": "tool/call", "seq": 8, "time": 1, "data": actionCall()]]
+        try timeline.prependPage(journeyJSON(["records": [duplicate], "hasMore": false]))
+        XCTAssertNil(timeline.approvalAction(for: approval)); XCTAssertTrue(timeline.hasActiveTurn)
+    }
     #if !canImport(CryptoKit)
     func testApprovalDigestFailsClosedWithoutNativeSHA256() throws {
         XCTAssertThrowsError(try RemoteHarnessApprovalDigest.digest(journeyJSON(["toolName": "read_file"]))) {
@@ -222,6 +484,49 @@ import XCTest
         XCTAssertThrowsError(try timeline.receive(gap, expectedSessionID: "real-session"))
         XCTAssertEqual(timeline.cursor, 4)
     }
+    func testOfficialRuntimeEmptySnapshotAndOrderedHistoryMatchNativeTimeline() throws {
+        let official = try JourneyOfficialRuntime()
+        let snapshot = try journeyJSON(official.value(4, hostID: "unused", clientID: "unused"))
+        let fields = try snapshot.fields()
+        XCTAssertEqual(try fields.required("header").fields().required("version").integerValue(), 4)
+        XCTAssertEqual(try fields.required("projections").fields().required("asOfSeq").data, Data("-1".utf8))
+        XCTAssertNotNil(try fields.required("projections").fields().required("values").fields()["workingDirectory"])
+        var timeline = RemoteHarnessClientTimeline()
+        XCTAssertThrowsError(try timeline.receive(snapshot, expectedSessionID: "another-session"))
+        try timeline.receive(snapshot, expectedSessionID: "fixture-session")
+        XCTAssertEqual(timeline.cursor, -1); XCTAssertTrue(timeline.rows.isEmpty)
+        for index in 7..<official.frames.count where official.frames[index]["streamId"] as? String == "session-history" {
+            try timeline.receive(journeyJSON(official.value(index, hostID: "unused", clientID: "unused")), expectedSessionID: "fixture-session")
+        }
+        XCTAssertEqual(timeline.records.count, 19)
+        XCTAssertEqual(try RemoteHarnessJSON(data: XCTUnwrap(timeline.records.first)).fields().required("event").fields().required("seq").integerValue(), 0)
+        XCTAssertEqual(try RemoteHarnessJSON(data: XCTUnwrap(timeline.records.last)).fields().required("event").fields().required("seq").integerValue(), 18)
+        XCTAssertTrue(timeline.rows.contains { $0.kind == "user" && $0.text == "Run the synthetic fixture tool once." })
+        XCTAssertTrue(timeline.rows.contains { $0.kind == "tool" && $0.text == "synthetic result" })
+        XCTAssertEqual(timeline.rows.filter { $0.kind == "assistant" && $0.text == "Synthetic tool completed." }.count, 1,
+                       "durable assistant/message precedes attempt end and must replace transient text")
+    }
+    func testEmptySnapshotSentinelDoesNotRelaxOtherCursorOrEventValidation() throws {
+        func snapshot(_ cursor: Any, records: [[String: Any]] = []) throws -> RemoteHarnessJSON {
+            try journeyJSON(["type": "snapshot", "header": ["id": "fixture-session"], "cursor": cursor, "hasMore": false, "records": records])
+        }
+        let event: [String: Any] = ["type": "event", "event": ["type": "user/message", "seq": 0, "time": 1, "data": ["text": "First"]]]
+        for invalid: Any in [-2, -1.5, "-1"] {
+            var timeline = RemoteHarnessClientTimeline()
+            XCTAssertThrowsError(try timeline.receive(snapshot(invalid), expectedSessionID: "fixture-session"))
+        }
+        var timeline = RemoteHarnessClientTimeline()
+        XCTAssertThrowsError(try timeline.receive(snapshot(-1, records: [event]), expectedSessionID: "fixture-session"))
+        let decimalCursor = String(decoding: try snapshot(-1).data, as: UTF8.self).replacingOccurrences(of: "\"cursor\":-1", with: "\"cursor\":-1.0")
+        XCTAssertThrowsError(try timeline.receive(.init(data: Data(decimalCursor.utf8)), expectedSessionID: "fixture-session"))
+        try timeline.receive(snapshot(-1), expectedSessionID: "fixture-session")
+        let skipped = try journeyJSON(["type": "event", "event": ["type": "user/message", "seq": 1, "time": 1, "data": ["text": "Gap"]]])
+        XCTAssertThrowsError(try timeline.receive(skipped, expectedSessionID: "fixture-session"))
+        try timeline.receive(journeyJSON(event), expectedSessionID: "fixture-session")
+        XCTAssertEqual(timeline.earliestSequence, 0)
+        let negative = try journeyJSON(["type": "event", "event": ["type": "user/message", "seq": -1, "time": 1, "data": ["text": "Invalid"]]])
+        XCTAssertThrowsError(try timeline.receive(negative, expectedSessionID: "fixture-session"))
+    }
     func testMidResponseSnapshotRestoresTextReasoningAndToolsBeforeTail() throws {
         var timeline = RemoteHarnessClientTimeline()
         try timeline.receive(journeyJSON(["type": "snapshot", "header": ["id": "real-session"], "cursor": 4, "hasMore": false, "records": [], "assistantStream": ["revision": 7, "activeAttempt": ["attemptId": "active", "nextIndex": 4, "startedAfterSeq": 4, "turn": 2, "step": 0, "stream": [["type": "text-chunks", "texts": ["Prior ", "text"]], ["type": "reasoning-chunks", "texts": ["Prior reasoning"]], ["type": "tool-call-chunks", "id": "tool", "name": "read_file", "args": ["{\"path\":\"file\"}"]]]]]]), expectedSessionID: "real-session")
@@ -267,6 +572,69 @@ import XCTest
         for _ in 0..<200 { if predicate() { return }; await Task.yield() }
         XCTAssertTrue(predicate(), file: file, line: line)
     }
+    func testOfficialRuntimeFactsReplayThroughNativeControllerToReady() async throws {
+        let official = try JourneyOfficialRuntime()
+        let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock()
+        server.credentials = vault; server.official = official
+        // Rebind only the enclosing transport clock, retaining the captured
+        // approval expiry and event timestamps. This gives the action 60s TTL.
+        server.now = official.hostTimestamp; clock.nowEpochMilliseconds = official.hostTimestamp
+        let native = RemoteHarnessClientController(backend: crypto, http: server, credentials: vault, storage: storage, clock: clock,
+            makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        defer { native.disconnect() }
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost()
+        await settle { native.workspaces.first?.sessionIDs == ["fixture-session"] }
+        XCTAssertNil(native.failure)
+        let workspace = try XCTUnwrap(native.workspaces.first)
+        XCTAssertEqual(workspace.workspaceID, "fixture-workspace"); XCTAssertEqual(workspace.path, "<fixture-root>/workspace")
+        await native.selectWorkspace(workspace)
+        XCTAssertEqual(native.sessions.map(\.sessionID), ["fixture-session"])
+        XCTAssertEqual(native.sessions.first?.title, "Untitled session"); XCTAssertEqual(native.sessions.first?.running, false)
+        await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        XCTAssertNil(native.failure); XCTAssertEqual(native.timeline.cursor, -1); XCTAssertTrue(native.timeline.records.isEmpty)
+        let socket = try XCTUnwrap(server.sockets.last)
+        await settle { socket.emittedOfficialFrames == Array(0..<7) }
+        native.updateDraft("Run the synthetic fixture tool once."); XCTAssertTrue(native.canSend)
+        await native.send(); await settle { native.approvals.count == 1 }
+        XCTAssertNil(native.failure); XCTAssertEqual(server.prompts, 1); XCTAssertEqual(native.journal.draft, "")
+        XCTAssertEqual(native.journal.commands.filter { $0.endpoint == "session/prompt" }.map(\.outcome), ["responseReceived"])
+        XCTAssertEqual(native.selectedModelID, "fixture:scripted", "actual sequenced control projection reaches the controller")
+        XCTAssertEqual(socket.emittedOfficialFrames, Array(0..<23))
+        let approval = try XCTUnwrap(native.approvals.first)
+        XCTAssertEqual(approval.eventID, "fixture-event"); XCTAssertEqual(approval.clientID, "fixture-event-client")
+        let binding = try XCTUnwrap(approval.extensionBinding)
+        XCTAssertEqual(binding.expiresAt - approval.hostTimestamp, 60_000)
+        XCTAssertNil(native.approvalAction(for: approval)); XCTAssertNil(native.approvalCards.first?.action)
+        XCTAssertTrue(native.canStop, "Stop stays available while approval metadata has no call arguments")
+        let journalBefore = native.journal.commands
+        await native.decide(approval, allow: true); await native.decide(approval, allow: false)
+        XCTAssertEqual(server.approvals, 0); XCTAssertEqual(native.journal.commands.count, journalBefore.count)
+        XCTAssertNil(native.failure); XCTAssertTrue(native.canStop); XCTAssertEqual(native.screen, .session)
+        XCTAssertEqual(socket.emittedOfficialFrames, Array(0..<23), "neither forced decision dispatches")
+        socket.officialFrameLimit = 27; try socket.drainOfficialFrames()
+        await settle { native.timeline.rows.contains { $0.kind == "tool" } }
+        XCTAssertNil(native.approvalAction(for: approval), "a transient argument chunk is not durable execution evidence")
+        socket.officialFrameLimit = 33; try socket.drainOfficialFrames()
+        await settle { native.approvalCards.first?.action != nil }
+        XCTAssertEqual(native.approvals.first, approval, "the same pending approval resolves when history arrives")
+        XCTAssertEqual(native.approvalCards.first?.action?.arguments, "{\"text\":\"synthetic action\"}")
+        XCTAssertEqual(native.approvalCards.first?.action?.callID, "fixture-call-1")
+        XCTAssertEqual(native.approvalCards.first?.action?.toolName, "fixture_echo")
+        XCTAssertTrue(server.sockets.last === socket, "evidence arrival and approval keep the same live connection")
+        await native.decide(approval, allow: true)
+        await settle { native.timeline.records.count == 19 && !native.running }
+        XCTAssertNil(native.failure); XCTAssertEqual(server.approvals, 1)
+        XCTAssertEqual(native.journal.commands.filter { $0.endpoint == "quenderin/approval" }.map(\.outcome), ["responseReceived"])
+        XCTAssertEqual(socket.emittedOfficialFrames, Array(0..<official.frames.count), "all captured business frames retain global order")
+        XCTAssertTrue(native.timeline.rows.contains { $0.kind == "user" && $0.text == "Run the synthetic fixture tool once." })
+        XCTAssertTrue(native.timeline.rows.contains { $0.kind == "tool" && $0.text == "synthetic result" })
+        XCTAssertEqual(native.timeline.rows.filter { $0.kind == "assistant" && $0.text == "Synthetic tool completed." }.count, 1)
+        XCTAssertTrue(native.approvals.isEmpty); XCTAssertTrue(native.snapshotReady); XCTAssertEqual(native.screen, .session)
+        XCTAssertFalse(native.running); XCTAssertFalse(native.canStop); XCTAssertEqual(native.stopState, .notRequested, "normal completion is READY, never a Stop confirmation")
+        native.updateDraft("Next synthetic task"); XCTAssertTrue(native.canSend)
+        XCTAssertEqual(storage.value?.history, native.timeline.records, "actual durable history is checkpointed")
+    }
     func testNativeControllerSetupTrustStreamApprovalStopAndExactRecovery() async throws {
         let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock(); server.credentials = vault
         let gmt = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
@@ -290,12 +658,13 @@ import XCTest
         XCTAssertEqual(server.lastPromptTimeZone, "UTC")
         XCTAssertTrue(native.timeline.rows.contains { $0.text == "Synthetic streamed answer" }); XCTAssertTrue(native.timeline.rows.contains { $0.kind == "reasoning" })
         let approval = try XCTUnwrap(native.approvals.first); XCTAssertNotNil(approval.extensionBinding)
+        XCTAssertEqual(native.approvalCards.first?.action?.arguments, "{}", "history-first arrival resolves when approval metadata follows")
         let socket = try XCTUnwrap(server.sockets.last)
         // A replacement outside this session still invalidates the old action.
         try socket.frame("$events", ["type": "waterfall", "event": "approval/request", "eventId": approval.eventID, "agentId": "another-session", "request": ["toolName": "changed_action"]])
         await settle { native.approvals.isEmpty }
         await native.decide(approval, allow: true); XCTAssertEqual(server.approvals, 0)
-        let request = ["toolName": "read_file", "reason": "Synthetic tool"]
+        let request = ["toolName": "read_file", "callId": "synthetic-call", "reason": "Synthetic tool"]
         func approvalFrame(_ id: String, digest: String) throws -> [String: Any] {
             ["type": "waterfall", "event": "approval/request", "eventId": id, "agentId": "session-real", "request": request,
              "quenderinBinding": ["hostDeviceId": server.hostID, "clientDeviceId": server.deviceID, "workspaceId": "workspace-real", "sessionId": "session-real", "runId": "turn:1", "eventId": id, "actionDigest": digest, "expiresAt": server.now + 60_000]]
@@ -325,6 +694,68 @@ import XCTest
         await recovered.selectWorkspace(try XCTUnwrap(recovered.workspaces.first)); await recovered.createSession(); await settle { recovered.snapshotReady }
         XCTAssertEqual(recovered.journal.sessionID, "session-created"); XCTAssertEqual(server.prompts, 1)
         XCTAssertTrue(recovered.journal.savedSessions.contains { $0.sessionID == "session-real" && $0.draft == "Retained unfinished draft" }); recovered.disconnect()
+    }
+    func testConflictingCallAndTurnClosureInvalidateStaleApprovalBeforeJournalOrDispatch() async throws {
+        let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock(); server.credentials = vault
+        let native = RemoteHarnessClientController(backend: crypto, http: server, credentials: vault, storage: storage, clock: clock, makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        defer { native.disconnect() }
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost()
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first)); await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.updateDraft("Synthetic remote task"); await native.send(); await settle { native.approvalCards.first?.action != nil }
+        let stale = try XCTUnwrap(native.approvals.first), socket = try XCTUnwrap(server.sockets.last)
+        let before = native.journal.commands.count
+        try socket.frame("session/follow", ["type": "event", "event": ["type": "tool/call", "seq": 4, "time": server.now,
+            "data": ["turn": 1, "callId": "synthetic-call", "name": "read_file", "arguments": "{\"changed\":true}"]]])
+        await settle { native.approvalCards.first?.action == nil }
+        XCTAssertTrue(native.snapshotReady); XCTAssertEqual(native.screen, .session); XCTAssertTrue(native.canStop)
+        await native.decide(stale, allow: true); await native.decide(stale, allow: false)
+        XCTAssertEqual(server.approvals, 0); XCTAssertEqual(native.journal.commands.count, before)
+        try socket.frame("session/follow", ["type": "event", "event": ["type": "turn/start", "seq": 5, "time": server.now, "data": ["turn": 1]]])
+        try socket.frame("session/follow", ["type": "event", "event": ["type": "tool/call", "seq": 6, "time": server.now,
+            "data": ["turn": 1, "callId": "synthetic-call", "name": "read_file", "arguments": "{}"]]])
+        let request = ["toolName": "read_file", "callId": "synthetic-call", "reason": "Synthetic tool"]
+        try socket.frame("$events", ["type": "waterfall", "event": "approval/request", "eventId": "fresh-after-repeat", "agentId": "session-real", "request": request,
+            "quenderinBinding": ["hostDeviceId": server.hostID, "clientDeviceId": server.deviceID, "workspaceId": "workspace-real", "sessionId": "session-real", "runId": "turn:1", "eventId": "fresh-after-repeat",
+                                  "actionDigest": try RemoteHarnessApprovalDigest.digest(journeyJSON(request)), "expiresAt": server.now + 60_000]])
+        await settle { native.approvals.first?.eventID == "fresh-after-repeat" }
+        let fresh = try XCTUnwrap(native.approvals.first)
+        XCTAssertNotNil(fresh.extensionBinding); XCTAssertNil(native.approvalCards.first?.action)
+        await native.decide(fresh, allow: true); await native.decide(fresh, allow: false)
+        XCTAssertEqual(server.approvals, 0); XCTAssertEqual(native.journal.commands.count, before); XCTAssertTrue(native.canStop)
+        try socket.frame("session/follow", ["type": "event", "event": ["type": "turn/end", "seq": 7, "time": server.now, "data": ["turn": 1]]])
+        await settle { native.approvals.isEmpty }
+        await native.decide(stale, allow: true)
+        XCTAssertEqual(server.approvals, 0); XCTAssertEqual(native.journal.commands.count, before)
+        XCTAssertFalse(native.running); XCTAssertNil(native.approvalAction(for: stale))
+        native.disconnect(); XCTAssertTrue(native.approvalCards.isEmpty); XCTAssertFalse(native.timeline.hasActiveTurn)
+    }
+    func testChangedSameRunSnapshotCannotAuthorizeFreshBoundApproval() async throws {
+        let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock(); server.credentials = vault
+        let native = RemoteHarnessClientController(backend: crypto, http: server, credentials: vault, storage: storage, clock: clock, makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        defer { native.disconnect() }
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost()
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first)); await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
+        native.updateDraft("Synthetic remote task"); await native.send(); await settle { native.approvalCards.first?.action != nil }
+        XCTAssertEqual(native.approvalCards.first?.action?.sequence, 3)
+        let socket = try XCTUnwrap(server.sockets.last), before = native.journal.commands.count
+        var records = try native.timeline.records.map { try XCTUnwrap(JSONSerialization.jsonObject(with: $0) as? [String: Any]) }
+        var call = try XCTUnwrap(records.last?["event"] as? [String: Any]), data = try XCTUnwrap(call["data"] as? [String: Any])
+        data["arguments"] = "{\"changed\":true}"; call["data"] = data; records[records.count - 1]["event"] = call
+        try socket.frame("session/follow", ["type": "snapshot", "header": ["id": "session-real"], "cursor": 3, "hasMore": false, "records": records])
+        let request = ["toolName": "read_file", "callId": "synthetic-call", "reason": "Synthetic tool"]
+        try socket.frame("$events", ["type": "waterfall", "event": "approval/request", "eventId": "fresh-after-snapshot", "agentId": "session-real", "request": request,
+            "quenderinBinding": ["hostDeviceId": server.hostID, "clientDeviceId": server.deviceID, "workspaceId": "workspace-real", "sessionId": "session-real", "runId": "turn:1", "eventId": "fresh-after-snapshot",
+                                  "actionDigest": try RemoteHarnessApprovalDigest.digest(journeyJSON(request)), "expiresAt": server.now + 60_000]])
+        await settle { native.approvals.first?.eventID == "fresh-after-snapshot" }
+        let fresh = try XCTUnwrap(native.approvals.first)
+        XCTAssertNotNil(fresh.extensionBinding); XCTAssertNil(native.approvalCards.first?.action)
+        await native.decide(fresh, allow: true); await native.decide(fresh, allow: false)
+        XCTAssertEqual(server.approvals, 0); XCTAssertEqual(native.journal.commands.count, before)
+        XCTAssertNil(native.failure); XCTAssertTrue(native.snapshotReady); XCTAssertEqual(native.screen, .session); XCTAssertTrue(native.canStop)
+        XCTAssertTrue(server.sockets.last === socket)
+        XCTAssertEqual(try RemoteHarnessJSON(data: XCTUnwrap(native.timeline.records.last)).fields().required("event").fields().required("data").fields().required("arguments").stringValue(), "{\"changed\":true}")
     }
     func testFailedMutationJournalBlocksDispatchAndKeepsDraft() async throws {
         let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock(); server.credentials = vault

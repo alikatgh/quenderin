@@ -241,21 +241,35 @@ public struct RemoteHarnessView: View {
     }
     private var approvalControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(controller.approvals, id: \.eventID) { approval in
-                let fields = try? approval.request.fields()
-                Text((try? fields?.text("toolName")) ?? "Computer tool approval").font(.headline)
-                if let reason = try? fields?.text("reason") { Text(reason).font(.callout) }
-                Text("Complete action request").font(.caption.weight(.semibold))
-                ScrollView([.horizontal, .vertical]) {
-                    Text(String(decoding: approval.request.data, as: UTF8.self))
-                        .font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                }.frame(maxHeight: 180).accessibilityIdentifier("remote-approval-complete-action")
+            ForEach(controller.approvalCards) { card in
+                let approval = card.approval
+                Text(card.action?.toolName ?? card.toolName).font(.headline)
+                if let callID = card.action?.callID ?? card.callID {
+                    Text("Call ID: \(callID)").font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                }
+                if let reason = card.reason { Text(reason).font(.callout) }
+                if let action = card.action {
+                    Text("Exact tool arguments").font(.caption.weight(.semibold))
+                    ScrollView([.horizontal, .vertical]) {
+                        Text(action.arguments).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            .fixedSize(horizontal: true, vertical: true).privacySensitive()
+                    }.frame(maxHeight: 180).accessibilityIdentifier("remote-approval-exact-arguments")
+                } else {
+                    Text("Full action details aren’t available yet. Review the action on your computer, or use Stop.")
+                        .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("remote-approval-action-unavailable")
+                }
+                DisclosureGroup("Approval request metadata") {
+                    ScrollView([.horizontal, .vertical]) {
+                        Text(card.metadata).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            .fixedSize(horizontal: true, vertical: true).privacySensitive()
+                    }.frame(maxHeight: 140)
+                }.accessibilityIdentifier("remote-approval-metadata")
                 if let binding = approval.extensionBinding {
                     Text("Run \(binding.runID) · Host expiry \(Date(timeIntervalSince1970: Double(binding.expiresAt) / 1000).formatted())").font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Button("Deny") { Task { await controller.decide(approval, allow: false) } }
                         Button("Allow once") { Task { await controller.decide(approval, allow: true) } }
-                    }.disabled(controller.busy)
+                    }.disabled(controller.busy || card.action == nil)
                 } else { Text("This Host does not provide the required bound approval extension. Review and answer on the computer.").font(.caption).foregroundStyle(.secondary) }
             }
         }.padding().accessibilityIdentifier("remote-approval")
