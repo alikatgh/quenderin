@@ -88,6 +88,15 @@ payloads. A private test-only adapter exercises those exact vectors through the
 same state path; a separate public API contract test establishes empty production
 handshakes and rejection of authenticated nonempty payloads before response.
 
+The initial metadata-only [run 39902648510](https://github.com/alikatgh/quenderin/actions/runs/39902648510)
+stopped at that gate as intended. Its complete 29,856-byte lock was independently
+reviewed: 128 reachable packages, 117 checksummed crates.io packages, the pinned
+Snow revision and nine matching UniFFI 0.32.2 Git packages, with no additional
+sources. `Cargo.lock` SHA-256 is
+`71e2581d368849cfc64242216cdc3cb5196ce9d5ba0e92c5430f2981641c6147`.
+That provenance review permits the bounded locked host checks; it is not a
+cryptographic test or native compatibility result.
+
 After locked checks pass, generated Swift/Kotlin/header/module-map source is
 emitted as bounded gzip/base64 log blocks with filename, byte count and SHA-256.
 Review, decode and retain those sources before integrating native consumers.
