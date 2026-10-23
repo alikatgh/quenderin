@@ -79,13 +79,28 @@ Host extension binds device/workspace/run/action/expiry.
 
 This source does not connect to a Host. Enrollment, relay/WebSocket framing,
 durable journal integration, native session UI and real Host verification remain
-pending. The isolated Rust Noise facade has exact Snow/UniFFI source pins but no
-app activation. Its new bounded public Ubuntu workflow deliberately stops after
-metadata-only lockfile generation when the reviewed complete lock is absent;
-compilation requires a committed lock and `cargo --locked`. No credentials,
-provider/relay services, caches or artifact uploads are used by that workflow.
-Locked golden-vector tests, generated binding inspection, native linking/ABI
-checks and export-compliance review remain gates before encrypted remote release.
+pending. [PR #171](https://github.com/alikatgh/quenderin/pull/171) merged as
+`94ee6e0766081d3fbf75b4cdb5423e6d8e84b0f5`. Its exact source
+`e7baa288e898c823e0b83cab465682b25b67b27c` passed all 18 CI jobs and the
+separate secret scan. The isolated Rust Noise facade uses exact Snow/UniFFI pins
+and an independently reviewed complete lock. Its bounded public Ubuntu
+[host run](https://github.com/alikatgh/quenderin/actions/runs/39904655943) passes
+nine Rust tests, clippy and actual generated Kotlin/JNA and Swift runtime probes
+against the same library, including empty authenticated handshakes, transport,
+tamper/replay continuation, errors and shutdown. The exported `shutdown` method
+avoids collision with generated Kotlin wrapper disposal. No credentials,
+provider/relay services, caches or artifact uploads are used. Platform native
+linking/ABI checks, secure identity storage and export-compliance review remain
+gates before encrypted remote release.
+
+The next source increment implements DSHF plaintext fragmentation in both native
+cores using 48 original shared fixtures. It bounds messages to 4 MiB, incomplete
+assemblies to eight/8 MiB aggregate, lifetime to 120 seconds and used identifiers
+to 4,096 per authenticated generation. Invalid active-generation input retires
+the layer; stale-generation callbacks cannot retire a replacement. Kotlin runs
+all 48 cases; exact-marker validation, 13 Python tests, Swift parsing and fresh
+independent review pass. Hosted Swift compilation/XCTest remains pending. No
+network, enrollment, identity generation or app activation is added by this layer.
 
 ## 20 October 2026 — Android Alpha recovery and bundle export
 

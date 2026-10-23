@@ -10,7 +10,9 @@ Created: 23 October 2026. Baseline: `fb9389d82fc8e8b3486897af3f4585c17d928fcc`.
 DeepSeek source: `4abdd1f1794d1fe9e732d2737acc410a2fb7c9a6`,
 [PR #170](https://github.com/alikatgh/quenderin/pull/170).
 Merged to `main` as `3c096da43fcb6414655946f41476647bf8da3b78`.
-Next increment: `codex/native-remote-harness-20261023`.
+Remote foundation: [PR #171](https://github.com/alikatgh/quenderin/pull/171), merged
+as `94ee6e0766081d3fbf75b4cdb5423e6d8e84b0f5`.
+Next increment: `codex/native-harness-link-20261023`.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -127,8 +129,8 @@ Candidate compatibility baseline, refreshed from upstream source on 23 October:
 | Remote source | `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Source inspected; no native interoperability yet |
 | Host plugin | `ds-harness-remote` 0.5.17 at that revision | Not installed or connected by Quenderin |
 | Harness development API | `0.2.1-rc.1` in plugin dev dependencies | Candidate only; not a tested support range |
-| Wire envelope | Protocol version 1 | Native codec/builders and fake coordinators implemented; hosted verification pending |
-| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Snow 0.10 / UniFFI 0.32.2 source pinned; locked host and native interoperability pending |
+| Wire envelope | Protocol version 1 | Native carrier fixtures pass hosted Swift/Kotlin checks; no live Host connection |
+| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Locked Snow/UniFFI host tests and actual generated Swift/Kotlin runtime probes pass; platform linking pending |
 
 The [plugin manifest](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/package.json)
 and [plugin MIT notice](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/LICENSE)
@@ -142,7 +144,7 @@ multi-account service. Pinning an inspection target does not establish support.
 - [ ] Pin supported Harness/Remote revisions and maintain a compatibility matrix.
 - [ ] Verify applicable MIT and dependency notices before reusing code.
 - [ ] Implement native server enrollment, discovery and connection lifecycle.
-- [ ] Isolate current `harness.remote.*` / Session V3 carrier details behind the
+- [x] Isolate current `harness.remote.*` / Session V3 carrier details behind the
   Quenderin adapter; reject retired RPCs such as `sync.from`.
 - [ ] Implement workspace/session lists, creation, selection, history and streams.
 - [ ] Add native composer, timeline, model/effort selection and interactive questions.
@@ -159,21 +161,35 @@ uncertain mutation outcomes without automatic replay. Approval decision dispatch
 remains blocked until a Host extension supplies the required exact-action/run/
 expiry binding. A stop receipt alone cannot confirm that execution stopped.
 These are fake decrypted-port coordinators, not an enrolled or encrypted network
-connection. Authentication, WebSocket/fragment transport, durable journal and
+connection. Authentication, WebSocket transport, durable journal and
 native UI integration remain work to do.
 
 Source checks: Kotlin compiles with all existing core files and passes all 39
 fixture executions plus 23 behavioral groups. Swift source parsing and seven
-Python evidence-guard tests pass. Fresh independent review findings are resolved;
-hosted Swift compilation/test execution remains required before this source
-increment can be merged.
+Python evidence-guard tests pass. Fresh independent review findings are resolved.
+The exact foundation source `e7baa288e898c823e0b83cab465682b25b67b27c`
+passed [all 18 CI jobs](https://github.com/alikatgh/quenderin/actions/runs/39904655968),
+including hosted Swift compilation/XCTest, and the separate secret scan.
 
 The isolated [remote crypto preparation](../native/remote-crypto/README.md) has
-no app/network activation. Its first permitted hosted run generates dependency
-metadata only and deliberately fails before compilation if `Cargo.lock` is
-missing. Review/commit the complete lock before locked tests or generated Swift/
-Kotlin bindings. Golden-vector source, native linking and a real Host journey
-must pass before calling this a supported remote destination.
+no app/network activation. Its reviewed lock and
+[locked host run](https://github.com/alikatgh/quenderin/actions/runs/39904655943)
+pass nine Rust tests, clippy and runtime probes using the actual generated
+Kotlin/JNA and Swift bindings against the same library. Upstream synthetic golden
+bytes are checked without vendoring their contents. Platform linking, secure
+identity storage and a real Host journey remain required.
+
+The next source increment adds the separate DSHF plaintext fragment layer before
+per-fragment Noise encryption. It uses the pinned 17-byte header, 49,152-byte
+chunks and 4 MiB message ceiling. Native receivers cap concurrent assemblies at
+eight and declared allocation at 8 MiB, expire incomplete messages after 120
+seconds and reject identifier reuse. Authenticated connection generations scope
+all state, including delayed retirement. Forty-eight original shared cases cover
+literal nonuniform byte positions, boundaries, interleaving, replay, malformed
+frames, expiry, exhaustion and replacement generations. Kotlin executes all 48;
+the exact-marker guard, 13 Python tests and Swift parsing pass. Fresh independent
+review is complete; hosted Swift compilation/XCTest remains pending. This layer
+is not yet wired to a Noise session or network socket.
 
 ## 4. Device trust, approvals and recovery
 

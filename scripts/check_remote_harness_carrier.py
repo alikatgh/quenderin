@@ -42,8 +42,8 @@ def fixture_ids(document: dict) -> list[str]:
     return ids
 
 
-def validate_report(log: str, expected_ids: list[str]) -> int:
-    counts = Counter(MARKER.findall(log))
+def validate_report(log: str, expected_ids: list[str], *, marker=MARKER) -> int:
+    counts = Counter(marker.findall(log))
     if set(counts) != set(expected_ids) or any(n != 1 for n in counts.values()):
         raise ContractError("Incomplete, duplicate or unknown carrier test evidence.")
     return len(counts)

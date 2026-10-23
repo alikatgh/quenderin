@@ -3,8 +3,11 @@
 This isolated Rust facade implements the fixed DSH Remote v1 suite
 `Noise_IK_25519_ChaChaPoly_SHA256` using maintained Snow primitives. It has no
 network, persistence, relay, enrollment, provider, or native app activation.
-It is not release-ready until its complete lockfile is reviewed and the locked
-host checks pass. Native linking and platform validation are separate work.
+Its complete lockfile is reviewed and the locked host checks pass at source
+`e7baa288e898c823e0b83cab465682b25b67b27c` in
+[run 39904655943](https://github.com/alikatgh/quenderin/actions/runs/39904655943).
+Nine Rust tests, clippy and both actual generated-binding runtime probes pass.
+Native app linking and platform validation remain separate release gates.
 
 The synchronous UniFFI surface is deliberately narrow:
 
