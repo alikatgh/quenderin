@@ -43,6 +43,28 @@ companion. A live relay/Host target has not been supplied. The separate
 official-runtime verification and parser repairs are recorded in
 [PR #179](https://github.com/alikatgh/quenderin/pull/179); Stop/cold recovery is
 recorded in [PR #180](https://github.com/alikatgh/quenderin/pull/180).
+
+The complete core implementation, including exact tool-argument approval gating,
+is merged through [PR #181](https://github.com/alikatgh/quenderin/pull/181) as
+`9c23752b1dbd7f826f4c222c36f8bc0a5cd162cb`. Its tree exactly matches verified
+source `85e38aa8dacc2cc128f3823466393100ff181461`. At that source:
+
+- [Full CI](https://github.com/alikatgh/quenderin/actions/runs/39998547164): all
+  18 jobs pass, including **694 Swift tests (six skipped, zero failures)** and
+  **130 Kotlin controller checks** retaining the 47 captured runtime frames.
+- [Native SDK linking](https://github.com/alikatgh/quenderin/actions/runs/39998547163):
+  both jobs pass, including actual unsigned iPhone/simulator-SDK/Mac and Android
+  app builds plus exact packaged library and 16 KiB alignment verification.
+- [Crypto interoperability](https://github.com/alikatgh/quenderin/actions/runs/39998547179):
+  nine Rust tests, generated-binding probes, linked carriers and both production
+  native backends pass against the real Rust library.
+- [Official Harness integration](https://github.com/alikatgh/quenderin/actions/runs/39998547148):
+  both approval/tool and Stop/cold-history/sequential-dedup journeys pass with
+  scripted model replies and inert tools. The separate secret scan also passes.
+
+No live provider request, native simulator/device interaction, signed-app
+validation, funded infrastructure activation or store submission is claimed.
+Later parity and live-enrollment gates remain unchecked below.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -530,7 +552,8 @@ cancellation. Store and real-provider activation gates remain separate.
 - [ ] Existing local onboarding/chat/agent regression checks.
 - [ ] Fresh-install remote-only journeys and old-conversation migration.
 - [ ] Signed native journeys with inspected screenshots/interaction outcomes.
-- [ ] Independent security/correctness review of the final integrated revision.
+- [x] Independent security/correctness review of the integrated native/Host source,
+  with material findings fixed and follow-up reviews clear.
 - [ ] Tie source, tests, runtime endpoints, effective controls and artifacts together.
 
 Current October constraint: no local model-weight downloads and no simulator or
@@ -549,6 +572,8 @@ Refresh account-specific facts before release; use `docs/RELEASE.md`.
 - [ ] Refresh Apple's submitted 0.5.0 (22) status, build counters and messages.
 - [ ] Update the existing Xcode Cloud workflow's source/branch selection; preserve
   Prism provenance, payload, signing and deployment-metadata gates.
+- [ ] Require the actual Remote crypto SDK and source receipts in signed Apple/
+  Android release recipes; verify availability and packaged libraries.
 - [ ] Verify included Cloud capacity and effective spending controls before runs.
 - [ ] Recover the matching Android private upload key or perform an explicitly
   authorized official reset; do not repeat disproven password/store searches.

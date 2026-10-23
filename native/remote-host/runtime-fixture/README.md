@@ -14,8 +14,9 @@ attestation; an exact artifact-to-source-commit attestation is not established.
 The first official Gateway/Agent/tool/approval journey **passed** at source
 `8f3081` in the [hosted Host job](https://github.com/alikatgh/quenderin/actions/runs/39986442942/job/120526738753).
 Its 47 frames before teardown and source provenance were captured separately;
-this increment does not replace those frozen facts. The new stop/cold-history/
-sequential-dedup test below is **source prepared; hosted execution pending**.
+this increment does not replace those frozen facts. Both the original journey
+and stop/cold-history/sequential-dedup test **pass** at final source `85e38aa`
+in the [final hosted run](https://github.com/alikatgh/quenderin/actions/runs/39998547148).
 The existing public Ubuntu [Host workflow](../../../.github/workflows/remote-host.yml)
 runs lock/guard, bootstrap and disconnected runtime steps after patched Host
 compilation and synthetic Gateway tests. Build or synthetic bridge success
@@ -48,7 +49,7 @@ chunks complete the real turn. The test asserts the `{accepted:true}` admission
 receipt, live user-message event identity, approval audit pair and completed
 turn. That first passing test does not flush and cold-read its message.
 
-## Stop and persisted-history gate — hosted execution pending
+## Stop and persisted-history gate — hosted passed
 
 One additional test mounts the same real service stack in its own temporary
 storage. A single model call emits two partial-text chunks, then waits on its
@@ -72,7 +73,7 @@ The warm recovery adapter permits one model call/two chunks; the cold adapter
 permits zero calls. Recovery allows zero tool attempts. This is a clean Context
 restart in one disconnected test process, not a process crash, rollback,
 concurrent exactly-once guarantee, relay reconnect or native-device journey.
-It remains unverified until the hosted test passes. The first test remains the
+The linked final hosted run passes this gate. The first test remains the
 sole canonical-facts writer with two model calls and one inert tool execution;
 the new test prints a bounded status/failure summary and never overwrites its
 captured facts.
@@ -195,8 +196,8 @@ paths and times. Its exclusively created file exists only inside runner-owned
 ephemeral scratch, which is removed before the runner exits. Do not add
 artifact or cache uploads for this fixture. Passing CI log facts may inform
 native parser fixtures after review; hand-authored examples are not runtime
-evidence. The prepared stop, reopened-stream, flush/cold-read and sequential
-persisted-duplicate checks remain hosted-pending. Process-crash recovery, lost
+evidence. Stop, reopened-stream, flush/cold-read and sequential persisted-duplicate
+checks pass in the linked final run. Process-crash recovery, lost
 acknowledgements, concurrent admission and live relay/native interoperability
 remain separate unverified behavior.
 
