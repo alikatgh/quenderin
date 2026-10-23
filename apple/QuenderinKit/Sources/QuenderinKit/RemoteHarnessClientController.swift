@@ -29,6 +29,7 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
     private let storage: any RemoteHarnessClientJournalStorage
     private let makeSocket: @MainActor () -> any RemoteHarnessClientSocket
     private let clock: any RemoteHarnessClock
+    private let clientTimeZone: () -> TimeZone
     private var operationID: UUID?
     private var workTask: Task<Void, Never>?
     private var snapshotDeadline: Task<Void, Never>?
@@ -49,9 +50,10 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
     }()
     public init(backend: (any RemoteHarnessCryptoBackend)? = nil, http: (any RemoteHarnessClientHTTP)? = nil,
                 credentials: (any RemoteHarnessClientCredentialStorage)? = nil, storage: (any RemoteHarnessClientJournalStorage)? = nil,
-                clock: (any RemoteHarnessClock)? = nil, makeSocket: @escaping @MainActor () -> any RemoteHarnessClientSocket = { RemoteHarnessClientWebSocket() }, randomSeed: (() throws -> Data)? = nil) {
+                clock: (any RemoteHarnessClock)? = nil, makeSocket: @escaping @MainActor () -> any RemoteHarnessClientSocket = { RemoteHarnessClientWebSocket() }, randomSeed: (() throws -> Data)? = nil,
+                clientTimeZone: @escaping () -> TimeZone = { .current }) {
         let backend = backend ?? RemoteHarnessCryptoBackends.native(), clock = clock ?? RemoteHarnessClientSystemClock()
-        self.backend = backend; self.clock = clock; self.makeSocket = makeSocket
+        self.backend = backend; self.clock = clock; self.makeSocket = makeSocket; self.clientTimeZone = clientTimeZone
         self.storage = storage ?? RemoteHarnessClientFileStorage()
         account = RemoteHarnessClientAccount(http: http ?? RemoteHarnessClientURLSessionHTTP(), storage: credentials ?? RemoteHarnessClientKeychainStorage(), backend: backend, clock: clock, randomSeed: randomSeed)
         do {
@@ -208,12 +210,21 @@ public enum RemoteHarnessClientScreen: String { case setup, computers, trust, wo
         let text = journal.draft, commandID = UUID().uuidString
         await work {
             try self.requireCompanion()
-            _ = try await self.gateway.call(.prompt(commandID: commandID, sessionID: sessionID, text: text, clientTimeZone: TimeZone.current.identifier), commandID: commandID)
+            let timeZone = Self.promptTimeZoneIdentifier(self.clientTimeZone().identifier)
+            _ = try await self.gateway.call(.prompt(commandID: commandID, sessionID: sessionID, text: text, clientTimeZone: timeZone), commandID: commandID)
             try self.checkOperation()
             var next = self.journal; if next.draft == text { next.draft = "" }; try self.commit(next)
             let listed = try await self.sessionList(); try self.checkOperation()
             if let session = listed.first(where: { $0.sessionID == sessionID }) { self.running = session.running }
         }
+    }
+    /// Foundation reports zero-offset system zones as GMT, whereas the remote
+    /// contract uses UTC. Unsupported fixed-offset/abbreviation identifiers are
+    /// omitted from this optional field rather than blocking a valid task.
+    static func promptTimeZoneIdentifier(_ value: String) -> String? {
+        if value == "GMT" || value == "UTC" { return "UTC" }
+        guard value.utf8.count <= 128, value.range(of: #"^[A-Za-z_]+/[A-Za-z0-9_+-]+(?:/[A-Za-z0-9_+-]+)?$"#, options: .regularExpression) != nil else { return nil }
+        return value
     }
     public func stop() async {
         guard screen == .session, let sessionID = journal.sessionID, !busy else { return }

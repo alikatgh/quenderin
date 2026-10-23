@@ -51,6 +51,7 @@ import XCTest
     var credentials: JourneyCredentials?
     var sockets: [JourneySocket] = []
     var now: Int64 = 1_000_000
+    var lastPromptTimeZone: String?
     func pair(_ suffix: String = "a") -> [String: Any] { ["accessToken": "synthetic-access-token-" + suffix, "refreshToken": "synthetic-refresh-token-" + suffix, "accessTokenExpiresAt": now + 3_600_000, "refreshTokenExpiresAt": 2_593_000_000] }
     func host(descriptor: Bool) -> [String: Any] {
         var value: [String: Any] = ["deviceId": hostID, "name": "Synthetic computer", "role": "host", "platform": "linux", "membershipId": "synthetic-membership", "online": true, "clientVersion": "0.3.20", "lastSeenAt": now]
@@ -144,6 +145,7 @@ import XCTest
             case "session/modelCatalog": value = ["default": ["provider": "synthetic", "model": "deepseek-harness", "reasoningEffort": "high"], "groups": [["id": "synthetic", "name": "Synthetic provider", "models": [["id": "deepseek-harness", "name": "Synthetic DeepSeek", "reasoning": ["efforts": [["id": "high", "name": "High"]]]]]]]]
             case "session/selectModel": server.modelSelections += 1; value = ["selected": ["provider": "synthetic", "model": "deepseek-harness", "reasoningEffort": "high"]]
             case "session/prompt":
+                server.lastPromptTimeZone = try params.required("payload").fields().required("args").fields().required("request").fields()["clientTimeZone"]?.stringValue()
                 server.prompts += 1; server.running = true
                 try frame("session/follow", ["type": "event", "event": ["type": "turn/start", "seq": 2, "time": server.now, "data": ["turn": 1]]])
                 try frame("session/follow", ["type": "assistant-stream", "frame": ["type": "start", "revision": 1, "attemptId": "attempt-real", "startedAfterSeq": 2, "turn": 1, "step": 0]])
@@ -250,13 +252,25 @@ import XCTest
         XCTAssertEqual(server.refreshRequests, 1)
     }
     #if canImport(Combine) && canImport(CryptoKit)
+    func testFoundationPromptTimeZoneNormalizationPreservesStrictCarrierValidation() throws {
+        let gmt = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        XCTAssertEqual(RemoteHarnessClientController.promptTimeZoneIdentifier(gmt.identifier), "UTC")
+        XCTAssertEqual(RemoteHarnessClientController.promptTimeZoneIdentifier("UTC"), "UTC")
+        XCTAssertEqual(RemoteHarnessClientController.promptTimeZoneIdentifier("Asia/Ulaanbaatar"), "Asia/Ulaanbaatar")
+        XCTAssertEqual(RemoteHarnessClientController.promptTimeZoneIdentifier("America/Argentina/Buenos_Aires"), "America/Argentina/Buenos_Aires")
+        XCTAssertNil(RemoteHarnessClientController.promptTimeZoneIdentifier("GMT+0800"))
+        XCTAssertNil(RemoteHarnessClientController.promptTimeZoneIdentifier("EST"))
+        XCTAssertThrowsError(try RemoteHarnessOperation.prompt(commandID: "fixture", sessionID: "fixture", text: "Synthetic", clientTimeZone: "GMT"))
+        XCTAssertNoThrow(try RemoteHarnessOperation.prompt(commandID: "fixture", sessionID: "fixture", text: "Synthetic", clientTimeZone: RemoteHarnessClientController.promptTimeZoneIdentifier(gmt.identifier)))
+    }
     private func settle(_ predicate: @escaping @MainActor () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
         for _ in 0..<200 { if predicate() { return }; await Task.yield() }
         XCTAssertTrue(predicate(), file: file, line: line)
     }
     func testNativeControllerSetupTrustStreamApprovalStopAndExactRecovery() async throws {
         let server = JourneyServer(), vault = JourneyCredentials(), storage = JourneyStorage(), crypto = JourneyCrypto(), clock = JourneyClock(); server.credentials = vault
-        func controller() -> RemoteHarnessClientController { RemoteHarnessClientController(backend: crypto, http: server, credentials: vault, storage: storage, clock: clock, makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) }) }
+        let gmt = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        func controller() -> RemoteHarnessClientController { RemoteHarnessClientController(backend: crypto, http: server, credentials: vault, storage: storage, clock: clock, makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) }, clientTimeZone: { gmt }) }
         let native = controller()
         await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
         XCTAssertEqual(native.screen, .computers); XCTAssertEqual(native.hosts.count, 1); XCTAssertNil(native.journal.profile)
@@ -268,9 +282,12 @@ import XCTest
         await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
         XCTAssertEqual(native.journal.sessionID, "session-real"); XCTAssertEqual(native.timeline.rows.first?.text, "Synthetic earlier task")
         await native.selectModel("synthetic:deepseek-harness", effort: "high")
+        XCTAssertNil(native.failure); XCTAssertFalse(native.running); XCTAssertFalse(native.busy); XCTAssertTrue(native.companionAvailable)
         server.now += 5_000 // Host wall-clock skew must not block a fresh approval.
-        native.updateDraft("Synthetic remote task"); await native.send(); await settle { !native.approvals.isEmpty }
+        native.updateDraft("Synthetic remote task"); XCTAssertTrue(native.canSend)
+        await native.send(); XCTAssertNil(native.failure); await settle { !native.approvals.isEmpty }
         XCTAssertEqual(server.prompts, 1); XCTAssertEqual(native.journal.draft, "")
+        XCTAssertEqual(server.lastPromptTimeZone, "UTC")
         XCTAssertTrue(native.timeline.rows.contains { $0.text == "Synthetic streamed answer" }); XCTAssertTrue(native.timeline.rows.contains { $0.kind == "reasoning" })
         let approval = try XCTUnwrap(native.approvals.first); XCTAssertNotNil(approval.extensionBinding)
         let socket = try XCTUnwrap(server.sockets.last)
@@ -316,6 +333,7 @@ import XCTest
         await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost(); await settle { !native.workspaces.isEmpty }
         await native.selectWorkspace(try XCTUnwrap(native.workspaces.first)); await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady }
         native.updateDraft("Do not lose this task"); storage.failWrites = true; await native.send()
+        XCTAssertEqual(native.failure, .storage, "the mutation must reach the durable journal gate")
         XCTAssertEqual(server.prompts, 0); XCTAssertEqual(native.journal.draft, "Do not lose this task"); native.disconnect()
     }
     func testMissingCompanionBlocksTaskMutationsAndPreservesRecoveryAndStop() async throws {

@@ -26,9 +26,22 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    sourceSets["main"].kotlin.srcDir(sdkDirectory.resolve("kotlin"))
+    // AGP 8 + the external Kotlin plugin collect Kotlin files from Java source
+    // roots; AndroidSourceSet.kotlin is the separate built-in Kotlin model.
+    sourceSets["main"].java.srcDir(sdkDirectory.resolve("kotlin"))
     sourceSets["main"].jniLibs.srcDir(sdkDirectory.resolve("jniLibs"))
     packaging.jniLibs.keepDebugSymbols += setOf("**/libquenderin_remote_crypto.so", "**/libjnidispatch.so")
+}
+
+// Check the actual compiler inputs, so lost source registration fails clearly
+// before unresolved UniFFI symbols rather than only checking the SDK's files.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    if (name == "compileDebugKotlin" || name == "compileReleaseKotlin") {
+        doFirst {
+            val generated = sdkDirectory.resolve("kotlin/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt").canonicalFile
+            require(sources.files.any { it.canonicalFile == generated }) { "Generated UniFFI binding is absent from Kotlin compiler inputs" }
+        }
+    }
 }
 
 // Pin the Android AAR, then verify the actual Gradle-resolved file before use.
