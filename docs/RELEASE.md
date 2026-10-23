@@ -102,6 +102,41 @@ all 48 cases; exact-marker validation, 13 Python tests, Swift parsing and fresh
 independent review pass. Hosted Swift compilation/XCTest remains pending. No
 network, enrollment, identity generation or app activation is added by this layer.
 
+## 23 October 2026 — Android unsigned export source gate
+
+The existing manual-only `android-beta-candidate.yml` now requires four explicit
+inputs: `source_commit` (lowercase full 40-character SHA), `draft_release_id`,
+`version_name` (numeric major.minor.patch), and positive `version_code`. Dispatch
+must use `main` in the public owner repository. Before candidate checkout or
+building, the reviewed exporter requires a commit reachable from the checkout-time
+`origin/main` snapshot,
+matching committed Android package/version/code, and an existing unpublished
+prerelease draft whose `target_commitish` is that exact SHA. The tag must be
+`android-beta-<version_name>-candidate-<first-seven-SHA-characters>`; the three
+asset names include version, code and the same source prefix. A new source needs
+its own matching precreated draft; the October 20 draft and its assets remain
+historical evidence and cannot be relabelled or replaced.
+
+Source/draft gates repeat before export. Google's unmodified Apache-2.0
+[bundletool 1.18.3](https://github.com/google/bundletool/releases/tag/1.18.3) checks
+the actual AAB manifest package/version/code before staging; the receipt records
+that metadata and the pinned tool digest. Its host-only HTTPS download has no
+retry, a 120-second limit and an exact 32,520,401-byte ceiling, with size/SHA-256
+verification before execution. The existing single 40-minute Ubuntu job,
+512 MiB AAB ceiling, three-file export and no-overwrite rules remain. Synthetic
+preflight/export tests cover rejected inputs, off-main source, old/mismatched
+drafts, changed source, packaged metadata mismatch and upload collisions. No
+workflow run, new draft, signing operation or Play upload is established by this
+source repair; upload-key recovery and native interaction gaps remain above.
+
+Independent source review and all 29 no-network fixtures pass. A separate host
+inspection used that exact hash-verified Google JAR against the retained October
+20 unsigned AAB (existing SHA-256 `5c40d38862aacd84d7c8aabdff983fb5ed7ca91b6357c4fbc2479c93837dc8da`).
+Its real manifest matches `ai.quenderin.app`, `0.5.0`, code `5`; intentionally
+expecting `0.5.1`/code `6` fails before staging/upload. The original AAB was read
+without modification. This validates the packaged-metadata check against a
+historical artifact, not a newly exported candidate or a Play submission.
+
 ## 20 October 2026 — Android Alpha recovery and bundle export
 
 The live Quenderin App signing page still registers upload SHA-256
