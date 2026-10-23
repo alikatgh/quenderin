@@ -21,11 +21,12 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
     let approvalClientID: String?
     let approvalEventID: String?
     let approvalAllows: Bool
+    let approvalBinding: RemoteHarnessApprovalBinding?
 
     public init(method: RemoteHarnessMethod, params: RemoteHarnessJSON) throws {
         let fields = try params.fields()
         var endpoint: String?, streamID: String?, sessionID: String?, workspaceID: String?, promptID: String?
-        var mutation = false, approvalClient: String?, approvalEvent: String?, approvalAllows = false
+        var mutation = false, approvalClient: String?, approvalEvent: String?, approvalAllows = false, extendedApproval: RemoteHarnessApprovalBinding?
         switch method {
         case .describe: try fields.requireKeys([])
         case .close:
@@ -36,7 +37,7 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
             let name = try fields.text("endpoint"); endpoint = name
             let payload = try fields.required("payload").fields(); try payload.requireKeys(["args"])
             let args = try payload.required("args").fields()
-            let callEndpoints: Set<String> = ["session/list", "session/create", "session/page", "session/prompt", "session/cancel", "$events/result", "session/modelCatalog", "session/selectModel"]
+            let callEndpoints: Set<String> = ["session/list", "session/create", "session/page", "session/prompt", "session/cancel", "$events/result", "session/modelCatalog", "session/selectModel", "quenderin/approval"]
             let streamEndpoints: Set<String> = ["workspace/follow", "session/follow", "session/control", "$events"]
             guard (method == .call ? callEndpoints : streamEndpoints).contains(name) else { throw RemoteHarnessError.endpointNotAllowed }
             switch name {
@@ -86,9 +87,13 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
                     if request["reasoningEffort"] != nil { _ = try request.text("reasoningEffort") }
                 }
                 mutation = true
-            case "$events/result":
-                try args.requireKeys(["clientId", "eventId", "outcome"])
-                approvalClient = try args.text("clientId"); approvalEvent = try args.text("eventId")
+            case "$events/result", "quenderin/approval":
+                try args.requireKeys(name == "$events/result" ? ["clientId", "eventId", "outcome"] : ["binding", "clientId", "outcome"])
+                approvalClient = try args.text("clientId")
+                if name == "quenderin/approval" {
+                    extendedApproval = try RemoteHarnessApprovalBinding(args.required("binding")); approvalEvent = extendedApproval?.eventID
+                    sessionID = extendedApproval?.sessionID; workspaceID = extendedApproval?.workspaceID
+                } else { approvalEvent = try args.text("eventId") }
                 let outcome = try args.required("outcome").fields(); try outcome.requireKeys(["kind", "value"])
                 let decision = try outcome.text("value")
                 guard try outcome.text("kind") == "result", ["allowed-once", "rejected"].contains(decision) else { throw RemoteHarnessError.invalidMessage }
@@ -99,6 +104,7 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
         self.method = method; self.params = params; self.endpoint = endpoint; self.streamID = streamID
         self.sessionID = sessionID; self.workspaceID = workspaceID; promptCommandID = promptID; isMutation = mutation
         approvalClientID = approvalClient; approvalEventID = approvalEvent; self.approvalAllows = approvalAllows
+        approvalBinding = extendedApproval
     }
 
     public static func describe() throws -> Self { try Self(method: .describe, params: .object([:])) }
@@ -127,6 +133,9 @@ public struct RemoteHarnessOperation: Sendable, Equatable, NativeConnectionPriva
     public static func events(streamID: String) throws -> Self { try open("$events", streamID: streamID, args: .object([:])) }
     public static func approvalResult(clientID: String, eventID: String, allow: Bool) throws -> Self {
         try call("$events/result", args: .object(["clientId": .string(clientID), "eventId": .string(eventID), "outcome": .object(["kind": .string("result"), "value": .string(allow ? "allowed-once" : "rejected")])]))
+    }
+    public static func boundApproval(clientID: String, binding: RemoteHarnessApprovalBinding, allow: Bool) throws -> Self {
+        try call("quenderin/approval", args: .object(["binding": binding.json(), "clientId": .string(clientID), "outcome": .object(["kind": .string("result"), "value": .string(allow ? "allowed-once" : "rejected")])]))
     }
     public static func close(streamID: String) throws -> Self { try Self(method: .close, params: .object(["streamId": .string(streamID)])) }
     private static func address(_ sessionID: String) throws -> RemoteHarnessJSON { try .object(["kind": .string("session"), "sessionId": .string(sessionID)]) }

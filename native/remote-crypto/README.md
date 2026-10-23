@@ -153,3 +153,56 @@ iOS 16.4/macOS 13.3, Android API 28, Android ABI/16 KiB alignment, matching UniF
 runtime dependencies, app linking and signed-device behavior remain unverified.
 No local native build, simulator/device run, model download, or real credential
 was used to prepare this source.
+
+## Native SDK consumers
+
+The source now includes the actual platform packaging route in
+`.github/workflows/native-remote-sdk.yml`. This is a bounded hosted compilation
+workflow: one standard public Apple job and one standard public Android job,
+read-only checkout, no secrets, signing, archive, publication, provider access or
+simulator/device execution. Its results must pass before claiming native linking.
+The existing host workflow additionally exercises the **production** Swift/Kotlin
+backends through their actual generated UniFFI wrappers and the Linux Rust library.
+
+`tools/native_sdk.py build --platform apple --sdk PATH` builds the pinned Rust
+static library for iOS arm64, iOS simulator arm64/x86_64, and macOS arm64/x86_64.
+It combines compatible slices using Apple's `lipo`/`xcodebuild`, retains the
+generated C header and renames the unmodified generated module map to
+`Headers/module.modulemap`. The generated Swift source remains a separate
+`QuenderinRemoteCrypto` SwiftPM target that imports the `QuenderinRemoteCryptoFFI`
+binary target. This follows the maintained
+[UniFFI Swift module recipe](https://github.com/mozilla/uniffi-rs/blob/7bc621ee9d0d15371d792612707ba5ed4111f950/docs/manual/src/swift/module.md).
+The Apple artifact belongs at `apple/QuenderinKit/build/RemoteCryptoSDK`; set
+`QUENDERIN_REQUIRE_REMOTE_CRYPTO=1` for a build that must contain it. SwiftPM
+verifies it before adding either target. The artifact is ignored by Git.
+
+`tools/native_sdk.py build --platform android --sdk PATH` builds only the app's
+supported arm64-v8a ABI, API 28, NDK 26.3.11579264, with 16 KiB load alignment.
+It retains the actual generated Kotlin and the original JNA 5.19.1 **Android AAR**,
+verified against its official Maven digest, exact 525,093-byte length and SHA-256
+`b57125cb7d16253f0d65a80f7d3a4c3664effa711b8bdbb7f87fb572ce1624ed`. The
+[JNA Android recipe](https://github.com/java-native-access/jna/blob/5.19.1/www/FrequentlyAskedQuestions.md#jna-on-android)
+requires `@aar`; the host JAR cannot supply Android's `libjnidispatch.so`.
+Build the app with `-Pquenderin.remoteCryptoDir=/absolute/verified/sdk` to add the
+Android library module. Gradle also verifies the actual resolved Maven AAR and
+limits packaging to arm64-v8a. `verify-package --sdk PATH --package APP.apk`
+checks the final Noise/JNA bytes, every packaged ELF load alignment, and ZIP
+alignment for uncompressed APK native libraries. Compressed libraries use Android
+extraction and still require compatible ELF alignment.
+
+Every artifact receipt binds the exact Rust source, reviewed lockfile, toolchain,
+packager, generated bindings, native bytes, supported targets and platform minima.
+`verify --platform apple|android --sdk PATH` rejects absent, incomplete, stale or
+mismatched artifacts. The builder refuses existing output and only runs in hosted
+CI. No generated binding is handwritten and no binary is committed. When the SDK
+is absent, the public native backend reports unavailable explicitly; the JVM core
+keeps its dependency-free fixture route. Platform apps retain ownership of OS
+random identity generation and secure storage. Shutdown releases the Rust session;
+Kotlin separately closes the generated wrapper.
+
+Local checks can run `python3 -B -m unittest discover -s native/remote-crypto/tools
+-p 'test_*.py'` from the repository root. Tests include missing/stale receipts,
+source/lock/binding mismatch, missing/wrong ABI and invalid 16 KiB ELF alignment.
+The hosted builds and their native app wiring remain unverified until the new
+workflow passes. Compilation still does not establish signed secure storage,
+rendered native UI, or a live Host session.

@@ -10,6 +10,7 @@ private func secureLinkEqual(_ lhs: String?, _ rhs: String?) -> Bool {
 }
 private func secureLinkEqual(_ lhs: RemoteHarnessBinding, _ rhs: RemoteHarnessBinding) -> Bool {
     lhs.generation == rhs.generation && secureLinkEqual(lhs.hostID, rhs.hostID) &&
+        secureLinkEqual(lhs.clientDeviceID, rhs.clientDeviceID) &&
         secureLinkEqual(lhs.workspaceID, rhs.workspaceID) && secureLinkEqual(lhs.sessionID, rhs.sessionID)
 }
 public enum RemoteHarnessSecureLinkError: String, Error, Sendable, CustomStringConvertible {

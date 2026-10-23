@@ -185,6 +185,27 @@ fun AppRoot(
     }
 
     var showDeepSeek by rememberSaveable { mutableStateOf(false) }
+    var showComputer by rememberSaveable {
+        mutableStateOf(context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).getBoolean("remoteComputerOpen", false))
+    }
+    val remoteComputer = remember { ai.quenderin.app.RemoteHarnessController(context) }
+    androidx.compose.runtime.DisposableEffect(remoteComputer) { onDispose { remoteComputer.close() } }
+    fun openComputer() {
+        context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", true).apply()
+        showComputer = true
+    }
+    if (showComputer) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = {
+            remoteComputer.disconnect(); showComputer = false
+            context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", false).apply()
+        }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false, securePolicy = androidx.compose.ui.window.SecureFlagPolicy.SecureOn)) {
+            RemoteHarnessScreen(remoteComputer, onBack = {
+                remoteComputer.disconnect(); showComputer = false
+                context.getSharedPreferences("quenderin", android.content.Context.MODE_PRIVATE).edit().putBoolean("remoteComputerOpen", false).apply()
+            })
+        }
+    }
     if (showDeepSeek) {
         val deepSeek = remember {
             val vault = AndroidDeepSeekVault(context)
@@ -248,6 +269,7 @@ fun AppRoot(
             // Reuse the onboarding install flow: download (if needed) → load → swap. Blocking → IO.
             onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
             onOpenDeepSeek = { showDeepSeek = true },
+            onOpenComputer = ::openComputer,
         )
         else -> {
             var showPicker by remember { mutableStateOf(false) }
@@ -266,8 +288,9 @@ fun AppRoot(
                 },
             )
                 var showOtherModels by remember { mutableStateOf(false) }
-                TextButton(onClick = { showDeepSeek = true }, modifier = Modifier.align(Alignment.TopStart).padding(12.dp)) {
-                    Text("DeepSeek cloud")
+                Row(modifier = Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                    TextButton(onClick = ::openComputer) { Text("My computer") }
+                    TextButton(onClick = { showDeepSeek = true }) { Text("DeepSeek cloud") }
                 }
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                     TextButton(onClick = { showOtherModels = true }) { Text("More models") }

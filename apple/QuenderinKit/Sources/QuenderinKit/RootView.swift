@@ -15,6 +15,7 @@ public struct RootView: View {
     @State private var tab = 0
     @State private var showImagesBeforeChat = false
     @State private var showDeepSeek = false
+    @State private var showMyComputer = false
     @State private var showStep5BeforeChat = false
     @StateObject private var step5BeforeChat = Step5Controller()
     @State private var showVisionBeforeChat = false
@@ -54,6 +55,9 @@ public struct RootView: View {
                 OnboardingView(model: onboarding)
                     .safeAreaInset(edge: .top) {
                         VStack(alignment: .trailing, spacing: 8) {
+                            Button { showMyComputer = true } label: {
+                                Label("My computer · Remote Harness", systemImage: "desktopcomputer").frame(maxWidth: .infinity)
+                            }.buttonStyle(.bordered).accessibilityIdentifier("remote-before-download")
                             Button { showDeepSeek = true } label: {
                                 Label("Chat with DeepSeek · no model download", systemImage: "network")
                                     .frame(maxWidth: .infinity)
@@ -77,6 +81,7 @@ public struct RootView: View {
             DeepSeekView(showsDoneButton: true)
                 .quenderinSheetWindowCanvas()
         }
+        .sheet(isPresented: $showMyComputer) { RemoteHarnessView(showsDoneButton: true).quenderinSheetWindowCanvas() }
         .sheet(isPresented: $showImagesBeforeChat) {
             ImageGenerationView(showsDoneButton: true, suspendForSpecialist: { try await onboarding.suspendForSpecialist() })
                 .quenderinSheetWindowCanvas()
@@ -130,6 +135,9 @@ public struct RootView: View {
                     DeepSeekView()
                         .tabItem { Label("DeepSeek", systemImage: "network") }
                         .tag(6)
+                    RemoteHarnessView()
+                        .tabItem { Label("Computer", systemImage: "desktopcomputer") }
+                        .tag(7)
                     if let agent {
                         AgentView(session: agent)
                             .tabItem { Label("Agent", systemImage: "wand.and.stars") }

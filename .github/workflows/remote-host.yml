@@ -1,0 +1,59 @@
+name: Pinned remote Host integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'native/remote-host/**'
+      - 'shared/remote-harness-approval-digest-fixtures.json'
+      - '.github/workflows/remote-host.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remote-host-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: liguobao/ds-harness-remote
+          ref: 9a60e783ec1ceaff6116b0462a2863f07f602a55
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Run synthetic authorization and trust fixtures
+        run: node --test native/remote-host/tests/*.test.mjs
+      - name: Check then apply only the exact pinned Host source seams
+        run: |
+          python3 -B native/remote-host/tools/prepare_host.py upstream
+          python3 -B native/remote-host/tools/prepare_host.py upstream --apply
+          cp native/remote-host/tests/bridge.integration.test.ts upstream/packages/plugin/tests/quenderin-host.integration.test.ts
+          cp native/remote-host/tests/vitest.config.mjs upstream/packages/plugin/tests/quenderin-vitest.config.mjs
+      - name: Select the upstream locked package manager
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+      - name: Install the pinned workspace without lifecycle hooks
+        working-directory: upstream
+        run: timeout 300 pnpm install --frozen-lockfile --ignore-scripts
+      - name: Compile and bundle the actual patched Host
+        working-directory: upstream
+        run: timeout 480 pnpm --filter './packages/**' -r build
+      - name: Verify actual Gateway integration tests
+        working-directory: upstream/packages/plugin
+        run: timeout 120 pnpm exec vitest run --config tests/quenderin-vitest.config.mjs

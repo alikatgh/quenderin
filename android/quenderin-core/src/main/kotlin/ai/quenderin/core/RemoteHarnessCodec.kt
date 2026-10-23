@@ -147,6 +147,9 @@ object RemoteHarnessOperations {
     fun approvalEncodingOnly(clientID: String, eventID: String, allowedOnce: Boolean) = operation("\$events/result", obj(
         "clientId" to str(clientID), "eventId" to str(eventID), "outcome" to obj("kind" to str("result"), "value" to str(if (allowedOnce) "allowed-once" else "rejected"))))
     fun modelCatalog() = operation("session/modelCatalog", obj())
+    fun approval(approval: RemoteHarnessClientApproval, allowedOnce: Boolean) = operation(RemoteHarnessClientApprovalGate.ENDPOINT,
+        obj("binding" to approval.binding, "clientId" to str(approval.clientID), "outcome" to obj("kind" to str("result"),
+            "value" to str(if (allowedOnce) "allowed-once" else "rejected"))))
     fun selectModel(sessionID: String, provider: String, model: String, reasoningEffort: String? = null) = operation("session/selectModel",
         obj("request" to obj("sessionId" to str(sessionID), "provider" to str(provider), "model" to str(model), "reasoningEffort" to reasoningEffort?.let(::str))))
     private fun address(sessionID: String) = obj("kind" to str("session"), "sessionId" to str(sessionID))
@@ -155,7 +158,7 @@ object RemoteHarnessOperations {
     internal fun fromWire(endpoint: String, argsValue: RemoteHarnessJSON, streaming: Boolean): RemoteHarnessOperation {
         val args = argsValue.objectValue()
         val streams = setOf("workspace/follow", "session/follow", "session/control", "\$events")
-        val calls = setOf("session/list", "session/create", "session/page", "session/prompt", "session/cancel", "session/modelCatalog", "session/selectModel", "\$events/result")
+        val calls = setOf("session/list", "session/create", "session/page", "session/prompt", "session/cancel", "session/modelCatalog", "session/selectModel", "\$events/result", RemoteHarnessClientApprovalGate.ENDPOINT)
         rhCheck(endpoint in if (streaming) streams else calls, "unsupported-endpoint")
         var sessionID: String? = null; var commandID: String? = null; var workspaceID: String? = null
         fun request(): Map<String, RemoteHarnessJSON> { args.rhFields("request"); return args.rhRequired("request").objectValue() }
@@ -197,8 +200,15 @@ object RemoteHarnessOperations {
                 val o = args.rhRequired("outcome").objectValue(); o.rhFields("kind", "value")
                 rhCheck(o.rhString("kind") == "result" && o.rhString("value") in setOf("allowed-once", "rejected"), "invalid-params")
             }
+            RemoteHarnessClientApprovalGate.ENDPOINT -> {
+                args.rhFields("binding", "clientId", "outcome"); rhID(args.rhString("clientId"))
+                val binding = args.rhRequired("binding").objectValue(); RemoteHarnessClientApprovalGate.validateBinding(binding)
+                sessionID = binding.rhString("sessionId"); workspaceID = binding.rhString("workspaceId")
+                val outcome = args.rhRequired("outcome").objectValue(); outcome.rhFields("kind", "value")
+                rhCheck(outcome.rhString("kind") == "result" && outcome.rhString("value") in setOf("allowed-once", "rejected"), "invalid-params")
+            }
         }
         return RemoteHarnessOperation(endpoint, argsValue as RemoteHarnessJSON.ObjectValue, streaming,
-            endpoint in setOf("session/create", "session/prompt", "session/cancel", "session/selectModel", "\$events/result"), sessionID, commandID, workspaceID)
+            endpoint in setOf("session/create", "session/prompt", "session/cancel", "session/selectModel", "\$events/result", RemoteHarnessClientApprovalGate.ENDPOINT), sessionID, commandID, workspaceID)
     }
 }

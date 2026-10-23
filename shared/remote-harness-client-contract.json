@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "mission": "Native remote DeepSeek Harness control: connect computer, choose workspace/session, send task, observe tools, approve or deny, stop, recover.",
+  "releaseScope": "Implementation and bounded hosted verification; store submission deferred.",
+  "firstServer": "User-selected HTTPS origin implementing the pinned self-hosted v1 REST and relay protocol; no default funded service.",
+  "nativeCryptoSPI": {
+    "swift": "@MainActor public protocol RemoteHarnessCryptoBackend: AnyObject { var isAvailable: Bool { get }; func publicKey(privateSeed: Data) throws -> Data; func initiator(privateSeed: Data, peerPublicKey: Data, info: RemoteHarnessSecureConnectionInfo) throws -> any RemoteHarnessSecureNoise }; RemoteHarnessCryptoBackends.native() -> any RemoteHarnessCryptoBackend",
+    "kotlin": "interface RemoteHarnessCryptoBackend { val isAvailable: Boolean; fun publicKey(privateSeed: ByteArray): ByteArray; fun initiator(privateSeed: ByteArray, peerPublicKey: ByteArray, info: RemoteHarnessSecureConnectionInfo): RemoteHarnessSecureNoise }; RemoteHarnessCryptoBackends.native(): RemoteHarnessCryptoBackend",
+    "implementation": "Generated UniFFI bindings and matching locked Rust library. Absent SDK returns an explicit unavailable backend; never substitute fake cryptography in production.",
+    "privateSeed": "Exactly 32 OS-random bytes generated and retained by native secure storage. Explicit transient export to the maintained FFI only; no debug or persistence outside secure credential storage."
+  },
+  "journey": [
+    "Computer destination is available before a local model download.",
+    "Enter server origin, then account email/password through secure native UI.",
+    "Durably reserve device identity before registration; persist returned tokens before use.",
+    "List authorized Hosts, verify descriptor role/ID/membership and full public-key pin.",
+    "Make first trust explicit; never silently replace a changed pin.",
+    "Authenticate the relay socket, negotiate relay limits, request Host connection and obtain the Noise connection ID.",
+    "Finish Noise before business dispatch; discover workspaces without fabricating a saved profile.",
+    "Select actual workspace, create a valid profile, select or create session, then obtain authoritative history and streams.",
+    "Send a task once after durable command preparation; display streaming text, reasoning and tool activity.",
+    "Approval decisions require the negotiated Host extension and exact device/workspace/session/run/action/expiry binding.",
+    "Stop requested stays distinct from authoritative stopped; uncertain outcomes are retained and never automatically replayed.",
+    "Recover saved session/history after relaunch or reconnect, preserving drafts and the execution destination."
+  ],
+  "credentials": {
+    "separateFromDeepSeek": true,
+    "scope": "Canonical relay origin, client device ID and client role; Host provider credentials stay on the computer.",
+    "recordMaximumBytes": 65536,
+    "accountPassword": "Entry-only, never saved by default, no autofill/state restoration/diagnostics or clipboard export.",
+    "accountToken": "Temporary setup use; cookies are disabled and it is discarded after device registration.",
+    "deviceTokens": "Native Keychain or Keystore-backed encrypted record, excluded from backup/transfer.",
+    "refresh": "One serialized durable attempt reservation before dispatch. Install rotated pair atomically. A lost response or uncertain commit requires reauthorization; never replay a single-use refresh token.",
+    "keyRecovery": "Never silently regenerate identity or overwrite a failed credential/history read."
+  },
+  "transport": {
+    "httpsOnly": true,
+    "redirectsCookiesLoggingAutomaticRetries": false,
+    "websocketPath": "/ws/v1/connect",
+    "authentication": "Device token in the bounded hello body over TLS; never URL/query parameters.",
+    "helloDeadlineMilliseconds": 5000,
+    "connectionDeadlineMilliseconds": 15000,
+    "noiseDeadlineMilliseconds": 10000,
+    "frameBounds": "Existing native Control JSON limits, clamped to the negotiated server limits.",
+    "sendQueue": "Bound the asynchronous socket handoff separately from the secure-link plaintext queue; at most 8 MiB and 256 messages, finite send deadline.",
+    "ownership": "Swift MainActor; Kotlin all coordinator/link interactions on the enforced owner thread. Every async callback retains its original generation.",
+    "reconnect": "User-controlled bounded recovery, no mutation replay, no automatic identity reset."
+  },
+  "nativeUI": {
+    "apple": "SwiftUI system navigation/forms/list/toolbars, preserving Mac/iPhone/iPad conventions.",
+    "android": "Existing Compose Material navigation and state patterns.",
+    "entry": "Existing onboarding and ready shell, alongside Local and direct DeepSeek.",
+    "status": "Server, computer, workspace, session, model, connection and remote execution location stay visible.",
+    "timeline": "Native text/tool/approval presentation; no web shell or second local agent loop.",
+    "errors": "Actionable fixed messages; never raw server diagnostics, credential values or key prefixes.",
+    "privacy": "Local conversations are never read or uploaded by the remote destination."
+  },
+  "verification": {
+    "allowedNow": "Host fixtures, real generated-binding crypto integration, hosted SDK/app compilation. No local native build, model download, simulator or physical-device run.",
+    "proofBoundaries": "Synthetic server and in-memory provider evidence are labelled. Native rendering, signed storage and a live Host remain distinct checks.",
+    "coreAcceptance": "A single native controller completes setup through a streaming session and recovery using the same injected bounded fixture server; the production transports and SDKs compile with the actual app.",
+    "publication": "Fresh independent review, staged secret scans and relevant integrated checks before authorized source merge."
+  },
+  "hostCompanion": {
+    "capability": "quenderin.approvals.v1",
+    "endpoint": "quenderin/approval",
+    "eventField": "quenderinBinding",
+    "arguments": [
+      "binding",
+      "clientId",
+      "outcome"
+    ],
+    "bindingFields": [
+      "hostDeviceId",
+      "clientDeviceId",
+      "workspaceId",
+      "sessionId",
+      "runId",
+      "eventId",
+      "actionDigest",
+      "expiresAt"
+    ],
+    "runID": "turn:<integer> from authoritative session/follow turn/start data.turn or snapshot assistantStream.activeAttempt.turn; invalidated on turn/end",
+    "actionDigest": "SHA256 lowercase hex of complete recursively sorted JSON request",
+    "expiryMilliseconds": 120000,
+    "trust": "Explicit full public identity pins on both devices; Host public policy is checked before auto-pin, per message and every two seconds",
+    "legacyApproval": "$events/result remains blocked remotely; missing authoritative scope requires the computer",
+    "limitations": [
+      "No durable Host mutation deduplication yet",
+      "Pending approval recovery across Host restart may require computer",
+      "No agent spending cap or terminal sandbox"
+    ]
+  }
+}

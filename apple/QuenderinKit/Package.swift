@@ -129,6 +129,27 @@ var qkDependencies: [Target.Dependency] = []
 var qkSwiftSettings: [SwiftSetting] = []
 var qkLinkerSettings: [LinkerSetting] = []
 var optionalTargets: [Target] = []
+// Real locked UniFFI SDK: generated Swift wrapper plus the matching static FFI
+// XCFramework. A partial/stale artifact must fail before dependency resolution.
+let remoteSDK = "build/RemoteCryptoSDK"
+let hasRemoteSDK = FileManager.default.fileExists(atPath: packageDir + "/" + remoteSDK)
+if ProcessInfo.processInfo.environment["QUENDERIN_REQUIRE_REMOTE_CRYPTO"] == "1" && !hasRemoteSDK {
+    fatalError("Build the verified native remote crypto SDK before compiling this profile")
+}
+if hasRemoteSDK {
+    let root = URL(fileURLWithPath: packageDir).deletingLastPathComponent().deletingLastPathComponent()
+    let verifier = Process()
+    verifier.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    verifier.arguments = ["python3", root.appendingPathComponent("native/remote-crypto/tools/native_sdk.py").path,
+                          "verify", "--platform", "apple", "--sdk", packageDir + "/" + remoteSDK]
+    do { try verifier.run(); verifier.waitUntilExit() }
+    catch { fatalError("Unable to verify remote crypto SDK") }
+    guard verifier.terminationStatus == 0 else { fatalError("Remote crypto SDK provenance verification failed") }
+    optionalTargets.append(.binaryTarget(name: "QuenderinRemoteCryptoFFI", path: remoteSDK + "/QuenderinRemoteCryptoFFI.xcframework"))
+    optionalTargets.append(.target(name: "QuenderinRemoteCrypto", dependencies: ["QuenderinRemoteCryptoFFI"],
+                                   path: remoteSDK + "/Sources/QuenderinRemoteCrypto"))
+    qkDependencies.append("QuenderinRemoteCrypto")
+}
 if hasDiffusionFramework {
     qkDependencies.append("QuenderinDiffusion")
     optionalTargets.append(.binaryTarget(name: "QuenderinDiffusion", path: diffusionFrameworkPath))

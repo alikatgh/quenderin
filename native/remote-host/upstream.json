@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/liguobao/ds-harness-remote",
+  "revision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "pluginVersion": "0.5.17",
+  "license": "MIT",
+  "files": {
+    "packages/plugin/src/connection-controller.ts": "e4d8cd28ee4fcc84d426805e2a7d3bfdcd36d24b5db619dc895d7155461cbb00",
+    "packages/plugin/src/harness-remote-bridge.ts": "dcc88e51a051deb188a15cf195354cd201c0071a6c5da26fb3b68272b2691d9e",
+    "packages/plugin/src/server-connection.ts": "1236e2e54a17c5b9c008483d3b2804b7626580b50c84abf7289f9eb8dd9b0ab1",
+    "packages/plugin/src/service.ts": "764ff88cb44ca4820ae4b5f13544e403151c678d3254638588a216a645842143"
+  }
+}
