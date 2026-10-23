@@ -121,7 +121,7 @@ public final class DeepSeekController: ObservableObject {
             var next = journal
             try Self.addChat(to: &next, model: model, effort: effort)
             try storage.save(next); journal = next; error = nil; notice = nil
-        } catch { error = Self.safe(error) }
+        } catch { self.error = Self.safe(error) }
     }
     private static func addChat(to journal: inout DeepSeekJournal, model: String, effort: ProviderReasoningEffort) throws {
         guard journal.chats.count < 50 else { throw DeepSeekFailure.historyLimit }
@@ -182,7 +182,7 @@ public final class DeepSeekController: ObservableObject {
                 guard let self else { return }
                 self.isBusy = false; self.activeRun = nil; self.work = nil
             }
-        } catch { error = Self.safe(error) }
+        } catch { self.error = Self.safe(error) }
     }
     public func stop() {
         guard isBusy else { return }
@@ -243,7 +243,7 @@ public final class DeepSeekController: ObservableObject {
         journal.chats[index].failure = DeepSeekFailureRecord(code)
         if !(failure is CancellationError) { error = code }
         do { try storage.save(journal) }
-        catch { error = .persistence; storageReady = false }
+        catch { self.error = .persistence; storageReady = false }
     }
     private static func safe(_ error: Error) -> DeepSeekFailure {
         if let error = error as? DeepSeekFailure { return error }

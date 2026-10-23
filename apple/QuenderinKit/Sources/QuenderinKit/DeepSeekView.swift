@@ -46,7 +46,7 @@ public struct DeepSeekView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Picker("Conversation", selection: Binding(get: { controller.journal.selectedChatID ?? "" }, set: controller.selectChat)) {
+                    Picker("Conversation", selection: Binding(get: { controller.journal.selectedChatID ?? "" }, set: { controller.selectChat($0) })) {
                         ForEach(controller.journal.chats) { saved in Text(saved.title).tag(saved.id) }
                     }
                     .disabled(controller.isBusy)
