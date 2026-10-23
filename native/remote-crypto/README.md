@@ -140,9 +140,12 @@ pass. At source `f91b138a0d27fa0e4abb70969e55716c6a21240c`,
 passes all nine Rust tests, clippy, both original generated-binding probes and
 both linked probes with pinned Kotlin 2.0.21 and Linux Swift. The success markers
 are `NATIVE_LINKED_HARNESS_PASS kotlin` and `NATIVE_LINKED_HARNESS_PASS swift`.
-That run uses the typed in-memory packet seam; the next Control JSON codec still
-needs its own runtime evidence. Real platform artifacts and enrollment remain
-separate gates.
+That run uses the typed in-memory packet seam. At Control JSON source
+`6ef4362a603fed34e3a025bd5246a5d3314248c0`,
+[run 39914626417](https://github.com/alikatgh/quenderin/actions/runs/39914626417)
+passes those same gates with every handshake/relay packet serialized and parsed
+through the native JSON codec in both directions. Real platform artifacts,
+network delivery and enrollment remain separate gates.
 
 Review, decode and retain those sources before integrating native consumers.
 These Linux host checks are not platform binary compatibility or Apple SDK checks.

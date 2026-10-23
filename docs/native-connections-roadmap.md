@@ -24,7 +24,11 @@ Linked real-crypto probes: [PR #175](https://github.com/alikatgh/quenderin/pull/
 source `f91b138a0d27fa0e4abb70969e55716c6a21240c`, merged as
 `765f1e6be0bbbcb494e0309808fdcab8d25c1850` after all 18 CI jobs, crypto
 host checks and secret scan passed.
-Next increment: `codex/native-control-wire-20261023`.
+Secure Control JSON: [PR #176](https://github.com/alikatgh/quenderin/pull/176),
+source `6ef4362a603fed34e3a025bd5246a5d3314248c0`, merged as
+`b1637ae914a0f4f45789efed7154cf58ab61cd9b` after all 18 CI jobs, crypto
+host checks and secret scan passed.
+Next increment: `codex/android-remote-discovery-20261023`.
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -258,8 +262,43 @@ Envelope extensions fail; payload extensions are discarded. Generation remains
 outside all wire metadata. Forty-one original shared cases (150 steps), 50
 combined Python gate tests, Swift parsing and fresh independent review pass.
 The linked probes now serialize and parse every handshake/relay direction;
-hosted Swift fixture execution and real-Rust runtime through this JSON path
-remain pending. No socket or authentication flow is activated.
+hosted Swift executes all 41 cases exactly once within 671 tests (six skipped,
+no failures). At the exact source above, both actual-Rust linked probes through
+JSON pass in [run 39914626417](https://github.com/alikatgh/quenderin/actions/runs/39914626417),
+along with all nine Rust tests, clippy and the original binding probes. All 18
+CI jobs pass before PR #176 merges. No socket or authentication flow is activated.
+
+First-run inspection then exposed an Android discovery blocker: its authenticated
+context required a persisted conversation binding, which correctly requires a
+workspace. The fix adds a separate ephemeral transport binding, preserving
+origin, Host identity/full pin and a draft/profile scope reference. Discovery can
+describe and open `workspace/follow`; unrelated operations fail before dispatch,
+journaling or slot reservation. Saved profiles/conversations retain their strict
+workspace requirement. Kotlin host checks pass 104 foundation fixtures plus 16
+behavior groups, 39 carrier fixtures plus 28 groups and 28 secure-link cases.
+The actual generated-binding/JNA linked source compiles after integration with
+the Control JSON source. Fresh independent review passes; hosted native runtime
+and full CI for this scope adjustment remain pending.
+
+The inspected self-hosted enrollment path uses account password login at
+`/api/v1/auth/login`, client registration at `/api/v1/devices/register`, device
+discovery under `/api/v1/devices`, and relay control at `/ws/v1/connect`.
+The included single-account server has no hosted OAuth/signup flow. Account
+tokens last eight hours; device access lasts one hour and refresh has a fixed
+30-day lifetime. Refresh is single-use: replay revokes the device's tokens.
+Before any refresh request, durably mark the attempt; commit the returned pair
+atomically, and require reauthorization after an uncertain result rather than
+replaying it. A new socket for the same device replaces the old one. These are
+pinned source findings, not an existing Quenderin deployment.
+See the [server handlers](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/apps/server/src/server.ts)
+and [credential store](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/apps/server/src/store.ts).
+
+Both upstream peers automatically trust a first-seen account-authorized identity.
+Prepinning one peer does not deny unknown peers. Explicit bilateral human pairing
+still requires a Host policy/UI change; it cannot be established by a mobile-only
+confirmation. Keep that gate open and negotiate its support before enabling the
+approval journey. Remote-service credential bundles need their own origin/device/
+role-scoped secure format, separate from the direct DeepSeek API-key format.
 
 ## 4. Device trust, approvals and recovery
 
