@@ -169,7 +169,7 @@ it('runs a native prompt through strict production SessionV3 Gateway, Agent, app
     const listed = await call('session/list', { _request: {} });
     expect(listed.items.some((item: any) => item.sessionId === sessionId)).toBe(true);
     await until(() => values('workspace-feed').some(value => value.type === 'upsert' && value.workspace.sessionIds.includes(sessionId)), 'Session Workspace membership');
-    await open('session-history', 'session/follow', { request: { address: { kind: 'session', sessionId } } });
+    await open('session-history', 'session/follow', { request: { address: { kind: 'session', sessionId }, maxMessages: 60, assistantStream: true } });
     await open('session-control', 'session/control', {});
     await open('remote-events', '$events', {});
     await until(() => values('session-history').some(value => value.type === 'snapshot')

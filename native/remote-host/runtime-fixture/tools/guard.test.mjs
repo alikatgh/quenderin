@@ -1,7 +1,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { boundedProcess, runtimeEnvironment } from './bounded-process.mjs';
+import { mkdtempSync, readFileSync, statSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { boundedProcess, processEnvironment, runtimeEnvironment } from './bounded-process.mjs';
 import { assertUnprivilegedStatus } from './run.mjs';
+import { createNpmConfigs } from './bootstrap.mjs';
+
+const configScratchParent = process.env.QUENDERIN_GUARD_SCRATCH || process.env.RUNNER_TEMP;
+test('npm loads distinct empty scratch configs and rejects the former duplicate path', { timeout: 15_000, skip: !configScratchParent && 'Registered guard scratch or hosted RUNNER_TEMP required' }, async () => {
+  const scratch = mkdtempSync(join(configScratchParent, 'npm-config-guard-'));
+  try {
+    const configs = createNpmConfigs(scratch);
+    assert.notEqual(configs.npm_config_userconfig, configs.npm_config_globalconfig);
+    for (const file of Object.values(configs)) {
+      assert.equal(readFileSync(file, 'utf8'), '');
+      assert.equal(statSync(file).mode & 0o777, 0o600);
+    }
+    const env = { ...processEnvironment(), TMPDIR: scratch,
+      npm_config_cache: join(scratch, 'cache'), npm_config_prefix: join(scratch, 'prefix'),
+      npm_config_offline: 'true', npm_config_ignore_scripts: 'true', npm_config_audit: 'false', npm_config_fund: 'false' };
+    const former = await boundedProcess('npm', ['config', 'get', 'userconfig'], { cwd: scratch, timeoutMs: 5000, env: { ...env, npm_config_userconfig: '/dev/null', npm_config_globalconfig: '/dev/null' } });
+    assert.notEqual(former.code, 0);
+    assert.match(former.stderr.toString(), /double-loading config/);
+    const corrected = await boundedProcess('npm', ['config', 'get', 'userconfig'], { cwd: scratch, timeoutMs: 5000, env: { ...env, ...configs } });
+    assert.equal(corrected.error, undefined);
+    assert.equal(corrected.timedOut, false);
+    assert.equal(corrected.outputExceeded, false);
+    assert.equal(corrected.code, 0);
+    assert.equal(corrected.stdout.toString().trim(), configs.npm_config_userconfig);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
 
 test('runtime environment has only the explicit fixture allowlist', () => {
   const result = runtimeEnvironment('/tmp/fixture', '/tmp/source', '/tmp/fixture/facts.json');
