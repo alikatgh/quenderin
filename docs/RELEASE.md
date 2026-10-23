@@ -4,6 +4,59 @@ The signing, build and console path for native app updates. Never add credential
 to this record or create new credential files. Use the established project wrapper
 or already-authorized signing configuration. A debug build is not a signed store release.
 
+## 23 October 2026 — native DeepSeek source preparation
+
+The `codex/native-connections-20261023` candidate adds a separate native DeepSeek
+destination before local model setup and in the existing Apple/Android shell.
+The delivery checklist is [native-connections-roadmap.md](native-connections-roadmap.md).
+This is source preparation, not an uploaded or submitted app version. Store
+versions/counters and review states below remain dated evidence until refreshed.
+
+The direct API route uses the user's DeepSeek account and the fixed official
+origin. Setup validates `/models`; each explicit Send starts one streaming Chat
+Completions request. Tools, files, images, search/fetch, autonomous runs and funded
+Quenderin services are not enabled by this increment. Provider account billing
+limits have not been inspected; the application limits are not a financial cap.
+Development checks use synthetic transports/keys and make no live inference calls.
+
+Affected release risks and controls:
+
+- **External work/cost:** one request per Send, one active run per session,
+  120-second deadline, 4,096 output-token ceiling, no automatic retries or loops.
+  Cancellation is scoped to the exact call; relaunch does not replay a request.
+  These are application bounds. Any funded live validation/activation still needs
+  the applicable approved allowance and verified provider-enforced maximum.
+- **Resource exhaustion:** 8 MiB request/response, 1 MiB event/text and 65,536
+  streaming-event bounds; limited local history (Apple 50 chats within one 8 MiB
+  journal; Android 30 separately bounded chats). Exhaustion retains existing data
+  and rejects new work. No model downloads are added to this route.
+- **Credentials/privacy:** Apple Keychain and Android Keystore-backed encrypted
+  storage; opaque references in profiles, isolated TLS transports, redirects and
+  cookies/cache disabled, fixed redacted error messages. Android credentials are
+  excluded from backup/transfer. Local conversations are not read by this route.
+- **Integrity/recovery:** atomic local journal writes; unfinished turns remain
+  visibly incomplete and cannot silently become later provider history. Failed
+  initial reads stop new writes. Credential replacement/removal preserves durable
+  ownership and fails closed. Opening cloud UI preserves the local shell/drafts.
+- **Verification/publication:** shared request/SSE/model fixtures and strict
+  native execution-marker guards supplement transport/controller failure tests.
+  Fresh independent review covers the integrated source. No signing workflow,
+  store submission, hosted relay or website deployment is triggered by this task
+  branch. Existing PR checks use the established bounded public CI route.
+
+The root dependency audit blocker was repaired with compatible Electron,
+Vite/Vitest updates; a fresh local audit reports zero vulnerabilities. Compatible
+UI updates pass 27 tests and a production bundle build, but its separate audit
+still reports 5 high/2 moderate findings in the Tailwind 3 glob/braces chain and
+selector parser. A Tailwind migration needs its own rendered verification.
+
+Before any native store submission, complete hosted compilation/tests, refresh
+the exact release source and store state, validate the signed Keychain/Keystore
+and changed native journeys through an authorized route, update privacy/store
+disclosures for direct third-party AI transmission, and resolve applicable policy
+and release gates. The current prohibition on simulator/device runs leaves
+rendered native interaction unverified. No source/test result substitutes for it.
+
 ## 20 October 2026 — Android Alpha recovery and bundle export
 
 The live Quenderin App signing page still registers upload SHA-256

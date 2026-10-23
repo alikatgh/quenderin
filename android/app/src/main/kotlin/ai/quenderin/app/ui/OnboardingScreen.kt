@@ -7,6 +7,10 @@ import ai.quenderin.app.R
 import ai.quenderin.app.Step5Controller
 import ai.quenderin.app.VisionController
 import ai.quenderin.app.GraniteController
+import ai.quenderin.app.AndroidDeepSeekVault
+import ai.quenderin.app.AndroidDeepSeekPersistence
+import ai.quenderin.app.DeepSeekController
+import ai.quenderin.app.DeepSeekOkHttpTransport
 
 import ai.quenderin.app.WorkManagerModelDownloader
 import ai.quenderin.core.AndroidDeviceProfile
@@ -180,6 +184,21 @@ fun AppRoot(
         return
     }
 
+    var showDeepSeek by rememberSaveable { mutableStateOf(false) }
+    if (showDeepSeek) {
+        val deepSeek = remember {
+            val vault = AndroidDeepSeekVault(context)
+            DeepSeekController(vault, DeepSeekOkHttpTransport(vault), AndroidDeepSeekPersistence(context))
+        }
+        androidx.compose.runtime.DisposableEffect(deepSeek) { onDispose { deepSeek.close() } }
+        // Keep the local shell composed beneath this native full-screen destination so a local
+        // draft, attachment, open conversation and run owner survive the cloud visit.
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showDeepSeek = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false, securePolicy = androidx.compose.ui.window.SecureFlagPolicy.SecureOn)) {
+            DeepSeekScreen(deepSeek, onBack = { showDeepSeek = false })
+        }
+    }
     var showImagesBeforeChat by rememberSaveable { mutableStateOf(false) }
     var showStep5BeforeChat by remember { mutableStateOf(false) }
     val step5BeforeChat = remember { Step5Controller() }
@@ -228,6 +247,7 @@ fun AppRoot(
             conversations = conversations,
             // Reuse the onboarding install flow: download (if needed) → load → swap. Blocking → IO.
             onSelectModel = { picked -> scope.launch(Dispatchers.IO) { onboarding.acceptAndPrepare(picked) } },
+            onOpenDeepSeek = { showDeepSeek = true },
         )
         else -> {
             var showPicker by remember { mutableStateOf(false) }
@@ -246,6 +266,9 @@ fun AppRoot(
                 },
             )
                 var showOtherModels by remember { mutableStateOf(false) }
+                TextButton(onClick = { showDeepSeek = true }, modifier = Modifier.align(Alignment.TopStart).padding(12.dp)) {
+                    Text("DeepSeek cloud")
+                }
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
                     TextButton(onClick = { showOtherModels = true }) { Text("More models") }
                     androidx.compose.material3.DropdownMenu(expanded = showOtherModels, onDismissRequest = { showOtherModels = false }) {

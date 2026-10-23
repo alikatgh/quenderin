@@ -57,7 +57,15 @@ Principal seams: `apple/QuenderinKit`, `apple/QuenderinApp`,
 `android/quenderin-core`, `android/app` and `shared/`. Keep UI bubbles as a
 projection; their user/assistant-only shape cannot replace provider history.
 
-## 2. First-class native DeepSeek provider — next work
+## 2. First-class native DeepSeek provider — implementation in progress
+
+Acceptance: a fresh install can open a separate DeepSeek conversation, consent
+to transmission, securely validate/save its API key, choose a supported model and
+reasoning effort, stream a reply, cancel safely and reopen saved history. Existing
+local chats are never imported automatically. The first interface is text only
+with local tools disabled; Flash's image capability is recorded for later work.
+Fake-transport evidence, signed secure-storage evidence, live inference and
+rendered native interaction are separate checks.
 
 - [ ] Add provider setup, secure credential entry, connection validation and
   actionable authentication/quota/network errors.
@@ -80,11 +88,40 @@ projection; their user/assistant-only shape cannot replace provider history.
 - [ ] Verify local tools disclose any resulting transmission to DeepSeek.
 - [ ] Test the provider with fake transports, then bounded authorized live calls.
 
+The reviewed API contract and dated catalog live in
+`shared/deepseek-provider-contract.json`. Both native suites must execute the
+same request/SSE/model cases in `shared/deepseek-provider-fixtures.json`; the CI
+guard rejects missing, duplicate or unexpected successful-case markers. Limits
+are 120 seconds, 8 MiB request/response, 1 MiB event/text, 65,536 SSE events,
+4,096 output tokens, one active request per session and zero automatic retries.
+These application limits do not establish a provider invoice ceiling. Development
+uses fakes without real keys; no funded provider, relay or notification service
+is activated by publishing this source branch.
+
 ## 3. Complete first remote DeepSeek journey
 
 Acceptance journey: connect -> choose computer -> choose workspace -> open/create
 session -> send -> observe text/tools -> approve/deny -> stop -> reconnect to the
 same session, on Apple and Android, without a local model download.
+
+Candidate compatibility baseline, refreshed from upstream source on 23 October:
+
+| Component | Pinned inspection target | Execution evidence |
+| --- | --- | --- |
+| Remote source | `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Source inspected; no native interoperability yet |
+| Host plugin | `ds-harness-remote` 0.5.17 at that revision | Not installed or connected by Quenderin |
+| Harness development API | `0.2.1-rc.1` in plugin dev dependencies | Candidate only; not a tested support range |
+| Wire envelope | Protocol version 1 | Native carrier implementation pending |
+| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Native library selection and golden vectors pending |
+
+The [plugin manifest](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/package.json)
+and [plugin MIT notice](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/LICENSE)
+were checked. No upstream implementation is copied in the DeepSeek increment.
+The repository root has no `LICENSE` at this pin; license coverage of the separate
+server and each reused package must be resolved before copying or distributing
+them. The [server documentation](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/apps/server/README.md)
+describes a separately deployed single-account relay, not a Quenderin-hosted
+multi-account service. Pinning an inspection target does not establish support.
 
 - [ ] Pin supported Harness/Remote revisions and maintain a compatibility matrix.
 - [ ] Verify applicable MIT and dependency notices before reusing code.

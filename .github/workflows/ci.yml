@@ -107,6 +107,7 @@ jobs:
           set -o pipefail
           swift test 2>&1 | tee "$RUNNER_TEMP/quenderin-swift-tests.log"
           python3 ../../scripts/check_native_connections_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
+          python3 ../../scripts/check_deepseek_contract.py --results "$RUNNER_TEMP/quenderin-swift-tests.log"
       - name: Exercise the actual Swift vision client with a synthetic C ABI (no weights)
         run: python3 -m unittest scripts.tests.test_native_vision_clients scripts.tests.test_specialist_inference_lease scripts.tests.test_image_native_cleanup scripts.tests.test_granite_native
 
@@ -417,6 +418,15 @@ jobs:
             android/quenderin-core/src/verify/NativeConnectionsVerify.kt -include-runtime -d "$RUNNER_TEMP/native-connections.jar"
           java -jar "$RUNNER_TEMP/native-connections.jar" shared/native-connections-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-connections.log"
           python3 scripts/check_native_connections_contract.py --results "$RUNNER_TEMP/quenderin-kotlin-connections.log"
+      - name: Verify DeepSeek request, stream and recovery fixtures (no provider calls)
+        run: |
+          set -o pipefail
+          python3 -B -m unittest scripts.tests.test_deepseek_contract
+          python3 -B scripts/check_deepseek_contract.py
+          kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/quenderin-core/src/verify/DeepSeekVerify.kt -include-runtime -d "$RUNNER_TEMP/deepseek.jar"
+          java -jar "$RUNNER_TEMP/deepseek.jar" shared/deepseek-provider-fixtures.json | tee "$RUNNER_TEMP/quenderin-kotlin-deepseek.log"
+          python3 -B scripts/check_deepseek_contract.py --results "$RUNNER_TEMP/quenderin-kotlin-deepseek.log"
       - name: Verify Beam framing and specialist native capability gates with tiny fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
@@ -437,6 +447,11 @@ jobs:
             android/quenderin-core/src/verify/Step5AndroidTransportVerify.kt -d "$RUNNER_TEMP/step5-clients.jar"
           kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5ControllerVerifyKt
           kotlin -classpath "$RUNNER_TEMP/step5-clients.jar:$step5_cp" ai.quenderin.core.Step5AndroidTransportVerifyKt
+          kotlinc -classpath "$step5_cp" android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/DeepSeekOkHttpTransport.kt \
+            android/app/src/main/kotlin/ai/quenderin/app/DeepSeekController.kt \
+            android/quenderin-core/src/verify/DeepSeekAndroidTransportVerify.kt -d "$RUNNER_TEMP/deepseek-android-host.jar"
+          kotlin -classpath "$RUNNER_TEMP/deepseek-android-host.jar:$step5_cp" ai.quenderin.app.DeepSeekAndroidTransportVerifyKt .
       - name: Verify multipart installation and Muse response framing with small fixtures
         run: |
           kotlinc android/quenderin-core/src/main/kotlin/ai/quenderin/core/*.kt \
