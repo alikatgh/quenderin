@@ -11,14 +11,15 @@ entries). Direct dependencies use exact versions. The official Harness package
 manifests identify its source repository but supply no `gitHead` or npm build
 attestation; an exact artifact-to-source-commit attestation is not established.
 
-The fixture is **source prepared and wired into the existing public Ubuntu
-[Host workflow](../../../.github/workflows/remote-host.yml); hosted runtime
-execution pending**. The isolated lock/guard, bootstrap and disconnected runtime
-steps follow the existing patched Host compilation and synthetic Gateway tests.
-A build,
-metadata check or the existing synthetic bridge test does not establish this
-journey. Do not promote emitted facts or add cancel/recovery tests until the
-first hosted journey passes.
+The first official Gateway/Agent/tool/approval journey **passed** at source
+`8f3081` in the [hosted Host job](https://github.com/alikatgh/quenderin/actions/runs/39986442942/job/120526738753).
+Its 47 frames before teardown and source provenance were captured separately;
+this increment does not replace those frozen facts. The new stop/cold-history/
+sequential-dedup test below is **source prepared; hosted execution pending**.
+The existing public Ubuntu [Host workflow](../../../.github/workflows/remote-host.yml)
+runs lock/guard, bootstrap and disconnected runtime steps after patched Host
+compilation and synthetic Gateway tests. Build or synthetic bridge success
+alone does not establish an official runtime journey.
 
 ## Exercised path
 
@@ -45,8 +46,36 @@ Session, turn and client. One `quenderin/approval` result allows one inert tool
 execution; duplicate approval consumption must fail. Four further synthetic
 chunks complete the real turn. The test asserts the `{accepted:true}` admission
 receipt, live user-message event identity, approval audit pair and completed
-turn. It does not flush and cold-read that message; persistence/relaunch
-verification remains pending.
+turn. That first passing test does not flush and cold-read its message.
+
+## Stop and persisted-history gate — hosted execution pending
+
+One additional test mounts the same real service stack in its own temporary
+storage. A single model call emits two partial-text chunks, then waits on its
+production cancellation signal. `session/cancel` must return the real admission
+receipt; a subsequent streamed `turn/end` with user-aborted reason and an idle
+Agent must confirm the stop. The receipt alone is insufficient. The test then
+closes the business streams and Peer, opens a fresh Peer/bridge with real
+Workspace/history/control/event streams, and reconciles the completed log and
+absence of an active assistant attempt from their authoritative baselines.
+
+After `sessionPersistence.flush()` and full Context disposal, a fresh Context
+opens the same JSONL/domain storage. A real `session/page` must cold-read the
+original user-message `rpcId` once and the same aborted end, without activating
+an Agent. A sequential repeat of the exact original prompt then resumes the
+Session and must return `{accepted:true}` without another model call, tool
+execution, user-message occurrence or turn. The production prompt handler's
+persisted `rpcId` check owns that behavior; the fixture implements no command
+deduplication service.
+
+The warm recovery adapter permits one model call/two chunks; the cold adapter
+permits zero calls. Recovery allows zero tool attempts. This is a clean Context
+restart in one disconnected test process, not a process crash, rollback,
+concurrent exactly-once guarantee, relay reconnect or native-device journey.
+It remains unverified until the hosted test passes. The first test remains the
+sole canonical-facts writer with two model calls and one inert tool execution;
+the new test prints a bounded status/failure summary and never overwrites its
+captured facts.
 
 The credential-free adapter is the sole model boundary. Text-only attachment
 storage rejects all media and inherits the production text admission method.
@@ -118,10 +147,13 @@ Bootstrap sends TERM by 179 seconds, then forcibly kills its POSIX process
 group after 250 ms; pipe cleanup has a further 100 ms cutoff. The runtime's
 30-second budget includes its source verification: the fixture group receives
 TERM by 29 seconds from runner start, with the same KILL/pipe cutoff. One test
-stays under 10 seconds. Each condition waits at most 1.5 seconds. The adapter
-allows at most two model calls and eight
-chunks; the tool allows exactly one execution. Captured output is capped at
-128 frames, 48 KiB per frame and 256 KiB total. A fresh temporary root holds
+stays under 10 seconds; both tests share the unchanged runtime process budget.
+Each condition waits at most 1.5 seconds. Across the suite, the adapters permit
+three model calls/ten chunks and one inert tool execution. The first journey
+allows two calls/eight chunks/one tool; recovery allows one stalled call/two
+chunks/zero tools, including zero cold-context calls. Each test captures at most
+128 frames of 48 KiB per frame. The first test's canonical output is capped at
+256 KiB total. A fresh temporary root holds
 every Session, Workspace and domain artifact; the runner removes it in
 `finally`. No input comes from a user's home or projects. The trusted workflow
 shell captures its own Linux network namespace before `sudo`/`unshare` and
@@ -163,9 +195,10 @@ paths and times. Its exclusively created file exists only inside runner-owned
 ephemeral scratch, which is removed before the runner exits. Do not add
 artifact or cache uploads for this fixture. Passing CI log facts may inform
 native parser fixtures after review; hand-authored examples are not runtime
-evidence. Stop/cancel, reconnection, lost acknowledgements,
-sequential deduplication, concurrent admission and persistence flush/cold-read
-verification remain explicitly pending.
+evidence. The prepared stop, reopened-stream, flush/cold-read and sequential
+persisted-duplicate checks remain hosted-pending. Process-crash recovery, lost
+acknowledgements, concurrent admission and live relay/native interoperability
+remain separate unverified behavior.
 
 ## Guard-only checks
 

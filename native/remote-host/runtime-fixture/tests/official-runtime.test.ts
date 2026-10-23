@@ -256,3 +256,203 @@ it('runs a native prompt through strict production SessionV3 Gateway, Agent, app
   writeFileSync(resolve(output), completedFacts, { flag: 'wx', mode: 0o600 });
   console.log(JSON.stringify({ officialRuntimeJourney: 'passed', modelCalls: 2, toolExecutions: 1, frames: frames.length }));
 });
+
+class AbortableStalledAdapter extends LlmAdapter {
+  readonly requests: GenerateOptions[] = [];
+  waiting = false;
+  aborted = false;
+  constructor(private readonly maxCalls: number) { super(); }
+  async resolveModel(provider: string, model: string) { return { provider, id: model, name: model }; }
+  async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.requests.push(options);
+    if (this.requests.length > this.maxCalls) throw new Error('Recovery model-call budget exceeded');
+    const signal = options.signal;
+    if (!signal) throw new Error('Stalled model requires the production cancellation signal');
+    signal.throwIfAborted();
+    yield { type: 'block-start', index: 0, blockType: 'text' };
+    yield { type: 'text-delta', index: 0, text: 'Synthetic partial reply.' };
+    let abort!: () => void;
+    try {
+      this.waiting = true;
+      await new Promise<void>(done => {
+        abort = () => { this.aborted = true; done(); };
+        if (signal.aborted) abort();
+        else signal.addEventListener('abort', abort, { once: true });
+      });
+      signal.throwIfAborted();
+    } finally {
+      this.waiting = false;
+      signal.removeEventListener('abort', abort);
+    }
+  }
+}
+
+// A second fixture assembly owns its own storage and contexts. The first
+// passing journey and its sole facts writer above remain unchanged.
+async function mountRecoveryHost(root: string, adapter: AbortableStalledAdapter, budget: { toolCalls: number }) {
+  const ctx = new Context();
+  try {
+    await ctx.plugin(TypertRegistry);
+    await ctx.plugin(RemoteAccess);
+    await mountAgentLoopTestDependencies(ctx, { workingDirectory: true });
+    await ctx.plugin(Storage);
+    await ctx.plugin(JsonStorage, { root: join(root, 'domain-json') });
+    await ctx.plugin(StorageDomain, { backend: 'json' });
+    await ctx.plugin(Persistence, { root: join(root, 'sessions'), compression: 'none', listConcurrency: 1 });
+    await ctx.plugin(WorkspaceRegistry);
+    await mountAgentLoopTestHarness(ctx);
+    await ctx.plugin(DefaultModel, { provider: 'fixture', model: 'scripted' });
+    ctx.llm.registerAdapter(['fixture'], adapter);
+    new TextOnlyAttachments(ctx);
+    new PointReadQuery(ctx);
+    await ctx.plugin(Commands);
+    const noBrowserAuth = new Proxy({}, { get() { throw new Error('Browser authentication outside this fixture'); } });
+    new HostConnectionService(ctx, [], noBrowserAuth as never);
+    await ctx.plugin(FileUploads);
+    await ctx.plugin(Approval, { policy: 'ask' });
+    ctx.on('tools/pre-execute', async () => {
+      budget.toolCalls += 1;
+      throw new Error('Zero-tool recovery budget exceeded');
+    });
+    ctx.effect(() => ctx.typert.register(SESSION));
+    ctx.effect(() => ctx.typert.register(WORKSPACE));
+    await ctx.plugin(SessionController, { nativeOpen: false });
+    await ctx.plugin(WorkspaceController, { documentsDirectory: root });
+    await ctx.plugin(Gateway, { streamInboxBytes: 65_536 });
+    await ctx.plugin(ApiRemotes);
+    return ctx;
+  } catch (error) {
+    await ctx.fiber.dispose();
+    throw error;
+  }
+}
+
+it('confirms real stop, reconciles reopened streams, and deduplicates one flushed prompt after a cold Context restart', async () => {
+  const parent = process.env.QUENDERIN_FIXTURE_ROOT;
+  if (!parent?.startsWith('/')) throw new Error('Runner-owned temporary root required');
+  const root = join(parent, 'stop-cold-recovery');
+  mkdirSync(root);
+  const budget = { toolCalls: 0 };
+  const warmAdapter = new AbortableStalledAdapter(1);
+  const coldAdapter = new AbortableStalledAdapter(0);
+  let warm: Context | undefined, cold: Context | undefined;
+  let bridge: HarnessRemoteBridge | undefined;
+  let peer: ReturnType<Context['connection']['createPeer']> | undefined;
+  let phase = 'mount-warm';
+  let capturedFrames = 0;
+  const frames: Fact[] = [];
+  const values = (streamId: string) => frames.filter(frame => frame.streamId === streamId && frame.value !== undefined).map(frame => frame.value);
+  const connect = (ctx: Context) => {
+    peer = ctx.connection.createPeer({ principal: { kind: 'owner' }, interactions: 'answer' });
+    const local = new TypertGatewaySwitch(ctx.typertGateway).local(peer);
+    expect(local.supportsCarrier).toBe(true);
+    bridge = new HarnessRemoteBridge(local, async (event, data) => {
+      if (++capturedFrames > 128 || Buffer.byteLength(JSON.stringify(data)) > 49_152) throw new Error('Recovery frame budget exceeded');
+      frames.push({ event, ...data });
+    }, undefined, '0.2.1-rc.1', undefined, undefined, new QuenderinApprovalPolicy('recovery-host', 'recovery-native'));
+  };
+  const disconnect = async () => {
+    await bridge?.closeAll();
+    await peer?.dispose();
+    bridge = undefined;
+    peer = undefined;
+  };
+  const call = async (endpoint: string, request: object) => success(await bridge!.call({ endpoint, payload: { args: { request } } }));
+  const openBusinessStreams = async (sessionId: string, generation: string) => {
+    await bridge!.openStream({ streamId: `${generation}-workspace`, endpoint: 'workspace/follow', payload: { args: {} } });
+    await bridge!.openStream({ streamId: `${generation}-history`, endpoint: 'session/follow',
+      payload: { args: { request: { address: { kind: 'session', sessionId }, maxMessages: 60, assistantStream: true } } } });
+    await bridge!.openStream({ streamId: `${generation}-control`, endpoint: 'session/control', payload: { args: {} } });
+    await bridge!.openStream({ streamId: `${generation}-events`, endpoint: '$events', payload: { args: {} } });
+    await until(() => values(`${generation}-workspace`).some(value => value.type === 'baseline')
+      && values(`${generation}-history`).some(value => value.type === 'snapshot')
+      && values(`${generation}-control`).some(value => value.type === 'baseline')
+      && values(`${generation}-events`).some(value => value.type === 'ready'), `${generation} recovery baselines`);
+  };
+  const matchingMessages = (records: Fact[], requestId: string) => records.filter(record => record.type === 'event'
+    && record.event.type === 'user/message' && record.event.data.source.rpcId === requestId);
+  try {
+    warm = await mountRecoveryHost(root, warmAdapter, budget);
+    connect(warm);
+    const cwd = join(root, 'workspace');
+    mkdirSync(cwd);
+    const workspace: any = await warm.typertGateway.invoke({ peer: peer!, namespace: 'workspace', method: 'create', args: { request: { path: cwd } } });
+    const sessionId = (await call('session/create', { workspaceId: workspace.workspace.workspaceId, sessionId: SessionId('fixture-recovery-session') })).sessionId;
+    await openBusinessStreams(sessionId, 'running');
+    const request = { sessionId, requestId: 'fixture-persisted-prompt-1', mode: 'queue', content: [{ type: 'text', text: 'Stream a partial synthetic reply, then wait for Stop.' }] };
+    phase = 'stalled-model';
+    expect(await call('session/prompt', request)).toEqual({ accepted: true });
+    await until(() => warmAdapter.waiting && values('running-history').some(value => value.type === 'assistant-stream'), 'Real stalled model stream');
+    const agent = warm.agents.get(SessionId(sessionId))!;
+    expect(agent.status).toBe('running');
+    phase = 'cancel-and-confirm';
+    // This receipt admits cancellation. Only the subsequent official aborted
+    // turn/end and idle Agent confirm that execution actually stopped.
+    expect(await call('session/cancel', { sessionId })).toEqual({ accepted: true });
+    await until(() => values('running-history').some(value => value.type === 'event' && value.event.type === 'turn/end'
+      && value.event.data.reason.kind === 'aborted'), 'Authoritative aborted turn/end');
+    await agent.whenIdle();
+    expect(agent.status).toBe('idle');
+    expect(warmAdapter.aborted).toBe(true);
+    expect(warmAdapter.requests).toHaveLength(1);
+    expect(budget.toolCalls).toBe(0);
+    phase = 'reopen-business-streams';
+    await disconnect();
+    connect(warm);
+    await openBusinessStreams(sessionId, 'reconciled');
+    const snapshot = values('reconciled-history').find(value => value.type === 'snapshot');
+    expect(snapshot.hasMore).toBe(false);
+    expect(snapshot.assistantStream.activeAttempt).toBeUndefined();
+    expect(matchingMessages(snapshot.records, request.requestId)).toHaveLength(1);
+    const stopped = snapshot.records.find((record: Fact) => record.type === 'event' && record.event.type === 'turn/end').event;
+    expect(stopped.data.reason).toMatchObject({ kind: 'aborted', reason: { kind: 'user' } });
+    // Wire cursors name the last committed event; Session.seq is the next seq.
+    expect(snapshot.cursor).toBe(agent.session.seq - 1);
+    phase = 'flush-and-dispose-warm';
+    const warmPersistence = warm.sessionPersistence.identity;
+    await warm.sessionPersistence.flush();
+    await disconnect();
+    await warm.fiber.dispose();
+    warm = undefined;
+    phase = 'mount-cold';
+    cold = await mountRecoveryHost(root, coldAdapter, budget);
+    expect(cold.sessionPersistence.identity).not.toBe(warmPersistence);
+    expect(cold.agents.get(SessionId(sessionId))).toBeUndefined();
+    connect(cold);
+    phase = 'cold-authoritative-page';
+    const coldPage = await call('session/page', { address: { kind: 'session', sessionId }, throughSeq: snapshot.cursor, maxMessages: 60 });
+    expect(coldPage.hasMore).toBe(false);
+    expect(cold.agents.get(SessionId(sessionId))).toBeUndefined();
+    expect(matchingMessages(coldPage.records, request.requestId)).toHaveLength(1);
+    const coldEnd = coldPage.records.find((record: Fact) => record.type === 'event' && record.event.type === 'turn/end').event;
+    expect(coldEnd).toEqual(stopped);
+    expect(coldAdapter.requests).toHaveLength(0);
+    phase = 'sequential-persisted-duplicate';
+    expect(await call('session/prompt', request)).toEqual({ accepted: true });
+    const resumed = cold.agents.get(SessionId(sessionId))!;
+    await resumed.whenIdle();
+    expect(resumed.status).toBe('idle');
+    expect(coldAdapter.requests).toHaveLength(0);
+    const restored = resumed.session.snapshotEvents();
+    expect(restored.filter(event => event.type === 'user/message' && event.data.source.rpcId === request.requestId)).toHaveLength(1);
+    expect(restored.filter(event => event.type === 'turn/start')).toHaveLength(1);
+    expect(restored.filter(event => event.type === 'turn/end')).toHaveLength(1);
+    expect(budget.toolCalls).toBe(0);
+    await cold.sessionPersistence.flush();
+  } catch (error) {
+    const observed = frames.slice(-8).map(frame => ({ streamId: frame.streamId, type: frame.value?.type, reason: frame.reason,
+      code: frame.failure?.code, message: typeof frame.failure?.message === 'string'
+        ? frame.failure.message.replaceAll(root, '<fixture-root>').replaceAll(homedir(), '<host-home>').replace(/https?:\/\/[^\s"']+/g, '<url>').slice(0, 120) : undefined }));
+    const diagnostic = { officialRecoveryFailure: phase, warmModelCalls: warmAdapter.requests.length, coldModelCalls: coldAdapter.requests.length, observed };
+    let encoded = JSON.stringify(diagnostic);
+    while (Buffer.byteLength(encoded) > 2048 && observed.length) { observed.pop(); encoded = JSON.stringify(diagnostic); }
+    console.error('OFFICIAL_RUNTIME_RECOVERY_DIAGNOSTIC ' + encoded);
+    throw error;
+  } finally {
+    await disconnect();
+    await cold?.fiber.dispose();
+    await warm?.fiber.dispose();
+  }
+  console.log(JSON.stringify({ officialRuntimeRecovery: 'passed', warmModelCalls: 1, coldModelCalls: 0,
+    toolExecutions: 0, sequentialPromptAdmissions: 2, persistedUserMessages: 1, stop: 'aborted' }));
+});
