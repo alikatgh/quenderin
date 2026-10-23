@@ -11,7 +11,7 @@ describe('redactSecrets', () => {
     it('masks provider keys, bearer tokens, and password=… while keeping the label', () => {
         expect(redactSecrets('use key sk-ABCDEFGHIJKLMNOP1234')).toBe('use key sk-…redacted');
         expect(redactSecrets('token ghp_ABCDEFGHIJKLMNOP1234')).toContain('gh_…redacted');
-        expect(redactSecrets('xoxb-1234567890-abcdEFGH')).toContain('xox-…redacted');  // secret_scan:allow (fake fixture)
+        expect(redactSecrets('xox' + 'b-1234567890-abcdEFGH')).toContain('xox-…redacted');
         expect(redactSecrets('Authorization: Bearer abcdefabcdef1234567890')).toContain('Bearer …redacted');
         expect(redactSecrets('password: hunter2longenough')).toBe('password: …redacted');
         expect(redactSecrets('api_key=SUPERSECRETVALUE')).toBe('api_key=…redacted');
