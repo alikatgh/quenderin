@@ -1,0 +1,38 @@
+[package]
+name = "quenderin-remote-crypto"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[lib]
+name = "quenderin_remote_crypto"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "quenderin-remote-bindgen"
+path = "src/bin/bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+default = []
+# Hosted developer tool only; never enable this in a native application library.
+bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
+
+[dependencies]
+snow = { git = "https://github.com/mcginty/snow", rev = "4bb43f50370bdb3e8b1b57814ac662864db2704f", default-features = false, features = ["std", "default-resolver", "use-curve25519", "use-chacha20poly1305", "use-sha2", "use-getrandom"] }
+uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "7bc621ee9d0d15371d792612707ba5ed4111f950", default-features = false }
+subtle = "=2.6.1"
+zeroize = "=1.8.1"
+
+[dev-dependencies]
+base64 = "=0.22.1"
+serde_json = "=1.0.145"
+sha1 = "=0.10.6"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "debuginfo"
+
+[workspace]

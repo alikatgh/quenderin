@@ -1,0 +1,8 @@
+[bindings.swift]
+module_name = "QuenderinRemoteCrypto"
+ffi_module_name = "QuenderinRemoteCryptoFFI"
+generate_module_map = true
+
+[bindings.kotlin]
+package_name = "ai.quenderin.remote.crypto"
+cdylib_name = "quenderin_remote_crypto"

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "upstreamRepository": "liguobao/ds-harness-remote",
+  "upstreamRevision": "9a60e783ec1ceaff6116b0462a2863f07f602a55",
+  "protocolVersion": 1,
+  "requiredCapability": "harness.remote.v3",
+  "scope": "Decrypted business carrier only. This contract does not establish device enrollment, Noise interoperability, a connected Host, native UI or store readiness.",
+  "methods": [
+    "harness.transport.describe",
+    "harness.remote.call",
+    "harness.remote.stream.open",
+    "harness.remote.stream.close"
+  ],
+  "events": [
+    "harness.remote.frame",
+    "harness.remote.stream.closed"
+  ],
+  "callEndpoints": [
+    "session/list",
+    "session/create",
+    "session/page",
+    "session/prompt",
+    "session/cancel",
+    "session/modelCatalog",
+    "session/selectModel",
+    "$events/result"
+  ],
+  "streamEndpoints": [
+    "workspace/follow",
+    "session/follow",
+    "session/control",
+    "$events"
+  ],
+  "limits": {
+    "frameBytes": 4194304,
+    "jsonDepth": 32,
+    "containerEntries": 1024,
+    "pendingRPC": 128,
+    "streams": 16,
+    "requestDeadlineMs": 120000,
+    "textInputBytes": 65536,
+    "queuedFrames": 128,
+    "queuedBytes": 8388608,
+    "automaticRetries": 0
+  },
+  "envelope": "Every business frame has v=1, a bounded opaque id, positive safe-integer timestamp, type and payload. Contextual integer fields require ASCII digit tokens without sign, decimal or exponent; opaque unknown numeric values retain their original spelling. Event payload wraps {event,data,seq?,sessionId?}. Preserve complete original bounded UTF-8 JSON alongside typed routing fields; do not flatten structured history or round-trip unknown numeric values through a lossy representation. rpc.response payload.result is opaque at the outer layer: describe returns a raw capability object and stream open/close return raw acknowledgements. Only harness.remote.call wraps the Typert {ok,value?}/{ok:false,error} result; optional success value must remain optional.",
+  "requests": "Call params are {endpoint,payload:{args:A}}; stream open adds streamId, close uses {streamId}. Register a stream before dispatching its open RPC because its first value may precede acknowledgement. A harness.remote.frame has streamId, hasValue:true and optional value; preserve omitted value distinctly from explicit JSON null. The transport port supplies an authenticated connection generation and Host/workspace/session binding, which every response/event must match before mutation.",
+  "recovery": "RPC ids correlate exactly once, not deduplicate Host side effects. Persist each logical mutation identity before send. Disconnect or deadline after sending leaves mutation outcome unknown; never replay it. New connection/stream/$events client identities require fresh authoritative snapshots. History snapshot cursor and durable sequence are distinct from transient assistant attempt/revision/index and unsequenced carrier events.",
+  "stop": "session/cancel accepted=true means receipt only. Do not mark a run stopped until authoritative Host state confirms it. session/prompt success result is unspecified by upstream; do not invent a receipt schema.",
+  "approval": "Existing $events/result clientId/eventId/outcome lacks the complete workspace/run/action/expiry binding required by Quenderin. Decode and preserve approval requests; fail closed on decision dispatch until a reviewed negotiated Host extension supplies and enforces that binding. Encoding an upstream packet is not authorization to send it.",
+  "retryHazards": "Do not inherit RESPONSE_TOO_LARGE call-to-transfer fallback: the Host checks response size after invoking the mutation. Device refresh must be single-flight; retrying a consumed refresh token revokes device credentials. No automatic mutation or refresh replay.",
+  "sourcePaths": [
+    "packages/protocol/src/index.ts",
+    "packages/client-core/src/remote-gateway.ts",
+    "packages/client-core/src/harness-alpha-client.ts",
+    "packages/plugin/src/rpc-router.ts",
+    "packages/plugin/src/connection-controller.ts",
+    "apps/server/src/store.ts"
+  ]
+}

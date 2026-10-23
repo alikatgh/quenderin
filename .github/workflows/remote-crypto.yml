@@ -1,0 +1,124 @@
+name: Remote crypto host fixtures
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'native/remote-crypto/**'
+      - '.github/workflows/remote-crypto.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remote-crypto-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-fixtures:
+    # Public standard Linux compute only. This workflow never provisions services,
+    # uploads artifacts, accesses app/provider credentials, or links native apps.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CARGO_NET_RETRY: '0'
+      CARGO_HTTP_TIMEOUT: '30'
+      CARGO_BUILD_JOBS: '2'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+    defaults:
+      run:
+        working-directory: native/remote-crypto
+        shell: bash
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set disposable host paths after runner allocation
+        run: |
+          printf 'CARGO_TARGET_DIR=%s\nDSH_NOISE_VECTOR_PATH=%s\n' \
+            "$RUNNER_TEMP/quenderin-remote-target" "$RUNNER_TEMP/dsh-noise-ik.json" >> "$GITHUB_ENV"
+      - name: Check source pins and bootstrap guards without compiling
+        run: |
+          python3 -B tools/verify_build_gate.py --manifest-only
+          python3 -B -m unittest discover -s tools -p 'test_*.py'
+      - name: Require the runner's included Linux Swift compiler and JDK 17
+        run: |
+          command -v swiftc >/dev/null
+          test -x "${JAVA_HOME_17_X64:?Included JDK 17 is required}/bin/java"
+          swiftc --version
+          "$JAVA_HOME_17_X64/bin/java" -version
+      - name: Select the reviewed Rust toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+      - name: Bootstrap missing lock using metadata only, then stop for review
+        run: |
+          if [[ ! -f Cargo.lock ]]; then
+            timeout 180s cargo +1.90.0 generate-lockfile
+            python3 -I - <<'PY'
+          from pathlib import Path
+          data = Path('Cargo.lock').read_bytes()
+          if len(data) > 1_048_576:
+              raise SystemExit('Lockfile exceeds review limit.')
+          print('BEGIN_QUENDERIN_REMOTE_CARGO_LOCK')
+          print(data.decode('utf-8'), end='')
+          print('END_QUENDERIN_REMOTE_CARGO_LOCK')
+          PY
+            echo '::error::Commit and review the complete emitted Cargo.lock before any compilation. This bootstrap is intentionally not a crypto pass.'
+            exit 1
+          fi
+      - name: Require reviewed lock and obtain the exact synthetic test input
+        run: |
+          python3 -B tools/verify_build_gate.py
+          python3 -B tools/fetch_fixture.py "$DSH_NOISE_VECTOR_PATH"
+      - name: Locked host crypto fixtures and negative cases
+        run: cargo +1.90.0 test --locked --lib
+      - name: Locked lint check
+        run: cargo +1.90.0 clippy --locked --lib --tests -- -D warnings
+      - name: Compile the host library and generate Swift and Kotlin sources
+        run: |
+          cargo +1.90.0 build --locked --lib
+          cargo +1.90.0 run --locked --features bindgen --bin quenderin-remote-bindgen -- generate \
+            --library "$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so" \
+            --language swift --language kotlin --no-format --out-dir "$RUNNER_TEMP/remote-crypto-bindings"
+      - name: Fetch hash-pinned host Kotlin compiler and JNA
+        run: |
+          mkdir -p "$RUNNER_TEMP/remote-kotlin-toolchain" "$RUNNER_TEMP/remote-jna"
+          curl --fail --silent --show-error --location --proto '=https' --max-redirs 3 \
+            --connect-timeout 10 --max-time 120 --retry 0 --max-filesize 134217728 \
+            --output "$RUNNER_TEMP/remote-kotlin-compiler-2.0.21.zip" \
+            https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+          printf '%s  %s\n' 0352c0a45bd22f80f6b26e485cd04da8047baa5de54865281fb9f89a4a7bcf2a \
+            "$RUNNER_TEMP/remote-kotlin-compiler-2.0.21.zip" | sha256sum --check --status
+          unzip -q "$RUNNER_TEMP/remote-kotlin-compiler-2.0.21.zip" -d "$RUNNER_TEMP/remote-kotlin-toolchain"
+          curl --fail --silent --show-error --proto '=https' \
+            --connect-timeout 10 --max-time 30 --retry 0 --max-filesize 3145728 \
+            --output "$RUNNER_TEMP/remote-jna-5.19.1.jar" \
+            https://repo.maven.apache.org/maven2/net/java/dev/jna/jna/5.19.1/jna-5.19.1.jar
+          test "$(stat -c '%s' "$RUNNER_TEMP/remote-jna-5.19.1.jar")" -eq 1950853
+          printf '%s  %s\n' 4fb141dd8ef6b0585ffceea4bc49602fbc6312fa977e2c488794ea3e6aafecae \
+            "$RUNNER_TEMP/remote-jna-5.19.1.jar" | sha256sum --check --status
+      - name: Compile actual generated Kotlin and exercise the exact host library
+        run: |
+          JAVA_HOME="$JAVA_HOME_17_X64" "$RUNNER_TEMP/remote-kotlin-toolchain/kotlinc/bin/kotlinc" \
+            "$RUNNER_TEMP/remote-crypto-bindings/ai/quenderin/remote/crypto/quenderin_remote_crypto.kt" \
+            tools/BindingSmoke.kt -classpath "$RUNNER_TEMP/remote-jna-5.19.1.jar" \
+            -jvm-target 1.8 -include-runtime -d "$RUNNER_TEMP/remote-kotlin-binding-smoke.jar"
+          timeout 30s "$JAVA_HOME_17_X64/bin/java" \
+            -Duniffi.component.quenderin_remote_crypto.libraryOverride="$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so" \
+            -Djna.tmpdir="$RUNNER_TEMP/remote-jna" \
+            -classpath "$RUNNER_TEMP/remote-kotlin-binding-smoke.jar:$RUNNER_TEMP/remote-jna-5.19.1.jar" \
+            ai.quenderin.remote.crypto.BindingSmokeKt
+      - name: Compile actual generated Swift and exercise the exact host library
+        run: |
+          swiftc -parse-as-library -module-name QuenderinRemoteCrypto \
+            -I "$RUNNER_TEMP/remote-crypto-bindings" \
+            -Xcc "-fmodule-map-file=$RUNNER_TEMP/remote-crypto-bindings/QuenderinRemoteCryptoFFI.modulemap" \
+            "$RUNNER_TEMP/remote-crypto-bindings/QuenderinRemoteCrypto.swift" tools/BindingSmoke.swift \
+            -L "$CARGO_TARGET_DIR/debug" -lquenderin_remote_crypto \
+            -Xlinker -rpath -Xlinker "$CARGO_TARGET_DIR/debug" \
+            -o "$RUNNER_TEMP/remote-swift-binding-smoke"
+          timeout 30s "$RUNNER_TEMP/remote-swift-binding-smoke"
+      - name: Emit verified generated sources and host library digest
+        run: |
+          sha256sum "$CARGO_TARGET_DIR/debug/libquenderin_remote_crypto.so"
+          python3 -B tools/emit_sources.py "$RUNNER_TEMP/remote-crypto-bindings"
