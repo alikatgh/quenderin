@@ -166,11 +166,11 @@ Candidate compatibility baseline, refreshed from upstream source on 23 October:
 
 | Component | Pinned inspection target | Execution evidence |
 | --- | --- | --- |
-| Remote source | `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Source inspected; no native interoperability yet |
-| Host plugin | `ds-harness-remote` 0.5.17 at that revision | Not installed or connected by Quenderin |
-| Harness development API | `0.2.1-rc.1` in plugin dev dependencies | Candidate only; not a tested support range |
+| Remote source | `9a60e783ec1ceaff6116b0462a2863f07f602a55` | Patched bundle and in-process real Gateway/Agent journey pass; live native Host connection pending |
+| Host plugin | `ds-harness-remote` 0.5.17 at that revision | Pinned companion built and exercised in hosted integration |
+| Harness development API | Official `0.2.1-rc.1` packages | Real controller/Agent/approval journey passes at this single pin; broader support range unverified |
 | Wire envelope | Protocol version 1 | Native carrier fixtures pass hosted Swift/Kotlin checks; no live Host connection |
-| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Locked Snow/UniFFI host tests and actual generated Swift/Kotlin runtime probes pass; platform linking pending |
+| Encryption suite | `Noise_IK_25519_ChaChaPoly_SHA256` | Locked host/runtime probes and actual unsigned Apple/Android app SDK linking pass; live native relay interoperability pending |
 
 The [plugin manifest](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/package.json)
 and [plugin MIT notice](https://github.com/liguobao/ds-harness-remote/blob/9a60e783ec1ceaff6116b0462a2863f07f602a55/packages/plugin/LICENSE)
@@ -364,10 +364,17 @@ integration tests with a synthetic Gateway. The
 passed nine Rust tests, both generated-binding probes, both linked carrier probes,
 and both production backend probes at `26df619`. An isolated actual official
 [Harness runtime fixture](../native/remote-host/runtime-fixture/README.md) is
-source-prepared and wired after the existing patched Host tests in the same
-bounded public Ubuntu job. Its lock/source/process/environment guard checks
-pass; the first hosted real Gateway/Agent/approval journey is pending and is
-not yet execution evidence. Cold persistence reads, stop/recovery and live
+now passes its first [official runtime journey](https://github.com/alikatgh/quenderin/actions/runs/39986442942/job/120526738753)
+at source `8f3081c`: real Gateway descriptors, controllers, JSONL persistence,
+Agent loop and approval service execute two scripted model calls and one inert
+tool after a bound approval; duplicate consumption is rejected and the turn
+completes. Its authenticated owner Peer is in process. This is not a live
+relay/Noise or model-provider test. The exact 47 pre-teardown business frames
+and unary results are preserved in
+[`shared/remote-harness-official-runtime-facts.json`](../shared/remote-harness-official-runtime-facts.json)
+with [capture provenance](../shared/remote-harness-official-runtime-provenance.json)
+and an executable byte-integrity gate. Native conformance replays are being
+added from those observed DTOs. Cold persistence reads, stop/recovery and live
 native interoperability remain separate gates. Fresh independent reviews cover the integrated source and material
 fixes before publication.
 

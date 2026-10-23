@@ -61,7 +61,11 @@ public struct RemoteHarnessClientTimeline: NativeConnectionPrivateValue {
         if type == "snapshot" {
             guard try f.required("header").fields().text("id").utf8.elementsEqual(expectedSessionID.utf8) else { throw RemoteHarnessClientFailure.protocolMismatch }
             let rawRecords = try f.required("records").elements()
-            let snapshotCursor = try f.required("cursor").integerValue()
+            // The official Host uses -1 for a new session with no durable
+            // events. Keep that sentinel local to the snapshot cursor: event
+            // sequences, assistant indexes and revisions remain unsigned.
+            let rawCursor = try f.required("cursor")
+            let snapshotCursor: Int64 = rawCursor.data == Data("-1".utf8) ? -1 : try rawCursor.integerValue()
             var last: Int64?
             for record in rawRecords {
                 let range = try Self.sequenceRange(record)

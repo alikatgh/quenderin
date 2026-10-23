@@ -1,0 +1,1211 @@
+{
+  "schema": 1,
+  "runtime": "official-0.2.1-rc.1",
+  "source": "1600d8a1e140dcde43a1a0941940a0480712c011",
+  "bridge": "patched-production",
+  "scriptedModelCalls": 2,
+  "inertToolExecutions": 1,
+  "unary": [
+    {
+      "endpoint": "workspace/create (Host setup)",
+      "result": {
+        "ok": true,
+        "value": {
+          "workspace": {
+            "workspaceId": "fixture-workspace",
+            "path": "<fixture-root>/workspace",
+            "title": "workspace",
+            "sessionIds": [],
+            "createdAt": "2026-10-23T16:24:50.795Z",
+            "updatedAt": "2026-10-23T16:24:50.795Z"
+          },
+          "created": true
+        }
+      }
+    },
+    {
+      "endpoint": "session/create",
+      "result": {
+        "ok": true,
+        "value": {
+          "sessionId": "fixture-session"
+        }
+      }
+    },
+    {
+      "endpoint": "session/list",
+      "result": {
+        "ok": true,
+        "value": {
+          "items": [
+            {
+              "sessionId": "fixture-session",
+              "updatedAt": 2000000000000,
+              "agentAvailable": true,
+              "formatStatus": "current",
+              "running": false,
+              "blank": true,
+              "cwd": "<fixture-root>/workspace",
+              "projections": {
+                "kind": "sequenced",
+                "asOfSeq": -1,
+                "values": {
+                  "workingDirectory": "<fixture-root>/workspace",
+                  "inbox": {
+                    "next-turn": [],
+                    "next-step": []
+                  },
+                  "modelSelection": {
+                    "lastUsed": null,
+                    "next": null
+                  },
+                  "sessionListMetadata": {
+                    "blank": true,
+                    "lastPromptAt": null
+                  },
+                  "imageLimits": {
+                    "maxImageBytes": 1,
+                    "maxImagesPerMessage": 1,
+                    "maxMessageImageBytes": 1,
+                    "maxImagePixels": 1,
+                    "maxImageDimension": 1,
+                    "mediaTypes": []
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "session/prompt",
+      "result": {
+        "ok": true,
+        "value": {
+          "accepted": true
+        }
+      }
+    },
+    {
+      "endpoint": "quenderin/approval",
+      "result": {
+        "ok": true
+      }
+    }
+  ],
+  "frames": [
+    {
+      "event": "harness.remote.frame",
+      "streamId": "workspace-feed",
+      "hasValue": true,
+      "value": {
+        "type": "baseline",
+        "value": {
+          "items": [],
+          "archivedSessionIds": [],
+          "pinnedSessionIds": []
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "workspace-feed",
+      "hasValue": true,
+      "value": {
+        "type": "upsert",
+        "workspace": {
+          "workspaceId": "fixture-workspace",
+          "path": "<fixture-root>/workspace",
+          "title": "workspace",
+          "sessionIds": [],
+          "createdAt": "2026-10-23T16:24:50.795Z",
+          "updatedAt": "2026-10-23T16:24:50.795Z"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "workspace-feed",
+      "hasValue": true,
+      "value": {
+        "type": "order",
+        "workspaceIds": [
+          "fixture-workspace"
+        ]
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "workspace-feed",
+      "hasValue": true,
+      "value": {
+        "type": "upsert",
+        "workspace": {
+          "workspaceId": "fixture-workspace",
+          "path": "<fixture-root>/workspace",
+          "title": "workspace",
+          "sessionIds": [
+            "fixture-session"
+          ],
+          "createdAt": "2026-10-23T16:24:50.795Z",
+          "updatedAt": "2026-10-23T16:24:50.818Z"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "snapshot",
+        "header": {
+          "version": 4,
+          "id": "fixture-session",
+          "createdAt": 2000000000000,
+          "cwd": "<fixture-root>/workspace",
+          "isSeeded": false
+        },
+        "cursor": -1,
+        "records": [],
+        "hasMore": false,
+        "projections": {
+          "asOfSeq": -1,
+          "values": {
+            "workingDirectory": "<fixture-root>/workspace",
+            "inbox": {
+              "next-turn": [],
+              "next-step": []
+            },
+            "modelSelection": {
+              "lastUsed": null,
+              "next": null
+            },
+            "sessionListMetadata": {
+              "blank": true,
+              "lastPromptAt": null
+            },
+            "imageLimits": {
+              "maxImageBytes": 1,
+              "maxImagesPerMessage": 1,
+              "maxMessageImageBytes": 1,
+              "maxImagePixels": 1,
+              "maxImageDimension": 1,
+              "mediaTypes": []
+            }
+          }
+        },
+        "assistantStream": {
+          "revision": 0
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "remote-events",
+      "hasValue": true,
+      "value": {
+        "type": "ready",
+        "clientId": "fixture-event-client",
+        "host": {
+          "home": "<host-home>"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "baseline",
+        "value": {
+          "projections": {
+            "fixture-session": {
+              "asOfSeq": -1,
+              "values": {
+                "workingDirectory": "<fixture-root>/workspace",
+                "inbox": {
+                  "next-turn": [],
+                  "next-step": []
+                },
+                "modelSelection": {
+                  "lastUsed": null,
+                  "next": null
+                },
+                "sessionListMetadata": {
+                  "blank": true,
+                  "lastPromptAt": null
+                },
+                "imageLimits": {
+                  "maxImageBytes": 1,
+                  "maxImagesPerMessage": 1,
+                  "maxMessageImageBytes": 1,
+                  "maxImagePixels": 1,
+                  "maxImageDimension": 1,
+                  "mediaTypes": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "agent/inbox/spliced",
+          "seq": 0,
+          "time": 2000000000000,
+          "data": {
+            "target": "next-turn",
+            "start": 0,
+            "inserted": [
+              {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Run the synthetic fixture tool once."
+                  }
+                ],
+                "source": {
+                  "kind": "user",
+                  "rpcId": "fixture-native-prompt-1"
+                },
+                "role": "user",
+                "id": "f18e795e-bf4c-4aa2-8013-b655df09b5a0"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "remote-events",
+      "hasValue": true,
+      "value": {
+        "type": "emit",
+        "event": "api-session/status",
+        "args": [
+          "fixture-session",
+          true
+        ]
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "projection",
+        "sessionId": "fixture-session",
+        "key": "inbox",
+        "value": {
+          "next-turn": [
+            {
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Run the synthetic fixture tool once."
+                }
+              ],
+              "source": {
+                "kind": "user",
+                "rpcId": "fixture-native-prompt-1"
+              },
+              "role": "user",
+              "id": "f18e795e-bf4c-4aa2-8013-b655df09b5a0"
+            }
+          ],
+          "next-step": []
+        },
+        "seq": 0
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "turn/start",
+          "seq": 1,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "projection",
+        "sessionId": "fixture-session",
+        "key": "sessionListMetadata",
+        "value": {
+          "blank": false,
+          "lastPromptAt": null
+        },
+        "seq": 1
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "agent/inbox/spliced",
+          "seq": 2,
+          "time": 2000000000000,
+          "data": {
+            "target": "next-turn",
+            "start": 0,
+            "removedCount": 1,
+            "inserted": []
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "projection",
+        "sessionId": "fixture-session",
+        "key": "inbox",
+        "value": {
+          "next-turn": [],
+          "next-step": []
+        },
+        "seq": 2
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "step/start",
+          "seq": 3,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "system/message",
+          "seq": 4,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "message": {
+              "role": "system",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "You are an AI agent powered by DeepSeek Harness."
+                }
+              ],
+              "source": {
+                "kind": "system-prompt"
+              },
+              "id": "072b2093-2a4c-48b5-8281-41e6765fde69"
+            }
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "remote-events",
+      "hasValue": true,
+      "value": {
+        "type": "emit",
+        "event": "api-session/activity",
+        "args": [
+          "fixture-session",
+          1792772690849
+        ]
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "projection",
+        "sessionId": "fixture-session",
+        "key": "sessionListMetadata",
+        "value": {
+          "blank": false,
+          "lastPromptAt": 1792772690849
+        },
+        "seq": 5
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "user/message",
+          "seq": 5,
+          "time": 2000000000000,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Run the synthetic fixture tool once."
+              }
+            ],
+            "source": {
+              "kind": "user",
+              "rpcId": "fixture-native-prompt-1"
+            },
+            "role": "user",
+            "id": "f18e795e-bf4c-4aa2-8013-b655df09b5a0"
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "user/message",
+          "seq": 6,
+          "time": 2000000000000,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent working directory: \"/tmp/quenderin-official-runtime-Jeryfu/workspace\".\n\nApproval policy: ask. Operations that require approval may ask through the configured answerers; without an available answerer, the request fails closed."
+              }
+            ],
+            "source": {
+              "kind": "runtime-context",
+              "form": "snapshot",
+              "sections": [
+                {
+                  "name": "working-directory:current",
+                  "text": "Current working directory: \"/tmp/quenderin-official-runtime-Jeryfu/workspace\"."
+                },
+                {
+                  "name": "approval:policy",
+                  "text": "Approval policy: ask. Operations that require approval may ask through the configured answerers; without an available answerer, the request fails closed."
+                }
+              ]
+            },
+            "role": "user",
+            "id": "38a42ea5-9df9-40b1-96dd-96d91abfccb0"
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-control",
+      "hasValue": true,
+      "value": {
+        "type": "projection",
+        "sessionId": "fixture-session",
+        "key": "modelSelection",
+        "value": {
+          "lastUsed": {
+            "provider": "fixture",
+            "model": "scripted"
+          },
+          "next": {
+            "provider": "fixture",
+            "model": "scripted"
+          }
+        },
+        "seq": 7
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "request/header",
+          "seq": 7,
+          "time": 2000000000000,
+          "data": {
+            "header": {
+              "config": {
+                "provider": "fixture",
+                "model": "scripted"
+              },
+              "tools": [
+                {
+                  "name": "fixture_echo",
+                  "description": "Return a fixed synthetic result without I/O",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reason": "initial"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "remote-events",
+      "hasValue": true,
+      "value": {
+        "type": "waterfall",
+        "event": "approval/request",
+        "eventId": "fixture-event",
+        "agentId": "fixture-session",
+        "request": {
+          "toolName": "fixture_echo",
+          "callId": "fixture-call-1",
+          "reason": "Synthetic fixture approval"
+        },
+        "quenderinBinding": {
+          "hostDeviceId": "fixture-host",
+          "clientDeviceId": "fixture-native",
+          "workspaceId": "fixture-workspace",
+          "sessionId": "fixture-session",
+          "runId": "turn:1",
+          "eventId": "fixture-event",
+          "actionDigest": "b632e1a5465329596c354592f48935e41ea8bea2035485211190ddaf0607f813",
+          "expiresAt": 2000000000000
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "request/context",
+          "seq": 8,
+          "time": 2000000000000,
+          "data": {
+            "provider": "fixture",
+            "model": "scripted"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "start",
+          "attemptId": "fixture-session:1",
+          "revision": 1,
+          "turn": 1,
+          "step": 1,
+          "startedAfterSeq": 8
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:1",
+          "revision": 2,
+          "index": 0,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "block-start",
+            "index": 0,
+            "blockType": "tool-call"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:1",
+          "revision": 3,
+          "index": 1,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "tool-call-delta",
+            "index": 0,
+            "id": "fixture-call-1",
+            "name": "fixture_echo",
+            "argumentsDelta": "{\"text\":\"synthetic action\"}"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:1",
+          "revision": 4,
+          "index": 2,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "block-end",
+            "index": 0,
+            "block": {
+              "type": "tool-call",
+              "id": "fixture-call-1",
+              "name": "fixture_echo",
+              "arguments": "{\"text\":\"synthetic action\"}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:1",
+          "revision": 5,
+          "index": 3,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "finish",
+            "reason": {
+              "kind": "tool-calls"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "assistant/message",
+          "seq": 9,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "tool-call",
+                  "id": "fixture-call-1",
+                  "name": "fixture_echo",
+                  "arguments": "{\"text\":\"synthetic action\"}"
+                }
+              ],
+              "source": {
+                "kind": "model",
+                "provider": "fixture",
+                "model": "scripted"
+              },
+              "id": "844d972c-98fc-4101-aa53-77ef44b2a7ab"
+            },
+            "stream": [
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "block-start",
+                  "index": 0,
+                  "blockType": "tool-call"
+                }
+              },
+              {
+                "type": "tool-call-chunks",
+                "time0": 1792772690853,
+                "index": 0,
+                "dt": [],
+                "id": "fixture-call-1",
+                "name": "fixture_echo",
+                "args": [
+                  "{\"text\":\"synthetic action\"}"
+                ]
+              },
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "block-end",
+                  "index": 0,
+                  "block": {
+                    "type": "tool-call",
+                    "id": "fixture-call-1",
+                    "name": "fixture_echo",
+                    "arguments": "{\"text\":\"synthetic action\"}"
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "finish",
+                  "reason": {
+                    "kind": "tool-calls"
+                  }
+                }
+              }
+            ]
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "end",
+          "attemptId": "fixture-session:1",
+          "revision": 6,
+          "index": 4,
+          "outcome": {
+            "kind": "committed",
+            "eventType": "assistant/message",
+            "seq": 9
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "tool/call",
+          "seq": 10,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "callId": "fixture-call-1",
+            "name": "fixture_echo",
+            "arguments": "{\"text\":\"synthetic action\"}"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "approval/asked",
+          "seq": 11,
+          "time": 2000000000000,
+          "data": {
+            "id": "bcd921af-2c7d-4f90-8fdc-bc12d0c69b1a",
+            "toolName": "fixture_echo",
+            "callId": "fixture-call-1",
+            "reason": "Synthetic fixture approval"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "approval/decided",
+          "seq": 12,
+          "time": 2000000000000,
+          "data": {
+            "id": "bcd921af-2c7d-4f90-8fdc-bc12d0c69b1a",
+            "outcome": "allowed-once"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "tool/result",
+          "seq": 13,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "message": {
+              "role": "tool",
+              "source": {
+                "kind": "tool",
+                "callId": "fixture-call-1"
+              },
+              "toolCallId": "fixture-call-1",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "synthetic result"
+                }
+              ],
+              "isError": false,
+              "id": "df887c0e-ab8c-452c-bcb5-ca8ad133aaed"
+            }
+          },
+          "sourceEventSeqs": [
+            10
+          ],
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "step/end",
+          "seq": 14,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 1
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "step/start",
+          "seq": 15,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 2
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "start",
+          "attemptId": "fixture-session:2",
+          "revision": 7,
+          "turn": 1,
+          "step": 2,
+          "startedAfterSeq": 15
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:2",
+          "revision": 8,
+          "index": 0,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "block-start",
+            "index": 0,
+            "blockType": "text"
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:2",
+          "revision": 9,
+          "index": 1,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "text-delta",
+            "index": 0,
+            "text": "Synthetic tool completed."
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:2",
+          "revision": 10,
+          "index": 2,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "block-end",
+            "index": 0,
+            "block": {
+              "type": "text",
+              "text": "Synthetic tool completed."
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "remote-events",
+      "hasValue": true,
+      "value": {
+        "type": "emit",
+        "event": "api-session/status",
+        "args": [
+          "fixture-session",
+          false
+        ]
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "chunk",
+          "attemptId": "fixture-session:2",
+          "revision": 11,
+          "index": 3,
+          "time": 2000000000000,
+          "chunk": {
+            "type": "finish",
+            "reason": {
+              "kind": "stop"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "assistant/message",
+          "seq": 16,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 2,
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Synthetic tool completed."
+                }
+              ],
+              "source": {
+                "kind": "model",
+                "provider": "fixture",
+                "model": "scripted"
+              },
+              "id": "438cd657-1afd-4f72-8bf2-558e8cbbc55c"
+            },
+            "stream": [
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "block-start",
+                  "index": 0,
+                  "blockType": "text"
+                }
+              },
+              {
+                "type": "text-chunks",
+                "time0": 1792772690867,
+                "index": 0,
+                "dt": [],
+                "texts": [
+                  "Synthetic tool completed."
+                ]
+              },
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "block-end",
+                  "index": 0,
+                  "block": {
+                    "type": "text",
+                    "text": "Synthetic tool completed."
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 2000000000000,
+                "chunk": {
+                  "type": "finish",
+                  "reason": {
+                    "kind": "stop"
+                  }
+                }
+              }
+            ]
+          },
+          "surfaceOp": "append"
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "assistant-stream",
+        "frame": {
+          "type": "end",
+          "attemptId": "fixture-session:2",
+          "revision": 12,
+          "index": 4,
+          "outcome": {
+            "kind": "committed",
+            "eventType": "assistant/message",
+            "seq": 16
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "step/end",
+          "seq": 17,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "step": 2
+          }
+        }
+      }
+    },
+    {
+      "event": "harness.remote.frame",
+      "streamId": "session-history",
+      "hasValue": true,
+      "value": {
+        "type": "event",
+        "event": {
+          "type": "turn/end",
+          "seq": 18,
+          "time": 2000000000000,
+          "data": {
+            "turn": 1,
+            "reason": {
+              "kind": "completed"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
