@@ -34,11 +34,14 @@ source `d937e79bd058f415eb0565b5def0880448a38aa6`, merged as
 host checks and secret scan passed.
 Current mission: operate a DeepSeek Harness on the user's computer through a
 complete native task/session interface. Store submission is deferred by the user.
-The active `codex/native-remote-journey-20261023` candidate adds SDK packaging,
-origin-scoped enrollment, full identity confirmation, the native Apple/Android
-session interfaces, and a pinned Host approval companion. Source review and
-hosted compilation are separate gates below; a live relay/Host target has not
-been supplied.
+The native journey source is merged through
+[PR #178](https://github.com/alikatgh/quenderin/pull/178) as
+`ae22b9de73eed009a3eb7cd3b8879315179a1acd`. Its tree exactly matches tested
+source `4db5179`. It adds SDK packaging, origin-scoped enrollment, full identity
+confirmation, native Apple/Android session interfaces and a pinned Host approval
+companion. A live relay/Host target has not been supplied. The separate
+official-runtime verification work continues in
+[PR #179](https://github.com/alikatgh/quenderin/pull/179).
 This file is the delivery checklist; checked items require recorded evidence.
 An implemented contract is not evidence of a connected remote session or a store
 release. Work proceeds from the top, with independent preparation in parallel.
@@ -326,9 +329,9 @@ confirmation. Keep that gate open and negotiate its support before enabling the
 approval journey. Remote-service credential bundles need their own origin/device/
 role-scoped secure format, separate from the direct DeepSeek API-key format.
 
-### Native application journey candidate
+### Native application journey source — merged and compiled
 
-The active candidate connects the earlier carrier/Noise work to actual native
+The merged source connects the earlier carrier/Noise work to actual native
 entry points, account/device enrollment, bounded REST/WebSocket transports,
 workspace/session/model selection, a text/tool timeline, bound approvals, Stop,
 and isolated draft/session recovery. It also adds real generated SDK packaging
@@ -346,12 +349,14 @@ Pre-publication evidence: Android controller journey 51 checks; production pinne
 OkHttp adapter 48 checks; private-backup tests 2; Host policy 28 tests including
 the 12 shared canonical digest cases; SDK receipt/package tests 31. Hosted Swift
 tests pass **682 tests, six skipped, zero failures**, including the complete
-synthetic controller journey. The [Apple SDK job](https://github.com/alikatgh/quenderin/actions/runs/39973923157/job/120484184703)
+synthetic controller journey. The [Apple SDK job](https://github.com/alikatgh/quenderin/actions/runs/39981265354/job/120508855517)
 passes real five-target SDK generation and unsigned iPhone, simulator-SDK and Mac
 app compilation. Android's
 [actual SDK/app packaging check](https://github.com/alikatgh/quenderin/actions/runs/39981265354/job/120508856149)
 passes at `4db5179`, including exact Noise/JNA library bytes and ELF/ZIP 16 KiB
 alignment verification. These are unsigned hosted checks. The
+[full CI run](https://github.com/alikatgh/quenderin/actions/runs/39981265305)
+passes all 18 jobs at `4db5179`, alongside the separate secret scan. The
 [patched Host run](https://github.com/alikatgh/quenderin/actions/runs/39973923220)
 passes source preparation, actual bundle compilation and three bridge/controller
 integration tests with a synthetic Gateway. The

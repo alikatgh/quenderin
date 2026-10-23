@@ -220,6 +220,30 @@ it('runs a native prompt through strict production SessionV3 Gateway, Agent, app
     const encoded = JSON.stringify(facts, null, 2) + '\n';
     if (Buffer.byteLength(encoded) > 262_144) throw new Error('Canonical facts exceed 256 KiB');
     completedFacts = encoded;
+  } catch (error) {
+    // This keyless synthetic fixture may report internal failure text, but no
+    // raw DTO, profile, prompt, environment or successful runtime facts.
+    const token = (value: unknown) => typeof value === 'string' && /^[A-Za-z0-9_./-]{1,80}$/.test(value) ? value : undefined;
+    const message = (value: unknown) => typeof value === 'string'
+      ? value.replaceAll(root, '<fixture-root>').replaceAll(homedir(), '<host-home>')
+        .replace(/https?:\/\/[^\s"']+/g, '<url>').slice(0, 160)
+      : undefined;
+    const streams = ['workspace-feed', 'session-history', 'session-control', 'remote-events'].map(streamId => {
+      const observed = frames.filter(frame => frame.streamId === streamId);
+      const terminal = observed.findLast(frame => frame.event === 'harness.remote.stream.closed');
+      return { streamId, frames: observed.length,
+        valueTypes: [...new Set(observed.map(frame => token(frame.value?.type)).filter(Boolean))].slice(0, 6),
+        terminal: terminal === undefined ? undefined : { event: 'harness.remote.stream.closed', reason: token(terminal.reason),
+          code: token(terminal.failure?.code), message: message(terminal.failure?.message) } };
+    });
+    const diagnostic = { officialRuntimeFailure: 'stream-baselines-or-journey', streams };
+    let encoded = JSON.stringify(diagnostic);
+    while (Buffer.byteLength(encoded) > 2048 && diagnostic.streams.length) {
+      diagnostic.streams.pop();
+      encoded = JSON.stringify(diagnostic);
+    }
+    console.error('OFFICIAL_RUNTIME_FAILURE_DIAGNOSTIC ' + encoded);
+    throw error;
   } finally {
     lifetime.abort();
     await bridge?.closeAll();
