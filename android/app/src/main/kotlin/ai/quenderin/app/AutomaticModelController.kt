@@ -141,8 +141,9 @@ class AutomaticModelController(
         check(loaded?.id != current.id || tokens + ChatTier.of(current).maxTokens <= execution.contextTokens) {
             "This pending turn does not fit the current local model's context. Your draft is kept."
         }
-        if (decision != null && loaded?.id == decision.modelID && decision.environmentID != null)
-            label = Label(loaded.id, decision.environmentID, decision.observed)
+        val decisionEnvironment = decision?.environmentID
+        if (decision != null && loaded?.id == decision.modelID && decisionEnvironment != null)
+            label = Label(loaded.id, decisionEnvironment, decision.observed)
         return loaded
     }
 
