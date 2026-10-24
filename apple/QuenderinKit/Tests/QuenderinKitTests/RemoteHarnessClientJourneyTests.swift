@@ -129,6 +129,7 @@ import XCTest
     }
 }
 @MainActor private final class JourneySocket: RemoteHarnessClientSocket {
+    private enum FixtureError: Error { case noPendingBotRead }
     let server: JourneyServer
     let pair = AsyncThrowingStream<Data, Error>.makeStream(bufferingPolicy: .bufferingOldest(64))
     var counter: Int64 = 0
@@ -155,6 +156,7 @@ import XCTest
         try business("event", ["event": "harness.remote.frame", "data": ["streamId": stream, "hasValue": true, "value": value]])
     }
     func replyBotReads(_ result: [String: Any]? = nil) throws {
+        guard !pendingBotReads.isEmpty else { throw FixtureError.noPendingBotRead }
         let pending = pendingBotReads; pendingBotReads = []
         for id in pending { try business("rpc.response", ["requestId": id, "result": result ?? server.botResponseOverride ?? server.botResponse()]) }
     }
@@ -809,16 +811,18 @@ import XCTest
         let server = JourneyServer(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]; server.deferBotReads = true
         let native = try await botController(server, storage: JourneyStorage()); defer { native.disconnect() }
         await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && server.sockets.last?.pendingBotReads.count == 1 }
+        let socket = try XCTUnwrap(server.sockets.last)
         native.updateDraft("Wait for ownership verification")
         let commands = native.journal.commands.count
         XCTAssertTrue(native.botSessionClassificationPending); XCTAssertFalse(native.isBotSessionReadOnly); XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
         await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
         XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
-        try XCTUnwrap(server.sockets.last).replyBotReads(server.botResponse(bots: [])); await settle { !native.botLoading }
+        try socket.replyBotReads(server.botResponse(bots: [])); await settle { !native.botLoading }
         XCTAssertFalse(native.botSessionClassificationPending); XCTAssertFalse(native.isBotSessionReadOnly); XCTAssertTrue(native.canSend); XCTAssertTrue(native.canChangeModel)
-        let refresh = Task { await native.refreshBots() }; await settle { native.botLoading }
+        let refresh = Task { await native.refreshBots() }; await settle { native.botLoading && socket.pendingBotReads.count == 1 }
+        guard native.botLoading, socket.pendingBotReads.count == 1 else { return }
         XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
-        try XCTUnwrap(server.sockets.last).replyBotReads(); await refresh.value
+        try socket.replyBotReads(); await refresh.value
         XCTAssertTrue(native.isBotSessionReadOnly); XCTAssertFalse(native.canSend); XCTAssertFalse(native.canChangeModel)
         await native.send(); await native.selectModel("synthetic:deepseek-harness", effort: "high")
         XCTAssertEqual(server.prompts, 0); XCTAssertEqual(server.modelSelections, 0); XCTAssertEqual(native.journal.commands.count, commands)
