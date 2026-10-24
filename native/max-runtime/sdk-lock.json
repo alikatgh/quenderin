@@ -9,7 +9,165 @@
   "maximum_uncompressed_bytes": 1600000000,
   "maximum_network_seconds": 240,
   "maximum_runtime_seconds": 180,
-  "runtime_license_review": null,
+  "runtime_license_review": {
+    "scope": "hosted-cpu-fixture-only-no-redistribution",
+    "audit_url": "https://github.com/alikatgh/quenderin/actions/runs/40101507948",
+    "license_sha256": {
+      "max/max-26.7.0.dist-info/LICENSE": "f35ac2dfeb4a3e9482468874a50ce4dfb16fc11c3aefd2a1b4d51c44515ed02d",
+      "max/max-26.7.0.dist-info/Third-Party-Notices": "c12337f144b96ee908c4c32cd0be3fe151eb186931836c7e155481e101420446",
+      "numpy/numpy/_core/include/numpy/random/LICENSE.txt": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec",
+      "numpy/numpy/ma/LICENSE": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6",
+      "numpy/numpy/random/LICENSE.md": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f",
+      "numpy/numpy-2.3.3.dist-info/LICENSE.txt": "2046a3130e50b11c01659b3a0d963e6ae0b7436ff8e89cbcfd9e87bc6112d595",
+      "click/click-8.3.0.dist-info/licenses/LICENSE.txt": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d",
+      "exceptiongroup/exceptiongroup-1.3.0.dist-info/licenses/LICENSE": "6e5070d765031e0ad403a1cbf90ae6d19a0228f802e320b7acff460aa72ed47c",
+      "msgspec/msgspec-0.19.0.dist-info/LICENSE": "6fde8b6723885e8508808f65ac372feb97d3eee2eab2b91d34d796b75b7ac734",
+      "psutil/psutil-7.1.0.dist-info/LICENSE": "b89c063b3786e28e0c0a38f1931db61fed35e69dd2a2966fbecffee0f46c8d10",
+      "rich/rich-14.2.0.dist-info/LICENSE": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15",
+      "taskgroup/taskgroup-0.2.2.dist-info/LICENSE": "12ded19bc54d724ccbf38ce995fd7de37846f744ed748feee2caa0d39dd3f55a",
+      "typing-extensions/typing_extensions-4.15.0.dist-info/licenses/LICENSE": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "pygments/pygments-2.19.2.dist-info/licenses/AUTHORS": "0660e318a6f215802adc8731ab85d0c65ff27cfcca3f5d28597f306476195bd9",
+      "pygments/pygments-2.19.2.dist-info/licenses/LICENSE": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17",
+      "markdown-it-py/markdown_it_py-4.0.0.dist-info/licenses/LICENSE": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484",
+      "markdown-it-py/markdown_it_py-4.0.0.dist-info/licenses/LICENSE.markdown-it": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473",
+      "mdurl/mdurl-0.1.2.dist-info/LICENSE": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955"
+    },
+    "package_coverage": {
+      "max": {
+        "version": "26.7.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+      },
+      "max-core": {
+        "version": "26.7.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+      },
+      "max-mojo-libs": {
+        "version": "26.7.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+      },
+      "max-shmem-libs": {
+        "version": "26.7.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 inspects this exact official wheel only as inert data. The CPU profile omits the entire package from installation and removes wheel staging before SDK use. Its four exact NVSHMEM payload hashes are forbidden in the installed tree; loader cache, maps, preload and search paths must exclude NVSHMEM before each SDK child. This is no approval to install/use NVSHMEM for CPU application development, and grants no GPU, redistribution or service scope."
+      },
+      "mojo-compiler": {
+        "version": "1.2.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+      },
+      "mojo-compiler-mojo-libs": {
+        "version": "1.2.0",
+        "license_refs": [
+          "max/max-26.7.0.dist-info/LICENSE",
+          "max/max-26.7.0.dist-info/Third-Party-Notices"
+        ],
+        "applicability_evidence": "Audit 40101507948 verifies this exact official SDK wheel declares LicenseRef-MAX-Platform-Software-License. Its MAX 26.7.0 embedded LICENSE (Modular MAX Community License, August 18, 2026) covers MAX SDK interoperability under sections 1.1 and 1.4, with the exact Third-Party-Notices retained. Only the reviewed CPU profile is admitted: no max-shmem-libs installation, exact shmem.mojoc removal before import, retained bytes verified, and no NVSHMEM loader availability. Missing optional GPU components cause failure, never fallback installation. No redistribution, managed service, mobile packaging or other version is cleared."
+      },
+      "numpy": {
+        "version": "2.3.3",
+        "license_refs": [
+          "numpy/numpy/_core/include/numpy/random/LICENSE.txt",
+          "numpy/numpy/ma/LICENSE",
+          "numpy/numpy/random/LICENSE.md",
+          "numpy/numpy-2.3.3.dist-info/LICENSE.txt"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "click": {
+        "version": "8.3.0",
+        "license_refs": [
+          "click/click-8.3.0.dist-info/licenses/LICENSE.txt"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "exceptiongroup": {
+        "version": "1.3.0",
+        "license_refs": [
+          "exceptiongroup/exceptiongroup-1.3.0.dist-info/licenses/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "msgspec": {
+        "version": "0.19.0",
+        "license_refs": [
+          "msgspec/msgspec-0.19.0.dist-info/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "psutil": {
+        "version": "7.1.0",
+        "license_refs": [
+          "psutil/psutil-7.1.0.dist-info/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "rich": {
+        "version": "14.2.0",
+        "license_refs": [
+          "rich/rich-14.2.0.dist-info/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "taskgroup": {
+        "version": "0.2.2",
+        "license_refs": [
+          "taskgroup/taskgroup-0.2.2.dist-info/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "typing-extensions": {
+        "version": "4.15.0",
+        "license_refs": [
+          "typing-extensions/typing_extensions-4.15.0.dist-info/licenses/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "pygments": {
+        "version": "2.19.2",
+        "license_refs": [
+          "pygments/pygments-2.19.2.dist-info/licenses/AUTHORS",
+          "pygments/pygments-2.19.2.dist-info/licenses/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "markdown-it-py": {
+        "version": "4.0.0",
+        "license_refs": [
+          "markdown-it-py/markdown_it_py-4.0.0.dist-info/licenses/LICENSE",
+          "markdown-it-py/markdown_it_py-4.0.0.dist-info/licenses/LICENSE.markdown-it"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      },
+      "mdurl": {
+        "version": "0.1.2",
+        "license_refs": [
+          "mdurl/mdurl-0.1.2.dist-info/LICENSE"
+        ],
+        "applicability_evidence": "Audit 40101507948 extracted these exact license/notice files from this pinned official wheel. Its own included terms cover this unchanged dependency's ephemeral hosted execution; preserve all embedded notices in the temporary installation. No SDK/dependency binaries or generated artifact are redistributed."
+      }
+    },
+    "cpu_fixture_profile_id": "max-26.7.0-linux-x86_64-cpu-without-nvshmem-v1",
+    "cpu_fixture_profile_sha256": "5d3a29a4e9f91b8c5ce79f87cd22ac0c1d402eff7002482e9a5860eb382ef231",
+    "native_evidence_sha256": "802579c5a58437ad524aedc78db2f7a65eaf7ff255d9829adf064cee23fed4a8"
+  },
   "packages": [
     {
       "name": "max",
@@ -517,5 +675,57 @@
       "size": 1103,
       "sha256": "b0e39c36f6ceb8957e9ecf7e11732047d37c9ac76299b9d18c8dd95dc8db6ce0"
     }
-  ]
+  ],
+  "cpu_fixture_profile": {
+    "schema": 1,
+    "id": "max-26.7.0-linux-x86_64-cpu-without-nvshmem-v1",
+    "scope": "hosted-cpu-fixture-only-no-redistribution",
+    "audit_url": "https://github.com/alikatgh/quenderin/actions/runs/40101507948",
+    "native_evidence_sha256": "802579c5a58437ad524aedc78db2f7a65eaf7ff255d9829adf064cee23fed4a8",
+    "omitted_packages": [
+      "max-shmem-libs"
+    ],
+    "omitted_package_payloads": [
+      {
+        "package": "max-shmem-libs",
+        "path": "max_shmem_libs-26.7.0.data/platlib/modular/lib/libnvshmem_host.so.3",
+        "size": 31873104,
+        "sha256": "a5c5909be6674b42cd6dedb17cf136fc74a049ee9948f80f3e2f5d6d10bc54d8"
+      },
+      {
+        "package": "max-shmem-libs",
+        "path": "max_shmem_libs-26.7.0.data/platlib/modular/lib/nvshmem_bootstrap_mpi.so.3",
+        "size": 27128,
+        "sha256": "ab3c2e7361d12249e5b89296a5bf59fcddc43242c12af99f654d1450c2a20c54"
+      },
+      {
+        "package": "max-shmem-libs",
+        "path": "max_shmem_libs-26.7.0.data/platlib/modular/lib/nvshmem_transport_ibgda.so.6",
+        "size": 867992,
+        "sha256": "6d8818c6addf6cb27ea46e7d4e4a7b23313d8f6389d8c714bb465d42ff48d52f"
+      },
+      {
+        "package": "max-shmem-libs",
+        "path": "max_shmem_libs-26.7.0.data/platlib/modular/lib/nvshmem_transport_ibrc.so.6",
+        "size": 814656,
+        "sha256": "66b216563fb91b1818178f71fa9a07732e8b009e1a85696a6004fbdf7b6d913f"
+      }
+    ],
+    "omitted_files": [
+      {
+        "package": "max-mojo-libs",
+        "path": "max_mojo_libs-26.7.0.data/platlib/modular/lib/mojo/shmem.mojoc",
+        "installed_path": "modular/lib/mojo/shmem.mojoc",
+        "size": 528159,
+        "sha256": "9e26f86d0b9dc113a00de8436ea1e5b14683b1df12e3ccde22fa1e000ab495f2"
+      }
+    ],
+    "generated_console_scripts": "omit",
+    "declared_dependency_exception": {
+      "package": "max-core",
+      "requirement": "max-shmem-libs==26.7.0",
+      "reason": "Only this audited CPU graph fixture omits the separately packaged GPU runtime; missing-component demand must fail without fallback."
+    },
+    "runtime_license_approval_inferred": false
+  }
 }
