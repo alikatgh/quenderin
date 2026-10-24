@@ -42,6 +42,7 @@ import { types } from 'node:util';
 
 class ZeroCallAdapter extends LlmAdapter {
   calls = 0;
+  async listModels(provider: string) { return [{ provider, id: 'scripted', name: 'scripted' }]; }
   async resolveModel(provider: string, model: string) { return { provider, id: model, name: model }; }
   async *stream(_options: GenerateOptions): AsyncIterable<StreamChunk> { this.calls++; throw new Error('Zero model-call read budget exceeded'); }
 }
@@ -92,6 +93,7 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     await ctx.plugin(WorkspaceRegistry); await mountAgentLoopTestHarness(ctx);
     await ctx.plugin(DefaultModel, { provider: 'fixture', model: 'scripted' });
     ctx.llm.registerAdapter(['fixture'], adapter);
+    expect(await ctx.llm.listModels('fixture'), 'Static synthetic model catalog').toEqual([{ provider: 'fixture', id: 'scripted', name: 'scripted' }]);
     new NoMediaAttachments(ctx); new NoSearchQuery(ctx);
     await ctx.plugin(Commands);
     const noBrowserAuth = new Proxy({}, { get() { throw new Error('Browser authentication outside this fixture'); } });
@@ -270,7 +272,8 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
       sessionId: 'fixture-other-session', provider: 'fixture', model: 'scripted',
     } } } });
     expect(ordinaryModelSelection.type).toBe('rpc.response');
-    expect(ordinaryModelSelection.payload.result).toMatchObject({ ok: true, value: { selected: { provider: 'fixture', model: 'scripted' } } });
+    expect(ordinaryModelSelection.payload.result.error?.code, 'Ordinary model-selection failure code').toBeUndefined();
+    expect(ordinaryModelSelection.payload.result).toEqual({ ok: true, value: { selected: { provider: 'fixture', model: 'scripted' } } });
     expect(adapter.calls).toBe(0); expect(toolCalls).toBe(0); expect(Object.values(readEffects)).toEqual(Object.values(readEffects).map(() => 0));
     completed = { schema: 1, harnessRevision: '1600d8a1e140dcde43a1a0941940a0480712c011', remoteRevision: '9a60e783ec1ceaff6116b0462a2863f07f602a55', botRevision: '1bebe826f74e9a72cabafd3b80602b05af867b38',
       lifecycle: 'explicit synthetic store load, then real channel.install; full createRuntime not invoked', authenticatedCarrier: 'admitted ConnectionController channel -> RpcRouter -> shared Fetch with official owner Peer',
