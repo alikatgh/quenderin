@@ -12,7 +12,7 @@ import signal
 import subprocess
 import time
 
-from gates import ROOT, assert_network, assert_status, load_lock, require_hosted, runtime_environment
+from gates import ROOT, assert_network, assert_status, load_lock, require_hosted, runtime_environment, verify_license_review
 
 
 def bounded(command: list[str], *, env: dict[str, str], cwd: pathlib.Path, deadline: float) -> tuple[bytes, bytes]:
@@ -74,6 +74,11 @@ def main() -> None:
     work = args.work.resolve(strict=True)
     inspection = json.loads((work / "inspection.json").read_text())
     review = lock.get("runtime_license_review")
+    license_hashes = inspection.get("licenseSHA256")
+    if not isinstance(license_hashes, dict) or any(not isinstance(key, str) or "/" not in key for key in license_hashes):
+        raise ValueError("Exact inspected license provenance required")
+    verify_license_review(lock, [{"package": key.split("/", 1)[0], "path": key.split("/", 1)[1], "sha256": value}
+                                 for key, value in license_hashes.items()])
     if (work.is_symlink() or work.stat().st_uid != os.getuid()
             or json.loads((work / "installed.json").read_text()).get("lockSHA256") != lock["lock_sha256"]
             or inspection.get("lockSHA256") != lock["lock_sha256"] or not isinstance(review, dict)

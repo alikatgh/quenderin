@@ -131,3 +131,19 @@ def verify_license_review(lock: dict, licenses: list[dict]) -> None:
             or review.get("scope") != "hosted-cpu-fixture-only-no-redistribution"
             or review.get("license_sha256") != actual):
         raise ValueError("Exact embedded SDK/dependency license inspection and recorded review required before installation or execution")
+    packages = {package["name"]: package["version"] for package in lock.get("packages", [])}
+    coverage = review.get("package_coverage")
+    if (not packages or any(item["package"] not in packages for item in licenses)
+            or not isinstance(coverage, dict) or set(coverage) != set(packages)):
+        raise ValueError("Explicit reviewed applicable terms coverage is required for every pinned package")
+    for name, version in packages.items():
+        entry = coverage[name]
+        references = entry.get("license_refs") if isinstance(entry, dict) else None
+        evidence = entry.get("applicability_evidence") if isinstance(entry, dict) else None
+        own_terms = {key for key in actual if key.startswith(name + "/")}
+        if (not isinstance(entry, dict) or entry.get("version") != version
+                or not isinstance(references, list) or not 1 <= len(references) <= 64
+                or any(not isinstance(reference, str) or reference not in actual for reference in references)
+                or len(set(references)) != len(references) or not own_terms.issubset(references)
+                or not isinstance(evidence, str) or not evidence.strip() or len(evidence.encode()) > 4096):
+            raise ValueError(f"Reviewed actual applicable terms/provenance incomplete for {name}=={version}")
