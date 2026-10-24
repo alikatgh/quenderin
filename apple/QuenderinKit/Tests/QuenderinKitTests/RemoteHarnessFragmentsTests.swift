@@ -164,7 +164,7 @@ final class RemoteHarnessFragmentsTests: XCTestCase {
                 XCTFail("REMOTE_HARNESS_FRAGMENT_FIXTURE_FAIL " + fixture.id)
                 throw Mismatch.fixture
             }
-            print("REMOTE_HARNESS_FRAGMENT_FIXTURE_PASS " + fixture.id)
+            emitFixturePass("REMOTE_HARNESS_FRAGMENT_FIXTURE_PASS " + fixture.id)
         }
     }
 }

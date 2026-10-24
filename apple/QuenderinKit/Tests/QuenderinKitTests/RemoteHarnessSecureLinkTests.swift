@@ -323,7 +323,7 @@ private func secureReject(_ block: () throws -> Void) throws {
             try secureRequire(seen.insert(fixture.id).inserted && !fixture.steps.isEmpty)
             do { for step in fixture.steps { try scenario(step.action) } }
             catch { XCTFail("Remote Harness secure-link fixture failed: \(fixture.id)"); throw SecureFixtureError.assertion }
-            print("REMOTE_HARNESS_SECURE_LINK_FIXTURE_PASS \(fixture.id)")
+            emitFixturePass("REMOTE_HARNESS_SECURE_LINK_FIXTURE_PASS \(fixture.id)")
         }
         try secureRequire(!seen.isEmpty)
     }

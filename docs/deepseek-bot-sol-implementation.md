@@ -384,6 +384,15 @@ node scripts/verify_no_secrets.mjs --staged
 python3 -B tools/secret_scan.py --staged
 ```
 
+When extending the Swift journey fixture, wait for the request in the selected
+socket's `pendingBotReads` queue before delivering a deferred response.
+`botLoading` is published before asynchronous dispatch and is not an admission
+barrier. `replyBotReads` deliberately throws on an empty queue. Before moving a
+fake clock, complete an ordinary RPC round trip to settle preceding stream
+acknowledgements. Keep the roster deadline journey's real five-second watchdog:
+a stalled fake-clock test must fail and disconnect rather than occupy a runner
+until its workflow timeout.
+
 Do not mark rendered UI, signed storage, live enrollment, real inference or a
 store release complete from these checks. Those remain explicit gates under the
 user's current native-run restriction. No new variable-charge provider, relay,
@@ -393,8 +402,9 @@ scheduler or notification service is authorized by this brief.
 
 Implementation source: `ee499aaac936c8d31ce74974a9f89f50bb5bb6d8`, published to
 [`codex/deepseek-bot-read-contract-20261024`](https://github.com/alikatgh/quenderin/tree/codex/deepseek-bot-read-contract-20261024).
-The final evidence update changes documentation only; it does not change the
-source tested below. This branch has not been merged into main.
+The foundation evidence update changed documentation only; it did not change the
+source tested below. At that publication the branch had not been merged; the
+continuation status below records the current source-delivery state.
 
 Completed for this increment:
 
@@ -459,7 +469,10 @@ fell by 1 GiB; these are volume-wide observations, not attributed cleanup saving
 - [x] Isolate Swift roster deadlines from healthy session streams, approval and
   Stop. Preserve duplicate Android session rows without duplicate lazy-list keys.
 - [x] Obtain independent Host and native reviews and resolve their findings.
-- [ ] Complete hosted compilation/tests of this integrated native candidate.
+- [x] Execute the integrated Swift tests on the hosted runner: 723 tests,
+  six existing skips, zero failures at `b5cc7bc5607bb213c35ee67c18381bf65e65f077`.
+- [x] Compile the Android app with its actual generated crypto SDK; subsequent
+  test-only fixes leave its application source unchanged.
 - [ ] Verify rendered/signed native interaction and a real enrolled Host.
 
 The [pinned Host run](https://github.com/alikatgh/quenderin/actions/runs/40084776342)
@@ -477,9 +490,33 @@ provenance and raw-result SHA-256. Both native coordinator tests consume those
 exact response bytes; the original 47 captured Harness frames are unchanged.
 Primary verification of the current Kotlin source passed 210 client checks,
 41 Bot cases over 22 shared fixtures and 39 carrier fixtures/28 behaviors. Swift
-frontend parsing passed; parsing alone does not establish Swift type checking.
+type checking and all 723 hosted tests now pass. The six skips remain the existing
+local-inference/native-capability/asset-render checks; none of the new Bot tests
+is skipped. The fixture evidence markers use bounded writes on stderr to keep
+XCTest's output from splitting a success marker; the exact-once parser remains
+unchanged.
 
-**Active next step:** publish the combined native candidate, run the existing
-hosted native SDK/app workflow and full PR CI, then record the exact results here.
-The read-only slice does not enable Bot sending, memory, cards, teams, schedules
-or store submission. Those product-plan gates remain open.
+Source delivery is [PR #182](https://github.com/alikatgh/quenderin/pull/182).
+Its [checks](https://github.com/alikatgh/quenderin/pull/182/checks) are the current
+gate for full CI, exact fixture evidence, crypto probes and unsigned native SDK/app
+linking. Require those checks and independent review before merging; the PR
+records the final source revision and merge state. Passing host-side tests and
+SDK builds do not establish rendered UI, signed storage or a live relay journey.
+
+The dependency lock also updates seven existing resolutions within their allowed
+ranges to fix the current audit failures. Both clean hosted Node versions pass
+their tests/builds; the exact lock's audit reports zero vulnerabilities. It adds
+no dependency declarations, provider or service.
+
+**Next product increment:** keep the existing read-only Bot history usable while
+implementing phase 2's durable, Host-owned Bot command admission and explicit
+questions/cards. Sending must not bypass Bot lifecycle via a raw Harness prompt.
+Complete the real enrollment/native interaction gates under an authorized
+validation route before claiming operational parity. This slice does not enable
+Bot sending, memory, cards, teams, schedules or store submission.
+
+Session cleanup removed all newly created Kotlin JARs, disposable logs, dependency
+audit caches and the 29 public verification-download files after use. Captured
+facts and source remain in the repository. The two earlier retained source-only
+review assets (approximately 3.64 MiB and 384 KiB) and source worktrees remain;
+no build output is retained for a hypothetical later review.

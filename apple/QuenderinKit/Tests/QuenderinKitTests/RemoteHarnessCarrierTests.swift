@@ -96,7 +96,7 @@ final class RemoteHarnessCarrierTests: XCTestCase {
                 }
             } catch is RemoteHarnessError { rejected = true }
             try require(rejected == (fixture["error"] != nil), id)
-            print("REMOTE_HARNESS_FIXTURE_PASS " + id)
+            emitFixturePass("REMOTE_HARNESS_FIXTURE_PASS " + id)
         }
     }
     func testCanonicalFrames() throws {
@@ -118,7 +118,7 @@ final class RemoteHarnessCarrierTests: XCTestCase {
                 }
             } catch is RemoteHarnessError { rejected = true }
             try require(rejected == (fixture["error"] != nil), id)
-            print("REMOTE_HARNESS_FIXTURE_PASS " + id)
+            emitFixturePass("REMOTE_HARNESS_FIXTURE_PASS " + id)
         }
     }
 
