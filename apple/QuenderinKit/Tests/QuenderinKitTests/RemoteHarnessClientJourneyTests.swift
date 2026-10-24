@@ -668,8 +668,22 @@ import XCTest
     func testBotReadDeadlineStaysLocalAndSessionRemainsUsable() async throws {
         let server = JourneyServer(), clock = JourneyClock(); server.botCapabilities = ["plugin.route.v1", "quenderin.bot.read.v1"]
         server.botResponseOverride = server.botResponse(bots: []); server.running = true; server.snapshotActiveAttempt = true
-        let native = try await botController(server, storage: JourneyStorage(), clock: clock); defer { native.disconnect() }
+        let vault = JourneyCredentials(); server.credentials = vault
+        let native = RemoteHarnessClientController(backend: JourneyCrypto(), http: server, credentials: vault, storage: JourneyStorage(), clock: clock,
+            makeSocket: { server.makeSocket() }, randomSeed: { Data(repeating: 1, count: 32) })
+        let watchdog = Task { @MainActor in
+            do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { return }
+            guard !Task.isCancelled else { return }
+            XCTFail("Bot roster deadline journey exceeded its five-second wall-clock bound")
+            native.disconnect()
+        }
+        defer { watchdog.cancel(); native.disconnect() }
+        await native.authorize(origin: "https://synthetic.example", email: "synthetic@example.test", password: "synthetic-entry", deviceName: "Synthetic client")
+        await native.selectHost(try XCTUnwrap(native.hosts.first)); await native.trustHost()
+        await native.selectWorkspace(try XCTUnwrap(native.workspaces.first))
+        XCTAssertEqual(native.screen, .sessions); XCTAssertNil(native.failure)
         await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && native.botRoster != nil }
+        guard native.snapshotReady, native.botRoster != nil else { return }
         // Snapshot delivery precedes its stream.open acknowledgement. Complete
         // an RPC round trip before advancing time so earlier opens are settled.
         await native.refreshSessionState(); XCTAssertNil(native.failure)
@@ -679,6 +693,7 @@ import XCTest
         server.deferBotReads = true
         let refresh = Task { await native.refreshBots() }
         await settle { native.botLoading && socket.pendingBotReads.count == 1 }
+        guard native.botLoading, socket.pendingBotReads.count == 1 else { return }
         let reads = server.botReads
         clock.monotonicMilliseconds += 60_000
         try socket.frame("$events", ["type": "keepalive"])
