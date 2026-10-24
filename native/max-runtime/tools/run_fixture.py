@@ -137,6 +137,8 @@ def main() -> None:
     compile_command = ["/usr/bin/cc", "-std=c11", "-O1", "-Wall", "-Wextra", "-Werror",
                        "-I", str(ROOT / "include"), "-I", str(work / "include"),
                        str(ROOT / "src/quenderin_max.c"), str(ROOT / "fixture/smoke.c"),
+                       str(ROOT / "fixture/status_diagnostics.c"),
+                       "-Wl,--wrap=M_initModel,--wrap=M_waitForModel",
                        "-L", str(max_libraries[0].parent), "-lmax", "-o", str(executable)]
     bounded(compile_command, env=env, cwd=scratch, deadline=deadline)
     graph = scratch / "weighted-multiply.mef"

@@ -25,7 +25,15 @@ static void drop(struct Handle *handle) {
 }
 M_Status *M_newStatus(void) { return make(1, NULL); }
 int M_isError(const M_Status *status) { assert(status); return status->error; }
-const char *M_getError(const M_Status *status) { (void)status; return "injected failure"; }
+const char *M_getError(const M_Status *status) {
+  assert(status && status->error);
+  static char message[2049];
+  const char prefix[] = "injected failure\n\t\033";
+  memset(message, 'x', sizeof(message) - 1);
+  memcpy(message, prefix, sizeof(prefix) - 1);
+  message[sizeof(message) - 1] = '\0';
+  return message;
+}
 const char *M_version(void) { return "fake-not-MAX"; }
 void M_freeStatus(M_Status *v) { drop(v); }
 M_RuntimeConfig *M_newRuntimeConfig(void) { return make(2, NULL); }
@@ -107,6 +115,9 @@ int main(int argc, char **argv) {
     if (result == QMAX_OK) result = qmax_execute(session, input, 4, output, 4, NULL, NULL, &error);
     if (!injection || injection > step) { assert(result == QMAX_OK && output[3] == 20); }
     else { assert(result != QMAX_OK && output[0] == -1); }
+    if (injection == 8 || injection == 9) {
+      assert(result == QMAX_RUNTIME_ERROR && !strcmp(error.message, "Cannot initialize MAX graph"));
+    }
     qmax_close(session); assert(live == 0);
   }
   fail_at = 0;
