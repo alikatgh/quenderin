@@ -38,6 +38,7 @@ import { decodeMessage, type RemoteMessage } from '@dsh-remote/protocol';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
+import { types } from 'node:util';
 
 class ZeroCallAdapter extends LlmAdapter {
   calls = 0;
@@ -199,6 +200,10 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     expect(currentBot.id, 'Loaded Bot identity').toBe('fixture-bot');
     expect(currentBot.sessionId, 'Loaded Bot current part').toBe('fixture-bot-part');
     expect(rt.chatOwners.get(currentBot.sessionId), 'Loaded current-part ownership').toBe(currentBot.id);
+    for (const owner of ['chatOwners', 'groupOwners', 'pastOwners']) {
+      expect(types.isMap(rt[owner]), `Loaded ${owner} has native Map brand`).toBe(true);
+      expect(types.isProxy(rt[owner]), `Loaded ${owner} is not a proxy`).toBe(false);
+    }
     expect(currentBot.name, 'Loaded public Bot name').toBe('Researcher');
     expect(currentBot.model, 'Loaded public Bot model').toBe('fixture/scripted');
     expect(currentBot.permission, 'Loaded public Bot permission').toBe('read-only');

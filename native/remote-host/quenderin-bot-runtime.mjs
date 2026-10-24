@@ -5,6 +5,7 @@ import { BOT_READ_CAPABILITY, BOT_READ_LIMITS, projectBotReadSnapshot, validateB
 // The marker is an in-process compatibility/lifecycle seam, never an auth token.
 const MOUNT = Symbol.for('quenderin.bot.read.mounted.v1');
 const BOT_PIN = '1bebe826f74e9a72cabafd3b80602b05af867b38';
+const OBJECT_CONSTRUCTOR_SOURCE = Function.prototype.toString.call(Object);
 const unavailable = () => ({ status: 503, json: { ok: false, error: { code: 'BOT_READ_UNAVAILABLE', message: 'Bot roster read unavailable' } } });
 const invalid = () => ({ status: 400, json: { ok: false, error: { code: 'BOT_READ_INVALID_REQUEST', message: 'Bot roster read unavailable' } } });
 function own(value, key, optional = false) {
@@ -13,6 +14,28 @@ function own(value, key, optional = false) {
   if (descriptor === undefined && optional) return undefined;
   if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw new Error('Unavailable');
   return descriptor.value;
+}
+
+// Runtime records can originate in the plugin loader's other realm. Unlike Map,
+// plain records have no util.types brand check; verify the genuine prototype's
+// constructor/backlink with descriptors, without invoking user code or tags.
+function plainRuntimeRecord(value) {
+  if (value === null || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== null) {
+    if (types.isProxy(prototype) || Object.getPrototypeOf(prototype) !== null) return false;
+    const constructor = Object.getOwnPropertyDescriptor(prototype, 'constructor');
+    if (!constructor || !Object.hasOwn(constructor, 'value') || typeof constructor.value !== 'function'
+      || types.isProxy(constructor.value)) return false;
+    const backlink = Object.getOwnPropertyDescriptor(constructor.value, 'prototype');
+    if (!backlink || !Object.hasOwn(backlink, 'value') || backlink.value !== prototype
+      || Function.prototype.toString.call(constructor.value) !== OBJECT_CONSTRUCTOR_SOURCE) return false;
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) return false;
+  }
+  return true;
 }
 
 /** Mounted only by the real pinned channel.install(rt). No load or execution. */
@@ -44,7 +67,7 @@ export function mountBotRead(rt) {
       const keys = Reflect.ownKeys(table);
       if (keys.length > BOT_READ_LIMITS.bots || keys.some(key => typeof key !== 'string')) return unavailable();
       const owners = own(rt, 'chatOwners');
-      if (types.isProxy(owners) || !(owners instanceof Map)) return unavailable();
+      if (types.isProxy(owners) || !types.isMap(owners)) return unavailable();
       const bots = [];
       for (const key of keys) {
         const bot = own(table, key), id = own(bot, 'id');
@@ -72,7 +95,7 @@ export function mountBotRead(rt) {
       if (status?.ready !== true || !Number.isSafeInteger(revision) || revision < 0 || revision < highestRevision) return false;
       const bots = own(state, 'bots'), currentOwners = own(rt, 'chatOwners');
       if (types.isProxy(bots) || bots === null || typeof bots !== 'object' || Array.isArray(bots)
-        || types.isProxy(currentOwners) || !(currentOwners instanceof Map)) return false;
+        || types.isProxy(currentOwners) || !types.isMap(currentOwners)) return false;
       const keys = Reflect.ownKeys(bots);
       if (keys.length > BOT_READ_LIMITS.bots) return false;
       for (const key of keys) {
@@ -82,19 +105,18 @@ export function mountBotRead(rt) {
       // A room's root Session runs its coordinator/relay loop. It is distinct
       // from the hidden per-member Sessions indexed in groupOwners/pastOwners.
       const rooms = own(state, 'rooms');
-      if (types.isProxy(rooms) || rooms === null || typeof rooms !== 'object' || Array.isArray(rooms)) return false;
-      const prototype = Object.getPrototypeOf(rooms);
-      if (prototype !== Object.prototype && prototype !== null) return false;
+      if (!plainRuntimeRecord(rooms)) return false;
       for (const key of Reflect.ownKeys(rooms)) {
-        const room = own(rooms, key), id = own(room, 'id');
-        const roomPrototype = Object.getPrototypeOf(room);
-        if ((roomPrototype !== Object.prototype && roomPrototype !== null) || typeof id !== 'string' || !id
+        const room = own(rooms, key);
+        if (!plainRuntimeRecord(room)) return false;
+        const id = own(room, 'id');
+        if (typeof id !== 'string' || !id
           || id.length > BOT_READ_LIMITS.identityUTF8Bytes || !id.isWellFormed() || id.includes('\0')
           || Buffer.byteLength(id, 'utf8') > BOT_READ_LIMITS.identityUTF8Bytes || id !== key || sessionId === id) return false;
       }
       for (const key of ['chatOwners', 'groupOwners', 'pastOwners']) {
         const map = own(rt, key);
-        if (types.isProxy(map) || !(map instanceof Map) || Map.prototype.has.call(map, sessionId)) return false;
+        if (types.isProxy(map) || !types.isMap(map) || Map.prototype.has.call(map, sessionId)) return false;
       }
       return true;
     } catch { return false; }

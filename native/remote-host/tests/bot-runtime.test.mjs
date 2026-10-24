@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
+import { types } from 'node:util';
 import { mountBotRead, mountedBotRead, botSessionWritable } from '../quenderin-bot-runtime.mjs';
 import { assertBotReadWireBytes } from '../quenderin-bot-read-wire.mjs';
 
@@ -26,6 +28,123 @@ test('mounted adapter projects current materialized membership without execution
   dispose();
   assert.equal(mountedBotRead(rt.ctx.connection), undefined);
   assert.equal(read(params).status, 503);
+});
+
+test('genuine Maps from another realm support reads and preserve all ownership write guards', () => {
+  const { rt, read, dispose, effects } = mounted();
+  const maps = runInNewContext(`({
+    chatOwners: new Map([['session-a', 'bot-a']]),
+    groupOwners: new Map([['group-session', { botId: 'bot-a' }]]),
+    pastOwners: new Map([['past-session', { botId: 'bot-a' }]]),
+  })`);
+  let overriddenCalls = 0;
+  for (const [key, map] of Object.entries(maps)) {
+    assert.equal(map instanceof Map, false);
+    assert.equal(types.isMap(map), true);
+    // Production must use the Map intrinsics rather than overridable methods.
+    for (const method of ['get', 'has']) Object.defineProperty(map, method, { value() { overriddenCalls++; throw new Error('Unexpected Map override'); } });
+    rt[key] = map;
+  }
+  assert.equal(read(params).status, 200);
+  for (const sessionId of ['bot-a', 'session-a', 'group-session', 'past-session']) assert.equal(botSessionWritable(rt.ctx.connection, sessionId), false);
+  assert.equal(botSessionWritable(rt.ctx.connection, 'ordinary-session'), true);
+  assert.equal(overriddenCalls, 0);
+  assert.deepEqual(effects, []);
+  dispose();
+});
+
+test('full foreign materialized state and ownership Maps support scoped reads and ordinary writes', () => {
+  const { rt, read, dispose, effects } = mounted();
+  Object.assign(rt, runInNewContext(`({
+    state: { workspaceId: 'workspace-a', revision: 7,
+      bots: { 'bot-a': { id: 'bot-a', name: 'Researcher', sessionId: 'session-a', model: null, permission: null } },
+      rooms: { 'room-coordinator': { id: 'room-coordinator' } } },
+    chatOwners: new Map([['session-a', 'bot-a']]),
+    groupOwners: new Map([['group-session', { botId: 'bot-a' }]]),
+    pastOwners: new Map([['past-session', { botId: 'bot-a' }]]),
+  })`));
+  assert.notEqual(Object.getPrototypeOf(rt.state.rooms), Object.prototype);
+  assert.notEqual(Object.getPrototypeOf(rt.state.rooms['room-coordinator']), Object.prototype);
+  rt.ctx.workspaceRegistry.get = id => id === 'workspace-a' ? { id, sessionIds: ['session-a'] }
+    : id === 'workspace-b' ? { id, sessionIds: ['ordinary-session'] } : undefined;
+  assert.equal(read(params).status, 200);
+  const other = read({ ...params, body: { ...params.body, payload: { schemaVersion: 1, workspaceId: 'workspace-b' } } });
+  assert.equal(other.status, 200);
+  assert.equal(other.json.value.workspaceId, 'workspace-b');
+  assert.deepEqual(other.json.value.bots, []);
+  for (const sessionId of ['bot-a', 'session-a', 'room-coordinator', 'group-session', 'past-session']) assert.equal(botSessionWritable(rt.ctx.connection, sessionId), false);
+  assert.equal(botSessionWritable(rt.ctx.connection, 'ordinary-session'), true);
+  assert.deepEqual(effects, []);
+  dispose();
+});
+
+test('null-prototype ownership tables and room records remain supported', () => {
+  const { rt, dispose } = mounted();
+  const room = Object.assign(Object.create(null), { id: 'room-coordinator' });
+  rt.state.rooms = Object.assign(Object.create(null), { 'room-coordinator': room });
+  assert.equal(botSessionWritable(rt.ctx.connection, 'room-coordinator'), false);
+  assert.equal(botSessionWritable(rt.ctx.connection, 'ordinary-session'), true);
+  dispose();
+});
+
+test('runtime record checks reject spoofed prototypes, constructors, accessors and proxies without executing them', () => {
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('Unexpected runtime record input code'); };
+  const ownId = prototype => Object.assign(Object.create(prototype), { id: 'room' });
+  const counterfeitObjectPrototype = Object.create(null);
+  Object.defineProperty(counterfeitObjectPrototype, 'constructor', { value: Object });
+  const getterConstructorPrototype = Object.create(null);
+  Object.defineProperty(getterConstructorPrototype, 'constructor', { get: unexpected });
+  const customConstructorPrototype = Object.create(null);
+  const customConstructor = function Object() { unexpected(); };
+  Object.defineProperty(customConstructor, 'prototype', { value: customConstructorPrototype });
+  Object.defineProperty(customConstructor, 'toString', { value: unexpected });
+  Object.defineProperty(customConstructorPrototype, 'constructor', { value: customConstructor });
+  const getterBacklinkPrototype = Object.create(null), getterBacklinkConstructor = () => unexpected();
+  Object.defineProperty(getterBacklinkConstructor, 'prototype', { get: unexpected });
+  Object.defineProperty(getterBacklinkPrototype, 'constructor', { value: getterBacklinkConstructor });
+  const proxyConstructorPrototype = Object.create(null);
+  Object.defineProperty(proxyConstructorPrototype, 'constructor', { value: new Proxy(Object, { get: unexpected, getOwnPropertyDescriptor: unexpected, apply: unexpected }) });
+  class CustomRoom { constructor() { unexpected(); } }
+  const proxyPrototype = new Proxy({}, { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected });
+  const proxyRecord = new Proxy({ id: 'room' }, { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected, ownKeys: unexpected });
+  const getterId = Object.defineProperty({}, 'id', { get: unexpected });
+  const getterTag = Object.defineProperty({ id: 'room' }, Symbol.toStringTag, { get: unexpected });
+  const getterPrivate = Object.defineProperty({ id: 'room' }, 'privateMetadata', { get: unexpected });
+  const candidates = [ownId(counterfeitObjectPrototype), ownId(getterConstructorPrototype), ownId(customConstructorPrototype),
+    ownId(getterBacklinkPrototype), ownId(proxyConstructorPrototype), ownId(CustomRoom.prototype), ownId({}), ownId(proxyPrototype),
+    proxyRecord, getterId, getterTag, getterPrivate];
+  for (const record of candidates) {
+    for (const rooms of [record, { room: record }]) {
+      const { rt, dispose, effects } = mounted();
+      rt.state.rooms = rooms;
+      assert.equal(botSessionWritable(rt.ctx.connection, 'ordinary-session'), false);
+      assert.deepEqual(effects, []);
+      dispose();
+    }
+  }
+  assert.equal(invoked, 0);
+});
+
+test('proxy and spoofed ownership Maps fail closed without invoking traps or lookalike methods', () => {
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('Unexpected ownership input code'); };
+  const foreignMap = runInNewContext("new Map([['session-a', 'bot-a']])");
+  const proxy = new Proxy(foreignMap, { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected });
+  const revoked = Proxy.revocable(new Map(), {}); revoked.revoke();
+  const tagged = { get: unexpected, has: unexpected };
+  Object.defineProperty(tagged, Symbol.toStringTag, { get: unexpected });
+  for (const key of ['chatOwners', 'groupOwners', 'pastOwners']) {
+    for (const value of [proxy, revoked.proxy, tagged, Object.create(Map.prototype)]) {
+      const { rt, read, dispose, effects } = mounted();
+      rt[key] = value;
+      assert.equal(read(params).status, key === 'chatOwners' ? 503 : 200);
+      assert.equal(botSessionWritable(rt.ctx.connection, 'ordinary-session'), false);
+      assert.deepEqual(effects, []);
+      dispose();
+    }
+  }
+  assert.equal(invoked, 0);
 });
 
 test('another loaded official workspace receives its own empty roster after team ownership is validated', () => {
