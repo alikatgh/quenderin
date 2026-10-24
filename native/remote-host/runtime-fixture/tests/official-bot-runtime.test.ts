@@ -190,11 +190,33 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     }
     const before = files(root);
     const request = { route: 'api/bot', body: { endpoint: 'quenderin-roster', payload: { schemaVersion: 1, workspaceId: workspace.id } } };
+    expect(rt.quenderinReadStatus(), 'Cached Bot readiness after channel mount').toEqual({ ready: true, readOnly: false });
+    expect(rt.state.workspaceId, 'Loaded Bot workspace identity').toBe(workspace.id);
+    expect(ctx.workspaceRegistry.get(workspace.id)?.sessionIds, 'Loaded Bot workspace membership').toEqual(expect.arrayContaining([
+      'fixture-bot', 'fixture-bot-part', 'fixture-room', 'fixture-group-member', 'fixture-group-past',
+    ]));
+    const currentBot = rt.state.bots['fixture-bot'];
+    expect(currentBot.id, 'Loaded Bot identity').toBe('fixture-bot');
+    expect(currentBot.sessionId, 'Loaded Bot current part').toBe('fixture-bot-part');
+    expect(rt.chatOwners.get(currentBot.sessionId), 'Loaded current-part ownership').toBe(currentBot.id);
+    expect(currentBot.name, 'Loaded public Bot name').toBe('Researcher');
+    expect(currentBot.model, 'Loaded public Bot model').toBe('fixture/scripted');
+    expect(currentBot.permission, 'Loaded public Bot permission').toBe('read-only');
+    const expectedRoster = { status: 200, json: { ok: true, value: { schemaVersion: 1, workspaceId: workspace.id, revision: startupRevision, readOnly: false,
+      bots: [{ id: 'fixture-bot', name: 'Researcher', sessionId: 'fixture-bot-part', model: 'fixture/scripted', permission: 'read-only' }] } } };
+    const cachedRoster = mountedBotRead(ctx.connection)!.read(request);
+    expect(Object.values(readEffects), 'Direct cached roster read effects').toEqual(Object.values(readEffects).map(() => 0));
+    expect(cachedRoster, 'Direct mounted cached roster').toEqual(expectedRoster);
+    const sharedFetch = ctx.connection.createSharedFetchHandler('/api');
+    const fetchedRoster = await sharedFetch.fetch(new Request('http://127.0.0.1/api/bot', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request.body), signal: AbortSignal.timeout(1000),
+    }), peer);
+    expect(Object.values(readEffects), 'Official shared Fetch roster read effects').toEqual(Object.values(readEffects).map(() => 0));
+    expect({ status: fetchedRoster.status, json: await fetchedRoster.json() }, 'Official shared Fetch roster').toEqual(expectedRoster);
     const reply = await invoke('plugin.route.call', request);
     expect(reply.type).toBe('rpc.response');
     const result = reply.payload.result;
-    expect(result).toEqual({ status: 200, json: { ok: true, value: { schemaVersion: 1, workspaceId: workspace.id, revision: startupRevision, readOnly: false,
-      bots: [{ id: 'fixture-bot', name: 'Researcher', sessionId: 'fixture-bot-part', model: 'fixture/scripted', permission: 'read-only' }] } } });
+    expect(result, 'Admitted Remote roster').toEqual(expectedRoster);
     expect(JSON.stringify(result)).not.toContain('PRIVATE');
     expect(files(root)).toEqual(before);
     const outcomes: Record<string, any> = {};
