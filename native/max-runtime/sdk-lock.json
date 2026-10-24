@@ -29,64 +29,70 @@
         "rich>=13.0.1",
         "taskgroup>=0.2.2",
         "typing-extensions>=4.12.2",
-        "max[benchmark,serve]; extra == \"all\"",
-        "mojo; extra == \"all\"",
-        "huggingface-hub>=0.28.0; extra == \"benchmark\"",
-        "jinja2>=3.1.0; extra == \"benchmark\"",
-        "jsonschema>=4.23.0; extra == \"benchmark\"",
-        "requests>=2.32.3; extra == \"benchmark\"",
-        "openai>=2.11.0; extra == \"benchmark\"",
-        "prometheus-client>=0.21.0; extra == \"benchmark\"",
-        "pillow>=12.3.0; extra == \"benchmark\"",
-        "pydantic-settings>=2.7.1; extra == \"benchmark\"",
-        "pydantic; extra == \"benchmark\"",
-        "pyyaml>=6.0.1; extra == \"benchmark\"",
-        "tiktoken>=0.5.0; extra == \"benchmark\"",
-        "tqdm>=4.67.1; extra == \"benchmark\"",
-        "transformers<5.13.0,>=5.12.0; extra == \"benchmark\"",
-        "aiohttp>=3.10.5; extra == \"benchmark\"",
-        "cyclopts>=4.2.5; extra == \"benchmark\"",
-        "datasets>=2.21.0; extra == \"benchmark\"",
-        "tabulate>=0.9.0; extra == \"benchmark\"",
-        "huggingface-hub>=0.28.0; extra == \"serve\"",
-        "jinja2>=3.1.0; extra == \"serve\"",
-        "jsonschema>=4.23.0; extra == \"serve\"",
-        "requests>=2.32.3; extra == \"serve\"",
-        "openai>=2.11.0; extra == \"serve\"",
-        "prometheus-client>=0.21.0; extra == \"serve\"",
-        "pillow>=12.3.0; extra == \"serve\"",
-        "pydantic-settings>=2.7.1; extra == \"serve\"",
-        "pydantic; extra == \"serve\"",
-        "pyyaml>=6.0.1; extra == \"serve\"",
-        "tiktoken>=0.5.0; extra == \"serve\"",
-        "tqdm>=4.67.1; extra == \"serve\"",
-        "transformers<5.13.0,>=5.12.0; extra == \"serve\"",
-        "aiofiles>=24.1.0; extra == \"serve\"",
-        "asgiref>=3.8.1; extra == \"serve\"",
-        "av>=14.0.0; extra == \"serve\"",
-        "fastapi>=0.115.3; extra == \"serve\"",
-        "gguf>=0.17.1; extra == \"serve\"",
-        "grpcio>=1.67.0; extra == \"serve\"",
-        "hf-transfer>=0.1.9; extra == \"serve\"",
-        "httpx<0.29,>=0.28.1; extra == \"serve\"",
-        "opentelemetry-api>=1.29.0; extra == \"serve\"",
-        "opentelemetry-exporter-otlp-proto-grpc>=1.27.0; extra == \"serve\"",
-        "opentelemetry-exporter-otlp-proto-http>=1.27.0; extra == \"serve\"",
-        "opentelemetry-exporter-prometheus>=0.50b0; extra == \"serve\"",
-        "opentelemetry-sdk<1.36.0,>=1.29.0; extra == \"serve\"",
-        "protobuf<6.34.0,>=6.33.5; extra == \"serve\"",
-        "pydantic-core; extra == \"serve\"",
-        "python-json-logger>=2.0.7; extra == \"serve\"",
-        "pyzmq>=26.3.0; extra == \"serve\"",
-        "regex>=2024.11.6; extra == \"serve\"",
-        "scipy>=1.13.0; extra == \"serve\"",
-        "sentencepiece>=0.2.0; extra == \"serve\"",
-        "sse-starlette<2.2,>=2.1.2; extra == \"serve\"",
-        "starlette>=0.47.2; extra == \"serve\"",
-        "taskgroup>=0.2.2; extra == \"serve\"",
-        "uvicorn>=0.34.0; extra == \"serve\"",
-        "uvloop>=0.21.0; extra == \"serve\""
-      ]
+        "max[serve,benchmark]; extra == 'all'",
+        "mojo; extra == 'all'",
+        "huggingface-hub>=0.28.0; extra == 'benchmark'",
+        "jinja2>=3.1.0; extra == 'benchmark'",
+        "jsonschema>=4.23.0; extra == 'benchmark'",
+        "requests>=2.32.3; extra == 'benchmark'",
+        "openai>=2.11.0; extra == 'benchmark'",
+        "prometheus-client>=0.21.0; extra == 'benchmark'",
+        "pillow>=12.3.0; extra == 'benchmark'",
+        "pydantic-settings>=2.7.1; extra == 'benchmark'",
+        "pydantic; extra == 'benchmark'",
+        "pyyaml>=6.0.1; extra == 'benchmark'",
+        "tiktoken>=0.5.0; extra == 'benchmark'",
+        "tqdm>=4.67.1; extra == 'benchmark'",
+        "transformers<5.13.0,>=5.12.0; extra == 'benchmark'",
+        "aiohttp>=3.10.5; extra == 'benchmark'",
+        "cyclopts>=4.2.5; extra == 'benchmark'",
+        "datasets>=2.21.0; extra == 'benchmark'",
+        "tabulate>=0.9.0; extra == 'benchmark'",
+        "huggingface-hub>=0.28.0; extra == 'serve'",
+        "jinja2>=3.1.0; extra == 'serve'",
+        "jsonschema>=4.23.0; extra == 'serve'",
+        "requests>=2.32.3; extra == 'serve'",
+        "openai>=2.11.0; extra == 'serve'",
+        "prometheus-client>=0.21.0; extra == 'serve'",
+        "pillow>=12.3.0; extra == 'serve'",
+        "pydantic-settings>=2.7.1; extra == 'serve'",
+        "pydantic; extra == 'serve'",
+        "pyyaml>=6.0.1; extra == 'serve'",
+        "tiktoken>=0.5.0; extra == 'serve'",
+        "tqdm>=4.67.1; extra == 'serve'",
+        "transformers<5.13.0,>=5.12.0; extra == 'serve'",
+        "aiofiles>=24.1.0; extra == 'serve'",
+        "asgiref>=3.8.1; extra == 'serve'",
+        "av>=14.0.0; extra == 'serve'",
+        "fastapi>=0.115.3; extra == 'serve'",
+        "gguf>=0.17.1; extra == 'serve'",
+        "grpcio>=1.67.0; extra == 'serve'",
+        "hf-transfer>=0.1.9; extra == 'serve'",
+        "httpx<0.29,>=0.28.1; extra == 'serve'",
+        "opentelemetry-api>=1.29.0; extra == 'serve'",
+        "opentelemetry-exporter-otlp-proto-grpc>=1.27.0; extra == 'serve'",
+        "opentelemetry-exporter-otlp-proto-http>=1.27.0; extra == 'serve'",
+        "opentelemetry-exporter-prometheus>=0.50b0; extra == 'serve'",
+        "opentelemetry-sdk<1.36.0,>=1.29.0; extra == 'serve'",
+        "protobuf<6.34.0,>=6.33.5; extra == 'serve'",
+        "pydantic-core; extra == 'serve'",
+        "python-json-logger>=2.0.7; extra == 'serve'",
+        "pyzmq>=26.3.0; extra == 'serve'",
+        "regex>=2024.11.6; extra == 'serve'",
+        "scipy>=1.13.0; extra == 'serve'",
+        "sentencepiece>=0.2.0; extra == 'serve'",
+        "sse-starlette<2.2,>=2.1.2; extra == 'serve'",
+        "starlette>=0.47.2; extra == 'serve'",
+        "taskgroup>=0.2.2; extra == 'serve'",
+        "uvicorn>=0.34.0; extra == 'serve'",
+        "uvloop>=0.21.0; extra == 'serve'"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/max/",
+        "url": "https://files.pythonhosted.org/packages/42/33/895c81fd57b5aaf6351e901b6cb267fa83590eb3130a02a90238f443806f/max-26.7.0-cp312-cp312-manylinux_2_34_x86_64.whl.metadata",
+        "sha256": "51fb4ea5601d5b90660adaf796e1b6cd9e727c8863f8fab46a04677a55f34bd6",
+        "size": 5051
+      }
     },
     {
       "name": "max-core",
@@ -100,7 +106,13 @@
         "mojo-compiler==1.2.0",
         "max-mojo-libs==26.7.0",
         "max-shmem-libs==26.7.0"
-      ]
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/max-core/",
+        "url": "https://files.pythonhosted.org/packages/9e/c1/f39fe791b6fbb3cadaee5e7724dbfeb0a77ce93ff9e72c7910721388194b/max_core-26.7.0-py3-none-manylinux_2_34_x86_64.whl.metadata",
+        "sha256": "7b625bc07c96303c4a3ae89026dc3a253b4d74065dca2ce83d5cc4ea26e6d65c",
+        "size": 306
+      }
     },
     {
       "name": "max-mojo-libs",
@@ -110,7 +122,13 @@
       "url": "https://files.pythonhosted.org/packages/17/90/0ba44cb7ea447591858118bb9a96a0c036ac5013d86e4bd8383f0940616a/max_mojo_libs-26.7.0-py3-none-any.whl",
       "sha256": "c9eeaef01a19565b8467da9c6b7cd57fa787759ce5954140b0e031d095c630b9",
       "size": 28701298,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/max-mojo-libs/",
+        "url": "https://files.pythonhosted.org/packages/17/90/0ba44cb7ea447591858118bb9a96a0c036ac5013d86e4bd8383f0940616a/max_mojo_libs-26.7.0-py3-none-any.whl.metadata",
+        "sha256": "4f07f681bc22f2c864f5da6d392f0b8b3cf2210311b1f7abf7387af1a25de0c3",
+        "size": 200
+      }
     },
     {
       "name": "max-shmem-libs",
@@ -120,7 +138,13 @@
       "url": "https://files.pythonhosted.org/packages/74/82/e506b6735c707c23e692e7315025d566aa5afa10bd69e11d30d0ba79ea22/max_shmem_libs-26.7.0-py3-none-manylinux_2_34_x86_64.whl",
       "sha256": "73a2108a76974eb75b061a27b793343a0fdafeca620fe548933b09797b48a6b4",
       "size": 29141828,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/max-shmem-libs/",
+        "url": "https://files.pythonhosted.org/packages/74/82/e506b6735c707c23e692e7315025d566aa5afa10bd69e11d30d0ba79ea22/max_shmem_libs-26.7.0-py3-none-manylinux_2_34_x86_64.whl.metadata",
+        "sha256": "41d3cc2fab0cac6271d363a3b99fa5e8e70ac696f39755a0563ee99ef7b9ddb7",
+        "size": 201
+      }
     },
     {
       "name": "mojo-compiler",
@@ -132,7 +156,13 @@
       "size": 81774875,
       "requires_dist": [
         "mojo-compiler-mojo-libs==1.2.0"
-      ]
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/mojo-compiler/",
+        "url": "https://files.pythonhosted.org/packages/54/8b/2758e8a2207793613d386f41e36f2bfd28837b157a659518c7b7474f7eb3/mojo_compiler-1.2.0-py3-none-manylinux_2_34_x86_64.whl.metadata",
+        "sha256": "5144784c3123bb0ffaad9063fe9e21912159f2a086ab942151b3fa7398e8538d",
+        "size": 3072
+      }
     },
     {
       "name": "mojo-compiler-mojo-libs",
@@ -142,7 +172,13 @@
       "url": "https://files.pythonhosted.org/packages/3d/bb/9602cbee467102584721c700dda8033af67c3888c6c8edb6f66275c1df74/mojo_compiler_mojo_libs-1.2.0-py3-none-any.whl",
       "sha256": "3d631f7e798c11d0029c4a892ebae1f5742751fac0c526af74b45a8ae07c3acb",
       "size": 3507893,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/mojo-compiler-mojo-libs/",
+        "url": "https://files.pythonhosted.org/packages/3d/bb/9602cbee467102584721c700dda8033af67c3888c6c8edb6f66275c1df74/mojo_compiler_mojo_libs-1.2.0-py3-none-any.whl.metadata",
+        "sha256": "a82639c8e360c42b91160637e4a1c402a6b985be4cb4ceb7f9cc5fd32885dff9",
+        "size": 209
+      }
     },
     {
       "name": "numpy",
@@ -152,7 +188,13 @@
       "url": "https://files.pythonhosted.org/packages/51/64/7de3c91e821a2debf77c92962ea3fe6ac2bc45d0778c1cbe15d4fce2fd94/numpy-2.3.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "d9192da52b9745f7f0766531dcfa978b7763916f158bb63bdb8a1eca0068ab20",
       "size": 16641643,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/numpy/",
+        "url": "https://files.pythonhosted.org/packages/51/64/7de3c91e821a2debf77c92962ea3fe6ac2bc45d0778c1cbe15d4fce2fd94/numpy-2.3.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata",
+        "sha256": "661ed2938131e161a5f723099c7236e709e705dec856d1ef37527d37d0ac4dc6",
+        "size": 62117
+      }
     },
     {
       "name": "click",
@@ -163,8 +205,14 @@
       "sha256": "9b9f285302c6e3064f4330c05f05b81945b2a39544279343e6e7c5f27a9baddc",
       "size": 107295,
       "requires_dist": [
-        "colorama; platform_system == \"Windows\""
-      ]
+        "colorama; platform_system == 'Windows'"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/click/",
+        "url": "https://files.pythonhosted.org/packages/db/d3/9dcc0f5797f070ec8edf30fbadfb200e71d9db6b84d211e3b2085a7589a0/click-8.3.0-py3-none-any.whl.metadata",
+        "sha256": "3fabe910767f30b06de123b6781f9069a75c39d8b39e4cda66d248991a3bfd5e",
+        "size": 2621
+      }
     },
     {
       "name": "exceptiongroup",
@@ -175,9 +223,15 @@
       "sha256": "4d111e6e0c13d0644cad6ddaa7ed0261a0b36971f6d23e7ec9b4b9097da78a10",
       "size": 16674,
       "requires_dist": [
-        "typing-extensions>=4.6.0; python_version < \"3.13\"",
-        "pytest>=6; extra == \"test\""
-      ]
+        "typing-extensions >= 4.6.0; python_version < '3.13'",
+        "pytest >= 6 ; extra == \"test\""
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/exceptiongroup/",
+        "url": "https://files.pythonhosted.org/packages/36/f4/c6e662dade71f56cd2f3735141b265c3c79293c109549c1e6933b0651ffc/exceptiongroup-1.3.0-py3-none-any.whl.metadata",
+        "sha256": "a2202afa5957a8e695d01ddd24ddf5e928ed0a9b6142fb908e656e54e6db69e4",
+        "size": 6725
+      }
     },
     {
       "name": "msgspec",
@@ -219,7 +273,13 @@
         "pyyaml; extra == \"dev\"",
         "tomli; python_version < \"3.11\" and extra == \"dev\"",
         "tomli_w; extra == \"dev\""
-      ]
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/msgspec/",
+        "url": "https://files.pythonhosted.org/packages/d0/ef/c5422ce8af73928d194a6606f8ae36e93a52fd5e8df5abd366903a5ca8da/msgspec-0.19.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
+        "sha256": "f04db5993a3331d8d79b5e7eb1f9ac149d3b0170138d8f9ad224086027ae264f",
+        "size": 6907
+      }
     },
     {
       "name": "psutil",
@@ -230,43 +290,49 @@
       "sha256": "8c70e113920d51e89f212dd7be06219a9b88014e63a4cec69b684c327bc474e3",
       "size": 291163,
       "requires_dist": [
-        "pytest; extra == \"dev\"",
-        "pytest-instafail; extra == \"dev\"",
-        "pytest-subtests; extra == \"dev\"",
-        "pytest-xdist; extra == \"dev\"",
-        "setuptools; extra == \"dev\"",
-        "pywin32; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"dev\"",
-        "wheel; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"dev\"",
-        "wmi; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"dev\"",
-        "abi3audit; extra == \"dev\"",
-        "black; extra == \"dev\"",
-        "check-manifest; extra == \"dev\"",
-        "coverage; extra == \"dev\"",
-        "packaging; extra == \"dev\"",
-        "pylint; extra == \"dev\"",
-        "pyperf; extra == \"dev\"",
-        "pypinfo; extra == \"dev\"",
-        "pytest-cov; extra == \"dev\"",
-        "requests; extra == \"dev\"",
-        "rstcheck; extra == \"dev\"",
-        "ruff; extra == \"dev\"",
-        "sphinx; extra == \"dev\"",
-        "sphinx_rtd_theme; extra == \"dev\"",
-        "toml-sort; extra == \"dev\"",
-        "twine; extra == \"dev\"",
-        "virtualenv; extra == \"dev\"",
-        "vulture; extra == \"dev\"",
-        "wheel; extra == \"dev\"",
-        "pyreadline; os_name == \"nt\" and extra == \"dev\"",
-        "pytest; extra == \"test\"",
-        "pytest-instafail; extra == \"test\"",
-        "pytest-subtests; extra == \"test\"",
-        "pytest-xdist; extra == \"test\"",
-        "setuptools; extra == \"test\"",
-        "pywin32; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"test\"",
-        "wheel; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"test\"",
-        "wmi; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == \"test\""
-      ]
+        "pytest ; extra == 'dev'",
+        "pytest-instafail ; extra == 'dev'",
+        "pytest-subtests ; extra == 'dev'",
+        "pytest-xdist ; extra == 'dev'",
+        "setuptools ; extra == 'dev'",
+        "abi3audit ; extra == 'dev'",
+        "black ; extra == 'dev'",
+        "check-manifest ; extra == 'dev'",
+        "coverage ; extra == 'dev'",
+        "packaging ; extra == 'dev'",
+        "pylint ; extra == 'dev'",
+        "pyperf ; extra == 'dev'",
+        "pypinfo ; extra == 'dev'",
+        "pytest-cov ; extra == 'dev'",
+        "requests ; extra == 'dev'",
+        "rstcheck ; extra == 'dev'",
+        "ruff ; extra == 'dev'",
+        "sphinx ; extra == 'dev'",
+        "sphinx-rtd-theme ; extra == 'dev'",
+        "toml-sort ; extra == 'dev'",
+        "twine ; extra == 'dev'",
+        "virtualenv ; extra == 'dev'",
+        "vulture ; extra == 'dev'",
+        "wheel ; extra == 'dev'",
+        "pyreadline ; (os_name == \"nt\") and extra == 'dev'",
+        "pywin32 ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'dev'",
+        "wheel ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'dev'",
+        "wmi ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'dev'",
+        "pytest ; extra == 'test'",
+        "pytest-instafail ; extra == 'test'",
+        "pytest-subtests ; extra == 'test'",
+        "pytest-xdist ; extra == 'test'",
+        "setuptools ; extra == 'test'",
+        "pywin32 ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'test'",
+        "wheel ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'test'",
+        "wmi ; (os_name == \"nt\" and platform_python_implementation != \"PyPy\") and extra == 'test'"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/psutil/",
+        "url": "https://files.pythonhosted.org/packages/9d/de/04c8c61232f7244aa0a4b9a9fbd63a89d5aeaf94b2fc9d1d16e2faa5cbb0/psutil-7.1.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata",
+        "sha256": "ac00a0bcd2510cbd355745e1742a41ef2eadd59546c28788d6122a57d329c6b6",
+        "size": 23074
+      }
     },
     {
       "name": "rich",
@@ -277,10 +343,16 @@
       "sha256": "76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd",
       "size": 243393,
       "requires_dist": [
-        "pygments<3.0.0,>=2.13.0",
-        "ipywidgets<9,>=7.5.1; extra == \"jupyter\"",
-        "markdown-it-py>=2.2.0"
-      ]
+        "ipywidgets (>=7.5.1,<9) ; extra == \"jupyter\"",
+        "markdown-it-py (>=2.2.0)",
+        "pygments (>=2.13.0,<3.0.0)"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/rich/",
+        "url": "https://files.pythonhosted.org/packages/25/7a/b0178788f8dc6cafce37a212c99565fa1fe7872c70c6c9c1e1a372d9d88f/rich-14.2.0-py3-none-any.whl.metadata",
+        "sha256": "222fe35ac48d4a6c59c49a59ca471bb9f7111bcf88f33897190bac074fd5c35f",
+        "size": 18257
+      }
     },
     {
       "name": "taskgroup",
@@ -292,8 +364,14 @@
       "size": 14237,
       "requires_dist": [
         "exceptiongroup",
-        "typing_extensions<5,>=4.12.2"
-      ]
+        "typing_extensions>=4.12.2,<5"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/taskgroup/",
+        "url": "https://files.pythonhosted.org/packages/d1/b1/74babcc824a57904e919f3af16d86c08b524c0691504baf038ef2d7f655c/taskgroup-0.2.2-py2.py3-none-any.whl.metadata",
+        "sha256": "96e7c6690a45d20ca3904aa6be8e8b473c80676e46bd8b4d5e39f8233fa823cd",
+        "size": 4321
+      }
     },
     {
       "name": "typing-extensions",
@@ -303,7 +381,13 @@
       "url": "https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl",
       "sha256": "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548",
       "size": 44614,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/typing-extensions/",
+        "url": "https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl.metadata",
+        "sha256": "c138378fe8f18934ac99de060535c53ec6c13aeed65e94c32641da7ee3192a72",
+        "size": 3259
+      }
     },
     {
       "name": "pygments",
@@ -314,8 +398,14 @@
       "sha256": "86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b",
       "size": 1225217,
       "requires_dist": [
-        "colorama>=0.4.6; extra == \"windows-terminal\""
-      ]
+        "colorama>=0.4.6; extra == 'windows-terminal'"
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/pygments/",
+        "url": "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl.metadata",
+        "sha256": "7ae100d67d67006c6479803dd835fcf47a9b59fac794441ea8e66aa7f5984d82",
+        "size": 2512
+      }
     },
     {
       "name": "markdown-it-py",
@@ -327,33 +417,39 @@
       "size": 87321,
       "requires_dist": [
         "mdurl~=0.1",
-        "psutil; extra == \"benchmarking\"",
-        "pytest; extra == \"benchmarking\"",
-        "pytest-benchmark; extra == \"benchmarking\"",
-        "commonmark~=0.9; extra == \"compare\"",
-        "markdown~=3.4; extra == \"compare\"",
-        "mistletoe~=1.0; extra == \"compare\"",
-        "mistune~=3.0; extra == \"compare\"",
-        "panflute~=2.3; extra == \"compare\"",
-        "markdown-it-pyrs; extra == \"compare\"",
-        "linkify-it-py<3,>=1; extra == \"linkify\"",
-        "mdit-py-plugins>=0.5.0; extra == \"plugins\"",
-        "gprof2dot; extra == \"profiling\"",
-        "mdit-py-plugins>=0.5.0; extra == \"rtd\"",
-        "myst-parser; extra == \"rtd\"",
-        "pyyaml; extra == \"rtd\"",
-        "sphinx; extra == \"rtd\"",
-        "sphinx-copybutton; extra == \"rtd\"",
-        "sphinx-design; extra == \"rtd\"",
-        "sphinx-book-theme~=1.0; extra == \"rtd\"",
-        "jupyter_sphinx; extra == \"rtd\"",
-        "ipykernel; extra == \"rtd\"",
-        "coverage; extra == \"testing\"",
-        "pytest; extra == \"testing\"",
-        "pytest-cov; extra == \"testing\"",
-        "pytest-regressions; extra == \"testing\"",
-        "requests; extra == \"testing\""
-      ]
+        "psutil ; extra == \"benchmarking\"",
+        "pytest ; extra == \"benchmarking\"",
+        "pytest-benchmark ; extra == \"benchmarking\"",
+        "commonmark~=0.9 ; extra == \"compare\"",
+        "markdown~=3.4 ; extra == \"compare\"",
+        "mistletoe~=1.0 ; extra == \"compare\"",
+        "mistune~=3.0 ; extra == \"compare\"",
+        "panflute~=2.3 ; extra == \"compare\"",
+        "markdown-it-pyrs ; extra == \"compare\"",
+        "linkify-it-py>=1,<3 ; extra == \"linkify\"",
+        "mdit-py-plugins>=0.5.0 ; extra == \"plugins\"",
+        "gprof2dot ; extra == \"profiling\"",
+        "mdit-py-plugins>=0.5.0 ; extra == \"rtd\"",
+        "myst-parser ; extra == \"rtd\"",
+        "pyyaml ; extra == \"rtd\"",
+        "sphinx ; extra == \"rtd\"",
+        "sphinx-copybutton ; extra == \"rtd\"",
+        "sphinx-design ; extra == \"rtd\"",
+        "sphinx-book-theme~=1.0 ; extra == \"rtd\"",
+        "jupyter_sphinx ; extra == \"rtd\"",
+        "ipykernel ; extra == \"rtd\"",
+        "coverage ; extra == \"testing\"",
+        "pytest ; extra == \"testing\"",
+        "pytest-cov ; extra == \"testing\"",
+        "pytest-regressions ; extra == \"testing\"",
+        "requests ; extra == \"testing\""
+      ],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/markdown-it-py/",
+        "url": "https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl.metadata",
+        "sha256": "e9fcaa1e2daf3f96d840a09fbaaa394feaadf37a36d88a7b6b6b672487c65bfb",
+        "size": 7288
+      }
     },
     {
       "name": "mdurl",
@@ -363,7 +459,13 @@
       "url": "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl",
       "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
       "size": 9979,
-      "requires_dist": []
+      "requires_dist": [],
+      "wheel_metadata": {
+        "index_url": "https://pypi.org/simple/mdurl/",
+        "url": "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl.metadata",
+        "sha256": "b53b29d48f499367053fda3c81e7ce27d2558380ebbf83e66023b02eb7ddd25d",
+        "size": 1638
+      }
     }
   ],
   "headers": [

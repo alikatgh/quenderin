@@ -52,6 +52,40 @@ def download(item: dict, target: pathlib.Path, deadline: float) -> None:
         raise ValueError("Official artifact identity differs")
 
 
+def metadata_record(package: dict) -> dict:
+    """Require the selected wheel's official hash-pinned PEP 658 identity."""
+    record = package.get("wheel_metadata", {})
+    if (not isinstance(record, dict)
+            or record.get("index_url") != f"https://pypi.org/simple/{package['name']}/"
+            or record.get("url") != package["url"] + ".metadata"
+            or not isinstance(record.get("sha256"), str)
+            or not re.fullmatch(r"[a-f0-9]{64}", record.get("sha256", ""))
+            or type(record.get("size")) is not int or not 1 <= record["size"] <= 1048576):
+        raise ValueError(f"Wheel metadata mismatch for {package['name']}=={package['version']}: PEP 658 provenance")
+    return record
+
+
+def inspect_metadata(package: dict, raw: bytes):
+    """Match embedded METADATA to the exact sidecar and declarations, not
+    PyPI's project-level JSON rendering of those dependency declarations.
+    """
+    record = metadata_record(package)
+    identity = f"{package['name']}=={package['version']}"
+    if len(raw) != record["size"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: METADATA size")
+    if hashlib.sha256(raw).hexdigest() != record["sha256"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: METADATA SHA256")
+    metadata = email.parser.BytesParser().parsebytes(raw)
+    normalized = lambda value: re.sub(r"[-_.]+", "-", value).lower()
+    if normalized(metadata.get("Name", "")) != package["name"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Name")
+    if metadata.get("Version") != package["version"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Version")
+    if sorted(metadata.get_all("Requires-Dist", [])) != sorted(package["requires_dist"]):
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Requires-Dist")
+    return metadata
+
+
 def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], list[dict]]:
     licenses, inventories = [], []
     aggregate = license_bytes = 0
@@ -80,11 +114,7 @@ def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], lis
             metadata_info = wheel.getinfo(metadata_paths[0])
             if metadata_info.file_size > 1048576:
                 raise ValueError("Wheel metadata budget exceeded")
-            metadata = email.parser.BytesParser().parsebytes(wheel.read(metadata_info))
-            normalized = lambda value: re.sub(r"[-_.]+", "-", value).lower()
-            if (normalized(metadata["Name"]) != package["name"] or metadata["Version"] != package["version"]
-                    or sorted(metadata.get_all("Requires-Dist", [])) != sorted(package["requires_dist"])):
-                raise ValueError("Wheel metadata differs from official pinned registry metadata")
+            metadata = inspect_metadata(package, wheel.read(metadata_info))
             # Product-level terms and bundled third-party notices may live
             # outside dist-info. Conservatively include every safe candidate,
             # including files under a license/legal directory; never silently

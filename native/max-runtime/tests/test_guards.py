@@ -13,7 +13,7 @@ import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
 from gates import ROOT, assert_network, assert_status, load_lock, require_hosted, runtime_environment, verify_license_review
-from bootstrap import download, inspect_wheels
+from bootstrap import download, inspect_metadata, inspect_wheels, metadata_record
 from run_fixture import bounded
 
 
@@ -29,6 +29,8 @@ class Guards(unittest.TestCase):
         self.assertEqual(len(lock["packages"]), 17)
         self.assertEqual(sum(p["size"] for p in lock["packages"]), 262318881)
         self.assertIn("runtime_license_review", lock)
+        for package in lock["packages"]:
+            metadata_record(package)
 
     def reject_lock(self, mutate):
         lock = json.loads((ROOT / "sdk-lock.json").read_text())
@@ -130,15 +132,20 @@ class Guards(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="quenderin-max-guard-") as directory:
             root = pathlib.Path(directory)
             path = root / "inert.whl"
+            metadata = b"Name: max-core\nVersion: 26.7.0\n"
             with zipfile.ZipFile(path, "w") as wheel:
-                wheel.writestr("max_core-26.7.0.dist-info/METADATA", "Name: max-core\nVersion: 26.7.0\n")
+                wheel.writestr("max_core-26.7.0.dist-info/METADATA", metadata)
                 wheel.writestr("max_core-26.7.0.dist-info/licenses/LICENSE", "Inert test terms")
                 wheel.writestr("max_core/LICENSE", "Package-level terms")
                 wheel.writestr("max_core/Third-Party-Notices", "Bundled notices")
                 wheel.writestr("max_core/licenses/THIRD-PARTY.txt", "License directory terms")
                 wheel.writestr("max_core/__init__.py", "raise RuntimeError('must never import')")
             package = {"filename": path.name, "name": "max-core", "version": "26.7.0", "size": path.stat().st_size,
-                       "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "requires_dist": []}
+                       "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "requires_dist": [],
+                       "url": "https://files.pythonhosted.org/packages/inert.whl",
+                       "wheel_metadata": {"index_url": "https://pypi.org/simple/max-core/",
+                                          "url": "https://files.pythonhosted.org/packages/inert.whl.metadata",
+                                          "size": len(metadata), "sha256": hashlib.sha256(metadata).hexdigest()}}
             lock = {"packages": [package], "maximum_uncompressed_bytes": 4096}
             licenses, _ = inspect_wheels(lock, root)
             self.assertEqual({item["path"] for item in licenses}, {
@@ -149,6 +156,37 @@ class Guards(unittest.TestCase):
             package.update(size=path.stat().st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
             with self.assertRaises(ValueError):
                 inspect_wheels(lock, root)
+
+    def metadata_fixture(self, raw):
+        return {"name": "max", "version": "26.7.0", "requires_dist": ["max[serve,benchmark]; extra == 'all'"],
+                "url": "https://files.pythonhosted.org/packages/inert.whl",
+                "wheel_metadata": {"index_url": "https://pypi.org/simple/max/",
+                                   "url": "https://files.pythonhosted.org/packages/inert.whl.metadata",
+                                   "size": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}}
+
+    def test_exact_selected_wheel_metadata_replaces_project_json_rendering(self):
+        raw = b"Name: max\nVersion: 26.7.0\nRequires-Dist: max[serve,benchmark]; extra == 'all'\n"
+        package = self.metadata_fixture(raw)
+        self.assertEqual(inspect_metadata(package, raw).get_all("Requires-Dist"), package["requires_dist"])
+        # PyPI project JSON normalizes quotes and extra ordering. The lock must
+        # preserve the exact wheel declarations instead of weakening equality.
+        package["requires_dist"] = ['max[benchmark,serve]; extra == "all"']
+        with self.assertRaisesRegex(ValueError, "max==26.7.0: Requires-Dist"):
+            inspect_metadata(package, raw)
+
+    def test_selected_wheel_metadata_identity_and_field_diagnostics(self):
+        raw = b"Name: max\nVersion: 26.7.0\nRequires-Dist: max[serve,benchmark]; extra == 'all'\n"
+        package = self.metadata_fixture(raw)
+        for field, value, message in [("size", len(raw) + 1, "METADATA size"), ("sha256", "0" * 64, "METADATA SHA256"),
+                                      ("url", "https://example.invalid/inert.metadata", "PEP 658 provenance")]:
+            changed = copy.deepcopy(package)
+            changed["wheel_metadata"][field] = value
+            with self.assertRaisesRegex(ValueError, f"max==26.7.0: {message}"):
+                inspect_metadata(changed, raw)
+        for changed_raw, message in [(raw.replace(b"Name: max", b"Name: wrong"), "Name"),
+                                     (raw.replace(b"Version: 26.7.0", b"Version: 26.8.0"), "Version")]:
+            with self.assertRaisesRegex(ValueError, f"max==26.7.0: {message}"):
+                inspect_metadata(self.metadata_fixture(changed_raw), changed_raw)
 
     def test_supervisor_bounds_time_output_and_exit(self):
         env = {"PATH": "/usr/bin:/bin"}
