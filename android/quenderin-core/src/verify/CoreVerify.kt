@@ -947,6 +947,34 @@ fun main() {
 
     // --- Android SoC resolution + native-heap memory model ---
     check("resolves Snapdragon 8 Gen 3", AndroidSoc.fromSocModel("SM8650") == AndroidSoc.SNAPDRAGON_8_GEN_3)
+    check("resolves Snapdragon 8 Elite Gen 5 base model code",
+        AndroidSoc.fromSocModel("SM8850") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5)
+    check("resolves official Gen 5 SM8850-5-AC variant with vendor prefix and whitespace",
+        AndroidSoc.fromSocModel("  Qualcomm SM8850-5-AC  ") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5)
+    check("resolves official Gen 5 SM8850-1-AB variant case-insensitively",
+        AndroidSoc.fromSocModel("sM8850-1-aB") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5)
+    check("resolves official Gen 5 SM8850-AC variant",
+        AndroidSoc.fromSocModel("SM8850-AC") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5)
+    check("resolves official Gen 5 SM8850-1-AD variant",
+        AndroidSoc.fromSocModel("SM8850-1-AD") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5)
+    check("human-readable Elite Gen 5 is distinguished from the previous Elite",
+        AndroidSoc.fromSocModel("Qualcomm Snapdragon 8 Elite Gen 5") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5 &&
+        AndroidSoc.fromSocModel("SNAPDRAGON 8 ELITE GEN5") == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5 &&
+        AndroidSoc.fromSocModel("Snapdragon 8 Elite") == AndroidSoc.SNAPDRAGON_8_ELITE)
+    check("Gen 5 matching rejects longer, embedded and malformed model codes",
+        AndroidSoc.fromSocModel("SM88500") == AndroidSoc.UNKNOWN &&
+        AndroidSoc.fromSocModel("XSM8850") == AndroidSoc.UNKNOWN &&
+        AndroidSoc.fromSocModel("SM8850-5") == AndroidSoc.UNKNOWN &&
+        AndroidSoc.fromSocModel("SM8850-XX") == AndroidSoc.UNKNOWN)
+    check("non-Elite Snapdragon 8 Gen 5 is not classified as Elite Gen 5",
+        AndroidSoc.fromSocModel("Snapdragon 8 Gen 5") == AndroidSoc.UNKNOWN &&
+        AndroidSoc.fromSocModel("SM8845") == AndroidSoc.UNKNOWN)
+    check("previous Elite model code and empty/unknown fallbacks are preserved",
+        AndroidSoc.fromSocModel("SM8750-AB") == AndroidSoc.SNAPDRAGON_8_ELITE &&
+        AndroidSoc.fromSocModel(null) == AndroidSoc.UNKNOWN &&
+        AndroidSoc.fromSocModel("  ") == AndroidSoc.UNKNOWN)
+    check("Gen 5 uses the conservative borrowed Elite score, without a measured speed increase",
+        AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5.inferenceScore == AndroidSoc.SNAPDRAGON_8_ELITE.inferenceScore)
     check("resolves Dimensity 9300", AndroidSoc.fromSocModel("MT6989") == AndroidSoc.DIMENSITY_9300)
     check("unknown SoC falls back", AndroidSoc.fromSocModel("mystery-chip") == AndroidSoc.UNKNOWN)
     check("native budget below total RAM but generous", run {
@@ -957,6 +985,16 @@ fun main() {
     // --- GPU offload (Vulkan) planner: safe-by-default, device-aware ---
     check("GPU: a CPU-only build never offloads, whatever the SoC",
         GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_ELITE, vulkanAvailable = false) == GpuOffloadPlanner.CPU_ONLY)
+    check("GPU: Gen 5 stays CPU-only without compiled Vulkan, including manual override",
+        GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = false) == GpuOffloadPlanner.CPU_ONLY &&
+        GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = false, forceGpu = true) == GpuOffloadPlanner.CPU_ONLY)
+    check("GPU: recognized Gen 5 uses the existing compiled-Vulkan Adreno policy",
+        GpuOffloadPlanner.gpuClass(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5) == GpuOffloadPlanner.GpuClass.ADRENO &&
+        GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = true) == GpuOffloadPlanner.ALL_LAYERS)
+    check("GPU: Gen 5 rationale distinguishes family policy from device validation and honors the gate",
+        GpuOffloadPlanner.rationale(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = true).contains("not yet validated") &&
+        GpuOffloadPlanner.rationale(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = false).contains("no Vulkan backend") &&
+        GpuOffloadPlanner.rationale(AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5, vulkanAvailable = true, forceGpu = true).contains("forced override"))
     check("GPU: Adreno (Snapdragon, incl. the S23's 8 Gen 2) offloads all layers when Vulkan is built",
         GpuOffloadPlanner.recommend(AndroidSoc.SNAPDRAGON_8_GEN_2, vulkanAvailable = true) == GpuOffloadPlanner.ALL_LAYERS &&
         GpuOffloadPlanner.gpuClass(AndroidSoc.SNAPDRAGON_8_GEN_2) == GpuOffloadPlanner.GpuClass.ADRENO)

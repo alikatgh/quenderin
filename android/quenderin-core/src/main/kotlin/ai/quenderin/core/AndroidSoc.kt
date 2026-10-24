@@ -12,12 +12,14 @@ import kotlin.math.roundToInt
  * (~1.9× decode vs Kirin 9000E). Decode is memory-bandwidth bound, so GPU/NPU mostly
  * help prefill, not these numbers. Snapdragon 8 Elite / Dimensity 9400 / Tensor figures
  * are interpolated — replace with real device benchmarks (the on-device cliff).
+ * Snapdragon 8 Elite Gen 5 is unmeasured here and conservatively borrows the 8 Elite score.
  */
 enum class AndroidSoc(val displayName: String, val inferenceScore: Double) {
     SNAPDRAGON_8_GEN_1("Snapdragon 8 Gen 1", 0.62),
     SNAPDRAGON_8_GEN_2("Snapdragon 8 Gen 2", 0.74),
     SNAPDRAGON_8_GEN_3("Snapdragon 8 Gen 3", 0.85),
     SNAPDRAGON_8_ELITE("Snapdragon 8 Elite", 1.00),
+    SNAPDRAGON_8_ELITE_GEN_5("Snapdragon 8 Elite Gen 5", 1.00), // unmeasured; borrowed 8 Elite estimate
     DIMENSITY_9200("Dimensity 9200", 0.74),
     DIMENSITY_9300("Dimensity 9300", 0.88),
     DIMENSITY_9400("Dimensity 9400", 1.00),
@@ -29,14 +31,21 @@ enum class AndroidSoc(val displayName: String, val inferenceScore: Double) {
     UNKNOWN("Android SoC", 0.45);
 
     companion object {
+        // Qualcomm's Gen 5 product page / product brief list these part-number variants.
+        // Match a whole token so a different or malformed code (e.g. SM88500) stays unknown.
+        private val eliteGen5Model = Regex("""(?<![a-z0-9])sm8850(?:-(?:ac|1-ad|5-ac|1-ab))?(?![a-z0-9-])""")
+        private val eliteGen5Name = Regex("""\b8\s+elite\s+gen\s*5\b""")
+
         /**
          * Resolve `Build.SOC_MODEL` (API 31+) or a hardware string to a chip. Unknown
          * strings fall back to [UNKNOWN] (a conservative score). Case-insensitive.
+         * Vendor part numbers are aliases, not a guarantee of what every OEM reports.
          */
         fun fromSocModel(socModel: String?): AndroidSoc {
             val s = socModel?.lowercase()?.trim() ?: return UNKNOWN
             return when {
                 // Qualcomm Snapdragon (SoC model codes)
+                eliteGen5Model.containsMatchIn(s) -> SNAPDRAGON_8_ELITE_GEN_5
                 s.contains("sm8750") -> SNAPDRAGON_8_ELITE
                 s.contains("sm8650") -> SNAPDRAGON_8_GEN_3
                 s.contains("sm8550") -> SNAPDRAGON_8_GEN_2
@@ -52,6 +61,7 @@ enum class AndroidSoc(val displayName: String, val inferenceScore: Double) {
                 // Samsung Exynos
                 s.contains("s5e9945") || s.contains("exynos 2400") -> EXYNOS_2400
                 // Human-readable fallbacks
+                eliteGen5Name.containsMatchIn(s) -> SNAPDRAGON_8_ELITE_GEN_5
                 s.contains("8 elite") -> SNAPDRAGON_8_ELITE
                 s.contains("8 gen 3") -> SNAPDRAGON_8_GEN_3
                 s.contains("8 gen 2") -> SNAPDRAGON_8_GEN_2
