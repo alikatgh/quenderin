@@ -14,9 +14,20 @@ ALIASES = {
     '@quenderin/patched-host-bridge': 'packages/plugin/src/harness-remote-bridge.ts',
     '@quenderin/upstream-gateway-switch': 'packages/plugin/src/typert-gateway-switch.ts',
     '@quenderin/host-policy': 'packages/plugin/src/quenderin-host-policy.mjs',
+    '@quenderin/plugin-route-bridge': 'packages/plugin/src/plugin-route-bridge.ts',
+    '@quenderin/plugin-route-dispatcher': 'packages/plugin/src/plugin-route-dispatcher.ts',
+    '@quenderin/connection-controller': 'packages/plugin/src/connection-controller.ts',
+    '@quenderin/rpc-router': 'packages/plugin/src/rpc-router.ts',
+    '@quenderin/bot-runtime': 'packages/plugin/src/quenderin-bot-runtime.mjs',
 }
+BOT_ALIASES = {'@quenderin/pinned-bot-channel': 'ds-bot/src/host/channel.js',
+               '@quenderin/pinned-bot-store': 'ds-bot/src/host/store.js'}
 EXTERNALS = {'zod', '@xterm/headless', '@xterm/addon-serialize'}
-POLICIES = ['quenderin-host-policy.mjs', 'quenderin-host-policy.d.mts']
+POLICIES = ['quenderin-host-policy.mjs', 'quenderin-host-policy.d.mts',
+            'quenderin-bot-read-policy.mjs', 'quenderin-bot-read-policy.d.mts',
+            'quenderin-bot-runtime.mjs', 'quenderin-bot-runtime.d.mts']
+COMPANIONS = {**{'packages/plugin/src/' + name: name for name in POLICIES},
+              **{'packages/protocol/src/' + name: name for name in ['quenderin-bot-read-wire.mjs', 'quenderin-bot-read-wire.d.mts']}}
 
 
 def git(checkout, *args, data=None):
@@ -65,7 +76,24 @@ def no_links(checkout, path):
         current = current.parent
 
 
-def verify_checkout(checkout, spec, transform, companion, aliases=ALIASES):
+def verify_built_protocol(checkout, companion):
+    """The source fixture must not conceal an incomplete installed package."""
+    checkout = checkout.absolute()
+    module = checkout / 'packages/protocol/dist/quenderin-bot-read-wire.mjs'
+    entry = checkout / 'packages/protocol/dist/index.js'
+    for path in [module, entry]:
+        no_links(checkout, path)
+        if not path.is_file() or path.stat().st_size > 1_048_576:
+            raise ValueError('Built protocol wire artifact is missing or invalid')
+    expected = (companion / 'quenderin-bot-read-wire.mjs').read_bytes()
+    if module.read_bytes() != expected:
+        raise ValueError('Built protocol wire artifact differs from the prepared source')
+    if not re.search(rb'''\bfrom\s*['"]\./quenderin-bot-read-wire\.mjs['"]''', entry.read_bytes()):
+        raise ValueError('Built protocol entry does not reference its packaged wire guard')
+    return {'wireSHA256': hashlib.sha256(expected).hexdigest()}
+
+
+def verify_checkout(checkout, spec, transform, companion, aliases=ALIASES, companion_paths=COMPANIONS, selected_only=False):
     checkout = checkout.absolute()
     if checkout.is_symlink() or not checkout.is_dir():
         raise ValueError('Regular pinned Host checkout required')
@@ -77,13 +105,13 @@ def verify_checkout(checkout, spec, transform, companion, aliases=ALIASES):
             meta, path = entry.split(b'\t', 1)
             mode, kind, oid = meta.decode().split()
             entries[path.decode()] = (mode, kind, oid)
-    roots = sorted({path.split('/src/')[0] + '/src' for path in entries if path.startswith('packages/') and '/src/' in path})
+    roots = spec.get('sourceRoots') or sorted({path.split('/src/')[0] + '/src' for path in entries if path.startswith('packages/') and '/src/' in path})
     package_roots = {str(PurePosixPath(root).parent) for root in roots}
     manifest_dirs = package_roots | {'.'}
-    relevant = {path for path in entries if any(path.startswith(root + '/') for root in roots)
+    relevant = set(spec['files']) if selected_only else {path for path in entries if any(path.startswith(root + '/') for root in roots)
                 or (str(PurePosixPath(path).parent) in manifest_dirs and (PurePosixPath(path).name == 'package.json'
                     or re.fullmatch(r'tsconfig[^/]*\.json', PurePosixPath(path).name)))}
-    if not roots or not set(spec['files']).issubset(relevant) or not set(aliases.values()).difference({'packages/plugin/src/quenderin-host-policy.mjs'}).issubset(relevant):
+    if not roots or not set(spec['files']).issubset(relevant) or not set(aliases.values()).difference(companion_paths).issubset(relevant):
         raise ValueError('Pinned source closure is incomplete')
     # One batch reads exact immutable Git blobs, without checkout filters or dist.
     ordered = sorted(relevant)
@@ -108,8 +136,8 @@ def verify_checkout(checkout, spec, transform, companion, aliases=ALIASES):
                 raise ValueError('Pinned original differs')
             value = transform(path, value.decode()).encode()
         expected[path] = value
-    for name in POLICIES:
-        expected['packages/plugin/src/' + name] = (companion / name).read_bytes()
+    for path, name in companion_paths.items():
+        expected[path] = (companion / name).read_bytes()
     for path, value in expected.items():
         file = checkout / path
         no_links(checkout, file)
@@ -168,6 +196,14 @@ def main():
     spec = json.loads((companion / 'upstream.json').read_text())
     transform = runpy.run_path(str(companion / 'tools/prepare_host.py'))['transform']
     result = verify_checkout(Path(sys.argv[1]), spec, transform, companion)
+    result['builtProtocol'] = verify_built_protocol(Path(sys.argv[1]), companion)
+    actual_bot_aliases = dict(re.findall(r"if \(source === '([^']+)'\) return resolve\(bot, '([^']+)'\)", config))
+    if actual_bot_aliases != BOT_ALIASES or not os.environ.get('QUENDERIN_BOT_SOURCE', '').startswith('/'):
+        raise ValueError('Exact Bot source aliases and absolute checkout required')
+    bot_spec = json.loads((companion / 'bot-upstream.json').read_text())
+    bot_patch = runpy.run_path(str(companion / 'tools/prepare_bot.py'))
+    result['bot'] = verify_checkout(Path(os.environ['QUENDERIN_BOT_SOURCE']), bot_spec, bot_patch['transform'], companion,
+                                    aliases=BOT_ALIASES, companion_paths=bot_patch['COMPANIONS'], selected_only=True)
     print('OFFICIAL_RUNTIME_HOST_SOURCE_VERIFIED ' + json.dumps(result, sort_keys=True))
 
 

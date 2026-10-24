@@ -66,6 +66,7 @@ public struct RemoteHarnessClientHost: Identifiable, Equatable, NativeConnection
     public var onDisconnected: (@MainActor (RemoteHarnessClientFailure) -> Void)?
     public var onStateChanged: (@MainActor () -> Void)?
     public private(set) var supportsCompanion = false
+    public var supportsBotRead: Bool { coordinator.supportsBotRead }
     public var binding: RemoteHarnessBinding? { coordinator.binding }
     public var stopState: RemoteHarnessStopState { coordinator.stopState }
     public var approvals: [RemoteHarnessPendingApproval] { coordinator.pendingApprovalRequests }
@@ -115,6 +116,21 @@ public struct RemoteHarnessClientHost: Identifiable, Equatable, NativeConnection
                     case .outcomeUnknown: continuation.resume(throwing: RemoteHarnessClientFailure.unknownOutcome)
                     case .rejected: continuation.resume(throwing: RemoteHarnessClientFailure.protocolMismatch)
                     case .failed(let failure): continuation.resume(throwing: failure)
+                    }
+                }
+            } catch { continuation.resume(throwing: error) }
+        }
+    }
+    public func readBotRoster() async throws -> RemoteHarnessBotRoster {
+        let current = generation
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try coordinator.readBotRoster { [weak self] result in
+                    guard let self, self.generation == current else { continuation.resume(throwing: RemoteHarnessClientFailure.connection); return }
+                    self.onStateChanged?()
+                    switch result {
+                    case .success(let roster): continuation.resume(returning: roster)
+                    case .failure(let failure): continuation.resume(throwing: failure)
                     }
                 }
             } catch { continuation.resume(throwing: error) }

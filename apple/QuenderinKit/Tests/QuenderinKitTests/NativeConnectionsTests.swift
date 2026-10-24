@@ -25,7 +25,7 @@ final class NativeConnectionsTests: XCTestCase {
             throw FixtureFailure.mismatch
         }
     }
-    private func pass(_ id: String) { print("NATIVE_CONNECTION_FIXTURE_PASS \(id)") }
+    private func pass(_ id: String) { emitFixturePass("NATIVE_CONNECTION_FIXTURE_PASS \(id)") }
     private func object(_ data: Data) throws -> NSDictionary { try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? NSDictionary) }
 
     func testCanonicalValidProfiles() throws {

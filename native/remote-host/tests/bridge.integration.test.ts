@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { HarnessRemoteBridge } from '../src/harness-remote-bridge.js'
 import { ConnectionController } from '../src/connection-controller.js'
 import { QuenderinApprovalPolicy, APPROVAL_ENDPOINT } from '../src/quenderin-host-policy.mjs'
+import { botSessionWritable, mountBotRead } from '../src/quenderin-bot-runtime.mjs'
 import type { LocalTypertGateway } from '../src/typert-gateway-contract.js'
 import type { RemoteMessage } from '@dsh-remote/protocol'
 
@@ -39,6 +40,30 @@ function gateway(calls: unknown[]): LocalTypertGateway {
 }
 
 describe('Quenderin pinned production Host bridge',()=>{
+  it('keeps Bot parts read-only while ordinary Harness prompts and Stop retain their existing path', async () => {
+    const calls: unknown[] = [], disposers: (() => void)[] = [], connection = {};
+    let ready = true;
+    const runtime = { ctx: { connection, effect: (effect: () => () => void) => { disposers.push(effect()) } },
+      state: { revision: 7, rooms: { room: { id: 'room' } }, bots: { bot: { id: 'bot', sessionId: 'bot-part' } } },
+      chatOwners: new Map([['bot-part', 'bot']]), groupOwners: new Map(), pastOwners: new Map(),
+      quenderinReadStatus: () => ({ ready, readOnly: false }) };
+    mountBotRead(runtime);
+    const bridge = new HarnessRemoteBridge(gateway(calls), async () => undefined, undefined, '0.2.1-rc.1', undefined, undefined, undefined,
+      sessionId => botSessionWritable(connection, sessionId));
+    const call = (endpoint: string, sessionId: string) => bridge.call({ endpoint, payload: { args: { request: { sessionId } } } });
+    try {
+      for (const endpoint of ['session/prompt', 'session/selectModel']) {
+        await expect(call(endpoint, 'bot-part')).rejects.toThrow('read-only');
+        await expect(call(endpoint, 'bot')).rejects.toThrow('read-only');
+        await expect(call(endpoint, 'room')).rejects.toThrow('read-only');
+        await call(endpoint, 'ordinary');
+      }
+      ready = false;
+      await expect(call('session/prompt', 'ordinary')).rejects.toThrow('read-only');
+      await call('session/cancel', 'bot-part');
+      expect(calls).toHaveLength(3);
+    } finally { await bridge.closeAll(); disposers.forEach(dispose => dispose()); }
+  })
   it('emits a bound approval and forwards exactly one local official result',async()=>{
     const calls: unknown[]=[], frames: unknown[]=[]
     const policy=new QuenderinApprovalPolicy('host','client')

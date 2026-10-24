@@ -141,7 +141,7 @@ final class RemoteHarnessControlWireTests: XCTestCase {
                     } else { try execute() }
                 }
             } catch { XCTFail("Control wire fixture failed: \(fixture.id)"); throw Mismatch.fixture }
-            print("REMOTE_HARNESS_CONTROL_WIRE_FIXTURE_PASS \(fixture.id)")
+            emitFixturePass("REMOTE_HARNESS_CONTROL_WIRE_FIXTURE_PASS \(fixture.id)")
         }
     }
 }

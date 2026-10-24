@@ -19,7 +19,7 @@ the Host operating system.
 
 1. Use a separate source checkout at the exact upstream revision. Keep an existing
    working Harness installation and its profile in place.
-2. From this repository, check the four Host source hashes and patch seams:
+2. From this repository, check the nine Host source/build hashes and patch seams:
 
    ```sh
    python3 native/remote-host/tools/prepare_host.py /absolute/path/to/ds-harness-remote
@@ -31,7 +31,7 @@ the Host operating system.
    python3 native/remote-host/tools/prepare_host.py /absolute/path/to/ds-harness-remote --apply
    ```
 
-   The tool adds two companion source files and edits four verified source files.
+   The tool adds eight companion source files and edits nine verified source/build files.
    It refuses another revision, changed seams, linked source files, or an existing
    companion. It does not download, install, start, authenticate or configure
    Harness. The upstream MIT notice is retained in `LICENSE.upstream`.
@@ -60,6 +60,45 @@ the Host operating system.
    [local-bundle installation contract](https://github.com/deepseek-ai/deepseek-harness/blob/master/python/sdk/README.md)
    documents the `file:` form. A successful build does not establish that the
    user's installed Harness version/profile has loaded the companion.
+
+## Optional read-only DS Bot integration
+
+Use DS Bot **0.2.1**, exact source
+`1bebe826f74e9a72cabafd3b80602b05af867b38`, in a separate source checkout.
+Prepare its verified store/channel seams from this repository:
+
+```sh
+python3 native/remote-host/tools/prepare_bot.py /absolute/path/to/DeepSeek-Bot
+python3 native/remote-host/tools/prepare_bot.py /absolute/path/to/DeepSeek-Bot --apply
+```
+
+The preparation tool verifies 24 pinned public source/license files, changes two
+seams and adds four companion files. It does not install or start the plugin.
+Keep the Apache-2.0 license and `NOTICE.DeepSeek-Bot` attribution with the adapted
+source. The isolated fixture uses the existing official Harness rc.1 dependency
+lock; it exercises the actual store/channel and authenticated route, rather than
+installing the full Bot entry point.
+
+An operator who already runs DS Bot can install the prepared local `ds-bot`
+bundle through the same official `file:` plugin route, in the same existing
+Harness profile as the prepared Remote plugin. Full DS Bot startup can migrate
+state, resume tasks, read its existing credentials and start connectors. Those
+existing startup effects require the operator's own configuration and execution
+limits; preparing this read-only adapter does not make startup passive or
+authorize provider activity. Preserve the working profile and its data.
+
+The exact mounted adapter enables `quenderin.bot.read.v1` alongside
+`plugin.route.v1`. The only forwarded Bot operation is `quenderin-roster` at
+`api/bot`: at most 100 bots, 4,096 original UTF-8 request-parameter bytes and a
+262,144-byte result. It uses the authenticated in-process shared Fetch handler;
+no browser cookie or loopback HTTP fallback is exposed to the phone. Missing
+support leaves the capability absent. An unready or inconsistent mounted runtime
+returns a fixed unavailable response without loading, refreshing or starting it.
+
+Bot-selected native sessions are view-only until a separate Bot execution
+capability is implemented. Raw Harness prompt/model changes for Bot-owned parts
+are refused on the prepared Host; ordinary Harness sessions, bound approvals and
+Stop retain their existing paths. Roster refresh never authorizes a write.
 
 ## Confirm both identities
 

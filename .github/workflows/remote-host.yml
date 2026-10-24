@@ -6,6 +6,8 @@ on:
     paths:
       - 'native/remote-host/**'
       - 'shared/remote-harness-approval-digest-fixtures.json'
+      - 'shared/remote-harness-bot-read-contract.json'
+      - 'shared/remote-harness-bot-read-fixtures.json'
       - '.github/workflows/remote-host.yml'
 
 permissions:
@@ -33,6 +35,38 @@ jobs:
           ref: 9a60e783ec1ceaff6116b0462a2863f07f602a55
           path: upstream
           persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Fei2411/DeepSeek-Bot
+          ref: 1bebe826f74e9a72cabafd3b80602b05af867b38
+          path: bot-upstream
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /NOTICE
+            /ds-bot/index.js
+            /ds-bot/package.json
+            /ds-bot/LICENSE
+            /ds-bot/src/host/channel.js
+            /ds-bot/src/host/parts.js
+            /ds-bot/src/host/btw.js
+            /ds-bot/src/host/groups.js
+            /ds-bot/src/host/constants.js
+            /ds-bot/src/host/steward.js
+            /ds-bot/src/host/resume.js
+            /ds-bot/src/host/text.js
+            /ds-bot/src/host/files.js
+            /ds-bot/src/host/tools.js
+            /ds-bot/src/host/turns.js
+            /ds-bot/src/host/avatar.js
+            /ds-bot/src/host/folders.js
+            /ds-bot/src/host/links.js
+            /ds-bot/src/host/schedules.js
+            /ds-bot/src/host/store.js
+            /ds-bot/src/host/home-lock.js
+            /ds-bot/src/shared/views.js
+            /ds-bot/src/shared/mentions.js
+            /ds-bot/src/shared/formula.js
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -42,6 +76,8 @@ jobs:
         run: |
           python3 -B native/remote-host/tools/prepare_host.py upstream
           python3 -B native/remote-host/tools/prepare_host.py upstream --apply
+          python3 -B native/remote-host/tools/prepare_bot.py bot-upstream
+          python3 -B native/remote-host/tools/prepare_bot.py bot-upstream --apply
           cp native/remote-host/tests/bridge.integration.test.ts upstream/packages/plugin/tests/quenderin-host.integration.test.ts
           cp native/remote-host/tests/vitest.config.mjs upstream/packages/plugin/tests/quenderin-vitest.config.mjs
       - name: Select the upstream locked package manager
@@ -65,7 +101,7 @@ jobs:
           fixture_guard_root="$(mktemp -d "${RUNNER_TEMP:?}/quenderin-runtime-guards.XXXXXX")"
           trap 'rmdir "$fixture_guard_root"' EXIT
           QUENDERIN_GUARD_SCRATCH="$fixture_guard_root" python3 -B tools/check_host_test.py
-          env -i PATH="$PATH" python3 -B tools/check_host.py "$GITHUB_WORKSPACE/upstream"
+          env -i PATH="$PATH" QUENDERIN_BOT_SOURCE="$GITHUB_WORKSPACE/bot-upstream" python3 -B tools/check_host.py "$GITHUB_WORKSPACE/upstream"
       - name: Install the reviewed isolated official-runtime closure without lifecycle hooks
         working-directory: native/remote-host/runtime-fixture
         run: |
@@ -81,5 +117,6 @@ jobs:
             GITHUB_ACTIONS=true \
             QUENDERIN_PARENT_NETNS="$fixture_parent_netns" \
             QUENDERIN_HOST_SOURCE="$GITHUB_WORKSPACE/upstream" \
+            QUENDERIN_BOT_SOURCE="$GITHUB_WORKSPACE/bot-upstream" \
             PATH="$PATH" \
             node tools/run.mjs b3aecdf5b52d358cd4d50fa7d8f8948db33deaca8a7626991d4a50f734f289c1

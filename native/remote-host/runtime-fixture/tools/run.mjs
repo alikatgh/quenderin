@@ -42,8 +42,10 @@ async function run() {
     throw new Error('STOP: run inside a separate loopback-only Linux network namespace');
   }
   const source = process.env.QUENDERIN_HOST_SOURCE;
+  const bot = process.env.QUENDERIN_BOT_SOURCE;
   if (!source || !source.startsWith('/')) throw new Error('Absolute pinned patched Host checkout required');
-  const verified = await boundedProcess('python3', ['-B', resolve(root, 'tools/check_host.py'), source], { cwd: root, env: processEnvironment(), timeoutMs: 5000 });
+  if (!bot || !bot.startsWith('/')) throw new Error('Absolute pinned patched Bot checkout required');
+  const verified = await boundedProcess('python3', ['-B', resolve(root, 'tools/check_host.py'), source], { cwd: root, env: { ...processEnvironment(), QUENDERIN_BOT_SOURCE: bot }, timeoutMs: 5000 });
   process.stdout.write(verified.stdout.subarray(0, 32_768));
   process.stderr.write(verified.stderr.subarray(0, 32_768));
   if (verified.error || verified.code !== 0 || verified.timedOut || verified.outputExceeded) throw new Error('Host source verification failed');
@@ -54,7 +56,7 @@ async function run() {
     if (remaining < 1) throw new Error('Official runtime fixture exceeded its finite budget');
     const result = await boundedProcess(process.execPath, [resolve(root, 'node_modules/vitest/vitest.mjs'), 'run', '--config', resolve(root, 'vitest.config.mjs')], {
       cwd: root, timeoutMs: remaining,
-      env: runtimeEnvironment(fixtureRoot, source, factsPath),
+      env: runtimeEnvironment(fixtureRoot, source, factsPath, bot),
     });
     // Keep diagnostic output bounded as well as the canonical facts.
     process.stdout.write(result.stdout.subarray(0, 32_768));
@@ -81,6 +83,26 @@ async function run() {
     process.stdout.write('QUENDERIN_OFFICIAL_RUNTIME_FACTS_BEGIN\n');
     process.stdout.write(facts);
     process.stdout.write('QUENDERIN_OFFICIAL_RUNTIME_FACTS_END\n');
+    const botFactsPath = join(fixtureRoot, 'bot-runtime-facts.json');
+    const botFactsDescriptor = openSync(botFactsPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    let botFacts;
+    try {
+      const stat = fstatSync(botFactsDescriptor);
+      if (!stat.isFile() || stat.size > 262_144) throw new Error('Bot runtime facts exceed 256 KiB');
+      botFacts = Buffer.alloc(stat.size);
+      let offset = 0;
+      while (offset < botFacts.length) {
+        const received = readSync(botFactsDescriptor, botFacts, offset, botFacts.length - offset, null);
+        if (!received) throw new Error('Bot runtime facts size differs');
+        offset += received;
+      }
+      if (readSync(botFactsDescriptor, Buffer.alloc(1), 0, 1, null)) throw new Error('Bot runtime facts size differs');
+    } finally { closeSync(botFactsDescriptor); }
+    const botValue = JSON.parse(botFacts.toString('utf8'));
+    if (botValue.schema !== 1 || botValue.botRevision !== '1bebe826f74e9a72cabafd3b80602b05af867b38' || botValue.readEffects.modelCalls !== 0) throw new Error('Bot runtime facts identity differs');
+    process.stdout.write('QUENDERIN_OFFICIAL_BOT_RUNTIME_FACTS_BEGIN\n');
+    process.stdout.write(botFacts);
+    process.stdout.write('QUENDERIN_OFFICIAL_BOT_RUNTIME_FACTS_END\n');
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }

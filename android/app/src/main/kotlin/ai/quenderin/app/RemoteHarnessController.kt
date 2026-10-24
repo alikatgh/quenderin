@@ -58,6 +58,8 @@ class RemoteHarnessController(context: Context) : AutoCloseable {
     fun confirmHost(pin: String) = dispatch { it.confirmHost(pin) }
     fun workspace(id: String) = dispatch { it.chooseWorkspace(id) }
     fun session(id: String) = dispatch { it.chooseSession(id) }
+    fun refreshBots() = dispatch(RemoteHarnessClient::refreshBotRoster)
+    fun bot(id: String) = dispatch { it.chooseBot(id) }
     fun createSession() = dispatch(RemoteHarnessClient::createSession)
     fun selectModel(provider: String, model: String, effort: String?) = dispatch { it.selectModel(provider, model, effort) }
     fun draft(value: String) {

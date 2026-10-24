@@ -46,7 +46,7 @@ final class DeepSeekProviderTests: XCTestCase {
                 let actual = try XCTUnwrap(JSONSerialization.jsonObject(with: DeepSeekContract.body(request(fixture))) as? NSDictionary)
                 try require(actual.isEqual(to: XCTUnwrap(fixture["expectedBody"] as? [String: Any])), id)
             }
-            print("DEEPSEEK_FIXTURE_PASS " + id)
+            emitFixturePass("DEEPSEEK_FIXTURE_PASS " + id)
         }
     }
     func testCanonicalIncrementalStreams() throws {
@@ -80,7 +80,7 @@ final class DeepSeekProviderTests: XCTestCase {
                     try require(accumulator.usage?.outputTokens == usage["outputTokens"].map(Int64.init), id)
                 } else { try require(accumulator.usage == nil, id) }
             }
-            print("DEEPSEEK_FIXTURE_PASS " + id)
+            emitFixturePass("DEEPSEEK_FIXTURE_PASS " + id)
         }
     }
     func testCanonicalModelValidation() throws {
@@ -94,7 +94,7 @@ final class DeepSeekProviderTests: XCTestCase {
             } else {
                 try require(try DeepSeekContract.modelIDs(data, selected: "deepseek-flash") == XCTUnwrap(fixture["expectedIDs"] as? [String]), id)
             }
-            print("DEEPSEEK_FIXTURE_PASS " + id)
+            emitFixturePass("DEEPSEEK_FIXTURE_PASS " + id)
         }
     }
     func testReviewedCatalogAndLimitsMatchSharedContract() throws {

@@ -1,0 +1,40 @@
+{
+  "repository": "https://github.com/Fei2411/DeepSeek-Bot",
+  "revision": "1bebe826f74e9a72cabafd3b80602b05af867b38",
+  "pluginVersion": "0.2.1",
+  "license": "Apache-2.0",
+  "sourceRoots": [
+    "ds-bot/src/host",
+    "ds-bot/src/shared"
+  ],
+  "files": {
+    "ds-bot/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "ds-bot/index.js": "19839b15bda4ae5a09abb3f49588ea4e1725f09f8c90e892096081ea7c19491c",
+    "ds-bot/package.json": "ebb2b71983619415656af6415fa0d5cbdd4786a6cd5f495a00034b312e5eb2eb",
+    "ds-bot/src/host/constants.js": "f740ae6705f0c5cf3b0e02249f9ce4459ec7c50413aab02311bac8d17621cd6a",
+    "ds-bot/src/host/channel.js": "d04a16ad309b82a2bae339ed517544c15a7c2c1003fc503e2dd315d79475c802",
+    "ds-bot/src/host/tools.js": "174d5ca2f4dd5375addd24ad5d69b5c7d8982a2b7c7a4d2522e70071d89f23d5",
+    "ds-bot/src/host/avatar.js": "6aa15e66fa70f15c62b574022a34694865a6391289230759d0b76efe7aeb3394",
+    "ds-bot/src/host/groups.js": "750d05867b9c1dcbbacf6a1e8b88f176ef7ea101303e9061454028f8a2310da5",
+    "ds-bot/src/host/links.js": "01fca4728c87728a3815e435d4f9445fe45f808b7a5e5c6ba2f92772bf38411e",
+    "ds-bot/src/host/files.js": "52073d4d121100f58e1686da2765a616278c5cf93eb62806d0c9f81a1fcee6af",
+    "ds-bot/src/host/store.js": "f039f5f386a80b9ceb8cd4192633476cc0f24a0b2385b2d16cfd95038a149fd4",
+    "ds-bot/src/host/resume.js": "cf84ecd782017e270b1ff3d74ada8bdf0c8b2dd5616b970f57e6f41d0c9add4f",
+    "ds-bot/src/host/folders.js": "d95c61e60de0441fd3fca7b8ce8275a98b292510f9c357998fe888d6c6b037db",
+    "ds-bot/src/host/schedules.js": "aa726f22f7f4f3ef567818e2a04583e92fe1954915684b6cb3f650b1b7e62095",
+    "ds-bot/src/host/turns.js": "0349655a19a1aa98e551e8d619b5b66adfa5b6630e627c205756424c610e16f6",
+    "ds-bot/src/host/btw.js": "76f478831905d91dbea9c39f0fbe44c94b9b67bbef04ed75718d5a4639b49636",
+    "ds-bot/src/host/parts.js": "56545327a3721053896afa5f3ada1ef05db6fa223ebf7405efa8dc87b8186e5d",
+    "ds-bot/src/host/steward.js": "d57861b743d0293e21f1b29b5d5c28bb79b69fe0fed22e9e2fc1faf71bbf5155",
+    "ds-bot/src/host/text.js": "2bb5f204061f12f1a648ccce62855f6a67ac0e72a1b3876a9a26937497ae4b6c",
+    "ds-bot/src/shared/formula.js": "2fda97b3a9f146eee4c80d7fb5abeb476c47d00153032c680a8c9d1b1903a749",
+    "ds-bot/src/shared/mentions.js": "a011d792da173dcf86f3a480ea8b9f8411528bf0b9a99db36a37e6b0e0aeecec",
+    "ds-bot/src/shared/views.js": "83e6a0ec08938bf4ed9874466e831a2d84b7116848daa83671c5434f7ce64609",
+    "NOTICE": "83277221cf58073abbdb3ae26a61839570a93a94f255368b03513abf66cf94ad",
+    "ds-bot/src/host/home-lock.js": "dc8fda9d62ba17e4fd2116a79af8af6a7f701593380694150f82c492056ab4b0"
+  },
+  "patchedFiles": [
+    "ds-bot/src/host/channel.js",
+    "ds-bot/src/host/store.js"
+  ]
+}

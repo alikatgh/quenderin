@@ -24,7 +24,7 @@ object RemoteHarnessCodec {
     const val STREAM_CLOSED = "harness.remote.stream.closed"
 
     fun request(method: String, params: RemoteHarnessJSON, frameID: String, timestamp: Long): RemoteHarnessFrame {
-        validateRequest(method, params.objectValue())
+        validateRequest(method, params)
         return decode(RemoteHarnessJSON.write(obj("v" to num(1), "id" to str(frameID), "type" to str("rpc.request"),
             "timestamp" to num(timestamp), "payload" to obj("method" to str(method), "params" to params))))
     }
@@ -45,7 +45,7 @@ object RemoteHarnessCodec {
         var eventName: String? = null
         var streamID: String? = null
         when (type) {
-            "rpc.request" -> { p.rhFields("method", "params"); validateRequest(p.rhString("method"), p.rhRequired("params").objectValue()) }
+            "rpc.request" -> { p.rhFields("method", "params"); validateRequest(p.rhString("method"), p.rhRequired("params")) }
             "rpc.response" -> { p.rhFields("requestId", "result"); requestID = p.rhString("requestId").also(::rhID); p.rhRequired("result") }
             "rpc.error" -> {
                 p.rhFields("requestId", "code", "message", "retryable", "details")
@@ -97,9 +97,11 @@ object RemoteHarnessCodec {
         rhCheck(names.size == names.toSet().size, "invalid-capabilities")
         rhCheck(REQUIRED_CAPABILITY in names && "harness.remote.v1" !in names, "unsupported-capability")
     }
-    private fun validateRequest(method: String, params: Map<String, RemoteHarnessJSON>) {
+    private fun validateRequest(method: String, paramsValue: RemoteHarnessJSON) {
+        val params = paramsValue.objectValue()
         when (method) {
             DESCRIBE -> rhCheck(params.isEmpty(), "invalid-params")
+            RemoteHarnessBotRead.METHOD -> RemoteHarnessBotRead.validateRequest(paramsValue)
             CLOSE -> { params.rhFields("streamId"); rhID(params.rhString("streamId")) }
             CALL, OPEN -> {
                 if (method == OPEN) { params.rhFields("streamId", "endpoint", "payload"); rhID(params.rhString("streamId")) }

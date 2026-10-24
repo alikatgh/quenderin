@@ -49,6 +49,11 @@ class RemoteHarnessClient(
     private var attemptIndex = 0L
     private var knownCommands = linkedSetOf<String>()
     private val approvalActionEvidence = RemoteHarnessClientApprovalActions()
+    private val botReadOnlyScopes = linkedSetOf<RemoteHarnessClientBotReadOnlyScope>()
+    private var botRefreshToken = 0L
+    private var sessionListContext: RemoteHarnessAuthenticatedContext? = null
+    private var sessionListGeneration = 0L
+    private val botClassificationMessage = "Refresh Bots to verify this session before sending tasks or changing its model."
 
     init {
         try {
@@ -56,12 +61,13 @@ class RemoteHarnessClient(
             val r = record; val s = saved
             rhCheck(s == null || r != null && s.origin == r.origin && s.deviceID == r.deviceID, "client-storage")
             knownCommands.addAll(s?.commands ?: emptyList())
-            snapshot = snapshot.copy(origin = r?.origin ?: "", deviceID = r?.deviceID ?: "",
+            botReadOnlyScopes.addAll(s?.botReadOnlyScopes ?: emptyList())
+            update(snapshot.copy(origin = r?.origin ?: "", deviceID = r?.deviceID ?: "",
                 workspaceID = s?.workspaceID, workspaceTitle = s?.workspaceTitle ?: "", sessionID = s?.sessionID,
                 timeline = s?.timeline ?: emptyList(), draft = s?.draft ?: "", provider = s?.provider,
-                model = s?.model, effort = s?.effort,
+                model = s?.model, effort = s?.effort, botSessionReadOnly = s?.botSessionReadOnly ?: false,
                 phase = if (r == null) RemoteHarnessClientPhase.SETUP else RemoteHarnessClientPhase.DISCONNECTED,
-                status = if (knownCommands.isEmpty()) RemoteSessionStatus.DISCONNECTED else RemoteSessionStatus.OUTCOME_UNKNOWN)
+                status = if (knownCommands.isEmpty()) RemoteSessionStatus.DISCONNECTED else RemoteSessionStatus.OUTCOME_UNKNOWN))
             if (r?.phase == RemoteHarnessCredentialPhase.REFRESH_PENDING) block("A token refresh was interrupted. Sign in again to authorize this same device.", storageFailure = false)
             if (r != null && crypto.isAvailable) showIdentity(r)
         } catch (_: Exception) { block("Saved computer connection could not be read. Keep the existing data and repair secure storage before continuing.") }
@@ -71,7 +77,8 @@ class RemoteHarnessClient(
     override fun toString() = "RemoteHarnessClient(redacted)"
     private fun owner() = rhCheck(Thread.currentThread() === ownerThread, "client-owner")
     private fun update(value: RemoteHarnessClientSnapshot) {
-        snapshot = storageFailureMessage?.let { value.copy(phase = RemoteHarnessClientPhase.BLOCKED, busy = false, historyReady = false, error = it) } ?: value
+        val classified = value.copy(botSessionClassificationPending = botClassificationPending(value))
+        snapshot = storageFailureMessage?.let { classified.copy(phase = RemoteHarnessClientPhase.BLOCKED, busy = false, historyReady = false, error = it) } ?: classified
         onChange?.invoke(snapshot)
     }
     private fun block(message: String, storageFailure: Boolean = true) {
@@ -97,6 +104,9 @@ class RemoteHarnessClient(
             "client-deadline" -> "The computer did not complete the connection in time. Check that the Host is online and accepts this device."
             "client-protocol" -> "This Host returned an unsupported response. Update its Remote companion and reconnect."
             "client-history" -> "History changed or could not be verified. Reconnect to load an authoritative snapshot before sending."
+            "client-bot-read-only" -> "This bot's session is view-only. Run tasks and change its model on your computer."
+            "client-bot-classification" -> botClassificationMessage
+            "client-bot-safety-limit" -> "This device's Bot safety record is full. Existing restrictions were retained."
             "approval-action-unverified" -> "The computer's full tool action is not verified yet. Wait for its authoritative call and arguments, or stop the task."
             else -> "The computer connection failed. Check your server and computer, then reconnect explicitly."
         }
@@ -194,6 +204,7 @@ class RemoteHarnessClient(
         chooseHostInternal(host)
     }
     private fun chooseHostInternal(summary: RemoteHarnessClientHost) {
+        clearBotState()
         val host = api.host(requireAccess(), summary)
         rhCheck(host.deviceID == summary.deviceID && host.membershipID == summary.membershipID && host.publicKey?.size == 32 &&
             host.fingerprint == RemoteHarnessClientRecords.fingerprint(host.publicKey), "client-host-key")
@@ -205,9 +216,10 @@ class RemoteHarnessClient(
     fun confirmHost(fullFingerprint: String) = action {
         val host = snapshot.pendingHost ?: throw RemoteHarnessException("client-host-key")
         rhCheck(fullFingerprint == host.fingerprint, "client-host-key")
+        clearBotState()
         trustedHost = host
         update(snapshot.copy(host = host, pendingHost = null, workspaceID = null, workspaceTitle = "", sessionID = null,
-            timeline = emptyList(), historyReady = false, models = emptyList(), provider = null, model = null, effort = null))
+            botSessionReadOnly = false, timeline = emptyList(), historyReady = false, models = emptyList(), provider = null, model = null, effort = null))
         persist(); connect()
     }
     private fun persist() {
@@ -216,7 +228,7 @@ class RemoteHarnessClient(
         val next = RemoteHarnessClientSavedState(r.origin, r.deviceID, host?.deviceID ?: saved?.hostID,
             host?.name ?: saved?.hostName, host?.fingerprint ?: saved?.hostFingerprint, snapshot.workspaceID,
             snapshot.workspaceTitle, snapshot.sessionID, snapshot.draft, snapshot.timeline, knownCommands.toList(),
-            snapshot.provider, snapshot.model, snapshot.effort)
+            snapshot.provider, snapshot.model, snapshot.effort, snapshot.botSessionReadOnly, botReadOnlyScopes.toList())
         try {
             persistence.write(next)
             val checked = persistence.read() ?: throw RemoteHarnessException("client-storage")
@@ -348,7 +360,7 @@ class RemoteHarnessClient(
                 if (g == generation) coordinator?.receive(context, bytes)
             }
             override fun retired(context: RemoteHarnessAuthenticatedContext, reason: RemoteHarnessSecureRetirement) {
-                if (g == generation) { coordinator?.disconnected(context); approvalActionEvidence.reset(null)
+                if (g == generation) { clearBotState(); coordinator?.disconnected(context); approvalActionEvidence.reset(null)
                     update(snapshot.copy(phase = RemoteHarnessClientPhase.DISCONNECTED, approvals = emptyList(), approvalActions = emptyMap(),
                     historyReady = false, status = RemoteSessionStatus.OUTCOME_UNKNOWN, error = "Computer disconnected. Reconnect to verify the latest session state.")) }
             }
@@ -363,23 +375,27 @@ class RemoteHarnessClient(
         c.open(RemoteHarnessOperations.workspaceFollow(), { notice -> if (g == generation && notice.kind == RemoteHarnessStreamNoticeKind.VALUE) {
             guardedSocket { receiveWorkspaces(notice.value ?: throw RemoteHarnessException("client-protocol")) }
         } }, { if (it.kind != RemoteHarnessOutcomeKind.RESULT) fail("client-protocol") })
-        update(snapshot.copy(approvalSupported = c.approvalSupported()))
+        update(snapshot.copy(approvalSupported = c.approvalSupported(), botReadSupported = botReadAvailable()))
         if (snapshot.workspaceID == null) update(snapshot.copy(phase = RemoteHarnessClientPhase.WORKSPACES, status = RemoteSessionStatus.READY))
     }
     private fun openScopedBusiness(g: Long) {
         val c = coordinator ?: return
+        val authenticated = context ?: return
         if (snapshot.workspaceID != null && !scopedStarted) {
             val workspace = snapshot.workspaces.singleOrNull { it.id == snapshot.workspaceID } ?: throw RemoteHarnessException("client-history")
             rhCheck(snapshot.sessionID == null || snapshot.sessionID in workspace.sessionIDs, "client-history")
             scopedStarted = true
             update(snapshot.copy(phase = if (snapshot.sessionID == null) RemoteHarnessClientPhase.SESSIONS else RemoteHarnessClientPhase.SESSION,
                 status = RemoteSessionStatus.READY))
-            c.call(RemoteHarnessOperations.sessionList()) { outcome -> if (g == generation) guardedSocket {
+            c.call(RemoteHarnessOperations.sessionList()) { outcome -> if (g == generation && context === authenticated && coordinator === c) guardedSocket {
                 val items = array(requireResult(outcome).objectValue().rhRequired("items"))
                 val allowed = snapshot.workspaces.firstOrNull { it.id == snapshot.workspaceID }?.sessionIDs?.toSet() ?: emptySet()
                 val sessions = items.map { item -> val row = item.objectValue(); val id = row.rhString("sessionId").also(::rhID)
                     RemoteHarnessClientSession(id, sessionTitle(row) ?: id, row.rhRequired("running").booleanValue()) }.filter { it.id in allowed }
+                sessionListContext = authenticated; sessionListGeneration = g
                 update(snapshot.copy(sessions = sessions))
+                refreshBotNavigation()
+                if (snapshot.botReadSupported) refreshBotRoster()
             } }
             c.call(RemoteHarnessOperations.modelCatalog()) { outcome -> if (g == generation) guardedSocket { receiveModels(requireResult(outcome)) } }
             if (snapshot.sessionID != null) {
@@ -417,6 +433,7 @@ class RemoteHarnessClient(
             else -> throw RemoteHarnessException("client-protocol")
         }
         if (workspaceBaseline) openScopedBusiness(generation)
+        refreshBotNavigation()
         if (snapshot.sessionID != null && snapshot.workspaces.none { it.id == snapshot.workspaceID && snapshot.sessionID in it.sessionIDs })
             throw RemoteHarnessException("client-history")
     }
@@ -427,15 +444,132 @@ class RemoteHarnessClient(
     }
     fun chooseWorkspace(id: String) = action {
         val workspace = snapshot.workspaces.singleOrNull { it.id == id } ?: throw RemoteHarnessException("client-history")
+        clearBotState()
         update(snapshot.copy(workspaceID = workspace.id, workspaceTitle = workspace.title, sessionID = null, timeline = emptyList(),
-            sessions = emptyList(), historyReady = false)); persist(); connect()
+            botSessionReadOnly = false, sessions = emptyList(), historyReady = false)); persist(); connect()
     }
     fun chooseSession(id: String) = action {
         rhCheck(snapshot.sessions.any { it.id == id }, "client-history")
-        openSession(id)
+        val knownBotSession = snapshot.botRoster?.takeIf { snapshot.botReadSupported }?.bots?.any { it.sessionID == id } == true
+        openSession(id, knownBotSession)
     }
-    private fun openSession(id: String) {
-        update(snapshot.copy(sessionID = id, timeline = emptyList(), historyReady = false)); persist(); connect()
+
+    private fun botScope(id: String?): RemoteHarnessClientBotReadOnlyScope? {
+        val sessionID = id ?: return null
+        val workspaceID = snapshot.workspaceID ?: return null
+        val hostID = trustedHost?.deviceID ?: saved?.hostID ?: return null
+        val pin = trustedHost?.fingerprint ?: saved?.hostFingerprint ?: return null
+        return RemoteHarnessClientBotReadOnlyScope(snapshot.origin, hostID, pin, workspaceID, sessionID)
+    }
+    private fun knownBotSession(id: String?) = botScope(id)?.let { it in botReadOnlyScopes } == true
+    private fun rememberBotScopes(scopes: List<RemoteHarnessClientBotReadOnlyScope>) {
+        val additions = scopes.filter { it !in botReadOnlyScopes }.distinct()
+        if (additions.isEmpty()) return
+        val remaining = RemoteHarnessClientSavedState.MAX_BOT_READ_ONLY_SCOPES - botReadOnlyScopes.size
+        if (remaining > 0) {
+            botReadOnlyScopes.addAll(additions.take(remaining))
+            update(snapshot.copy(botSessionReadOnly = knownBotSession(snapshot.sessionID)))
+            // Saturate durable safety knowledge even when this whole roster must be rejected.
+            // At capacity, absent/failed classification cannot authorize an unrecorded session.
+            // A failed physical write keeps the old record and storage blocks this process.
+            persist()
+        }
+        rhCheck(additions.size <= remaining, "client-bot-safety-limit")
+    }
+
+    private fun botReadAvailable(value: RemoteHarnessClientSnapshot = snapshot): Boolean {
+        val authenticated = context ?: return false
+        val workspaceID = value.workspaceID ?: return false
+        return stage == "business" && authenticated.generation == generation &&
+            authenticated.binding.workspaceID == workspaceID && coordinator?.botReadSupported() == true
+    }
+    /** The snapshot and mutation guard share this connection-local classification decision. */
+    private fun botClassificationPending(value: RemoteHarnessClientSnapshot): Boolean {
+        val classificationRequired = value.botReadSupported ||
+            botReadOnlyScopes.size >= RemoteHarnessClientSavedState.MAX_BOT_READ_ONLY_SCOPES
+        if (value.botSessionReadOnly || !classificationRequired) return false
+        return !(botReadAvailable(value) && !value.botRosterLoading && value.botRosterError == null &&
+            value.botRoster?.workspaceID == value.workspaceID && sessionListGeneration == generation &&
+            sessionListContext === context)
+    }
+    private fun clearBotState() {
+        botRefreshToken++; sessionListContext = null; sessionListGeneration = 0
+        update(snapshot.copy(botReadSupported = false, botRosterLoading = false, botRoster = null,
+            botRosterError = null, availableBotIDs = emptySet()))
+    }
+    private fun currentBotSession(botID: String): String? {
+        if (!snapshot.botReadSupported || snapshot.botRosterLoading || snapshot.botRosterError != null ||
+            !botReadAvailable() || sessionListGeneration != generation ||
+            sessionListContext !== context) return null
+        val workspace = snapshot.workspaces.singleOrNull { it.id == snapshot.workspaceID } ?: return null
+        val roster = snapshot.botRoster?.takeIf { it.workspaceID == workspace.id } ?: return null
+        val bot = roster.bots.singleOrNull { it.id == botID } ?: return null
+        return bot.sessionID.takeIf { id -> id in workspace.sessionIDs && snapshot.sessions.count { it.id == id } == 1 }
+    }
+    private fun refreshBotNavigation() {
+        val available = snapshot.botRoster?.bots?.mapNotNull { bot ->
+            if (currentBotSession(bot.id) != null) bot.id else null
+        }?.toSet() ?: emptySet()
+        if (snapshot.availableBotIDs != available) update(snapshot.copy(availableBotIDs = available))
+    }
+    /** Independent read state: a pending roster never blocks history, approval, drafts or Stop. */
+    fun refreshBotRoster() {
+        owner()
+        if (storageFailureMessage != null || snapshot.botRosterLoading || !snapshot.botReadSupported || !botReadAvailable()) return
+        val c = coordinator ?: return
+        val authenticated = context ?: return
+        val workspaceID = snapshot.workspaceID ?: return
+        val g = generation; val token = ++botRefreshToken
+        fun current() = token == botRefreshToken && g == generation && context === authenticated && coordinator === c &&
+            snapshot.workspaceID == workspaceID && snapshot.botReadSupported && botReadAvailable()
+        update(snapshot.copy(botRosterLoading = true, botRosterError = null))
+        refreshBotNavigation()
+        try {
+            c.readBotRoster { outcome ->
+                if (current()) {
+                    val roster = outcome.botRoster?.takeIf { outcome.kind == RemoteHarnessOutcomeKind.RESULT && it.workspaceID == workspaceID }
+                    if (roster != null) {
+                        try {
+                            rememberBotScopes(roster.bots.mapNotNull { botScope(it.sessionID) })
+                        } catch (error: Exception) {
+                            update(snapshot.copy(botRosterLoading = false, botRosterError = if (error is RemoteHarnessException &&
+                                error.code == "client-bot-safety-limit") "This device's Bot safety record is full. Existing restrictions were retained."
+                                else "Bot safety could not be saved. Repair storage before continuing.", availableBotIDs = emptySet()))
+                            if (error !is RemoteHarnessException || error.code != "client-bot-safety-limit") fail("client-storage")
+                            return@readBotRoster
+                        }
+                    }
+                    update(snapshot.copy(botRosterLoading = false, botRoster = roster ?: snapshot.botRoster,
+                        botRosterError = if (roster == null) "Bots are unavailable from this computer. Refresh to try again." else null,
+                        error = if (roster != null && snapshot.error == botClassificationMessage) null else snapshot.error))
+                    refreshBotNavigation()
+                }
+            }
+        } catch (_: Exception) {
+            if (current()) {
+                update(snapshot.copy(botRosterLoading = false,
+                    botRosterError = "Bots are unavailable from this computer. Refresh to try again."))
+                refreshBotNavigation()
+            }
+        }
+    }
+    /** Resolve only a current authoritative session row; Bot display text never creates a session. */
+    fun chooseBot(id: String) {
+        owner()
+        if (snapshot.busy || storageFailureMessage != null) return
+        val sessionID = currentBotSession(id)
+        if (sessionID == null) {
+            if (snapshot.botReadSupported) {
+                update(snapshot.copy(botRosterError = "This bot's session is unavailable in the current workspace. Refresh to check again."))
+                refreshBotNavigation()
+            }
+            return
+        }
+        action { openSession(sessionID, botReadOnly = true) }
+    }
+    private fun openSession(id: String, botReadOnly: Boolean = false) {
+        if (botReadOnly) rememberBotScopes(listOf(botScope(id) ?: throw RemoteHarnessException("client-history")))
+        update(snapshot.copy(sessionID = id, botSessionReadOnly = knownBotSession(id), timeline = emptyList(), historyReady = false)); persist(); connect()
     }
     fun createSession() = action {
         requireCompanion()
@@ -474,6 +608,7 @@ class RemoteHarnessClient(
             model = snapshot.model ?: selection.rhString("model"), effort = snapshot.effort ?: selection["reasoningEffort"]?.stringValue()))
     }
     fun selectModel(provider: String, model: String, effort: String?) = action {
+        requireSessionMutation()
         requireCompanion()
         val selected = snapshot.models.singleOrNull { it.provider == provider && it.id == model } ?: throw RemoteHarnessException("client-protocol")
         rhCheck(effort == null || selected.efforts.any { it.first == effort }, "client-protocol")
@@ -486,6 +621,7 @@ class RemoteHarnessClient(
         } }
     }
     fun send() = action {
+        requireSessionMutation()
         requireCompanion()
         rhCheck(snapshot.historyReady && snapshot.draft.isNotBlank() && snapshot.status != RemoteSessionStatus.OUTCOME_UNKNOWN, "client-history")
         val session = snapshot.sessionID ?: throw RemoteHarnessException("client-history")
@@ -501,6 +637,10 @@ class RemoteHarnessClient(
     private fun requireCompanion() {
         rhCheck(coordinator?.isReady() == true, "client-history")
         rhCheck(snapshot.approvalSupported && coordinator?.approvalSupported() == true, "client-companion")
+    }
+    private fun requireSessionMutation() {
+        rhCheck(!snapshot.botSessionReadOnly, "client-bot-read-only")
+        rhCheck(!botClassificationPending(snapshot), "client-bot-classification")
     }
     fun decideApproval(eventID: String, allowedOnce: Boolean) = action {
         val business = coordinator ?: throw RemoteHarnessException("client-history")
@@ -717,6 +857,7 @@ class RemoteHarnessClient(
     }
     fun disconnect() { owner(); disconnectInternal(); try { persist() } catch (_: Exception) { fail("client-storage") } }
     private fun disconnectInternal() {
+        clearBotState()
         val hadConnection = stage != "idle"
         generation++; stage = "idle"; pingNonce = null; nextPing = 0
         val oldCoordinator = coordinator; coordinator = null
