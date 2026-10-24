@@ -22,6 +22,7 @@ export interface BotReadError {
 export type BotReadValidation<T> = { ok: true; value: T } | { ok: false; error: BotReadError };
 export type BotReadSuccess = { status: 200; json: { ok: true; value: BotRosterValue } };
 export type BotReadFailure = { status: 400 | 503; json: { ok: false; error: BotReadError } };
+export function isPlainBotReadRecord(value: unknown): boolean;
 export function validateBotReadRequest(params: unknown, expectedWorkspaceId: unknown): BotReadValidation<BotReadRequest>;
 export function projectBotReadSnapshot(source: unknown, expectedWorkspaceId: unknown): BotReadSuccess | BotReadFailure;
 export function handleBotReadRequest(params: unknown, source: unknown, expectedWorkspaceId: unknown): BotReadSuccess | BotReadFailure;

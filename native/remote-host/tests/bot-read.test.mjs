@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import {
   BOT_READ_CAPABILITY, BOT_READ_CARRIER_CAPABILITY, BOT_READ_ROUTE, BOT_READ_ENDPOINT, BOT_READ_LIMITS,
-  validateBotReadRequest, projectBotReadSnapshot, handleBotReadRequest, validateBotReadResponse,
+  isPlainBotReadRecord, validateBotReadRequest, projectBotReadSnapshot, handleBotReadRequest, validateBotReadResponse,
 } from '../quenderin-bot-read-policy.mjs';
 
 const fixture = JSON.parse(readFileSync(new URL('../../../shared/remote-harness-bot-read-fixtures.json', import.meta.url), 'utf8'));
@@ -16,6 +17,7 @@ const bytes = value => Buffer.byteLength(JSON.stringify(value), 'utf8');
 const emptySource = (workspaceId = fixture.workspaceId) => ({ ready: true, workspaceId, revision: 0, readOnly: true, bots: [] });
 const bot = index => ({ id: `bot-${index}`, name: 'Assistant', sessionId: `session-${index}`, model: null, permission: null });
 const project = value => projectBotReadSnapshot(value, fixture.workspaceId);
+const foreignJSON = value => runInNewContext('JSON.parse(serialized)', { serialized: JSON.stringify(value) });
 
 function assertFailure(result, code, status) {
   const failure = status === undefined ? result : result.json;
@@ -37,6 +39,77 @@ test('shared valid request and source project exactly the portable success fixtu
   assert.deepEqual(project(source()), fixture.valid.response);
   assert.deepEqual(handleBotReadRequest(fixture.valid.request, source(), fixture.workspaceId), fixture.valid.response);
   assert.deepEqual(validateBotReadResponse(fixture.valid.response, fixture.workspaceId), { ok: true, value: fixture.valid.response });
+});
+
+test('equivalent JSON request, source and result from another realm retain the same strict contract', () => {
+  const foreignRequest = foreignJSON(fixture.valid.request), foreignSource = foreignJSON(source()), foreignResult = foreignJSON(fixture.valid.response);
+  for (const value of [foreignRequest, foreignRequest.body, foreignSource, foreignSource.bots[0], foreignResult, foreignResult.json.value]) {
+    assert.notEqual(Object.getPrototypeOf(value), Object.prototype);
+    assert.equal(isPlainBotReadRecord(value), true);
+  }
+  assert.deepEqual(validateBotReadRequest(foreignRequest, fixture.workspaceId), { ok: true, value: fixture.valid.request });
+  assert.deepEqual(project(foreignSource), fixture.valid.response);
+  assert.deepEqual(handleBotReadRequest(foreignRequest, foreignSource, fixture.workspaceId), fixture.valid.response);
+  assert.deepEqual(validateBotReadResponse(foreignResult, fixture.workspaceId), { ok: true, value: fixture.valid.response });
+  const extraRequest = foreignJSON(fixture.valid.request); extraRequest.body.payload.extra = true;
+  assertFailure(validateBotReadRequest(extraRequest, fixture.workspaceId), 'BOT_READ_INVALID_REQUEST');
+  const extraResult = foreignJSON(fixture.valid.response); extraResult.json.value.bots[0].extra = true;
+  assertFailure(validateBotReadResponse(extraResult, fixture.workspaceId), 'BOT_READ_INVALID_RESPONSE');
+});
+
+test('foreign source projection still ignores extra own getters, including constructor and serialization hooks', () => {
+  const input = foreignJSON(source());
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('SYNTHETIC_PRIVATE_FOREIGN'); };
+  for (const target of [input, ...input.bots]) {
+    for (const key of ['constructor', 'privateMetadata', 'toJSON', 'load', 'refresh']) Object.defineProperty(target, key, { get: unexpected, enumerable: true });
+    Object.defineProperty(target, Symbol.toStringTag, { get: unexpected });
+    assert.equal(isPlainBotReadRecord(target), true);
+  }
+  Object.defineProperty(input.bots, Symbol.iterator, { get: unexpected });
+  assert.deepEqual(project(input), fixture.valid.response);
+  assert.equal(invoked, 0);
+});
+
+test('shared prototype checks reject custom classes, counterfeit constructors and proxies without input code', () => {
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('SYNTHETIC_PRIVATE_PROTOTYPE'); };
+  const counterfeit = Object.create(null);
+  Object.defineProperty(counterfeit, 'constructor', { value: Object });
+  const accessor = Object.create(null);
+  Object.defineProperty(accessor, 'constructor', { get: unexpected });
+  const custom = Object.create(null), customConstructor = function Object() { unexpected(); };
+  Object.defineProperty(customConstructor, 'prototype', { value: custom });
+  Object.defineProperty(customConstructor, 'toString', { value: unexpected });
+  Object.defineProperty(custom, 'constructor', { value: customConstructor });
+  const proxyConstructor = Object.create(null);
+  Object.defineProperty(proxyConstructor, 'constructor', { value: new Proxy(Object, { get: unexpected, getOwnPropertyDescriptor: unexpected }) });
+  const proxyPrototype = new Proxy({}, { getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected });
+  class CustomRecord { constructor() { unexpected(); } }
+  const copy = (prototype, value) => Object.defineProperties(Object.create(prototype), Object.getOwnPropertyDescriptors(value));
+  for (const prototype of [counterfeit, accessor, custom, proxyConstructor, proxyPrototype, CustomRecord.prototype, {}]) {
+    const input = copy(prototype, source());
+    assert.equal(isPlainBotReadRecord(input), false);
+    assertFailure(project(input), 'BOT_READ_UNAVAILABLE', 503);
+    assertFailure(validateBotReadRequest(copy(prototype, fixture.valid.request), fixture.workspaceId), 'BOT_READ_INVALID_REQUEST');
+    assertFailure(validateBotReadResponse(copy(prototype, fixture.valid.response), fixture.workspaceId), 'BOT_READ_INVALID_RESPONSE');
+  }
+  const proxy = new Proxy(source(), { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected, ownKeys: unexpected });
+  assert.equal(isPlainBotReadRecord(proxy), false);
+  assertFailure(project(proxy), 'BOT_READ_UNAVAILABLE', 503);
+  assert.equal(invoked, 0);
+});
+
+test('required own accessors in foreign JSON objects remain invalid without invoking them', () => {
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('SYNTHETIC_PRIVATE_REQUIRED'); };
+  const input = foreignJSON(source()); Object.defineProperty(input, 'revision', { get: unexpected });
+  assertFailure(project(input), 'BOT_READ_UNAVAILABLE', 503);
+  const params = foreignJSON(fixture.valid.request); Object.defineProperty(params.body.payload, 'workspaceId', { get: unexpected });
+  assertFailure(validateBotReadRequest(params, fixture.workspaceId), 'BOT_READ_INVALID_REQUEST');
+  const result = foreignJSON(fixture.valid.response); Object.defineProperty(result.json.value.bots[0], 'id', { get: unexpected });
+  assertFailure(validateBotReadResponse(result, fixture.workspaceId), 'BOT_READ_INVALID_RESPONSE');
+  assert.equal(invoked, 0);
 });
 
 for (const entry of fixture.invalidRequests) {

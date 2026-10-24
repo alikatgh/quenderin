@@ -1,11 +1,10 @@
 import { types } from 'node:util';
-import { BOT_READ_CAPABILITY, BOT_READ_LIMITS, projectBotReadSnapshot, validateBotReadRequest } from './quenderin-bot-read-policy.mjs';
+import { BOT_READ_CAPABILITY, BOT_READ_LIMITS, isPlainBotReadRecord, projectBotReadSnapshot, validateBotReadRequest } from './quenderin-bot-read-policy.mjs';
 
 // Both pinned plugins share a connection service, not an invented ds-bot service.
 // The marker is an in-process compatibility/lifecycle seam, never an auth token.
 const MOUNT = Symbol.for('quenderin.bot.read.mounted.v1');
 const BOT_PIN = '1bebe826f74e9a72cabafd3b80602b05af867b38';
-const OBJECT_CONSTRUCTOR_SOURCE = Function.prototype.toString.call(Object);
 const unavailable = () => ({ status: 503, json: { ok: false, error: { code: 'BOT_READ_UNAVAILABLE', message: 'Bot roster read unavailable' } } });
 const invalid = () => ({ status: 400, json: { ok: false, error: { code: 'BOT_READ_INVALID_REQUEST', message: 'Bot roster read unavailable' } } });
 function own(value, key, optional = false) {
@@ -16,21 +15,10 @@ function own(value, key, optional = false) {
   return descriptor.value;
 }
 
-// Runtime records can originate in the plugin loader's other realm. Unlike Map,
-// plain records have no util.types brand check; verify the genuine prototype's
-// constructor/backlink with descriptors, without invoking user code or tags.
+// Ownership tables additionally reject accessors, while source projection is
+// intentionally allowed to ignore private extra getters.
 function plainRuntimeRecord(value) {
-  if (value === null || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== null) {
-    if (types.isProxy(prototype) || Object.getPrototypeOf(prototype) !== null) return false;
-    const constructor = Object.getOwnPropertyDescriptor(prototype, 'constructor');
-    if (!constructor || !Object.hasOwn(constructor, 'value') || typeof constructor.value !== 'function'
-      || types.isProxy(constructor.value)) return false;
-    const backlink = Object.getOwnPropertyDescriptor(constructor.value, 'prototype');
-    if (!backlink || !Object.hasOwn(backlink, 'value') || backlink.value !== prototype
-      || Function.prototype.toString.call(constructor.value) !== OBJECT_CONSTRUCTOR_SOURCE) return false;
-  }
+  if (!isPlainBotReadRecord(value)) return false;
   for (const key of Reflect.ownKeys(value)) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor || !Object.hasOwn(descriptor, 'value')) return false;
@@ -41,41 +29,57 @@ function plainRuntimeRecord(value) {
 /** Mounted only by the real pinned channel.install(rt). No load or execution. */
 export function mountBotRead(rt) {
   const connection = rt.ctx.connection;
-  let active = false, highestRevision = -1;
+  let active = false, highestRevision = -1, readPhase = 'binding';
   const read = params => {
+    readPhase = 'binding';
     try {
       if (!active || mountedBotRead(connection)?.read !== read) return unavailable();
+      readPhase = 'state';
       const state = own(rt, 'state');
       const teamWorkspaceId = own(state, 'workspaceId');
+      readPhase = 'request';
       const workspaceId = own(own(own(params, 'body'), 'payload'), 'workspaceId');
       if (!validateBotReadRequest(params, workspaceId).ok) return invalid();
       // This function is added to the pinned store and reads cached scalars only.
+      readPhase = 'readiness';
       const status = rt.quenderinReadStatus?.();
       if (status?.ready !== true || typeof status.readOnly !== 'boolean') return unavailable();
+      readPhase = 'revision';
       const revision = own(state, 'revision');
       if (!Number.isSafeInteger(revision) || revision < 0 || revision < highestRevision) return unavailable();
+      readPhase = 'workspace';
       const workspace = rt.ctx.workspaceRegistry.get(teamWorkspaceId);
       if (workspace?.id !== teamWorkspaceId) return unavailable();
       const requestedWorkspace = workspaceId === teamWorkspaceId ? workspace : rt.ctx.workspaceRegistry.get(workspaceId);
       if (requestedWorkspace?.id !== workspaceId) return invalid();
       // Official rc.1 getter uses its already-built canonical-cwd header index;
       // it does not load persistence, resolve an Agent, or create a workspace.
+      readPhase = 'membership';
       const members = workspace.sessionIds;
       if (!Array.isArray(members)) return unavailable();
+      readPhase = 'bot-fields';
       const table = own(state, 'bots');
       if (types.isProxy(table) || table === null || typeof table !== 'object' || Array.isArray(table)) return unavailable();
       const keys = Reflect.ownKeys(table);
       if (keys.length > BOT_READ_LIMITS.bots || keys.some(key => typeof key !== 'string')) return unavailable();
+      readPhase = 'owners';
       const owners = own(rt, 'chatOwners');
       if (types.isProxy(owners) || !types.isMap(owners)) return unavailable();
       const bots = [];
       for (const key of keys) {
+        readPhase = 'bot-fields';
         const bot = own(table, key), id = own(bot, 'id');
         const sessionId = own(bot, 'sessionId', true) ?? id;
-        if (id !== key || Map.prototype.get.call(owners, sessionId) !== id || !members.includes(sessionId)) return unavailable();
+        if (id !== key) return unavailable();
+        readPhase = 'owners';
+        if (Map.prototype.get.call(owners, sessionId) !== id) return unavailable();
+        readPhase = 'membership';
+        if (!members.includes(sessionId)) return unavailable();
+        readPhase = 'bot-fields';
         bots.push({ id, name: own(bot, 'name'), sessionId,
           model: own(bot, 'model', true) ?? null, permission: own(bot, 'permission', true) ?? null });
       }
+      readPhase = 'projection';
       const teamResponse = projectBotReadSnapshot({ ready: true, workspaceId: teamWorkspaceId, revision, readOnly: status.readOnly, bots }, teamWorkspaceId);
       if (teamResponse.status !== 200) return teamResponse;
       // A Host-wide capability also serves ordinary authenticated workspaces.
@@ -83,8 +87,10 @@ export function mountBotRead(rt) {
       // without exporting any other workspace's Bot identifiers or metadata.
       const response = workspaceId === teamWorkspaceId ? teamResponse
         : projectBotReadSnapshot({ ready: true, workspaceId, revision, readOnly: status.readOnly, bots: [] }, workspaceId);
+      readPhase = 'state-changed';
       if (state !== own(rt, 'state') || own(state, 'revision') !== revision || !active) return unavailable();
-      if (response.status === 200) highestRevision = revision;
+      if (response.status === 200) { highestRevision = revision; readPhase = 'ready'; }
+      else readPhase = 'projection';
       return response;
     } catch { return unavailable(); }
   };
@@ -121,7 +127,10 @@ export function mountBotRead(rt) {
       return true;
     } catch { return false; }
   };
-  const adapter = Object.freeze({ capability: BOT_READ_CAPABILITY, botRevision: BOT_PIN, read, sessionWritable, mounted: () => active });
+  // Host-only diagnosis of the most recent read: fixed enums, never runtime data
+  // or exception text. This method is not registered as a route or capability.
+  const adapter = Object.freeze({ capability: BOT_READ_CAPABILITY, botRevision: BOT_PIN, read,
+    readDiagnostic: () => readPhase, sessionWritable, mounted: () => active });
   rt.ctx.effect(() => {
     if (Object.hasOwn(connection, MOUNT)) throw new Error('A Bot roster adapter is already mounted');
     Object.defineProperty(connection, MOUNT, { value: adapter, configurable: true });

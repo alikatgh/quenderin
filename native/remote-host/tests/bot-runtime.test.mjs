@@ -6,6 +6,8 @@ import { mountBotRead, mountedBotRead, botSessionWritable } from '../quenderin-b
 import { assertBotReadWireBytes } from '../quenderin-bot-read-wire.mjs';
 
 const params = { route: 'api/bot', body: { endpoint: 'quenderin-roster', payload: { schemaVersion: 1, workspaceId: 'workspace-a' } } };
+const diagnosticCodes = Object.freeze(['binding', 'state', 'request', 'readiness', 'revision', 'workspace',
+  'membership', 'owners', 'bot-fields', 'projection', 'state-changed', 'ready']);
 function mounted() {
   const disposers = [], effects = [];
   const rt = { state: { workspaceId: 'workspace-a', revision: 7, rooms: {}, bots: { 'bot-a': { id: 'bot-a', name: 'Researcher', sessionId: 'session-a', model: 'fixture/scripted', permission: 'read-only', instructions: 'SYNTHETIC_PRIVATE' } } },
@@ -28,6 +30,63 @@ test('mounted adapter projects current materialized membership without execution
   dispose();
   assert.equal(mountedBotRead(rt.ctx.connection), undefined);
   assert.equal(read(params).status, 503);
+});
+
+test('Host-only read diagnostics report only fixed check phases without changing route envelopes', () => {
+  const cases = [
+    ['binding', ({ dispose }) => { dispose(); }],
+    ['state', ({ rt }) => { delete rt.state; }],
+    ['request', () => {}, { ...params, body: { ...params.body, endpoint: 'readDiagnostic' } }],
+    ['readiness', ({ rt }) => { rt.quenderinReadStatus = () => ({ ready: false, readOnly: true }); }],
+    ['revision', ({ rt }) => { rt.state.revision = -1; }],
+    ['workspace', ({ rt }) => { rt.ctx.workspaceRegistry.get = () => undefined; }],
+    ['membership', ({ rt }) => { rt.ctx.workspaceRegistry.get = id => ({ id, sessionIds: [] }); }],
+    ['owners', ({ rt }) => { rt.chatOwners.set('session-a', 'wrong-owner'); }],
+    ['bot-fields', ({ rt }) => { delete rt.state.bots['bot-a'].name; }],
+    ['projection', ({ rt }) => { rt.state.bots['bot-a'].name = ''; }],
+    ['state-changed', ({ rt }) => { rt.ctx.workspaceRegistry.get = id => { rt.state.revision++; return { id, sessionIds: ['session-a'] }; }; }],
+    ['ready', () => {}],
+  ];
+  assert.deepEqual(cases.map(([phase]) => phase), diagnosticCodes);
+  for (const [phase, change, request = params] of cases) {
+    const fixture = mounted(), adapter = mountedBotRead(fixture.rt.ctx.connection);
+    assert.equal(adapter.readDiagnostic(), 'binding');
+    change(fixture);
+    const response = fixture.read(request), diagnostic = adapter.readDiagnostic();
+    assert.equal(diagnostic, phase);
+    assert.equal(diagnosticCodes.includes(diagnostic), true);
+    assert.equal(response.status, phase === 'ready' ? 200 : phase === 'request' ? 400 : 503);
+    assert.deepEqual(Object.keys(response), ['status', 'json']);
+    assert.equal(JSON.stringify(response).includes('readDiagnostic'), false);
+    assert.equal(JSON.stringify(response).includes('SYNTHETIC_PRIVATE'), false);
+    assert.deepEqual(fixture.effects, []);
+    fixture.dispose();
+  }
+});
+
+test('read diagnostic access never inspects private values, getters, proxies or exception text', () => {
+  let invoked = 0;
+  const unexpected = () => { invoked++; throw new Error('SYNTHETIC_PRIVATE_DIAGNOSTIC'); };
+  for (const value of [new Proxy({}, { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected, ownKeys: unexpected }),
+    Object.defineProperty({}, 'workspaceId', { get: unexpected })]) {
+    const fixture = mounted(), adapter = mountedBotRead(fixture.rt.ctx.connection);
+    fixture.rt.state = value;
+    assert.equal(adapter.readDiagnostic(), 'binding');
+    assert.equal(fixture.read(params).status, 503);
+    for (let count = 0; count < 3; count++) assert.equal(adapter.readDiagnostic(), 'state');
+    fixture.dispose();
+  }
+  const thrownProxy = new Proxy({}, { get: unexpected, getPrototypeOf: unexpected, getOwnPropertyDescriptor: unexpected });
+  for (const error of [new Error('SYNTHETIC_PRIVATE_DIAGNOSTIC'), thrownProxy]) {
+    const fixture = mounted(), adapter = mountedBotRead(fixture.rt.ctx.connection);
+    fixture.rt.ctx.workspaceRegistry.get = () => { throw error; };
+    const response = fixture.read(params);
+    assert.equal(response.status, 503);
+    assert.equal(adapter.readDiagnostic(), 'workspace');
+    assert.equal(JSON.stringify(response).includes('SYNTHETIC_PRIVATE'), false);
+    fixture.dispose();
+  }
+  assert.equal(invoked, 0);
 });
 
 test('genuine Maps from another realm support reads and preserve all ownership write guards', () => {

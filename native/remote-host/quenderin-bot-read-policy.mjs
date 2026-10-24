@@ -16,16 +16,31 @@ const MESSAGE = 'Bot roster read unavailable';
 const SOURCE_KEYS = ['ready', 'workspaceId', 'revision', 'readOnly', 'bots'];
 const VALUE_KEYS = ['schemaVersion', 'workspaceId', 'revision', 'readOnly', 'bots'];
 const BOT_KEYS = ['id', 'name', 'sessionId', 'model', 'permission'];
+const OBJECT_CONSTRUCTOR_SOURCE = Function.prototype.toString.call(Object);
 const reject = () => { throw INVALID; };
 const error = code => ({ code, message: MESSAGE });
 const failure = code => ({ ok: false, error: error(code) });
 const failedResponse = (status, code) => ({ status, json: failure(code) });
 
+// JSON records can originate in another plugin-loader realm. Verify only their
+// genuine Object/null prototype here; required own data and exact-key checks
+// remain separate so source-only private getters are still ignored.
+export function isPlainBotReadRecord(value) {
+  if (value === null || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype === null) return true;
+  if (types.isProxy(prototype) || Object.getPrototypeOf(prototype) !== null) return false;
+  const constructor = Object.getOwnPropertyDescriptor(prototype, 'constructor');
+  if (!constructor || !Object.hasOwn(constructor, 'value') || typeof constructor.value !== 'function'
+    || types.isProxy(constructor.value)) return false;
+  const backlink = Object.getOwnPropertyDescriptor(constructor.value, 'prototype');
+  return !!backlink && Object.hasOwn(backlink, 'value') && backlink.value === prototype
+    && Function.prototype.toString.call(constructor.value) === OBJECT_CONSTRUCTOR_SOURCE;
+}
+
 // Do not coerce values, invoke accessors, or inspect the values of extra fields.
 function fields(value, required, exact = false) {
-  if (value === null || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) reject();
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) reject();
+  if (!isPlainBotReadRecord(value)) reject();
   if (exact) {
     const keys = Reflect.ownKeys(value);
     if (keys.length !== required.length || keys.some(key => !required.includes(key))) reject();

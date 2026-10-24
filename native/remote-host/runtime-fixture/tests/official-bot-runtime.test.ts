@@ -209,9 +209,13 @@ it('reads the pinned Bot roster via an admitted Remote Peer and the official sha
     expect(currentBot.permission, 'Loaded public Bot permission').toBe('read-only');
     const expectedRoster = { status: 200, json: { ok: true, value: { schemaVersion: 1, workspaceId: workspace.id, revision: startupRevision, readOnly: false,
       bots: [{ id: 'fixture-bot', name: 'Researcher', sessionId: 'fixture-bot-part', model: 'fixture/scripted', permission: 'read-only' }] } } };
-    const cachedRoster = mountedBotRead(ctx.connection)!.read(request);
+    const cachedAdapter = mountedBotRead(ctx.connection)!;
+    const cachedRoster = cachedAdapter.read(request);
+    const diagnostic = cachedAdapter.readDiagnostic();
+    const diagnosticCodes = Object.freeze(['binding', 'state', 'request', 'readiness', 'revision', 'workspace', 'membership', 'owners', 'bot-fields', 'projection', 'state-changed', 'ready']);
+    expect(diagnosticCodes.includes(diagnostic), 'Cached roster diagnostic belongs to the fixed allowlist').toBe(true);
     expect(Object.values(readEffects), 'Direct cached roster read effects').toEqual(Object.values(readEffects).map(() => 0));
-    expect(cachedRoster, 'Direct mounted cached roster').toEqual(expectedRoster);
+    expect(cachedRoster, `Direct mounted cached roster: ${diagnostic}`).toEqual(expectedRoster);
     const sharedFetch = ctx.connection.createSharedFetchHandler('/api');
     const fetchedRoster = await sharedFetch.fetch(new Request('http://127.0.0.1/api/bot', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request.body), signal: AbortSignal.timeout(1000),
