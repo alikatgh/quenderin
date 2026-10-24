@@ -33,7 +33,8 @@ object GpuOffloadPlanner {
 
     fun gpuClass(soc: AndroidSoc): GpuClass = when (soc) {
         AndroidSoc.SNAPDRAGON_8_GEN_1, AndroidSoc.SNAPDRAGON_8_GEN_2,
-        AndroidSoc.SNAPDRAGON_8_GEN_3, AndroidSoc.SNAPDRAGON_8_ELITE -> GpuClass.ADRENO
+        AndroidSoc.SNAPDRAGON_8_GEN_3, AndroidSoc.SNAPDRAGON_8_ELITE,
+        AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5 -> GpuClass.ADRENO
         AndroidSoc.DIMENSITY_9200, AndroidSoc.DIMENSITY_9300, AndroidSoc.DIMENSITY_9400,
         AndroidSoc.TENSOR_G2, AndroidSoc.TENSOR_G3, AndroidSoc.TENSOR_G4 -> GpuClass.MALI
         AndroidSoc.EXYNOS_2400 -> GpuClass.XCLIPSE
@@ -63,6 +64,8 @@ object GpuOffloadPlanner {
     fun rationale(soc: AndroidSoc, vulkanAvailable: Boolean, forceGpu: Boolean = false): String = when {
         !vulkanAvailable -> "CPU (this build has no Vulkan backend)"
         forceGpu -> "GPU: all layers (forced override — benchmarking ${soc.displayName})"
+        soc == AndroidSoc.SNAPDRAGON_8_ELITE_GEN_5 ->
+            "GPU: all layers via Vulkan (${soc.displayName}, Adreno family policy; Gen 5 device not yet validated)"
         gpuClass(soc) == GpuClass.ADRENO -> "GPU: all layers via Vulkan (${soc.displayName}, Adreno — proven)"
         else -> "CPU (${soc.displayName} GPU not yet validated for Vulkan offload; mainly affects prefill anyway)"
     }
