@@ -1,0 +1,81 @@
+name: MAX native CPU graph bridge
+
+on:
+  pull_request:
+    paths:
+      - 'native/max-runtime/**'
+      - '.github/workflows/max-runtime.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Inspect exact SDK terms, or execute after their recorded review'
+        type: choice
+        options: [audit, execute]
+        default: audit
+        required: true
+      reviewed_lock_sha256:
+        description: 'Independently reviewed SHA256 of native/max-runtime/sdk-lock.json'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: max-cpu-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+
+jobs:
+  cpu:
+    # One public standard included CPU runner. No GPU, service, artifact/cache,
+    # provider credentials, model download, signing, release or deployment.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check source, privacy guards and pinned package closure
+        run: |
+          /usr/bin/python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
+          /usr/bin/python3 -B native/max-runtime/tools/check_source.py
+      - name: Exercise C ownership and injected failures without the SDK
+        run: |
+          /usr/bin/python3 -B native/max-runtime/tools/test_c_lifecycle.py --work "$RUNNER_TEMP/max-c-lifecycle"
+      - name: Inspect exact inert SDK bytes and embedded license terms
+        if: github.event_name == 'workflow_dispatch'
+        timeout-minutes: 7
+        env:
+          REVIEWED_LOCK: ${{ inputs.reviewed_lock_sha256 }}
+          FIXTURE_MODE: ${{ inputs.mode }}
+        run: |
+          case "$FIXTURE_MODE" in audit) operation=audit ;; execute) operation=install ;; *) exit 1 ;; esac
+          env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GITHUB_ACTIONS=true RUNNER_TEMP="$RUNNER_TEMP" \
+            /usr/bin/timeout --signal=TERM --kill-after=5 390 \
+            /usr/bin/python3 -B native/max-runtime/tools/bootstrap.py "$operation" \
+              --reviewed-lock "$REVIEWED_LOCK" --work "$RUNNER_TEMP/max-sdk"
+      - name: Compile, export and execute the actual MAX CPU graph offline
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'execute'
+        timeout-minutes: 4
+        env:
+          REVIEWED_LOCK: ${{ inputs.reviewed_lock_sha256 }}
+        run: |
+          fixture_uid="$(id -u)"
+          fixture_gid="$(id -g)"
+          parent_netns="$(readlink /proc/self/ns/net)"
+          sudo /usr/bin/timeout --signal=TERM --kill-after=5 200 \
+            /usr/bin/unshare --net -- /usr/bin/setpriv \
+              --reuid "$fixture_uid" --regid "$fixture_gid" --clear-groups \
+              --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs \
+            /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GITHUB_ACTIONS=true \
+              QUENDERIN_PARENT_NETNS="$parent_netns" \
+              /usr/bin/python3 -B native/max-runtime/tools/run_fixture.py \
+                --reviewed-lock "$REVIEWED_LOCK" --work "$RUNNER_TEMP/max-sdk"
+      - name: Clear ephemeral hosted SDK and fixture output
+        if: always()
+        run: |
+          /usr/bin/python3 -B native/max-runtime/tools/cleanup_hosted.py "$RUNNER_TEMP"
