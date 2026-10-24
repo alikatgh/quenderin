@@ -369,6 +369,63 @@ scheduler or notification service is authorized by this brief.
 
 ## Handover evidence
 
-Implementation and verification results for this increment will be recorded here
-after the exact integrated revision has been checked. Do not treat unchecked
-future work above as delivered functionality.
+Implementation source: `ee499aaac936c8d31ce74974a9f89f50bb5bb6d8`, published to
+[`codex/deepseek-bot-read-contract-20261024`](https://github.com/alikatgh/quenderin/tree/codex/deepseek-bot-read-contract-20261024).
+The final evidence update changes documentation only; it does not change the
+source tested below. This branch has not been merged into main.
+
+Completed for this increment:
+
+- [x] Freeze the shared read contract and 22 synthetic fixture cases.
+- [x] Implement the pure Host projection and matching native core operations.
+- [x] Preserve the existing connection, session, approval and Stop paths.
+- [x] Delegate bounded implementation to Sol 6.1 xhigh workers and integrate it.
+- [x] Obtain a fresh read-only Sol review; fix its two material findings and
+  recheck the affected paths. Swift now rejects a canonically equivalent but
+  byte-different callback binding before parsing it. Kotlin now measures the
+  original parsed object's UTF-8 bytes, including whitespace and escape expansion.
+- [x] Independently audit this brief against the final APIs and workflow recipes.
+- [x] Scan exact outgoing staged blobs with both repository secret scanners.
+
+Local checks passed against this source: 82 Node Host tests; 40 Kotlin Bot cases
+over the 22 shared fixtures; existing Kotlin carrier verification (39 fixtures,
+28 behaviors); 130 client checks over 47 frozen runtime frames; and 21 Python
+carrier/fragment/secure-link/control-wire regression tests. The reduced Kotlin
+crypto source closure also compiled and passed the Bot checks. The four shared
+wire checks, official capture/provenance check, crypto manifest gate, Swift
+frontend parse and diff/Markdown checks passed. These are host/source checks,
+not Android or Apple device runs.
+
+Hosted checks use the same exact implementation revision:
+
+| Run | Result and evidence |
+| --- | --- |
+| [Pinned remote Host integration](https://github.com/alikatgh/quenderin/actions/runs/40063003936) | Passed: 82 Host tests, patched bundle/bridge checks and existing official Harness fixture journeys, including approval and recovery. The provider in these journeys is synthetic. |
+| [Remote crypto host fixtures](https://github.com/alikatgh/quenderin/actions/runs/40063006585) | Passed: 31 build-gate tests, nine Rust tests, generated Swift/Kotlin binding probes, linked Harness probes and production-backend loading probes. |
+| [Native remote SDK and app linking](https://github.com/alikatgh/quenderin/actions/runs/40063009082) | Passed: 707 Swift tests with six skipped and zero failures, including the 13 new Bot tests; actual generated crypto SDKs; unsigned iPhone, simulator-SDK and Mac app builds; Android app/JVM-core build and packaged Noise/JNA/ABI/alignment verification. No simulator was booted. |
+
+The six Swift skips are existing checks: four real local-model inference tests,
+one pinned native capability check and the website asset-rendering test. All
+13 new Bot tests ran and passed.
+
+The full PR `ci.yml` suite was not run for this increment; the changed Kotlin
+verifier and its existing core/client regressions were executed directly. No
+model weights, local native builds, simulators, physical devices, provider calls,
+signed releases, store submissions or live DS Bot runtime journeys were used.
+Neither fixture success nor unsigned app linking establishes rendered UI or
+operational Bot parity.
+
+Session cleanup: the three disposable Kotlin test JARs (21,422,080 allocated
+bytes) and their registered scratch directory were removed after verification.
+Source worktrees and the earlier retained Host/FFI review sources remain in place.
+The local session-storage ledger records their paths and retention conditions;
+reassess those earlier review sources after live Host/native validation. Disk
+headroom changed from 14,911,967,232 to 15,777,673,216 bytes while swap allocation
+fell by 1 GiB; these are volume-wide observations, not attributed cleanup savings.
+
+**Start here next:** implement the passive, pinned Host runtime adapter described
+above and prove the zero-model-call fixture and authoritative workspace/session
+mapping. Keep the capability unadvertised until that gate passes. Then wire the
+existing native controllers and read-only screens. The remaining product-plan
+checkboxes stay open; do not restart the transport or treat this foundation as
+the completed Bot feature.
