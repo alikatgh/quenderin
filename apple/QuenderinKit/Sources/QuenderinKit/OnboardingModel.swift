@@ -25,6 +25,15 @@ public final class OnboardingModel: ObservableObject {
     private let engine: InferenceEngine
     private let modelsDir: URL
     private let deviceProfile: IOSDeviceProfile?
+    private let automaticCatalog: [ModelEntry]
+    private let verifyAutomaticArtifact: @Sendable (ModelEntry, URL) async throws -> Void
+    public var onManualSelectionCommitted: ((ModelEntry) -> Void)?
+    private let automaticPreferences: AutomaticModelPreferences
+    private var automaticActivating = false
+    private var pendingManualModel: (model: ModelEntry, requestID: UUID)?
+    private var pendingManualRequestID: UUID?
+    private var automaticAcceptanceError: Error?
+    private(set) var lastAutomaticExecutionProfile: InferenceExecutionProfile?
 
     /// The full, explained iPhone selection (rationale + alternatives) when the pick
     /// came from `IPhoneModelSelector`. Nil on platforms that use the RAM-band path.
@@ -70,8 +79,16 @@ public final class OnboardingModel: ObservableObject {
         networkStatus: (() -> NetworkStatus)? = nil,
         downloadPolicy: (() -> DownloadPolicy)? = nil,
         recallActiveModelID: (() -> String?)? = nil,
-        rememberActiveModelID: ((String?) -> Void)? = nil
+        rememberActiveModelID: ((String?) -> Void)? = nil,
+        automaticPreferences: AutomaticModelPreferences = .shared,
+        automaticCatalog: [ModelEntry] = ModelCatalog.models,
+        verifyAutomaticArtifact: (@Sendable (ModelEntry, URL) async throws -> Void)? = nil
     ) {
+        self.verifyAutomaticArtifact = verifyAutomaticArtifact ?? { model, file in
+            try await ModelArtifactSet.inBackground { try InferencePerformanceIdentity.verifyInstalled(model, firstFile: file) }
+        }
+        self.automaticCatalog = automaticCatalog
+        self.automaticPreferences = automaticPreferences
         self.downloader = downloader
         self.engine = engine
         self.modelsDir = modelsDir ?? Self.defaultModelsDir()
@@ -128,7 +145,7 @@ public final class OnboardingModel: ObservableObject {
         // pristine .probing phase (an explicit "Back to model choice" must show the choice), and
         // install() re-runs the integrity gate before trusting the file, so a corrupted leftover
         // still falls through to a fresh recommendation below.
-        if case .probing = phase, let id = recallActiveModelID(),
+        if case .probing = phase, let id = (automaticPreferences.enabled ? recallActiveModelID() : (automaticPreferences.manualModelID ?? recallActiveModelID())),
            // A searched Hugging Face model isn't in the compiled-in catalog, so resolve it from the
            // sideloaded registry too — otherwise "Use" on an open-catalog model is forgotten on relaunch
            // and the app silently falls back to a curated recommendation (the file left orphaned on disk).
@@ -178,8 +195,37 @@ public final class OnboardingModel: ObservableObject {
     /// Fire-and-track wrapper around [install]: runs it in a stored Task so `cancelInstall()` can
     /// abort it mid-download. The UI's entry point (onboarding buttons, Settings model switch).
     public func beginInstall(_ model: ModelEntry) {
+        automaticPreferences.chooseManually(model.id)
+        let requestID = UUID()
+        if automaticActivating {
+            pendingManualRequestID = requestID
+            pendingManualModel = (model, requestID)
+            return
+        }
         guard !isInstalling, !isSpecialistActive else { return }
-        installTask = Task { await install(model) }
+        // Intent is pending before the task's first await, including the initial loaded-model query.
+        pendingManualRequestID = requestID
+        installTask = Task {
+            defer { finishManualRequest(requestID) }
+            let loadedID = await engine.loadedModelID()
+            guard pendingManualRequestID == requestID, !Task.isCancelled else { return }
+            if case .ready(let ready) = phase, ready.id == model.id, loadedID == model.id,
+               !isInstalling, !isSpecialistActive {
+                guard finishManualRequest(requestID) else { return }
+                onManualSelectionCommitted?(ready)
+                return
+            }
+            await install(model)
+            guard finishManualRequest(requestID) else { return }
+            if case .ready(let ready) = phase, ready.id == model.id { onManualSelectionCommitted?(ready) }
+        }
+    }
+
+    @discardableResult
+    private func finishManualRequest(_ requestID: UUID) -> Bool {
+        guard pendingManualRequestID == requestID else { return false }
+        pendingManualRequestID = nil
+        return true
     }
 
     /// Abort an in-flight install. A cancelled DOWNLOAD returns to the recommendation screen
@@ -365,6 +411,149 @@ public final class OnboardingModel: ObservableObject {
                 phase = .failed(Self.describe(error))
             }
         }
+    }
+
+    /// Metadata-only discovery. Cached speeds are not ranked until exact bytes have a verification receipt.
+    func installedAutomaticModels() -> [ModelEntry] {
+        let storage = FileManagerModelStorage(directory: modelsDir, extraSearchDirs: Self.legacyModelsDirs())
+        return automaticCatalog.filter { model in
+            guard ModelRuntimeSupport.supports(model), InferencePerformanceIdentity.artifact(model) != nil,
+                  let file = Self.resolveModelFile(model: model, primary: modelsDir) else { return false }
+            if ModelArtifactSet.isMultipart(model) { return !storage.candidateFirstFiles(for: model).isEmpty }
+            guard let identity = ModelArtifactReceipts.Identity.read(file) else { return false }
+            return model.downloadBytes == nil || identity.size == model.downloadBytes
+        }
+    }
+    func isAutomaticModelVerified(_ model: ModelEntry) -> Bool {
+        guard let file = Self.resolveModelFile(model: model, primary: modelsDir) else { return false }
+        return InferencePerformanceIdentity.verifiedArtifact(model, firstFile: file) != nil
+    }
+    /// One lazily selected alternative may be verified per new chat, without loading or downloading it.
+    func verifyInstalledForAutomatic(_ model: ModelEntry) async throws {
+        guard let file = Self.resolveModelFile(model: model, primary: modelsDir),
+              InferencePerformanceIdentity.artifact(model) != nil else { throw InferenceError.modelNotLoaded }
+        try await verifyAutomaticArtifact(model, file)
+    }
+
+    func executionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? {
+        await engine.loadedExecutionProfile(system: system, history: history, options: options)
+    }
+    func knownExecutionProfiles() async -> [InferenceExecutionProfile] { await engine.knownExecutionProfiles() }
+    func loadedAutomaticModelID() async -> String? { await engine.loadedModelID() }
+    func loadedAutomaticContextTokens() async -> Int? { await engine.loadedContextTokens() }
+
+    public func requireReadyForChat() throws {
+        guard !isInstalling, pendingManualRequestID == nil else { throw InferenceError.loadFailed(reason: "A model selection is still being prepared. Try again when it is ready.") }
+        guard !isSpecialistActive else { throw SpecialistCoordinationError.busy }
+        guard case .ready = phase else { throw InferenceError.modelNotLoaded }
+    }
+
+    /// History restoration never downloads, even when the remembered model file is missing.
+    public func restoreConversationModel(_ id: String, history: [ChatMessage], options: GenerationOptions? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> ModelEntry {
+        try requireReadyForChat()
+        guard let model = automaticCatalog.first(where: { $0.id == id }) ?? ModelCatalog.entry(id: id) ?? SideloadedModels.shared.entry(id: id),
+              Self.resolveModelFile(model: model, primary: modelsDir) != nil else {
+            throw InferenceError.loadFailed(reason: "This conversation's selected model is not installed. Choose an installed model manually; your draft and history are kept.")
+        }
+        let loaded = await engine.loadedModelID()
+        try requireReadyForChat()
+        guard isCurrent() else { throw CancellationError() }
+        if loaded == id { return model }
+        let target = ChatTier.of(model: model)
+        let request = (system: target.systemPrompt, history: history, options: options ?? target.chatOptions)
+        guard try await activateInstalledForAutomatic(model, request: request, isCurrent: isCurrent) else { throw SpecialistCoordinationError.busy }
+        return model
+    }
+
+    /// Uses the existing engine/restore path, with strictly installed files and one recovery attempt.
+    /// Keep .ready visible while preparing so a first-turn draft does not lose its SwiftUI owner.
+    @discardableResult
+    func activateInstalledForAutomatic(_ model: ModelEntry, request: (system: String, history: [ChatMessage], options: GenerationOptions)? = nil,
+                                      requiredContextTokens: Int? = nil,
+                                      expectedConfiguration: AutomaticModelCandidate? = nil,
+                                      isCurrent: @escaping @MainActor @Sendable () -> Bool) async throws -> Bool {
+        guard !isInstalling, !isSpecialistActive, isCurrent(), ModelRuntimeSupport.supports(model),
+              let destination = Self.resolveModelFile(model: model, primary: modelsDir) else { throw SpecialistCoordinationError.busy }
+        isInstalling = true; automaticActivating = true
+        let manualRevision = automaticPreferences.revision
+        let previousID = await engine.loadedModelID()
+        let previous: ModelEntry?
+        if case .ready(let active) = phase, active.id == previousID { previous = active }
+        else if let previousID { previous = ModelCatalog.entry(id: previousID) ?? SideloadedModels.shared.entry(id: previousID) }
+        else { previous = nil }
+        var failure: Error?
+        var attemptedLoad = false
+        var activated = false
+        automaticAcceptanceError = nil
+        lastAutomaticExecutionProfile = nil
+        do {
+            try await ModelArtifactSet.inBackground {
+                try InferencePerformanceIdentity.verifyInstalled(model, firstFile: destination)
+            }
+            guard isCurrent(), !Task.isCancelled else { throw CancellationError() }
+            // No download branch is reachable here, even if a candidate disappeared after admission.
+            // The coordinated engine atomically refuses if an agent/specialist owns generation.
+            attemptedLoad = true
+            let loaded = try await engine.loadForAutomaticIfIdle(model: model, at: destination,
+                stillCurrent: { await isCurrent() }, accept: {
+                    // Query after the actual load, including any q8→f16 context shrink, while the
+                    // engine transaction is still exclusive. Validation+publication below cannot yield.
+                    let profile: InferenceExecutionProfile?
+                    if let request {
+                        profile = await self.engine.loadedExecutionProfile(system: request.system, history: request.history, options: request.options)
+                    } else { profile = nil }
+                    let capacity: Int?
+                    if let profile { capacity = profile.contextTokens }
+                    else { capacity = await self.engine.loadedContextTokens() }
+                    return await MainActor.run {
+                        guard isCurrent(), self.automaticPreferences.revision == manualRevision, !Task.isCancelled else { return false }
+                        if request != nil, profile?.promptTokens == nil || (profile?.promptTokens ?? 0) <= 0 {
+                            self.automaticAcceptanceError = InferenceError.loadFailed(reason: "The target's actual prompt tokens could not be verified. Your draft is kept.")
+                            return false
+                        }
+                        let needed = profile?.promptTokens.map { $0 + (request?.options.maxTokens ?? 0) } ?? requiredContextTokens
+                        if let needed, capacity == nil || needed > (capacity ?? 0) {
+                            self.automaticAcceptanceError = InferenceError.loadFailed(reason: "The selected model's actual context is too small for this request. Your draft is kept.")
+                            return false
+                        }
+                        if let expected = expectedConfiguration {
+                            guard let profile, profile.modelID == expected.modelID,
+                                  profile.artifactSHA256 == expected.artifactSHA256, profile.runtimeID == expected.runtimeID,
+                                  profile.backendID == expected.backendID, profile.environmentID == expected.environmentID,
+                                  profile.contextTokens == expected.contextTokens,
+                                  expected.cacheMode == nil || profile.cacheMode == expected.cacheMode else {
+                                self.automaticAcceptanceError = InferenceError.loadFailed(reason: "The actual execution configuration differs from its comparable observations. Your draft is kept.")
+                                return false
+                            }
+                        }
+                        self.lastAutomaticExecutionProfile = profile
+                        self.phase = .ready(model)
+                        self.rememberActiveModelID(model.id)
+                        return true
+                    }
+                })
+            guard loaded else { attemptedLoad = false; throw SpecialistCoordinationError.busy }
+            activated = true
+        } catch {
+            failure = automaticAcceptanceError ?? error
+            if attemptedLoad, let previous, await engine.loadedModelID() == previous.id {
+                phase = .ready(previous); rememberActiveModelID(previous.id)
+            } else if attemptedLoad {
+                specialistRestoreError = "The previous text model could not be restored. Select it again; your draft and conversation are kept."
+            }
+        }
+        automaticActivating = false; isInstalling = false
+        // A manual action invalidates the automatic token immediately, then owns the next load.
+        if let manual = pendingManualModel {
+            pendingManualModel = nil
+            await install(manual.model)
+            if finishManualRequest(manual.requestID), case .ready(let ready) = phase, ready.id == manual.model.id {
+                onManualSelectionCommitted?(ready)
+            }
+            throw CancellationError()
+        }
+        if let failure { throw failure }
+        return activated
     }
 
     /// Best-effort reload of a previously-working model after a failed switch (its file is still on

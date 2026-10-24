@@ -13,13 +13,19 @@ public struct ConversationSummary: Sendable, Equatable, Identifiable {
     /// The catalog id of the model that last answered in this conversation — lets list rows wear
     /// that family's avatar. `nil` for rows saved before the field existed (brand orb fallback).
     public var modelID: String?
+    /// Explicit opt-in selection pin. Legacy modelID remains display metadata only.
+    public var automaticModelID: String?
+    /// Missing means legacy/unknown; false identifies new guided-only conversations.
+    public var hasOrdinaryInference: Bool?
 
-    public init(id: String, title: String, updatedAt: Int64, preview: String = "", modelID: String? = nil) {
+    public init(id: String, title: String, updatedAt: Int64, preview: String = "", modelID: String? = nil,
+                automaticModelID: String? = nil, hasOrdinaryInference: Bool? = nil) {
         self.id = id
         self.title = title
         self.updatedAt = updatedAt
         self.preview = preview
         self.modelID = modelID
+        self.automaticModelID = automaticModelID; self.hasOrdinaryInference = hasOrdinaryInference
     }
 }
 

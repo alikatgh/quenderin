@@ -25,3 +25,9 @@
 # Jetpack Compose and AGP ship their own consumer ProGuard rules; the default
 # proguard-android-optimize.txt covers the rest. Add app-specific keeps here if you later hit a
 # reflection-based stripping issue in a release build.
+
+# Numeric measured-generation callback; the existing TokenSink JNI surface stays unchanged.
+-keep class ai.quenderin.core.LlamaEngine$PerformanceSink { *; }
+-keepclassmembers class ai.quenderin.core.LlamaEngine {
+    public int recommendedThreads();
+}

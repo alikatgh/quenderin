@@ -45,10 +45,15 @@ jobs:
         run: |
           python3 -B native/remote-crypto/tools/verify_build_gate.py
           python3 -B -m unittest discover -s native/remote-crypto/tools -p 'test_*.py'
+          python3 -B scripts/generate_inference_performance_identity.py --check
+          python3 -B -m unittest scripts.tests.test_inference_performance_contract
       - name: Verify native Swift controller fixtures before the cross-target SDK build
         env:
           QUENDERIN_REQUIRE_REMOTE_CRYPTO: '0'
-        run: swift test --package-path apple/QuenderinKit
+        run: |
+          set -o pipefail
+          swift test --package-path apple/QuenderinKit 2>&1 | tee "$RUNNER_TEMP/inference-performance-swift.log"
+          python3 -B scripts/check_inference_performance.py --results "$RUNNER_TEMP/inference-performance-swift.log"
       - name: Select exact Rust compiler and supported Apple library targets
         run: |
           rustup toolchain install 1.90.0 --profile minimal
@@ -91,6 +96,8 @@ jobs:
         run: |
           python3 -B native/remote-crypto/tools/verify_build_gate.py
           python3 -B -m unittest discover -s native/remote-crypto/tools -p 'test_*.py'
+          python3 -B scripts/generate_inference_performance_identity.py --check
+          python3 -B -m unittest scripts.tests.test_inference_performance_contract
           test -x "${JAVA_HOME_17_X64:?Included JDK 17 is required}/bin/java"
           printf 'JAVA_HOME=%s\nGRADLE_USER_HOME=%s\n' "$JAVA_HOME_17_X64" "$RUNNER_TEMP/remote-gradle" >> "$GITHUB_ENV"
       - name: Reuse the pinned existing Android SDK recipe

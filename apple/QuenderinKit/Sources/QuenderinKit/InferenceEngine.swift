@@ -3,6 +3,8 @@ import Foundation
 /// Options for a single generation request. Mirrors the knobs the desktop
 /// `LlmService` exposes; the llama.cpp engine maps these to its sampler.
 public struct GenerationOptions: Sendable, Equatable {
+    /// Only ordinary chat opts in. Raw agent/specialist requests never train model selection.
+    public var collectPerformance: Bool
     public var maxTokens: Int
     public var temperature: Double
     public var topP: Double
@@ -32,8 +34,10 @@ public struct GenerationOptions: Sendable, Equatable {
         repeatPenalty: Double = 1.1,
         repeatLastN: Int = 256,
         stopSequences: [String] = [],
-        gbnfGrammar: String? = nil
+        gbnfGrammar: String? = nil,
+        collectPerformance: Bool = false
     ) {
+        self.collectPerformance = collectPerformance
         self.maxTokens = maxTokens
         self.temperature = temperature
         self.topP = topP
@@ -42,6 +46,28 @@ public struct GenerationOptions: Sendable, Equatable {
         self.repeatLastN = repeatLastN
         self.stopSequences = stopSequences
         self.gbnfGrammar = gbnfGrammar
+    }
+}
+
+/// Effective execution identity exposed by the engine, independent of observation storage.
+public struct InferenceExecutionProfile: Sendable, Equatable {
+    public let modelID: String
+    public let artifactSHA256: String
+    public let runtimeID: String
+    public let backendID: String
+    public let environmentID: String
+    public let contextTokens: Int
+    public let cacheMode: String
+    public let promptTokens: Int?
+    public init(modelID: String, artifactSHA256: String, runtimeID: String, backendID: String,
+                environmentID: String, contextTokens: Int, cacheMode: String = "cold", promptTokens: Int? = nil) {
+        self.modelID = modelID; self.artifactSHA256 = artifactSHA256; self.runtimeID = runtimeID
+        self.backendID = backendID; self.environmentID = environmentID; self.contextTokens = contextTokens
+        self.cacheMode = cacheMode; self.promptTokens = promptTokens
+    }
+    func nextRequest(cacheMode: String, promptTokens: Int?) -> InferenceExecutionProfile {
+        .init(modelID: modelID, artifactSHA256: artifactSHA256, runtimeID: runtimeID, backendID: backendID,
+            environmentID: environmentID, contextTokens: contextTokens, cacheMode: cacheMode, promptTokens: promptTokens)
     }
 }
 
@@ -93,6 +119,13 @@ public protocol InferenceEngine: Sendable {
     /// silently overflows the native window (Q-167, twin of Kotlin `loadedContextTokens`). The
     /// default nil keeps mock/scripted engines and their tests unchanged.
     func loadedContextTokens() async -> Int?
+    /// Effective load configuration and expected reuse for the next structured request; no last-result statistics.
+    func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile?
+    func knownExecutionProfiles() async -> [InferenceExecutionProfile]
+    /// Retain the selected model across an entire local-agent run, including tool/approval gaps.
+    func retainModelForAgentRun() async throws -> SpecialistInferenceLease
+    /// Atomic idle-only model change. A shared agent/specialist generation must retain ownership.
+    func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL, stillCurrent: @escaping @Sendable () async -> Bool, accept: @escaping @Sendable () async -> Bool) async throws -> Bool
     func isSuspendedForSpecialist() async -> Bool
     func suspendForSpecialist() async throws -> SpecialistInferenceLease
 }
@@ -109,6 +142,13 @@ func flatTranscriptPrompt(system: String, history: [ChatMessage]) -> String {
 }
 
 public extension InferenceEngine {
+    func retainModelForAgentRun() async throws -> SpecialistInferenceLease { SpecialistInferenceLease {} }
+    func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL, stillCurrent: @escaping @Sendable () async -> Bool, accept: @escaping @Sendable () async -> Bool) async throws -> Bool { false }
+    func loadForAutomaticIfIdle(model: ModelEntry, at fileURL: URL) async throws -> Bool {
+        try await loadForAutomaticIfIdle(model: model, at: fileURL, stillCurrent: { true }, accept: { true })
+    }
+    func loadedExecutionProfile(system: String, history: [ChatMessage], options: GenerationOptions) async -> InferenceExecutionProfile? { nil }
+    func knownExecutionProfiles() async -> [InferenceExecutionProfile] { [] }
     func isSuspendedForSpecialist() async -> Bool { false }
     func suspendForSpecialist() async throws -> SpecialistInferenceLease { throw SpecialistCoordinationError.unavailable }
     func requestCancel() {}

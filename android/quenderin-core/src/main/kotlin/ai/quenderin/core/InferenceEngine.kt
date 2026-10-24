@@ -10,6 +10,18 @@ package ai.quenderin.core
  * Android module wraps `complete` in a coroutine and exposes token Flow.)
  */
 interface InferenceEngine {
+    /** Atomic non-waiting admission; an active operation/agent/specialist vetoes Automatic. */
+    fun activateInstalledIfIdle(model: ModelEntry, filePath: String, previousVerifiedPath: String?, expectedProfile: AutomaticExecutionProfile? = null,
+                                request: AutomaticChatRequest? = null, isCurrent: () -> Boolean): Boolean = false
+    /** Keep one local agent mission on its selected model across inference and tool steps. */
+    fun preventAutomaticModelSwitch(): AutoCloseable = AutoCloseable {}
+    val automaticSelectionIdle: Boolean get() = false
+    fun automaticExecutionProfiles(model: ModelEntry, request: AutomaticChatRequest?, observations: List<InferencePerformanceSample> = emptyList()): List<AutomaticExecutionProfile> = emptyList()
+    fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = loadedModelId == model.id
+    fun <T> withLoadedModel(expectedID: String, action: () -> T): T {
+        check(loadedModelId == expectedID) { "The local model changed before this turn. Your draft is kept." }
+        return action()
+    }
     val isSuspendedForSpecialist: Boolean get() = false
     fun suspendForSpecialist(): SpecialistInferenceLease = throw IllegalStateException("This text engine does not support exclusive specialist workflows.")
     fun setChatTokenBudget(tokens: Int) {}
@@ -83,6 +95,9 @@ interface InferenceEngine {
         }
         return complete(flat, onToken)
     }
+    /** The concrete owner checks after resetting its cancellation flag, before starting native work. */
+    fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String =
+        if (isCurrent()) completeChat(systemPrompt, history, onToken) else ""
 
     /** Best-effort: interrupt an in-flight [complete] (e.g. a model switch or stop button). Must NOT
      *  take the engine's generation lock — it has to signal a generation that already holds it.

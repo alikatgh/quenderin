@@ -119,7 +119,8 @@ public struct SettingsView: View {
                     // Reuses the fitness-aware picker (disables models that won't fit, explains why).
                     ModelPickerView.forThisDevice(currentModelID: model.id) { picked in
                         showPicker = false
-                        if picked.id != model.id { onSelectModel(picked) }
+                        automatic.chooseManually(picked.id)
+                        onSelectModel(picked)
                     }
                     .navigationTitle("Choose a model")
                     .toolbar {
@@ -207,6 +208,7 @@ public struct SettingsView: View {
     // MARK: Sections (shared by the Mac panes and the phone list)
 
     @ObservedObject private var appSettings = AppSettings.shared
+    @ObservedObject private var automatic = AutomaticModelPreferences.shared
     /// "Deeper reasoning" — the opt-in agent think-pass. UserDefaults-backed so AgentLoop reads it live.
     @AppStorage(AgentDeliberation.defaultsKey) private var deliberationOn = false
     /// "Plan novel goals" — the opt-in dynamic-planning pass. UserDefaults-backed so AgentLoop reads it live.
@@ -233,6 +235,9 @@ public struct SettingsView: View {
 
     private var routingSection: some View {
         Section("Routing") {
+            Toggle("Automatic model selection", isOn: $automatic.enabled)
+            Text("Choose among installed, verified text models before the first reply of each new chat, using comparable local observations when available. Keep the model for the rest of that chat. Manual model and speed choices turn Automatic off. No downloads or benchmarks are started. After relaunch, at most one installed alternative is integrity-verified for each new chat before its observations can be used.")
+                .font(.footnote).foregroundStyle(.secondary)
             Toggle("Suggest the best model for each task", isOn: $appSettings.suggestBestModel)
             Text("When you start a chat, Quenderin checks what you're asking (code, reasoning, another language) and offers the best installed model for it — a suggestion you can tap, never a silent switch.")
                 .font(.footnote).foregroundStyle(.secondary)
@@ -408,7 +413,8 @@ public struct SettingsView: View {
                     set: { picked in
                         guard let picked else { return }
                         let target = choice.model(picked)
-                        guard target.id != model.id else { return }
+                        automatic.chooseManually(target.id)
+                        guard target.id != model.id else { onSelectModel(target); return }
                         if installed.contains(target.filename) {
                             onSelectModel(target)   // already on disk: switches in seconds
                         } else {

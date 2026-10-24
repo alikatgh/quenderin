@@ -69,16 +69,27 @@ public final class ConversationManager {
     /// and write the transcript + index. Call after each turn with the chat's messages.
     /// `modelID` records which model answered (list rows wear its family avatar); passing nil
     /// keeps whatever the row already had rather than erasing it.
-    public func save(id: String, messages: [ChatMessage], modelID: String? = nil) {
+    public func save(id: String, messages: [ChatMessage], modelID: String? = nil,
+                     automaticModelID: String? = nil, hasOrdinaryInference: Bool? = nil) {
         let firstUser = messages.first(where: { $0.role == .user })?.text
         library.upsert(ConversationSummary(
             id: id,
             title: ConversationLibrary.title(fromFirstUserMessage: firstUser),
             updatedAt: now(),
             preview: ConversationLibrary.preview(fromLastMessage: messages.last),
-            modelID: modelID ?? library.get(id)?.modelID
+            modelID: modelID ?? library.get(id)?.modelID,
+            automaticModelID: automaticModelID ?? library.get(id)?.automaticModelID,
+            hasOrdinaryInference: hasOrdinaryInference ?? library.get(id)?.hasOrdinaryInference
         ))
         persistence.saveTranscript(id: id, messages: messages)
+        persistence.saveIndex(library.snapshot())
+    }
+
+    /// An explicit manual model choice updates the pin without inventing a new message or activity time.
+    public func updateAutomaticModelID(id: String, modelID: String) {
+        guard var summary = library.get(id), summary.automaticModelID != nil else { return }
+        summary.automaticModelID = modelID
+        library.upsert(summary)
         persistence.saveIndex(library.snapshot())
     }
 

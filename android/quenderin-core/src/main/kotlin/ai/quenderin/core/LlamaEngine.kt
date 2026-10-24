@@ -27,6 +27,12 @@ class LlamaEngine(
      *  [GpuOffloadPlanner] from `Build.SOC_MODEL` + whether the `.so` carries the Vulkan backend; the
      *  core stays `android.os`-free. Default 0 → CPU, so the JVM tests and CPU builds are unchanged. */
     private val gpuLayers: Int = GpuOffloadPlanner.CPU_ONLY,
+    /** Synchronous immutable report from this generation owner; never reads another engine's result. */
+    private val onPerformance: ((InferencePerformanceSample) -> Unit)? = null,
+    /** App hashes nonunique hardware/OS/driver facts together with this bounded execution config. */
+    private val performanceEnvironment: (String) -> String = { InferencePerformanceIdentity.fingerprint("host|$it") },
+    private val thermalSnapshot: (() -> ThermalLevel)? = null,
+    private val artifactReceipts: ModelArtifactVerificationReceipts = ModelArtifactVerificationReceipts.process,
 ) : InferenceEngine {
 
     override var loadedModelId: String? = null
@@ -49,6 +55,11 @@ class LlamaEngine(
     private var loadedJais = false
     private var loadedBeam = false
     private var loadedSpecialist = false
+    @Volatile private var loadedArtifactIdentity: String? = null
+    private var loadedArtifactReceipt: ModelArtifactVerificationReceipts.Receipt? = null
+    @Volatile private var loadedLoadMs = 0.0
+    @Volatile private var loadedKVCacheNativeId = 0
+    private var generationThermalLevel = ThermalLevel.NOMINAL
 
     /**
      * Per-send chat decode cap from [ChatTier] (tiny models get 256, full 512). Null → [maxTokens].
@@ -116,7 +127,78 @@ class LlamaEngine(
      * load-time count for the whole reply — mirrors iOS's in-flight `ThermalGovernor` sampling
      * (`LlamaEngine.swift`'s `runGeneration`). Lock-free/read-only, same as [cancelRequested]'s poll.
      */
-    fun recommendedThreads(): Int = ThermalThrottle.recommendedThreads(thermalLevel, loadedBaseThreads)
+    fun recommendedThreads(): Int {
+        val current = currentThermal()
+        if (current.ordinal > generationThermalLevel.ordinal) generationThermalLevel = current
+        return ThermalThrottle.recommendedThreads(current, loadedBaseThreads)
+    }
+    private fun currentThermal(): ThermalLevel = thermalSnapshot?.invoke() ?: thermalLevel
+
+    /** Same load configuration used by candidate admission; requested offload is never called actual GPU. */
+    fun plannedContext(model: ModelEntry): Int {
+        val kv = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
+        val tokens = ContextWindow.recommend(deviceBudgetGb, model.ramGB, kv)
+        return when {
+            ModelRuntimeSupport.isBeam(model) -> minOf(tokens, 4096)
+            ModelRuntimeSupport.isMuse(model) -> minOf(tokens, ModelRuntimeSupport.MUSE_MAX_CONTEXT_TOKENS)
+            ModelRuntimeSupport.isBonsai(model) -> minOf(tokens, ModelRuntimeSupport.BONSAI_MAX_CONTEXT_TOKENS)
+            else -> tokens
+        }
+    }
+    fun candidateEnvironment(model: ModelEntry, contextTokens: Int = plannedContext(model)): String {
+        val base = if (threads > 0) threads else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
+        return environment(contextTokens, KVCachePolicy.recommend(deviceBudgetGb, model.ramGB).nativeId, base)
+    }
+    override fun automaticExecutionProfiles(model: ModelEntry, request: AutomaticChatRequest?, observations: List<InferencePerformanceSample>): List<AutomaticExecutionProfile> = synchronized(lock) {
+        val backend = registeredRuntimeID ?: return emptyList()
+        // Updatable Vulkan driver identity is not established by Build.SOC_MODEL or a requested layer count.
+        if (!NATIVE_AVAILABLE || !supportsPerformance || gpuLayers != GpuOffloadPlanner.CPU_ONLY || !ModelRuntimeSupport.supports(model)) return emptyList()
+        val artifact = InferencePerformanceIdentity.artifact(model) ?: return emptyList()
+        if (loadedModelId == model.id) {
+            if (loadedArtifactIdentity != artifact) return emptyList()
+            val proof = loadedArtifactReceipt ?: return emptyList()
+            if (!artifactReceipts.retainLoaded(model, proof)) return emptyList()
+            val context = loadedContextTokens ?: return emptyList()
+            var cache = "cold"
+            var tokens: Int? = null
+            if (request != null) {
+                val actual = pendingChatConfiguration(model, request, context)
+                if (actual.size != 4 || actual[0].toInt() != context || actual[1].toInt() != loadedKVCacheNativeId) return emptyList()
+                tokens = actual[2].toInt(); cache = if (actual[3] == 0L) "cold" else "prefix"
+            }
+            return listOf(AutomaticExecutionProfile(InferencePerformanceRuntime.ID, backend,
+                environment(context, loadedKVCacheNativeId, loadedBaseThreads), context, currentThermal(), cache, tokens))
+        }
+        // Recover ONLY effective configurations actually observed for this artifact/runtime/device.
+        // This includes q8->f16/shrunk-window loads; the requested q8 plan is never treated as proof.
+        val base = if (threads > 0) threads else ThreadPlanner.recommend(ThreadPlanner.performanceCoreCount(), Runtime.getRuntime().availableProcessors())
+        return observations.take(64).filter { it.valid(System.currentTimeMillis()) && it.modelID == model.id &&
+            it.artifactSHA256 == artifact && it.runtimeID == InferencePerformanceRuntime.ID && it.backendID == backend && it.cacheMode == "cold" }
+            .mapNotNull { sample ->
+                val matchesActualKV = (0..1).any { kv -> environment(sample.contextTokens, kv, base) == sample.environmentID }
+                if (!matchesActualKV) null else AutomaticExecutionProfile(InferencePerformanceRuntime.ID, backend,
+                    sample.environmentID, sample.contextTokens, currentThermal(), "cold")
+            }.distinctBy { it.environmentID }
+    }
+    private fun pendingChatConfiguration(model: ModelEntry, request: AutomaticChatRequest, context: Int): LongArray {
+        fun clean(value: String) = value.replace('\u001E', ' ').replace('\u001F', ' ')
+        val payload = buildString {
+            append("system\u001F${clean(ChatTier.of(model).systemPrompt)}\u001E")
+            request.windowedHistory(model, context).forEach { message ->
+                append(if (message.role == Role.USER) "user" else "assistant").append('\u001F')
+                    .append(clean(message.text)).append('\u001E')
+            }
+        }
+        return nativeChatExecutionProfile(handle, payload, ChatTier.of(model).maxTokens, !enableThinking)
+    }
+    override fun pendingChatFits(model: ModelEntry, request: AutomaticChatRequest): Boolean = synchronized(lock) {
+        if (!NATIVE_AVAILABLE || !supportsPerformance || loadedModelId != model.id || handle == 0L) return false
+        val context = loadedContextTokens ?: return false
+        val actual = pendingChatConfiguration(model, request, context)
+        actual.size == 4 && actual[0] == context.toLong() && actual[2] >= 0 && actual[2] + ChatTier.of(model).maxTokens <= actual[0]
+    }
+    private fun environment(context: Int, kv: Int, baseThreads: Int): String = performanceEnvironment(
+        "ctx=$context;kv=$kv;threads=$baseThreads;gpuLayersRequested=$gpuLayers;temperature=$temperature;topP=$topP;thinking=$enableThinking;batch=512;warmup=1")
 
     /** Interrupt a running [complete] (the native loop polls [cancelRequested]); lock-free (M3). */
     override fun requestCancel() { cancelRequested = true }
@@ -134,6 +216,7 @@ class LlamaEngine(
     }
 
     override fun load(model: ModelEntry, filePath: String) = synchronized(lock) {
+        val loadStarted = System.nanoTime()
         ModelArtifacts.validate(model)
         check(ModelRuntimeSupport.supports(model)) { ModelRuntimeSupport.unavailableMessage(model) }
         if (ModelRuntimeSupport.requiresMemoryGate(model)) {
@@ -143,7 +226,12 @@ class LlamaEngine(
         check(NATIVE_AVAILABLE) { UNAVAILABLE_MSG }
         ModelRuntimeSupport.metadataUnavailableReason(filePath, model)?.let { throw IllegalStateException(it) }
         cancelRequested = false
-        if (model.artifacts.isNotEmpty()) ModelArtifacts.requireComplete(model, filePath) { cancelRequested }
+        // Unknown publisher hashes remain usable manually but can never become measured evidence.
+        val artifactIdentity = InferencePerformanceIdentity.artifact(model)
+        val reusedReceipt = artifactIdentity?.let { artifactReceipts.current(model, filePath) }
+        val receipt = artifactIdentity?.let { checkNotNull(artifactReceipts.verify(model, filePath)) { "Model artifact verification failed." } }
+        if (model.artifacts.isNotEmpty() && artifactIdentity == null) ModelArtifacts.requireComplete(model, filePath) { cancelRequested }
+        loadedArtifactIdentity = null
         if (handle != 0L) { nativeFree(handle); handle = 0L; loadedModelId = null; loadedMuse = false; loadedContextTokens = null }
         // Performance (big) cores, not all cores — LITTLE cores slow + heat up mobile decode.
         val base = if (threads > 0) threads
@@ -151,7 +239,7 @@ class LlamaEngine(
         loadedBaseThreads = base   // governor baseline for in-flight thermal re-tuning (recommendedThreads)
         // If the device is already thermally throttling, start with fewer threads (heat is the
         // sustained-load ceiling on a phone, not memory).
-        val t = ThermalThrottle.recommendedThreads(thermalLevel, base)
+        val t = ThermalThrottle.recommendedThreads(currentThermal(), base)
         // KV-cache dtype from the headroom after weights: tight phones get a q8_0 cache (~half the
         // per-token memory, near-lossless), which the cache-aware n_ctx turns into ~2× context.
         val kvCacheType = KVCachePolicy.recommend(deviceBudgetGb, model.ramGB)
@@ -171,6 +259,15 @@ class LlamaEngine(
         handle = nativeLoad(filePath, nctx, t, kvCacheType.nativeId, temperature.toFloat(), topP.toFloat(), gpuLayers,
             nativeLibDir, verifiedMuse = ModelRuntimeSupport.isVerifiedMuseManifest(model), verifiedBeam = ModelRuntimeSupport.isVerifiedBeamManifest(model), verifiedHy = false, verifiedGranite = false)
         if (handle == 0L) throw IllegalStateException("llama.cpp could not load ${model.filename}")
+        if (receipt != null && artifactReceipts.current(model, filePath) != receipt) {
+            nativeFree(handle); handle = 0L; throw IllegalStateException("Model artifact changed during loading.")
+        }
+        // A preflight hash occurred before this load() call. Include its observed cost once rather
+        // than publishing native-only load timing after the caller already paid a multi-GB scan.
+        loadedLoadMs = (System.nanoTime() - loadStarted) / 1_000_000.0 + (reusedReceipt?.verificationMs ?: 0.0)
+        loadedArtifactIdentity = artifactIdentity
+        loadedArtifactReceipt = receipt
+        loadedKVCacheNativeId = if (supportsPerformance) nativeLoadedKVCache(handle) else kvCacheType.nativeId
         loadedModelId = model.id
         loadedMuse = ModelRuntimeSupport.isMuse(model)
         loadedJais = nativeIsJais(handle) || ModelRuntimeSupport.isJais(model)
@@ -193,6 +290,8 @@ class LlamaEngine(
         loadedBeam = false
         loadedSpecialist = false
         loadedContextTokens = null
+        loadedArtifactIdentity = null
+        loadedArtifactReceipt = null
     }
 
     override fun complete(prompt: String): String = synchronized(lock) {
@@ -243,10 +342,15 @@ class LlamaEngine(
      * separators are stripped from text so a stray one can't corrupt the framing.
      */
     override fun completeChat(systemPrompt: String, history: List<ChatMessage>, onToken: (String) -> Unit): String =
+        completeChatOwned(systemPrompt, history, { true }, onToken)
+
+    override fun completeChatOwned(systemPrompt: String, history: List<ChatMessage>, isCurrent: () -> Boolean, onToken: (String) -> Unit): String =
         synchronized(lock) {
             ensureReady()
             check(!loadedSpecialist) { "Hy-Memory requires its specialist proposal workflow." }
+            if (!isCurrent()) return ""
             cancelRequested = false
+            if (!isCurrent()) { cancelRequested = true; return "" }
             fun clean(s: String) = s.replace('\u001E', ' ').replace('\u001F', ' ')
             val payload = buildString {
                 if (systemPrompt.isNotEmpty()) append("system").append('\u001F').append(clean(systemPrompt)).append('\u001E')
@@ -256,10 +360,31 @@ class LlamaEngine(
                 }
             }
             val cap = chatMaxTokensOverride ?: maxTokens
+            // Capture all identities at generation start while the same native-owner lock is held.
+            val modelID = loadedModelId
+            val artifact = loadedArtifactIdentity
+            val context = loadedContextTokens
+            val backend = registeredRuntimeID
+            val env = context?.let { environment(it, loadedKVCacheNativeId, loadedBaseThreads) }
+            generationThermalLevel = currentThermal()
+            var report: InferencePerformanceSample? = null
+            fun generate(disableThinking: Boolean, sink: TokenSink): String {
+                if (onPerformance == null || !supportsPerformance || artifact == null || modelID == null || context == null || env == null || backend == null) {
+                    return nativeCompleteChatStreaming(handle, payload, cap, disableThinking, sink)
+                }
+                return nativeCompleteChatMeasured(handle, payload, cap, disableThinking, sink,
+                    PerformanceSink { prompt, prefill, decoded, prefillMs, decodeMs, firstMs, gapMs, cache, status ->
+                        if (status == 0 && !cancelRequested) report = InferencePerformanceSample(
+                            modelID, artifact, InferencePerformanceRuntime.ID, backend, env, context,
+                            prompt, prefill, decoded, prefillMs, decodeMs, firstMs, gapMs, loadedLoadMs,
+                            if (cache == 0) "cold" else "prefix", generationThermalLevel.name.lowercase(), System.currentTimeMillis())
+                    })
+            }
+            val result =
             if (loadedBeam) {
                 val filter = BeamOutputFilter(onToken)
                 val wire = try {
-                    nativeCompleteChatStreaming(handle, payload, cap, true, TokenSink { filter.accept(it) })
+                    generate(true, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 val final = BeamOutputFilter.finalText(wire)
                 check(final.isNotEmpty() || cancelRequested) { "Beam generation ended before a final-channel answer." }
@@ -267,20 +392,28 @@ class LlamaEngine(
             } else if (loadedMuse) {
                 val filter = MuseOutputFilter(onToken)
                 val wire = try {
-                    nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
+                    generate(!enableThinking, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 MuseOutputFilter.finalText(wire)
             } else if (loadedJais) {
                 val filter = JaisOutputFilter(onToken)
                 val wire = try {
-                    nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { filter.accept(it) })
+                    generate(!enableThinking, TokenSink { filter.accept(it) })
                 } finally { filter.finish() }
                 val final = JaisOutputFilter.finalText(wire)
                 check(final.isNotEmpty() || cancelRequested) { "Jais reached its generation limit before producing a final answer. Try a shorter question or a larger token budget." }
                 final
             } else {
-                nativeCompleteChatStreaming(handle, payload, cap, !enableThinking, TokenSink { onToken(it) })
+                generate(!enableThinking, TokenSink { onToken(it) })
             }
+            // Filtering/validation above must finish successfully before the evidence leaves the engine.
+            val endingThermal = currentThermal()
+            if (endingThermal.ordinal > generationThermalLevel.ordinal) generationThermalLevel = endingThermal
+            if (!cancelRequested && result.isNotEmpty()) report?.copy(thermalState = generationThermalLevel.name.lowercase())
+                ?.takeIf { it.valid(System.currentTimeMillis()) }?.let { sample ->
+                runCatching { onPerformance?.invoke(sample) } // evidence persistence can never fail a chat
+            }
+            result
         }
 
     /** Separate engine only: the installer proof is never reconstructed from UI input. */
@@ -344,6 +477,9 @@ class LlamaEngine(
     private external fun nativeCompleteWithGrammar(handle: Long, prompt: String, maxTokens: Int, grammar: String, topP: Float, topK: Int, temperature: Float, repeatPenalty: Float, repeatLastN: Int): String
     private external fun nativeCompleteStreaming(handle: Long, prompt: String, maxTokens: Int, sink: TokenSink): String
     private external fun nativeCompleteChatStreaming(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink): String
+    private external fun nativeCompleteChatMeasured(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean, sink: TokenSink, performance: PerformanceSink): String
+    private external fun nativeLoadedKVCache(handle: Long): Int
+    private external fun nativeChatExecutionProfile(handle: Long, payload: String, maxTokens: Int, disableThinking: Boolean): LongArray
     private external fun nativeLastHitTokenCap(handle: Long): Boolean
     private external fun nativeLoadedNCtx(handle: Long): Int
     private external fun nativeIsJais(handle: Long): Boolean
@@ -354,7 +490,20 @@ class LlamaEngine(
         fun onToken(piece: String)
     }
 
+    /** Kept by R8: JNI descriptor (IIIDDDDII)V. No text or prompt enters this sink. */
+    fun interface PerformanceSink {
+        fun onMetrics(promptTokens: Int, prefillTokens: Int, decodedTokens: Int, prefillMs: Double, decodeMs: Double,
+                      firstTokenMs: Double, maxGapMs: Double, cacheMode: Int, status: Int)
+    }
+
     companion object {
+        @JvmStatic private external fun nativeSupportsPerformance(): Boolean
+        @JvmStatic private external fun nativeRegisteredRuntime(): String
+        val supportsPerformance: Boolean by lazy { NATIVE_AVAILABLE && runCatching { nativeSupportsPerformance() }.getOrDefault(false) }
+        val registeredRuntimeID: String? by lazy {
+            if (!supportsPerformance) null else runCatching { nativeRegisteredRuntime() }.getOrNull()
+                ?.takeIf { it in InferencePerformanceIdentity.REGISTERED_BACKENDS }
+        }
         const val UNAVAILABLE_MSG: String =
             "Native llama.cpp is not linked: build jni/ for this ABI (see android/INTEGRATION.md). " +
                 "Use MockInferenceEngine until then."

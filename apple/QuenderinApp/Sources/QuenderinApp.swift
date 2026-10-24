@@ -65,19 +65,34 @@ struct QuenderinApp: App {
         #else
         let mockUI = false
         #endif
+        let memoryBudget = HardwareProbe.appMemoryBudgetGB()
+        let performanceStore = InferencePerformanceStore()
         let engine: InferenceEngine = mockUI
             ? CoordinatedInferenceEngine(MockInferenceEngine())
-            : DefaultInferenceEngine.make(deviceBudgetGB: HardwareProbe.appMemoryBudgetGB()) // real LlamaEngine when llama.cpp is linked, else mock
+            : DefaultInferenceEngine.make(deviceBudgetGB: memoryBudget, performance: { sample in
+                Task { await performanceStore.record(sample) }
+            }) // real LlamaEngine when llama.cpp is linked, else mock
         let downloader: ModelDownloader = mockUI
             ? MockModelDownloader()
             : ParallelRangeDownloader() // real GGUF download — multi-connection ranged (falls back to single-stream)
         // Q-578: onboarding's download gate honors the user's cellular opt-in (Settings → Downloaded
         // models). Off by default → Wi-Fi-only; the live network status comes from the model's own monitor.
-        _onboarding = StateObject(wrappedValue: OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy }))
+        let onboardingModel = OnboardingModel(downloader: downloader, engine: engine, downloadPolicy: { AppSettings.shared.downloadPolicy })
+        _onboarding = StateObject(wrappedValue: onboardingModel)
+        let automatic = AutomaticModelSelection(onboarding: onboardingModel, store: performanceStore, deviceBudgetGB: memoryBudget)
         // Chat + on-device conversation history: the coordinator owns the ChatModel, restores the
         // most recent conversation on launch, and persists each turn to Application Support.
-        let chat = ChatModel(engine: engine)
-        _conversations = StateObject(wrappedValue: ConversationCoordinator(chat: chat, persistence: FileConversationPersistence()))
+        let chat = ChatModel(engine: engine, admitTurn: { try onboardingModel.requireReadyForChat() }, prepareFirstTurn: { prompt, current, preparation in
+            guard AutomaticModelPreferences.shared.enabled else { return (current, nil) }
+            let selected = try await automatic.prepare(prompt: prompt, current: current, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+            return (selected, automatic.status)
+        })
+        let conversationCoordinator = ConversationCoordinator(chat: chat, persistence: FileConversationPersistence(),
+            restoreSelectedModel: { id, preparation in
+                try await onboardingModel.restoreConversationModel(id, history: preparation.history, options: preparation.options, isCurrent: preparation.isCurrent)
+            })
+        _conversations = StateObject(wrappedValue: conversationCoordinator)
+        onboardingModel.onManualSelectionCommitted = { model in conversationCoordinator.chooseModelManually(model.id) }
         // M4: the agent shares the SAME engine (one model, loaded once in onboarding).
         // Tools come from the ONE toolkit the Settings pane also reads; capabilities execute
         // through the runner — consent from UserDefaults (the pane's toggles), every action

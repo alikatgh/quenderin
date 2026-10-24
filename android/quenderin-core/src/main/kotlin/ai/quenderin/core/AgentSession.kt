@@ -90,7 +90,9 @@ class AgentSession(
         }
         lastGoal = goal
         cancelRequested = false   // Q-641: fresh per run
+        var modelGuard: AutoCloseable? = null
         try {
+            modelGuard = engine.preventAutomaticModelSwitch()
             steps = emptyList()
             answer = null
             haltReason = null
@@ -105,8 +107,10 @@ class AgentSession(
             answer = result.answer
             haltReason = result.haltReason
         } finally {
-            isRunning = false
-            onChange()
+            try { modelGuard?.close() } finally {
+                isRunning = false
+                onChange()
+            }
         }
     }
 

@@ -52,9 +52,43 @@ def download(item: dict, target: pathlib.Path, deadline: float) -> None:
         raise ValueError("Official artifact identity differs")
 
 
+def metadata_record(package: dict) -> dict:
+    """Require the selected wheel's official hash-pinned PEP 658 identity."""
+    record = package.get("wheel_metadata", {})
+    if (not isinstance(record, dict)
+            or record.get("index_url") != f"https://pypi.org/simple/{package['name']}/"
+            or record.get("url") != package["url"] + ".metadata"
+            or not isinstance(record.get("sha256"), str)
+            or not re.fullmatch(r"[a-f0-9]{64}", record.get("sha256", ""))
+            or type(record.get("size")) is not int or not 1 <= record["size"] <= 1048576):
+        raise ValueError(f"Wheel metadata mismatch for {package['name']}=={package['version']}: PEP 658 provenance")
+    return record
+
+
+def inspect_metadata(package: dict, raw: bytes):
+    """Match embedded METADATA to the exact sidecar and declarations, not
+    PyPI's project-level JSON rendering of those dependency declarations.
+    """
+    record = metadata_record(package)
+    identity = f"{package['name']}=={package['version']}"
+    if len(raw) != record["size"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: METADATA size")
+    if hashlib.sha256(raw).hexdigest() != record["sha256"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: METADATA SHA256")
+    metadata = email.parser.BytesParser().parsebytes(raw)
+    normalized = lambda value: re.sub(r"[-_.]+", "-", value).lower()
+    if normalized(metadata.get("Name", "")) != package["name"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Name")
+    if metadata.get("Version") != package["version"]:
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Version")
+    if sorted(metadata.get_all("Requires-Dist", [])) != sorted(package["requires_dist"]):
+        raise ValueError(f"Wheel metadata mismatch for {identity}: Requires-Dist")
+    return metadata
+
+
 def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], list[dict]]:
     licenses, inventories = [], []
-    aggregate = license_bytes = 0
+    aggregate = license_bytes = declaration_bytes = 0
     for package in lock["packages"]:
         path = wheel_dir / package["filename"]
         if path.stat().st_size != package["size"] or hashlib.sha256(path.read_bytes()).hexdigest() != package["sha256"]:
@@ -80,11 +114,7 @@ def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], lis
             metadata_info = wheel.getinfo(metadata_paths[0])
             if metadata_info.file_size > 1048576:
                 raise ValueError("Wheel metadata budget exceeded")
-            metadata = email.parser.BytesParser().parsebytes(wheel.read(metadata_info))
-            normalized = lambda value: re.sub(r"[-_.]+", "-", value).lower()
-            if (normalized(metadata["Name"]) != package["name"] or metadata["Version"] != package["version"]
-                    or sorted(metadata.get_all("Requires-Dist", [])) != sorted(package["requires_dist"])):
-                raise ValueError("Wheel metadata differs from official pinned registry metadata")
+            metadata = inspect_metadata(package, wheel.read(metadata_info))
             # Product-level terms and bundled third-party notices may live
             # outside dist-info. Conservatively include every safe candidate,
             # including files under a license/legal directory; never silently
@@ -98,8 +128,6 @@ def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], lis
                         or any(re.fullmatch(tokens + r"|legal|third[-_]party[-_]notices", part, re.IGNORECASE)
                                for part in parts[:-1]))
             package_licenses = [m for m in members if license_candidate(m)]
-            if not package_licenses:
-                raise ValueError("Embedded wheel license files required")
             for member in package_licenses:
                 license_bytes += member.file_size
                 if member.file_size > 262144 or license_bytes > 2097152 or len(licenses) >= 512:
@@ -107,10 +135,47 @@ def inspect_wheels(lock: dict, wheel_dir: pathlib.Path) -> tuple[list[dict], lis
                 data = wheel.read(member)
                 licenses.append({"package": package["name"], "path": member.filename,
                                  "sha256": hashlib.sha256(data).hexdigest(), "text": data.decode("utf-8")})
-            inventories.append({"package": package["name"], "licenseMetadata": (metadata.get("License-Expression") or metadata.get("License") or "")[:256],
+            declarations = {name: metadata.get_all(name, []) for name in
+                            ["License-Expression", "License", "License-File", "Project-URL"]}
+            declaration_bytes += len(json.dumps(declarations).encode())
+            if declaration_bytes > 262144:
+                raise ValueError(f"License metadata declaration budget exceeded while inspecting {package['name']}=={package['version']}")
+            inventories.append({"package": package["name"], "version": package["version"], "filename": package["filename"],
+                                "licenseMetadata": (metadata.get("License-Expression") or metadata.get("License") or "")[:256],
+                                "licenseDeclarations": declarations,
+                                "embeddedLicenseStatus": "present" if package_licenses else "missing",
+                                "embeddedLicenseFiles": [member.filename for member in package_licenses],
                                 "nativeLibraries": [m.filename for m in members if pathlib.PurePosixPath(m.filename).name == "libmax.so"],
                                 "cHeaders": [m.filename for m in members if "/max/c/" in m.filename and m.filename.endswith(".h")]})
     return licenses, inventories
+
+
+def audit_facts(lock: dict, licenses: list[dict], inventories: list[dict]) -> dict:
+    """Report every inspected package, including unresolved terms provenance.
+
+    A matching family declaration is evidence for review, not a finding that a
+    sibling wheel's terms apply. Only the explicit reviewed package coverage
+    map can authorize that conclusion before installation or execution.
+    """
+    family = {"max", "max-core", "max-mojo-libs", "max-shmem-libs", "mojo-compiler", "mojo-compiler-mojo-libs"}
+    return {
+        "schema": 1, "lockSHA256": lock["lock_sha256"], "sdkVersion": lock["sdk_version"],
+        "packages": inventories,
+        "packagesWithoutEmbeddedLicense": [item["package"] for item in inventories if item["embeddedLicenseStatus"] == "missing"],
+        "sharedFamilyTermsEvidence": {
+            "packageDeclarations": [{"package": item["package"], "version": item["version"],
+                                     "licenseDeclarations": item["licenseDeclarations"]}
+                                    for item in inventories if item["package"] in family],
+            "extractedTermsCandidates": [{key: item[key] for key in ["package", "path", "sha256"]}
+                                         for item in licenses if item["package"] in family],
+            "applicabilityAutomaticallyInferred": False,
+            "explicitReviewedPackageCoverageRequired": True,
+        },
+        "licenseSHA256": {f"{item['package']}/{item['path']}": item["sha256"] for item in licenses},
+        "downloadBytes": sum(package["size"] for package in lock["packages"]),
+        "runtimeLicenseReviewRecorded": isinstance(lock.get("runtime_license_review"), dict),
+        "runtimeExecuted": False,
+    }
 
 
 def main() -> None:
@@ -148,9 +213,7 @@ def main() -> None:
     licenses, inventories = inspect_wheels(lock, wheels)
     if sum(len(x["text"].encode()) for x in {x["sha256"]: x for x in licenses}.values()) > 524288:
         raise ValueError("Distinct license text exceeds the 512 KiB review log budget")
-    facts = {"schema": 1, "lockSHA256": lock["lock_sha256"], "sdkVersion": lock["sdk_version"],
-             "packages": inventories, "licenseSHA256": {f"{x['package']}/{x['path']}": x["sha256"] for x in licenses},
-             "downloadBytes": sum(p["size"] for p in lock["packages"]), "runtimeExecuted": False}
+    facts = audit_facts(lock, licenses, inventories)
     (work / "inspection.json").write_text(json.dumps(facts, indent=2) + "\n")
     print("QUENDERIN_MAX_SDK_INSPECTION_BEGIN")
     print(json.dumps(facts, indent=2))

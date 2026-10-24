@@ -33,11 +33,11 @@ final class LlamaEngineTests: XCTestCase {
     }
 
     func testLoadFailsCleanlyWhenLlamaNotLinked() async throws {
-        // Valid metadata reaches the runtime boundary without containing model weights.
+        // Valid, hash-pinned metadata reaches the runtime boundary without model weights.
         // Both an absent runtime and a linked runtime with no tensors must return
         // .loadFailed. Truncated metadata is rejected earlier by the metadata guard.
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("quenderin-dummy.gguf")
+            .appendingPathComponent("quenderin-dummy-\(UUID().uuidString).gguf")
         func integer(_ value: UInt64, _ width: Int) -> Data {
             Data((0..<width).map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) })
         }
@@ -47,10 +47,15 @@ final class LlamaEngineTests: XCTestCase {
         try fixture.write(to: tmp)
         defer { try? FileManager.default.removeItem(at: tmp) }
         XCTAssertEqual(try GGUFModelMetadata.read(from: tmp).architecture, "llama")
+        let model = ModelEntry(id: "llama-runtime-fixture", label: "Llama runtime fixture",
+            filename: tmp.lastPathComponent, ramGB: 1, sizeLabel: "metadata-only fixture",
+            paramsBillions: 1, quantization: "Q4_K_M", urlString: "",
+            sha256: try ModelIntegrity.sha256Hex(of: tmp), downloadBytes: Int64(fixture.count))
+        XCTAssertNoThrow(try InferencePerformanceIdentity.verifyInstalled(model, firstFile: tmp))
 
         let engine = LlamaEngine()
         do {
-            try await engine.load(model: ModelCatalog.smallest, at: tmp)
+            try await engine.load(model: model, at: tmp)
             XCTFail("expected load to fail without a real model / linked runtime")
         } catch let error as InferenceError {
             guard case .loadFailed = error else {

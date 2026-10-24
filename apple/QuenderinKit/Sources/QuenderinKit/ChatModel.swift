@@ -72,11 +72,43 @@ public enum GenerationPhase: String, Sendable, Equatable {
     case writing
 }
 
+/// Composer lifetime follows the conversation owner, including view removal during a manual handoff.
+@MainActor
+public final class ChatComposerState: ObservableObject {
+    @Published public var draft = ""
+    @Published public var pendingDocuments: [AttachedDocument] = []
+    @Published public var attachmentNotice: String?
+    public init() {}
+    struct Snapshot {
+        var draft = ""
+        var documents: [AttachedDocument] = []
+        var notice: String?
+        var isEmpty: Bool { draft.isEmpty && documents.isEmpty && notice == nil }
+    }
+    func snapshot() -> Snapshot { Snapshot(draft: draft, documents: pendingDocuments, notice: attachmentNotice) }
+    func restore(_ snapshot: Snapshot) {
+        draft = snapshot.draft; pendingDocuments = snapshot.documents; attachmentNotice = snapshot.notice
+    }
+}
+
+/// A generation-independent guard and ephemeral pending history. No content enters performance storage.
+public struct ChatPreparationContext: Sendable {
+    public let history: [ChatMessage]
+    public let options: GenerationOptions?
+    public let isCurrent: @MainActor @Sendable () -> Bool
+    public init(history: [ChatMessage] = [], options: GenerationOptions? = nil, isCurrent: @escaping @MainActor @Sendable () -> Bool) {
+        self.history = history; self.options = options; self.isCurrent = isCurrent
+    }
+}
+
 /// Drives a chat conversation against any `InferenceEngine`, appending tokens to
 /// the in-flight assistant message as they stream in. Runs on the mock engine
 /// today; swaps to `LlamaEngine` with no change.
 @MainActor
 public final class ChatModel: ObservableObject {
+    public let composer = ChatComposerState()
+    /// false=new/guided-only; true=accepted ordinary inference; nil=legacy history with unknown provenance.
+    public private(set) var hasOrdinaryInference: Bool? = false
     @Published public private(set) var messages: [ChatMessage] = []
     @Published public private(set) var isGenerating = false
     /// Prefill vs decode — UI shows "Loading prompt…" until the first token, then "Writing…".
@@ -88,6 +120,7 @@ public final class ChatModel: ObservableObject {
 
     /// Set by `stopGenerating()`; checked per token so a stop lands within one token.
     private var stopRequested = false
+    private var conversationRevision: UInt64 = 0
 
     /// Stop the current reply where it is — the streamed partial stays in the transcript
     /// (stopping is a decision about YOUR time, not a failure; no error styling).
@@ -111,10 +144,21 @@ public final class ChatModel: ObservableObject {
         await send(ChatUserFacing.continueCue(), options: options, model: model)
     }
 
+    @Published public private(set) var automaticSelectionStatus: String?
+    @Published public private(set) var preparationError: String?
+    private let admitTurn: (@MainActor () throws -> Void)?
+    private let prepareFirstTurn: (@MainActor (String, ModelEntry?, ChatPreparationContext) async throws -> (ModelEntry?, String?))?
+    var prepareRestoredModel: (@MainActor (ModelEntry?, ChatPreparationContext) async throws -> ModelEntry?)?
+    var didAcceptModel: (@MainActor (ModelEntry?, Bool) -> Void)?
+    var didRecordGuidedTurn: (@MainActor () -> Void)?
     private let engine: InferenceEngine
     private let context: ConversationContext
 
-    public init(engine: InferenceEngine, context: ConversationContext = .init()) {
+    public init(engine: InferenceEngine, context: ConversationContext = .init(),
+                admitTurn: (@MainActor () throws -> Void)? = nil,
+                prepareFirstTurn: (@MainActor (String, ModelEntry?, ChatPreparationContext) async throws -> (ModelEntry?, String?))? = nil) {
+        self.admitTurn = admitTurn
+        self.prepareFirstTurn = prepareFirstTurn
         self.engine = engine
         self.context = context
     }
@@ -128,6 +172,7 @@ public final class ChatModel: ObservableObject {
         guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
         messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
         messages.append(ChatMessage(role: .assistant, text: assistantText))
+        didRecordGuidedTurn?()
     }
 
     /// Send a prompt and stream the reply. No-ops on empty input (unless documents are
@@ -140,23 +185,53 @@ public final class ChatModel: ObservableObject {
         _ prompt: String,
         documents: [AttachedDocument] = [],
         options: GenerationOptions? = nil,
-        model: ModelEntry? = nil
+        model: ModelEntry? = nil,
+        onAccepted: (() -> Void)? = nil
     ) async {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !documents.isEmpty, !isGenerating else { return }
 
-        let tier = ChatTier.of(model: model)
-        let resolvedOptions = options ?? tier.chatOptions
-        let systemPrompt = tier.systemPrompt
-
         isGenerating = true
         generationPhase = .loadingPrompt
         stopRequested = false
-        lastHitTokenCap = false
         defer {
             isGenerating = false
             generationPhase = .idle
         }
+
+        let turnRevision = conversationRevision
+        preparationError = nil
+        var selectedModel = model
+        let pendingHistory = (messages + [ChatMessage(role: .user, text: trimmed, documents: documents)]).map { message in
+            guard !message.documents.isEmpty else { return message }
+            return ChatMessage(id: message.id, role: message.role, text: message.engineText)
+        }
+        let preparation = ChatPreparationContext(history: pendingHistory, options: options) { self.conversationRevision == turnRevision && !self.stopRequested }
+        var automaticSelected = false
+        do {
+            try admitTurn?()
+            if !messages.isEmpty, let prepareRestoredModel {
+                selectedModel = try await prepareRestoredModel(model, preparation)
+                if let selectedModel { automaticSelectionStatus = "\(selectedModel.label) · selected local model" }
+            }
+            if hasOrdinaryInference == false, let prepareFirstTurn {
+                let prepared = try await prepareFirstTurn(ChatMessage(role: .user, text: trimmed, documents: documents).engineText, selectedModel, preparation)
+                selectedModel = prepared.0
+                automaticSelectionStatus = prepared.1
+                automaticSelected = prepared.1 != nil
+            }
+            guard preparation.isCurrent(), !Task.isCancelled else { return }
+        } catch {
+            guard conversationRevision == turnRevision else { return }
+            preparationError = error is CancellationError
+                ? "Model selection changed. Your message and attachments are kept; send again when ready."
+                : "The selected model is unavailable. Your message and attachments are kept. " + OnboardingModel.describe(error)
+            return
+        }
+        let tier = ChatTier.of(model: selectedModel)
+        var resolvedOptions = options ?? tier.chatOptions
+        resolvedOptions.collectPerformance = true
+        let systemPrompt = tier.systemPrompt
 
         // The engine's REAL loaded `n_ctx` (often 512–2048 on phones), so the history trim below
         // matches the actual native window instead of the configured 4096 (Q-167 — Android had this,
@@ -165,6 +240,16 @@ public final class ChatModel: ObservableObject {
         // slip past the guard (the @MainActor+await journal pattern).
         let realContextTokens = await engine.loadedContextTokens()
 
+        guard !stopRequested, !Task.isCancelled, conversationRevision == turnRevision else { return }
+        do { try admitTurn?() }
+        catch {
+            preparationError = "The local model is still being prepared. Your message and attachments are kept. " + OnboardingModel.describe(error)
+            return
+        }
+        lastHitTokenCap = false
+        hasOrdinaryInference = true
+        didAcceptModel?(selectedModel, automaticSelected)
+        onAccepted?()
         messages.append(ChatMessage(role: .user, text: trimmed, documents: documents))
         // Chat-structured generation: pass the budget-windowed history so the engine formats it
         // with the model's OWN chat template (answers as an assistant, stops at end-of-turn).
@@ -235,18 +320,26 @@ public final class ChatModel: ObservableObject {
         if let i = messages.firstIndex(where: { $0.id == assistantID }) { messages[i] = assistant }
     }
 
+    func invalidatePendingPreparation() { conversationRevision &+= 1 }
+
     /// Clear the conversation.
     public func reset() {
+        hasOrdinaryInference = false
+        conversationRevision &+= 1
+        preparationError = nil; automaticSelectionStatus = nil
         // Q-322: cancel any in-flight decode BEFORE wiping its target array — otherwise the streaming
         // loop keeps appending tokens into a transcript that's just been replaced (cross-chat bleed).
-        engine.requestCancel()
+        if !messages.isEmpty { engine.requestCancel() }
         lastHitTokenCap = false
         messages.removeAll()
     }
 
     /// Replace the transcript with a previously persisted conversation (see `ConversationStore`),
     /// so a chat picks up exactly where it left off after a relaunch.
-    public func restore(_ saved: [ChatMessage]) {
+    public func restore(_ saved: [ChatMessage], hasOrdinaryInference: Bool? = nil) {
+        self.hasOrdinaryInference = hasOrdinaryInference
+        conversationRevision &+= 1
+        preparationError = nil; automaticSelectionStatus = nil
         engine.requestCancel()   // Q-323: same — stop the decode before swapping the transcript out
         lastHitTokenCap = false
         messages = saved

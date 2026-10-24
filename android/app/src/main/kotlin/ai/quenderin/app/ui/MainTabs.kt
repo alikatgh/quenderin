@@ -73,6 +73,12 @@ fun MainTabs(
     onSelectModel: (ModelEntry) -> Unit,
     onOpenDeepSeek: () -> Unit = {},
     onOpenComputer: () -> Unit = {},
+    automaticEnabled: Boolean = false,
+    onAutomaticChange: (Boolean) -> Unit = {},
+    automaticDescription: () -> String = { "Estimated speed · current local model" },
+    modelPreparationMessage: String? = null,
+    captureLocalTurnIntent: () -> ai.quenderin.core.LocalTurnIntent = { ai.quenderin.core.LocalTurnIntent(0, null, true) },
+    prepareAutomaticTurn: (ai.quenderin.core.AutomaticChatRequest, Boolean, Boolean, String?, ai.quenderin.core.LocalTurnIntent, () -> Boolean) -> ai.quenderin.core.PreparedLocalTurn? = { _, _, _, _, _, _ -> ai.quenderin.core.PreparedLocalTurn(model) { true } },
 ) {
     var tab by remember { mutableIntStateOf(0) }
     // "Deep thinking" preference — off by default (fast, direct replies). Mirrored onto the real engine so
@@ -121,6 +127,11 @@ fun MainTabs(
                     deepThinking = deepThinking,
                     onDeepThinkingChange = { deepThinking = it },
                     onOpenAgent = { tab = 1 },
+                    automaticEnabled = automaticEnabled,
+                    automaticDescription = automaticDescription,
+                    modelPreparationMessage = modelPreparationMessage,
+                    captureLocalTurnIntent = captureLocalTurnIntent,
+                    prepareAutomaticTurn = prepareAutomaticTurn,
                 )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 1)) {
@@ -144,6 +155,9 @@ fun MainTabs(
                     onSelectModel = onSelectModel,
                     deepThinking = deepThinking,
                     onDeepThinkingChange = { deepThinking = it },
+                    automaticEnabled = automaticEnabled,
+                    onAutomaticChange = onAutomaticChange,
+                    automaticDescription = automaticDescription,
                 )
             }
             Box(Modifier.fillMaxSize().tabVisibility(tab == 3)) {
@@ -174,6 +188,11 @@ private fun ChatTab(
     deepThinking: Boolean,
     onDeepThinkingChange: (Boolean) -> Unit,
     onOpenAgent: () -> Unit = {},
+    automaticEnabled: Boolean = false,
+    automaticDescription: () -> String = { "Estimated speed · current local model" },
+    modelPreparationMessage: String? = null,
+    captureLocalTurnIntent: () -> ai.quenderin.core.LocalTurnIntent = { ai.quenderin.core.LocalTurnIntent(0, null, true) },
+    prepareAutomaticTurn: (ai.quenderin.core.AutomaticChatRequest, Boolean, Boolean, String?, ai.quenderin.core.LocalTurnIntent, () -> Boolean) -> ai.quenderin.core.PreparedLocalTurn? = { _, _, _, _, _, _ -> ai.quenderin.core.PreparedLocalTurn(model) { true } },
 ) {
     val coordinator = remember { ConversationCoordinator(ChatModel(engine), persistence) }
     var summaries by remember { mutableStateOf(coordinator.summaries) }
@@ -202,6 +221,11 @@ private fun ChatTab(
             deepThinking = deepThinking,
             onDeepThinkingChange = onDeepThinkingChange,
             onOpenAgent = onOpenAgent,
+            automaticEnabled = automaticEnabled,
+            automaticDescription = automaticDescription,
+            modelPreparationMessage = modelPreparationMessage,
+            captureLocalTurnIntent = captureLocalTurnIntent,
+            prepareAutomaticTurn = prepareAutomaticTurn,
         )
     } else {
         ConversationListScreen(

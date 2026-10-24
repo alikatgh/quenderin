@@ -22,11 +22,15 @@ public final class ConversationCoordinator: ObservableObject {
     /// The catalog id of the ACTIVE model — stamped onto each conversation at save time so its
     /// list row wears that family's avatar. The shell keeps this current across model switches.
     public var activeModelID: String?
+    public private(set) var pinnedModelID: String?
+    private let restoreSelectedModel: (@MainActor (String, ChatPreparationContext) async throws -> ModelEntry)?
 
     /// The open conversation's id — drives the macOS sidebar's selection highlight.
     public var currentID: String? { manager.currentID }
 
     private let manager: ConversationManager
+    /// Drafts follow conversation identity; the live composer object survives model-loading view removal.
+    private var composerSnapshots: [String: ChatComposerState.Snapshot] = [:]
 
     /// How many of the live chat's messages are already saved for the CURRENT conversation.
     /// persist() only writes when the transcript grew past this — `save()` stamps `updatedAt`,
@@ -37,23 +41,58 @@ public final class ConversationCoordinator: ObservableObject {
     public init(
         chat: ChatModel,
         persistence: ConversationPersistence,
-        now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }
+        now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        restoreSelectedModel: (@MainActor (String, ChatPreparationContext) async throws -> ModelEntry)? = nil
     ) {
+        self.restoreSelectedModel = restoreSelectedModel
         self.chat = chat
         self.manager = ConversationManager(persistence: persistence, now: now)
         manager.pruneEmptyConversations()   // GC blank rows left by the old create-immediately startNew()
         manager.refreshPreviews()   // backfill snippets for indexes written before `preview` existed
         // Pick up where you left off: restore the most recent conversation, or start fresh.
         if let recent = manager.list().first {
-            chat.restore(manager.open(recent.id))
+            pinnedModelID = recent.automaticModelID
+            chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
             savedCount = chat.messages.count
         } else {
             manager.startNew()
+        }
+        chat.prepareRestoredModel = { [weak self] current, preparation in
+            guard let self, let pin = self.pinnedModelID, let restore = self.restoreSelectedModel else { return current }
+            let selected = try await restore(pin, preparation)
+            guard preparation.isCurrent() else { throw CancellationError() }
+            self.activeModelID = selected.id
+            return selected
+        }
+        chat.didRecordGuidedTurn = { [weak self] in self?.persist() }
+        chat.didAcceptModel = { [weak self] model, automaticSelected in
+            guard let self, let model else { return }
+            self.activeModelID = model.id
+            if automaticSelected { self.pinnedModelID = model.id }
+        }
+        refresh()
+    }
+
+    public func chooseModelManually(_ id: String) {
+        chat.invalidatePendingPreparation()
+        activeModelID = id
+        if pinnedModelID != nil {
+            pinnedModelID = id
+            if let current = manager.currentID { manager.updateAutomaticModelID(id: current, modelID: id) }
         }
         refresh()
     }
 
     private func refresh() { summaries = manager.list() }
+    private func stashComposer() {
+        guard let id = manager.currentID else { return }
+        let snapshot = chat.composer.snapshot()
+        if snapshot.isEmpty { composerSnapshots.removeValue(forKey: id) }
+        else { composerSnapshots[id] = snapshot }
+    }
+    private func restoreComposer() {
+        chat.composer.restore(manager.currentID.flatMap { composerSnapshots[$0] } ?? .init())
+    }
 
     /// Persist the current conversation — call when a turn finishes. No-ops on an empty chat so
     /// untouched "New conversation" rows don't pile up, and when nothing new was said since the
@@ -68,7 +107,8 @@ public final class ConversationCoordinator: ObservableObject {
             toSave.removeLast()
         }
         guard toSave.count > savedCount else { return }
-        manager.save(id: id, messages: toSave, modelID: activeModelID)
+        manager.save(id: id, messages: toSave, modelID: activeModelID,
+                     automaticModelID: pinnedModelID, hasOrdinaryInference: chat.hasOrdinaryInference)
         savedCount = toSave.count
         refresh()
     }
@@ -77,18 +117,31 @@ public final class ConversationCoordinator: ObservableObject {
     /// chat is already empty (avoids stacking blank conversations).
     public func startNew() {
         defer { newChatSignal += 1 }   // even a storage no-op must surface the empty chat
-        guard !chat.messages.isEmpty else { return }
+        stashComposer()
+        guard !chat.messages.isEmpty else {
+            // Reuse the accessible empty conversation, including its draft, while invalidating
+            // any asynchronous first-turn verification/load. No unsaved draft is stranded.
+            chat.reset(); pinnedModelID = nil; savedCount = 0
+            restoreComposer()
+            return
+        }
         persist()
         manager.startNew()
         chat.reset()
+        pinnedModelID = nil
         savedCount = 0
+        restoreComposer()
         refresh()
     }
 
     /// Open a past conversation into the chat, saving the current one first.
     public func open(_ id: String) {
+        stashComposer()
         persist()
-        chat.restore(manager.open(id))
+        let summary = manager.list().first(where: { $0.id == id })
+        pinnedModelID = summary?.automaticModelID
+        chat.restore(manager.open(id), hasOrdinaryInference: summary?.hasOrdinaryInference)
+        restoreComposer()
         savedCount = chat.messages.count
         refresh()
     }
@@ -98,15 +151,19 @@ public final class ConversationCoordinator: ObservableObject {
         let wasCurrent = manager.currentID == id
         ChatPrefsStore.shared.clear(for: id)   // per-chat appearance overrides die with the chat
         manager.delete(id)
+        composerSnapshots.removeValue(forKey: id)
         if wasCurrent {
             if let recent = manager.list().first {
-                chat.restore(manager.open(recent.id))
+                pinnedModelID = recent.automaticModelID
+                chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
                 savedCount = chat.messages.count
             } else {
                 manager.startNew()
+                pinnedModelID = nil
                 chat.reset()
                 savedCount = 0
             }
+            restoreComposer()
         }
         refresh()
     }
@@ -120,16 +177,20 @@ public final class ConversationCoordinator: ObservableObject {
         for id in ids {
             ChatPrefsStore.shared.clear(for: id)
             manager.delete(id)
+            composerSnapshots.removeValue(forKey: id)
         }
         if deletingCurrent {
             if let recent = manager.list().first {
-                chat.restore(manager.open(recent.id))
+                pinnedModelID = recent.automaticModelID
+                chat.restore(manager.open(recent.id), hasOrdinaryInference: recent.hasOrdinaryInference)
                 savedCount = chat.messages.count
             } else {
                 manager.startNew()
+                pinnedModelID = nil
                 chat.reset()
                 savedCount = 0
             }
+            restoreComposer()
         }
         refresh()
     }
@@ -138,9 +199,12 @@ public final class ConversationCoordinator: ObservableObject {
     public func clearAll() {
         summaries.forEach { ChatPrefsStore.shared.clear(for: $0.id) }
         manager.clearAll()
+        composerSnapshots.removeAll()
         manager.startNew()
+        pinnedModelID = nil
         chat.reset()
         savedCount = 0
+        restoreComposer()
         refresh()
     }
 }

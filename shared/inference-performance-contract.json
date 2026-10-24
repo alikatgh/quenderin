@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local on-device model selection; no provider, relay, download or benchmark work",
+  "sampleFields": ["modelID", "artifactSHA256", "runtimeID", "backendID", "environmentID", "contextTokens", "promptTokens", "prefillTokens", "decodedTokens", "prefillMs", "decodeMs", "firstTokenMs", "maxGapMs", "loadMs", "cacheMode", "thermalState", "recordedAtMs"],
+  "limits": {
+    "records": 64,
+    "encodedBytes": 131072,
+    "identityUTF8Bytes": 256,
+    "maximumAgeDays": 30,
+    "minimumDecodedTokens": 32,
+    "minimumComparableSamples": 3,
+    "cacheModes": ["cold", "prefix"],
+    "promptBucketUpperBounds": [128, 512, 2048, 8192, 32768, 131072, 262144],
+    "maximumContextTokens": 262144,
+    "switchImprovementFraction": 0.2,
+    "failedSwitchCooldownMs": 600000,
+    "switchAttemptsPerTurn": 1,
+    "previousModelRecoveryAttempts": 1
+  },
+  "identity": {
+    "artifactSHA256": "Verified main artifact SHA256, or SHA256 of the ordered verified multipart identity; unknown identity is ineligible",
+    "runtimeID": "Fingerprint of pinned runtime manifest, patches and inference implementation; current compiled capability remains authoritative",
+    "backendID": "The registered execution runtime, never inferred from a stored performance record; do not label requested GPU offload as confirmed execution",
+    "environmentID": "Local fingerprint of nonunique hardware/OS/driver and execution configuration; excludes account, user and device identifiers"
+  },
+  "storage": {
+    "payload": "Numeric measurements and bounded execution identities only; no prompts, output, paths or credentials",
+    "writes": "Atomic bounded replacement; failed writes preserve previous data and never fail a chat",
+    "invalidInput": "Reject malformed, oversized, nonfinite, failed, cancelled and incompatible samples; corrupt history falls back to estimates"
+  },
+  "selection": {
+    "admission": ["installed", "verified", "runtimeAvailable", "fitsMemory", "fitsContext", "fitsDisk", "supportsTask", "qualityEligible"],
+    "comparable": "Exact artifact, runtime, backend, environment and effective context capacity; matching prompt bucket and candidate's expected cache mode; nominal thermal state. Exact repeated reports do not increase confidence. Candidate cacheMode defaults to the request cacheMode only when omitted. A retained model may reuse a prefix; a freshly loaded alternative uses cold evidence. Never pool those populations.",
+    "prediction": "Median(prefillMs / promptTokens * requestedPromptTokens + decodeMs / decodedTokens * expectedOutputTokens), plus median(loadMs) when switching",
+    "hysteresis": "Switch only if the candidate costs at most 80 percent of the current model; deterministic ID tie break",
+    "unknown": "Keep the viable current model without comparable evidence; existing selector may recommend an eligible installed fallback when current is unavailable",
+    "execution": "Persisted explicit opt-in. One admitted switch before the first ordinary inference of a new conversation through the existing loader; then retain its explicit model pin. Guided turns do not consume that first ordinary inference; legacy descriptive model metadata is not a pin. No midstream change, destination change or automatic download. Manual choices disable Automatic and survive relaunch. Preserve accessible conversation-scoped drafts/documents/history, validate the actual target's full pending request and response budget, and recover the previous model once on a failed switch."
+  }
+}

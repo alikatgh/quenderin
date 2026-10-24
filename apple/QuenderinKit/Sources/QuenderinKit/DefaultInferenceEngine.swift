@@ -16,9 +16,9 @@ public enum DefaultInferenceEngine {
     /// The best on-device engine available in this build (real when linked, mock otherwise).
     /// - Parameter deviceBudgetGB: the device's app-memory budget; the engine sizes `n_ctx` from it
     ///   plus the chosen model's footprint at load (see `ContextWindow`). The mock ignores it.
-    public static func make(deviceBudgetGB: Double = 4.0) -> InferenceEngine {
+    public static func make(deviceBudgetGB: Double = 4.0, performance: InferencePerformanceCallback? = nil) -> InferenceEngine {
         #if canImport(llama)
-        return CoordinatedInferenceEngine(LlamaEngine(deviceBudgetGB: deviceBudgetGB))
+        return CoordinatedInferenceEngine(LlamaEngine(deviceBudgetGB: deviceBudgetGB, performance: performance))
         #else
         return CoordinatedInferenceEngine(MockInferenceEngine())
         #endif

@@ -40,9 +40,9 @@ layout, tokenizer, hybrid architecture and activation transforms to the adapter.
 | --- | --- | --- |
 | Gen 5 previously fell into the unknown-device path | `AndroidSoc.kt`, `GpuOffloadPlanner.kt` | Corrected in this branch; recognition preserves compiled-backend checks. |
 | No MAX/Mojo engine adapter | Concrete `LlamaEngine` and native factory/JNI seams | Package a pinned backend with real load/generate/cancel/unload behavior. |
-| Model recommendations use estimated speed | `IPhoneModelSelector.swift`, `AndroidModelSelector.kt` | Prefer comparable measured results while preserving memory, disk and workflow gates. |
-| Real generation timings reach logs only | Swift `LlamaEngine.runGeneration`, `android/jni/llama_generate.h` | Emit an immutable numeric report from the generation owner. |
-| No persisted Automatic mode | Native app composition, onboarding loaders and speed controls | Deliberate opt-in; choose installed eligible models between turns. |
+| Model recommendations previously used estimated speed only | Native `InferencePerformance` policy and existing model selectors | Comparable observations can inform the first ordinary reply of a new conversation; retain eligibility and quality gates. |
+| Real generation timings previously reached logs only | Swift `LlamaEngine.runGeneration`, `android/jni/llama_generate.h` | Source now emits an immutable numeric report after a successful ordinary generation. |
+| Automatic mode was absent | Native app composition, onboarding loaders and speed controls | Source now has deliberate opt-in and persisted manual choices; hosted verification is tracked below. |
 | Android Vulkan is opt-in at build time | Gradle `quenderin.vulkan`, JNI CMake | Detect actual compiled/loadable capabilities; a SoC name cannot create a backend. |
 
 ## Implementation order and acceptance criteria
@@ -61,56 +61,99 @@ Delivered scope: `AndroidSoc.kt`, `GpuOffloadPlanner.kt` and 13 focused checks i
 `CoreVerify.kt`. The complete pure Kotlin verifier passed all 350 checks. No
 weights, inference, device run or native build was used. Vulkan remains an
 explicit build option; recognizing a GPU family is not a Gen 5 driver benchmark.
-MAX and measured Automatic selection below remain unimplemented.
+The MAX tensor bridge and Automatic implementation are described below. Mobile
+MAX inference remains a separate, incomplete milestone.
 
 Grounding: [Qualcomm product page](https://www.qualcomm.com/smartphones/products/8-series/snapdragon-8-elite-gen-5)
 lists SM8850 variants. OEM `Build.SOC_MODEL` formatting remains variable.
 
 ### 2. Turn existing timings into usable local evidence
 
-- [ ] Add an optional performance callback to each concrete engine and its
+- [x] Add an optional performance callback to each concrete engine and its
   factory. Keep current text-stream interfaces. Capture identity at generation
   start; avoid a shared last-result getter that another agent run can overwrite.
-- [ ] Carry actual model-token counts, prefill/decode durations, first-token
+- [x] Carry actual model-token counts, prefill/decode durations, first-token
   latency and maximum gap, completion/error/cancellation status, context/cache
   conditions, thermal state and the backend actually loaded.
-- [ ] Emit only after a successful, uncancelled generation. Partial text is not
+- [x] Emit only after a successful, uncancelled generation. Partial text is not
   proof of successful native decoding. Never count rendered text chunks as tokens.
-- [ ] Store at most 64 recent records locally, with a bounded encoded size and
+- [x] Store at most 64 recent records locally, with a bounded encoded size and
   atomic replacement. Keep prompts, generated text, paths and account IDs out.
-- [ ] Key records by verified model artifact identity, runtime revision, actual
+- [x] Key records by verified model artifact identity, runtime revision, actual
   backend, device/driver signature and comparable context/cache conditions.
   Ignore incompatible, stale, non-finite and undersized samples.
-- [ ] Learn during ordinary inference. No automatic download, warm-up sweep,
+- [x] Learn during ordinary inference. No automatic download, warm-up sweep,
   provider request or background benchmark is needed to collect a sample.
 
-Existing loaders already receive `ModelEntry`, including artifact identities;
-reuse that input and the runtime provenance manifest. Feed reports through
-app composition into an injected store. If a protocol getter is chosen instead,
-both `CoordinatedInferenceEngine` wrappers must forward it with generation identity.
+Reports use the already verified artifact receipt, registered runtime and
+nonunique hardware/OS/execution signature. A source-derived runtime fingerprint
+invalidates observations when the inference implementation changes. The store
+holds at most 128 KiB, expires records after 30 days, and contains no transcript,
+file path or account identity. Agent, grammar and specialist calls do not train
+ordinary-chat selection. Android Vulkan observations are ineligible until an
+exact usable driver identity is available; manual Vulkan behavior is preserved.
 
 ### 3. Add an explicit Automatic policy
 
-- [ ] Introduce its own preference. Do not silently repurpose `suggestBestModel`,
+- [x] Introduce its own preference. Do not silently repurpose `suggestBestModel`,
   which currently controls task-routing suggestions, or overwrite manual choices.
-- [ ] Build candidates from installed, verified, executable model/backend pairs.
+- [x] Build candidates from installed, verified, executable model/backend pairs.
   An advertised model, benchmark record or backend label is insufficient.
-- [ ] Apply memory/context, disk, task-modality, runtime and thermal gates first.
+- [x] Apply memory/context, disk, task-modality, runtime and thermal gates first.
   Within those gates, use comparable observations to evaluate expected response
   latency; retain current estimates for unknown candidates and label them.
-- [ ] Switch only between turns through the existing onboarding/model loader,
+- [x] Switch only between turns through the existing onboarding/model loader,
   preserving unload/cancel ownership and recovery to the prior working model.
   Do not switch a model mid-answer or move a local conversation to a provider.
-- [ ] Prefer a stable choice unless measured benefit clears a documented margin;
+- [x] Prefer a stable choice unless measured benefit clears a documented margin;
   expire failure cooldowns and runtime-specific observations deliberately.
-- [ ] Show the selected model/backend and whether its speed is observed or
+- [x] Show the selected model/backend and whether its speed is observed or
   estimated. Remote Harness/API destinations retain their own execution owners.
 
-The current returning-user path restores the remembered model immediately.
-Updating first-install recommendation alone will not implement Automatic mode.
-Wire restore, picker/speed controls and new-turn routing through the same policy.
+Automatic defaults off. When enabled, the first admitted ordinary inference of a
+new conversation can choose an installed text model. That conversation then
+retains its model; guided computer tasks do not consume its first ordinary turn.
+Explicit Automatic pins are distinct from older descriptive model metadata.
+Manual model or speed choices disable Automatic and persist across relaunch.
+
+Three distinct comparable observations are required. Comparison uses exact
+artifact/runtime/backend/environment/effective context, the same prompt-size
+bucket, nominal thermal state and the expected cache mode. A retained model's
+prefix reuse is compared with a freshly loaded alternative's cold observations,
+never pooled. Predicted prefill plus decode latency includes switch/load cost;
+an alternative must improve the prediction by at least 20 percent. Unknown
+evidence preserves a viable current model. One lazy alternative integrity check
+and one switch attempt are permitted per new conversation, with one prior-model
+recovery and a ten-minute failure cooldown. No model sweep is started.
+
+The actual target template/tokenizer, available context and response budget are
+checked while the existing execution owner exclusively holds the engine. A
+switch cannot race an ordinary turn, specialist task or agent approval. Drafts,
+attachments and history must survive preparation and model restoration. The
+shared [contract](../shared/inference-performance-contract.json) and
+[24 policy fixtures](../shared/inference-performance-fixtures.json) define the
+cross-platform numeric behavior; platform lifecycle regressions test admission,
+manual intent, rollback and conversation changes separately.
 
 ### 4. Integrate the real MAX adapter
+
+Completed foundation: [PR #185](https://github.com/alikatgh/quenderin/pull/185)
+adds a real MAX C API tensor-session boundary, pinned C headers, explicit
+ownership and bounded failures. Its hosted fake-C-API tests compile the actual
+bridge and exercise cleanup/failure paths under sanitizers. The manual hosted
+SDK workflow separately inspects exact wheel bytes and their embedded terms
+before installation can be allowed. The successful
+[SDK audit](https://github.com/alikatgh/quenderin/actions/runs/40099566447)
+verified selected-wheel PEP 658 metadata and the actual `libmax.so`. Five Modular
+wheels lack separate embedded terms; the execution gate requires explicit
+per-package coverage of the inspected SDK terms and third-party notices before
+any installation or execution. GPU-only component exclusion remains under review;
+no actual SDK execution has been established. This gate covers the ephemeral CPU
+fixture only.
+
+This boundary accepts an exported float32 graph. It does not load GGUF, tokenize
+chat, implement autoregressive decoding, package an Android/iOS runtime, or make
+MAX an eligible Automatic candidate. Those remaining tasks stay unchecked:
 
 - [ ] Pin the Android demo's source, compiler, runtime, device backend, build
   recipe and exact Bonsai artifact. Record a source receipt and all licenses.
@@ -155,7 +198,7 @@ Under the current native-run restriction, source/fixture/hosted compilation can
 advance. Actual phone speed, energy use, driver stability and sustained thermal
 behavior remain unverified. Store release follows the existing release checklist.
 
-## Ownership for the next Sol 6.1 implementation
+## Implementation boundaries
 
 1. Engine worker: immutable reports, concrete Swift/Kotlin engines and JNI sink.
 2. Policy worker: bounded store, selection policy, shared fixtures and core tests.
@@ -166,3 +209,33 @@ behavior remain unverified. Store release follows the existing release checklist
 
 Use separate file ownership and preserve concurrent edits. Keep all benchmark
 numbers attributable to the exact source, artifact and hardware that produced them.
+
+## Verification and reproduction
+
+Run the lightweight source gates from the repository root:
+
+```sh
+python3 -B scripts/generate_inference_performance_identity.py --check
+python3 -B -m unittest scripts.tests.test_inference_performance_contract
+python3 -B scripts/check_inference_performance.py
+python3 -B -m unittest discover -s native/max-runtime/tests -p 'test_*.py'
+python3 -B native/max-runtime/tools/check_source.py
+```
+
+After intentionally editing any runtime-fingerprint input, run the generator
+without `--check` and commit both generated native identity files. Do not hand
+edit their hashes. CI requires each platform to emit each of the 24 policy
+fixture markers exactly once; a marker inventory alone is not execution proof.
+
+`.github/workflows/ci.yml` runs the pure Kotlin controller and actual shared JNI
+generation-loop fixture. `.github/workflows/native-remote-sdk.yml` runs Swift
+controller tests and compiles the real native app/library targets with their
+existing SDK integrations. These hosted checks do not run a phone model or
+establish rendered interaction, signed release behavior or sustained speed.
+Follow [the MAX bridge instructions](../native/max-runtime/README.md) for its
+separate metadata audit and gated CPU fixture. Never treat a fake API fixture as
+actual SDK execution or the CPU graph as a mobile LLM benchmark.
+
+Current integrated hosted results and remaining review findings must be recorded
+before marking the verification/release items complete. Store submission remains
+deferred; no provider, relay or inference service is activated by this increment.

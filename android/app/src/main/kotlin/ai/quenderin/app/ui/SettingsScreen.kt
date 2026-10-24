@@ -75,6 +75,9 @@ fun SettingsScreen(
     deepThinking: Boolean = false,
     onDeepThinkingChange: (Boolean) -> Unit = {},
     active: Boolean = true,
+    automaticEnabled: Boolean = false,
+    onAutomaticChange: (Boolean) -> Unit = {},
+    automaticDescription: () -> String = { "Estimated speed · current local model" },
     suspendForSpecialist: () -> ai.quenderin.core.SpecialistInferenceLease = { error("The app has not supplied exclusive specialist engine coordination.") },
 ) {
     val context = LocalContext.current
@@ -125,6 +128,9 @@ fun SettingsScreen(
             OutlinedButton(onClick = onOpenComputer) { Text("My computer · DeepSeek Harness") }
         }
         SettingsGroup(stringResource(R.string.settings_speed)) {
+            PresetChip("Automatic", automaticEnabled, Modifier.fillMaxWidth()) { onAutomaticChange(!automaticEnabled) }
+            Caption("Chooses verified installed models before the first text turn of a new chat, within the current quality tier. No downloads. Later turns keep that model. Vulkan stays manual until its driver identity is verified.")
+            if (automaticEnabled) Caption(automaticDescription())
             // The model-speed dial: decode speed scales with model SIZE, so this is the one control
             // that changes how fast replies FEEL. Selecting a preset runs the normal switch flow
             // (download if needed → load → swap).
@@ -139,14 +145,14 @@ fun SettingsScreen(
             val balLabel = stringResource(R.string.settings_speed_balanced)
             val qualLabel = stringResource(R.string.settings_speed_quality)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PresetChip(fastLabel, current == SpeedPreset.FAST, Modifier.weight(1f)) {
-                    if (choice.fast.id != model.id) onSelectModel(choice.fast)
+                PresetChip(fastLabel, !automaticEnabled && current == SpeedPreset.FAST, Modifier.weight(1f)) {
+                    onSelectModel(choice.fast)
                 }
-                PresetChip(balLabel, current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
-                    if (choice.balanced.id != model.id) onSelectModel(choice.balanced)
+                PresetChip(balLabel, !automaticEnabled && current == SpeedPreset.BALANCED, Modifier.weight(1f)) {
+                    onSelectModel(choice.balanced)
                 }
-                PresetChip(qualLabel, current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
-                    if (choice.quality.id != model.id) onSelectModel(choice.quality)
+                PresetChip(qualLabel, !automaticEnabled && current == SpeedPreset.QUALITY, Modifier.weight(1f)) {
+                    onSelectModel(choice.quality)
                 }
             }
             Caption(
@@ -405,7 +411,7 @@ fun SettingsScreen(
                 currentModelId = model.id,
                 onSelect = { picked ->
                     showPicker = false
-                    if (picked.id != model.id) onSelectModel(picked)
+                    onSelectModel(picked)
                 },
             )
         }

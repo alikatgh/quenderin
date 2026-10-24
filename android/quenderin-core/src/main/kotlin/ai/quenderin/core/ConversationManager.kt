@@ -40,12 +40,47 @@ class ConversationManager(
     private val makeId: () -> String,
 ) {
     private val library = ConversationLibrary(persistence.loadIndex())
+    private val indexState = Any()
+    private var writingIndex = false
+    private var indexDirty = false
 
-    var currentId: String? = null
+    /** Coalesce concurrent index updates under one existing caller. A lifecycle action can update
+     * memory while an older saveIndex is blocked; the writer then drains the latest snapshot. */
+    private fun persistIndex() {
+        synchronized(indexState) { indexDirty = true; if (writingIndex) return; writingIndex = true }
+        try {
+            while (true) {
+                val snapshot = synchronized(indexState) { indexDirty = false; library.snapshot() }
+                persistence.saveIndex(snapshot)
+                val again = synchronized(indexState) { if (indexDirty) true else { writingIndex = false; false } }
+                if (!again) return
+            }
+        } catch (error: Throwable) { synchronized(indexState) { writingIndex = false }; throw error }
+    }
+
+    @Volatile var currentId: String? = null
         private set
+    @Volatile var currentLocalModelID: String? = null
+        private set
+    @Volatile var currentHasOrdinaryTurn: Boolean = false
+        private set
+    fun pinLocalModel(modelID: String) {
+        require(InferencePerformanceIdentity.validModelID(modelID))
+        recordLocalAdmission(modelID, automatic = true, expectedID = currentId)
+    }
+    fun recordLocalAdmission(modelID: String, automatic: Boolean, expectedID: String?) {
+        require(InferencePerformanceIdentity.validModelID(modelID))
+        val id = expectedID ?: return
+        val changed = synchronized(indexState) {
+            if (currentId == id) { currentLocalModelID = modelID.takeIf { automatic }; currentHasOrdinaryTurn = true }
+            library.get(id)?.let { library.upsert(it.copy(localModelID = modelID.takeIf { automatic }, hasOrdinaryTurn = true,
+                automaticModelPin = automatic)); true } ?: false
+        }
+        if (changed) persistIndex()
+    }
 
     /** The history list, newest first. */
-    fun list(): List<ConversationSummary> = library.list()
+    fun list(): List<ConversationSummary> = synchronized(indexState) { library.list() }
 
     /**
      * Begin a fresh, empty conversation and make it current. Deliberately writes NOTHING:
@@ -55,7 +90,7 @@ class ConversationManager(
      */
     fun startNew(): String {
         val id = makeId()
-        currentId = id
+        synchronized(indexState) { currentId = id; currentLocalModelID = null; currentHasOrdinaryTurn = false }
         return id
     }
 
@@ -65,14 +100,17 @@ class ConversationManager(
      */
     fun save(id: String, messages: List<ChatMessage>) {
         val firstUser = messages.firstOrNull { it.role == Role.USER }?.text
-        library.upsert(ConversationSummary(
+        synchronized(indexState) { library.upsert(ConversationSummary(
             id,
             ConversationLibrary.titleFromFirstUserMessage(firstUser),
             now(),
             preview = ConversationLibrary.previewFromLastMessage(messages.lastOrNull()),
-        ))
+            localModelID = if (id == currentId) currentLocalModelID else library.get(id)?.localModelID,
+            hasOrdinaryTurn = if (id == currentId) currentHasOrdinaryTurn else library.get(id)?.hasOrdinaryTurn ?: false,
+            automaticModelPin = if (id == currentId) currentLocalModelID != null else library.get(id)?.automaticModelPin ?: false,
+        )) }
         persistence.saveTranscript(id, messages)
-        persistence.saveIndex(library.snapshot())
+        persistIndex()
     }
 
     /** One-time cleanup for indexes written by the old [startNew] (which created the row and
@@ -81,49 +119,57 @@ class ConversationManager(
      *  so a blank shell is never what launch reopens. */
     fun pruneEmptyConversations() {
         var changed = false
-        for (summary in library.list()) {
+        for (summary in list()) {
             if (persistence.loadTranscript(summary.id).isEmpty()) {
-                library.remove(summary.id)
+                synchronized(indexState) { library.remove(summary.id) }
                 persistence.deleteTranscript(summary.id)
                 changed = true
             }
         }
-        if (changed) persistence.saveIndex(library.snapshot())
+        if (changed) persistIndex()
     }
 
     /** One-time backfill for indexes written before `preview` existed: compute each snippet from
      *  its transcript WITHOUT touching `updatedAt` — this is repair, not activity. */
     fun refreshPreviews() {
         var changed = false
-        for (summary in library.list()) {
+        for (summary in list()) {
             if (summary.preview.isNotEmpty()) continue
             val preview = ConversationLibrary.previewFromLastMessage(persistence.loadTranscript(summary.id).lastOrNull())
             if (preview.isNotEmpty()) {
-                library.upsert(summary.copy(preview = preview))
+                synchronized(indexState) { library.upsert(summary.copy(preview = preview)) }
                 changed = true
             }
         }
-        if (changed) persistence.saveIndex(library.snapshot())
+        if (changed) persistIndex()
     }
 
     /** Load a conversation's transcript and make it current (seed it into [ChatModel.restore]). */
     fun open(id: String): List<ChatMessage> {
-        currentId = id
+        synchronized(indexState) {
+            currentId = id
+            currentLocalModelID = library.get(id)?.takeIf { it.automaticModelPin }?.localModelID
+            currentHasOrdinaryTurn = library.get(id)?.hasOrdinaryTurn ?: false
+        }
         return persistence.loadTranscript(id)
     }
 
     /** Delete a conversation everywhere. If it was the open one, nothing is current afterward. */
     fun delete(id: String) {
-        library.remove(id)
+        synchronized(indexState) { library.remove(id)
+            if (currentId == id) { currentId = null; currentLocalModelID = null; currentHasOrdinaryTurn = false }
+        }
         persistence.deleteTranscript(id)
-        persistence.saveIndex(library.snapshot())
-        if (currentId == id) currentId = null
+        persistIndex()
     }
 
     /** Delete every conversation (all transcripts + the index). Nothing is current afterward. */
     fun clearAll() {
-        library.snapshot().forEach { persistence.deleteTranscript(it.id); library.remove(it.id) }
-        persistence.saveIndex(library.snapshot())   // now empty
-        currentId = null
+        val snapshot = synchronized(indexState) {
+            val rows = library.snapshot(); rows.forEach { library.remove(it.id) }
+            currentId = null; currentLocalModelID = null; currentHasOrdinaryTurn = false; rows
+        }
+        snapshot.forEach { persistence.deleteTranscript(it.id) }
+        persistIndex()
     }
 }
