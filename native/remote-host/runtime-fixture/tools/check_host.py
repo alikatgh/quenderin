@@ -76,6 +76,23 @@ def no_links(checkout, path):
         current = current.parent
 
 
+def verify_built_protocol(checkout, companion):
+    """The source fixture must not conceal an incomplete installed package."""
+    checkout = checkout.absolute()
+    module = checkout / 'packages/protocol/dist/quenderin-bot-read-wire.mjs'
+    entry = checkout / 'packages/protocol/dist/index.js'
+    for path in [module, entry]:
+        no_links(checkout, path)
+        if not path.is_file() or path.stat().st_size > 1_048_576:
+            raise ValueError('Built protocol wire artifact is missing or invalid')
+    expected = (companion / 'quenderin-bot-read-wire.mjs').read_bytes()
+    if module.read_bytes() != expected:
+        raise ValueError('Built protocol wire artifact differs from the prepared source')
+    if not re.search(rb'''\bfrom\s*['"]\./quenderin-bot-read-wire\.mjs['"]''', entry.read_bytes()):
+        raise ValueError('Built protocol entry does not reference its packaged wire guard')
+    return {'wireSHA256': hashlib.sha256(expected).hexdigest()}
+
+
 def verify_checkout(checkout, spec, transform, companion, aliases=ALIASES, companion_paths=COMPANIONS, selected_only=False):
     checkout = checkout.absolute()
     if checkout.is_symlink() or not checkout.is_dir():
@@ -179,6 +196,7 @@ def main():
     spec = json.loads((companion / 'upstream.json').read_text())
     transform = runpy.run_path(str(companion / 'tools/prepare_host.py'))['transform']
     result = verify_checkout(Path(sys.argv[1]), spec, transform, companion)
+    result['builtProtocol'] = verify_built_protocol(Path(sys.argv[1]), companion)
     actual_bot_aliases = dict(re.findall(r"if \(source === '([^']+)'\) return resolve\(bot, '([^']+)'\)", config))
     if actual_bot_aliases != BOT_ALIASES or not os.environ.get('QUENDERIN_BOT_SOURCE', '').startswith('/'):
         raise ValueError('Exact Bot source aliases and absolute checkout required')

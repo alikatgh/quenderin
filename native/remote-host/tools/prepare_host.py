@@ -30,7 +30,11 @@ def once(source, before, after):
 
 
 def transform(path, source):
-    if path == 'packages/plugin/src/index.ts':
+    if path == 'packages/protocol/package.json':
+        build = ('tsc -p tsconfig.json && node -e '
+                 '"require(\'node:fs\').copyFileSync(\'src/quenderin-bot-read-wire.mjs\',\'dist/quenderin-bot-read-wire.mjs\')"')
+        source = once(source, '"build": "tsc -p tsconfig.json"', '"build": ' + json.dumps(build))
+    elif path == 'packages/plugin/src/index.ts':
         source = "import { botSessionWritable } from './quenderin-bot-runtime.mjs'\n" + source
         source = once(source, "        peer,\n      ),\n    )", "        peer,\n      ),\n      sessionId => botSessionWritable(ctx.get('connection'), sessionId),\n    )")
     elif path == 'packages/protocol/src/index.ts':

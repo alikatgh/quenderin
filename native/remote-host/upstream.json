@@ -11,6 +11,7 @@
     "packages/plugin/src/plugin-route-bridge.ts": "3cc309c729ad1e053e88500cad3c5d004c2b7ceba1aeb6476540df9db72a2cfc",
     "packages/plugin/src/plugin-route-dispatcher.ts": "781ad6a071f220e3cae08a209011183a29c27857eec1d26acdb07d7eb8f704f4",
     "packages/protocol/src/index.ts": "537300e8c0006a4e9beb52abb6311e244e0eef7c4e7dc6497039511869417419",
-    "packages/plugin/src/index.ts": "f074a8cca728531648a0c5c6b20c78695ecb61b0d02d808fafb14775526ca48b"
+    "packages/plugin/src/index.ts": "f074a8cca728531648a0c5c6b20c78695ecb61b0d02d808fafb14775526ca48b",
+    "packages/protocol/package.json": "534161c0d0a78e6abae512cda8d4e1cc6579b3fba949f94dc99263c5b0f481aa"
   }
 }

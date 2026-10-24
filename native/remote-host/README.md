@@ -19,7 +19,7 @@ the Host operating system.
 
 1. Use a separate source checkout at the exact upstream revision. Keep an existing
    working Harness installation and its profile in place.
-2. From this repository, check the eight Host source hashes and patch seams:
+2. From this repository, check the nine Host source/build hashes and patch seams:
 
    ```sh
    python3 native/remote-host/tools/prepare_host.py /absolute/path/to/ds-harness-remote
@@ -31,7 +31,7 @@ the Host operating system.
    python3 native/remote-host/tools/prepare_host.py /absolute/path/to/ds-harness-remote --apply
    ```
 
-   The tool adds eight companion source files and edits eight verified source files.
+   The tool adds eight companion source files and edits nine verified source/build files.
    It refuses another revision, changed seams, linked source files, or an existing
    companion. It does not download, install, start, authenticate or configure
    Harness. The upstream MIT notice is retained in `LICENSE.upstream`.

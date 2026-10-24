@@ -1,12 +1,16 @@
 """Guard-only fake Git checkout tests; no upstream packages are executed."""
 import hashlib
+import json
 import os
 from pathlib import Path
+import runpy
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
-from check_host import ALIASES, COMPANIONS, verify_checkout
+from check_host import ALIASES, COMPANIONS, verify_checkout, verify_built_protocol
 
 
 class SourceGuardTests(unittest.TestCase):
@@ -105,6 +109,89 @@ class SourceGuardTests(unittest.TestCase):
         dist.mkdir()
         (dist / 'index.js').write_text('// rebuilt output outside source aliases\n')
         self.verify()
+
+
+class ProtocolPackagingTests(unittest.TestCase):
+    """Exercise the actual package script; a stub compiler isolates its JS-copy boundary.
+
+    Full TypeScript compilation and plugin bundling remain hosted checks. The stub
+    deliberately emits an entry with the real relative wire import, but no JS copy,
+    matching the observed tsc packaging behavior without installing a compiler.
+    """
+    def setUp(self):
+        self.owned = tempfile.TemporaryDirectory(prefix='protocol-package-', dir=os.environ['QUENDERIN_GUARD_SCRATCH'])
+        self.base = Path(self.owned.name)
+        self.checkout = self.base / 'checkout'
+        self.project = self.checkout / 'packages/protocol'
+        (self.project / 'src').mkdir(parents=True)
+        self.companion = Path(__file__).resolve().parents[2]
+        self.original = (self.companion / 'tests/fixtures/upstream-protocol-package.json').read_text()
+        spec = json.loads((self.companion / 'upstream.json').read_text())
+        self.assertEqual(hashlib.sha256(self.original.encode()).hexdigest(), spec['files']['packages/protocol/package.json'])
+        self.transform = runpy.run_path(str(self.companion / 'tools/prepare_host.py'))['transform']
+        self.wire = self.project / 'src/quenderin-bot-read-wire.mjs'
+        self.wire.write_bytes((self.companion / self.wire.name).read_bytes())
+        binary = self.base / 'bin'
+        binary.mkdir()
+        compiler = binary / 'tsc'
+        compiler.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                            'Path("dist").mkdir(exist_ok=True)\n'
+                            'Path("dist/index.js").write_text("import { assertBotReadWireBytes } from \'./quenderin-bot-read-wire.mjs\';\\nassertBotReadWireBytes(\'{}\');\\n")\n')
+        compiler.chmod(0o700)
+        self.node = shutil.which('node')
+        self.assertIsNotNone(self.node)
+        self.env = {'PATH': os.pathsep.join([str(binary), str(Path(self.node).parent), str(Path(sys.executable).parent), '/usr/bin', '/bin'])}
+
+    def tearDown(self):
+        self.owned.cleanup()
+
+    def build(self, patched):
+        source = self.transform('packages/protocol/package.json', self.original) if patched else self.original
+        (self.project / 'package.json').write_text(source)
+        return subprocess.run(['sh', '-c', json.loads(source)['scripts']['build']], cwd=self.project,
+                              env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+
+    def import_built(self):
+        return subprocess.run([self.node, 'dist/index.js'], cwd=self.project, env=self.env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+
+    def test_original_build_omits_runtime_module_and_built_import_fails(self):
+        self.assertEqual(self.build(False).returncode, 0)
+        imported = self.import_built()
+        self.assertNotEqual(imported.returncode, 0)
+        self.assertIn(b'ERR_MODULE_NOT_FOUND', imported.stderr)
+        with self.assertRaisesRegex(ValueError, 'missing or invalid'):
+            verify_built_protocol(self.checkout, self.companion)
+
+    def test_prepared_package_build_copies_exact_wire_and_imports(self):
+        self.assertEqual(self.build(True).returncode, 0)
+        self.assertEqual(self.import_built().returncode, 0)
+        self.assertEqual((self.project / 'dist' / self.wire.name).read_bytes(), self.wire.read_bytes())
+        self.assertEqual(verify_built_protocol(self.checkout, self.companion)['wireSHA256'], hashlib.sha256(self.wire.read_bytes()).hexdigest())
+
+    def test_prepared_build_fails_if_required_source_module_is_missing(self):
+        self.wire.unlink()
+        self.assertNotEqual(self.build(True).returncode, 0)
+
+    def test_built_guard_rejects_a_changed_copy(self):
+        self.assertEqual(self.build(True).returncode, 0)
+        (self.project / 'dist' / self.wire.name).write_text('// unapproved replacement\n')
+        with self.assertRaisesRegex(ValueError, 'differs'):
+            verify_built_protocol(self.checkout, self.companion)
+
+    def test_built_guard_rejects_a_linked_copy(self):
+        self.assertEqual(self.build(True).returncode, 0)
+        built = self.project / 'dist' / self.wire.name
+        built.unlink()
+        built.symlink_to(self.wire)
+        with self.assertRaisesRegex(ValueError, 'Linked source'):
+            verify_built_protocol(self.checkout, self.companion)
+
+    def test_built_guard_requires_the_entry_to_reference_the_wire_guard(self):
+        self.assertEqual(self.build(True).returncode, 0)
+        (self.project / 'dist/index.js').write_text('export const placeholder = true\n')
+        with self.assertRaisesRegex(ValueError, 'does not reference'):
+            verify_built_protocol(self.checkout, self.companion)
 
 
 if __name__ == '__main__':
