@@ -670,16 +670,21 @@ import XCTest
         server.botResponseOverride = server.botResponse(bots: []); server.running = true; server.snapshotActiveAttempt = true
         let native = try await botController(server, storage: JourneyStorage(), clock: clock); defer { native.disconnect() }
         await native.selectSession(try XCTUnwrap(native.sessions.first)); await settle { native.snapshotReady && native.botRoster != nil }
+        // Snapshot delivery precedes its stream.open acknowledgement. Complete
+        // an RPC round trip before advancing time so earlier opens are settled.
+        await native.refreshSessionState(); XCTAssertNil(native.failure)
         native.updateDraft("Keep this unfinished draft")
         let history = native.timeline.records, commands = native.journal.commands.count, sockets = server.sockets.count
         let socket = try XCTUnwrap(server.sockets.last)
         server.deferBotReads = true
         let refresh = Task { await native.refreshBots() }
         await settle { native.botLoading && socket.pendingBotReads.count == 1 }
-        let reads = server.botReads, received = socket.receivedCount
+        let reads = server.botReads
         clock.monotonicMilliseconds += 60_000
         try socket.frame("$events", ["type": "keepalive"])
-        await settle { socket.receivedCount > received }
+        // A dequeued packet count is not proof the keepalive was processed.
+        // The following response is queued after it on this same connection.
+        await native.refreshSessionState(); XCTAssertNil(native.failure)
         clock.monotonicMilliseconds += RemoteHarnessLimits.deadlineMilliseconds - 60_000
         // An authenticated live frame drives expiry and refreshes transport
         // liveness; this exercises RPC expiry independently of heartbeat loss.
@@ -691,7 +696,7 @@ import XCTest
         XCTAssertEqual(server.sockets.count, sockets); XCTAssertEqual(native.journal.commands.count, commands)
         XCTAssertEqual(native.journal.draft, "Keep this unfinished draft"); XCTAssertEqual(native.timeline.records, history)
         try socket.replyBotReads(server.botResponse(revision: 99))
-        await settle { socket.pendingBotReads.isEmpty }
+        await native.refreshSessionState()
         XCTAssertNil(native.botRoster); XCTAssertTrue(native.botUnavailable)
         await native.stop()
         XCTAssertEqual(server.cancellations, 1); XCTAssertEqual(native.stopState, .receiptReceived)

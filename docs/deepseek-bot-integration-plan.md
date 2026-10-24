@@ -80,15 +80,15 @@ Quenderin already has SkillMemory, approved Hy-Memory proposals, desktop memory 
 
 ## Ordered to-do list
 
-Every item below is future implementation or validation. Use the existing roadmap to record delivery evidence and link the relevant PRs; this file is the detailed design supplement.
+Checked items have the bounded evidence described in the implementation brief. Unchecked items still need implementation or their complete validation. Use the existing roadmap to record delivery evidence and link the relevant PRs; this file is the detailed design supplement.
 
 ### 0. Prove the smallest compatible Host integration
 
-- [ ] Pin DS Bot source/package integrity and a supported Harness/Remote/Node combination. Exercise current rc.1 first; if rc.2 is required, isolate the upgrade and rerun existing approval, Stop, history and crypto compatibility checks.
-- [ ] Audit applicable Apache-2.0/MIT notices and dependency changes; retain notices for actual reused modules.
-- [ ] Extend the existing official-runtime fixture with one DS Bot, scripted model replies and inert tools. No real credentials, model downloads or background services.
+- [x] Pin DS Bot source/package integrity and prove the passive store/channel read on Harness rc.1, Remote 0.5.17 and Node 22. Full startup requires separate compatibility evidence; an rc.2 upgrade must preserve approval, Stop, history and crypto checks.
+- [x] Audit applicable Apache-2.0/MIT notices and dependency changes; retain notices for actual reused modules.
+- [x] Extend the existing official-runtime fixture with one DS Bot, scripted model replies and inert tools. No real credentials, model downloads or background services.
 - [ ] Identify and disable unintended install/startup side effects. Verify plain Harness sessions still work when Bot support is absent or disabled.
-- [ ] Define a negotiated Bot capability/version contract and shared Swift/Kotlin fixtures. Draft capability names, if used, must be marked Quenderin extensions rather than upstream guarantees.
+- [x] Define a negotiated Bot capability/version contract and shared Swift/Kotlin fixtures. Capability names are Quenderin extensions rather than upstream guarantees.
 
 **Exit:** a pinned fixture can discover one existing bot and its authoritative current session through the reviewed bridge, with no model request caused by listing it.
 
